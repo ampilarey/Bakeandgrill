@@ -9,7 +9,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { buildItemSlides } from '../../utils/itemMedia';
 import {
-  isItemAvailableNow,
+  isItemOrderableForDay,
   itemLowStockLabel,
   itemUnavailableLabel,
 } from '../../utils/itemAvailability';
@@ -31,6 +31,11 @@ export type ProductCardProps = {
   layout?: 'grid' | 'list';
   /** Optional NEW badge (dine-in menu). */
   isNew?: boolean;
+  /**
+   * App-wide order day. In tomorrow mode today's stock/86 state is ignored —
+   * allow_pre_order is the only gate (items are made fresh for tomorrow).
+   */
+  orderDay?: 'today' | 'tomorrow';
 };
 
 const SPICE_MAP: Record<string, { label: string; icon: string }> = {
@@ -48,6 +53,7 @@ export function ProductCard({
   onToggleFavourite,
   layout = 'grid',
   isNew = false,
+  orderDay = 'today',
 }: ProductCardProps) {
   void _onAddToCart;
   const { t, lang } = useLanguage();
@@ -87,9 +93,10 @@ export function ProductCard({
     return cardDescriptionPreview(item.description).text;
   }, [item.short_description, item.short_description_dv, item.description, isDv]);
 
-  const isUnavailable = !isItemAvailableNow(item);
+  const isUnavailable = !isItemOrderableForDay(item, orderDay);
   const unavailLabel = isUnavailable ? itemUnavailableLabel(item, t) : null;
-  const lowStockLabel = !isUnavailable ? itemLowStockLabel(item, t) : null;
+  // Today's stock counts don't apply to tomorrow's fresh batch.
+  const lowStockLabel = !isUnavailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
   const spice = item.spice_level && item.spice_level !== 'none' ? SPICE_MAP[item.spice_level] : null;
   const special = item.special;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);

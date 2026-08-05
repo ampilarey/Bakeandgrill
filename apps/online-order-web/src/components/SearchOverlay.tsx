@@ -23,6 +23,8 @@ type Props = {
   onSelectCategory: (categoryId: number) => void;
   favouriteIds: Set<number>;
   onToggleFavourite?: (itemId: number) => void;
+  /** App-wide order day forwarded to result cards. */
+  orderDay?: 'today' | 'tomorrow';
 };
 
 /**
@@ -40,6 +42,7 @@ export function SearchOverlay({
   onSelectCategory,
   favouriteIds,
   onToggleFavourite,
+  orderDay = 'today',
 }: Props) {
   const { t } = useLanguage();
   const shellNav = useShellNavOptional();
@@ -187,6 +190,7 @@ export function SearchOverlay({
                     <ProductCard
                       key={item.id}
                       item={item}
+                      orderDay={orderDay}
                       onSelectItem={(it, qty) => { onSelectItem(it, qty); onClose(); }}
                       onAddToCart={onAddToCart}
                       isFavourite={favouriteIds.has(item.id)}
@@ -273,6 +277,7 @@ export function SearchOverlay({
               <ProductCard
                 key={item.id}
                 item={item}
+                orderDay={orderDay}
                 onSelectItem={(it, qty) => { onSelectItem(it, qty); onClose(); }}
                 onAddToCart={onAddToCart}
                 isFavourite={favouriteIds.has(item.id)}

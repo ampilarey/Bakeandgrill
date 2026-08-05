@@ -26,7 +26,9 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderDayToggle } from '../components/OrderDayToggle';
 import { OrderModeSheet } from '../components/OrderModeSheet';
-import { useOrderDay } from '../context/OrderDayContext';
+import { DaySwitchConfirmSheet } from '../components/DaySwitchConfirmSheet';
+import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
+import { isItemAvailableNow } from '../utils/itemAvailability';
 import { useOrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
 import { composeClosedMenuBanner } from '../utils/orderingStatusBanner';
@@ -168,6 +170,8 @@ export function MenuPage() {
   const { day, setDay } = useOrderDay();
   const { mode, modeConfirmed } = useOrderMode();
   const [modeSheetOpen, setModeSheetOpen] = useState(false);
+  /** Pending manual day switch that would remove cart lines — asks first. */
+  const [daySwitchConfirm, setDaySwitchConfirm] = useState<{ target: OrderDay; count: number } | null>(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -354,6 +358,7 @@ export function MenuPage() {
   }, [loading, isOpen, day, hasTomorrowItems, setDay]);
 
   // Tomorrow carts must be valid by construction — drop lines that can't be pre-ordered.
+  // (Safety net for auto-flips and persisted state; manual switches confirm first.)
   useEffect(() => {
     if (day !== 'tomorrow' || items.length === 0) return;
     const allowedIds = new Set(items.filter((i) => Boolean(i.allow_pre_order)).map((i) => i.id));
@@ -363,6 +368,38 @@ export function MenuPage() {
     const pruneKey = removedCount === 1 ? 'menu.pruned_tomorrow_one' : 'menu.pruned_tomorrow_many';
     showToast(t(pruneKey).replace('{n}', String(removedCount)));
   }, [day, items, pruneCartToAllowedItemIds, showToast, t]);
+
+  // Today carts must only hold items orderable today — a tomorrow cart may
+  // legitimately contain items that are sold out / 86'd right now.
+  useEffect(() => {
+    if (day !== 'today' || isOpen !== true || items.length === 0) return;
+    const allowedIds = new Set(items.filter((i) => isItemAvailableNow(i)).map((i) => i.id));
+    const removedCount = cartRef.current.filter((entry) => !allowedIds.has(entry.item.id)).length;
+    if (removedCount === 0) return;
+    pruneCartToAllowedItemIds(allowedIds);
+    const pruneKey = removedCount === 1 ? 'menu.pruned_today_one' : 'menu.pruned_today_many';
+    showToast(t(pruneKey).replace('{n}', String(removedCount)));
+  }, [day, isOpen, items, pruneCartToAllowedItemIds, showToast, t]);
+
+  /** Cart lines the given day cannot carry (drives the switch confirmation). */
+  const blockedCartCountForDay = (target: OrderDay): number => {
+    if (target === 'tomorrow') {
+      return cartRef.current.filter((entry) => !entry.item.allow_pre_order).length;
+    }
+    return cartRef.current.filter((entry) => !isItemAvailableNow(entry.item)).length;
+  };
+
+  const confirmDaySwitch = () => {
+    if (!daySwitchConfirm) return;
+    const { target } = daySwitchConfirm;
+    const allowed = target === 'tomorrow'
+      ? items.filter((i) => Boolean(i.allow_pre_order))
+      : items.filter((i) => isItemAvailableNow(i));
+    pruneCartToAllowedItemIds(new Set(allowed.map((i) => i.id)));
+    setDay(target);
+    setDaySwitchConfirm(null);
+    if (!modeConfirmed) setModeSheetOpen(true);
+  };
 
   const filteredItems = useMemo(() => {
     let list = items;
@@ -675,6 +712,7 @@ export function MenuPage() {
       <ProductCard
         item={item}
         layout={viewMode}
+        orderDay={day}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
           addItem(it, qty, [], variant ?? null, packagingOptionId);
@@ -767,6 +805,12 @@ export function MenuPage() {
               tomorrowDate={collectTomorrowDate}
               todayBlocked={isOpen === false}
               tomorrowBlocked={!loading && !hasTomorrowItems}
+              beforeDaySelect={(next) => {
+                const count = blockedCartCountForDay(next);
+                if (count === 0) return true;
+                setDaySwitchConfirm({ target: next, count });
+                return false;
+              }}
               onDaySelect={() => {
                 // Day picked — ask "how" right away unless already chosen.
                 if (!modeConfirmed) setModeSheetOpen(true);
@@ -1099,7 +1143,8 @@ export function MenuPage() {
         onClose={() => setSearchOpen(false)}
         query={searchQuery}
         onQueryChange={setSearchQuery}
-        items={items}
+        items={day === 'tomorrow' ? items.filter((i) => Boolean(i.allow_pre_order)) : items}
+        orderDay={day}
         categories={categories}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
@@ -1128,12 +1173,21 @@ export function MenuPage() {
           open
           item={selectedItem}
           qty={selectedQty}
+          orderDay={day}
           selectedModifiers={selectedModifiers}
           onToggleModifier={toggleModifier}
           onAddToCart={handleModalAdd}
           onClose={() => setSelectedItem(null)}
         />
       )}
+
+      <DaySwitchConfirmSheet
+        open={daySwitchConfirm !== null}
+        targetDay={daySwitchConfirm?.target ?? 'today'}
+        removeCount={daySwitchConfirm?.count ?? 0}
+        onConfirm={confirmDaySwitch}
+        onCancel={() => setDaySwitchConfirm(null)}
+      />
     </div>
   );
 }

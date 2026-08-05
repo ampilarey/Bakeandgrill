@@ -6,6 +6,20 @@ export function isItemAvailableNow(item: Pick<MenuItem, 'available_now' | 'is_av
   return item.is_available !== false;
 }
 
+/**
+ * Orderability for the app-wide day choice. Tomorrow orders are made fresh,
+ * so today's stock / 86 / ordering-window state does not apply — the owner's
+ * allow_pre_order flag is the only gate (mirrors the backend, which skips the
+ * stock check and reservation whenever fulfil_date is set).
+ */
+export function isItemOrderableForDay(
+  item: Pick<MenuItem, 'available_now' | 'is_available' | 'allow_pre_order'>,
+  day: 'today' | 'tomorrow',
+): boolean {
+  if (day === 'tomorrow') return Boolean(item.allow_pre_order);
+  return isItemAvailableNow(item);
+}
+
 function formatAvailableFrom(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);

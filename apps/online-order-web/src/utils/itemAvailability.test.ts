@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isItemAvailableNow,
+  isItemOrderableForDay,
   itemAvailableStock,
   itemLowStockLabel,
   itemUnavailableLabel,
@@ -26,6 +27,21 @@ describe('isItemAvailableNow', () => {
     expect(isItemAvailableNow({ is_available: false })).toBe(false);
     expect(isItemAvailableNow({ is_available: true })).toBe(true);
     expect(isItemAvailableNow({})).toBe(true);
+  });
+});
+
+describe('isItemOrderableForDay', () => {
+  it('today follows available_now (stock / 86 state applies)', () => {
+    expect(isItemOrderableForDay({ available_now: false, allow_pre_order: true }, 'today')).toBe(false);
+    expect(isItemOrderableForDay({ available_now: true, allow_pre_order: false }, 'today')).toBe(true);
+  });
+
+  it('tomorrow ignores today stock — allow_pre_order is the only gate', () => {
+    // Sold out today but made fresh for tomorrow.
+    expect(isItemOrderableForDay({ available_now: false, allow_pre_order: true }, 'tomorrow')).toBe(true);
+    // Available now but the owner has not ticked pre-order.
+    expect(isItemOrderableForDay({ available_now: true, allow_pre_order: false }, 'tomorrow')).toBe(false);
+    expect(isItemOrderableForDay({ available_now: true }, 'tomorrow')).toBe(false);
   });
 });
 

@@ -64,6 +64,32 @@ describe('OrderDayToggle', () => {
     expect(screen.getByTestId('order-day-tomorrow')).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('beforeDaySelect can veto the switch (parent shows a confirm instead)', async () => {
+    const user = userEvent.setup();
+    const beforeDaySelect = vi.fn(() => false);
+    const onDaySelect = vi.fn();
+    renderToggle({ beforeDaySelect, onDaySelect });
+
+    await user.click(screen.getByTestId('order-day-tomorrow'));
+
+    expect(beforeDaySelect).toHaveBeenCalledWith('tomorrow');
+    expect(onDaySelect).not.toHaveBeenCalled();
+    expect(screen.getByTestId('order-day-today')).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem('bakegrill_order_day')).toBeNull();
+  });
+
+  it('tapping the already-active day is a no-op (no confirm, no onDaySelect)', async () => {
+    const user = userEvent.setup();
+    const beforeDaySelect = vi.fn(() => true);
+    const onDaySelect = vi.fn();
+    renderToggle({ beforeDaySelect, onDaySelect });
+
+    await user.click(screen.getByTestId('order-day-today'));
+
+    expect(beforeDaySelect).not.toHaveBeenCalled();
+    expect(onDaySelect).not.toHaveBeenCalled();
+  });
+
   it('closed shop: today blocked, tap reports it', async () => {
     const user = userEvent.setup();
     localStorage.setItem('bakegrill_order_day', 'tomorrow');

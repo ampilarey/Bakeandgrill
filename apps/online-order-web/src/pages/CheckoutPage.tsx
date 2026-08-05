@@ -408,43 +408,47 @@ export function CheckoutPage() {
     </>
   );
 
-  // Today/Tomorrow lives with the rest of the "when" decisions (slot/address),
-  // not with the pickup/delivery choice.
+  // The day is decided on the menu (Today/Tomorrow toggle) — checkout only
+  // shows it read-only so a late flip can't invalidate the cart. Only the
+  // time (pickup slot) is chosen here.
   const tomorrowDateLabel = formatTomorrowDateLabel(collectTomorrowDate);
-  const bodyWhenPicker = (
-    <div style={{ marginBottom: 16 }} data-testid="collect-on-picker">
-      <p style={{ margin: '0 0 8px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
-        {t('checkout.when_title')}
-      </p>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        {(['today', 'tomorrow'] as const).map((day) => {
-          const todayBlocked = day === 'today' && (shopClosed || cartForcesTomorrow);
-          const tomorrowBlocked = day === 'tomorrow' && !allowsTomorrow;
-          const blocked = todayBlocked || tomorrowBlocked;
-          const label = day === 'today'
-            ? t(orderType === 'delivery' ? 'checkout.when_delivery_today' : 'checkout.when_pickup_today')
-            : `${t(orderType === 'delivery' ? 'checkout.when_delivery_tomorrow' : 'checkout.when_pickup_tomorrow')} · ${tomorrowDateLabel}`;
-          return (
-            <button
-              key={day}
-              type="button"
-              data-testid={`collect-on-${day}`}
-              onClick={() => {
-                if (blocked) return;
-                setCollectOn(day);
-              }}
-              disabled={blocked}
-              style={{
-                ...S.typeBtn,
-                ...(collectOn === day ? S.typeBtnActive : {}),
-                ...(blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
-              }}
-              aria-pressed={collectOn === day}
-            >
-              {label}
-            </button>
-          );
-        })}
+  const bodyWhenSummary = (
+    <div style={{ marginBottom: 16 }} data-testid="collect-day-summary">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          background: 'var(--color-surface-alt)',
+          borderRadius: 12,
+          padding: '10px 14px',
+        }}
+      >
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
+          <span aria-hidden="true">📅</span>{' '}
+          {collectOn === 'tomorrow'
+            ? `${t('checkout.day_tomorrow')}, ${tomorrowDateLabel}`
+            : t('checkout.day_today')}
+        </span>
+        <button
+          type="button"
+          data-testid="collect-day-change"
+          onClick={() => navigate('/')}
+          style={{
+            border: 'none',
+            background: 'none',
+            padding: 0,
+            fontFamily: 'inherit',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 700,
+            color: 'var(--color-primary)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t('checkout.change_day')}
+        </button>
       </div>
       {(cartForcesTomorrow || (shopClosed && collectOn === 'tomorrow')) && allowsTomorrow && (
         <p
@@ -480,35 +484,33 @@ export function CheckoutPage() {
         </p>
       ) : (
         <>
-          <p style={{ margin: '0 0 12px', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+          <p style={{ margin: '0 0 10px', fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>
             {t('checkout.pickup_choose')}
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div className="time-slot-grid" data-testid="pickup-slot-grid">
             <button
               type="button"
               onClick={() => setPickupSlotAt(null)}
-              style={{
-                ...S.typeBtn,
-                ...(pickupSlotAt === null ? S.typeBtnActive : {}),
-                padding: '8px 12px',
-                fontSize: '0.85rem',
-              }}
+              aria-pressed={pickupSlotAt === null}
+              className={`time-slot-btn${pickupSlotAt === null ? ' is-active' : ''}`}
             >
-              {t('checkout.asap')}
+              <span className="time-slot-btn__label">⚡ {t('checkout.asap')}</span>
+              <span className="time-slot-btn__sub">{t('checkout.asap_sub')}</span>
             </button>
             {pickupSlots.map((slot) => (
               <button
                 key={slot.starts_at}
                 type="button"
                 onClick={() => setPickupSlotAt(slot.starts_at)}
-                style={{
-                  ...S.typeBtn,
-                  ...(pickupSlotAt === slot.starts_at ? S.typeBtnActive : {}),
-                  padding: '8px 12px',
-                  fontSize: '0.85rem',
-                }}
+                aria-pressed={pickupSlotAt === slot.starts_at}
+                className={`time-slot-btn${pickupSlotAt === slot.starts_at ? ' is-active' : ''}`}
               >
-                {slot.label}
+                <span className="time-slot-btn__label">{slot.label}</span>
+                {slot.remaining > 0 && slot.remaining <= 3 && (
+                  <span className="time-slot-btn__sub">
+                    {t('checkout.slot_left').replace('{n}', String(slot.remaining))}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -964,12 +966,12 @@ export function CheckoutPage() {
     </div>
   );
 
-  // Fulfillment accordion: Today/Tomorrow picker + mode-specific detail
+  // Fulfillment accordion: read-only day summary + mode-specific detail
   // (same-day pickup slots or the delivery form). Always visible.
   const showPickupSlots = orderType === 'pickup' && pickupSlotsEnabled && collectOn === 'today';
   const bodyFulfillment = (
     <>
-      {bodyWhenPicker}
+      {bodyWhenSummary}
       {showPickupSlots ? bodyPickupSlot : orderType === 'delivery' ? bodyDelivery : null}
     </>
   );

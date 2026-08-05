@@ -13,6 +13,11 @@ type Props = {
   onDaySelect?: (day: OrderDay) => void;
   /** Called when user taps a blocked day (toast). Buttons stay tappable for feedback. */
   onBlockedTap?: (day: OrderDay) => void;
+  /**
+   * Veto hook: return false to stop the switch (e.g. to ask before removing
+   * cart items). The parent then owns completing the switch itself.
+   */
+  beforeDaySelect?: (day: OrderDay) => boolean;
 };
 
 /**
@@ -26,15 +31,18 @@ export function OrderDayToggle({
   tomorrowBlocked = false,
   onDaySelect,
   onBlockedTap,
+  beforeDaySelect,
 }: Props) {
   const { t } = useLanguage();
   const { day, setDay } = useOrderDay();
 
   const select = (next: OrderDay) => {
+    if (next === day) return;
     if ((next === 'today' && todayBlocked) || (next === 'tomorrow' && tomorrowBlocked)) {
       onBlockedTap?.(next);
       return;
     }
+    if (beforeDaySelect && !beforeDaySelect(next)) return;
     setDay(next);
     onDaySelect?.(next);
   };

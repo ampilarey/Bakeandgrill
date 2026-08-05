@@ -2808,6 +2808,58 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
+/* ── Checkout pickup time slots ─────────────────────────────────────────── */
+.time-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.time-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.time-slot-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.time-slot-btn.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.time-slot-btn__label {
+  line-height: 1.2;
+}
+
+.time-slot-btn__sub {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}
+
+.time-slot-btn.is-active .time-slot-btn__sub {
+  color: var(--color-primary);
+}
+
 /* Desktop: side-by-side option cards inside the centered sheet panel. */
 @media (min-width: 768px) {
   .mode-sheet__options {

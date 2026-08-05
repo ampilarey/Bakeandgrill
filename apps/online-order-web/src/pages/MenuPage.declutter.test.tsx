@@ -72,6 +72,7 @@ vi.mock('../context/CartContext', () => ({
 
 vi.mock('../context/ShellNavContext', () => ({
   useShellNav: () => ({ openCartSheet: vi.fn() }),
+  useShellNavOptional: () => null,
 }));
 
 vi.mock('../context/SiteSettingsContext', () => ({

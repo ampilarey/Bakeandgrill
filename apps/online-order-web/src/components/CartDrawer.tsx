@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate } from '../api';
+import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate, getOrderDay } from '../api';
 import type { Item, Modifier } from '../api';
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
@@ -464,6 +464,7 @@ export function CartDrawer({
           open
           item={editLine.entry.item}
           qty={editQty}
+          orderDay={getOrderDay()}
           selectedModifiers={editMods}
           onToggleModifier={toggleEditModifier}
           onAddToCart={handleUpdateEntry}

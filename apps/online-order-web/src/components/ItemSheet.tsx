@@ -10,7 +10,7 @@ import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
-  isItemAvailableNow,
+  isItemOrderableForDay,
   itemLowStockLabel,
   itemUnavailableLabel,
 } from '../utils/itemAvailability';
@@ -33,6 +33,11 @@ export type ItemSheetProps = {
   onUpdateEntry?: (variant?: Variant | null, packagingOptionId?: number | null) => void;
   /** Dine-in / browse-only — hide cart actions, show variants & packaging as text. */
   viewOnly?: boolean;
+  /**
+   * App-wide order day. In tomorrow mode today's stock/86 state is ignored —
+   * allow_pre_order is the only gate (items are made fresh for tomorrow).
+   */
+  orderDay?: 'today' | 'tomorrow';
 };
 
 export function ItemSheet({
@@ -48,15 +53,17 @@ export function ItemSheet({
   initialPackagingOptionId = null,
   onUpdateEntry,
   viewOnly = false,
+  orderDay = 'today',
 }: ItemSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
   const { addItem } = useCart();
   const { t } = useLanguage();
   const { settings: siteSettings } = useSiteSettingsContext();
-  const itemAvailable = isItemAvailableNow(item);
+  const itemAvailable = isItemOrderableForDay(item, orderDay);
   const unavailLabel = !itemAvailable ? itemUnavailableLabel(item, t) : null;
-  const lowStockLabel = itemAvailable ? itemLowStockLabel(item, t) : null;
+  // Today's stock counts don't apply to tomorrow's fresh batch.
+  const lowStockLabel = itemAvailable && orderDay === 'today' ? itemLowStockLabel(item, t) : null;
   const activeVariants = (item.variants ?? []).filter((v) => v.is_active);
   const packagingOptions = (item.packaging_options ?? [])
     .slice()
