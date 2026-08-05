@@ -934,10 +934,27 @@ a { text-decoration: none; color: inherit; }
   min-width: 0;
 }
 
+/* Schedule day card */
+.oc-day {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #FDFAF7;
+  border: 1px solid var(--color-border);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.oc-day--closed {
+  background: #F5F0EB;
+  border-color: #DDD5CB;
+  opacity: 0.65;
+}
+
 /*
- * Schedule day → time windows (Online / Pre-order / Delivery / Features).
- * Keep Open | Close side-by-side. Contain native time widgets so they cannot
- * overflow their grid cell and overlap the neighbour.
+ * Schedule time windows (Online / Pre-order / Delivery / Features).
+ * Open | Close stay side-by-side. Compact hour/minute <select>s (not
+ * native type=time) so both fields fit inside a phone-width day card.
  */
 .oc-day-windows {
   display: flex;
@@ -945,39 +962,52 @@ a { text-decoration: none; color: inherit; }
   gap: 10px;
   padding-left: 0;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
 }
 .oc-window-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
   align-items: end;
   min-width: 0;
+  max-width: 100%;
   width: 100%;
+  box-sizing: border-box;
 }
 .oc-window-row:has(.oc-window-remove) {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
 }
 .oc-time-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  width: 100%;
   max-width: 100%;
-  /* Do NOT use overflow:hidden here — it clips the input’s right border */
+  width: 100%;
+  box-sizing: border-box;
 }
-.oc-time-field > label {
+.oc-time-field-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-secondary);
 }
-.oc-time-field input[type="time"] {
+.oc-time-selects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.oc-time-selects select {
   display: block;
   width: 100%;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  padding: 8px 10px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 4px;
   border: 1.5px solid var(--color-border);
   border-radius: 10px;
   font-size: 16px; /* iOS: avoid zoom-on-focus */
@@ -986,14 +1016,14 @@ a { text-decoration: none; color: inherit; }
   min-height: 44px;
   background: var(--color-surface);
   color: var(--color-text);
+  appearance: auto;
 }
-.oc-time-field input[type="time"]::-webkit-datetime-edit {
-  min-width: 0;
-  max-width: 100%;
-}
-.oc-time-field input[type="time"]::-webkit-calendar-picker-indicator {
-  margin-left: 2px;
-  flex-shrink: 0;
+.oc-time-colon {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  padding-bottom: 2px;
 }
 .oc-window-remove {
   background: none;
@@ -1002,7 +1032,7 @@ a { text-decoration: none; color: inherit; }
   color: #C0392B;
   font-size: 20px;
   line-height: 1;
-  padding: 8px 4px;
+  padding: 8px 2px;
   align-self: end;
   justify-self: center;
 }
@@ -1017,6 +1047,21 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
   min-height: 36px;
   font-family: inherit;
+}
+
+@media (max-width: 767px) {
+  .oc-day {
+    padding: 10px !important;
+  }
+  .oc-window-row {
+    gap: 6px !important;
+  }
+  .oc-time-selects {
+    gap: 2px;
+  }
+  .oc-time-selects select {
+    padding: 8px 2px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -1111,7 +1156,8 @@ a { text-decoration: none; color: inherit; }
   }
 
   .ordering-page .oc-day-windows { padding-left: 0 !important; }
-  .ordering-page .oc-time-field input[type="time"] {
+  .ordering-page .oc-time-selects,
+  .ordering-page .oc-time-selects select {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;

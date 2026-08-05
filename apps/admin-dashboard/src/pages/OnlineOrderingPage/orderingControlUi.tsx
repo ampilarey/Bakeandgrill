@@ -508,6 +508,67 @@ export function withAllDays(schedule: Schedule, enabled: boolean): Schedule {
   ) as Schedule;
 }
 
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+function parseHhMm(value: string): { hour: string; minute: string } {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return { hour: '10', minute: '00' };
+  const hour = Math.min(23, Math.max(0, Number(m[1])));
+  const minute = Math.min(59, Math.max(0, Number(m[2])));
+  return {
+    hour: String(hour).padStart(2, '0'),
+    minute: String(minute).padStart(2, '0'),
+  };
+}
+
+/**
+ * Compact hour/minute selects — shrink to fit phone-width day cards.
+ * Native <input type="time"> has a huge intrinsic min-width and overflows
+ * when Open | Close sit side-by-side on mobile.
+ */
+function CompactTimeField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const { hour, minute } = parseHhMm(value);
+  return (
+    <div className="oc-time-field">
+      <span className="oc-time-field-label" id={`${id}-label`}>{label}</span>
+      <div className="oc-time-selects" role="group" aria-labelledby={`${id}-label`}>
+        <select
+          id={`${id}-h`}
+          aria-label={`${label} hour`}
+          value={hour}
+          onChange={(e) => onChange(`${e.target.value}:${minute}`)}
+        >
+          {HOUR_OPTIONS.map((h) => (
+            <option key={h} value={h}>{h}</option>
+          ))}
+        </select>
+        <span className="oc-time-colon" aria-hidden="true">:</span>
+        <select
+          id={`${id}-m`}
+          aria-label={`${label} minute`}
+          value={minute}
+          onChange={(e) => onChange(`${hour}:${e.target.value}`)}
+        >
+          {MINUTE_OPTIONS.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Shared weekly schedule editor (day toggles + time windows).
  * Used by online ordering, pre-order, and delivery so all three look and
@@ -531,13 +592,7 @@ export function ScheduleEditor({
         return (
           <div
             key={key}
-            style={{
-              padding: '10px 12px',
-              borderRadius: 10,
-              background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-              border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
-              opacity: day.enabled ? 1 : 0.65,
-            }}
+            className={`oc-day${day.enabled ? '' : ' oc-day--closed'}`}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
               <button
@@ -558,30 +613,24 @@ export function ScheduleEditor({
               <div className="oc-day-windows">
                 {day.windows.map((win, idx) => (
                   <div key={idx} className="oc-window-row">
-                    <div className="oc-time-field">
-                      <label htmlFor={`oc-${key}-open-${idx}`}>Open</label>
-                      <input
-                        id={`oc-${key}-open-${idx}`}
-                        type="time"
-                        value={win.open}
-                        onChange={(e) => setDay(key, {
-                          ...day,
-                          windows: day.windows.map((w, i) => (i === idx ? { ...w, open: e.target.value } : w)),
-                        })}
-                      />
-                    </div>
-                    <div className="oc-time-field">
-                      <label htmlFor={`oc-${key}-close-${idx}`}>Close</label>
-                      <input
-                        id={`oc-${key}-close-${idx}`}
-                        type="time"
-                        value={win.close}
-                        onChange={(e) => setDay(key, {
-                          ...day,
-                          windows: day.windows.map((w, i) => (i === idx ? { ...w, close: e.target.value } : w)),
-                        })}
-                      />
-                    </div>
+                    <CompactTimeField
+                      id={`oc-${key}-open-${idx}`}
+                      label="Open"
+                      value={win.open}
+                      onChange={(open) => setDay(key, {
+                        ...day,
+                        windows: day.windows.map((w, i) => (i === idx ? { ...w, open } : w)),
+                      })}
+                    />
+                    <CompactTimeField
+                      id={`oc-${key}-close-${idx}`}
+                      label="Close"
+                      value={win.close}
+                      onChange={(close) => setDay(key, {
+                        ...day,
+                        windows: day.windows.map((w, i) => (i === idx ? { ...w, close } : w)),
+                      })}
+                    />
                     {day.windows.length > 1 && (
                       <button
                         type="button"
