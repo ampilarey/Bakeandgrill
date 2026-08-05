@@ -1507,11 +1507,13 @@ textarea.field-input {
 
 /* ════════════════════════════════════════════════════════════
    BACK TO TOP FAB
+   Left side so it never sits under the cart logo FAB (right).
 ════════════════════════════════════════════════════════════ */
 .back-to-top {
   position: fixed;
-  bottom: 5.5rem;
-  right: 1.25rem;
+  bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 12px);
+  left: max(var(--page-gutter), 1rem);
+  right: auto;
   width: 40px; height: 40px;
   background: var(--color-primary);
   color: white;
@@ -1525,6 +1527,11 @@ textarea.field-input {
 }
 .back-to-top:hover { transform: translateY(-2px); }
 .back-to-top.hidden { opacity: 0; pointer-events: none; }
+
+/* Desktop: no bottom nav — sit above the safe edge, still left. */
+.app-shell--desktop .back-to-top {
+  bottom: calc(var(--safe-bottom) + 1.25rem);
+}
 
 /* ── Stagger fade-in for menu items ────────────────────────── */
 @keyframes fadeInUp {
