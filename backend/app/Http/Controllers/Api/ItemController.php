@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Menu\Services\ComboCompositionService;
+use App\Domains\Menu\Services\PlatterCompositionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
@@ -60,6 +61,7 @@ class ItemController extends Controller
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
             $with[] = 'comboItems.item';
+            $with[] = 'platterGroups.allowedItems.item';
             $with[] = 'recipe.recipeItems.inventoryItem';
         }
         // Public / POS need catering flag for Events & Catering sections.
@@ -362,6 +364,10 @@ class ItemController extends Controller
                         ] : null,
                     ])->values()
                     : [];
+                $data['platter_groups'] = $item->relationLoaded('platterGroups')
+                    ? app(PlatterCompositionService::class)->formatForApi($item)
+                    : [];
+                $data['is_platter'] = is_array($data['platter_groups']) && count($data['platter_groups']) > 0;
             }
 
             return $data;
@@ -373,15 +379,27 @@ class ItemController extends Controller
     /**
      * Store a newly created item
      */
-    public function store(StoreItemRequest $request, VariantSyncService $variantSync, ComboCompositionService $combos)
-    {
+    public function store(
+        StoreItemRequest $request,
+        VariantSyncService $variantSync,
+        ComboCompositionService $combos,
+        PlatterCompositionService $platters,
+    ) {
         $data = $request->validated();
         $data = app(GstItemTaxNormalizer::class)->normalize($data);
         $variantsData = $data['variants'] ?? null;
         $channelRows = $data['channel_availability'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
+        $platterGroups = $data['platter_groups'] ?? null;
         $packagingOptions = $data['packaging_options'] ?? null;
-        unset($data['variants'], $data['modifier_ids'], $data['channel_availability'], $data['combo_items'], $data['packaging_options']);
+        unset(
+            $data['variants'],
+            $data['modifier_ids'],
+            $data['channel_availability'],
+            $data['combo_items'],
+            $data['platter_groups'],
+            $data['packaging_options'],
+        );
 
         $item = Item::create($data);
 
@@ -434,13 +452,32 @@ class ItemController extends Controller
             }
         }
 
-        if ($item->is_combo && is_array($comboRows)) {
-            $combos->sync($item, $comboRows);
+        $item->refresh();
+        $item->load('variants');
+
+        try {
+            // Platters (choice groups) take priority over fixed combo_items.
+            if ($item->is_combo && is_array($platterGroups) && $platterGroups !== []) {
+                $platters->sync($item, $platterGroups);
+                $combos->clear($item);
+            } elseif ($item->is_combo && is_array($comboRows)) {
+                $combos->sync($item, $comboRows);
+                $platters->clear($item);
+            }
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
         return response()->json([
             'message' => 'Item created successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers', 'channelAvailabilities', 'comboItems.item']),
+            'item' => $item->load([
+                'category',
+                'variants',
+                'modifiers',
+                'channelAvailabilities',
+                'comboItems.item',
+                'platterGroups.allowedItems.item',
+            ]),
         ], 201);
     }
 
@@ -558,8 +595,13 @@ class ItemController extends Controller
     /**
      * Update an item
      */
-    public function update(UpdateItemRequest $request, $id, VariantSyncService $variantSync, ComboCompositionService $combos)
-    {
+    public function update(
+        UpdateItemRequest $request,
+        $id,
+        VariantSyncService $variantSync,
+        ComboCompositionService $combos,
+        PlatterCompositionService $platters,
+    ) {
         $item = Item::findOrFail($id);
         $data = $request->validated();
         if (array_key_exists('tax_code', $data) || array_key_exists('tax_rate', $data)) {
@@ -570,8 +612,16 @@ class ItemController extends Controller
         }
         $variantsData = $data['variants'] ?? null;
         $comboRows = $data['combo_items'] ?? null;
+        $platterGroups = $data['platter_groups'] ?? null;
         $packagingOptions = $data['packaging_options'] ?? null;
-        unset($data['channel_availability'], $data['variants'], $data['modifier_ids'], $data['combo_items'], $data['packaging_options']);
+        unset(
+            $data['channel_availability'],
+            $data['variants'],
+            $data['modifier_ids'],
+            $data['combo_items'],
+            $data['platter_groups'],
+            $data['packaging_options'],
+        );
 
         $oldImageUrl = $item->image_url;
         $oldOriginalUrl = $item->image_original_url;
@@ -626,18 +676,44 @@ class ItemController extends Controller
             }
         }
 
-        if ($request->has('combo_items') || array_key_exists('is_combo', $data)) {
+        $syncCombo = $request->has('combo_items') || array_key_exists('is_combo', $data);
+        $syncPlatter = $request->has('platter_groups') || array_key_exists('is_combo', $data);
+
+        if ($syncCombo || $syncPlatter) {
             $item->refresh();
-            if ($item->is_combo && is_array($comboRows)) {
-                $combos->sync($item, $comboRows);
-            } elseif (!$item->is_combo) {
-                $combos->sync($item, []);
+            $item->load('variants');
+
+            try {
+                if (!$item->is_combo) {
+                    $combos->clear($item);
+                    $platters->clear($item);
+                } elseif ($request->has('platter_groups') && is_array($platterGroups) && $platterGroups !== []) {
+                    $platters->sync($item, $platterGroups);
+                    $combos->clear($item);
+                } elseif ($request->has('platter_groups') && is_array($platterGroups) && $platterGroups === []) {
+                    $platters->clear($item);
+                    if ($request->has('combo_items') && is_array($comboRows)) {
+                        $combos->sync($item, $comboRows);
+                    }
+                } elseif ($request->has('combo_items') && is_array($comboRows)) {
+                    $combos->sync($item, $comboRows);
+                }
+            } catch (\InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
             }
         }
 
         return response()->json([
             'message' => 'Item updated successfully',
-            'item' => $item->load(['category', 'variants', 'modifiers', 'menuGroup', 'channelAvailabilities', 'comboItems.item']),
+            'item' => $item->load([
+                'category',
+                'variants',
+                'modifiers',
+                'menuGroup',
+                'channelAvailabilities',
+                'comboItems.item',
+                'platterGroups.allowedItems.item',
+            ]),
         ]);
     }
 

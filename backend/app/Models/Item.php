@@ -120,6 +120,22 @@ class Item extends Model
         return $this->hasMany(ComboItem::class, 'combo_id');
     }
 
+    /** Choice groups for build-your-own platters (is_combo items with selectable contents). */
+    public function platterGroups(): HasMany
+    {
+        return $this->hasMany(PlatterGroup::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** True when this combo has at least one choice group (platter, not fixed bundle). */
+    public function isPlatter(): bool
+    {
+        if ($this->relationLoaded('platterGroups')) {
+            return $this->platterGroups->isNotEmpty();
+        }
+
+        return $this->platterGroups()->exists();
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(ItemPhoto::class)->orderBy('sort_order');

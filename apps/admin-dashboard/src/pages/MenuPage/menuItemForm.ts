@@ -12,6 +12,25 @@ export type VariantRow = MenuVariant & { _key: string };
 
 export type ComboRow = { item_id: string; item_name?: string; quantity: string; is_optional: boolean };
 
+export type PlatterAllowedItemRow = {
+  item_id: string;
+  item_name?: string;
+  surcharge: string;
+};
+
+export type PlatterGroupRow = {
+  _key: string;
+  name: string;
+  rule_type: 'exactly' | 'min' | 'range';
+  /** Used when there are no size variants — plain “choose N”. */
+  choose_count: string;
+  min_count: string;
+  max_count: string;
+  /** Keyed by variant id (preferred) or variant _key / name when unsaved. */
+  size_counts: Record<string, string>;
+  items: PlatterAllowedItemRow[];
+};
+
 export type PackagingOptionRow = {
   _key: string;
   id?: number;
@@ -38,8 +57,11 @@ export type ItemForm = {
   channels: Record<string, boolean>;
   has_variants: boolean;
   is_combo: boolean;
+  /** fixed = combo_items; choose = platter_groups */
+  combo_mode: 'fixed' | 'choose';
   combo_discount_pct: string;
   combo_items: ComboRow[];
+  platter_groups: PlatterGroupRow[];
   show_on_signage: boolean;
   is_signage_promoted: boolean;
   track_stock: boolean;
@@ -56,6 +78,19 @@ export type ItemForm = {
   calories: string;
   spice_level: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot';
 };
+
+export function emptyPlatterGroupRow(): PlatterGroupRow {
+  return {
+    _key: String(Date.now() + Math.random()),
+    name: '',
+    rule_type: 'exactly',
+    choose_count: '6',
+    min_count: '2',
+    max_count: '6',
+    size_counts: {},
+    items: [{ item_id: '', surcharge: '0' }],
+  };
+}
 
 export function emptyPackagingOptionRow(isDefault = false): PackagingOptionRow {
   return {
@@ -116,6 +151,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     channels: channelsFromItem(item),
     has_variants: item.has_variants ?? false,
     is_combo: item.is_combo ?? false,
+    combo_mode: (item.platter_groups?.length ?? 0) > 0 ? 'choose' : 'fixed',
     show_on_signage: item.show_on_signage ?? true,
     is_signage_promoted: item.is_signage_promoted ?? false,
     combo_discount_pct: item.combo_discount_pct != null ? String(item.combo_discount_pct) : '',
@@ -125,6 +161,31 @@ export function itemToForm(item: MenuItem): ItemForm {
       quantity: String(row.quantity ?? 1),
       is_optional: row.is_optional ?? false,
     })),
+    platter_groups: (item.platter_groups ?? []).map((g) => {
+      const exact = g.rule_type === 'exactly'
+        ? String(g.min_count ?? g.max_count ?? '')
+        : '';
+      const sizeCounts: Record<string, string> = {};
+      if (g.size_counts) {
+        for (const [k, v] of Object.entries(g.size_counts)) {
+          sizeCounts[String(k)] = String(v);
+        }
+      }
+      return {
+        _key: String(g.id ?? Date.now() + Math.random()),
+        name: g.name ?? '',
+        rule_type: g.rule_type ?? 'exactly',
+        choose_count: exact || '6',
+        min_count: g.min_count != null ? String(g.min_count) : '2',
+        max_count: g.max_count != null ? String(g.max_count) : '6',
+        size_counts: sizeCounts,
+        items: (g.items ?? []).map((row) => ({
+          item_id: String(row.item_id),
+          item_name: row.item?.name,
+          surcharge: String(row.surcharge ?? 0),
+        })),
+      };
+    }),
     track_stock: item.track_stock ?? false,
     stock_quantity: item.stock_quantity != null ? String(item.stock_quantity) : '0',
     low_stock_threshold: item.low_stock_threshold != null ? String(item.low_stock_threshold) : '5',
@@ -204,7 +265,65 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
   payload.show_on_signage = form.show_on_signage;
   payload.is_signage_promoted = form.is_signage_promoted;
   payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
-  if (form.is_combo) {
+  if (form.is_combo && form.combo_mode === 'choose') {
+    payload.platter_groups = form.platter_groups
+      .filter((g) => g.name.trim() !== '' || g.items.some((r) => r.item_id !== ''))
+      .map((g, gi) => {
+        const items = g.items
+          .filter((row) => row.item_id !== '')
+          .map((row, ri) => ({
+            item_id: parseInt(row.item_id, 10),
+            surcharge: Math.max(0, parseFloat(row.surcharge) || 0),
+            sort_order: ri,
+          }));
+        const sizeCounts: Record<string, number> = {};
+        if (form.has_variants) {
+          for (const [key, raw] of Object.entries(g.size_counts)) {
+            const n = parseInt(raw, 10);
+            if (!Number.isFinite(n) || n < 1) continue;
+            const variant = form.variants.find(
+              (v) => String(v.id ?? '') === key || v._key === key || v.name === key,
+            );
+            const outKey = variant?.id != null
+              ? String(variant.id)
+              : (variant?.name?.trim() || key);
+            sizeCounts[outKey] = n;
+          }
+        }
+        let minCount: number | null = null;
+        let maxCount: number | null = null;
+        if (g.rule_type === 'exactly') {
+          // Tiered sizes: counts live in size_counts (variant → pieces). Flat platters use choose_count.
+          if (form.has_variants && Object.keys(sizeCounts).length > 0) {
+            minCount = null;
+            maxCount = null;
+          } else {
+            const n = parseInt(g.choose_count, 10);
+            minCount = Number.isFinite(n) && n >= 1 ? n : null;
+            maxCount = minCount;
+          }
+        } else if (g.rule_type === 'min') {
+          const n = parseInt(g.min_count, 10);
+          minCount = Number.isFinite(n) && n >= 1 ? n : 1;
+          maxCount = null;
+        } else {
+          const lo = parseInt(g.min_count, 10);
+          const hi = parseInt(g.max_count, 10);
+          minCount = Number.isFinite(lo) && lo >= 1 ? lo : 1;
+          maxCount = Number.isFinite(hi) && hi >= minCount ? hi : minCount;
+        }
+        return {
+          name: g.name.trim() || `Group ${gi + 1}`,
+          rule_type: g.rule_type,
+          min_count: minCount,
+          max_count: maxCount,
+          size_counts: Object.keys(sizeCounts).length > 0 ? sizeCounts : null,
+          sort_order: gi,
+          items,
+        };
+      });
+    payload.combo_items = [];
+  } else if (form.is_combo) {
     payload.combo_items = form.combo_items
       .filter((row) => row.item_id !== '')
       .map((row) => ({
@@ -212,6 +331,10 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
         quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
         is_optional: row.is_optional,
       }));
+    payload.platter_groups = [];
+  } else {
+    payload.combo_items = [];
+    payload.platter_groups = [];
   }
   const parseTagList = (raw: string) =>
     raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12);
@@ -259,7 +382,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false },
     has_variants: false, variants: [],
-    is_combo: false, combo_discount_pct: '', combo_items: [],
+    is_combo: false, combo_mode: 'fixed', combo_discount_pct: '', combo_items: [], platter_groups: [],
     show_on_signage: true, is_signage_promoted: false,
     track_stock: false, stock_quantity: '0', low_stock_threshold: '5',
     allow_pre_order: false,

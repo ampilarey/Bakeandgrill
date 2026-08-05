@@ -101,6 +101,8 @@ export type MenuItem = {
   menu_group?: { id: number; name: string; slug: string } | null;
   channel_availabilities?: ItemChannelAvailabilityRow[] | null;
   is_combo?: boolean;
+  /** True when platter_groups are defined (build-your-own, not fixed combo). */
+  is_platter?: boolean;
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
@@ -110,11 +112,40 @@ export type MenuItem = {
     is_optional: boolean;
     item?: { id: number; name: string; base_price: number } | null;
   }>;
+  platter_groups?: PlatterGroup[];
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
   calories?: number | null;
   /** Catering channel enabled — display flag only. */
   is_catering?: boolean;
+};
+
+export type PlatterGroupItem = {
+  item_id: number;
+  surcharge?: number;
+  sort_order?: number;
+  item?: {
+    id: number;
+    name: string;
+    name_dv?: string | null;
+    base_price?: number;
+    image_url?: string | null;
+    is_available?: boolean;
+    has_variants?: boolean;
+  } | null;
+};
+
+export type PlatterGroup = {
+  id?: number;
+  name: string;
+  /** exactly = choose N; min = at least N; range = between min and max */
+  rule_type: 'exactly' | 'min' | 'range';
+  min_count?: number | null;
+  max_count?: number | null;
+  /** variant_id → how many pieces that size picks */
+  size_counts?: Record<string, number> | null;
+  sort_order?: number;
+  items: PlatterGroupItem[];
 };
 
 export type MenuItemPayload = {
@@ -168,6 +199,15 @@ export type MenuItemPayload = {
   is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
   combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
+  platter_groups?: Array<{
+    name: string;
+    rule_type: 'exactly' | 'min' | 'range';
+    min_count?: number | null;
+    max_count?: number | null;
+    size_counts?: Record<string, number> | null;
+    sort_order?: number;
+    items: Array<{ item_id: number; surcharge?: number; sort_order?: number }>;
+  }>;
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
   calories?: number | null;

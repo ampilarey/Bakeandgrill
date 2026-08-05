@@ -5,7 +5,8 @@ import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {
-  emptyPackagingOptionRow, emptyVariantRow, SALES_CHANNELS, type ItemForm, type VariantRow,
+  emptyPackagingOptionRow, emptyPlatterGroupRow, emptyVariantRow, SALES_CHANNELS,
+  type ItemForm, type PlatterGroupRow, type VariantRow,
 } from './menuItemForm';
 import { PhotosTab } from './PhotosTab';
 import { TagChipField, parseTagsCsv, tagsToCsv } from './TagChipField';
@@ -124,6 +125,232 @@ function comboRowSelection(row: { item_id: string; item_name?: string }): MenuIt
       is_active: true,
     },
   };
+}
+
+function platterRuleHint(group: PlatterGroupRow, hasSizes: boolean): string {
+  if (hasSizes && group.rule_type === 'exactly') {
+    return 'Set how many pieces for each size (e.g. 6 / 9 / 12). Prices come from the size variants above.';
+  }
+  if (group.rule_type === 'exactly') {
+    const n = parseInt(group.choose_count, 10);
+    return Number.isFinite(n) && n >= 1 ? `Customers must choose exactly ${n}.` : 'Customers must choose an exact count.';
+  }
+  if (group.rule_type === 'min') {
+    const n = parseInt(group.min_count, 10);
+    return Number.isFinite(n) && n >= 1 ? `Customers must choose at least ${n}.` : 'Customers must choose at least this many.';
+  }
+  const lo = parseInt(group.min_count, 10);
+  const hi = parseInt(group.max_count, 10);
+  if (Number.isFinite(lo) && Number.isFinite(hi)) {
+    return `Customers choose between ${lo} and ${hi}.`;
+  }
+  return 'Customers choose within a min and max.';
+}
+
+function PlatterGroupsEditor({
+  groups,
+  variants,
+  excludeItemId,
+  onChange,
+}: {
+  groups: PlatterGroupRow[];
+  variants: VariantRow[];
+  excludeItemId?: number | null;
+  onChange: (groups: PlatterGroupRow[]) => void;
+}) {
+  const hasSizes = variants.length > 0;
+  const updateGroup = (idx: number, patch: Partial<PlatterGroupRow>) => {
+    const next = [...groups];
+    next[idx] = { ...next[idx], ...patch };
+    onChange(next);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-testid="platter-groups-editor">
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+        Define what customers can pick. Example: one group named “Short eats” with “Choose any 6”.
+        For 6 / 9 / 12 sizes, turn on variants above and set a count per size.
+      </p>
+      {groups.map((group, gIdx) => (
+        <div
+          key={group._key}
+          style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 12, background: 'var(--color-surface)' }}
+          data-testid={`platter-group-${gIdx}`}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+              Choice group {gIdx + 1}
+            </span>
+            <Btn variant="ghost" small onClick={() => onChange(groups.filter((_, i) => i !== gIdx))}>Remove</Btn>
+          </div>
+          <Field label="Group name">
+            <Input
+              value={group.name}
+              onChange={(v) => updateGroup(gIdx, { name: v })}
+              placeholder="e.g. Short eats"
+            />
+          </Field>
+          <div style={{ marginTop: 10 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Rule</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {([
+                ['exactly', 'Choose exactly'],
+                ['min', 'At least'],
+                ['range', 'Between'],
+              ] as const).map(([value, label]) => (
+                <label key={value} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', minHeight: 40 }}>
+                  <input
+                    type="radio"
+                    name={`platter-rule-${group._key}`}
+                    checked={group.rule_type === value}
+                    onChange={() => updateGroup(gIdx, { rule_type: value })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {group.rule_type === 'exactly' && !hasSizes && (
+            <div style={{ marginTop: 10, maxWidth: 200 }}>
+              <Field label="Choose any…">
+                <Input
+                  value={group.choose_count}
+                  onChange={(v) => updateGroup(gIdx, { choose_count: v.replace(/[^\d]/g, '') })}
+                  type="number"
+                  placeholder="6"
+                  data-testid={`platter-choose-count-${gIdx}`}
+                />
+              </Field>
+            </div>
+          )}
+          {group.rule_type === 'exactly' && hasSizes && (
+            <div style={{ marginTop: 10 }} data-testid={`platter-size-counts-${gIdx}`}>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                Pieces per size
+              </p>
+              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+                {variants.map((v) => {
+                  const key = v.id != null ? String(v.id) : v._key;
+                  return (
+                    <Field key={key} label={v.name.trim() || 'Size'}>
+                      <Input
+                        value={group.size_counts[key] ?? ''}
+                        onChange={(raw) => {
+                          const nextCounts = { ...group.size_counts, [key]: raw.replace(/[^\d]/g, '') };
+                          updateGroup(gIdx, { size_counts: nextCounts });
+                        }}
+                        type="number"
+                        placeholder="6"
+                      />
+                    </Field>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {group.rule_type === 'min' && (
+            <div style={{ marginTop: 10, maxWidth: 200 }}>
+              <Field label="Minimum to choose">
+                <Input
+                  value={group.min_count}
+                  onChange={(v) => updateGroup(gIdx, { min_count: v.replace(/[^\d]/g, '') })}
+                  type="number"
+                  placeholder="2"
+                />
+              </Field>
+            </div>
+          )}
+          {group.rule_type === 'range' && (
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10, maxWidth: 320 }}>
+              <Field label="Minimum">
+                <Input
+                  value={group.min_count}
+                  onChange={(v) => updateGroup(gIdx, { min_count: v.replace(/[^\d]/g, '') })}
+                  type="number"
+                  placeholder="2"
+                />
+              </Field>
+              <Field label="Maximum">
+                <Input
+                  value={group.max_count}
+                  onChange={(v) => updateGroup(gIdx, { max_count: v.replace(/[^\d]/g, '') })}
+                  type="number"
+                  placeholder="6"
+                />
+              </Field>
+            </div>
+          )}
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            {platterRuleHint(group, hasSizes)}
+          </p>
+
+          <p style={{ margin: '14px 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            Items they can pick
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {group.items.map((row, iIdx) => (
+              <div key={iIdx} style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)' }}>Item {iIdx + 1}</span>
+                  <Btn
+                    variant="ghost"
+                    small
+                    onClick={() => {
+                      const items = group.items.filter((_, i) => i !== iIdx);
+                      updateGroup(gIdx, { items: items.length ? items : [{ item_id: '', surcharge: '0' }] });
+                    }}
+                  >
+                    Remove
+                  </Btn>
+                </div>
+                <ItemSearch
+                  kind="menu"
+                  value={comboRowSelection(row)}
+                  excludeIds={excludeItemId ? [excludeItemId] : []}
+                  excludeCombos
+                  placeholder="Search menu item…"
+                  onChange={(sel) => {
+                    const items = [...group.items];
+                    items[iIdx] = {
+                      ...items[iIdx],
+                      item_id: sel ? String(sel.id) : '',
+                      item_name: sel?.item.name,
+                    };
+                    updateGroup(gIdx, { items });
+                  }}
+                />
+                <div style={{ marginTop: 8, maxWidth: 160 }}>
+                  <Field label="Extra charge (MVR)">
+                    <Input
+                      value={row.surcharge}
+                      onChange={(v) => {
+                        const items = [...group.items];
+                        items[iIdx] = { ...items[iIdx], surcharge: v };
+                        updateGroup(gIdx, { items });
+                      }}
+                      type="number"
+                      placeholder="0"
+                    />
+                  </Field>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Btn
+            variant="secondary"
+            small
+            onClick={() => updateGroup(gIdx, { items: [...group.items, { item_id: '', surcharge: '0' }] })}
+          >
+            + Add item
+          </Btn>
+        </div>
+      ))}
+      <Btn variant="secondary" small onClick={() => onChange([...groups, emptyPlatterGroupRow()])}>
+        + Add choice group
+      </Btn>
+    </div>
+  );
 }
 
 const TAX_CODE_OPTIONS = [
@@ -345,9 +572,45 @@ export function MenuItemEditorModal({
     }
     if (form.has_variants && form.variants.length === 0) { setError('Add at least one variant, or turn off "This product has variants".'); return; }
     if (form.has_variants && form.variants.some((v) => !v.name.trim())) { setError('All variants must have a name.'); return; }
-    if (form.is_combo && !form.has_variants) {
+    if (form.is_combo && form.combo_mode === 'fixed') {
       const rows = form.combo_items.filter((row) => row.item_id !== '');
       if (rows.length === 0) { setError('Add at least one component item for this bundle.'); return; }
+    }
+    if (form.is_combo && form.combo_mode === 'choose') {
+      const groups = form.platter_groups.filter(
+        (g) => g.name.trim() !== '' || g.items.some((r) => r.item_id !== ''),
+      );
+      if (groups.length === 0) {
+        setError('Add at least one choice group for this platter (e.g. “Choose any 6”).');
+        return;
+      }
+      for (const g of groups) {
+        const allowed = g.items.filter((r) => r.item_id !== '');
+        if (allowed.length === 0) {
+          setError(`Group “${g.name.trim() || 'untitled'}” needs at least one item customers can pick.`);
+          return;
+        }
+        if (g.rule_type === 'exactly' && !form.has_variants) {
+          const n = parseInt(g.choose_count, 10);
+          if (!Number.isFinite(n) || n < 1) {
+            setError(`Group “${g.name.trim() || 'untitled'}” needs a choose count (e.g. 6).`);
+            return;
+          }
+        }
+        if (form.has_variants && g.rule_type === 'exactly') {
+          const named = form.variants.filter((v) => v.name.trim() !== '');
+          const missing = named.filter((v) => {
+            const key = v.id != null ? String(v.id) : v._key;
+            const raw = g.size_counts[key] ?? g.size_counts[String(v.id ?? '')] ?? '';
+            const n = parseInt(raw, 10);
+            return !Number.isFinite(n) || n < 1;
+          });
+          if (missing.length > 0) {
+            setError(`Set how many to choose for each size in “${g.name.trim() || 'untitled'}”.`);
+            return;
+          }
+        }
+      }
     }
     if (!form.has_variants && form.track_stock) {
       const qty = parseInt(form.stock_quantity, 10);
@@ -709,73 +972,127 @@ export function MenuItemEditorModal({
               </p>
             </div>
 
-            {!form.has_variants && (
-              <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_combo}
-                    onChange={(e) => {
-                      set('is_combo', e.target.checked);
-                      if (e.target.checked && form.combo_items.length === 0) {
+            <div
+              style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}
+              data-testid="bundle-platter-section"
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
+                <input
+                  type="checkbox"
+                  checked={form.is_combo}
+                  onChange={(e) => {
+                    set('is_combo', e.target.checked);
+                    if (e.target.checked) {
+                      if (form.combo_mode === 'fixed' && form.combo_items.length === 0) {
                         set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
                       }
-                    }}
-                  />
-                  <span style={{ fontWeight: 600 }}>Bundle / combo item</span>
-                </label>
-                {form.is_combo && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Field label="Bundle discount (%)">
-                      <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
-                    </Field>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
-                    {form.combo_items.map((row, idx) => (
-                      <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
-                          <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
-                        </div>
-                        <ItemSearch
-                          kind="menu"
-                          value={comboRowSelection(row)}
-                          excludeIds={itemId ? [itemId] : []}
-                          excludeCombos
-                          placeholder="Search menu item…"
-                          onChange={(sel) => {
-                            const next = [...form.combo_items];
-                            next[idx] = {
-                              ...next[idx],
-                              item_id: sel ? String(sel.id) : '',
-                              item_name: sel?.item.name,
-                            };
-                            set('combo_items', next);
+                      if (form.combo_mode === 'choose' && form.platter_groups.length === 0) {
+                        set('platter_groups', [emptyPlatterGroupRow()]);
+                      }
+                    }
+                  }}
+                />
+                <span style={{ fontWeight: 600 }}>Bundle / combo / platter</span>
+              </label>
+              {form.is_combo && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <Field label="Bundle discount (%)">
+                    <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
+                  </Field>
+                  <div>
+                    <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                      How customers get what&apos;s inside
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+                        <input
+                          type="radio"
+                          name="combo_mode"
+                          checked={form.combo_mode === 'fixed'}
+                          onChange={() => {
+                            set('combo_mode', 'fixed');
+                            if (form.combo_items.length === 0) {
+                              set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                            }
                           }}
                         />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                          <Input value={row.quantity} onChange={(v) => {
-                            const next = [...form.combo_items];
-                            next[idx] = { ...next[idx], quantity: v };
-                            set('combo_items', next);
-                          }} type="number" placeholder="Qty" />
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
-                            <input type="checkbox" checked={row.is_optional} onChange={(e) => {
-                              const next = [...form.combo_items];
-                              next[idx] = { ...next[idx], is_optional: e.target.checked };
-                              set('combo_items', next);
-                            }} />
-                            Optional
-                          </label>
-                        </div>
-                      </div>
-                    ))}
-                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
-                      + Add component
-                    </Btn>
+                        Fixed items (always the same)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+                        <input
+                          type="radio"
+                          name="combo_mode"
+                          checked={form.combo_mode === 'choose'}
+                          onChange={() => {
+                            set('combo_mode', 'choose');
+                            if (form.platter_groups.length === 0) {
+                              set('platter_groups', [emptyPlatterGroupRow()]);
+                            }
+                          }}
+                          data-testid="combo-mode-choose"
+                        />
+                        Build-your-own platter (customer chooses)
+                      </label>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {form.combo_mode === 'fixed' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
+                      {form.combo_items.map((row, idx) => (
+                        <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-surface)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
+                            <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
+                          </div>
+                          <ItemSearch
+                            kind="menu"
+                            value={comboRowSelection(row)}
+                            excludeIds={itemId ? [itemId] : []}
+                            excludeCombos
+                            placeholder="Search menu item…"
+                            onChange={(sel) => {
+                              const next = [...form.combo_items];
+                              next[idx] = {
+                                ...next[idx],
+                                item_id: sel ? String(sel.id) : '',
+                                item_name: sel?.item.name,
+                              };
+                              set('combo_items', next);
+                            }}
+                          />
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                            <Input value={row.quantity} onChange={(v) => {
+                              const next = [...form.combo_items];
+                              next[idx] = { ...next[idx], quantity: v };
+                              set('combo_items', next);
+                            }} type="number" placeholder="Qty" />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
+                              <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                                const next = [...form.combo_items];
+                                next[idx] = { ...next[idx], is_optional: e.target.checked };
+                                set('combo_items', next);
+                              }} />
+                              Optional
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                      <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
+                        + Add component
+                      </Btn>
+                    </div>
+                  ) : (
+                    <PlatterGroupsEditor
+                      groups={form.platter_groups}
+                      variants={form.has_variants ? form.variants : []}
+                      excludeItemId={itemId}
+                      onChange={(groups) => set('platter_groups', groups)}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Category">

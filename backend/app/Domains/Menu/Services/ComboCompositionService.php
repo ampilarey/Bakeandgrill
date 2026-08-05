@@ -11,11 +11,16 @@ use InvalidArgumentException;
 
 final class ComboCompositionService
 {
+    public function clear(Item $combo): void
+    {
+        ComboItem::where('combo_id', $combo->id)->delete();
+    }
+
     /** @param list<array{item_id: int, quantity?: int, is_optional?: bool}> $rows */
     public function sync(Item $combo, array $rows): void
     {
         if (!$combo->is_combo) {
-            ComboItem::where('combo_id', $combo->id)->delete();
+            $this->clear($combo);
 
             return;
         }
