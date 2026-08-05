@@ -4,21 +4,24 @@ import type { ServiceKey } from '../api/serviceStatus';
 /**
  * Order-app service / ordering-gate banner.
  *
- * Precedence: checkout > payment > pickup > catering > registration.
+ * Precedence: checkout > payment > pickup > registration.
  * MenuPage may pass `gateClosedMessage` so the shop-hours gate (with reopen
  * time) surfaces even when browsing stays live.
  *
- * `online_delivery` is intentionally NOT bannered: the delivery window being
- * closed is routine daily state, is shown contextually (dimmed card + reason
- * in the pickup/delivery sheet, and at checkout), and tomorrow delivery
- * orders are accepted regardless of today's window.
+ * Intentionally NOT bannered here (routine daily schedule state, shown
+ * contextually where it matters instead):
+ * - `online_delivery` — dimmed card + reason in the pickup/delivery sheet
+ *   and at checkout; tomorrow delivery is accepted regardless of today's
+ *   window.
+ * - `catering_inquiry` — the pre-order accepting-hours gate only affects
+ *   event/catering requests; the event order page shows its own closed
+ *   notice with the reopen time.
  */
 const BANNER_PRIORITY: ServiceKey[] = [
   'online_ordering',
   'online_checkout',
   'online_payment',
   'online_pickup',
-  'catering_inquiry',
   'customer_registration',
 ];
 
@@ -27,7 +30,6 @@ const DEFAULT_MESSAGES: Partial<Record<ServiceKey, string>> = {
   online_checkout: 'Online ordering is temporarily unavailable — please call us or visit us.',
   online_payment: 'Online payment is temporarily unavailable. Cash on collection is still available.',
   online_pickup: 'Pickup orders are temporarily paused.',
-  catering_inquiry: 'Catering inquiries are temporarily paused.',
   customer_registration: 'New account signups are temporarily paused.',
 };
 

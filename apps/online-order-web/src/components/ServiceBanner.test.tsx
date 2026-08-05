@@ -136,4 +136,23 @@ describe('ServiceBanner', () => {
     await flush();
     expect(container.querySelector('[data-testid^="service-banner-"]')).toBeNull();
   });
+
+  it('never banners the catering pre-order gate — event order page shows its own notice', async () => {
+    mocked.mockResolvedValue(
+      buildServices({
+        catering_inquiry: {
+          available: false,
+          status: 'unavailable',
+          public_message: 'Pre-order is currently closed. Please check back during accepting hours.',
+        },
+      })
+    );
+    const { container } = render(
+      <ServiceStatusProvider>
+        <ServiceBanner />
+      </ServiceStatusProvider>
+    );
+    await flush();
+    expect(container.querySelector('[data-testid^="service-banner-"]')).toBeNull();
+  });
 });
