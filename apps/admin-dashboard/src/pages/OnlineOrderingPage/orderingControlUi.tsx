@@ -555,75 +555,48 @@ export function ScheduleEditor({
             </div>
 
             {day.enabled && (
-              <div
-                className="oc-day-windows"
-                style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 58 }}
-              >
+              <div className="oc-day-windows">
                 {day.windows.map((win, idx) => (
-                  <div
-                    key={idx}
-                    className="oc-window-row"
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
-                  >
-                    <div className="oc-time-field" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 120px', minWidth: 0 }}>
-                      <label style={{ fontSize: 12, color: '#9C8575' }}>Open</label>
+                  <div key={idx} className="oc-window-row">
+                    <div className="oc-time-field">
+                      <label htmlFor={`oc-${key}-open-${idx}`}>Open</label>
                       <input
+                        id={`oc-${key}-open-${idx}`}
                         type="time"
                         value={win.open}
                         onChange={(e) => setDay(key, {
                           ...day,
                           windows: day.windows.map((w, i) => (i === idx ? { ...w, open: e.target.value } : w)),
                         })}
-                        style={{ ...S.input, width: '100%', padding: '5px 8px' }}
                       />
                     </div>
-                    <div className="oc-time-field" style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 120px', minWidth: 0 }}>
-                      <label style={{ fontSize: 12, color: '#9C8575' }}>Close</label>
+                    <div className="oc-time-field">
+                      <label htmlFor={`oc-${key}-close-${idx}`}>Close</label>
                       <input
+                        id={`oc-${key}-close-${idx}`}
                         type="time"
                         value={win.close}
                         onChange={(e) => setDay(key, {
                           ...day,
                           windows: day.windows.map((w, i) => (i === idx ? { ...w, close: e.target.value } : w)),
                         })}
-                        style={{ ...S.input, width: '100%', padding: '5px 8px' }}
                       />
                     </div>
                     {day.windows.length > 1 && (
                       <button
                         type="button"
-                        className="icon-button"
+                        className="icon-button oc-window-remove"
                         onClick={() => setDay(key, { ...day, windows: day.windows.filter((_, i) => i !== idx) })}
                         aria-label={`Remove window ${idx + 1} from ${label}`}
                         title="Remove this window"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: '#C0392B',
-                          fontSize: 18,
-                          lineHeight: 1,
-                          padding: '8px 10px',
-                        }}
                       >×</button>
                     )}
                   </div>
                 ))}
                 <button
                   type="button"
+                  className="oc-add-window"
                   onClick={() => setDay(key, { ...day, windows: [...day.windows, { ...newWindow }] })}
-                  style={{
-                    alignSelf: 'flex-start',
-                    fontSize: 12,
-                    color: '#7B5E3A',
-                    background: 'none',
-                    border: '1px dashed #C2A87A',
-                    borderRadius: 8,
-                    padding: '6px 12px',
-                    cursor: 'pointer',
-                    marginTop: 2,
-                    minHeight: 36,
-                  }}
                 >
                   + Add window
                 </button>
