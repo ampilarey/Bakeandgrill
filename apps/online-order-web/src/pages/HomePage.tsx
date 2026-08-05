@@ -15,6 +15,7 @@ import { getLoyaltyAccount } from '../api/promotions';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
+import { TomorrowOrderingBadge } from '../components/TomorrowOrderingBadge';
 import { PrayerBar } from '../components/PrayerBar';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -74,8 +75,8 @@ export function HomePage() {
   >(null);
   const [currentClose, setCurrentClose] = useState<string | null>(null);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
-  /** Closed-shop tip: at least one menu item allows order-for-tomorrow. */
-  const [hasTomorrowItems, setHasTomorrowItems] = useState(false);
+  /** Collect-tomorrow gate (null until loaded). Independent of today’s online ordering. */
+  const [tomorrowOpen, setTomorrowOpen] = useState<boolean | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
@@ -118,21 +119,21 @@ export function HomePage() {
 
   usePageTitle(null);
 
-  // ── Menu scan: whether any item can be ordered for tomorrow (closed banner) ─
-  // Both conditions must hold: items are ticked AND the owner's tomorrow gate
-  // is open (kill switch / schedule).
+  // ── Tomorrow-ordering gate (separate from today’s online ordering badge) ───
+  // Open only when the owner gate is on AND at least one item allows pre-order.
   useEffect(() => {
-    const loadTomorrowEligibility = () => {
+    const loadTomorrowStatus = () => {
       Promise.all([fetchItems(), fetchOnlineOrderingStatus().catch(() => null)])
         .then(([{ data }, gate]) => {
           const gateOpen = gate?.order_for_tomorrow?.open !== false;
-          setHasTomorrowItems(gateOpen && (data ?? []).some((item) => Boolean(item.allow_pre_order)));
+          const hasItems = (data ?? []).some((item) => Boolean(item.allow_pre_order));
+          setTomorrowOpen(gateOpen && hasItems);
         })
-        .catch(() => setHasTomorrowItems(false));
+        .catch(() => setTomorrowOpen(false));
     };
-    loadTomorrowEligibility();
-    window.addEventListener('sales_channel_change', loadTomorrowEligibility);
-    return () => window.removeEventListener('sales_channel_change', loadTomorrowEligibility);
+    loadTomorrowStatus();
+    window.addEventListener('sales_channel_change', loadTomorrowStatus);
+    return () => window.removeEventListener('sales_channel_change', loadTomorrowStatus);
   }, []);
 
   // ── Load ordering status + specials + reviews ──────────────────────────────
@@ -226,19 +227,24 @@ export function HomePage() {
   };
 
   const statusBadge =
-    isOpen !== null ? (
-      <OpeningStatusBadge
-        className="opening-status-badge-hero"
-        open={isOpen}
-        reason={hoursReason}
-        currentClose={currentClose}
-        nextOpenWindow={nextOpenWindow}
-        closedDetail={hoursMsg}
-        tomorrowLine={
-          !isOpen && hasTomorrowItems ? t('menu.banner_tomorrow_short') : null
-        }
-        timeDisplay="24h"
-      />
+    isOpen !== null || tomorrowOpen !== null ? (
+      <div className="home-ordering-status-stack" data-testid="home-ordering-status-stack">
+        {isOpen !== null ? (
+          <OpeningStatusBadge
+            open={isOpen}
+            reason={hoursReason}
+            currentClose={currentClose}
+            nextOpenWindow={nextOpenWindow}
+            closedDetail={hoursMsg}
+            timeDisplay="24h"
+          />
+        ) : null}
+        <TomorrowOrderingBadge
+          open={tomorrowOpen}
+          openLabel={t('status.tomorrow_open')}
+          closedLabel={t('status.tomorrow_closed')}
+        />
+      </div>
     ) : null;
 
   const chipsProps = {
