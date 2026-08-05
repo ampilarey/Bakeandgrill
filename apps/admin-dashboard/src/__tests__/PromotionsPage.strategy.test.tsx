@@ -141,4 +141,20 @@ describe('PromotionsPage strategy fields', () => {
     fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
     expect(await screen.findByText(/Approximate under high concurrency/i)).toBeTruthy();
   });
+
+  it('shows day and time window fields when auto-apply is off', async () => {
+    renderWithRouter(<PromotionsPage />);
+    await screen.findByRole('heading', { name: 'Promotions' });
+    fireEvent.click(screen.getByRole('button', { name: /\+ New Promo/i }));
+
+    expect(await screen.findByText('Create New Promotion')).toBeTruthy();
+    // Default create form is a coded promo (auto-apply off) — schedule must still show.
+    expect(screen.getByPlaceholderText('e.g. RAMADAN20')).toBeTruthy();
+    expect(screen.getByTestId('promo-days-of-week')).toBeTruthy();
+    expect(screen.getByText('Days of week (optional — empty = every day)')).toBeTruthy();
+    expect(screen.getByText('Starts time (optional)')).toBeTruthy();
+    expect(screen.getByText('Ends time (optional)')).toBeTruthy();
+    expect(screen.getByTestId('promo-starts-time')).toBeTruthy();
+    expect(screen.getByTestId('promo-ends-time')).toBeTruthy();
+  });
 });

@@ -405,59 +405,60 @@ function PromotionForm({
       )}
 
       {autoApply && (
-        <>
-          <Field label="Targets (item or category IDs — leave empty for whole-order)">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Select
-                value={targetType}
-                onChange={(v) => setTargetType(v as 'item' | 'category')}
-                options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
-              />
-              <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
-              <Btn small variant="secondary" onClick={addTarget}>Add</Btn>
-            </div>
-            {(form.targets ?? []).length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                {(form.targets ?? []).map((t, i) => (
-                  <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
-                    {t.target_type} #{t.target_id}
-                    <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </Field>
-          <Field label="Days of week (optional — empty = every day)">
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {DAY_OPTIONS.map((d) => {
-                const on = (form.days_of_week ?? []).includes(d.value);
-                return (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => toggleDay(d.value)}
-                    style={{
-                      minHeight: 36, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
-                      border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      background: on ? 'var(--color-warning-bg)' : 'var(--color-surface)', color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: 600, fontSize: 12,
-                    }}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
-          </Field>
-          <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Starts time (optional)">
-              <Input value={form.starts_time ?? ''} onChange={(v) => set('starts_time', v || null)} type="time" />
-            </Field>
-            <Field label="Ends time (optional)">
-              <Input value={form.ends_time ?? ''} onChange={(v) => set('ends_time', v || null)} type="time" />
-            </Field>
+        <Field label="Targets (item or category IDs — leave empty for whole-order)">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Select
+              value={targetType}
+              onChange={(v) => setTargetType(v as 'item' | 'category')}
+              options={[{ value: 'category', label: 'Category' }, { value: 'item', label: 'Item' }]}
+            />
+            <Input value={targetId} onChange={setTargetId} type="number" placeholder="ID" />
+            <Btn small variant="secondary" onClick={addTarget}>Add</Btn>
           </div>
-        </>
+          {(form.targets ?? []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+              {(form.targets ?? []).map((t, i) => (
+                <span key={`${t.target_type}-${t.target_id}-${i}`} style={{ fontSize: 12, background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '4px 8px' }}>
+                  {t.target_type} #{t.target_id}
+                  <button type="button" onClick={() => removeTarget(i)} style={{ marginLeft: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </Field>
       )}
+
+      {/* Happy-hour / day windows — available for coded AND auto-apply promos.
+          Backend already enforces days_of_week / starts_time / ends_time for both. */}
+      <Field label="Days of week (optional — empty = every day)">
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} data-testid="promo-days-of-week">
+          {DAY_OPTIONS.map((d) => {
+            const on = (form.days_of_week ?? []).includes(d.value);
+            return (
+              <button
+                key={d.value}
+                type="button"
+                onClick={() => toggleDay(d.value)}
+                style={{
+                  minHeight: 36, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: on ? 'var(--color-warning-bg)' : 'var(--color-surface)', color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)', fontWeight: 600, fontSize: 12,
+                }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Starts time (optional)">
+          <Input value={form.starts_time ?? ''} onChange={(v) => set('starts_time', v || null)} type="time" data-testid="promo-starts-time" />
+        </Field>
+        <Field label="Ends time (optional)">
+          <Input value={form.ends_time ?? ''} onChange={(v) => set('ends_time', v || null)} type="time" data-testid="promo-ends-time" />
+        </Field>
+      </div>
 
       {!autoApply && (
         <Field label="Restrict to Specific Customer (optional)">
