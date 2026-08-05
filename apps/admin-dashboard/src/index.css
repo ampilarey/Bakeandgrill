@@ -936,8 +936,8 @@ a { text-decoration: none; color: inherit; }
 
 /*
  * Schedule day → time windows (Online / Pre-order / Delivery / Features).
- * Always stack Open above Close — native <input type="time"> widgets have a
- * large intrinsic width and overlap when forced side-by-side inside cards.
+ * Keep Open | Close side-by-side. Contain native time widgets so they cannot
+ * overflow their grid cell and overlap the neighbour.
  */
 .oc-day-windows {
   display: flex;
@@ -949,11 +949,14 @@ a { text-decoration: none; color: inherit; }
 }
 .oc-window-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
-  align-items: stretch;
+  align-items: end;
   min-width: 0;
   width: 100%;
+}
+.oc-window-row:has(.oc-window-remove) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
 }
 .oc-time-field {
   display: flex;
@@ -961,6 +964,8 @@ a { text-decoration: none; color: inherit; }
   gap: 4px;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
+  overflow: hidden; /* clip native time chrome that ignores max-width */
 }
 .oc-time-field > label {
   font-size: 12px;
@@ -972,15 +977,19 @@ a { text-decoration: none; color: inherit; }
   width: 100%;
   min-width: 0 !important;
   max-width: 100% !important;
-  padding: 9px 10px;
+  padding: 8px 8px;
   border: 1.5px solid var(--color-border);
   border-radius: 10px;
-  font-size: 16px; /* prevents iOS zoom; also keeps native control from exploding */
+  font-size: 16px; /* iOS: avoid zoom-on-focus */
   font-family: inherit;
   box-sizing: border-box;
   min-height: 44px;
   background: var(--color-surface);
   color: var(--color-text);
+}
+.oc-time-field input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-left: 2px;
+  flex-shrink: 0;
 }
 .oc-window-remove {
   background: none;
@@ -989,8 +998,9 @@ a { text-decoration: none; color: inherit; }
   color: #C0392B;
   font-size: 20px;
   line-height: 1;
-  padding: 8px 10px;
-  justify-self: start;
+  padding: 8px 4px;
+  align-self: end;
+  justify-self: center;
 }
 .oc-add-window {
   align-self: flex-start;
@@ -1003,18 +1013,6 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
   min-height: 36px;
   font-family: inherit;
-}
-
-/* Wide screens only: Open | Close side by side when there is real room */
-@media (min-width: 640px) {
-  .oc-window-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: end;
-  }
-  .oc-window-row:has(.oc-window-remove) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  }
-  .oc-window-remove { align-self: end; }
 }
 
 @media (max-width: 767px) {
