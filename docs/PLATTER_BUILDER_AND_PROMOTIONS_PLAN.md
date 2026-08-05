@@ -121,10 +121,42 @@ With that in place, and configurable in admin with no further code:
 - Combined freely with the date range, day/time window, per-customer caps and
   budget that already exist
 
-Deliberately **out of scope for v1**: prompting the customer to pick their free
-drink. v1 rewards what is already in the basket, exactly as `free_item` does now.
-A picker is the same problem as the platter picker and should reuse it later, not
-be built twice.
+### 2.5 The reward picker is part of v1 — and it is NOT the platter picker
+
+An earlier draft deferred the "choose your free drink" step, on the reasoning that it
+was the same problem as the platter picker. **That was wrong.** They share only the
+surface fact of choosing from a list; underneath they are different things:
+
+| | Platter picker | Reward picker |
+|---|---|---|
+| Purpose | Configure the product being bought | Claim something already earned |
+| Choice | Several groups, count rules, min/max | One item, from one list |
+| Price | Fixed platter price plus surcharges | Free — no price effect |
+| When | On opening the product | When the basket qualifies |
+| Blocking | Cannot add to cart until valid | Never blocks; the order stands without it |
+
+Building the platter picker first and bending it into a reward picker would drag count
+rules, groups and surcharge logic into a screen that needs none of them.
+
+**Without a picker the promotion barely functions.** `free_item` only discounts a drink
+the customer already added. A customer who does not happen to add one gets nothing, never
+learns they were entitled, and the offer you are paying for buys no goodwill. That is a
+hidden discount, not a promotion.
+
+Worse, the audit found offers are surfaced on the **home page, menu, dine-in menu and
+signage — and nowhere in the cart or checkout.** There is currently no surface at all at
+the moment a basket qualifies. So the reward picker is also the first cart-level offer
+surface, and should be built as one.
+
+Scope for v1:
+- When the basket satisfies a promotion's trigger and the reward is a choice of items,
+  show a clear, non-blocking prompt at the cart: *"You've earned a free drink — choose one."*
+- One tap picks it. The chosen item joins the order at zero price.
+- Declining is always allowed, and the order proceeds untouched.
+- If the customer changes the basket so it no longer qualifies, the free item is removed
+  and they are told plainly — never silently charged for it.
+- Reuse the promotion the server already evaluated. The client must not decide
+  entitlement; it only presents what the server says has been earned.
 
 ---
 
@@ -204,6 +236,13 @@ Unlocks both promotions in §2.4. Small, self-contained, and independent of the 
   in the UI.
 - Applies on POS and online alike; both go through `OrderCreationService`, so there is one
   enforcement point, not two.
+- **Reward picker at the cart** (see §2.5) — its own small surface, not the platter picker.
+  The server decides what has been earned and offers the choice list; the client only
+  presents it. Non-blocking, declinable, and the free line is withdrawn with a plain
+  message if the basket stops qualifying. This is also the first offer surface in the
+  cart at all — today offers appear only on home, menu and signage.
+- The customer's chosen reward must be validated server-side on submit. A client that
+  claims a free item the basket never earned is rejected, not trusted.
 
 ### Stage E — Lead time: closed, do nothing
 
@@ -249,6 +288,10 @@ Stage F (trigger and reward):
 - Platter child lines never satisfy a trigger.
 - The free-drink scenario end to end: meal in basket → drink free; drink alone in basket → **full price** (this is the money leak the feature exists to close).
 - Works identically on a POS order and an online order.
+- The reward prompt appears at the cart when the basket qualifies, and does not appear when it does not.
+- Declining the reward leaves the order otherwise unchanged.
+- Removing the trigger item withdraws the free line and says so — the customer is never silently charged for it.
+- A client submitting a free reward the basket did not earn is **rejected server-side**.
 
 ---
 
