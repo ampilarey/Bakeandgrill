@@ -269,6 +269,7 @@ function parseFooterLinks(raw: string | undefined | null): FooterLinkRow[] {
   return parseJsonArray(raw, [
     { label: 'Privacy Policy', url: '/privacy' },
     { label: 'Terms', url: '/terms' },
+    { label: 'Refund Policy', url: '/refund' },
   ]);
 }
 

@@ -5,6 +5,7 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useTheme } from '../../hooks/useTheme';
 import { PrayerBar } from '../../components/PrayerBar';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
+import { isExternalHref, shouldLeaveOrderApp, toOrderSpaPath } from '../../utils/footerNav';
 import { SectionCard } from './accountShared';
 
 export const linkRowStyle: CSSProperties = {
@@ -20,14 +21,19 @@ export const linkRowStyle: CSSProperties = {
   fontSize: '0.9375rem',
 };
 
+/** In-app pages — Privacy comes from footer_links to avoid duplicates. */
 const MORE_LINKS = [
   { to: '/rewards', key: 'account.link_rewards' },
   { to: '/gift-cards', key: 'account.link_gift_cards' },
-  { to: '/hours',    key: 'account.link_hours' },
-  { to: '/contact',  key: 'account.link_contact' },
-  { to: '/about',    key: 'account.link_about' },
-  { to: '/privacy',  key: 'account.link_privacy' },
+  { to: '/hours', key: 'account.link_hours' },
+  { to: '/contact', key: 'account.link_contact' },
+  { to: '/about', key: 'account.link_about' },
 ] as const;
+
+function normalizePath(url: string): string {
+  const path = (url.split(/[?#]/)[0] || '/');
+  return toOrderSpaPath(path);
+}
 
 type PushProps = {
   supported: boolean;
@@ -102,13 +108,14 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
   );
 }
 
-/** More links group: Hours, Contact, About, Privacy, legal links, WhatsApp, Viber. */
+/** More links group: Hours, Contact, About, legal links, WhatsApp, Viber. */
 export function AccountMoreBlock() {
   const { t } = useLanguage();
   const { settings, footerLinks } = useSiteSettingsContext();
 
   const legalFallback = [
-    { label: t('account.link_terms'),  url: '/terms' },
+    { label: t('account.link_privacy'), url: '/privacy' },
+    { label: t('account.link_terms'), url: '/terms' },
     { label: t('account.link_refund'), url: '/refund' },
   ];
   const legal = footerLinks.length > 0 ? footerLinks : legalFallback;
@@ -121,22 +128,42 @@ export function AccountMoreBlock() {
     contactLinks.push({ label: t('account.link_viber'), href: settings.business_viber });
   }
 
+  const seen = new Set<string>();
   const allLinks: {
     label: string;
     url: string;
-    external: boolean;
-    /** Leave /order SPA for Blade site (same tab). */
-    leaveApp?: boolean;
-  }[] = [
-    { label: t('account.link_website'), url: MAIN_WEBSITE_HREF, external: false, leaveApp: true },
-    ...MORE_LINKS.map(({ to, key }) => ({ label: t(key), url: to, external: false })),
-    ...legal.map((l) => ({ label: l.label ?? '', url: l.url ?? '#', external: false })),
-    ...contactLinks.map((l) => ({ label: l.label, url: l.href, external: true })),
-  ];
+    kind: 'leave' | 'spa' | 'external';
+  }[] = [];
+
+  const pushLink = (label: string, url: string, kind: 'leave' | 'spa' | 'external') => {
+    const dedupeKey = kind === 'external' ? url : normalizePath(url);
+    if (seen.has(dedupeKey)) return;
+    seen.add(dedupeKey);
+    allLinks.push({ label, url, kind });
+  };
+
+  pushLink(t('account.link_website'), MAIN_WEBSITE_HREF, 'leave');
+  for (const { to, key } of MORE_LINKS) {
+    pushLink(t(key), to, 'spa');
+  }
+  for (const l of legal) {
+    const url = (l.url ?? '#').trim() || '#';
+    const label = (l.label ?? '').trim() || url;
+    if (isExternalHref(url)) {
+      pushLink(label, url, 'external');
+    } else if (shouldLeaveOrderApp(url)) {
+      pushLink(label, url, 'leave');
+    } else {
+      pushLink(label, toOrderSpaPath(url), 'spa');
+    }
+  }
+  for (const l of contactLinks) {
+    pushLink(l.label, l.href, 'external');
+  }
 
   return (
     <SectionCard title={t('account.more_links')}>
-      {allLinks.map(({ label, url, external, leaveApp }, i) => {
+      {allLinks.map(({ label, url, kind }, i) => {
         const style: CSSProperties = {
           ...linkRowStyle,
           borderBottom: i === allLinks.length - 1 ? 'none' : '1px solid var(--color-border)',
@@ -145,27 +172,24 @@ export function AccountMoreBlock() {
           <span aria-hidden="true" style={{ color: 'var(--color-text-muted)' }}>▸</span>
         );
 
-        if (leaveApp) {
+        if (kind === 'leave') {
           return (
-            <a key={url + i} href={url} style={style}>
+            <a key={`${url}-${i}`} href={url} style={style} data-testid={`account-link-leave-${normalizePath(url)}`}>
               <span>{label}</span>
               {chevron}
             </a>
           );
         }
-
-        const isInternal = !external && url.startsWith('/') && !url.startsWith('//');
-
-        if (isInternal) {
+        if (kind === 'spa') {
           return (
-            <Link key={url + i} to={url} style={style}>
+            <Link key={`${url}-${i}`} to={url} style={style}>
               <span>{label}</span>
               {chevron}
             </Link>
           );
         }
         return (
-          <a key={url + i} href={url} style={style} target="_blank" rel="noopener noreferrer">
+          <a key={`${url}-${i}`} href={url} style={style} target="_blank" rel="noopener noreferrer">
             <span>{label}</span>
             {chevron}
           </a>

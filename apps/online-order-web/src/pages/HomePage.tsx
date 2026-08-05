@@ -440,7 +440,8 @@ export function HomePage() {
         viberLink={viberLink}
         logoSrc={logoSrc}
         siteName={siteName}
-        tagline={text('footer_text', text('site_tagline', ''))}
+        blurb={text('footer_text', '')}
+        thanks={text('footer_thanks', '')}
         chatLabel={text('home_chat_label', '')}
       />
     </div>

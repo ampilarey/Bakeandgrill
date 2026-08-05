@@ -29,7 +29,7 @@ class SiteSettingsSeeder extends Seeder
             ['key' => 'accent_color',     'type' => 'color',    'group' => 'Branding', 'label' => 'Accent Color',      'description' => 'Subtle background tint', 'value' => '#F5E6D3', 'is_public' => true],
 
             // Footer
-            ['key' => 'footer_text',      'type' => 'textarea', 'group' => 'Footer',   'label' => 'Footer Text',       'description' => 'Copyright or tagline in footer', 'value' => '© 2026 Bake & Grill. All rights reserved.', 'is_public' => true],
+            ['key' => 'footer_text',      'type' => 'textarea', 'group' => 'Footer',   'label' => 'Footer blurb',      'description' => 'Short brand line under the logo. Copyright is built separately.', 'value' => '', 'is_public' => true],
             ['key' => 'footer_links',     'type' => 'json',     'group' => 'Footer',   'label' => 'Footer Links',      'description' => 'JSON array of {label, url}', 'value' => json_encode([['label' => 'Privacy Policy', 'url' => '/privacy'], ['label' => 'Terms', 'url' => '/terms']]), 'is_public' => true],
             ['key' => 'show_social_links', 'type' => 'boolean',  'group' => 'Footer',   'label' => 'Show Social Links', 'description' => null, 'value' => 'true', 'is_public' => true],
 

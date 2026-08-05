@@ -119,4 +119,70 @@ class WebsiteFooterTest extends TestCase
         $this->assertStringNotContainsString('Order via WhatsApp', $html);
         $this->assertStringNotContainsString('Order via Viber', $html);
     }
+
+    public function test_footer_blurb_ignores_legacy_copyright_footer_text(): void
+    {
+        SiteSetting::updateOrCreate(
+            ['key' => 'footer_text'],
+            [
+                'value' => '© 2026 Bake & Grill. All rights reserved.',
+                'type' => 'textarea',
+                'group' => 'Footer',
+                'label' => 'Footer blurb',
+                'description' => '',
+                'is_public' => true,
+            ],
+        );
+        SiteSetting::updateOrCreate(
+            ['key' => 'site_tagline'],
+            [
+                'value' => 'Fresh every day in Malé.',
+                'type' => 'textarea',
+                'group' => 'General',
+                'label' => 'Tagline',
+                'description' => '',
+                'is_public' => true,
+            ],
+        );
+        SiteSetting::bust();
+        Cache::flush();
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('data-footer-hours-today', $html);
+        preg_match('/class="footer-brand".*?class="footer-col/s', $html, $brand);
+        $brandHtml = $brand[0] ?? '';
+        $this->assertStringContainsString('Fresh every day in Malé.', $brandHtml);
+        $this->assertStringNotContainsString('All rights reserved.', $brandHtml);
+    }
+
+    public function test_show_social_links_false_hides_icons_even_when_urls_set(): void
+    {
+        SiteSetting::updateOrCreate(
+            ['key' => 'social_instagram'],
+            [
+                'value' => 'https://instagram.com/bakeandgrill',
+                'type' => 'text',
+                'group' => 'Footer',
+                'label' => 'Instagram URL',
+                'description' => '',
+                'is_public' => true,
+            ],
+        );
+        SiteSetting::updateOrCreate(
+            ['key' => 'show_social_links'],
+            [
+                'value' => 'false',
+                'type' => 'boolean',
+                'group' => 'Footer',
+                'label' => 'Show social links',
+                'description' => '',
+                'is_public' => true,
+            ],
+        );
+        SiteSetting::bust();
+        Cache::flush();
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-social="instagram"', $html);
+    }
 }

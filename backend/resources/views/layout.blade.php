@@ -50,12 +50,19 @@
     $footerLocationHeading   = content('footer_location_heading', 'Location');
     $footerContactHeading    = content('footer_contact_heading', 'Contact');
     $footerRightsSuffix      = content('footer_rights_suffix', 'All rights reserved.');
-    $footerText              = trim(content('footer_text', ''));
+    $footerTextRaw           = trim(content('footer_text', ''));
+    // Legacy CMS default stored a copyright string here — treat as unset.
+    $footerTextIsCopyright   = $footerTextRaw !== '' && (
+        str_contains($footerTextRaw, '©')
+        || str_contains(mb_strtolower($footerTextRaw), 'all rights reserved')
+    );
+    $footerText              = $footerTextIsCopyright ? '' : $footerTextRaw;
     $footerBlurb             = $footerText !== '' ? $footerText : $siteTagline;
     $footerHoursHeading      = content('footer_hours_heading', 'Opening Hours');
     $footerPaymentsText      = content('footer_payments_text', 'BML · Cards · Cash · MVR');
     $footerDeliveryText      = content('footer_delivery_text', 'Delivery across Malé & Hulhumalé');
     $footerThanks            = content('footer_thanks', 'Thanks for choosing Bake & Grill — see you soon.');
+    $showSocialLinks         = filter_var(content('show_social_links', 'true'), FILTER_VALIDATE_BOOLEAN);
     $socialInstagram         = trim((string) content('social_instagram', ''));
     $socialFacebook          = trim((string) content('social_facebook', ''));
     $socialTiktok            = trim((string) content('social_tiktok', ''));
@@ -65,6 +72,10 @@
     $footerDayNames          = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     $footerRamadanActive     = $openingHoursSvc->isRamadanHoursActive();
     $footerRamadanNote       = content('footer_ramadan_note', 'Ramadan hours — open after Maghrib.');
+    $footerTodayHours        = $footerHours[$footerHoursToday] ?? null;
+    $footerTodayLabel        = ($footerTodayHours && !($footerTodayHours['closed'] ?? false))
+        ? ($footerTodayHours['open'] . ' – ' . $footerTodayHours['close'])
+        : 'Closed';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -812,12 +823,14 @@
             color: #fff;
             font-weight: 700;
         }
-        .footer-hours-row.is-today .footer-hours-day::after {
-            content: ' · Today';
+        .footer-hours-today-tag {
             color: var(--amber, #D4813A);
             font-weight: 700;
             font-size: 0.72rem;
+            margin-left: 0.35rem;
         }
+        .footer-hours-today { display: none; }
+        .footer-full-hours-link { margin-top: 0.75rem; }
         .footer-ramadan-note {
             margin-top: 0.75rem;
             padding: 0.55rem 0.7rem;
@@ -871,16 +884,11 @@
             gap: 0.35rem;
         }
         .footer-legal a {
-            color: rgba(255,255,255,0.3) !important;
+            color: rgba(255,255,255,0.55) !important;
             font-size: 0.8rem !important;
             margin-bottom: 0 !important;
         }
         .footer-legal a:hover { color: white !important; }
-        .footer-legal-staff {
-            color: rgba(255,255,255,0.15) !important;
-            font-size: 0.75rem !important;
-            margin-top: 0.25rem !important;
-        }
         .footer-bottom {
             max-width: 1280px;
             margin: 0 auto;
@@ -1176,21 +1184,64 @@
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: flex; }
             .order-status-bar-mob { display: flex; }
-            .site-footer   { padding-bottom: calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px)); margin-top: 3rem; }
-            .footer-grid   { grid-template-columns: 1fr 1fr; gap: 2rem; }
-            .footer-brand  { grid-column: 1 / -1; text-align: center; }
+            .site-footer {
+                padding: 2.5rem 1.25rem calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+                margin-top: 3rem;
+            }
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 1.75rem;
+                padding-bottom: 2rem;
+            }
+            .footer-brand { grid-column: 1 / -1; text-align: center; }
             .footer-brand p,
-            .footer-thanks { max-width: 100%; margin-left: auto; margin-right: auto; }
+            .footer-thanks { max-width: 28rem; margin-left: auto; margin-right: auto; }
             .footer-chat-btns,
             .footer-trust { justify-content: center; }
-            .footer-order-cta { width: 100%; max-width: 280px; }
-            .footer-col { text-align: center; }
-            .footer-hours-row { justify-content: center; gap: 1rem; }
+            .footer-order-cta {
+                width: 100%;
+                max-width: 320px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            /* Brand + CTAs centered; text blocks start-aligned for calmer reading. */
+            .footer-col { text-align: start; }
+            .footer-col h4 { margin-bottom: 0.75rem; }
+            .footer-col a,
+            .footer-col p {
+                min-height: 0;
+                padding: 0.4rem 0;
+                margin-bottom: 0.15rem;
+            }
+            .footer-col--hours,
+            .footer-col:has(h4) { text-align: start; }
+            .footer-hours-list--week { display: none; }
+            .footer-hours-today { display: block; }
+            .footer-hours-row {
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 0.65rem 0.85rem;
+                border-radius: 10px;
+                background: rgba(255,255,255,0.06);
+            }
+            .footer-legal {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 0.25rem 1rem;
+            }
+            .footer-legal a {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+            }
+            .footer-col--links a {
+                display: inline-flex;
+                width: fit-content;
+            }
             .footer-bottom { flex-direction: column; text-align: center; }
+            .footer-trust { justify-content: center; text-align: center; }
         }
         @media (max-width: 480px) {
-            .footer-grid { grid-template-columns: 1fr; }
-            .footer-col { text-align: center; }
             .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (max-width: 390px) {
@@ -1408,33 +1459,33 @@
             <p>{{ $footerBlurb }}</p>
             <p class="footer-thanks">{{ $footerThanks }}</p>
             <div class="footer-chat-btns">
-                @if($socialInstagram !== '')
+                @if($showSocialLinks && $socialInstagram !== '')
                     <a href="{{ $socialInstagram }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="Instagram" data-social="instagram">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 01-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 017.8 2m-.2 2A3.6 3.6 0 004 7.6v8.8A3.6 3.6 0 007.6 20h8.8a3.6 3.6 0 003.6-3.6V7.6A3.6 3.6 0 0016.4 4H7.6m9.65 1.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5M12 7a5 5 0 110 10 5 5 0 010-10m0 2a3 3 0 100 6 3 3 0 000-6z"/></svg>
                     </a>
                 @endif
-                @if($socialFacebook !== '')
+                @if($showSocialLinks && $socialFacebook !== '')
                     <a href="{{ $socialFacebook }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="Facebook" data-social="facebook">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 10-11.5 9.9v-7H8v-3h2.5V9.5c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.5V12H17l-.4 3h-2.7v7A10 10 0 0022 12z"/></svg>
                     </a>
                 @endif
-                @if($socialTiktok !== '')
+                @if($showSocialLinks && $socialTiktok !== '')
                     <a href="{{ $socialTiktok }}" target="_blank" rel="noopener" class="footer-social-icon" aria-label="TikTok" data-social="tiktok">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 8.5a7.4 7.4 0 01-4.3-1.4v7.1a5.9 5.9 0 11-5.9-5.9c.3 0 .6 0 .9.1v2.9a3 3 0 100 5.9 3 3 0 003-3.1V2h2.9a4.5 4.5 0 003.4 3.5V8.5z"/></svg>
                     </a>
                 @endif
-                <a href="{{ $waLink }}" target="_blank" rel="noopener" class="footer-wa">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                <a href="{{ $waLink }}" target="_blank" rel="noopener" class="footer-wa" aria-label="WhatsApp">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                     WhatsApp
                 </a>
-                <a href="{{ $viberLink }}" class="footer-viber">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
+                <a href="{{ $viberLink }}" class="footer-viber" aria-label="Viber">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
                     Viber
                 </a>
             </div>
             <a href="/order/menu" class="footer-order-cta">{{ $navOrderCta }}</a>
         </div>
-        <div class="footer-col">
+        <div class="footer-col footer-col--links">
             <h4>{{ $footerQuickLinksHeading }}</h4>
             <a href="/">Home</a>
             <a href="/order/menu">Order Online</a>
@@ -1444,11 +1495,25 @@
         </div>
         <div class="footer-col footer-col--hours" data-footer-hours>
             <h4>{{ $footerHoursHeading }}</h4>
-            <div class="footer-hours-list">
+            <div class="footer-hours-today" data-footer-hours-today>
+                <div class="footer-hours-row is-today">
+                    <span class="footer-hours-day">
+                        {{ \Illuminate\Support\Str::substr($footerDayNames[$footerHoursToday] ?? 'Today', 0, 3) }}
+                        <span class="footer-hours-today-tag">Today</span>
+                    </span>
+                    <span>{{ $footerTodayLabel }}</span>
+                </div>
+            </div>
+            <div class="footer-hours-list footer-hours-list--week">
                 @foreach($footerDayNames as $index => $day)
                     @php $dayHours = $footerHours[$index] ?? null; @endphp
                     <div class="footer-hours-row {{ $index === $footerHoursToday ? 'is-today' : '' }}">
-                        <span class="footer-hours-day">{{ \Illuminate\Support\Str::substr($day, 0, 3) }}</span>
+                        <span class="footer-hours-day">
+                            {{ \Illuminate\Support\Str::substr($day, 0, 3) }}
+                            @if($index === $footerHoursToday)
+                                <span class="footer-hours-today-tag">Today</span>
+                            @endif
+                        </span>
                         <span>
                             @if($dayHours && !($dayHours['closed'] ?? false))
                                 {{ $dayHours['open'] }} – {{ $dayHours['close'] }}
@@ -1462,18 +1527,20 @@
             @if($footerRamadanActive && trim((string) $footerRamadanNote) !== '')
                 <p class="footer-ramadan-note">{{ $footerRamadanNote }}</p>
             @endif
-            <a href="/hours" style="margin-top:0.75rem">Full hours →</a>
+            <a href="/hours" class="footer-full-hours-link">Full hours →</a>
         </div>
-        <div class="footer-col">
+        <div class="footer-col footer-col--location">
             <h4>{{ $footerLocationHeading }}</h4>
             <p>{{ $address }}</p>
-            <p>{{ $landmark }}</p>
-            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener">📍 Get directions</a>
+            @if(trim((string) $landmark) !== '')
+                <p>{{ $landmark }}</p>
+            @endif
+            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener">Get directions</a>
         </div>
-        <div class="footer-col">
+        <div class="footer-col footer-col--contact">
             <h4>{{ $footerContactHeading }}</h4>
-            <a href="{{ $phoneTel }}">📞 {{ $phone }}</a>
-            <a href="mailto:{{ $email }}">✉ {{ $email }}</a>
+            <a href="{{ $phoneTel }}">{{ $phone }}</a>
+            <a href="mailto:{{ $email }}">{{ $email }}</a>
             <div class="footer-legal">
                 <a href="/order/privacy">Privacy Policy</a>
                 <a href="/terms">Terms &amp; Conditions</a>

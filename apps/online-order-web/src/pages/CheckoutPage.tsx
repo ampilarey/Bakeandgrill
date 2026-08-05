@@ -1029,9 +1029,9 @@ export function CheckoutPage() {
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
         {[
-          { href: '/terms',   label: t('account.link_terms') },
-          { href: '/refund',  label: t('account.link_refund') },
-          { href: '/privacy', label: t('account.link_privacy') },
+          { href: '/terms', label: t('account.link_terms') },
+          { href: '/refund', label: t('account.link_refund') },
+          { href: '/order/privacy', label: t('account.link_privacy') },
         ].map(({ href, label }) => (
           <a key={href} href={href} target="_blank" rel="noopener noreferrer"
             style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>
@@ -1163,7 +1163,7 @@ export function CheckoutPage() {
           <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_terms')}</a>,{' '}
           <a href="/refund" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_refund')}</a>
           {t('checkout.terms_and')}{' '}
-          <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_privacy')}</a>.
+          <a href="/order/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_privacy')}</a>.
         </span>
       </label>
       {globalError && (

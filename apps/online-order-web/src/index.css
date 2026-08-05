@@ -1223,7 +1223,123 @@ textarea.field-input {
 /* ════════════════════════════════════════════════════════════
    FOOTER
 ════════════════════════════════════════════════════════════ */
-.footer { background: var(--color-footer-bg); color: white; padding: 3rem 1.5rem; margin-top: auto; }
+/* Home BrandFooter — fills under bottom nav / cart chrome (no light gap). */
+.brand-footer {
+  background: var(--color-footer-bg);
+  color: #fff8f0;
+  padding: 2rem var(--page-gutter) 2.5rem;
+  margin-top: 0;
+}
+.brand-footer__inner {
+  max-width: var(--layout-max);
+  margin: 0 auto;
+}
+.brand-footer__brand {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.brand-footer__logo-link {
+  display: block;
+  margin: 0 auto 0.875rem;
+  width: fit-content;
+}
+.brand-footer__logo {
+  height: 40px;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: brightness(1.4);
+  display: block;
+}
+.brand-footer__blurb,
+.brand-footer__thanks {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+.brand-footer__blurb { margin-bottom: 0.5rem; }
+.brand-footer__chat {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+}
+.brand-footer__chat-label {
+  width: 100%;
+  text-align: center;
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+.brand-footer__wa,
+.brand-footer__viber {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.55rem 1.125rem;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.brand-footer__wa { background: #25D366; }
+.brand-footer__viber { background: #7360F2; }
+.brand-footer__legal {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.brand-footer__legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+}
+.brand-footer__legal-link:hover { color: #fff; }
+.brand-footer__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 767.98px) {
+  .app-shell__main .brand-footer {
+    margin-bottom: calc(-1 * (var(--bottom-nav-height) + var(--safe-bottom) + 0.5rem));
+    padding-bottom: calc(2.5rem + var(--bottom-nav-height) + var(--safe-bottom));
+  }
+  .app-shell--with-cart .app-shell__main .brand-footer {
+    margin-bottom: calc(
+      -1 * (var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height) + 0.75rem)
+    );
+    padding-bottom: calc(
+      2.5rem + var(--bottom-nav-height) + var(--safe-bottom) + var(--float-cart-height)
+    );
+  }
+}
+
+.app-shell--desktop .app-shell__main .brand-footer,
+.app-shell--hide-nav .app-shell__main .brand-footer {
+  margin-bottom: 0;
+  padding-bottom: 2.5rem;
+}
 .footer-content {
   max-width: var(--layout-max); margin: 0 auto;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
