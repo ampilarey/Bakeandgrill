@@ -199,7 +199,6 @@ final class SignageResolverTest extends TestCase
                 'name' => 'Slug Default',
                 'slug' => 'default',
                 'is_default' => false,
-                'is_active' => true,
             ]);
         } else {
             $slugDefault->update(['is_default' => false]);
