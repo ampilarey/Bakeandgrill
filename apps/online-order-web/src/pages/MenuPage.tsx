@@ -17,7 +17,6 @@ import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
 import { ItemSheet } from '../components/ItemSheet';
 import { SearchOverlay } from '../components/SearchOverlay';
-import { ServiceBanner } from '../components/ServiceBanner';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useShellNav } from '../context/ShellNavContext';
@@ -31,7 +30,6 @@ import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
 import { isItemAvailableNow } from '../utils/itemAvailability';
 import { useOrderMode } from '../context/OrderModeContext';
 import { useServiceStatusContext } from '../context/ServiceStatusContext';
-import { composeClosedMenuBanner } from '../utils/orderingStatusBanner';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
 import { CategoryRail } from '../components/menu/CategoryRail';
 import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
@@ -168,7 +166,6 @@ export function MenuPage() {
   /** null = not loaded / failed — must not block delivery. */
   const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
-  const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [collectTomorrowDate, setCollectTomorrowDate] = useState<string | null>(null);
 
   const { day, setDay } = useOrderDay();
@@ -256,7 +253,6 @@ export function MenuPage() {
         setDineInPreorderEnabled((gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true);
         setTomorrowGateOpen(gate.order_for_tomorrow?.open !== false);
         setGateMessage(gate.message ?? '');
-        setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
         setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
 
         // Re-order of a past platter without saved children → open picker (never empty).
@@ -771,29 +767,6 @@ export function MenuPage() {
     serviceAvailable: isServiceAvailable('online_delivery'),
   });
 
-  // Shop-level closed notice — drop “check back” filler; keep opens + tomorrow tip.
-  // Must stay above any early return so hook order is stable.
-  const gateClosedBanner = useMemo(() => {
-    if (isOpen !== false) return null;
-    let opensFormatted = '';
-    if (nextOpenWindow) {
-      try {
-        const d = new Date(nextOpenWindow);
-        if (!Number.isNaN(d.getTime())) {
-          opensFormatted = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        }
-      } catch { /* ignore */ }
-    }
-    return composeClosedMenuBanner({
-      opensFormatted,
-      hasTomorrowItems: items.some((item) => Boolean(item.allow_pre_order)),
-      gateMessage,
-      fallbackClosed: t('menu.banner_closed_fallback'),
-      opensTemplate: t('menu.banner_opens_short'),
-      tomorrowLabel: t('menu.banner_tomorrow_short'),
-    });
-  }, [isOpen, nextOpenWindow, gateMessage, items, t]);
-
   if (error) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -822,7 +795,6 @@ export function MenuPage() {
 
   return (
     <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', padding: '0 var(--page-gutter) 5rem', position: 'relative' }}>
-      <ServiceBanner gateClosedMessage={gateClosedBanner} />
       {/* ── Sticky menu controls ─────────────────────────────────── */}
       <div
         ref={menuStickyRef}
