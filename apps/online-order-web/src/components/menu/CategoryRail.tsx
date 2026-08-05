@@ -126,6 +126,7 @@ export function CategoryRail({
                   className="cat-rail__thumb"
                   src={img}
                   webpSrc={webp}
+                  sizes="40px"
                   alt=""
                   width={40}
                   height={40}

@@ -26,7 +26,33 @@ export type MediaSlide = {
   thumbUrl?: string | null;
   /** Optional WebP for the displayed raster (crop or thumb). */
   webpUrl?: string | null;
+  /** Optional WebP for the thumbnail candidate used in srcset. */
+  thumbWebpUrl?: string | null;
 };
+
+/** Build a JPEG srcset from thumb (400w) + crop (1200w). Never includes the master. */
+export function buildJpegSrcSet(opts: {
+  url: string;
+  thumbUrl?: string | null;
+}): string | undefined {
+  const parts: string[] = [];
+  if (opts.thumbUrl && opts.thumbUrl !== opts.url) {
+    parts.push(`${opts.thumbUrl} 400w`);
+  }
+  parts.push(`${opts.url} 1200w`);
+  return parts.length > 1 ? parts.join(', ') : undefined;
+}
+
+/** Build a WebP srcset; omit candidates that are missing. */
+export function buildWebpSrcSet(opts: {
+  webpUrl?: string | null;
+  thumbWebpUrl?: string | null;
+}): string | undefined {
+  const parts: string[] = [];
+  if (opts.thumbWebpUrl) parts.push(`${opts.thumbWebpUrl} 400w`);
+  if (opts.webpUrl) parts.push(`${opts.webpUrl} 1200w`);
+  return parts.length > 0 ? parts.join(', ') : undefined;
+}
 
 type PhotoLike = {
   url: string;
@@ -96,6 +122,7 @@ export function buildItemSlides(
         url: mainResolved,
         thumbUrl: resolveMediaUrl(item.thumb_url),
         webpUrl: resolveMediaUrl(webp),
+        thumbWebpUrl: resolveMediaUrl(item.thumb_webp_url),
         alt: fallbackAlt,
       });
     }
@@ -144,6 +171,7 @@ export function buildItemSlides(
       url: resolved,
       thumbUrl: resolveMediaUrl(photo.thumb_url),
       webpUrl: resolveMediaUrl(webp),
+      thumbWebpUrl: resolveMediaUrl(photo.thumb_webp_url),
       alt: photo.alt_text || fallbackAlt,
     });
   }

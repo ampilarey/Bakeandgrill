@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { buildItemSlides, buildItemSlideUrls } from '../utils/itemMedia';
+import {
+  buildItemSlides,
+  buildItemSlideUrls,
+  buildJpegSrcSet,
+  buildWebpSrcSet,
+} from '../utils/itemMedia';
+
+describe('srcset helpers', () => {
+  it('buildJpegSrcSet includes thumb 400w and crop 1200w', () => {
+    expect(buildJpegSrcSet({
+      url: '/storage/menu/a.jpg',
+      thumbUrl: '/storage/thumbs/a.jpg',
+    })).toBe('/storage/thumbs/a.jpg 400w, /storage/menu/a.jpg 1200w');
+  });
+
+  it('buildJpegSrcSet omits duplicate when no distinct thumb', () => {
+    expect(buildJpegSrcSet({ url: '/storage/menu/a.jpg' })).toBeUndefined();
+  });
+
+  it('buildWebpSrcSet omits missing candidates', () => {
+    expect(buildWebpSrcSet({ webpUrl: '/a.webp' })).toBe('/a.webp 1200w');
+    expect(buildWebpSrcSet({})).toBeUndefined();
+  });
+});
 
 describe('buildItemSlides', () => {
   it('source:all keeps main image first then gallery (legacy)', () => {
@@ -100,6 +123,7 @@ describe('buildItemSlides', () => {
     expect(slides).toHaveLength(1);
     expect(slides[0].url).toContain('/thumbs/full.jpg');
     expect(slides[0].webpUrl).toContain('/thumbs/full.webp');
+    expect(slides[0].thumbWebpUrl).toContain('/thumbs/full.webp');
 
     const videoUrls = buildItemSlideUrls({
       photos: [{

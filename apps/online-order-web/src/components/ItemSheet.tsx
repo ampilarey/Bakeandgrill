@@ -312,7 +312,12 @@ export function ItemSheet({
           {/* Hero photo */}
           <div style={{ position: 'relative' }}>
             {slides.length > 0 ? (
-              <MenuImageSlider slides={slides} alt={item.name} aspectRatio="16 / 10" />
+              <MenuImageSlider
+                slides={slides}
+                alt={item.name}
+                aspectRatio="16 / 10"
+                sizes="(max-width: 640px) 100vw, 640px"
+              />
             ) : (
               <div style={{
                 aspectRatio: '16 / 10',

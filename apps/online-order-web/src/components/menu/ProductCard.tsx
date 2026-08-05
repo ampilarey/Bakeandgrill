@@ -74,7 +74,15 @@ export function ProductCard({
       fallbackAlt: mediaAlt,
       defaultImageUrl: s.default_item_image || null,
     }),
-    [item.image_url, item.thumb_url, item.photos, mediaAlt, s.default_item_image],
+    [
+      item.image_url,
+      item.thumb_url,
+      item.image_webp_url,
+      item.thumb_webp_url,
+      item.photos,
+      mediaAlt,
+      s.default_item_image,
+    ],
   );
 
   const displayName = useMemo(() => {
@@ -188,6 +196,7 @@ export function ProductCard({
             logoSrc={logoSrc}
             showDots={false}
             className="menu-card-media-circle__slider"
+            sizes="(max-width: 640px) 28vw, 140px"
           />
         </div>
         {unavailLabel && (

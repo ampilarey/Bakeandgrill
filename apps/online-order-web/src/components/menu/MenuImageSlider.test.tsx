@@ -25,6 +25,8 @@ const imageSlidesWithWebp: MediaSlide[] = [
     type: 'image',
     url: 'https://example.com/food.jpg',
     webpUrl: 'https://example.com/food.webp',
+    thumbUrl: 'https://example.com/food-thumb.jpg',
+    thumbWebpUrl: 'https://example.com/food-thumb.webp',
     alt: 'Food',
   },
 ];
@@ -113,13 +115,18 @@ describe('MenuImageSlider', () => {
 
   it('emits picture/source when webpUrl is present and still keeps JPEG img', () => {
     const { container } = render(
-      <MenuImageSlider slides={imageSlidesWithWebp} alt="Food" />,
+      <MenuImageSlider slides={imageSlidesWithWebp} alt="Food" sizes="100vw" />,
     );
     const picture = container.querySelector('picture');
     const source = container.querySelector('source[type="image/webp"]');
     const img = container.querySelector('img');
     expect(picture).toBeTruthy();
+    expect(source?.getAttribute('srcset')).toContain('food-thumb.webp');
     expect(source?.getAttribute('srcset')).toContain('food.webp');
+    expect(source?.getAttribute('sizes')).toBe('100vw');
     expect(img?.getAttribute('src')).toContain('food.jpg');
+    expect(img?.getAttribute('srcset')).toContain('400w');
+    expect(img?.getAttribute('srcset')).toContain('1200w');
+    expect(img?.getAttribute('sizes')).toBe('100vw');
   });
 });

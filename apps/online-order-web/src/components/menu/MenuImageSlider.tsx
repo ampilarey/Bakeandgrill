@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { MediaSlide } from '../../utils/itemMedia';
+import { buildJpegSrcSet, buildWebpSrcSet } from '../../utils/itemMedia';
 import { BrandedMediaPlaceholder } from './BrandedMediaPlaceholder';
 import { PictureImg } from './PictureImg';
 
@@ -23,6 +24,8 @@ type Props = {
    * Item sheet should leave this false so muted clips can autoplay.
    */
   posterOnly?: boolean;
+  /** CSS sizes hint for srcset selection (e.g. card vs sheet). */
+  sizes?: string;
 };
 
 function normalizeSlides(slides: MediaSlide[] | string[], fallbackAlt: string): MediaSlide[] {
@@ -47,6 +50,7 @@ export function MenuImageSlider({
   logoSrc,
   monogram,
   posterOnly = false,
+  sizes = '(max-width: 640px) 92vw, 480px',
 }: Props) {
   const slides = normalizeSlides(rawSlides, alt);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -164,12 +168,21 @@ export function MenuImageSlider({
       ? (slide.poster || slide.thumbUrl || slide.url)
       : slide.url;
     const webpSrc = slide.type === 'video' ? null : slide.webpUrl;
+    const jpegSrcSet = slide.type === 'video'
+      ? undefined
+      : buildJpegSrcSet({ url: slide.url, thumbUrl: slide.thumbUrl });
+    const webpSrcSet = slide.type === 'video'
+      ? undefined
+      : buildWebpSrcSet({ webpUrl: slide.webpUrl, thumbWebpUrl: slide.thumbWebpUrl });
 
     return (
       <PictureImg
         key={`i-${imgSrc}-${i}`}
         src={imgSrc}
         webpSrc={webpSrc}
+        srcSet={jpegSrcSet}
+        webpSrcSet={webpSrcSet}
+        sizes={sizes}
         alt={isActive ? (slide.alt || alt) : ''}
         aria-hidden={isActive ? undefined : true}
         loading="lazy"
