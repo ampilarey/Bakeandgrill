@@ -313,8 +313,17 @@ function TicketHeader({
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {(ticket.items ?? []).map((item, i) => (
-          <div key={i} style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.quantity}×</span> {item.item_name}{item.variant_name ? ` – ${item.variant_name}` : ''}
+          <div
+            key={i}
+            style={{
+              fontSize: 13,
+              color: 'var(--color-text-secondary)',
+              marginLeft: item.parent_order_item_id ? 16 : 0,
+            }}
+          >
+            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.quantity}×</span>{' '}
+            {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
+            {item.variant_name ? ` – ${item.variant_name}` : ''}
             {item.modifiers && item.modifiers.length > 0 && (
               <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
                 + {item.modifiers.map((m) => m.modifier_name).join(', ')}

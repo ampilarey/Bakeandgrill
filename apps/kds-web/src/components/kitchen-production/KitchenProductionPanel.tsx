@@ -124,9 +124,20 @@ export function KitchenProductionPanel({
                 const produced = item.kitchen_produced_qty ?? 0;
                 const done = produced >= item.quantity;
                 return (
-                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 14 }}>
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      marginLeft: item.parent_order_item_id ? 16 : 0,
+                    }}
+                  >
                     <span>
-                      {item.quantity}x {item.item_name}
+                      {item.quantity}x {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
                       <span style={{ color: "#8B7355", marginLeft: 6 }}>
                         ({produced}/{item.quantity} cooked)
                       </span>

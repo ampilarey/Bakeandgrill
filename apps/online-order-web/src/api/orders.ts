@@ -23,6 +23,13 @@ export type OrderDetail = Order & {
   proof_of_delivery_url?: string | null;
 };
 
+export type OrderLineChildPayload = {
+  item_id: number;
+  quantity: number;
+  group_id?: number;
+  surcharge?: number;
+};
+
 export type DeliveryOrderPayload = {
   items: Array<{
     item_id: number;
@@ -30,6 +37,7 @@ export type DeliveryOrderPayload = {
     variant_id?: number;
     packaging_option_id?: number;
     modifiers?: Array<{ modifier_id: number }>;
+    children?: OrderLineChildPayload[];
   }>;
   delivery_address_line1: string;
   delivery_address_line2?: string;
@@ -82,6 +90,7 @@ export async function createCustomerOrder(
       variant_id?: number;
       packaging_option_id?: number;
       modifiers?: Array<{ modifier_id: number; quantity?: number }>;
+      children?: OrderLineChildPayload[];
     }>;
     customer_notes?: string;
     type?: string;

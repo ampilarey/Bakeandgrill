@@ -66,6 +66,13 @@ export type CartItem = {
   is_available?: boolean;
   available_now?: boolean;
   rewardPromotionId?: number | null;
+  platterSelections?: Array<{
+    group_id: number;
+    item_id: number;
+    item_name: string;
+    quantity: number;
+    surcharge: number;
+  }>;
 };
 
 export type OrderType = "pickup" | "delivery";
@@ -205,28 +212,47 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
       packagingFee?: number | null;
       packagingFeeMode?: 'per_unit' | 'per_line' | null;
       rewardPromotionId?: number | null;
+      platterSelections?: CartItem['platterSelections'];
     }> = Array.isArray(parsed) ? parsed : (parsed?.entries ?? []);
-    return entries.map((e) => ({
-      id:        e.item?.id ?? (e as unknown as CartItem).id,
-      name:      e.item?.name ?? (e as unknown as CartItem).name,
-      price:     Number(e.variantPrice ?? e.item?.base_price ?? (e as unknown as CartItem).price ?? 0),
-      quantity:  e.quantity,
-      modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
-      variantId: e.variantId ?? null,
-      taxRate:   Number(e.item?.tax_rate ?? 0),
-      taxCode:   e.item?.tax_code ?? null,
-      packagingFee: Math.max(0, Number(e.packagingFee ?? e.item?.packaging_fee ?? 0)),
-      packagingFeeMode:
-        e.packagingFeeMode === 'per_line' || e.item?.packaging_fee_mode === 'per_line'
-          ? 'per_line' as const
-          : 'per_unit' as const,
-      packagingOptionId: e.packagingOptionId ?? null,
-      allow_pre_order: Boolean(e.item?.allow_pre_order),
-      is_available: e.item?.is_available,
-      available_now: e.item?.available_now,
-      rewardPromotionId: e.rewardPromotionId ?? null,
-    }));
+    return entries.map((e) => {
+      const platterExtra = (e.platterSelections ?? []).reduce(
+        (s, p) => s + Math.max(0, Number(p.surcharge) || 0) * Math.max(0, p.quantity),
+        0,
+      );
+      const base = Number(e.variantPrice ?? e.item?.base_price ?? (e as unknown as CartItem).price ?? 0);
+      return {
+        id:        e.item?.id ?? (e as unknown as CartItem).id,
+        name:      e.item?.name ?? (e as unknown as CartItem).name,
+        price:     base + platterExtra,
+        quantity:  e.quantity,
+        modifiers: (e.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: Number(m.price) })),
+        variantId: e.variantId ?? null,
+        taxRate:   Number(e.item?.tax_rate ?? 0),
+        taxCode:   e.item?.tax_code ?? null,
+        packagingFee: Math.max(0, Number(e.packagingFee ?? e.item?.packaging_fee ?? 0)),
+        packagingFeeMode:
+          e.packagingFeeMode === 'per_line' || e.item?.packaging_fee_mode === 'per_line'
+            ? 'per_line' as const
+            : 'per_unit' as const,
+        packagingOptionId: e.packagingOptionId ?? null,
+        allow_pre_order: Boolean(e.item?.allow_pre_order),
+        is_available: e.item?.is_available,
+        available_now: e.item?.available_now,
+        rewardPromotionId: e.rewardPromotionId ?? null,
+        platterSelections: e.platterSelections ?? [],
+      };
+    });
   } catch { return []; }
+}
+
+function childrenFromCartItem(item: CartItem): Array<{ item_id: number; quantity: number; group_id?: number; surcharge?: number }> | undefined {
+  if (!item.platterSelections || item.platterSelections.length === 0) return undefined;
+  return item.platterSelections.map((s) => ({
+    item_id: s.item_id,
+    quantity: s.quantity,
+    group_id: s.group_id || undefined,
+    surcharge: s.surcharge,
+  }));
 }
 
 function rewardClaimsFromCart(cart: CartItem[]): Array<{ promotion_id: number; item_id: number }> {
@@ -949,6 +975,7 @@ export function useCheckout() {
             variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
             packaging_option_id: item.packagingOptionId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+            children: childrenFromCartItem(item),
           })),
           delivery_address_line1: delivery.address_line1,
           delivery_address_line2: delivery.address_line2 || undefined,
@@ -972,6 +999,7 @@ export function useCheckout() {
             quantity: item.quantity,
             variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+            children: childrenFromCartItem(item),
           })),
           type: "dine_in",
           customer_notes: notes || undefined,
@@ -989,6 +1017,7 @@ export function useCheckout() {
             variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
             packaging_option_id: item.packagingOptionId ?? undefined,
             modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+            children: childrenFromCartItem(item),
           })),
           type: "online_pickup",
           customer_notes: notes || undefined,

@@ -408,6 +408,11 @@ class PromotionEvaluator
                 continue;
             }
 
+            // Platter children never earn triggers / free rewards.
+            if (!empty($line['parent_order_item_id'])) {
+                continue;
+            }
+
             $qty = max(1, (int) ($line['quantity'] ?? 1));
             $unitPrice = round((float) ($line['unit_price'] ?? 0), 2);
             $totalPrice = array_key_exists('total_price', $line)
@@ -420,6 +425,7 @@ class PromotionEvaluator
                 'quantity' => $qty,
                 'unit_price' => $unitPrice,
                 'total_price' => $totalPrice,
+                'parent_order_item_id' => $line['parent_order_item_id'] ?? null,
             ]);
             $orderItem->setRelation('item', $catalog->get($itemId));
             $orderItems->push($orderItem);
@@ -515,7 +521,7 @@ class PromotionEvaluator
 
     /**
      * Single place that decides which order lines a promo may look at.
-     * Future platter children: add `if ($line->parent_order_item_id) return false;` here.
+     * Platter children never satisfy triggers or buy_x_get_y rewards.
      *
      * @return Collection<int, OrderItem>
      */
@@ -524,8 +530,10 @@ class PromotionEvaluator
         $order->loadMissing('items.item');
 
         return $order->items->filter(function (OrderItem $line) {
-            // FUTURE platter child filter — keep in one place:
-            // if ($line->parent_order_item_id) { return false; }
+            if ($line->parent_order_item_id) {
+                return false;
+            }
+
             return true;
         })->values();
     }

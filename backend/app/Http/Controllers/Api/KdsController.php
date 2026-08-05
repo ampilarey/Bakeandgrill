@@ -188,12 +188,14 @@ class KdsController extends Controller
                 return [
                     'id' => $line->id,
                     'item_id' => $line->item_id,
+                    'parent_order_item_id' => $line->parent_order_item_id,
                     'item_name' => $line->item_name,
                     'variant_name' => $line->variant_name,
                     'quantity' => $line->quantity,
                     'kitchen_produced_qty' => $line->kitchen_produced_qty !== null ? (float) $line->kitchen_produced_qty : null,
                     'kitchen_received_qty' => $line->kitchen_received_qty !== null ? (float) $line->kitchen_received_qty : null,
-                    'notes' => $line->notes,
+                    // KDS never renders notes for platter composition — children are lines.
+                    'notes' => $line->parent_order_item_id ? null : $line->notes,
                     'status' => $line->status,
                     'menu_group_id' => $line->item?->menu_group_id,
                     'prep_time_minutes' => $line->item?->prep_time_minutes,

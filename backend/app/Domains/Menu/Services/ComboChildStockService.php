@@ -43,6 +43,12 @@ class ComboChildStockService
             return [];
         }
 
+        // Choice platters expand into real child order_items — never also deduct
+        // via fixed combo_items composition (would double-take stock).
+        if ($soldItem->isPlatter()) {
+            return [];
+        }
+
         $expanded = $this->expand($soldItem, $lineQuantity, []);
 
         // Aggregate duplicate child ids (nested repeats).
@@ -75,7 +81,7 @@ class ComboChildStockService
             $item->load(['comboItems.item.comboItems.item']);
         }
 
-        if (!$item->is_combo) {
+        if (!$item->is_combo || $item->isPlatter()) {
             return [];
         }
 

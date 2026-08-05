@@ -31,6 +31,12 @@ class StoreCustomerOrderRequest extends FormRequest
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'sometimes|integer|min:1|max:10',
             'items.*.packaging_option_id' => 'nullable|integer|exists:item_packaging_options,id',
+            // Platter picks — each becomes a child order_items row (not notes/JSON).
+            'items.*.children' => 'nullable|array|max:50',
+            'items.*.children.*.item_id' => 'required_with:items.*.children|integer|exists:items,id',
+            'items.*.children.*.quantity' => 'required_with:items.*.children|integer|min:1|max:99',
+            'items.*.children.*.group_id' => 'nullable|integer|exists:platter_groups,id',
+            'items.*.children.*.surcharge' => 'nullable|numeric|min:0',
             // Doubles as the ARRIVAL time for prepaid dine-in.
             'pickup_slot_at' => 'nullable|date|after:now|required_if:type,dine_in',
             'party_size' => 'nullable|integer|min:1|max:20|required_if:type,dine_in',

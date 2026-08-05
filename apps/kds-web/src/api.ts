@@ -4,6 +4,7 @@ import { ENDPOINTS } from '@shared/api';
 export type KdsOrderItem = {
   id: number;
   item_id?: number | null;
+  parent_order_item_id?: number | null;
   item_name: string;
   variant_name?: string | null;
   quantity: number;

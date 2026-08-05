@@ -15,6 +15,7 @@ class OrderItem extends Model
 
     protected $fillable = [
         'order_id',
+        'parent_order_item_id',
         'item_id',
         'variant_id',
         'item_name',
@@ -38,6 +39,7 @@ class OrderItem extends Model
 
     protected $casts = [
         'order_id' => 'integer',
+        'parent_order_item_id' => 'integer',
         'item_id' => 'integer',
         'variant_id' => 'integer',
         'packaging_option_id' => 'integer',
@@ -55,6 +57,16 @@ class OrderItem extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_order_item_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_order_item_id');
     }
 
     public function item(): BelongsTo

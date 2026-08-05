@@ -93,36 +93,31 @@ class FavoritesController extends Controller
             ->with(['items.item.platterGroups', 'items.modifiers'])
             ->firstOrFail();
 
-        // Group platter child lines (parent_order_item_id) under their parent when present.
-        // Until Stage 4c ships the column, children stay empty and is_platter forces the picker.
+        // Group platter child lines under their parent. Empty children → client opens picker.
         $byParent = [];
-        $hasParentColumn = \Illuminate\Support\Facades\Schema::hasColumn('order_items', 'parent_order_item_id');
-        if ($hasParentColumn) {
-            foreach ($order->items as $oi) {
-                $parentId = $oi->parent_order_item_id ?? null;
-                if ($parentId) {
-                    $byParent[$parentId][] = $oi;
-                }
+        foreach ($order->items as $oi) {
+            if ($oi->parent_order_item_id) {
+                $byParent[$oi->parent_order_item_id][] = $oi;
             }
         }
 
         $cartItems = $order->items
-            ->filter(function ($oi) use ($hasParentColumn) {
-                if (!$hasParentColumn) {
-                    return true;
-                }
-
-                return empty($oi->parent_order_item_id);
-            })
+            ->filter(fn ($oi) => empty($oi->parent_order_item_id))
             ->map(function ($oi) use ($byParent) {
                 $isPlatter = (bool) ($oi->item?->isPlatter());
-                $children = collect($byParent[$oi->id] ?? [])->map(fn ($child) => [
-                    'item_id' => $child->item_id,
-                    'item_name' => $child->item_name,
-                    'quantity' => $child->quantity,
-                    'unit_price' => $child->unit_price,
-                    'surcharge' => (float) $child->unit_price,
-                ])->values()->all();
+                $parentQty = max(1, (int) $oi->quantity);
+                $children = collect($byParent[$oi->id] ?? [])->map(function ($child) use ($parentQty) {
+                    // Persist per-platter pick counts (child line qty is scaled by parent qty).
+                    $perPlatterQty = (int) max(1, (int) round(((int) $child->quantity) / $parentQty));
+
+                    return [
+                        'item_id' => $child->item_id,
+                        'item_name' => $child->item_name,
+                        'quantity' => $perPlatterQty,
+                        'unit_price' => $child->unit_price,
+                        'surcharge' => (float) $child->unit_price,
+                    ];
+                })->values()->all();
 
                 return [
                     'item_id' => $oi->item_id,

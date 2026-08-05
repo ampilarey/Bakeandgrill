@@ -65,6 +65,11 @@ class DeliveryOrderController extends Controller
             'items.*.modifiers.*.modifier_id' => 'required|integer|exists:modifiers,id',
             'items.*.modifiers.*.quantity' => 'nullable|integer|min:1',
             'items.*.notes' => 'nullable|string|max:255',
+            'items.*.children' => 'nullable|array|max:50',
+            'items.*.children.*.item_id' => 'required_with:items.*.children|integer|exists:items,id',
+            'items.*.children.*.quantity' => 'required_with:items.*.children|integer|min:1|max:99',
+            'items.*.children.*.group_id' => 'nullable|integer|exists:platter_groups,id',
+            'items.*.children.*.surcharge' => 'nullable|numeric|min:0',
 
             // Delivery-specific
             'delivery_address_line1' => 'required|string|max:255',
@@ -102,10 +107,8 @@ class DeliveryOrderController extends Controller
         unset($validated['collect_on']);
         if ($resolvedFulfil !== null) {
             if ($isCustomer) {
-                $itemIds = array_map(
-                    static fn ($row) => (int) ($row['item_id'] ?? 0),
-                    $validated['items'] ?? [],
-                );
+                $itemIds = app(\App\Domains\Menu\Services\PlatterOrderService::class)
+                    ->collectItemIdsFromPayload($validated['items'] ?? []);
                 $fulfil->assertAllItemsAllowTomorrow($itemIds);
             }
             $validated['fulfil_date'] = $resolvedFulfil;

@@ -6,6 +6,7 @@ namespace App\Domains\Orders\Services;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Menu\Services\ComboChildStockService;
+use App\Domains\Menu\Services\PlatterOrderService;
 use App\Domains\Orders\DTOs\OrderCreatedData;
 use App\Domains\Orders\Events\OrderCreated;
 use App\Domains\Promotions\Services\PromotionEvaluator;
@@ -549,7 +550,13 @@ class OrderCreationService
 
         // Pre-load all referenced items in a single query to avoid N+1
         $itemIds = array_column($items, 'item_id');
-        $itemQuery = Item::with(['variants', 'modifiers', 'packagingOptions', 'comboItems.item'])
+        $itemQuery = Item::with([
+            'variants',
+            'modifiers',
+            'packagingOptions',
+            'comboItems.item',
+            'platterGroups.allowedItems.item',
+        ])
             ->where('is_active', true)
             ->whereIn('id', $itemIds);
         // Same-day still requires available-today; tomorrow may include 86'd items
@@ -558,6 +565,7 @@ class OrderCreationService
             $itemQuery->where('is_available', true);
         }
         $itemMap = $itemQuery->get()->keyBy('id');
+        $platterOrders = app(PlatterOrderService::class);
 
         $this->kitchenMenuResolver->assertLineItemsAllowedForOrderType(
             $itemMap->all(),
@@ -666,16 +674,30 @@ class OrderCreationService
                     }
                 }
 
-                // Combo children are ADDITIONAL to the combo SKU's own stock check.
-                app(ComboChildStockService::class)->assertChildrenAvailable(
-                    $itemModel,
-                    max(0, (int) round($quantity)),
-                );
+                // Fixed combo children are ADDITIONAL. Choice platters skip this —
+                // their picks become real order_items (and use normal stock paths).
+                if (!$itemModel->isPlatter()) {
+                    app(ComboChildStockService::class)->assertChildrenAvailable(
+                        $itemModel,
+                        max(0, (int) round($quantity)),
+                    );
+                }
             }
 
             $lockedItem = $itemModel;
 
             $modifierTotal = 0;
+
+            // Resolve platter children before creating the parent so a bad pick
+            // never leaves an orphan parent row. Price = platter + surcharges only.
+            $childrenPayload = is_array($itemPayload['children'] ?? null)
+                ? $itemPayload['children']
+                : [];
+            $resolvedChildren = $platterOrders->resolveChildren(
+                $itemModel,
+                $childrenPayload,
+                $variantId ? (int) $variantId : null,
+            );
 
             // `notes` is a free-form per-line string the POS uses for
             // kitchen instructions ("No salt", "Extra spicy", etc.).
@@ -700,6 +722,7 @@ class OrderCreationService
 
             $orderItem = OrderItem::create([
                 'order_id' => $order->id,
+                'parent_order_item_id' => null,
                 'item_id' => $itemModel->id,
                 'variant_id' => $variantId,
                 'item_name' => $itemModel->name,
@@ -721,15 +744,15 @@ class OrderCreationService
 
             // POS only: deduct stock immediately upon order creation (including offline sync).
             // Online orders are handled via reserveForOrder() after the full loop.
+            $keyPrefix = ($order->type === 'dine_in' && $order->user_id === null)
+                ? 'online:order:'
+                : 'pos:order:';
             if (!$isOnlineOrder) {
                 // Prepaid dine-in add-ons (customer order, staff rings extra lines
                 // at the table) use the SAME key format convertToDeduction writes
                 // ('online:order:{id}:item:{line}') so a later balance-settle
                 // OrderPaid can never deduct these lines a second time — the
                 // StockMovement idempotency key already exists.
-                $keyPrefix = ($order->type === 'dine_in' && $order->user_id === null)
-                    ? 'online:order:'
-                    : 'pos:order:';
                 // Prepared/variant stock columns are whole units; order qty is float for kg lines.
                 $stockQty = max(0, (int) round($quantity));
                 if ($stockQty > 0 && $variant && $variant->track_stock) {
@@ -754,8 +777,8 @@ class OrderCreationService
 
                 // Combo children are ADDITIONAL — if the combo SKU itself tracks
                 // stock, that deduction above is unchanged. Optional children are
-                // intentionally skipped (see ComboChildStockService).
-                if ($stockQty > 0) {
+                // intentionally skipped (see ComboChildStockService). Platters skip.
+                if ($stockQty > 0 && !$itemModel->isPlatter()) {
                     app(ComboChildStockService::class)->deductForOrderItem(
                         $itemModel,
                         $orderItem,
@@ -798,6 +821,96 @@ class OrderCreationService
 
             $subtotal += $lineTotal;
             $orderItem->update(['total_price' => $lineTotal]);
+
+            // Platter picks → child order lines (unit_price = surcharge or 0).
+            // Quantity scales with parent qty so 2× platter doubles each pick.
+            foreach ($resolvedChildren as $childRow) {
+                /** @var Item $childItem */
+                $childItem = $childRow['item'];
+                $childQty = (int) $childRow['quantity'] * max(0, (int) round($quantity));
+                if ($childQty <= 0) {
+                    continue;
+                }
+                $surcharge = max(0.0, (float) $childRow['surcharge']);
+
+                if ($deferStockForTomorrow && $order->fulfil_date !== null) {
+                    if (!$childItem->allow_pre_order) {
+                        abort(422, "\"{$childItem->name}\" cannot be collected tomorrow.");
+                    }
+                    $fulfilDate = $order->fulfil_date instanceof \Carbon\CarbonInterface
+                        ? $order->fulfil_date->toDateString()
+                        : (string) $order->fulfil_date;
+                    $childItem = app(TomorrowDailyCapacityService::class)->assertCanAllocate(
+                        $childItem,
+                        $fulfilDate,
+                        $childQty,
+                        $order->id,
+                        (float) ($tomorrowQueuedByItem[$childItem->id] ?? 0),
+                    );
+                    $tomorrowQueuedByItem[$childItem->id] = (float) ($tomorrowQueuedByItem[$childItem->id] ?? 0) + $childQty;
+                }
+
+                if (!$offlineSync && !$deferStockForTomorrow) {
+                    if (!$childItem->is_available) {
+                        abort(422, "\"{$childItem->name}\" is currently unavailable.");
+                    }
+                    if ($childItem->track_stock && $childItem->availability_type === 'stock_based') {
+                        $lockedChild = Item::lockForUpdate()->find($childItem->id) ?? $childItem;
+                        $available = app(StockReservationService::class)->getAvailableStock($lockedChild);
+                        if ($available < $childQty) {
+                            abort(422, "Insufficient stock for {$lockedChild->name}. Available: {$available}, requested: {$childQty}");
+                        }
+                        $childItem = $lockedChild;
+                    }
+                }
+
+                $childLineTotal = $surcharge * $childQty;
+                $childOrderItem = OrderItem::create([
+                    'order_id' => $order->id,
+                    'parent_order_item_id' => $orderItem->id,
+                    'item_id' => $childItem->id,
+                    'variant_id' => null,
+                    'item_name' => $childItem->name,
+                    'variant_name' => null,
+                    'quantity' => $childQty,
+                    'unit_price' => $surcharge,
+                    'original_unit_price' => null,
+                    'daily_special_id' => null,
+                    'total_price' => $childLineTotal,
+                    // Zero-price children contribute nothing to GST; surcharge
+                    // lines use the child's own tax code.
+                    'tax_rate' => $surcharge > 0 ? (float) $childItem->tax_rate : 0,
+                    'tax_code' => $surcharge > 0
+                        ? ($childItem->tax_code ?? 'standard_8')
+                        : 'out_of_scope',
+                    'notes' => null,
+                    'packaging_option_id' => null,
+                    'packaging_fee' => 0,
+                    'packaging_fee_mode' => 'per_unit',
+                    'packaging_option_name' => null,
+                    'status' => 'pending',
+                ]);
+
+                if (!$isOnlineOrder) {
+                    $childStockQty = max(0, (int) round($childQty));
+                    if (
+                        $childStockQty > 0
+                        && $childItem->track_stock
+                        && $childItem->availability_type === 'stock_based'
+                    ) {
+                        $key = $keyPrefix . $order->id . ':item:' . $childOrderItem->id;
+                        app(StockManagementService::class)->deductPreparedStock(
+                            $childItem,
+                            $childStockQty,
+                            $key,
+                            $order->id,
+                            $user?->id,
+                        );
+                    }
+                }
+
+                $subtotal += $childLineTotal;
+            }
         }
 
         // Online orders: reserve prepared stock after all items are persisted.

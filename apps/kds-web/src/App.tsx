@@ -507,9 +507,19 @@ function App() {
         </div>
         <div className="space-y-2">
           {order.items.map((item) => (
-            <div key={item.id} className="text-sm flex justify-between gap-2" style={{ color: "#2A1E0C" }}>
+            <div
+              key={item.id}
+              className="text-sm flex justify-between gap-2"
+              style={{
+                color: "#2A1E0C",
+                marginLeft: item.parent_order_item_id ? 16 : 0,
+                opacity: item.parent_order_item_id ? 0.92 : 1,
+              }}
+              data-testid={item.parent_order_item_id ? "kds-platter-child" : "kds-line"}
+            >
               <div>
-                <span className="font-semibold">{item.quantity}x</span> {item.item_name}
+                <span className="font-semibold">{item.quantity}x</span>{" "}
+                {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
                 {item.modifiers && item.modifiers.length > 0 && (
                   <div className="text-xs mt-1" style={{ color: "#8B7355" }}>
                     {item.modifiers.map((mod) => mod.modifier_name).join(", ")}

@@ -50,6 +50,8 @@ class OrderTrackingController extends Controller
                 'delivery_contact_phone' => $order->delivery_contact_phone,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
+                    'item_id' => $item->item_id,
+                    'parent_order_item_id' => $item->parent_order_item_id,
                     'item_name' => $item->item_name,
                     'variant_name' => $item->variant_name,
                     'packaging_option_name' => $item->packaging_option_name,

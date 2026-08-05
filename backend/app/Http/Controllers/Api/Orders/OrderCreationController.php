@@ -324,10 +324,8 @@ class OrderCreationController extends Controller
             isset($payload['collect_on']) ? (string) $payload['collect_on'] : null,
         );
         if ($resolvedFulfil !== null) {
-            $itemIds = array_map(
-                static fn ($row) => (int) ($row['item_id'] ?? 0),
-                $payload['items'] ?? [],
-            );
+            $itemIds = app(\App\Domains\Menu\Services\PlatterOrderService::class)
+                ->collectItemIdsFromPayload($payload['items'] ?? []);
             $fulfil->assertAllItemsAllowTomorrow($itemIds);
             $payload['fulfil_date'] = $resolvedFulfil;
         } else {
