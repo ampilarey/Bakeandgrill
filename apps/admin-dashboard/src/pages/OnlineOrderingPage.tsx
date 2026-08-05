@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { RefreshCw, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -30,39 +30,18 @@ import { FeatureGateCard } from './OnlineOrderingPage/FeatureGateCard';
 import {
   DAYS,
   DEFAULT_SCHEDULE,
-  ForceOpenOverride,
-  MasterSwitchRow,
+  GateStatusCard,
   S,
+  ScheduleEditor,
   StatusChipStrip,
   parseSchedule,
   safeIsoFromLocal,
   toDatetimeLocal,
-  type DayKey,
+  withAllDays,
   type Schedule,
 } from './OnlineOrderingPage/orderingControlUi';
 
-/** Online-ordering sub-tabs — Pre-order + Delivery stay on OrderingControlTabs. */
-const PAGE_SECTIONS = [
-  { id: 'channels', label: 'Online channel' },
-  { id: 'features', label: 'Features' },
-  { id: 'slots-fees', label: 'Slots & fees' },
-] as const;
-
-type PageSection = (typeof PAGE_SECTIONS)[number]['id'] | 'events';
-
-const sectionTabStyle = (active: boolean): CSSProperties => ({
-  padding: '7px 14px',
-  borderRadius: 8,
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  fontSize: 13,
-  fontWeight: active ? 700 : 500,
-  background: active ? 'var(--color-surface)' : 'transparent',
-  color: active ? 'var(--color-text)' : 'var(--color-text-secondary)',
-  boxShadow: active ? '0 1px 3px rgba(28,20,8,0.08)' : 'none',
-  minHeight: 44,
-});
+type PageSection = 'channels' | 'features' | 'slots-fees' | 'events';
 
 const DEFAULT_RAMADAN_BUSINESS_HOURS: Record<string, string> = {
   mon: '4:00 PM – 11:00 PM',
@@ -454,68 +433,6 @@ export default function OnlineOrderingPage() {
     }
   };
 
-  const toggleDayEnabled = (day: DayKey) => {
-    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
-  };
-
-  const updateWindow = (day: DayKey, idx: number, field: 'open' | 'close', value: string) => {
-    setSchedule((prev) => {
-      const windows = prev[day].windows.map((w, i) => i === idx ? { ...w, [field]: value } : w);
-      return { ...prev, [day]: { ...prev[day], windows } };
-    });
-  };
-
-  const addWindow = (day: DayKey) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: [...prev[day].windows, { open: '18:00', close: '22:00' }] },
-    }));
-  };
-
-  const removeWindow = (day: DayKey, idx: number) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: prev[day].windows.filter((_, i) => i !== idx) },
-    }));
-  };
-
-  const setAllDays = (enabled: boolean) => {
-    setSchedule((prev) => Object.fromEntries(
-      DAYS.map(({ key }) => [key, { ...prev[key], enabled }])
-    ) as Schedule);
-  };
-
-  const toggleCateringDayEnabled = (day: DayKey) => {
-    setCateringSchedule((prev) => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
-  };
-
-  const updateCateringWindow = (day: DayKey, idx: number, field: 'open' | 'close', value: string) => {
-    setCateringSchedule((prev) => {
-      const windows = prev[day].windows.map((w, i) => (i === idx ? { ...w, [field]: value } : w));
-      return { ...prev, [day]: { ...prev[day], windows } };
-    });
-  };
-
-  const addCateringWindow = (day: DayKey) => {
-    setCateringSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: [...prev[day].windows, { open: '10:00', close: '18:00' }] },
-    }));
-  };
-
-  const removeCateringWindow = (day: DayKey, idx: number) => {
-    setCateringSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: prev[day].windows.filter((_, i) => i !== idx) },
-    }));
-  };
-
-  const setAllCateringDays = (enabled: boolean) => {
-    setCateringSchedule((prev) => Object.fromEntries(
-      DAYS.map(({ key }) => [key, { ...prev[key], enabled }]),
-    ) as Schedule);
-  };
-
   const handleToggle = async () => {
     if (!status) return;
     const next = !status.master_switch;
@@ -602,239 +519,6 @@ export default function OnlineOrderingPage() {
     </div>
   ) : null;
 
-  if (section === 'events') {
-    return (
-      <PageShell>
-        <div style={{ padding: '1.5rem', maxWidth: 680 }}>
-          <PageHeader section="Manage"
-            title="Ordering Control Center"
-            subtitle="Turn pre-order / event requests on or off, set accepting hours, and quote settings"
-          />
-          <OrderingControlTabs />
-          {toastBanner}
-          <>
-        <div style={S.card} data-testid="catering-preorder-gate">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <p style={S.sectionTitle}>Pre-order gate</p>
-              <span style={cateringStatus?.open ? S.statusOpen : S.statusClosed}>
-                {cateringStatus?.open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                {cateringStatus?.open ? 'Accepting pre-orders' : 'Not accepting pre-orders'}
-              </span>
-              {cateringStatus && !cateringStatus.open && cateringStatus.reason && (
-                <p style={S.reasonNote}>
-                  Reason: {REASON_LABELS[cateringStatus.reason] ?? cateringStatus.reason}
-                </p>
-              )}
-              {cateringStatus?.override_until && (
-                <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
-                  Force-open until {new Date(cateringStatus.override_until).toLocaleString()}
-                </p>
-              )}
-            </div>
-            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '6px 12px' }} onClick={loadCateringGate} type="button">
-              <RefreshCw size={13} />
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        <div style={S.card}>
-          <p style={S.sectionTitle}>Master Switch</p>
-          <MasterSwitchRow
-            on={!!cateringStatus?.master_switch}
-            toggling={cateringToggling}
-            titleOn="Pre-order is ON"
-            titleOff="Pre-order is OFF"
-            helpOn="Customers can submit new event / pre-order requests."
-            helpOff="New customer requests are blocked. Existing quotes and admin tools stay available."
-            onToggle={() => void handleCateringToggle()}
-          />
-        </div>
-
-        <div style={S.card}>
-          <p style={S.sectionTitle}>Force-open Override</p>
-          <ForceOpenOverride
-            help="Force pre-order open until a specific time, ignoring the switch and schedule."
-            value={cateringOverrideUntil}
-            onChange={setCateringOverrideUntil}
-            activeUntil={cateringStatus?.override_until}
-            saving={cateringSavingOverride}
-            onSet={() => void handleCateringSetOverride()}
-            onClear={() => void handleCateringClearOverride()}
-          />
-        </div>
-
-        <div style={S.card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '1rem' }}>
-            <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Pre-order schedule</p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllCateringDays(true)}>All open</button>
-              <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllCateringDays(false)}>All closed</button>
-            </div>
-          </div>
-          <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
-            Optional. Leave cleared for always-open when the master switch is ON. Independent from online ordering hours.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {DAYS.map(({ key, label }) => {
-              const day = cateringSchedule[key];
-              return (
-                <div key={key} style={{
-                  padding: '10px 14px', borderRadius: 10,
-                  background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                  border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
-                  opacity: day.enabled ? 1 : 0.65,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
-                    <button
-                      type="button"
-                      style={S.toggleTrack(day.enabled)}
-                      onClick={() => toggleCateringDayEnabled(key)}
-                      role="switch"
-                      aria-checked={day.enabled}
-                      aria-label={label}
-                    >
-                      <span style={S.toggleThumb(day.enabled)} />
-                    </button>
-                    <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
-                    {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
-                  </div>
-                  {day.enabled && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 50 }}>
-                      {day.windows.map((win, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Open</label>
-                            <input type="time" value={win.open}
-                              onChange={(e) => updateCateringWindow(key, idx, 'open', e.target.value)}
-                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Close</label>
-                            <input type="time" value={win.close}
-                              onChange={(e) => updateCateringWindow(key, idx, 'close', e.target.value)}
-                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                          </div>
-                          {day.windows.length > 1 && (
-                            <button type="button" onClick={() => removeCateringWindow(key, idx)}
-                              aria-label={`Remove window ${idx + 1}`}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
-                          )}
-                        </div>
-                      ))}
-                      <button type="button" onClick={() => addCateringWindow(key)}
-                        style={{ alignSelf: 'flex-start', fontSize: 12, color: '#7B5E3A', background: 'none', border: '1px dashed #C2A87A', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', marginTop: 2 }}>
-                        + Add window
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" style={S.btnPrimary} onClick={() => void saveCateringSchedule()} disabled={cateringScheduleSaving}>
-              <Save size={14} />
-              {cateringScheduleSaving ? 'Saving…' : 'Save pre-order schedule'}
-            </button>
-            <button type="button" style={S.btnSecondary} onClick={() => void clearCateringSchedule()} disabled={cateringScheduleSaving}>
-              Clear schedule
-            </button>
-          </div>
-        </div>
-
-        <div style={S.card} data-testid="catering-events-settings">
-          <p style={S.sectionTitle}>Notifications & lead time</p>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
-            Appoint handlers via Roles & Permissions → <code>events.manage</code>.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={S.label}>Closed message</label>
-              <input
-                style={S.input}
-                value={cateringClosedMessage}
-                onChange={(e) => setCateringClosedMessage(e.target.value)}
-                placeholder="Shown when pre-order is closed"
-              />
-            </div>
-            <div>
-              <label style={S.label}>Notify phone (fallback)</label>
-              <input
-                style={S.input}
-                value={cateringNotifyPhone}
-                onChange={(e) => setCateringNotifyPhone(e.target.value)}
-                placeholder="7XXXXXX"
-              />
-            </div>
-            <div>
-              <label style={S.label}>Notify email (fallback)</label>
-              <input
-                style={S.input}
-                type="email"
-                value={cateringNotifyEmail}
-                onChange={(e) => setCateringNotifyEmail(e.target.value)}
-                placeholder="events@…"
-              />
-            </div>
-            <div>
-              <label style={S.label}>Min lead hours</label>
-              <input
-                style={S.input}
-                type="number"
-                min={0}
-                max={720}
-                value={cateringMinLeadHours}
-                onChange={(e) => setCateringMinLeadHours(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={S.label}>Quote valid (days)</label>
-              <input
-                style={S.input}
-                type="number"
-                min={1}
-                max={60}
-                value={cateringQuoteValidDays}
-                onChange={(e) => setCateringQuoteValidDays(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={S.label}>Quote cutoff before event (hours)</label>
-              <input
-                style={S.input}
-                type="number"
-                min={0}
-                max={168}
-                value={cateringQuoteMinHours}
-                onChange={(e) => setCateringQuoteMinHours(e.target.value)}
-              />
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44 }}>
-              <input
-                type="checkbox"
-                data-testid="catering-reminder-toggle"
-                checked={cateringReminderEnabled}
-                onChange={(e) => setCateringReminderEnabled(e.target.checked)}
-              />
-              Day-before event reminders
-            </label>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <button type="button" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving}>
-              <Save size={14} />
-              {cateringSaving ? 'Saving…' : 'Save catering settings'}
-            </button>
-          </div>
-        </div>
-          </>
-        </div>
-      </PageShell>
-    );
-  }
-
   const statusChips = [
     {
       id: 'online',
@@ -882,7 +566,7 @@ export default function OnlineOrderingPage() {
 
   return (
     <PageShell>
-    <div style={{ padding: '1.5rem', maxWidth: 720 }}>
+    <div className="ordering-page">
       <PageHeader section="Manage"
         title="Ordering Control Center"
         subtitle="One place for online, delivery, pre-order, and feature gates"
@@ -891,14 +575,6 @@ export default function OnlineOrderingPage() {
 
       <StatusChipStrip chips={statusChips} />
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: '#F5F0EB', borderRadius: 10, padding: 4, width: 'fit-content', flexWrap: 'wrap' }}>
-        {PAGE_SECTIONS.map(({ id, label }) => (
-          <button key={id} type="button" style={sectionTabStyle(section === id)} onClick={() => setSection(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
-
       {toastBanner}
 
       {section === 'channels' && (<>
@@ -906,7 +582,7 @@ export default function OnlineOrderingPage() {
         <p style={{ color: '#9C8575', fontSize: 14, marginBottom: 16 }}>Loading online channel…</p>
       )}
       {error && (
-        <div style={S.card}>
+        <div className="oc-card" style={S.card}>
           <p style={{ color: 'var(--color-danger-strong)', fontSize: 14, margin: 0 }}>{error}</p>
           <button type="button" style={{ ...S.btnSecondary, marginTop: 12 }} onClick={load}>
             <RefreshCw size={13} /> Retry
@@ -914,66 +590,41 @@ export default function OnlineOrderingPage() {
         </div>
       )}
       {status && (<>
-      <div style={S.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', marginBottom: 6 }}>
-              Online channel status
-            </div>
-            <span style={status.open ? S.statusOpen : S.statusClosed}>
-              {status.open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-              {status.open ? 'Accepting online orders' : 'Online ordering closed'}
-            </span>
-            {!status.open && status.reason && (
-              <p style={S.reasonNote}>
-                Reason: {REASON_LABELS[status.reason] ?? status.reason}
-              </p>
-            )}
-          </div>
-          <button
-            style={{ ...S.btnSecondary, fontSize: 12, padding: '6px 12px' }}
-            onClick={load}
-            type="button"
-          >
-            <RefreshCw size={13} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      <div style={S.card}>
-        <p style={S.sectionTitle}>Master Switch</p>
-        <MasterSwitchRow
-          on={status.master_switch}
-          toggling={toggling}
-          titleOn="Online ordering is ON"
-          titleOff="Online ordering is OFF"
-          helpOn={<>Customers can place pickup orders online. Delivery also needs Delivery to be on — open the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab above.</>}
-          helpOff="All online pickup/delivery orders are blocked. POS is unaffected."
-          onToggle={() => void handleToggle()}
-        />
-      </div>
-
-      <div style={S.card}>
-        <p style={S.sectionTitle}>Force-open Override</p>
-        <ForceOpenOverride
-          help="Force the online channel open until a specific time, ignoring the switch and schedule. Useful for promotions outside normal hours."
-          value={overrideUntil}
-          onChange={setOverrideUntil}
-          activeUntil={status.override_until}
-          saving={savingOverride}
-          onSet={() => void handleSetOverride()}
-          onClear={() => void handleClearOverride()}
-        />
-      </div>
+      <GateStatusCard
+        open={status.open}
+        openText="Accepting online orders"
+        closedText="Online ordering closed"
+        reason={status.reason}
+        reasonLabels={REASON_LABELS}
+        onRefresh={load}
+        switchRow={{
+          on: status.master_switch,
+          toggling,
+          titleOn: 'Online ordering is ON',
+          titleOff: 'Online ordering is OFF',
+          helpOn: <>Customers can place pickup orders online. Delivery also needs Delivery to be on — open the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab above.</>,
+          helpOff: 'All online pickup/delivery orders are blocked. POS is unaffected.',
+          onToggle: () => void handleToggle(),
+        }}
+        override={{
+          value: overrideUntil,
+          onChange: setOverrideUntil,
+          activeUntil: status.override_until,
+          saving: savingOverride,
+          onSet: () => void handleSetOverride(),
+          onClear: () => void handleClearOverride(),
+          help: 'Force the online channel open until a specific time, ignoring the switch and schedule. Useful for promotions outside normal hours.',
+        }}
+        testId="online-channel-gate"
+      />
 
       {/* Daily Schedule Editor */}
-      <div style={S.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '1rem' }}>
+      <div className="oc-card" style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '0.5rem' }}>
           <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Daily Schedule</p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(true)}>All open</button>
-            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(false)}>All closed</button>
+            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, true))}>All open</button>
+            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, false))}>All closed</button>
           </div>
         </div>
         <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
@@ -983,73 +634,18 @@ export default function OnlineOrderingPage() {
         {scheduleLoading ? (
           <p style={{ color: '#9C8575', fontSize: 13 }}>Loading schedule…</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {DAYS.map(({ key, label }) => {
-              const day = schedule[key];
-              return (
-                <div key={key} style={{
-                  padding: '10px 14px', borderRadius: 10,
-                  background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                  border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
-                  opacity: day.enabled ? 1 : 0.65,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
-                    <button
-                      style={S.toggleTrack(day.enabled)}
-                      onClick={() => toggleDayEnabled(key)}
-                      role="switch" aria-checked={day.enabled} aria-label={label}
-                    >
-                      <span style={S.toggleThumb(day.enabled)} />
-                    </button>
-                    <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
-                    {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
-                  </div>
-
-                  {day.enabled && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 50 }}>
-                      {day.windows.map((win, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Open</label>
-                            <input type="time" value={win.open}
-                              onChange={(e) => updateWindow(key, idx, 'open', e.target.value)}
-                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Close</label>
-                            <input type="time" value={win.close}
-                              onChange={(e) => updateWindow(key, idx, 'close', e.target.value)}
-                              style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                          </div>
-                          {day.windows.length > 1 && (
-                            <button onClick={() => removeWindow(key, idx)}
-                              aria-label={`Remove window ${idx + 1} from ${key}`}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
-                              title="Remove this window">×</button>
-                          )}
-                        </div>
-                      ))}
-                      <button onClick={() => addWindow(key)}
-                        style={{ alignSelf: 'flex-start', fontSize: 12, color: '#7B5E3A', background: 'none', border: '1px dashed #C2A87A', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', marginTop: 2 }}>
-                        + Add window
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <ScheduleEditor schedule={schedule} onChange={setSchedule} />
         )}
 
         <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
+          <button className="oc-btn-block" style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
             <Save size={14} />
             {scheduleSaving ? 'Saving…' : 'Save Schedule'}
           </button>
-          <button type="button" style={S.btnSecondary} onClick={() => void applyRamadanPreset()}>
+          <button type="button" className="oc-btn-block" style={S.btnSecondary} onClick={() => void applyRamadanPreset()}>
             Apply Ramadan preset (business hours + 5pm–1am online)
           </button>
-          <button type="button" style={S.btnSecondary} onClick={() => void applyEidPreset()}>
+          <button type="button" className="oc-btn-block" style={S.btnSecondary} onClick={() => void applyEidPreset()}>
             Apply Eid preset (10am–11pm)
           </button>
         </div>
@@ -1059,7 +655,7 @@ export default function OnlineOrderingPage() {
       </>)}
 
       {section === 'features' && (<>
-      <div style={S.card} data-testid="order-for-tomorrow-cutoff">
+      <div className="oc-card" style={S.card} data-testid="order-for-tomorrow-cutoff">
         <p style={S.sectionTitle}>Collect tomorrow — cutoff time</p>
         <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           After this time, “tomorrow” at checkout means the day after. Before it, tomorrow means the next calendar day.
@@ -1094,6 +690,9 @@ export default function OnlineOrderingPage() {
       </div>
 
       <p style={{ ...S.sectionTitle, marginTop: '0.5rem' }}>Feature switches &amp; schedules</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Tap a feature to edit its weekly schedule or force it open.
+      </p>
       {!featureGates && (
         <p style={{ color: '#9C8575', fontSize: 13 }}>Loading features…</p>
       )}
@@ -1112,7 +711,7 @@ export default function OnlineOrderingPage() {
       </>)}
 
       {section === 'slots-fees' && (<>
-<div style={S.card}>
+      <div className="oc-card" style={S.card}>
           <p style={S.sectionTitle}>Pickup time slots</p>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
             When enabled, online pickup checkout offers timed windows. Capacity limits how many
@@ -1153,20 +752,20 @@ export default function OnlineOrderingPage() {
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <button type="button" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving}>
+            <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void savePickupSlots()} disabled={pickupSaving}>
               <Save size={14} />
               {pickupSaving ? 'Saving…' : 'Save pickup slots'}
             </button>
           </div>
         </div>
       {feeError && (
-        <div style={S.card}>
+        <div className="oc-card" style={S.card}>
           <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, margin: 0 }}>{feeError}</p>
         </div>
       )}
 
       {feeSettings && (
-        <div style={S.card}>
+        <div className="oc-card" style={S.card}>
           <p style={S.sectionTitle}>Order fees & limits</p>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
             Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
@@ -1194,23 +793,166 @@ export default function OnlineOrderingPage() {
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <button style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+            <button className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
               {feeSaving ? 'Saving…' : 'Save fees & limits'}
             </button>
           </div>
         </div>
       )}
 
-      <div style={S.card}>
+      <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Service charge</p>
         <ServiceChargeSettings />
       </div>
 
-      <div style={S.card}>
+      <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Payment commission (BML / card)</p>
         <PaymentCommissionSettings />
       </div>
 
+      </>)}
+
+      {section === 'events' && (<>
+      <GateStatusCard
+        open={Boolean(cateringStatus?.open)}
+        openText="Accepting pre-orders"
+        closedText="Not accepting pre-orders"
+        reason={cateringStatus?.reason}
+        reasonLabels={REASON_LABELS}
+        onRefresh={loadCateringGate}
+        switchRow={{
+          on: Boolean(cateringStatus?.master_switch),
+          toggling: cateringToggling,
+          titleOn: 'Pre-order is ON',
+          titleOff: 'Pre-order is OFF',
+          helpOn: 'Customers can submit new event / pre-order requests.',
+          helpOff: 'New customer requests are blocked. Existing quotes and admin tools stay available.',
+          onToggle: () => void handleCateringToggle(),
+        }}
+        override={{
+          value: cateringOverrideUntil,
+          onChange: setCateringOverrideUntil,
+          activeUntil: cateringStatus?.override_until,
+          saving: cateringSavingOverride,
+          onSet: () => void handleCateringSetOverride(),
+          onClear: () => void handleCateringClearOverride(),
+          help: 'Force pre-order open until a specific time, ignoring the switch and schedule.',
+        }}
+        testId="catering-preorder-gate"
+      />
+
+      <div className="oc-card" style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '0.5rem' }}>
+          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Pre-order schedule</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setCateringSchedule((prev) => withAllDays(prev, true))}>All open</button>
+            <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setCateringSchedule((prev) => withAllDays(prev, false))}>All closed</button>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
+          Optional. Leave cleared for always-open when the master switch is ON. Independent from online ordering hours.
+        </p>
+        <ScheduleEditor
+          schedule={cateringSchedule}
+          onChange={setCateringSchedule}
+          newWindow={{ open: '10:00', close: '18:00' }}
+        />
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveCateringSchedule()} disabled={cateringScheduleSaving}>
+            <Save size={14} />
+            {cateringScheduleSaving ? 'Saving…' : 'Save pre-order schedule'}
+          </button>
+          <button type="button" className="oc-btn-block" style={S.btnSecondary} onClick={() => void clearCateringSchedule()} disabled={cateringScheduleSaving}>
+            Clear schedule
+          </button>
+        </div>
+      </div>
+
+      <div className="oc-card" style={S.card} data-testid="catering-events-settings">
+        <p style={S.sectionTitle}>Notifications & lead time</p>
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+          Notify fallbacks when no event staff are online, lead time for new requests, and quote link validity.
+          Appoint handlers via Roles & Permissions → <code>events.manage</code>.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={S.label}>Closed message</label>
+            <input
+              style={S.input}
+              value={cateringClosedMessage}
+              onChange={(e) => setCateringClosedMessage(e.target.value)}
+              placeholder="Shown when pre-order is closed"
+            />
+          </div>
+          <div>
+            <label style={S.label}>Notify phone (fallback)</label>
+            <input
+              style={S.input}
+              value={cateringNotifyPhone}
+              onChange={(e) => setCateringNotifyPhone(e.target.value)}
+              placeholder="7XXXXXX"
+            />
+          </div>
+          <div>
+            <label style={S.label}>Notify email (fallback)</label>
+            <input
+              style={S.input}
+              type="email"
+              value={cateringNotifyEmail}
+              onChange={(e) => setCateringNotifyEmail(e.target.value)}
+              placeholder="events@…"
+            />
+          </div>
+          <div>
+            <label style={S.label}>Min lead hours</label>
+            <input
+              style={S.input}
+              type="number"
+              min={0}
+              max={720}
+              value={cateringMinLeadHours}
+              onChange={(e) => setCateringMinLeadHours(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={S.label}>Quote valid (days)</label>
+            <input
+              style={S.input}
+              type="number"
+              min={1}
+              max={60}
+              value={cateringQuoteValidDays}
+              onChange={(e) => setCateringQuoteValidDays(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={S.label}>Quote cutoff before event (hours)</label>
+            <input
+              style={S.input}
+              type="number"
+              min={0}
+              max={168}
+              value={cateringQuoteMinHours}
+              onChange={(e) => setCateringQuoteMinHours(e.target.value)}
+            />
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, minHeight: 44 }}>
+            <input
+              type="checkbox"
+              data-testid="catering-reminder-toggle"
+              checked={cateringReminderEnabled}
+              onChange={(e) => setCateringReminderEnabled(e.target.checked)}
+            />
+            Day-before event reminders
+          </label>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveCateringSettings()} disabled={cateringSaving}>
+            <Save size={14} />
+            {cateringSaving ? 'Saving…' : 'Save catering settings'}
+          </button>
+        </div>
+      </div>
       </>)}
 
     </div>

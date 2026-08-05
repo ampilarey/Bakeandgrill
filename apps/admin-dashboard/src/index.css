@@ -517,6 +517,10 @@ a { text-decoration: none; color: inherit; }
   button.icon-button {
     min-height: 40px;
   }
+  /* Toggle switches are fixed-size 48×28 pills — stretching them to 44px breaks the thumb */
+  button[role="switch"] {
+    min-height: 0;
+  }
 
   /* Inputs/selects/textareas: 16px font prevents iOS zoom-on-focus; 44px touch height */
   input, select, textarea {
@@ -874,6 +878,94 @@ a { text-decoration: none; color: inherit; }
   .svc-avail-page .stat-grid > div {
     padding: 12px !important;
     gap: 6px !important;
+  }
+}
+
+/* ── Ordering Control — flow layout (online, delivery, pre-order) ── */
+.ordering-page {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Single tab row — scrolls sideways instead of wrapping */
+.oc-tabbar {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: var(--color-border-light);
+  border-radius: 12px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.oc-tabbar::-webkit-scrollbar { display: none; }
+.oc-tabbar > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Status chips — one compact row, scrolls sideways */
+.oc-chip-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.oc-chip-strip::-webkit-scrollbar { display: none; }
+.oc-chip-strip > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  /* Subtitle is decorative — reclaim the vertical space on phones */
+  .ordering-page .page-header-subtitle { display: none !important; }
+  .ordering-page .page-header { margin-bottom: 10px !important; }
+
+  /* Full-bleed strips: use the whole screen width inside the 16px shell padding */
+  .ordering-page .oc-tabbar,
+  .ordering-page .oc-chip-strip {
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    border-radius: 0 !important;
+  }
+
+  /* Cards: compact padding, tighter stacking (beats inline 1.5rem) */
+  .ordering-page .oc-card {
+    padding: 14px 12px !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Schedule day rows: drop the deep indent, let time inputs flex */
+  .ordering-page .oc-day-windows { padding-left: 0 !important; }
+  .ordering-page .oc-time-field {
+    flex: 1 1 40% !important;
+    min-width: 0 !important;
+  }
+  .ordering-page .oc-time-field input[type="time"] {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  .ordering-page .oc-window-row > input[type="time"] {
+    flex: 1 1 40% !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Primary action buttons stretch full width on phones */
+  .ordering-page .oc-btn-block {
+    width: 100% !important;
+    justify-content: center !important;
   }
 }
 

@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { Lock, Unlock } from 'lucide-react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, RefreshCw, Unlock } from 'lucide-react';
 
 export const DAYS = [
   { key: 'mon', label: 'Monday' },
@@ -262,18 +262,10 @@ export type StatusChip = {
   onClick?: () => void;
 };
 
-/** Compact open/closed strip for the Ordering Control hub. */
+/** Compact open/closed strip for the Ordering Control hub — one scrollable row. */
 export function StatusChipStrip({ chips }: { chips: StatusChip[] }) {
   return (
-    <div
-      data-testid="ordering-status-overview"
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: '1.25rem',
-      }}
-    >
+    <div className="oc-chip-strip" data-testid="ordering-status-overview">
       {chips.map((chip) => {
         const unknown = chip.open === null;
         const style: CSSProperties = unknown
@@ -289,26 +281,27 @@ export function StatusChipStrip({ chips }: { chips: StatusChip[] }) {
               cursor: chip.onClick ? 'pointer' : 'default',
             };
         const Tag = chip.onClick ? 'button' : 'span';
+        const stateLabel = unknown ? 'loading' : chip.open ? 'open' : 'closed';
         return (
           <Tag
             key={chip.id}
             type={chip.onClick ? 'button' : undefined}
             onClick={chip.onClick}
-            style={style}
+            style={{ ...style, padding: '4px 12px', minHeight: 32 }}
+            aria-label={`${chip.label}: ${stateLabel}`}
+            title={`${chip.label}: ${stateLabel}`}
             data-testid={`status-chip-${chip.id}`}
           >
             <span
               style={{
-                width: 7,
-                height: 7,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
                 background: unknown ? '#C4B5A5' : chip.open ? '#10B981' : '#EF4444',
                 flexShrink: 0,
               }}
             />
             {chip.label}
-            {' · '}
-            {unknown ? '…' : chip.open ? 'Open' : 'Closed'}
           </Tag>
         );
       })}
@@ -353,6 +346,288 @@ export function MasterSwitchRow({
           {on ? helpOn : helpOff}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Divider-topped expandable row used to tuck advanced controls out of the way. */
+export function Collapsible({
+  title,
+  children,
+  defaultOpen = false,
+  testId,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  testId?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ borderTop: '1px solid var(--color-border)', marginTop: 14 }} data-testid={testId}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '10px 0',
+          minHeight: 44,
+          fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{title}</span>
+        <ChevronDown
+          size={16}
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', color: '#9C8575', flexShrink: 0 }}
+        />
+      </button>
+      {open ? <div style={{ paddingBottom: 6 }}>{children}</div> : null}
+    </div>
+  );
+}
+
+type GateStatusCardProps = {
+  open: boolean;
+  openText: string;
+  closedText: string;
+  reason?: string | null;
+  reasonLabels?: Record<string, string>;
+  extraStatus?: ReactNode;
+  onRefresh: () => void;
+  switchRow: {
+    on: boolean;
+    toggling: boolean;
+    titleOn: string;
+    titleOff: string;
+    helpOn: ReactNode;
+    helpOff: ReactNode;
+    onToggle: () => void;
+  };
+  override: {
+    value: string;
+    onChange: (v: string) => void;
+    activeUntil?: string | null;
+    saving?: boolean;
+    onSet: () => void;
+    onClear: () => void;
+    help?: string;
+  };
+  testId?: string;
+};
+
+/**
+ * One card that answers "is it open, why, and how do I change that":
+ * status pill + refresh, master switch, and a tucked-away force-open override.
+ */
+export function GateStatusCard({
+  open,
+  openText,
+  closedText,
+  reason,
+  reasonLabels = {},
+  extraStatus,
+  onRefresh,
+  switchRow,
+  override,
+  testId,
+}: GateStatusCardProps) {
+  return (
+    <div className="oc-card" style={S.card} data-testid={testId}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <span style={open ? S.statusOpen : S.statusClosed}>
+            {open ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+            {open ? openText : closedText}
+          </span>
+          {!open && reason ? (
+            <p style={S.reasonNote}>Reason: {reasonLabels[reason] ?? reason}</p>
+          ) : null}
+          {override.activeUntil ? (
+            <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
+              Force-open until {new Date(override.activeUntil).toLocaleString()}
+            </p>
+          ) : null}
+          {extraStatus}
+        </div>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onRefresh}
+          aria-label="Refresh status"
+          title="Refresh status"
+          style={{
+            ...S.btnSecondary,
+            padding: 8,
+            minHeight: 36,
+            minWidth: 36,
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <RefreshCw size={14} />
+        </button>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <MasterSwitchRow {...switchRow} />
+      </div>
+
+      <Collapsible
+        title="Force open temporarily"
+        defaultOpen={Boolean(override.activeUntil)}
+      >
+        <ForceOpenOverride
+          help={override.help}
+          value={override.value}
+          onChange={override.onChange}
+          activeUntil={override.activeUntil}
+          saving={override.saving}
+          onSet={override.onSet}
+          onClear={override.onClear}
+        />
+      </Collapsible>
+    </div>
+  );
+}
+
+/** Immutable helper — returns a copy of the schedule with every day toggled. */
+export function withAllDays(schedule: Schedule, enabled: boolean): Schedule {
+  return Object.fromEntries(
+    DAYS.map(({ key }) => [key, { ...schedule[key], enabled }]),
+  ) as Schedule;
+}
+
+/**
+ * Shared weekly schedule editor (day toggles + time windows).
+ * Used by online ordering, pre-order, and delivery so all three look and
+ * behave identically — and pick up the mobile layout classes in one place.
+ */
+export function ScheduleEditor({
+  schedule,
+  onChange,
+  newWindow = { open: '18:00', close: '22:00' },
+}: {
+  schedule: Schedule;
+  onChange: (next: Schedule) => void;
+  newWindow?: TimeWindow;
+}) {
+  const setDay = (day: DayKey, d: DaySchedule) => onChange({ ...schedule, [day]: d });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {DAYS.map(({ key, label }) => {
+        const day = schedule[key];
+        return (
+          <div
+            key={key}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: day.enabled ? '#FDFAF7' : '#F5F0EB',
+              border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
+              opacity: day.enabled ? 1 : 0.65,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
+              <button
+                type="button"
+                style={S.toggleTrack(day.enabled)}
+                onClick={() => setDay(key, { ...day, enabled: !day.enabled })}
+                role="switch"
+                aria-checked={day.enabled}
+                aria-label={label}
+              >
+                <span style={S.toggleThumb(day.enabled)} />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
+              {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
+            </div>
+
+            {day.enabled && (
+              <div
+                className="oc-day-windows"
+                style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 58 }}
+              >
+                {day.windows.map((win, idx) => (
+                  <div
+                    key={idx}
+                    className="oc-window-row"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+                  >
+                    <div className="oc-time-field" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <label style={{ fontSize: 12, color: '#9C8575', width: 36, flexShrink: 0 }}>Open</label>
+                      <input
+                        type="time"
+                        value={win.open}
+                        onChange={(e) => setDay(key, {
+                          ...day,
+                          windows: day.windows.map((w, i) => (i === idx ? { ...w, open: e.target.value } : w)),
+                        })}
+                        style={{ ...S.input, width: 110, padding: '5px 8px' }}
+                      />
+                    </div>
+                    <div className="oc-time-field" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <label style={{ fontSize: 12, color: '#9C8575', width: 36, flexShrink: 0 }}>Close</label>
+                      <input
+                        type="time"
+                        value={win.close}
+                        onChange={(e) => setDay(key, {
+                          ...day,
+                          windows: day.windows.map((w, i) => (i === idx ? { ...w, close: e.target.value } : w)),
+                        })}
+                        style={{ ...S.input, width: 110, padding: '5px 8px' }}
+                      />
+                    </div>
+                    {day.windows.length > 1 && (
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => setDay(key, { ...day, windows: day.windows.filter((_, i) => i !== idx) })}
+                        aria-label={`Remove window ${idx + 1} from ${label}`}
+                        title="Remove this window"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#C0392B',
+                          fontSize: 18,
+                          lineHeight: 1,
+                          padding: '8px 10px',
+                        }}
+                      >×</button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setDay(key, { ...day, windows: [...day.windows, { ...newWindow }] })}
+                  style={{
+                    alignSelf: 'flex-start',
+                    fontSize: 12,
+                    color: '#7B5E3A',
+                    background: 'none',
+                    border: '1px dashed #C2A87A',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    marginTop: 2,
+                    minHeight: 36,
+                  }}
+                >
+                  + Add window
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

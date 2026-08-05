@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Power, RefreshCw, Lock, Unlock, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
@@ -17,139 +17,22 @@ import {
   type DeliveryFeeSettings,
   type OpsAlertsSettings,
 } from '../api';
+import {
+  DAYS,
+  GateStatusCard,
+  S,
+  ScheduleEditor,
+  StatusChipStrip,
+  parseSchedule,
+  safeIsoFromLocal,
+  toDatetimeLocal,
+  withAllDays,
+  type Schedule,
+} from './OnlineOrderingPage/orderingControlUi';
 
-const DAYS = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-] as const;
-
-type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
-type TimeWindow = { open: string; close: string };
-type DaySchedule = { enabled: boolean; windows: TimeWindow[] };
-type Schedule = Record<DayKey, DaySchedule>;
-
-const DEFAULT_SCHEDULE: Schedule = Object.fromEntries(
+const DEFAULT_DELIVERY_SCHEDULE: Schedule = Object.fromEntries(
   DAYS.map(({ key }) => [key, { enabled: true, windows: [{ open: '11:00', close: '22:00' }] }]),
 ) as Schedule;
-
-function hydrateSchedule(raw: unknown): Schedule {
-  const base = structuredClone(DEFAULT_SCHEDULE);
-  if (!raw || typeof raw !== 'object') return base;
-  const obj = raw as Record<string, unknown>;
-  for (const { key } of DAYS) {
-    const v = obj[key];
-    if (!v || typeof v !== 'object') continue;
-    if (Array.isArray(v)) {
-      const windows = v
-        .filter((w): w is TimeWindow => !!w && typeof w === 'object' && 'open' in w && 'close' in w)
-        .map((w) => ({ open: String(w.open), close: String(w.close) }));
-      if (windows.length) base[key] = { enabled: true, windows };
-      continue;
-    }
-    const day = v as Record<string, unknown>;
-    if (Array.isArray(day.windows)) {
-      const windows = day.windows
-        .filter((w): w is TimeWindow => !!w && typeof w === 'object' && 'open' in w && 'close' in w)
-        .map((w) => ({ open: String(w.open), close: String(w.close) }));
-      base[key] = {
-        enabled: day.enabled !== false,
-        windows: windows.length ? windows : [{ open: '11:00', close: '22:00' }],
-      };
-    } else if (day.open && day.close) {
-      base[key] = {
-        enabled: day.enabled !== false,
-        windows: [{ open: String(day.open), close: String(day.close) }],
-      };
-    }
-  }
-  return base;
-}
-
-const S = {
-  card: {
-    background: '#FDFAF7',
-    border: '1px solid var(--color-border)',
-    borderRadius: 16,
-    padding: '1.5rem',
-    marginBottom: '1.25rem',
-  } as React.CSSProperties,
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: 'var(--color-text-secondary)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
-    marginBottom: '1rem',
-  },
-  input: {
-    width: '100%',
-    padding: '9px 12px',
-    border: '1.5px solid var(--color-border)',
-    borderRadius: 10,
-    fontSize: 13,
-    fontFamily: 'inherit',
-    boxSizing: 'border-box' as const,
-  },
-  label: {
-    display: 'block' as const,
-    fontSize: 13,
-    fontWeight: 600 as const,
-    color: 'var(--color-text-secondary)',
-    marginBottom: 4,
-  },
-  btnPrimary: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  btnSecondary: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10,
-    border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
-    color: '#4A3728', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  btnDanger: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 16px', borderRadius: 10, border: 'none',
-    background: 'var(--color-danger)', color: '#fff', fontSize: 13, fontWeight: 600,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  statusOpen: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: '#D1FAE5', color: '#065F46',
-    border: '1px solid #A7F3D0',
-    borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
-  } as React.CSSProperties,
-  statusClosed: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)',
-    border: '1px solid #FECACA',
-    borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
-  } as React.CSSProperties,
-  reasonNote: {
-    fontSize: 12, color: '#9C8575', marginTop: 6,
-  },
-  toggleTrack: (on: boolean): React.CSSProperties => ({
-    display: 'inline-block', position: 'relative',
-    width: 48, height: 26, borderRadius: 13,
-    background: on ? 'var(--color-primary)' : '#D1C9BE',
-    transition: 'background 0.2s',
-    cursor: 'pointer', flexShrink: 0,
-  }),
-  toggleThumb: (on: boolean): React.CSSProperties => ({
-    position: 'absolute', top: 3, left: on ? 26 : 3,
-    width: 20, height: 20, borderRadius: '50%',
-    background: 'var(--color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-    transition: 'left 0.2s',
-  }),
-};
 
 type ZoneFeeRow = { name: string; fee: string };
 
@@ -164,7 +47,7 @@ export default function DeliverySettingsPage() {
   const [toast, setToast]           = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [error, setError]           = useState('');
 
-  const [schedule, setSchedule]         = useState<Schedule>(DEFAULT_SCHEDULE);
+  const [schedule, setSchedule]         = useState<Schedule>(DEFAULT_DELIVERY_SCHEDULE);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleSaving, setScheduleSaving]   = useState(false);
   const [maxActiveOrders, setMaxActiveOrders] = useState('0');
@@ -203,13 +86,9 @@ export default function DeliverySettingsPage() {
         setScheduleEnabled(s.schedule_active);
         setMaxActiveOrders(String(s.max_active_orders ?? 0));
         if (s.delivery_schedule) {
-          setSchedule(hydrateSchedule(s.delivery_schedule));
+          setSchedule(parseSchedule(JSON.stringify(s.delivery_schedule)));
         }
-        if (s.override_until) {
-          const d = new Date(s.override_until);
-          const pad = (n: number) => String(n).padStart(2, '0');
-          setOverrideUntil(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-        }
+        setOverrideUntil(toDatetimeLocal(s.override_until));
       })
       .catch(() => setError('Failed to load delivery status.'))
       .finally(() => setLoading(false));
@@ -247,17 +126,16 @@ export default function DeliverySettingsPage() {
   };
 
   const handleSetOverride = async () => {
-    if (!overrideUntil) {
-      showToast('Please pick a date and time first.', 'err');
+    const isoVal = safeIsoFromLocal(overrideUntil);
+    if (!isoVal) {
+      showToast('Please pick a valid date and time first.', 'err');
       return;
     }
     setSavingOverride(true);
     try {
-      const isoVal = new Date(overrideUntil).toISOString();
       const res = await setDeliveryOverride(isoVal);
       setStatus(res.delivery_status);
-      showToast(isoVal ? 'Force-open override set.' : 'Override cleared.');
-      load();
+      showToast('Force-open override set.');
     } catch {
       showToast('Failed to save override.', 'err');
     } finally {
@@ -292,37 +170,6 @@ export default function DeliverySettingsPage() {
     } finally {
       setCapacitySaving(false);
     }
-  };
-
-  const toggleDayEnabled = (day: DayKey) => {
-    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], enabled: !prev[day].enabled } }));
-  };
-
-  const updateWindow = (day: DayKey, idx: number, field: 'open' | 'close', value: string) => {
-    setSchedule((prev) => {
-      const windows = prev[day].windows.map((w, i) => (i === idx ? { ...w, [field]: value } : w));
-      return { ...prev, [day]: { ...prev[day], windows } };
-    });
-  };
-
-  const addWindow = (day: DayKey) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: [...prev[day].windows, { open: '18:00', close: '22:00' }] },
-    }));
-  };
-
-  const removeWindow = (day: DayKey, idx: number) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], windows: prev[day].windows.filter((_, i) => i !== idx) },
-    }));
-  };
-
-  const setAllDays = (enabled: boolean) => {
-    setSchedule((prev) => Object.fromEntries(
-      DAYS.map(({ key }) => [key, { ...prev[key], enabled }]),
-    ) as Schedule);
   };
 
   const saveFeeSettings = async () => {
@@ -367,11 +214,28 @@ export default function DeliverySettingsPage() {
     setZoneRows((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const toggleOpsAlert = (key: 'delivery_delay_alert_sms' | 'inventory_reorder_alert_sms') => {
+    if (!opsAlerts || opsSaving) return;
+    void (async () => {
+      setOpsSaving(true);
+      try {
+        const res = await updateOpsAlertsSettings({ [key]: !opsAlerts[key] });
+        setOpsAlerts(res.settings);
+        showToast('Alert settings saved.');
+      } catch {
+        showToast('Failed to save alert settings.', 'err');
+      } finally {
+        setOpsSaving(false);
+      }
+    })();
+  };
+
   if (loading) {
     return (
       <PageShell>
-        <div style={{ padding: '2rem' }}>
-          <PageHeader section="Manage" title="Delivery Settings" />
+        <div className="ordering-page">
+          <PageHeader section="Manage" title="Ordering Control Center" />
+          <OrderingControlTabs />
           <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
         </div>
       </PageShell>
@@ -381,8 +245,9 @@ export default function DeliverySettingsPage() {
   if (error || !status) {
     return (
       <PageShell>
-        <div style={{ padding: '2rem' }}>
-          <PageHeader section="Manage" title="Delivery Settings" />
+        <div className="ordering-page">
+          <PageHeader section="Manage" title="Ordering Control Center" />
+          <OrderingControlTabs />
           <p style={{ color: 'var(--color-danger-strong)', fontSize: 14 }}>{error || 'Status unavailable.'}</p>
         </div>
       </PageShell>
@@ -392,14 +257,30 @@ export default function DeliverySettingsPage() {
   const isOpen = status.delivery_open;
   const overrideActive = status.override_active;
 
+  const deliveryChips = [
+    { id: 'delivery-now', label: 'Delivery', open: isOpen },
+    {
+      id: 'capacity',
+      label: status.capacity_enforced
+        ? `Capacity ${status.active_delivery_orders ?? 0}/${status.max_active_orders}`
+        : 'Capacity unlimited',
+      open: status.capacity_enforced
+        ? (status.active_delivery_orders ?? 0) < (status.max_active_orders ?? 0)
+        : true,
+    },
+    { id: 'zones', label: restrictZones ? 'Listed zones only' : 'All zones', open: true },
+  ];
+
   return (
     <PageShell>
-    <div style={{ padding: '1.5rem', maxWidth: 680 }}>
+    <div className="ordering-page">
       <PageHeader section="Manage"
         title="Ordering Control Center"
         subtitle="Delivery gates, zones, fees, and schedules"
       />
       <OrderingControlTabs />
+
+      <StatusChipStrip chips={deliveryChips} />
 
       {/* Toast */}
       {toast && (
@@ -415,8 +296,93 @@ export default function DeliverySettingsPage() {
         </div>
       )}
 
+      {/* Status + master switch + force-open, merged */}
+      <GateStatusCard
+        open={isOpen}
+        openText="Delivery available"
+        closedText="Delivery unavailable"
+        reason={!isOpen ? status.message : null}
+        extraStatus={!isOpen && status.next_delivery_window ? (
+          <p style={S.reasonNote}>
+            Next window: {new Date(status.next_delivery_window).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          </p>
+        ) : null}
+        onRefresh={load}
+        switchRow={{
+          on: status.accepting_flag,
+          toggling,
+          titleOn: 'Delivery is ON',
+          titleOff: 'Delivery is OFF',
+          helpOn: 'Customers can select delivery at checkout (subject to schedule).',
+          helpOff: 'Delivery is hidden at checkout. Customers can still order for takeaway.',
+          onToggle: () => void handleToggle(),
+        }}
+        override={{
+          value: overrideUntil,
+          onChange: setOverrideUntil,
+          activeUntil: overrideActive ? status.override_until : null,
+          saving: savingOverride,
+          onSet: () => void handleSetOverride(),
+          onClear: () => void handleClearOverride(),
+          help: 'Force delivery open until a specific time, ignoring the master switch and schedule. Useful for special delivery windows outside normal hours.',
+        }}
+        testId="delivery-gate"
+      />
+
+      {/* Daily schedule editor */}
+      <div className="oc-card" style={S.card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '0.75rem' }}>
+          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Delivery Hours Schedule</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              style={S.toggleTrack(scheduleEnabled)}
+              onClick={() => setScheduleEnabled((v) => !v)}
+              role="switch"
+              aria-checked={scheduleEnabled}
+              title={scheduleEnabled ? 'Disable schedule' : 'Enable schedule'}
+            >
+              <span style={S.toggleThumb(scheduleEnabled)} />
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{scheduleEnabled ? 'Schedule on' : 'No schedule (all day)'}</span>
+          </div>
+        </div>
+
+        {scheduleEnabled && (
+          <>
+            <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
+              Delivery will only be available during these windows. Supports multiple windows per day (e.g. lunch + dinner).
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, true))}>All open</button>
+              <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, false))}>All closed</button>
+            </div>
+            <ScheduleEditor schedule={schedule} onChange={setSchedule} />
+          </>
+        )}
+
+        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="oc-btn-block" style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
+            <Save size={14} />
+            {scheduleSaving ? 'Saving…' : 'Save Schedule'}
+          </button>
+          {scheduleEnabled && (
+            <button
+              className="oc-btn-block"
+              style={S.btnSecondary}
+              onClick={() => {
+                setScheduleEnabled(false);
+                void updateDeliverySchedule(null).catch(() => null);
+                showToast('Schedule cleared.');
+              }}
+            >
+              Clear Schedule
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Zones & fees */}
-      <div style={S.card}>
+      <div className="oc-card" style={S.card}>
         <div style={S.sectionTitle}>Zones &amp; Fees</div>
         <p style={{ fontSize: 12, color: '#9C8575', marginTop: -8, marginBottom: 16, lineHeight: 1.5 }}>
           Per-island delivery fees and free-delivery threshold. Online cart progress uses the threshold automatically.
@@ -448,7 +414,7 @@ export default function DeliverySettingsPage() {
               style={S.input}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-              Used at checkout for fee math. Website marketing text (“MVR 200”) is edited separately in Content Hub → delivery threshold. This page is also the Delivery tab under Ordering Control.
+              Used at checkout for fee math. Website marketing text (“MVR 200”) is edited separately in Content Hub → delivery threshold.
             </p>
           </div>
         </div>
@@ -475,8 +441,9 @@ export default function DeliverySettingsPage() {
               <span style={{ fontSize: 12, color: '#9C8575' }}>MVR</span>
               <button
                 type="button"
+                className="icon-button"
                 onClick={() => removeZoneRow(idx)}
-                style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18 }}
+                style={{ background: 'none', border: 'none', color: '#C0392B', cursor: 'pointer', fontSize: 18, padding: '8px 10px' }}
                 aria-label="Remove zone"
               >
                 ×
@@ -487,7 +454,7 @@ export default function DeliverySettingsPage() {
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
           <button type="button" style={S.btnSecondary} onClick={addZoneRow}>+ Add zone</button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4A3728', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4A3728', cursor: 'pointer', minHeight: 44 }}>
             <input
               type="checkbox"
               checked={restrictZones}
@@ -497,44 +464,14 @@ export default function DeliverySettingsPage() {
           </label>
         </div>
 
-        <button type="button" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
+        <button type="button" className="oc-btn-block" style={S.btnPrimary} onClick={() => void saveFeeSettings()} disabled={feeSaving}>
           <Save size={14} />
           {feeSaving ? 'Saving…' : 'Save Zones & Fees'}
         </button>
       </div>
 
-      {/* Status card */}
-      <div style={S.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', marginBottom: 6 }}>Current Status</div>
-            <span style={isOpen ? S.statusOpen : S.statusClosed}>
-              {isOpen ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-              {isOpen ? 'Delivery available' : 'Delivery unavailable'}
-            </span>
-            {!isOpen && status.message && (
-              <p style={S.reasonNote}>Reason: {status.message}</p>
-            )}
-            {overrideActive && status.override_until && (
-              <p style={{ ...S.reasonNote, color: 'var(--color-primary)', fontWeight: 600 }}>
-                ⚡ Force-open override active until {new Date(status.override_until).toLocaleString()}
-              </p>
-            )}
-            {!isOpen && status.next_delivery_window && (
-              <p style={S.reasonNote}>
-                Next window: {new Date(status.next_delivery_window).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-              </p>
-            )}
-          </div>
-          <button style={{ ...S.btnSecondary, fontSize: 12, padding: '6px 12px' }} onClick={load}>
-            <RefreshCw size={13} />
-            Refresh
-          </button>
-        </div>
-      </div>
-
       {/* Capacity */}
-      <div style={S.card}>
+      <div className="oc-card" style={S.card}>
         <p style={S.sectionTitle}>Capacity</p>
         <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
           Limit concurrent open delivery tickets (pending through out for delivery).
@@ -558,199 +495,16 @@ export default function DeliverySettingsPage() {
             {capacitySaving ? 'Saving…' : 'Save capacity'}
           </button>
         </div>
-        {status && (
-          <p style={S.reasonNote}>
-            Currently open: {status.active_delivery_orders ?? 0}
-            {status.capacity_enforced
-              ? ` / max ${status.max_active_orders}`
-              : ' (no limit)'}
-          </p>
-        )}
-      </div>
-
-      {/* Master switch */}
-      <div style={S.card}>
-        <p style={S.sectionTitle}>Master Switch</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <button
-            style={S.toggleTrack(status.accepting_flag)}
-            onClick={handleToggle}
-            disabled={toggling}
-            role="switch"
-            aria-checked={status.accepting_flag}
-            aria-label="Toggle delivery"
-          >
-            <span style={S.toggleThumb(status.accepting_flag)} />
-          </button>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#3D2B1F' }}>
-              {status.accepting_flag ? 'Delivery is ON' : 'Delivery is OFF'}
-            </div>
-            <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2 }}>
-              {status.accepting_flag
-                ? 'Customers can select delivery at checkout (subject to schedule).'
-                : 'Delivery is hidden at checkout. Customers can still order for takeaway.'}
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 14 }}>
-          <button
-            style={status.accepting_flag ? S.btnDanger : S.btnPrimary}
-            onClick={handleToggle}
-            disabled={toggling}
-          >
-            <Power size={14} />
-            {toggling ? 'Updating…' : status.accepting_flag ? 'Turn OFF delivery' : 'Turn ON delivery'}
-          </button>
-        </div>
-      </div>
-
-      {/* Force-open override */}
-      <div style={S.card}>
-        <p style={S.sectionTitle}>Force-open Override</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
-          Force delivery <strong>open</strong> until a specific time, ignoring the master switch and schedule.
-          Useful for special delivery windows outside normal hours. Leave blank to deactivate.
+        <p style={S.reasonNote}>
+          Currently open: {status.active_delivery_orders ?? 0}
+          {status.capacity_enforced
+            ? ` / max ${status.max_active_orders}`
+            : ' (no limit)'}
         </p>
-
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={S.label}>Override until</label>
-            <input
-              type="datetime-local"
-              style={S.input}
-              value={overrideUntil}
-              onChange={(e) => setOverrideUntil(e.target.value)}
-              onInput={(e) => setOverrideUntil((e.target as HTMLInputElement).value)}
-            />
-          </div>
-          <button style={S.btnPrimary} onClick={handleSetOverride} disabled={savingOverride}>
-            <Unlock size={14} />
-            {savingOverride ? 'Saving…' : overrideActive ? 'Update Override' : 'Set Override'}
-          </button>
-          {overrideActive && (
-            <button style={S.btnSecondary} onClick={handleClearOverride} disabled={savingOverride}>
-              <Lock size={14} />
-              Clear
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Daily schedule editor */}
-      <div style={S.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '0.75rem' }}>
-          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Delivery Hours Schedule</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              style={S.toggleTrack(scheduleEnabled)}
-              onClick={() => setScheduleEnabled((v) => !v)}
-              role="switch"
-              aria-checked={scheduleEnabled}
-              title={scheduleEnabled ? 'Disable schedule' : 'Enable schedule'}
-            >
-              <span style={S.toggleThumb(scheduleEnabled)} />
-            </button>
-            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{scheduleEnabled ? 'Schedule on' : 'No schedule (all day)'}</span>
-          </div>
-        </div>
-
-        {scheduleEnabled && (
-          <>
-            <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
-              Delivery will only be available during these windows. Supports multiple windows per day (e.g. lunch + dinner).
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(true)}>All open</button>
-              <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px' }} onClick={() => setAllDays(false)}>All closed</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {DAYS.map(({ key, label }) => {
-                const day = schedule[key];
-                return (
-                  <div key={key} style={{
-                    padding: '10px 14px', borderRadius: 10,
-                    background: day.enabled ? '#FDFAF7' : '#F5F0EB',
-                    border: `1px solid ${day.enabled ? 'var(--color-border)' : '#DDD5CB'}`,
-                    opacity: day.enabled ? 1 : 0.65,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: day.enabled ? 8 : 0 }}>
-                      <button
-                        style={S.toggleTrack(day.enabled)}
-                        onClick={() => toggleDayEnabled(key)}
-                        role="switch"
-                        aria-checked={day.enabled}
-                        aria-label={label}
-                      >
-                        <span style={S.toggleThumb(day.enabled)} />
-                      </button>
-                      <span style={{ width: 88, fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
-                      {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
-                    </div>
-
-                    {day.enabled && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 50 }}>
-                        {day.windows.map((win, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Open</label>
-                              <input type="time" value={win.open}
-                                onChange={(e) => updateWindow(key, idx, 'open', e.target.value)}
-                                style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <label style={{ fontSize: 12, color: '#9C8575', width: 36 }}>Close</label>
-                              <input type="time" value={win.close}
-                                onChange={(e) => updateWindow(key, idx, 'close', e.target.value)}
-                                style={{ ...S.input, width: 110, padding: '5px 8px' }} />
-                            </div>
-                            {day.windows.length > 1 && (
-                              <button
-                                onClick={() => removeWindow(key, idx)}
-                                aria-label={`Remove window ${idx + 1} from ${label}`}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C0392B', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
-                                title="Remove this window"
-                              >×</button>
-                            )}
-                          </div>
-                        ))}
-                        <button
-                          onClick={() => addWindow(key)}
-                          style={{ alignSelf: 'flex-start', fontSize: 12, color: '#7B5E3A', background: 'none', border: '1px dashed #C2A87A', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', marginTop: 2 }}
-                        >
-                          + Add window
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        <div style={{ marginTop: 16 }}>
-          <button style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
-            <Save size={14} />
-            {scheduleSaving ? 'Saving…' : 'Save Schedule'}
-          </button>
-          {scheduleEnabled && (
-            <button
-              style={{ ...S.btnSecondary, marginLeft: 10 }}
-              onClick={() => {
-                setScheduleEnabled(false);
-                void updateDeliverySchedule(null).catch(() => null);
-                showToast('Schedule cleared.');
-              }}
-            >
-              Clear Schedule
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div style={{
+      {/* Operations alerts */}
+      <div className="oc-card" style={{
         padding: '12px 16px', background: 'var(--color-warning-bg)',
         border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
         marginBottom: '1.25rem',
@@ -760,23 +514,7 @@ export default function DeliverySettingsPage() {
           <button
             type="button"
             style={S.toggleTrack(opsAlerts?.delivery_delay_alert_sms ?? false)}
-            onClick={() => {
-              if (!opsAlerts || opsSaving) return;
-              void (async () => {
-                setOpsSaving(true);
-                try {
-                  const res = await updateOpsAlertsSettings({
-                    delivery_delay_alert_sms: !opsAlerts.delivery_delay_alert_sms,
-                  });
-                  setOpsAlerts(res.settings);
-                  showToast('Alert settings saved.');
-                } catch {
-                  showToast('Failed to save alert settings.', 'err');
-                } finally {
-                  setOpsSaving(false);
-                }
-              })();
-            }}
+            onClick={() => toggleOpsAlert('delivery_delay_alert_sms')}
             role="switch"
             aria-checked={opsAlerts?.delivery_delay_alert_sms ?? false}
             aria-label="Delivery delay SMS alert"
@@ -792,23 +530,7 @@ export default function DeliverySettingsPage() {
           <button
             type="button"
             style={S.toggleTrack(opsAlerts?.inventory_reorder_alert_sms ?? false)}
-            onClick={() => {
-              if (!opsAlerts || opsSaving) return;
-              void (async () => {
-                setOpsSaving(true);
-                try {
-                  const res = await updateOpsAlertsSettings({
-                    inventory_reorder_alert_sms: !opsAlerts.inventory_reorder_alert_sms,
-                  });
-                  setOpsAlerts(res.settings);
-                  showToast('Alert settings saved.');
-                } catch {
-                  showToast('Failed to save alert settings.', 'err');
-                } finally {
-                  setOpsSaving(false);
-                }
-              })();
-            }}
+            onClick={() => toggleOpsAlert('inventory_reorder_alert_sms')}
             role="switch"
             aria-checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
             aria-label="Inventory reorder SMS alert"
