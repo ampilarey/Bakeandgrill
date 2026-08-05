@@ -7,8 +7,8 @@ describe('TomorrowOrderingBadge', () => {
     const { container } = render(
       <TomorrowOrderingBadge
         open={null}
-        openLabel="Tomorrow ordering open"
-        closedLabel="Tomorrow ordering closed"
+        openLabel="Order for tomorrow is open"
+        closedLabel="Order for tomorrow is closed"
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -18,26 +18,26 @@ describe('TomorrowOrderingBadge', () => {
     render(
       <TomorrowOrderingBadge
         open
-        openLabel="Tomorrow ordering open"
-        closedLabel="Tomorrow ordering closed"
+        openLabel="Order for tomorrow is open"
+        closedLabel="Order for tomorrow is closed"
       />,
     );
     const badge = screen.getByTestId('tomorrow-ordering-badge');
     expect(badge).toHaveClass('open');
     expect(badge).not.toHaveClass('closed');
-    expect(badge.textContent).toBe('Tomorrow ordering open');
+    expect(badge.textContent).toBe('Order for tomorrow is open');
   });
 
   it('shows closed copy and closed class', () => {
     render(
       <TomorrowOrderingBadge
         open={false}
-        openLabel="Tomorrow ordering open"
-        closedLabel="Tomorrow ordering closed"
+        openLabel="Order for tomorrow is open"
+        closedLabel="Order for tomorrow is closed"
       />,
     );
     const badge = screen.getByTestId('tomorrow-ordering-badge');
     expect(badge).toHaveClass('closed');
-    expect(badge.textContent).toBe('Tomorrow ordering closed');
+    expect(badge.textContent).toBe('Order for tomorrow is closed');
   });
 });
