@@ -20,6 +20,15 @@ const imageSlides: MediaSlide[] = [
   },
 ];
 
+const imageSlidesWithWebp: MediaSlide[] = [
+  {
+    type: 'image',
+    url: 'https://example.com/food.jpg',
+    webpUrl: 'https://example.com/food.webp',
+    alt: 'Food',
+  },
+];
+
 describe('MenuImageSlider', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -98,5 +107,19 @@ describe('MenuImageSlider', () => {
     expect(img.style.width).toBe('100%');
     expect(img.style.height).toBe('100%');
     expect(img.style.objectFit).toBe('cover');
+    // No WebP → no <picture> wrapper (JPEG-only fallback path).
+    expect(container.querySelector('picture')).toBeNull();
+  });
+
+  it('emits picture/source when webpUrl is present and still keeps JPEG img', () => {
+    const { container } = render(
+      <MenuImageSlider slides={imageSlidesWithWebp} alt="Food" />,
+    );
+    const picture = container.querySelector('picture');
+    const source = container.querySelector('source[type="image/webp"]');
+    const img = container.querySelector('img');
+    expect(picture).toBeTruthy();
+    expect(source?.getAttribute('srcset')).toContain('food.webp');
+    expect(img?.getAttribute('src')).toContain('food.jpg');
   });
 });

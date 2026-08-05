@@ -159,10 +159,12 @@ function CategoryFormModal({
             variant="banner"
             value={form.image_url}
             originalValue={form.image_original_url}
-            onChange={({ url, original_url, thumb_url }) => {
+            onChange={({ url, original_url, thumb_url, image_webp_url, thumb_webp_url }) => {
               set('image_url', url);
               set('image_original_url', original_url);
               set('thumb_url', thumb_url ?? '');
+              set('image_webp_url', image_webp_url ?? '');
+              set('thumb_webp_url', thumb_webp_url ?? '');
             }}
           />
           <div
@@ -384,6 +386,8 @@ export function MenuPage() {
             description: m.editingCat.description ?? '', image_url: m.editingCat.image_url ?? '',
             image_original_url: m.editingCat.image_original_url ?? '',
             thumb_url: m.editingCat.thumb_url ?? '',
+            image_webp_url: m.editingCat.image_webp_url ?? '',
+            thumb_webp_url: m.editingCat.thumb_webp_url ?? '',
             sort_order: m.editingCat.sort_order != null ? String(m.editingCat.sort_order) : '',
             is_active: m.editingCat.is_active,
             parent_id: m.editingCat.parent_id != null ? String(m.editingCat.parent_id) : '',

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Rules\MediaUrl;
 use App\Services\MenuImageProcessor;
+use App\Support\ImageCapabilities;
 use App\Support\MediaFileCleaner;
 use Illuminate\Http\Request;
 
@@ -58,9 +59,9 @@ class CategoryController extends Controller
     {
         $data = $request->only([
             'name', 'name_dv', 'description', 'sort_order', 'is_active',
-            'image_url', 'image_original_url', 'thumb_url', 'parent_id',
+            'image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url', 'parent_id',
         ]);
-        foreach (['image_url', 'image_original_url', 'thumb_url'] as $field) {
+        foreach (['image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }
@@ -74,6 +75,8 @@ class CategoryController extends Controller
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -115,9 +118,9 @@ class CategoryController extends Controller
     {
         $data = $request->only([
             'name', 'name_dv', 'description', 'sort_order', 'is_active',
-            'image_url', 'image_original_url', 'thumb_url', 'parent_id',
+            'image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url', 'parent_id',
         ]);
-        foreach (['image_url', 'image_original_url', 'thumb_url'] as $field) {
+        foreach (['image_url', 'image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }
@@ -131,6 +134,8 @@ class CategoryController extends Controller
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'parent_id' => 'nullable|integer|exists:categories,id',
         ])->validate();
 
@@ -154,6 +159,8 @@ class CategoryController extends Controller
         $oldImageUrl = $category->image_url;
         $oldOriginalUrl = $category->image_original_url;
         $oldThumbUrl = $category->thumb_url;
+        $oldImageWebpUrl = $category->getAttribute('image_webp_url');
+        $oldThumbWebpUrl = $category->getAttribute('thumb_webp_url');
 
         $validated = $this->ensureCategoryThumb($validated, $category);
 
@@ -163,6 +170,8 @@ class CategoryController extends Controller
             $category->image_url,
             $category->image_original_url,
             $category->thumb_url,
+            $category->getAttribute('image_webp_url'),
+            $category->getAttribute('thumb_webp_url'),
         ], static fn ($u) => is_string($u) && $u !== ''));
 
         if ($oldImageUrl && $oldImageUrl !== $category->image_url) {
@@ -182,6 +191,20 @@ class CategoryController extends Controller
         if ($oldThumbUrl && $oldThumbUrl !== $category->thumb_url) {
             MediaFileCleaner::deleteIfOwnedAndUnreferenced(
                 $oldThumbUrl,
+                $keep,
+                exceptCategoryId: (int) $category->id,
+            );
+        }
+        if (is_string($oldImageWebpUrl) && $oldImageWebpUrl !== '' && $oldImageWebpUrl !== $category->getAttribute('image_webp_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced(
+                $oldImageWebpUrl,
+                $keep,
+                exceptCategoryId: (int) $category->id,
+            );
+        }
+        if (is_string($oldThumbWebpUrl) && $oldThumbWebpUrl !== '' && $oldThumbWebpUrl !== $category->getAttribute('thumb_webp_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced(
+                $oldThumbWebpUrl,
                 $keep,
                 exceptCategoryId: (int) $category->id,
             );
@@ -220,7 +243,7 @@ class CategoryController extends Controller
     }
 
     /**
-     * When an owned crop is set without thumb_url, generate one via MenuImageProcessor.
+     * When an owned crop is set without thumb/webp sidecars, generate them via MenuImageProcessor.
      *
      * @param array<string, mixed> $validated
      * @return array<string, mixed>
@@ -231,11 +254,14 @@ class CategoryController extends Controller
         $thumbUrl = array_key_exists('thumb_url', $validated)
             ? $validated['thumb_url']
             : $existing?->thumb_url;
+        $imageWebpUrl = array_key_exists('image_webp_url', $validated)
+            ? $validated['image_webp_url']
+            : $existing?->getAttribute('image_webp_url');
+        $thumbWebpUrl = array_key_exists('thumb_webp_url', $validated)
+            ? $validated['thumb_webp_url']
+            : $existing?->getAttribute('thumb_webp_url');
 
         if (!is_string($imageUrl) || $imageUrl === '') {
-            return $validated;
-        }
-        if (is_string($thumbUrl) && $thumbUrl !== '') {
             return $validated;
         }
 
@@ -244,11 +270,40 @@ class CategoryController extends Controller
             return $validated;
         }
 
-        try {
-            $thumbRel = $this->processor->storeThumbnailFromStoragePath($path);
-            $validated['thumb_url'] = '/storage/' . ltrim($thumbRel, '/');
-        } catch (\Throwable) {
-            // Leave thumb_url unset — client can retry or backfill later.
+        $needsThumb = !is_string($thumbUrl) || $thumbUrl === '';
+        if ($needsThumb) {
+            try {
+                $thumbRel = $this->processor->storeThumbnailFromStoragePath($path);
+                $validated['thumb_url'] = '/storage/' . ltrim($thumbRel, '/');
+                $thumbUrl = $validated['thumb_url'];
+            } catch (\Throwable) {
+                // Leave thumb_url unset — client can retry or backfill later.
+            }
+        }
+
+        if ((!is_string($imageWebpUrl) || $imageWebpUrl === '') && ImageCapabilities::supportsWebp()) {
+            try {
+                $webpRel = $this->processor->storeWebpFromStoragePath($path);
+                if ($webpRel !== null) {
+                    $validated['image_webp_url'] = '/storage/' . ltrim($webpRel, '/');
+                }
+            } catch (\Throwable) {
+                // Optional sidecar — JPEG still serves.
+            }
+        }
+
+        $thumbPath = is_string($thumbUrl) && $thumbUrl !== ''
+            ? MediaFileCleaner::storagePathFromUrl($thumbUrl)
+            : null;
+        if ($thumbPath !== null && (!is_string($thumbWebpUrl) || $thumbWebpUrl === '') && ImageCapabilities::supportsWebp()) {
+            try {
+                $thumbWebpRel = $this->processor->storeWebpFromStoragePath($thumbPath, dirname($thumbPath));
+                if ($thumbWebpRel !== null) {
+                    $validated['thumb_webp_url'] = '/storage/' . ltrim($thumbWebpRel, '/');
+                }
+            } catch (\Throwable) {
+                // Optional sidecar.
+            }
         }
 
         return $validated;

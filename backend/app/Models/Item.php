@@ -32,6 +32,8 @@ class Item extends Model
         'image_url',
         'image_original_url',
         'thumb_url',
+        'image_webp_url',
+        'thumb_webp_url',
         'base_price',
         'price_note',
         'packaging_fee',

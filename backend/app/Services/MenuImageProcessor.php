@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\ImageCapabilities;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -52,10 +53,24 @@ class MenuImageProcessor
      */
     public function storeProcessed(UploadedFile $file, string $directory, ?int $width = null, ?int $height = null): string
     {
-        return $this->writeBinary(
-            $this->processToJpeg($file, $width ?? self::WIDTH, $height ?? self::HEIGHT),
-            $directory,
+        return $this->storeProcessedPair($file, $directory, $width, $height)['path'];
+    }
+
+    /**
+     * Store the public crop as JPEG, plus a WebP sibling when the host supports it.
+     *
+     * @return array{path: string, webp_path: string|null}
+     */
+    public function storeProcessedPair(UploadedFile $file, string $directory, ?int $width = null, ?int $height = null): array
+    {
+        $encoded = $this->cropResampleEncoded(
+            $file,
+            $width ?? self::WIDTH,
+            $height ?? self::HEIGHT,
+            self::JPEG_QUALITY,
         );
+
+        return $this->writeEncodedPair($encoded, $directory);
     }
 
     /**
@@ -65,9 +80,25 @@ class MenuImageProcessor
      */
     public function storeThumbnail(UploadedFile $file, ?string $directory = null): string
     {
-        $dir = $directory ?? (string) config('menu_media.thumb.directory', 'thumbs');
+        return $this->storeThumbnailPair($file, $directory)['path'];
+    }
 
-        return $this->writeBinary($this->processThumbnailJpeg($file), $dir);
+    /**
+     * Store a card thumbnail as JPEG, plus a WebP sibling when supported.
+     *
+     * @return array{path: string, webp_path: string|null}
+     */
+    public function storeThumbnailPair(UploadedFile $file, ?string $directory = null): array
+    {
+        $dir = $directory ?? (string) config('menu_media.thumb.directory', 'thumbs');
+        $encoded = $this->cropResampleEncoded(
+            $file,
+            $this->thumbWidth(),
+            $this->thumbHeight(),
+            $this->thumbQuality(),
+        );
+
+        return $this->writeEncodedPair($encoded, $dir);
     }
 
     /**
@@ -113,17 +144,53 @@ class MenuImageProcessor
 
     public function processToJpeg(UploadedFile $file, int $targetW = self::WIDTH, int $targetH = self::HEIGHT): string
     {
-        return $this->cropResampleJpeg($file, $targetW, $targetH, self::JPEG_QUALITY);
+        return $this->cropResampleEncoded($file, $targetW, $targetH, self::JPEG_QUALITY)['jpeg'];
     }
 
     public function processThumbnailJpeg(UploadedFile $file): string
     {
-        return $this->cropResampleJpeg(
+        return $this->cropResampleEncoded(
             $file,
             $this->thumbWidth(),
             $this->thumbHeight(),
             $this->thumbQuality(),
-        );
+        )['jpeg'];
+    }
+
+    /**
+     * Re-encode an existing public-disk JPEG (crop or thumb) as WebP.
+     * Source must be the existing rendition — never the full-frame master.
+     *
+     * @return string|null Relative storage path, or null when WebP is unsupported / source unreadable
+     */
+    public function storeWebpFromStoragePath(string $relativePath, ?string $directory = null): ?string
+    {
+        if (!ImageCapabilities::supportsWebp()) {
+            return null;
+        }
+
+        $absolute = storage_path('app/public/' . ltrim($relativePath, '/'));
+        if (!is_readable($absolute)) {
+            throw new RuntimeException('Source image for WebP is not readable.');
+        }
+
+        $mime = mime_content_type($absolute) ?: 'image/jpeg';
+        $image = $this->createImageResource($absolute, $mime);
+        if ($image === null) {
+            throw new RuntimeException('Could not decode source image for WebP.');
+        }
+
+        try {
+            $webp = $this->encodeGdToWebp($image, self::JPEG_QUALITY);
+            if ($webp === null) {
+                return null;
+            }
+            $dir = $directory ?? dirname(ltrim($relativePath, '/'));
+
+            return $this->writeBinary($webp, $dir === '.' ? 'webp' : $dir, 'webp');
+        } finally {
+            imagedestroy($image);
+        }
     }
 
     public function processMasterJpeg(UploadedFile $file): string
@@ -172,7 +239,10 @@ class MenuImageProcessor
         return $this->storeThumbnail($uploaded, $directory);
     }
 
-    private function cropResampleJpeg(UploadedFile $file, int $targetW, int $targetH, int $quality): string
+    /**
+     * @return array{jpeg: string, webp: string|null}
+     */
+    private function cropResampleEncoded(UploadedFile $file, int $targetW, int $targetH, int $quality): array
     {
         $image = $this->loadUploaded($file);
 
@@ -193,24 +263,71 @@ class MenuImageProcessor
                 $cropY = (int) max(0, round(($srcH - $cropH) / 2));
             }
 
-            return $this->resampleToJpeg(
-                $image,
-                $cropX,
-                $cropY,
-                $cropW,
-                $cropH,
-                $targetW,
-                $targetH,
-                $quality,
-            );
+            $out = imagecreatetruecolor($targetW, $targetH);
+            if ($out === false) {
+                throw new RuntimeException('Could not allocate image canvas.');
+            }
+
+            $white = imagecolorallocate($out, 255, 255, 255);
+            if ($white !== false) {
+                imagefilledrectangle($out, 0, 0, $targetW, $targetH, $white);
+            }
+
+            imagecopyresampled($out, $image, 0, 0, $cropX, $cropY, $targetW, $targetH, $cropW, $cropH);
+
+            ob_start();
+            imagejpeg($out, null, $quality);
+            $jpeg = ob_get_clean();
+            if ($jpeg === false || $jpeg === '') {
+                imagedestroy($out);
+                throw new RuntimeException('Failed to encode menu JPEG.');
+            }
+
+            $webp = $this->encodeGdToWebp($out, $quality);
+            imagedestroy($out);
+
+            return ['jpeg' => $jpeg, 'webp' => $webp];
         } finally {
             imagedestroy($image);
         }
     }
 
-    private function writeBinary(string $binary, string $directory): string
+    /** @param  \GdImage|resource  $image */
+    private function encodeGdToWebp($image, int $quality): ?string
     {
-        $filename = Str::uuid()->toString() . '.jpg';
+        if (!ImageCapabilities::supportsWebp() || !function_exists('imagewebp')) {
+            return null;
+        }
+
+        ob_start();
+        $ok = imagewebp($image, null, max(0, min(100, $quality)));
+        $binary = ob_get_clean();
+        if (!$ok || $binary === false || $binary === '') {
+            return null;
+        }
+
+        return $binary;
+    }
+
+    /**
+     * @param  array{jpeg: string, webp: string|null}  $encoded
+     * @return array{path: string, webp_path: string|null}
+     */
+    private function writeEncodedPair(array $encoded, string $directory): array
+    {
+        $path = $this->writeBinary($encoded['jpeg'], $directory, 'jpg');
+        $webpPath = null;
+        if ($encoded['webp'] !== null) {
+            $webpPath = $this->writeBinary($encoded['webp'], $directory, 'webp');
+        }
+
+        return ['path' => $path, 'webp_path' => $webpPath];
+    }
+
+    private function writeBinary(string $binary, string $directory, string $extension = 'jpg'): string
+    {
+        $ext = ltrim($extension, '.');
+        $filename = Str::uuid()->toString() . '.' . $ext;
         $relative = trim($directory, '/') . '/' . $filename;
         $absolute = storage_path('app/public/' . $relative);
 

@@ -88,6 +88,8 @@ describe('buildItemSlides', () => {
         {
           url: '/storage/item-photos/1/full.jpg',
           thumb_url: '/storage/item-photos/1/thumbs/full.jpg',
+          image_webp_url: '/storage/item-photos/1/full.webp',
+          thumb_webp_url: '/storage/item-photos/1/thumbs/full.webp',
           media_type: 'image',
           sort_order: 1,
           is_primary: true,
@@ -97,6 +99,7 @@ describe('buildItemSlides', () => {
 
     expect(slides).toHaveLength(1);
     expect(slides[0].url).toContain('/thumbs/full.jpg');
+    expect(slides[0].webpUrl).toContain('/thumbs/full.webp');
 
     const videoUrls = buildItemSlideUrls({
       photos: [{

@@ -15,6 +15,7 @@ import { emptyItemForm, formToPayload, itemToForm, type ItemForm } from './menuI
 export type CatForm = {
   name: string; name_dv: string; description: string;
   image_url: string; image_original_url: string; thumb_url: string;
+  image_webp_url: string; thumb_webp_url: string;
   sort_order: string; is_active: boolean;
   parent_id: string;
 };
@@ -22,6 +23,7 @@ export type CatForm = {
 export const EMPTY_CAT: CatForm = {
   name: '', name_dv: '', description: '',
   image_url: '', image_original_url: '', thumb_url: '',
+  image_webp_url: '', thumb_webp_url: '',
   sort_order: '', is_active: true, parent_id: '',
 };
 
@@ -101,6 +103,8 @@ export function useMenuPage() {
         image_url: form.image_url.trim() || null,
         image_original_url: form.image_original_url.trim() || null,
         thumb_url: form.thumb_url.trim() || null,
+        image_webp_url: form.image_webp_url.trim() || null,
+        thumb_webp_url: form.thumb_webp_url.trim() || null,
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
         parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,
       });
@@ -118,6 +122,8 @@ export function useMenuPage() {
         image_url: form.image_url.trim() || null,
         image_original_url: form.image_original_url.trim() || null,
         thumb_url: form.thumb_url.trim() || null,
+        image_webp_url: form.image_webp_url.trim() || null,
+        thumb_webp_url: form.thumb_webp_url.trim() || null,
         sort_order: form.sort_order !== '' ? parseInt(form.sort_order) : null,
         is_active: form.is_active,
         parent_id: form.parent_id !== '' ? parseInt(form.parent_id) : null,

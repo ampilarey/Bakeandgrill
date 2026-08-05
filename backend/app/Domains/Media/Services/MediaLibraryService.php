@@ -340,9 +340,10 @@ final class MediaLibraryService
         }
 
         $dir = 'library/images';
-        $path = $this->images->storeProcessed($file, $dir);
-        $thumbPath = $this->images->storeThumbnail($file, $dir . '/thumbs');
+        $processed = $this->images->storeProcessedPair($file, $dir);
+        $thumb = $this->images->storeThumbnailPair($file, $dir . '/thumbs');
         $masterPath = $this->images->storeMaster($file, $dir . '/masters');
+        $path = $processed['path'];
         $absolute = Storage::disk('public')->path($path);
         [$width, $height] = $this->imageSize($absolute);
 
@@ -354,7 +355,13 @@ final class MediaLibraryService
             'file_size' => (int) (@filesize($absolute) ?: 0),
             'width' => $width,
             'height' => $height,
-            'thumb_url' => '/storage/' . ltrim($thumbPath, '/'),
+            'thumb_url' => '/storage/' . ltrim($thumb['path'], '/'),
+            'image_webp_url' => $processed['webp_path']
+                ? '/storage/' . ltrim($processed['webp_path'], '/')
+                : null,
+            'thumb_webp_url' => $thumb['webp_path']
+                ? '/storage/' . ltrim($thumb['webp_path'], '/')
+                : null,
             'original_url' => '/storage/' . ltrim($masterPath, '/'),
             'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
             'alt_text' => $altText,

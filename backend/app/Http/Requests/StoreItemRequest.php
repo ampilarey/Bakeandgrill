@@ -25,6 +25,12 @@ class StoreItemRequest extends FormRequest
         if ($this->thumb_url === '') {
             $this->merge(['thumb_url' => null]);
         }
+        if ($this->image_webp_url === '') {
+            $this->merge(['image_webp_url' => null]);
+        }
+        if ($this->thumb_webp_url === '') {
+            $this->merge(['thumb_webp_url' => null]);
+        }
 
         // MySQL NOT NULL DEFAULT 0 columns: replace null with 0 so the insert succeeds
         $defaults = ['sort_order' => 0, 'cost' => 0, 'tax_rate' => 0];
@@ -51,6 +57,8 @@ class StoreItemRequest extends FormRequest
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'image_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
+            'thumb_webp_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'base_price' => 'required|numeric|min:0',
             'price_note' => 'nullable|string|max:40',
             'packaging_fee' => 'sometimes|numeric|min:0|max:500',

@@ -398,7 +398,11 @@ final class SignageResolver
                 }])
                 ->orderByDesc('sales_30d')
                 ->limit($limit)
-                ->get(['id', 'name', 'base_price', 'image_url', 'thumb_url', 'category_id', 'short_description']);
+                ->get([
+                    'id', 'name', 'base_price', 'image_url', 'thumb_url',
+                    'image_webp_url', 'thumb_webp_url',
+                    'category_id', 'short_description',
+                ]);
         } catch (\Throwable) {
             return [];
         }
@@ -409,6 +413,8 @@ final class SignageResolver
             'base_price' => (float) $i->base_price,
             'image_url' => $i->image_url,
             'thumb_url' => $i->thumb_url,
+            'image_webp_url' => $i->getAttribute('image_webp_url'),
+            'thumb_webp_url' => $i->getAttribute('thumb_webp_url'),
             'category_id' => $i->category_id,
             'short_description' => $i->short_description,
             'sales_30d' => (int) ($i->sales_30d ?? 0),

@@ -14,6 +14,8 @@ class ItemPhoto extends Model
         'url',
         'original_url',
         'thumb_url',
+        'image_webp_url',
+        'thumb_webp_url',
         'alt_text',
         'sort_order',
         'is_primary',

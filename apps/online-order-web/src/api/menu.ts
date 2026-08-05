@@ -378,6 +378,8 @@ export interface ItemPhoto {
   url: string;
   original_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   poster_url?: string | null;
   media_type?: 'image' | 'video';
   alt_text?: string | null;

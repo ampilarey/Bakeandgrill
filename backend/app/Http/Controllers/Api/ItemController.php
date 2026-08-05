@@ -686,6 +686,8 @@ class ItemController extends Controller
         $oldImageUrl = $item->image_url;
         $oldOriginalUrl = $item->image_original_url;
         $oldThumbUrl = $item->getAttribute('thumb_url');
+        $oldImageWebpUrl = $item->getAttribute('image_webp_url');
+        $oldThumbWebpUrl = $item->getAttribute('thumb_webp_url');
 
         $item->update($data);
 
@@ -693,6 +695,8 @@ class ItemController extends Controller
             $item->image_url,
             $item->image_original_url,
             $item->getAttribute('thumb_url'),
+            $item->getAttribute('image_webp_url'),
+            $item->getAttribute('thumb_webp_url'),
         ], static fn ($u) => is_string($u) && $u !== ''));
 
         if ($oldImageUrl && $oldImageUrl !== $item->image_url) {
@@ -703,6 +707,12 @@ class ItemController extends Controller
         }
         if (is_string($oldThumbUrl) && $oldThumbUrl !== '' && $oldThumbUrl !== $item->getAttribute('thumb_url')) {
             MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldThumbUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if (is_string($oldImageWebpUrl) && $oldImageWebpUrl !== '' && $oldImageWebpUrl !== $item->getAttribute('image_webp_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldImageWebpUrl, $keep, exceptItemId: (int) $item->id);
+        }
+        if (is_string($oldThumbWebpUrl) && $oldThumbWebpUrl !== '' && $oldThumbWebpUrl !== $item->getAttribute('thumb_webp_url')) {
+            MediaFileCleaner::deleteIfOwnedAndUnreferenced($oldThumbWebpUrl, $keep, exceptItemId: (int) $item->id);
         }
 
         if ($request->has('modifier_ids')) {

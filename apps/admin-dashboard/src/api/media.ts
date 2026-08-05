@@ -12,6 +12,8 @@ export interface MediaAsset {
   id: number;
   url: string;
   thumb_url: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   media_type: MediaType;
   mime_type: string;
   file_size: number;

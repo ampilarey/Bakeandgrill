@@ -24,6 +24,8 @@ class Category extends Model
         'image_url',
         'image_original_url',
         'thumb_url',
+        'image_webp_url',
+        'thumb_webp_url',
     ];
 
     public function parent(): BelongsTo

@@ -180,6 +180,8 @@ export type MenuItemLite = {
   category_id?: number | null;
   image_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   short_description?: string | null;
   created_at?: string | null;
   sales_30d?: number;

@@ -24,6 +24,8 @@ class Media extends Model
         'height',
         'duration_seconds',
         'thumb_url',
+        'image_webp_url',
+        'thumb_webp_url',
         'original_url',
         'title',
         'alt_text',

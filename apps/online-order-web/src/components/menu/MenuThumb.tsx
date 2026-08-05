@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { PictureImg } from './PictureImg';
 
 type Props = {
   src: string | null | undefined;
+  webpSrc?: string | null;
   alt: string;
   /** Emoji shown when image is missing or fails to load */
   placeholder?: string;
@@ -12,6 +14,7 @@ type Props = {
 /** Lazy image with surface-alt + emoji fallback (no broken-image icon). */
 export function MenuThumb({
   src,
+  webpSrc,
   alt,
   placeholder = '🍽️',
   height = '100%',
@@ -34,8 +37,9 @@ export function MenuThumb({
       }}
     >
       {showImg ? (
-        <img
+        <PictureImg
           src={src!}
+          webpSrc={webpSrc}
           alt={alt}
           loading="lazy"
           onError={() => setFailed(true)}

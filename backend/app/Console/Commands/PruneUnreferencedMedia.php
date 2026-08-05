@@ -86,8 +86,10 @@ class PruneUnreferencedMedia extends Command
         };
 
         $itemCols = ['id', 'image_url', 'image_original_url'];
-        if (Schema::hasColumn('items', 'thumb_url')) {
-            $itemCols[] = 'thumb_url';
+        foreach (['thumb_url', 'image_webp_url', 'thumb_webp_url'] as $col) {
+            if (Schema::hasColumn('items', $col)) {
+                $itemCols[] = $col;
+            }
         }
         Item::query()->select($itemCols)->orderBy('id')
             ->chunkById(200, function ($items) use ($remember): void {
@@ -95,15 +97,16 @@ class PruneUnreferencedMedia extends Command
                     $remember($item->image_url);
                     $remember($item->image_original_url);
                     $remember($item->getAttribute('thumb_url'));
+                    $remember($item->getAttribute('image_webp_url'));
+                    $remember($item->getAttribute('thumb_webp_url'));
                 }
             });
 
         $photoCols = ['id', 'url', 'original_url'];
-        if (Schema::hasColumn('item_photos', 'thumb_url')) {
-            $photoCols[] = 'thumb_url';
-        }
-        if (Schema::hasColumn('item_photos', 'poster_url')) {
-            $photoCols[] = 'poster_url';
+        foreach (['thumb_url', 'poster_url', 'image_webp_url', 'thumb_webp_url'] as $col) {
+            if (Schema::hasColumn('item_photos', $col)) {
+                $photoCols[] = $col;
+            }
         }
         ItemPhoto::query()->select($photoCols)->orderBy('id')
             ->chunkById(200, function ($photos) use ($remember): void {
@@ -112,15 +115,16 @@ class PruneUnreferencedMedia extends Command
                     $remember($photo->original_url);
                     $remember($photo->getAttribute('thumb_url'));
                     $remember($photo->getAttribute('poster_url'));
+                    $remember($photo->getAttribute('image_webp_url'));
+                    $remember($photo->getAttribute('thumb_webp_url'));
                 }
             });
 
         $categoryCols = ['id', 'image_url'];
-        if (Schema::hasColumn('categories', 'image_original_url')) {
-            $categoryCols[] = 'image_original_url';
-        }
-        if (Schema::hasColumn('categories', 'thumb_url')) {
-            $categoryCols[] = 'thumb_url';
+        foreach (['image_original_url', 'thumb_url', 'image_webp_url', 'thumb_webp_url'] as $col) {
+            if (Schema::hasColumn('categories', $col)) {
+                $categoryCols[] = $col;
+            }
         }
         Category::query()->select($categoryCols)->orderBy('id')
             ->chunkById(200, function ($categories) use ($remember): void {
@@ -128,6 +132,8 @@ class PruneUnreferencedMedia extends Command
                     $remember($category->image_url);
                     $remember($category->getAttribute('image_original_url'));
                     $remember($category->getAttribute('thumb_url'));
+                    $remember($category->getAttribute('image_webp_url'));
+                    $remember($category->getAttribute('thumb_webp_url'));
                 }
             });
 

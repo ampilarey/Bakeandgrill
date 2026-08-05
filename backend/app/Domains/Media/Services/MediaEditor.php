@@ -442,8 +442,11 @@ final class MediaEditor
         $uploaded = new \Illuminate\Http\UploadedFile($tmp, 'thumb.' . $ext, $asset->mime_type, null, true);
         try {
             $dir = 'library/images/thumbs';
-            $thumbPath = $this->images->storeThumbnail($uploaded, $dir);
-            $asset->thumb_url = '/storage/' . ltrim($thumbPath, '/');
+            $thumb = $this->images->storeThumbnailPair($uploaded, $dir);
+            $asset->thumb_url = '/storage/' . ltrim($thumb['path'], '/');
+            if ($thumb['webp_path']) {
+                $asset->thumb_webp_url = '/storage/' . ltrim($thumb['webp_path'], '/');
+            }
             $asset->save();
         } catch (\Throwable) {
             // best-effort

@@ -47,7 +47,9 @@ export type ItemForm = {
   short_description: string; short_description_dv: string;
   price_note: string;
   sku: string;
-  image_url: string; image_original_url: string; thumb_url: string; base_price: string; packaging_fee: string;
+  image_url: string; image_original_url: string; thumb_url: string;
+  image_webp_url: string; thumb_webp_url: string;
+  base_price: string; packaging_fee: string;
   packaging_fee_mode: 'per_unit' | 'per_line';
   packaging_options: PackagingOptionRow[];
   tax_code: string;
@@ -131,6 +133,8 @@ export function itemToForm(item: MenuItem): ItemForm {
     image_url: item.image_url ?? '',
     image_original_url: item.image_original_url ?? '',
     thumb_url: item.thumb_url ?? '',
+    image_webp_url: item.image_webp_url ?? '',
+    thumb_webp_url: item.thumb_webp_url ?? '',
     base_price: String(item.base_price),
     packaging_fee: item.packaging_fee != null ? String(item.packaging_fee) : '0',
     packaging_fee_mode: item.packaging_fee_mode === 'per_line' ? 'per_line' : 'per_unit',
@@ -220,6 +224,8 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     image_url: form.image_url.trim() || null,
     image_original_url: form.image_original_url.trim() || null,
     thumb_url: form.thumb_url.trim() || null,
+    image_webp_url: form.image_webp_url.trim() || null,
+    thumb_webp_url: form.thumb_webp_url.trim() || null,
     base_price: parseFloat(form.base_price) || 0,
     packaging_fee: Math.max(0, parseFloat(form.packaging_fee) || 0),
     packaging_fee_mode: form.packaging_fee_mode,
@@ -375,6 +381,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     short_description: '', short_description_dv: '',
     price_note: '',
     sku: '', image_url: '', image_original_url: '', thumb_url: '',
+    image_webp_url: '', thumb_webp_url: '',
     base_price: '', packaging_fee: '0', packaging_fee_mode: 'per_unit', packaging_options: [],
     tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,

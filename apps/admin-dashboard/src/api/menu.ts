@@ -8,6 +8,8 @@ export type MenuCategory = {
   image_url?: string | null;
   image_original_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   sort_order?: number | null;
   is_active: boolean;
   parent_id?: number | null;
@@ -59,6 +61,8 @@ export type MenuItem = {
   image_original_url?: string | null;
   /** Card thumbnail (400×300); optional. */
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -161,6 +165,8 @@ export type MenuItemPayload = {
   image_url?: string | null;
   image_original_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   base_price: number;
   packaging_fee?: number;
   packaging_fee_mode?: 'per_unit' | 'per_line';
@@ -261,6 +267,8 @@ export async function createCategory(data: {
   image_url?: string | null;
   image_original_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   sort_order?: number | null;
   parent_id?: number | null;
 }): Promise<{ category: MenuCategory }> {
@@ -276,6 +284,8 @@ export async function updateCategory(
     image_url: string | null;
     image_original_url: string | null;
     thumb_url: string | null;
+    image_webp_url: string | null;
+    thumb_webp_url: string | null;
     sort_order: number | null;
     is_active: boolean;
     parent_id: number | null;
@@ -355,6 +365,8 @@ export async function uploadMenuImage(
   url: string;
   original_url?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   width?: number;
   height?: number;
 }> {
@@ -377,6 +389,8 @@ export interface ItemPhoto {
   original_url?: string | null;
   alt_text?: string | null;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   media_type?: 'image' | 'video';
   poster_url?: string | null;
   sort_order: number;

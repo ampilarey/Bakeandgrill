@@ -603,8 +603,8 @@ class ContentController extends Controller
         $dir = $scope === 'shared' ? 'site' : "site/{$scope}";
 
         try {
-            $relative = $this->processor->storeProcessed($file, $dir);
-            $thumbRelative = $this->processor->storeThumbnail($file, $dir . '/thumbs');
+            $processed = $this->processor->storeProcessedPair($file, $dir);
+            $thumb = $this->processor->storeThumbnailPair($file, $dir . '/thumbs');
             // Always keep a high-res master for re-crop (prefer explicit original, else source file).
             $masterSource = $request->hasFile('original') ? $request->file('original') : $file;
             $origRelative = $this->processor->storeMaster($masterSource, $dir . '/masters');
@@ -613,8 +613,14 @@ class ContentController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $url = '/storage/' . ltrim($relative, '/');
-        $thumbUrl = '/storage/' . ltrim($thumbRelative, '/');
+        $url = '/storage/' . ltrim($processed['path'], '/');
+        $thumbUrl = '/storage/' . ltrim($thumb['path'], '/');
+        $imageWebpUrl = $processed['webp_path']
+            ? '/storage/' . ltrim($processed['webp_path'], '/')
+            : null;
+        $thumbWebpUrl = $thumb['webp_path']
+            ? '/storage/' . ltrim($thumb['webp_path'], '/')
+            : null;
 
         if ($isDirectImage) {
             $old = SiteSetting::getScoped($key, $scope, $locale);
@@ -622,7 +628,13 @@ class ContentController extends Controller
             $this->writer->write($key, $scope, $url, $locale, $request, 'content.uploaded');
 
             if ($old && $old !== $url) {
-                MediaFileCleaner::deleteIfOwnedAndUnreferenced($old, keepUrls: [$url, $thumbUrl, (string) $originalUrl]);
+                MediaFileCleaner::deleteIfOwnedAndUnreferenced($old, keepUrls: array_values(array_filter([
+                    $url,
+                    $thumbUrl,
+                    (string) $originalUrl,
+                    $imageWebpUrl,
+                    $thumbWebpUrl,
+                ])));
             }
 
             SiteSetting::bust();
@@ -641,6 +653,8 @@ class ContentController extends Controller
         return response()->json([
             'url' => $url,
             'thumb_url' => $thumbUrl,
+            'image_webp_url' => $imageWebpUrl,
+            'thumb_webp_url' => $thumbWebpUrl,
             'original_url' => $originalUrl,
             'key' => $key,
             'scope' => $scope,

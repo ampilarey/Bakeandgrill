@@ -1,8 +1,27 @@
-import { Component, type CSSProperties, type ErrorInfo, type ReactNode, useMemo } from 'react';
+import { Component, type CSSProperties, type ErrorInfo, type ImgHTMLAttributes, type ReactNode, useMemo } from 'react';
 import { formatPrice, resolveBoundItems } from './bindMenu';
 import { EmergencyIcon } from './emergencyIcons';
 import { interpolate } from './interpolate';
 import type { MenuItemLite, SignageConfig, SignageElement, SignageSlide, SignageTheme } from './types';
+
+function PictureImg({
+  src,
+  webpSrc,
+  alt = '',
+  style,
+  ...rest
+}: Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & { src: string; webpSrc?: string | null }) {
+  const webp = webpSrc && webpSrc.trim() !== '' ? webpSrc : null;
+  if (!webp) {
+    return <img src={src} alt={alt} style={style} {...rest} />;
+  }
+  return (
+    <picture>
+      <source type="image/webp" srcSet={webp} />
+      <img src={src} alt={alt} style={style} {...rest} />
+    </picture>
+  );
+}
 
 class ElementBoundary extends Component<{ children: ReactNode }, { err: boolean }> {
   state = { err: false };
@@ -190,12 +209,14 @@ function SignageEl({
         <div className="signage-menu-list" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '0.6vmin 2vmin', width: '100%', height: '100%', alignContent: 'start' }}>
           {list.map((item) => {
             const thumb = style.showThumbs ? (item.thumb_url ?? item.image_url) : null;
+            const thumbWebp = style.showThumbs ? (item.thumb_webp_url ?? item.image_webp_url) : null;
             return (
               <div key={item.id} className="signage-menu-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1vmin', borderBottom: '1px solid rgba(255,255,255,0.12)', padding: '0.4vmin 0', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '1vmin', minWidth: 0 }}>
                   {thumb ? (
-                    <img
+                    <PictureImg
                       src={thumb}
+                      webpSrc={thumbWebp}
                       alt=""
                       data-testid="signage-row-thumb"
                       style={{ width: '3.4vmin', height: '3.4vmin', objectFit: 'cover', borderRadius: '50%', flex: '0 0 auto' }}
@@ -224,7 +245,14 @@ function SignageEl({
         : null;
       body = item ? (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', gap: '0.8vmin', alignItems: 'center', justifyContent: 'center' }}>
-          {item.image_url ? <img src={item.image_url} alt="" style={{ flex: 1, minHeight: 0, objectFit: 'cover', borderRadius: '50%', aspectRatio: '1' }} /> : null}
+          {item.image_url ? (
+            <PictureImg
+              src={item.image_url}
+              webpSrc={item.image_webp_url}
+              alt=""
+              style={{ flex: 1, minHeight: 0, objectFit: 'cover', borderRadius: '50%', aspectRatio: '1' }}
+            />
+          ) : null}
           {badge && style.showBadge ? (
             <div
               data-testid="signage-special-badge"

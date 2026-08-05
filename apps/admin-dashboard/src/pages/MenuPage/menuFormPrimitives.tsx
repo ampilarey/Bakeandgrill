@@ -15,7 +15,13 @@ import {
 import { ImageCropModal } from './ImageCropModal';
 import { prepareImageForCrop, prepareUploadFromFile, resolveMediaUrl, revokeCropSrc } from './mediaUrl';
 
-type ImageUrls = { url: string; original_url: string; thumb_url?: string };
+type ImageUrls = {
+  url: string;
+  original_url: string;
+  thumb_url?: string;
+  image_webp_url?: string;
+  thumb_webp_url?: string;
+};
 
 type Variant = 'item' | 'banner';
 
@@ -142,6 +148,8 @@ export function ImageUploadField({
         url: res.url,
         original_url: res.original_url || originalValue || '',
         thumb_url: res.thumb_url || '',
+        image_webp_url: res.image_webp_url || '',
+        thumb_webp_url: res.thumb_webp_url || '',
       });
       setPreviewKey((k) => k + 1);
       closeCropper();
@@ -254,7 +262,13 @@ export function ImageUploadField({
         collection={pickerCollection}
         title={variant === 'banner' ? 'Pick banner image' : 'Pick item image'}
         onPick={(asset: MediaAsset) => {
-          onChange({ url: asset.url, original_url: asset.original_url || '', thumb_url: asset.thumb_url || '' });
+          onChange({
+            url: asset.url,
+            original_url: asset.original_url || '',
+            thumb_url: asset.thumb_url || '',
+            image_webp_url: asset.image_webp_url || '',
+            thumb_webp_url: asset.thumb_webp_url || '',
+          });
           setPreviewKey((k) => k + 1);
         }}
       />

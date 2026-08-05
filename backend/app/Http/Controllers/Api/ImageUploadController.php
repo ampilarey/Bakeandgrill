@@ -71,8 +71,8 @@ class ImageUploadController extends Controller
         $directory = $isBanner ? 'menu-banners' : 'menu';
 
         try {
-            $relative = $this->processor->storeProcessed($file, $directory, $width, $height);
-            $thumbRelative = $this->processor->storeThumbnail($file);
+            $processed = $this->processor->storeProcessedPair($file, $directory, $width, $height);
+            $thumb = $this->processor->storeThumbnailPair($file);
             $originalUrl = null;
             if ($request->hasFile('original')) {
                 $orig = $request->file('original');
@@ -86,9 +86,18 @@ class ImageUploadController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        $webpUrl = $processed['webp_path']
+            ? '/storage/' . ltrim($processed['webp_path'], '/')
+            : null;
+        $thumbWebpUrl = $thumb['webp_path']
+            ? '/storage/' . ltrim($thumb['webp_path'], '/')
+            : null;
+
         return response()->json([
-            'url' => '/storage/' . ltrim($relative, '/'),
-            'thumb_url' => '/storage/' . ltrim($thumbRelative, '/'),
+            'url' => '/storage/' . ltrim($processed['path'], '/'),
+            'thumb_url' => '/storage/' . ltrim($thumb['path'], '/'),
+            'image_webp_url' => $webpUrl,
+            'thumb_webp_url' => $thumbWebpUrl,
             'original_url' => $originalUrl,
             'width' => $width,
             'height' => $height,

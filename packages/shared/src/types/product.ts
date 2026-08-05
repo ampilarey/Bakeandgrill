@@ -32,6 +32,9 @@ export type Category = {
   name_dv?: string | null;
   description?: string | null;
   image_url?: string | null;
+  thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   parent_id?: number | null;
   sort_order?: number;
   is_active?: boolean;
@@ -63,11 +66,15 @@ export type MenuItem = {
   image_url?: string | null;
   /** Card-sized crop when available; fall back to image_url. */
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   /** Extra gallery photos (public menu). Combined with image_url for slideshows. */
   photos?: Array<{
     id: number;
     url: string;
     thumb_url?: string | null;
+    image_webp_url?: string | null;
+    thumb_webp_url?: string | null;
     poster_url?: string | null;
     media_type?: 'image' | 'video';
     alt_text?: string | null;

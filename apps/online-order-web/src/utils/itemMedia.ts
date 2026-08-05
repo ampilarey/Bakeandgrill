@@ -24,11 +24,15 @@ export type MediaSlide = {
   poster?: string | null;
   alt?: string;
   thumbUrl?: string | null;
+  /** Optional WebP for the displayed raster (crop or thumb). */
+  webpUrl?: string | null;
 };
 
 type PhotoLike = {
   url: string;
   thumb_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
   poster_url?: string | null;
   media_type?: 'image' | 'video' | string | null;
   alt_text?: string | null;
@@ -59,6 +63,8 @@ export function buildItemSlides(
   item: {
     image_url?: string | null;
     thumb_url?: string | null;
+    image_webp_url?: string | null;
+    thumb_webp_url?: string | null;
     name?: string | null;
     photos?: PhotoLike[] | null;
   },
@@ -82,10 +88,14 @@ export function buildItemSlides(
     const main = preferThumb ? (item.thumb_url || item.image_url) : item.image_url;
     const mainResolved = resolveMediaUrl(main);
     if (mainResolved) {
+      const webp = preferThumb
+        ? (item.thumb_webp_url || item.image_webp_url)
+        : item.image_webp_url;
       push({
         type: 'image',
         url: mainResolved,
         thumbUrl: resolveMediaUrl(item.thumb_url),
+        webpUrl: resolveMediaUrl(webp),
         alt: fallbackAlt,
       });
     }
@@ -126,10 +136,14 @@ export function buildItemSlides(
     const img = preferThumb ? (photo.thumb_url || photo.url) : photo.url;
     const resolved = resolveMediaUrl(img);
     if (!resolved) continue;
+    const webp = preferThumb
+      ? (photo.thumb_webp_url || photo.image_webp_url)
+      : photo.image_webp_url;
     push({
       type: 'image',
       url: resolved,
       thumbUrl: resolveMediaUrl(photo.thumb_url),
+      webpUrl: resolveMediaUrl(webp),
       alt: photo.alt_text || fallbackAlt,
     });
   }

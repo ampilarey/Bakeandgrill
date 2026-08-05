@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { MediaSlide } from '../../utils/itemMedia';
 import { BrandedMediaPlaceholder } from './BrandedMediaPlaceholder';
+import { PictureImg } from './PictureImg';
 
 type Props = {
   slides: MediaSlide[] | string[];
@@ -162,11 +163,13 @@ export function MenuImageSlider({
     const imgSrc = slide.type === 'video'
       ? (slide.poster || slide.thumbUrl || slide.url)
       : slide.url;
+    const webpSrc = slide.type === 'video' ? null : slide.webpUrl;
 
     return (
-      <img
+      <PictureImg
         key={`i-${imgSrc}-${i}`}
         src={imgSrc}
+        webpSrc={webpSrc}
         alt={isActive ? (slide.alt || alt) : ''}
         aria-hidden={isActive ? undefined : true}
         loading="lazy"

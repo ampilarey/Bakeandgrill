@@ -3,6 +3,7 @@ import { PartyPopper } from 'lucide-react';
 import { API_ORIGIN } from '../../api';
 import type { Category } from '../../api';
 import { useLanguage } from '../../context/LanguageContext';
+import { PictureImg } from './PictureImg';
 
 function tintFromId(id: number): string {
   const hues = [18, 32, 48, 160, 200, 280];
@@ -87,11 +88,14 @@ export function CategoryRail({
         )}
         {categories.map((cat) => {
           const active = activeCategoryId === cat.id;
-          const img = cat.image_url
-            ? (cat.image_url.startsWith('http')
-              ? cat.image_url
-              : `${API_ORIGIN}${cat.image_url.startsWith('/') ? '' : '/'}${cat.image_url}`)
-            : null;
+          const resolve = (url: string | null | undefined) => {
+            if (!url) return null;
+            return url.startsWith('http')
+              ? url
+              : `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+          };
+          const img = resolve(cat.image_url);
+          const webp = resolve(cat.image_webp_url);
           const initial = (cat.name?.trim()?.[0] ?? '?').toUpperCase();
           return (
             <button
@@ -118,9 +122,10 @@ export function CategoryRail({
               }}
             >
               {img ? (
-                <img
+                <PictureImg
                   className="cat-rail__thumb"
                   src={img}
+                  webpSrc={webp}
                   alt=""
                   width={40}
                   height={40}

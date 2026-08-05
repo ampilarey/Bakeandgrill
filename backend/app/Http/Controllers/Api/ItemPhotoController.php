@@ -73,11 +73,11 @@ class ItemPhotoController extends Controller
         }
 
         try {
-            $path = $this->processor->storeProcessed(
+            $processed = $this->processor->storeProcessedPair(
                 $request->file('photo'),
                 "item-photos/{$itemId}",
             );
-            $thumbPath = $this->processor->storeThumbnail(
+            $thumb = $this->processor->storeThumbnailPair(
                 $request->file('photo'),
                 "item-photos/{$itemId}/thumbs",
             );
@@ -95,8 +95,14 @@ class ItemPhotoController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $url = '/storage/' . ltrim($path, '/');
-        $thumbUrl = '/storage/' . ltrim($thumbPath, '/');
+        $url = '/storage/' . ltrim($processed['path'], '/');
+        $thumbUrl = '/storage/' . ltrim($thumb['path'], '/');
+        $imageWebpUrl = $processed['webp_path']
+            ? '/storage/' . ltrim($processed['webp_path'], '/')
+            : null;
+        $thumbWebpUrl = $thumb['webp_path']
+            ? '/storage/' . ltrim($thumb['webp_path'], '/')
+            : null;
 
         if ($validated['is_primary'] ?? false) {
             $item->photos()->update(['is_primary' => false]);
@@ -109,6 +115,8 @@ class ItemPhotoController extends Controller
             'url' => $url,
             'original_url' => $originalUrl,
             'thumb_url' => $thumbUrl,
+            'image_webp_url' => $imageWebpUrl,
+            'thumb_webp_url' => $thumbWebpUrl,
             'alt_text' => $validated['alt_text'] ?? null,
             'sort_order' => $maxOrder + 1,
             'is_primary' => (bool) ($validated['is_primary'] ?? false),
@@ -151,8 +159,12 @@ class ItemPhotoController extends Controller
             );
             $safe = $this->videos->ensureWebSafe(Storage::disk('public')->path($videoRel));
             $videoRel = $safe['relative_path'];
-            $posterRel = $this->processor->storeProcessed($poster, "item-photos/{$itemId}/posters");
-            $thumbRel = $this->processor->storeThumbnail($poster, "item-photos/{$itemId}/thumbs");
+            $posterPair = $this->processor->storeProcessedPair($poster, "item-photos/{$itemId}/posters");
+            $thumbPair = $this->processor->storeThumbnailPair($poster, "item-photos/{$itemId}/thumbs");
+            $posterRel = $posterPair['path'];
+            $thumbRel = $thumbPair['path'];
+            $posterWebpRel = $posterPair['webp_path'];
+            $thumbWebpRel = $thumbPair['webp_path'];
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -167,6 +179,8 @@ class ItemPhotoController extends Controller
             'item_id' => $item->id,
             'url' => '/storage/' . ltrim($videoRel, '/'),
             'original_url' => null,
+            'image_webp_url' => $posterWebpRel ? '/storage/' . ltrim($posterWebpRel, '/') : null,
+            'thumb_webp_url' => $thumbWebpRel ? '/storage/' . ltrim($thumbWebpRel, '/') : null,
             'thumb_url' => '/storage/' . ltrim($thumbRel, '/'),
             'poster_url' => '/storage/' . ltrim($posterRel, '/'),
             'media_type' => 'video',
