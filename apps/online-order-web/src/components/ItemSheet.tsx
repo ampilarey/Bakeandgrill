@@ -334,7 +334,8 @@ export function ItemSheet({
               ) : null}
             </div>
 
-            {!itemAvailable && unavailLabel && (
+            {/* Tomorrow-blocked items only say it once — on the disabled Add button. */}
+            {!itemAvailable && unavailLabel && !blockedForTomorrow && (
               <p
                 data-testid="item-sheet-unavail"
                 style={{
