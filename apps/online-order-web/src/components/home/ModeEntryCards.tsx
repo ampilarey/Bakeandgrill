@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchOnlineOrderingStatus } from '../../api';
 import { useOrderMode } from '../../context/OrderModeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 
-type ModeKind = 'delivery' | 'pickup';
+type ModeKind = 'delivery' | 'pickup' | 'dine_in';
 
 const MODE_IMAGES: Record<ModeKind, string> = {
   delivery: `${import.meta.env.BASE_URL}images/mode-delivery.jpg`,
   pickup: `${import.meta.env.BASE_URL}images/mode-pickup.jpg`,
+  dine_in: `${import.meta.env.BASE_URL}images/mode-dinein.jpg`,
 };
 
 type CardProps = {
@@ -20,7 +22,7 @@ type CardProps = {
 
 function ModeCard({ kind, label, hint, onClick }: CardProps) {
   const [imgFailed, setImgFailed] = useState(false);
-  const icon = kind === 'delivery' ? '🛵' : '🏪';
+  const icon = kind === 'delivery' ? '🛵' : kind === 'dine_in' ? '🍽️' : '🏪';
   const gradient =
     kind === 'delivery'
       ? 'linear-gradient(145deg, var(--color-primary-light) 0%, var(--color-surface-alt) 100%)'
@@ -140,9 +142,25 @@ export function ModeEntryCards() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { settings, text } = useSiteSettingsContext();
+  const [dineInAvailable, setDineInAvailable] = useState(false);
+
+  // "Eat here" appears only when the owner enabled prepaid dine-in and the
+  // shop is open (arrival is always today).
+  useEffect(() => {
+    let cancelled = false;
+    fetchOnlineOrderingStatus()
+      .then((gate) => {
+        if (cancelled) return;
+        setDineInAvailable(gate.dine_in_preorder?.enabled === true && gate.open === true);
+      })
+      .catch(() => { /* keep hidden */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const deliveryHint = buildDeliveryHint(text, settings, t('home.mode_delivery_hint'));
   const pickupHint = buildPickupHint(text, settings, t('home.mode_pickup_hint'));
+  const dineInHint = (text('order_mode_dine_in_hint', '') || '').trim()
+    || 'Order and pay now — your table is reserved and food is ready when you arrive.';
 
   const handleMode = (mode: ModeKind) => {
     setMode(mode);
@@ -174,6 +192,14 @@ export function ModeEntryCards() {
           hint={pickupHint}
           onClick={() => handleMode('pickup')}
         />
+        {dineInAvailable && (
+          <ModeCard
+            kind="dine_in"
+            label="Eat here"
+            hint={dineInHint}
+            onClick={() => handleMode('dine_in')}
+          />
+        )}
       </div>
     </section>
   );

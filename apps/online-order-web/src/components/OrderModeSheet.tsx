@@ -13,6 +13,8 @@ type Props = {
   deliveryBlockedReason?: string | null;
   /** Pickup service paused entirely. */
   pickupBlocked?: boolean;
+  /** Prepaid dine-in ("Eat here") enabled by the owner and shop open. */
+  dineInAvailable?: boolean;
   /** API collect-tomorrow date for the context line. */
   tomorrowDate?: string | null;
 };
@@ -28,6 +30,7 @@ export function OrderModeSheet({
   deliveryBlockedToday = false,
   deliveryBlockedReason,
   pickupBlocked = false,
+  dineInAvailable = false,
   tomorrowDate,
 }: Props) {
   const { t } = useLanguage();
@@ -67,6 +70,17 @@ export function OrderModeSheet({
         ? (deliveryBlockedReason?.trim() || t('modeSheet.delivery_unavailable'))
         : null,
     },
+    // Prepaid dine-in: today only — the table hold and kitchen timing are same-day.
+    ...(dineInAvailable
+      ? [{
+          id: 'dine_in' as const,
+          icon: '🍽️',
+          label: 'Eat here',
+          sub: 'Table reserved — food ready when you arrive',
+          blocked: day === 'tomorrow',
+          blockedNote: day === 'tomorrow' ? 'Eat here is for today only' : null,
+        }]
+      : []),
   ];
 
   return (

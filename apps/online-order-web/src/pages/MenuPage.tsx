@@ -161,6 +161,7 @@ export function MenuPage() {
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [deliveryAvailable, setDeliveryAvailable] = useState<boolean>(true);
+  const [dineInPreorderEnabled, setDineInPreorderEnabled] = useState<boolean>(false);
   /** null = not loaded / failed — must not block delivery. */
   const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
@@ -249,6 +250,7 @@ export function MenuPage() {
         // Gate API is the single source of truth for ordering status
         setIsOpen(gate.open);
         setDeliveryAvailable(gate.delivery_available ?? true);
+        setDineInPreorderEnabled(gate.dine_in_preorder?.enabled === true);
         setGateMessage(gate.message ?? '');
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
         setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
@@ -844,7 +846,11 @@ export function MenuPage() {
             className={`mode-chip${modeConfirmed ? '' : ' mode-chip--unset'}`}
           >
             {modeConfirmed
-              ? (mode === 'pickup' ? `🥡 ${t('mode.pickup')}` : `🛵 ${t('mode.delivery')}`)
+              ? (mode === 'pickup'
+                ? `🥡 ${t('mode.pickup')}`
+                : mode === 'dine_in'
+                  ? '🍽️ Eat here'
+                  : `🛵 ${t('mode.delivery')}`)
               : t('mode.choose_short')}
             <span aria-hidden="true" className="mode-chip__caret">▾</span>
           </button>
@@ -1128,6 +1134,7 @@ export function MenuPage() {
         deliveryBlockedToday={deliveryBlocked}
         deliveryBlockedReason={getServiceEntry('online_delivery')?.public_message || gateMessage || null}
         pickupBlocked={pickupBlocked}
+        dineInAvailable={dineInPreorderEnabled && isOpen === true}
         tomorrowDate={collectTomorrowDate}
       />
 

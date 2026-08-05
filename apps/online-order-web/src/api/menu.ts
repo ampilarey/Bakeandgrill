@@ -261,14 +261,15 @@ export async function fetchItems(channel?: MenuListingChannel): Promise<FetchIte
 
   let data = await fetchItemsForChannel(requested);
 
-  // Delivery with zero channel-enabled items used to show categories but an empty grid.
-  // Never fall back when listing the catering channel — that tab must show catering-only items.
-  if (requested === 'delivery' && data.length === 0) {
+  // Delivery/dine-in with zero channel-enabled items used to show categories but
+  // an empty grid. Never fall back when listing the catering channel — that tab
+  // must show catering-only items.
+  if ((requested === 'delivery' || requested === 'dine_in') && data.length === 0) {
     const pickupItems = await fetchItemsForChannel('online_pickup');
     if (pickupItems.length > 0) {
       data = pickupItems;
       channelUsed = 'online_pickup';
-      deliveryFallback = true;
+      deliveryFallback = requested === 'delivery';
       setSalesChannel('online_pickup');
     }
   }
