@@ -842,22 +842,34 @@ export function MenuPage() {
               }}
             />
           </div>
-          <button
-            type="button"
+          <div
             data-testid="mode-chip"
-            onClick={() => setModeSheetOpen(true)}
-            aria-label={t('modeSheet.title')}
-            className={`mode-chip${modeConfirmed ? '' : ' mode-chip--unset'}`}
+            role="group"
+            aria-label={t('mode.toggle_aria')}
+            className={`mode-switch${!modeConfirmed ? ' mode-switch--unset' : ''}`}
           >
-            {modeConfirmed
-              ? (mode === 'pickup'
-                ? `🥡 ${t('mode.pickup')}`
-                : mode === 'dine_in'
-                  ? '🍽️ Eat here'
-                  : `🛵 ${t('mode.delivery')}`)
-              : t('mode.choose_short')}
-            <span aria-hidden="true" className="mode-chip__caret">▾</span>
-          </button>
+            {([
+              { id: 'pickup' as const, label: t('mode.pickup') },
+              { id: 'delivery' as const, label: t('mode.delivery') },
+              ...(dineInPreorderEnabled && isOpen === true
+                ? [{ id: 'dine_in' as const, label: t('mode.eat_here') }]
+                : []),
+            ]).map((opt) => {
+              const active = modeConfirmed ? mode === opt.id : opt.id === 'pickup';
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  data-testid={`mode-switch-${opt.id}`}
+                  onClick={() => setModeSheetOpen(true)}
+                  aria-pressed={active}
+                  className={`mode-switch__btn${active ? ' is-active' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
           <button
             type="button"
             onClick={() => setSearchOpen(true)}

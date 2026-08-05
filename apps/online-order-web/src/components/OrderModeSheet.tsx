@@ -75,10 +75,10 @@ export function OrderModeSheet({
       ? [{
           id: 'dine_in' as const,
           icon: '🍽️',
-          label: 'Eat here',
-          sub: 'Table reserved — food ready when you arrive',
+          label: t('mode.eat_here'),
+          sub: t('modeSheet.eat_here_sub'),
           blocked: day === 'tomorrow',
-          blockedNote: day === 'tomorrow' ? 'Eat here is for today only' : null,
+          blockedNote: day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : null,
         }]
       : []),
   ];

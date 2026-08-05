@@ -91,10 +91,10 @@ vi.mock('../context/ServiceStatusContext', () => ({
 
 vi.mock('../context/OrderModeContext', () => ({
   useOrderMode: () => ({
-    mode: 'delivery',
+    mode: 'pickup',
     setMode: vi.fn(),
-    modeConfirmed: true,
-    channel: 'delivery',
+    modeConfirmed: false,
+    channel: 'online_pickup',
   }),
 }));
 
@@ -175,7 +175,7 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(screen.getByTestId('order-day-today')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('renders the mode chip that opens the pickup/delivery sheet', async () => {
+  it('shows pickup and delivery mode names before opening the sheet', async () => {
     render(
       <MemoryRouter>
         <MenuPage />
@@ -184,5 +184,10 @@ describe('MenuPage declutter + pickup toast', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mode-chip')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('mode-switch-pickup')).toBeInTheDocument();
+    expect(screen.getByTestId('mode-switch-delivery')).toBeInTheDocument();
+    // Pickup is the default highlight before an explicit choice.
+    expect(screen.getByTestId('mode-switch-pickup')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('mode-switch-delivery')).toHaveAttribute('aria-pressed', 'false');
   });
 });

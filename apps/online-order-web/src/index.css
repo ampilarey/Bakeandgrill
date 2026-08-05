@@ -2650,7 +2650,8 @@ textarea.field-input {
   min-width: 0;
 }
 
-.menu-top-row .mode-chip {
+.menu-top-row .mode-chip,
+.menu-top-row .mode-switch {
   flex: 1 1 auto;
   justify-content: center;
 }
@@ -2659,8 +2660,10 @@ textarea.field-input {
   .menu-top-row__day {
     flex: 1 1 auto;
   }
-  .menu-top-row .mode-chip {
-    flex: 0 0 auto;
+  .menu-top-row .mode-chip,
+  .menu-top-row .mode-switch {
+    flex: 1 1 auto;
+    max-width: 28rem;
   }
 }
 
@@ -2713,7 +2716,48 @@ textarea.field-input {
   white-space: nowrap;
 }
 
-/* ── Pickup/Delivery mode chip (opens the mode sheet) ──────────────────── */
+/* ── Pickup / Delivery / Eat here switch (opens the mode sheet) ─────────── */
+.mode-switch {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+}
+
+.mode-switch--unset {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.mode-switch__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--touch-target);
+  padding: 0 0.35rem;
+  border: none;
+  border-radius: calc(var(--radius-lg) - 3px);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-micro) var(--ease-out), color var(--duration-micro) var(--ease-out);
+}
+
+.mode-switch__btn.is-active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+/* Legacy single chip (kept for any leftover markup) */
 .mode-chip {
   display: inline-flex;
   align-items: center;
