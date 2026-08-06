@@ -87,13 +87,14 @@ describe('OrderModeSheet', () => {
     expect(localStorage.getItem('bakegrill_sales_channel_confirmed')).toBeNull();
   });
 
-  it('tomorrow: delivery is never dimmed even when blocked today', async () => {
+  it('tomorrow: delivery selectable when caller says open (today window ignored upstream)', async () => {
     saveDay('tomorrow');
     const user = userEvent.setup();
     const onClose = vi.fn();
+    // Caller computes day-aware blocking — for tomorrow with gate open, pass false.
     renderSheet({
       onClose,
-      deliveryBlockedToday: true,
+      deliveryBlockedToday: false,
       tomorrowDate: '2026-08-06',
     });
 
@@ -105,6 +106,33 @@ describe('OrderModeSheet', () => {
     await user.click(delivery);
     expect(onClose).toHaveBeenCalled();
     expect(localStorage.getItem('bakegrill_sales_channel')).toBe('delivery');
+  });
+
+  it('tomorrow: delivery dimmed when tomorrow delivery gate is closed', () => {
+    saveDay('tomorrow');
+    renderSheet({
+      deliveryBlockedToday: true,
+      deliveryBlockedReason: 'Delivery for tomorrow is not available right now.',
+      tomorrowDate: '2026-08-06',
+    });
+    const delivery = screen.getByTestId('mode-sheet-delivery');
+    expect(delivery).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('tomorrow: Eat here selectable when tomorrow dine-in gate is open', async () => {
+    saveDay('tomorrow');
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderSheet({
+      onClose,
+      dineInAvailable: true,
+      tomorrowDate: '2026-08-06',
+    });
+    const eatHere = screen.getByTestId('mode-sheet-dine_in');
+    expect(eatHere).not.toHaveAttribute('aria-disabled');
+    await user.click(eatHere);
+    expect(onClose).toHaveBeenCalled();
+    expect(localStorage.getItem('bakegrill_sales_channel')).toBe('dine_in');
   });
 
   it('pickup paused: pickup card dimmed', () => {

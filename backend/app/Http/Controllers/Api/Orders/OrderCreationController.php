@@ -310,9 +310,12 @@ class OrderCreationController extends Controller
                 'dine_in_preorder',
                 'Dine-in ordering is not available right now.',
             );
-            // v1: arrival is today only — no collect-tomorrow combination.
+            // Tomorrow eat-here requires its own gate (default off).
             if (($payload['collect_on'] ?? null) === 'tomorrow' || !empty($payload['fulfil_date'])) {
-                abort(422, 'Dine-in orders are for today only.');
+                app(\App\Services\FeatureGateService::class)->assertOpen(
+                    'tomorrow_dine_in',
+                    'Dine-in orders are for today only.',
+                );
             }
         }
 
@@ -337,6 +340,17 @@ class OrderCreationController extends Controller
         app(OnlineOrderingGateService::class)->assertOpenOrTomorrowCollect(
             $payload['fulfil_date'] ?? null,
         );
+
+        // Per-mode pickup gate (today vs tomorrow).
+        if ($payload['type'] === 'online_pickup') {
+            $isTomorrow = ($payload['fulfil_date'] ?? null) !== null;
+            app(\App\Services\FeatureGateService::class)->assertOpen(
+                $isTomorrow ? 'tomorrow_pickup' : 'pickup_ordering',
+                $isTomorrow
+                    ? 'Pickup for tomorrow is not available right now.'
+                    : 'Pickup ordering is not available right now.',
+            );
+        }
 
         if (!empty($payload['pickup_slot_at'])) {
             app(\App\Domains\Ordering\Services\PickupSlotService::class)

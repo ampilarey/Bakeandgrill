@@ -43,6 +43,26 @@ class FeatureGateService
             'description' => 'Customers can buy gift cards online. Turn off during payment gateway problems.',
             'default_enabled' => true,
         ],
+        'pickup_ordering' => [
+            'label' => 'Pickup (today)',
+            'description' => 'Customers can place same-day pickup orders. Schedule limits pickup hours independently of the master online-ordering hours.',
+            'default_enabled' => true,
+        ],
+        'tomorrow_pickup' => [
+            'label' => 'Tomorrow — pickup',
+            'description' => 'Customers can order today and collect tomorrow. Needs the "Order for tomorrow" master switch on as well.',
+            'default_enabled' => true,
+        ],
+        'tomorrow_delivery' => [
+            'label' => 'Tomorrow — delivery',
+            'description' => 'Customers can order today for delivery tomorrow. Needs the master switch on. Turn off when no drivers are arranged for tomorrow.',
+            'default_enabled' => true,
+        ],
+        'tomorrow_dine_in' => [
+            'label' => 'Tomorrow — eat here',
+            'description' => 'Customers can book an eat-here order for tomorrow. Off by default; also requires the "Eat here" gate to be on.',
+            'default_enabled' => false,
+        ],
     ];
 
     public function isKnown(string $key): bool

@@ -25,6 +25,11 @@ export async function uploadSiteLogo(key: string, file: File): Promise<{ url: st
 
 // ── Online Ordering Gate ───────────────────────────────────────────────────────
 
+export type ModeGateFragment = {
+  enabled: boolean;
+  open: boolean;
+};
+
 export interface OnlineOrderingGateStatus {
   open: boolean;
   message: string;
@@ -44,6 +49,11 @@ export interface OnlineOrderingGateStatus {
     collect_tomorrow_date: string;
     enabled?: boolean;
     open?: boolean;
+    modes?: {
+      pickup?: ModeGateFragment;
+      delivery?: ModeGateFragment;
+      dine_in?: ModeGateFragment;
+    };
   };
   /** Prepaid dine-in ("Eat here") availability. */
   dine_in_preorder?: {
@@ -52,6 +62,12 @@ export interface OnlineOrderingGateStatus {
   };
   reservations?: { open: boolean };
   gift_cards?: { open: boolean };
+  /** Per-mode today gates (additive). */
+  modes?: {
+    pickup?: ModeGateFragment;
+    delivery?: ModeGateFragment;
+    dine_in?: ModeGateFragment;
+  };
 }
 
 export async function getOnlineOrderingStatus(): Promise<OnlineOrderingGateStatus> {

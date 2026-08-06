@@ -216,14 +216,25 @@ export function CheckoutPage() {
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
 
+  const forTomorrow = collectOn === 'tomorrow';
+  const deliveryModeGate = forTomorrow
+    ? onlineGate?.order_for_tomorrow?.modes?.delivery?.open
+    : onlineGate?.modes?.delivery?.open;
+  const pickupModeGate = forTomorrow
+    ? onlineGate?.order_for_tomorrow?.modes?.pickup?.open
+    : onlineGate?.modes?.pickup?.open;
   const deliveryBlocked = isDeliveryBlocked({
     isOpen: onlineGate == null ? null : onlineGate.open,
     deliveryAvailable: onlineGate?.delivery_available ?? true,
     eligibilityAccepting: orderElig == null ? null : orderElig.delivery.accepting,
     serviceAvailable: deliveryServiceAvailable,
-    forTomorrow: collectOn === 'tomorrow',
+    forTomorrow,
+    modeGateOpen: deliveryModeGate,
   });
-  const pickupBlocked = isPickupBlocked({ serviceAvailable: pickupServiceAvailable });
+  const pickupBlocked = isPickupBlocked({
+    serviceAvailable: pickupServiceAvailable,
+    modeGateOpen: pickupModeGate,
+  });
   const shopClosed = onlineGate != null && !onlineGate.open;
   const orderingGateClosed = shopClosed || !checkoutServiceAvailable;
   const collectTomorrowDate = onlineGate?.order_for_tomorrow?.collect_tomorrow_date ?? null;
@@ -231,8 +242,11 @@ export function CheckoutPage() {
   const tomorrowGateOpen = onlineGate?.order_for_tomorrow?.open !== false;
   const canOrderTomorrowWhileClosed = shopClosed && allowsTomorrow && checkoutServiceAvailable && tomorrowGateOpen;
   const placeBlockedByGate = orderingGateClosed && !(canOrderTomorrowWhileClosed && collectOn === 'tomorrow');
-  // Prepaid dine-in ("Eat here"): owner gate (switch + schedule) + shop open (arrival is today).
-  const dineInAvailable = (onlineGate?.dine_in_preorder?.open ?? onlineGate?.dine_in_preorder?.enabled) === true && !shopClosed;
+  // Prepaid dine-in ("Eat here"): today uses modes.dine_in / legacy; tomorrow needs tomorrow_dine_in.
+  const dineInAvailable = forTomorrow
+    ? onlineGate?.order_for_tomorrow?.modes?.dine_in?.open === true
+    : (onlineGate?.modes?.dine_in?.open
+      ?? ((onlineGate?.dine_in_preorder?.open ?? onlineGate?.dine_in_preorder?.enabled) === true && !shopClosed));
   const isDineIn = orderType === 'dine_in';
 
   // Auto-fallback when the chosen mode becomes unavailable — never counts as an explicit choice.

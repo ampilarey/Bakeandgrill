@@ -9,6 +9,14 @@ describe('isPickupBlocked', () => {
   it('allows when service is on', () => {
     expect(isPickupBlocked({ serviceAvailable: true })).toBe(false);
   });
+
+  it('blocks when per-mode gate is closed', () => {
+    expect(isPickupBlocked({ serviceAvailable: true, modeGateOpen: false })).toBe(true);
+  });
+
+  it('fails open when mode gate is unknown', () => {
+    expect(isPickupBlocked({ serviceAvailable: true, modeGateOpen: null })).toBe(false);
+  });
 });
 
 describe('isDeliveryBlocked', () => {
@@ -75,6 +83,12 @@ describe('isDeliveryBlocked', () => {
     it('still blocks when the delivery service is switched off', () => {
       expect(
         isDeliveryBlocked({ ...base, forTomorrow: true, serviceAvailable: false }),
+      ).toBe(true);
+    });
+
+    it('blocks when per-mode tomorrow gate is closed', () => {
+      expect(
+        isDeliveryBlocked({ ...base, forTomorrow: true, modeGateOpen: false }),
       ).toBe(true);
     });
   });

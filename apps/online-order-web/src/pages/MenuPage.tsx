@@ -163,6 +163,17 @@ export function MenuPage() {
   const [dineInPreorderEnabled, setDineInPreorderEnabled] = useState<boolean>(false);
   /** Owner kill switch / schedule for collect-tomorrow (older servers omit = on). */
   const [tomorrowGateOpen, setTomorrowGateOpen] = useState<boolean>(true);
+  /** Per-mode gates from status (null = older payload — fail open). */
+  const [modeGates, setModeGates] = useState<{
+    pickup: boolean | null;
+    delivery: boolean | null;
+    dine_in: boolean | null;
+  }>({ pickup: null, delivery: null, dine_in: null });
+  const [tomorrowModeGates, setTomorrowModeGates] = useState<{
+    pickup: boolean | null;
+    delivery: boolean | null;
+    dine_in: boolean | null;
+  }>({ pickup: null, delivery: null, dine_in: null });
   /** null = not loaded / failed — must not block delivery. */
   const [eligibilityAccepting, setEligibilityAccepting] = useState<boolean | null>(null);
   const [gateMessage, setGateMessage] = useState<string>('');
@@ -252,6 +263,16 @@ export function MenuPage() {
         setDeliveryAvailable(gate.delivery_available ?? true);
         setDineInPreorderEnabled((gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true);
         setTomorrowGateOpen(gate.order_for_tomorrow?.open !== false);
+        setModeGates({
+          pickup: gate.modes?.pickup?.open ?? null,
+          delivery: gate.modes?.delivery?.open ?? null,
+          dine_in: gate.modes?.dine_in?.open ?? null,
+        });
+        setTomorrowModeGates({
+          pickup: gate.order_for_tomorrow?.modes?.pickup?.open ?? null,
+          delivery: gate.order_for_tomorrow?.modes?.delivery?.open ?? null,
+          dine_in: gate.order_for_tomorrow?.modes?.dine_in?.open ?? null,
+        });
         setGateMessage(gate.message ?? '');
         setCollectTomorrowDate(gate.order_for_tomorrow?.collect_tomorrow_date ?? null);
 
@@ -759,13 +780,23 @@ export function MenuPage() {
     </div>
   );
 
-  const pickupBlocked = isPickupBlocked({ serviceAvailable: isServiceAvailable('online_pickup') });
+  const forTomorrow = day === 'tomorrow';
+  const pickupBlocked = isPickupBlocked({
+    serviceAvailable: isServiceAvailable('online_pickup'),
+    modeGateOpen: forTomorrow ? tomorrowModeGates.pickup : modeGates.pickup,
+  });
   const deliveryBlocked = isDeliveryBlocked({
     isOpen,
     deliveryAvailable,
     eligibilityAccepting,
     serviceAvailable: isServiceAvailable('online_delivery'),
+    forTomorrow,
+    modeGateOpen: forTomorrow ? tomorrowModeGates.delivery : modeGates.delivery,
   });
+  const dineInAvailableToday = modeGates.dine_in ?? (dineInPreorderEnabled && isOpen === true);
+  const dineInAvailable = forTomorrow
+    ? tomorrowModeGates.dine_in === true
+    : dineInAvailableToday;
 
   if (error) {
     return (
@@ -853,14 +884,12 @@ export function MenuPage() {
               {
                 id: 'delivery' as const,
                 label: t('mode.delivery'),
-                // Tomorrow delivery can be arranged even when today's window is closed.
-                blocked: day === 'today' && deliveryBlocked,
+                blocked: deliveryBlocked,
               },
               {
                 id: 'dine_in' as const,
                 label: t('mode.eat_here'),
-                // Always listed; dimmed when gate/schedule/shop blocks it or for tomorrow.
-                blocked: !(dineInPreorderEnabled && isOpen === true) || day === 'tomorrow',
+                blocked: !dineInAvailable,
               },
             ]).map((opt) => {
               const active = modeConfirmed ? mode === opt.id : opt.id === 'pickup';
@@ -1160,7 +1189,7 @@ export function MenuPage() {
         deliveryBlockedToday={deliveryBlocked}
         deliveryBlockedReason={getServiceEntry('online_delivery')?.public_message || gateMessage || null}
         pickupBlocked={pickupBlocked}
-        dineInAvailable={dineInPreorderEnabled && isOpen === true}
+        dineInAvailable={dineInAvailable}
         tomorrowDate={collectTomorrowDate}
       />
 

@@ -79,6 +79,22 @@ class OnlineOrderingController extends Controller
         $status['reservations'] = ['open' => $featureGates->open('reservations')];
         $status['gift_cards'] = ['open' => $featureGates->open('gift_card_purchase')];
 
+        // Per-mode gates (additive; older clients ignore).
+        $status['modes'] = [
+            'pickup' => [
+                'enabled' => $featureGates->enabled('pickup_ordering'),
+                'open' => $status['open'] && $featureGates->open('pickup_ordering'),
+            ],
+            'delivery' => [
+                'enabled' => (bool) ($deliveryStatus['accepting_flag'] ?? true),
+                'open' => (bool) $status['delivery_available'],
+            ],
+            'dine_in' => [
+                'enabled' => $featureGates->enabled('dine_in_preorder'),
+                'open' => $status['open'] && $featureGates->open('dine_in_preorder'),
+            ],
+        ];
+
         // Additive services map — older clients ignore it. Same shape as
         // GET /api/service-status so a single reader can consume either.
         $snapshot = $this->availability->resolve();

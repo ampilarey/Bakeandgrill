@@ -114,6 +114,12 @@ export interface OnlineOrderingStatus {
     enabled?: boolean;
     /** Effective right now after schedule + override. */
     open?: boolean;
+    /** Per-mode tomorrow gates (older servers omit — fail open). */
+    modes?: {
+      pickup?: { enabled: boolean; open: boolean };
+      delivery?: { enabled: boolean; open: boolean };
+      dine_in?: { enabled: boolean; open: boolean };
+    };
   };
   /** Prepaid dine-in ("Eat here") availability. */
   dine_in_preorder?: {
@@ -125,6 +131,12 @@ export interface OnlineOrderingStatus {
   reservations?: { open: boolean };
   /** Gift card purchase gate (older servers omit — treat as open). */
   gift_cards?: { open: boolean };
+  /** Per-mode today gates (older servers omit — fail open). */
+  modes?: {
+    pickup?: { enabled: boolean; open: boolean };
+    delivery?: { enabled: boolean; open: boolean };
+    dine_in?: { enabled: boolean; open: boolean };
+  };
 }
 
 export type PreorderGateStatus = {

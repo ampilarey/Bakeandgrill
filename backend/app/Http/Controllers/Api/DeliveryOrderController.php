@@ -126,6 +126,11 @@ class DeliveryOrderController extends Controller
                 ? $validated['delivery_island']
                 : null;
             if (($validated['fulfil_date'] ?? null) !== null) {
+                // Per-mode tomorrow delivery gate (master already checked above).
+                app(\App\Services\FeatureGateService::class)->assertOpen(
+                    'tomorrow_delivery',
+                    'Delivery for tomorrow is not available right now.',
+                );
                 // Tomorrow order: schedule window / capacity don't apply.
                 $this->deliveryGate->assertDeliveryOpenForTomorrow($island);
             } else {

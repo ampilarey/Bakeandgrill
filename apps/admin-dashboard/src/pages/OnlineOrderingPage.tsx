@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { RefreshCw, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
@@ -16,12 +16,17 @@ import {
   toggleCateringOrdering,
   setCateringOrderingOverride,
   updateCateringOrderingSchedule,
+  getDeliveryStatus,
+  toggleDelivery,
+  setDeliveryOverride,
+  updateDeliverySchedule,
   getSiteSettings,
   updateSiteSettings,
   getPackagingFeeSettings,
   updatePackagingFeeSettings,
   type OnlineOrderingGateStatus,
   type CateringOrderingGateStatus,
+  type DeliveryGateStatus,
   type PackagingFeeSettings,
   type FeatureGateStatus,
 } from '../api';
@@ -82,7 +87,6 @@ function resolveSection(sectionParam: string | null): PageSection {
 
 export default function OnlineOrderingPage() {
   usePageTitle('Ordering Control');
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
   const section = resolveSection(sectionParam);
@@ -136,6 +140,14 @@ export default function OnlineOrderingPage() {
   const [tomorrowCutoffSaving, setTomorrowCutoffSaving] = useState(false);
   const [featureGates, setFeatureGates] = useState<Record<string, FeatureGateStatus> | null>(null);
 
+  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryGateStatus | null>(null);
+  const [deliveryToggling, setDeliveryToggling] = useState(false);
+  const [deliveryOverrideUntil, setDeliveryOverrideUntil] = useState('');
+  const [deliverySavingOverride, setDeliverySavingOverride] = useState(false);
+  const [deliverySchedule, setDeliverySchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
+  const [deliveryScheduleEnabled, setDeliveryScheduleEnabled] = useState(false);
+  const [deliveryScheduleSaving, setDeliveryScheduleSaving] = useState(false);
+
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -166,8 +178,26 @@ export default function OnlineOrderingPage() {
       .catch(() => { /* optional until migration runs */ });
   };
 
+  const loadDeliveryGate = () => {
+    getDeliveryStatus()
+      .then((s) => {
+        setDeliveryStatus(s);
+        setDeliveryOverrideUntil(toDatetimeLocal(s.override_until));
+        if (s.delivery_schedule) {
+          setDeliverySchedule(parseSchedule(JSON.stringify(s.delivery_schedule)));
+          setDeliveryScheduleEnabled(true);
+        } else {
+          setDeliveryScheduleEnabled(false);
+        }
+      })
+      .catch(() => { /* optional until migration runs */ });
+  };
+
   useEffect(() => { load(); }, []);
   useEffect(() => { loadCateringGate(); }, []);
+  useEffect(() => {
+    if (section === 'channels') loadDeliveryGate();
+  }, [section]);
 
   useEffect(() => {
     getSiteSettings().then(({ settings }) => {
@@ -528,21 +558,33 @@ export default function OnlineOrderingPage() {
       onClick: () => setSection('channels'),
     },
     {
+      id: 'pickup',
+      label: 'Pickup',
+      open: status?.modes?.pickup
+        ? status.modes.pickup.open
+        : (featureGates?.pickup_ordering?.open ?? (status ? status.open : null)),
+      onClick: () => setSection('channels'),
+    },
+    {
       id: 'delivery',
       label: 'Delivery',
-      open: status ? Boolean(status.delivery_available) : null,
-      onClick: () => { void navigate('/delivery-settings'); },
+      open: status?.modes?.delivery
+        ? status.modes.delivery.open
+        : (status ? Boolean(status.delivery_available) : null),
+      onClick: () => setSection('channels'),
+    },
+    {
+      id: 'dine_in',
+      label: 'Eat here',
+      open: status?.modes?.dine_in
+        ? status.modes.dine_in.open
+        : (status?.dine_in_preorder ? status.dine_in_preorder.open !== false : (featureGates?.dine_in_preorder?.open ?? null)),
+      onClick: () => setSection('channels'),
     },
     {
       id: 'tomorrow',
       label: 'Tomorrow',
       open: status?.order_for_tomorrow ? status.order_for_tomorrow.open !== false : null,
-      onClick: () => setSection('features'),
-    },
-    {
-      id: 'dine_in',
-      label: 'Eat here',
-      open: status?.dine_in_preorder ? status.dine_in_preorder.open !== false : (featureGates?.dine_in_preorder?.open ?? null),
       onClick: () => setSection('features'),
     },
     {
@@ -652,10 +694,179 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
 
+      <p style={{ ...S.sectionTitle, marginTop: '0.5rem' }}>Today — by order type</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Each order type needs the master switch above on, plus its own switch (and optional schedule).
+      </p>
+      {!featureGates && (
+        <p style={{ color: '#9C8575', fontSize: 13 }}>Loading order types…</p>
+      )}
+      {featureGates?.pickup_ordering && (
+        <FeatureGateCard
+          gate={featureGates.pickup_ordering}
+          onChanged={(fresh) => {
+            setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }));
+            load();
+          }}
+          onToast={showToast}
+        />
+      )}
+      {deliveryStatus && (
+        <>
+          <GateStatusCard
+            open={deliveryStatus.delivery_open}
+            openText="Delivery available"
+            closedText="Delivery unavailable"
+            reason={!deliveryStatus.delivery_open ? (deliveryStatus.message ?? undefined) : null}
+            onRefresh={loadDeliveryGate}
+            switchRow={{
+              on: deliveryStatus.accepting_flag,
+              toggling: deliveryToggling,
+              titleOn: 'Delivery is ON',
+              titleOff: 'Delivery is OFF',
+              helpOn: <>Customers can select delivery at checkout. Zones, fees &amp; capacity are on the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab.</>,
+              helpOff: 'Delivery is hidden at checkout. Customers can still order pickup.',
+              onToggle: () => {
+                void (async () => {
+                  setDeliveryToggling(true);
+                  try {
+                    const res = await toggleDelivery(!deliveryStatus.accepting_flag);
+                    setDeliveryStatus(res.delivery_status);
+                    showToast(`Delivery ${res.delivery_accepting_orders ? 'enabled' : 'disabled'}.`);
+                    load();
+                  } catch {
+                    showToast('Failed to update delivery.', 'err');
+                  } finally {
+                    setDeliveryToggling(false);
+                  }
+                })();
+              },
+            }}
+            override={{
+              value: deliveryOverrideUntil,
+              onChange: setDeliveryOverrideUntil,
+              activeUntil: deliveryStatus.override_active ? deliveryStatus.override_until : null,
+              saving: deliverySavingOverride,
+              onSet: () => {
+                void (async () => {
+                  const isoVal = safeIsoFromLocal(deliveryOverrideUntil);
+                  if (!isoVal) {
+                    showToast('Please pick a valid date and time first.', 'err');
+                    return;
+                  }
+                  setDeliverySavingOverride(true);
+                  try {
+                    const res = await setDeliveryOverride(isoVal);
+                    setDeliveryStatus(res.delivery_status);
+                    showToast('Delivery force-open set.');
+                    load();
+                  } catch {
+                    showToast('Failed to save delivery override.', 'err');
+                  } finally {
+                    setDeliverySavingOverride(false);
+                  }
+                })();
+              },
+              onClear: () => {
+                void (async () => {
+                  setDeliverySavingOverride(true);
+                  try {
+                    const res = await setDeliveryOverride(null);
+                    setDeliveryOverrideUntil('');
+                    setDeliveryStatus(res.delivery_status);
+                    showToast('Delivery override cleared.');
+                    load();
+                  } catch {
+                    showToast('Failed to clear delivery override.', 'err');
+                  } finally {
+                    setDeliverySavingOverride(false);
+                  }
+                })();
+              },
+              help: 'Force delivery open until a specific time, ignoring its switch and schedule.',
+            }}
+            testId="today-delivery-gate"
+          />
+          <div className="oc-card" style={S.card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+              <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Delivery hours</p>
+              <button
+                type="button"
+                style={S.toggleTrack(deliveryScheduleEnabled)}
+                onClick={() => setDeliveryScheduleEnabled((v) => !v)}
+                role="switch"
+                aria-checked={deliveryScheduleEnabled}
+              >
+                <span style={S.toggleThumb(deliveryScheduleEnabled)} />
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 12 }}>
+              {deliveryScheduleEnabled ? 'Delivery only during these windows.' : 'No schedule — delivery available whenever accepting is on.'}
+            </p>
+            {deliveryScheduleEnabled && (
+              <ScheduleEditor schedule={deliverySchedule} onChange={setDeliverySchedule} />
+            )}
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="oc-btn-block"
+                style={S.btnPrimary}
+                disabled={deliveryScheduleSaving}
+                onClick={() => {
+                  void (async () => {
+                    setDeliveryScheduleSaving(true);
+                    try {
+                      const payload = deliveryScheduleEnabled
+                        ? Object.fromEntries(
+                            DAYS.filter(({ key }) => deliverySchedule[key].enabled).map(({ key }) => [
+                              key,
+                              { enabled: true, windows: deliverySchedule[key].windows },
+                            ]),
+                          )
+                        : null;
+                      const res = await updateDeliverySchedule(
+                        payload && Object.keys(payload).length > 0 ? payload : null,
+                      );
+                      setDeliveryStatus(res.delivery_status);
+                      showToast('Delivery schedule saved.');
+                      load();
+                    } catch {
+                      showToast('Failed to save delivery schedule.', 'err');
+                    } finally {
+                      setDeliveryScheduleSaving(false);
+                    }
+                  })();
+                }}
+              >
+                <Save size={14} />
+                {deliveryScheduleSaving ? 'Saving…' : 'Save delivery schedule'}
+              </button>
+              <Link to="/delivery-settings" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
+                Zones, fees, capacity →
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+      {featureGates?.dine_in_preorder && (
+        <FeatureGateCard
+          gate={featureGates.dine_in_preorder}
+          onChanged={(fresh) => {
+            setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }));
+            load();
+          }}
+          onToast={showToast}
+        />
+      )}
+
       </>)}
       </>)}
 
       {section === 'features' && (<>
+      <p style={{ ...S.sectionTitle, marginTop: 0 }}>Tomorrow — master</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Kill switch for all tomorrow orders. Each order type below also needs this on.
+      </p>
       <div className="oc-card" style={S.card} data-testid="order-for-tomorrow-cutoff">
         <p style={S.sectionTitle}>Collect tomorrow — cutoff time</p>
         <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>
@@ -690,15 +901,46 @@ export default function OnlineOrderingPage() {
         </div>
       </div>
 
-      <p style={{ ...S.sectionTitle, marginTop: '0.5rem' }}>Feature switches &amp; schedules</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
-        Tap a feature to edit its weekly schedule or force it open.
-      </p>
       {!featureGates && (
         <p style={{ color: '#9C8575', fontSize: 13 }}>Loading features…</p>
       )}
+      {featureGates?.order_for_tomorrow && (
+        <FeatureGateCard
+          gate={featureGates.order_for_tomorrow}
+          onChanged={(fresh) => {
+            setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }));
+            load();
+          }}
+          onToast={showToast}
+        />
+      )}
+
+      <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Tomorrow — by order type</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Independent on/off and schedule for pickup, delivery, and eat here tomorrow.
+      </p>
       {featureGates &&
-        ['order_for_tomorrow', 'dine_in_preorder', 'reservations', 'gift_card_purchase']
+        ['tomorrow_pickup', 'tomorrow_delivery', 'tomorrow_dine_in']
+          .map((key) => featureGates[key])
+          .filter((g): g is FeatureGateStatus => Boolean(g))
+          .map((gate) => (
+            <FeatureGateCard
+              key={gate.key}
+              gate={gate}
+              onChanged={(fresh) => {
+                setFeatureGates((prev) => ({ ...(prev ?? {}), [fresh.key]: fresh }));
+                load();
+              }}
+              onToast={showToast}
+            />
+          ))}
+
+      <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Other features</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Tap a feature to edit its weekly schedule or force it open.
+      </p>
+      {featureGates &&
+        ['reservations', 'gift_card_purchase']
           .map((key) => featureGates[key])
           .filter((g): g is FeatureGateStatus => Boolean(g))
           .map((gate) => (

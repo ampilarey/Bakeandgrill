@@ -262,6 +262,10 @@ class FeatureGatesTest extends TestCase
         $res->assertJsonPath('dine_in_preorder.open', true);
         $res->assertJsonPath('reservations.open', true);
         $res->assertJsonPath('gift_cards.open', false);
+        $res->assertJsonPath('modes.pickup.open', true);
+        $res->assertJsonPath('modes.delivery.enabled', true);
+        $res->assertJsonPath('order_for_tomorrow.modes.pickup.open', false); // master off
+        $res->assertJsonPath('order_for_tomorrow.modes.dine_in.enabled', false);
     }
 
     public function test_service_layer_defaults_preserve_behaviour(): void
@@ -271,5 +275,100 @@ class FeatureGatesTest extends TestCase
         $this->assertTrue($gates->open('reservations'));
         $this->assertTrue($gates->open('gift_card_purchase'));
         $this->assertTrue($gates->open('dine_in_preorder')); // enabled in setUp
+        $this->assertTrue($gates->open('pickup_ordering'));
+        $this->assertTrue($gates->open('tomorrow_pickup'));
+        $this->assertTrue($gates->open('tomorrow_delivery'));
+        $this->assertFalse($gates->open('tomorrow_dine_in')); // default off
+    }
+
+    // ── Per-mode today / tomorrow gates ────────────────────────────────────────
+
+    public function test_pickup_ordering_kill_switch_blocks_today_pickup(): void
+    {
+        SiteSetting::set('pickup_ordering_enabled', '0');
+
+        Sanctum::actingAs($this->customer, ['customer']);
+        $this->postJson('/api/customer/orders', [
+            'type' => 'online_pickup',
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+        ])->assertStatus(422);
+
+        // Tomorrow pickup still works when only today pickup is off.
+        $this->postJson('/api/customer/orders', [
+            'type' => 'online_pickup',
+            'collect_on' => 'tomorrow',
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+        ])->assertCreated();
+    }
+
+    public function test_tomorrow_pickup_kill_switch_blocks_only_tomorrow_pickup(): void
+    {
+        SiteSetting::set('tomorrow_pickup_enabled', '0');
+
+        Sanctum::actingAs($this->customer, ['customer']);
+        $this->postJson('/api/customer/orders', [
+            'type' => 'online_pickup',
+            'collect_on' => 'tomorrow',
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+        ])->assertStatus(422);
+
+        $this->postJson('/api/customer/orders', [
+            'type' => 'online_pickup',
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+        ])->assertCreated();
+    }
+
+    public function test_tomorrow_delivery_kill_switch_blocks_tomorrow_delivery(): void
+    {
+        SiteSetting::set('delivery_accepting_orders', '1');
+        SiteSetting::set('tomorrow_delivery_enabled', '0');
+
+        Sanctum::actingAs($this->customer, ['customer']);
+        $base = [
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+            'delivery_address_line1' => 'H. Test House',
+            'delivery_island' => "Male'",
+            'delivery_contact_name' => 'Gate Customer',
+            'delivery_contact_phone' => '7770500',
+        ];
+        $this->postJson('/api/orders/delivery', array_merge($base, [
+            'collect_on' => 'tomorrow',
+        ]))->assertStatus(422);
+
+        // Today delivery still OK.
+        $this->postJson('/api/orders/delivery', $base)->assertCreated();
+    }
+
+    public function test_tomorrow_dine_in_default_off_and_can_enable(): void
+    {
+        Sanctum::actingAs($this->customer, ['customer']);
+        $payload = [
+            'type' => 'dine_in',
+            'collect_on' => 'tomorrow',
+            'party_size' => 2,
+            'pickup_slot_at' => now()->addDay()->setTime(12, 0)->toIso8601String(),
+            'items' => [['item_id' => $this->tomorrowItem->id, 'quantity' => 1]],
+        ];
+
+        $this->postJson('/api/customer/orders', $payload)->assertStatus(422);
+
+        SiteSetting::set('tomorrow_dine_in_enabled', '1');
+        $this->postJson('/api/customer/orders', $payload)->assertCreated();
+    }
+
+    public function test_admin_can_update_new_per_mode_gates(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $list = $this->getJson('/api/admin/ordering/feature-gates');
+        $list->assertOk();
+        $list->assertJsonPath('gates.pickup_ordering.enabled', true);
+        $list->assertJsonPath('gates.tomorrow_pickup.enabled', true);
+        $list->assertJsonPath('gates.tomorrow_delivery.enabled', true);
+        $list->assertJsonPath('gates.tomorrow_dine_in.enabled', false);
+
+        $this->putJson('/api/admin/ordering/feature-gates/pickup_ordering', [
+            'enabled' => false,
+        ])->assertOk()->assertJsonPath('gate.open', false);
     }
 }

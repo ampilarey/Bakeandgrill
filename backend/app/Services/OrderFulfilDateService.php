@@ -128,12 +128,27 @@ class OrderFulfilDateService
     public function statusFragment(?Carbon $at = null): array
     {
         $gate = app(FeatureGateService::class);
+        $masterOpen = $gate->open('order_for_tomorrow', $at);
 
         return [
             'cutoff' => $this->cutoffTime(),
             'collect_tomorrow_date' => $this->allowedTomorrowDateString($at),
             'enabled' => $gate->enabled('order_for_tomorrow'),
-            'open' => $gate->open('order_for_tomorrow', $at),
+            'open' => $masterOpen,
+            'modes' => [
+                'pickup' => [
+                    'enabled' => $gate->enabled('tomorrow_pickup'),
+                    'open' => $masterOpen && $gate->open('tomorrow_pickup', $at),
+                ],
+                'delivery' => [
+                    'enabled' => $gate->enabled('tomorrow_delivery'),
+                    'open' => $masterOpen && $gate->open('tomorrow_delivery', $at),
+                ],
+                'dine_in' => [
+                    'enabled' => $gate->enabled('tomorrow_dine_in'),
+                    'open' => $masterOpen && $gate->open('tomorrow_dine_in', $at),
+                ],
+            ],
         ];
     }
 

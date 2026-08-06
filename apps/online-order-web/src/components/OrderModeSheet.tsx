@@ -13,7 +13,10 @@ type Props = {
   deliveryBlockedReason?: string | null;
   /** Pickup service paused entirely. */
   pickupBlocked?: boolean;
-  /** Prepaid dine-in ("Eat here") enabled by the owner and shop open. */
+  /**
+   * Prepaid dine-in ("Eat here") available for the current day
+   * (today: shop + dine_in gate; tomorrow: tomorrow_dine_in gate).
+   */
   dineInAvailable?: boolean;
   /** API collect-tomorrow date for the context line. */
   tomorrowDate?: string | null;
@@ -21,8 +24,8 @@ type Props = {
 
 /**
  * "How do you want your order?" bottom sheet (centered card on desktop via
- * the shared Sheet styles). Tomorrow orders always offer delivery — a driver
- * can be arranged in advance — so the today-window block does not apply.
+ * the shared Sheet styles). Caller computes blocked flags for the active day
+ * (today vs tomorrow per-mode gates).
  */
 export function OrderModeSheet({
   open,
@@ -37,7 +40,8 @@ export function OrderModeSheet({
   const { mode, setMode, modeConfirmed } = useOrderMode();
   const { day } = useOrderDay();
 
-  const deliveryBlocked = day === 'today' && deliveryBlockedToday;
+  // Caller already applies day-aware blocking; keep prop name for compat.
+  const deliveryBlocked = deliveryBlockedToday;
 
   const choose = (next: OrderMode) => {
     setMode(next);
@@ -70,16 +74,15 @@ export function OrderModeSheet({
         ? (deliveryBlockedReason?.trim() || t('modeSheet.delivery_unavailable'))
         : null,
     },
-    // Always listed. Prepaid dine-in is today-only and may be off by schedule.
     {
       id: 'dine_in',
       icon: '🍽️',
       label: t('mode.eat_here'),
       sub: t('modeSheet.eat_here_sub'),
-      blocked: !dineInAvailable || day === 'tomorrow',
-      blockedNote: day === 'tomorrow'
-        ? t('modeSheet.eat_here_tomorrow')
-        : (!dineInAvailable ? t('modeSheet.eat_here_unavailable') : null),
+      blocked: !dineInAvailable,
+      blockedNote: !dineInAvailable
+        ? (day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : t('modeSheet.eat_here_unavailable'))
+        : null,
     },
   ];
 

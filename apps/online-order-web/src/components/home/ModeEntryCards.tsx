@@ -169,12 +169,15 @@ export function ModeEntryCards() {
       .then((gate) => {
         if (cancelled) return;
         const shopOpen = gate.open === true;
+        // Prefer per-mode flags when present; fall back to legacy fields.
+        const pickupOpen = gate.modes?.pickup?.open ?? shopOpen;
+        const deliveryOpen = gate.modes?.delivery?.open ?? (gate.delivery_available !== false);
+        const dineInOpen = gate.modes?.dine_in?.open
+          ?? ((gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true && shopOpen);
         setAvailability({
-          shopOpen,
-          deliveryAvailable: gate.delivery_available !== false,
-          dineInAvailable:
-            (gate.dine_in_preorder?.open ?? gate.dine_in_preorder?.enabled) === true
-            && shopOpen,
+          shopOpen: pickupOpen,
+          deliveryAvailable: deliveryOpen,
+          dineInAvailable: dineInOpen,
         });
       })
       .catch(() => { /* keep optimistic defaults */ });
