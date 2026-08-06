@@ -100,7 +100,28 @@ class DeliveryDriverController extends Controller
             'driver_id' => ['nullable', 'integer', 'exists:delivery_drivers,id'],
         ]);
 
+        // 2026-08 audit #7: only delivery orders may be routed to a driver —
+        // never a pickup/dine-in ticket.
+        if ($order->type !== 'delivery') {
+            abort(422, 'Only delivery orders can be assigned a driver.');
+        }
+
         $driverId = $validated['driver_id'] ?? null;
+
+        // The chosen driver must be active. (Clearing the driver is always ok.)
+        if ($driverId !== null) {
+            $driver = \App\Models\DeliveryDriver::find($driverId);
+            if (!$driver || !$driver->is_active) {
+                abort(422, 'Selected driver is not active.');
+            }
+        }
+
+        // Assignment only makes sense before/at dispatch — not on a delivered,
+        // cancelled, or refunded ticket.
+        if ($driverId !== null
+            && !in_array($order->status, ['pending', 'preparing', 'in_progress', 'ready', 'out_for_delivery'], true)) {
+            abort(422, "Cannot assign a driver to a {$order->status} order.");
+        }
 
         if ($driverId && $order->status === 'ready') {
             $order = app(\App\Services\OrderStatusTransitionService::class)->transition(
