@@ -70,12 +70,18 @@ class ReturnUrlSafetyTest extends TestCase
 
     public function test_confirmed_return_query_without_webhook_does_not_finalize_payment(): void
     {
+        // Use the REAL stored provider transaction id (audit noted the old
+        // test used a non-existent `transaction_id` attribute, so it never
+        // exercised the confirmation branch at all).
         $this->get('/payments/bml/return?' . http_build_query([
             'orderId' => $this->order->id,
             'state' => 'CONFIRMED',
-            'transactionId' => $this->payment->transaction_id,
+            'transactionId' => $this->payment->provider_transaction_id,
         ]));
 
+        // With no reachable BML status API in the test env, the fail-closed
+        // path must leave the payment pending — CONFIRMED browser params alone
+        // are not authoritative.
         $this->assertNotContains(
             $this->order->fresh()->status,
             ['paid', 'completed'],
@@ -83,5 +89,38 @@ class ReturnUrlSafetyTest extends TestCase
         );
 
         $this->assertSame('pending', $this->payment->fresh()->status);
+    }
+
+    public function test_return_url_fails_closed_when_status_api_unavailable(): void
+    {
+        // Status API throws (outage/timeout). The return handler must NOT
+        // confirm from the browser redirect (2026-08 audit #2).
+        $mock = \Mockery::mock(\App\Domains\Payments\Gateway\BmlConnectService::class);
+        $mock->shouldReceive('getTransactionStatus')
+            ->andThrow(new \RuntimeException('BML status API timeout'));
+        $this->app->instance(\App\Domains\Payments\Gateway\BmlConnectService::class, $mock);
+
+        app(\App\Domains\Payments\Services\PaymentService::class)
+            ->confirmFromReturnUrl($this->order->id, $this->payment->provider_transaction_id);
+
+        $this->assertSame('pending', $this->payment->fresh()->status);
+        $this->assertNotContains($this->order->fresh()->status, ['paid', 'completed']);
+    }
+
+    public function test_return_url_confirms_only_on_verified_status(): void
+    {
+        $mock = \Mockery::mock(\App\Domains\Payments\Gateway\BmlConnectService::class);
+        $mock->shouldReceive('getTransactionStatus')
+            ->andReturn([
+                'state' => 'CONFIRMED',
+                'transactionId' => $this->payment->provider_transaction_id,
+                'amount' => 10000,
+            ]);
+        $this->app->instance(\App\Domains\Payments\Gateway\BmlConnectService::class, $mock);
+
+        app(\App\Domains\Payments\Services\PaymentService::class)
+            ->confirmFromReturnUrl($this->order->id, $this->payment->provider_transaction_id);
+
+        $this->assertContains($this->payment->fresh()->status, ['confirmed', 'paid', 'completed']);
     }
 }

@@ -304,86 +304,101 @@ class PaymentService
     }
 
     /**
-     * Fallback confirmation triggered from the BML return URL.
-     * Used when webhooks are unreliable (e.g. UAT). Verifies the transaction
-     * directly with BML's API, then runs the same confirmation logic as the webhook.
-     * Safe to call multiple times — confirmPayment() is idempotent.
+     * Confirmation triggered from the BML return URL.
+     *
+     * SECURITY (2026-08 audit #2): the return URL is an UNAUTHENTICATED browser
+     * redirect — its query params must never settle a payment on their own.
+     * This method FAILS CLOSED: it only settles when BML's server-to-server
+     * status API explicitly returns CONFIRMED for the exact stored payment.
+     * If that API is unreachable, the payment stays pending and the signed
+     * webhook (or a later reconcile) settles it. Idempotent.
      */
     public function confirmFromReturnUrl(int $orderId, string $transactionId): void
     {
-        // Prefer lookup by transactionId so we confirm the exact payment attempt
-        // the customer completed, not just "the latest one for this order".
-        // If the customer retried payment, findByOrderId() would return the newer
-        // (not-yet-confirmed) attempt and then confirm the wrong record (L-4).
-        $payment = $this->payments->findByProviderTransactionId($transactionId)
-            ?? $this->payments->findByOrderId($orderId);
+        // Resolve strictly by the completed transaction id. Do NOT fall back to
+        // "latest payment for this order" for confirmation — that could confirm
+        // a different attempt than the one BML actually verified.
+        $payment = $this->payments->findByProviderTransactionId($transactionId);
 
-        if (!$payment) {
-            Log::info('BML return: no payment record for order', [
+        if (!$payment || (int) $payment->order_id !== $orderId) {
+            Log::info('BML return: no matching payment for transaction/order', [
                 'order_id' => $orderId,
                 'transaction_id' => $transactionId,
+                'payment_found' => (bool) $payment,
             ]);
 
             return;
         }
 
-        // Already confirmed — nothing to do.
+        // Already settled (e.g. webhook arrived first) — nothing to do.
         if (in_array($payment->status, ['confirmed', 'paid', 'completed'], true)) {
             Log::info('BML return: payment already confirmed', ['payment_id' => $payment->id]);
 
             return;
         }
 
-        // Verify the transaction with BML's status API.
-        //
-        // Two distinct cases:
-        //   1. API reachable + non-CONFIRMED state  → payment genuinely failed/declined;
-        //      do NOT confirm — bail out immediately.
-        //   2. API unreachable (exception/timeout)  → fall through and trust the return
-        //      URL redirect (BML only sends state=CONFIRMED on success in production;
-        //      the webhook is idempotent if it arrives later).
-        //
-        // Previously the else-branch only logged a warning and fell through, which caused
-        // declined UAT payments to be confirmed because BML UAT sends state=CONFIRMED
-        // even when 3DS authentication was rejected.
-        $bmlStatus = [];
+        // Fail CLOSED: an outage/timeout on the status API must NOT confirm.
         try {
             $fetched = $this->bml->getTransactionStatus($transactionId);
-            $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
-
-            if ($apiState === 'CONFIRMED') {
-                $bmlStatus = $fetched;
-            } else {
-                // API is reachable and explicitly says this transaction is not confirmed.
-                // Treat any non-CONFIRMED API response as authoritative and abort.
-                Log::warning('BML return: API returned non-CONFIRMED state — aborting confirmation', [
-                    'transaction_id' => $transactionId,
-                    'api_state' => $apiState,
-                    'order_id' => $orderId,
-                    'payment_id' => $payment->id,
-                ]);
-
-                return;
-            }
         } catch (\Throwable $e) {
-            // API unreachable or timed out — fall through and trust the return URL.
-            Log::warning('BML return: status API unreachable — proceeding on return URL state', [
+            Log::warning('BML return: status API unavailable — leaving payment pending', [
                 'transaction_id' => $transactionId,
+                'order_id' => $orderId,
+                'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
+
+            return;
         }
 
-        Log::info('BML return: confirming payment via return URL fallback', [
+        $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
+        if ($apiState !== 'CONFIRMED') {
+            Log::warning('BML return: status not CONFIRMED — not settling', [
+                'transaction_id' => $transactionId,
+                'api_state' => $apiState,
+                'order_id' => $orderId,
+                'payment_id' => $payment->id,
+            ]);
+
+            return;
+        }
+
+        // Defense in depth: returned identifiers and amount must match the
+        // locally created payment before we mark it paid.
+        $returnedTxn = (string) ($fetched['transactionId'] ?? $transactionId);
+        if ($payment->provider_transaction_id && $returnedTxn !== $payment->provider_transaction_id) {
+            Log::warning('BML return: transaction id mismatch — not settling', [
+                'expected' => $payment->provider_transaction_id,
+                'returned' => $returnedTxn,
+                'payment_id' => $payment->id,
+            ]);
+
+            return;
+        }
+
+        $apiAmountLaar = isset($fetched['amount']) ? (int) $fetched['amount'] : null;
+        if ($apiAmountLaar !== null && $payment->amount_laar !== null
+            && $apiAmountLaar !== (int) $payment->amount_laar) {
+            Log::warning('BML return: amount mismatch — not settling', [
+                'expected_laar' => (int) $payment->amount_laar,
+                'returned_laar' => $apiAmountLaar,
+                'payment_id' => $payment->id,
+            ]);
+
+            return;
+        }
+
+        Log::info('BML return: confirming payment via verified status API', [
             'order_id' => $orderId,
-            'transaction_id' => $transactionId,
+            'transaction_id' => $returnedTxn,
             'payment_id' => $payment->id,
         ]);
 
-        $this->confirmPayment($payment, array_merge($bmlStatus, [
-            'transactionId' => $transactionId,
+        $this->confirmPayment($payment, array_merge($fetched, [
+            'transactionId' => $returnedTxn,
             'localId' => $payment->local_id,
             'state' => 'CONFIRMED',
-            'source' => 'return_url_fallback',
+            'source' => 'return_url_verified',
         ]));
     }
 
