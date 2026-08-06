@@ -471,60 +471,118 @@ export default function OnlineOrderingPage() {
     </div>
   ) : null;
 
-  const statusChips = [
+  const goOnline = () => setSection('channels');
+  const goFeatures = () => setSection('features');
+  const tomorrowModes = status?.order_for_tomorrow?.modes;
+
+  const statusGroups = [
     {
-      id: 'online',
-      label: 'Online',
-      open: status ? status.open : null,
-      onClick: () => setSection('channels'),
-    },
-    {
-      id: 'pickup',
-      label: 'Pickup',
-      open: status?.modes?.pickup
-        ? status.modes.pickup.open
-        : (featureGates?.pickup_ordering?.open ?? (status ? status.open : null)),
-      onClick: () => setSection('channels'),
-    },
-    {
-      id: 'delivery',
-      label: 'Delivery',
-      open: status?.modes?.delivery
-        ? status.modes.delivery.open
-        : (status ? Boolean(status.delivery_available) : null),
-      onClick: () => setSection('channels'),
-    },
-    {
-      id: 'dine_in',
-      label: 'Eat here',
-      open: status?.modes?.dine_in
-        ? status.modes.dine_in.open
-        : (status?.dine_in_preorder ? status.dine_in_preorder.open !== false : (featureGates?.dine_in_preorder?.open ?? null)),
-      onClick: () => setSection('channels'),
+      id: 'today',
+      label: 'Today',
+      chips: [
+        {
+          id: 'online',
+          label: 'Online',
+          open: status ? status.open : null,
+          onClick: goOnline,
+        },
+        {
+          id: 'pickup',
+          label: 'Pickup',
+          open: status?.modes?.pickup
+            ? status.modes.pickup.open
+            : (featureGates?.pickup_ordering?.open ?? (status ? status.open : null)),
+          onClick: goOnline,
+        },
+        {
+          id: 'delivery',
+          label: 'Delivery',
+          open: status?.modes?.delivery
+            ? status.modes.delivery.open
+            : (status ? Boolean(status.delivery_available) : null),
+          onClick: goOnline,
+        },
+        {
+          id: 'dine_in',
+          label: 'Eat here',
+          open: status?.modes?.dine_in
+            ? status.modes.dine_in.open
+            : (status?.dine_in_preorder
+              ? status.dine_in_preorder.open !== false
+              : (featureGates?.dine_in_preorder?.open ?? null)),
+          onClick: goOnline,
+        },
+      ],
     },
     {
       id: 'tomorrow',
       label: 'Tomorrow',
-      open: status?.order_for_tomorrow ? status.order_for_tomorrow.open !== false : null,
-      onClick: () => setSection('features'),
+      chips: [
+        {
+          id: 'tomorrow_master',
+          label: 'Master',
+          open: status?.order_for_tomorrow ? status.order_for_tomorrow.open !== false : null,
+          onClick: goFeatures,
+        },
+        {
+          id: 'tomorrow_pickup',
+          label: 'Pickup',
+          open: tomorrowModes?.pickup
+            ? tomorrowModes.pickup.open
+            : (featureGates?.tomorrow_pickup
+              ? Boolean(status?.order_for_tomorrow?.open !== false && featureGates.tomorrow_pickup.open)
+              : (status?.order_for_tomorrow ? status.order_for_tomorrow.open !== false : null)),
+          onClick: goFeatures,
+        },
+        {
+          id: 'tomorrow_delivery',
+          label: 'Delivery',
+          open: tomorrowModes?.delivery
+            ? tomorrowModes.delivery.open
+            : (featureGates?.tomorrow_delivery
+              ? Boolean(status?.order_for_tomorrow?.open !== false && featureGates.tomorrow_delivery.open)
+              : null),
+          onClick: goFeatures,
+        },
+        {
+          id: 'tomorrow_dine_in',
+          label: 'Eat here',
+          open: tomorrowModes?.dine_in
+            ? tomorrowModes.dine_in.open
+            : (featureGates?.tomorrow_dine_in
+              ? Boolean(status?.order_for_tomorrow?.open !== false && featureGates.tomorrow_dine_in.open)
+              : false),
+          onClick: goFeatures,
+        },
+      ],
     },
     {
-      id: 'reservations',
-      label: 'Reservations',
-      open: status?.reservations ? status.reservations.open !== false : (featureGates?.reservations?.open ?? null),
-      onClick: () => setSection('features'),
-    },
-    {
-      id: 'gift_cards',
-      label: 'Gift cards',
-      open: status?.gift_cards ? status.gift_cards.open !== false : (featureGates?.gift_card_purchase?.open ?? null),
-      onClick: () => setSection('features'),
-    },
-    {
-      id: 'preorder',
-      label: 'Pre-order',
-      open: cateringStatus ? cateringStatus.open : null,
-      onClick: () => setSection('events'),
+      id: 'other',
+      label: 'Other',
+      chips: [
+        {
+          id: 'reservations',
+          label: 'Reservations',
+          open: status?.reservations
+            ? status.reservations.open !== false
+            : (featureGates?.reservations?.open ?? null),
+          onClick: goFeatures,
+        },
+        {
+          id: 'gift_cards',
+          label: 'Gift cards',
+          open: status?.gift_cards
+            ? status.gift_cards.open !== false
+            : (featureGates?.gift_card_purchase?.open ?? null),
+          onClick: goFeatures,
+        },
+        {
+          id: 'preorder',
+          label: 'Pre-order',
+          open: cateringStatus ? cateringStatus.open : null,
+          onClick: () => setSection('events'),
+        },
+      ],
     },
   ];
 
@@ -537,7 +595,7 @@ export default function OnlineOrderingPage() {
       />
       <OrderingControlTabs />
 
-      <StatusChipStrip chips={statusChips} />
+      <StatusChipStrip groups={statusGroups} />
 
       {toastBanner}
 

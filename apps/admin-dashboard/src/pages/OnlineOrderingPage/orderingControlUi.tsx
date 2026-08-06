@@ -266,49 +266,86 @@ export type StatusChip = {
   onClick?: () => void;
 };
 
-/** Compact open/closed strip for the Ordering Control hub — one scrollable row. */
-export function StatusChipStrip({ chips }: { chips: StatusChip[] }) {
+export type StatusChipGroup = {
+  id: string;
+  label: string;
+  chips: StatusChip[];
+};
+
+function StatusChipButton({ chip, groupLabel }: { chip: StatusChip; groupLabel?: string }) {
+  const unknown = chip.open === null;
+  const style: CSSProperties = unknown
+    ? {
+        ...S.statusClosed,
+        background: '#F5F0EB',
+        color: '#9C8575',
+        border: '1px solid var(--color-border)',
+        cursor: chip.onClick ? 'pointer' : 'default',
+      }
+    : {
+        ...(chip.open ? S.statusOpen : S.statusClosed),
+        cursor: chip.onClick ? 'pointer' : 'default',
+      };
+  const Tag = chip.onClick ? 'button' : 'span';
+  const stateLabel = unknown ? 'loading' : chip.open ? 'open' : 'closed';
+  const fullLabel = groupLabel ? `${groupLabel} ${chip.label}` : chip.label;
+  return (
+    <Tag
+      type={chip.onClick ? 'button' : undefined}
+      onClick={chip.onClick}
+      style={{ ...style, padding: '4px 12px', minHeight: 32 }}
+      aria-label={`${fullLabel}: ${stateLabel}`}
+      title={`${fullLabel}: ${stateLabel}`}
+      data-testid={`status-chip-${chip.id}`}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: unknown ? '#C4B5A5' : chip.open ? '#10B981' : '#EF4444',
+          flexShrink: 0,
+        }}
+      />
+      {chip.label}
+    </Tag>
+  );
+}
+
+/**
+ * Open/closed overview for Ordering Control.
+ * Prefer grouped rows (Today / Tomorrow / Other) so per-mode gates read clearly.
+ */
+export function StatusChipStrip({
+  groups,
+  chips,
+}: {
+  groups?: StatusChipGroup[];
+  /** @deprecated Prefer `groups` — kept for simple one-row strips. */
+  chips?: StatusChip[];
+}) {
+  if (groups && groups.length > 0) {
+    return (
+      <div className="oc-status-overview" data-testid="ordering-status-overview">
+        {groups.map((group) => (
+          <div key={group.id} className="oc-status-group" data-testid={`status-group-${group.id}`}>
+            <span className="oc-status-group-label">{group.label}</span>
+            <div className="oc-chip-strip">
+              {group.chips.map((chip) => (
+                <StatusChipButton key={chip.id} chip={chip} groupLabel={group.label} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="oc-chip-strip" data-testid="ordering-status-overview">
-      {chips.map((chip) => {
-        const unknown = chip.open === null;
-        const style: CSSProperties = unknown
-          ? {
-              ...S.statusClosed,
-              background: '#F5F0EB',
-              color: '#9C8575',
-              border: '1px solid var(--color-border)',
-              cursor: chip.onClick ? 'pointer' : 'default',
-            }
-          : {
-              ...(chip.open ? S.statusOpen : S.statusClosed),
-              cursor: chip.onClick ? 'pointer' : 'default',
-            };
-        const Tag = chip.onClick ? 'button' : 'span';
-        const stateLabel = unknown ? 'loading' : chip.open ? 'open' : 'closed';
-        return (
-          <Tag
-            key={chip.id}
-            type={chip.onClick ? 'button' : undefined}
-            onClick={chip.onClick}
-            style={{ ...style, padding: '4px 12px', minHeight: 32 }}
-            aria-label={`${chip.label}: ${stateLabel}`}
-            title={`${chip.label}: ${stateLabel}`}
-            data-testid={`status-chip-${chip.id}`}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: unknown ? '#C4B5A5' : chip.open ? '#10B981' : '#EF4444',
-                flexShrink: 0,
-              }}
-            />
-            {chip.label}
-          </Tag>
-        );
-      })}
+      {(chips ?? []).map((chip) => (
+        <StatusChipButton key={chip.id} chip={chip} />
+      ))}
     </div>
   );
 }

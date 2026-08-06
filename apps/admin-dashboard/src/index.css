@@ -913,6 +913,35 @@ a { text-decoration: none; color: inherit; }
   text-align: center;
 }
 
+/* Status overview — Today / Tomorrow / Other rows */
+.oc-status-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.oc-status-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.oc-status-group-label {
+  flex: 0 0 72px;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9C8575;
+  line-height: 1.2;
+}
+.oc-status-group .oc-chip-strip {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
 /* Status chips — wrap inside the screen (no sideways scroll) */
 .oc-chip-strip {
   display: flex;
@@ -1120,11 +1149,28 @@ a { text-decoration: none; color: inherit; }
     min-height: 40px !important;
   }
 
+  /* Status groups stack cleanly on narrow screens */
+  .ordering-page .oc-status-overview {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .ordering-page .oc-status-group {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ordering-page .oc-status-group-label {
+    flex: none;
+    margin-top: 0;
+  }
+
   /* Chips wrap; never force a sideways strip */
   .ordering-page .oc-chip-strip {
     margin: 0 0 12px !important;
     padding: 0 !important;
     overflow: visible !important;
+  }
+  .ordering-page .oc-status-group .oc-chip-strip {
+    margin: 0 !important;
   }
   .ordering-page .oc-chip-strip > * {
     white-space: nowrap;
