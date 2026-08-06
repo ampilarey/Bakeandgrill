@@ -173,6 +173,58 @@ class DeliveryOrderTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_cannot_reprice_paid_pending_delivery_order(): void
+    {
+        // 2026-08 audit #5: a fully-paid BML delivery order sits at
+        // status=pending, payment_status=paid. A customer must not be able to
+        // change the island (and thus the fee/total) without a reprice/refund.
+        $order = Order::create([
+            'order_number' => 'DEL-PAID-PENDING',
+            'type' => 'delivery',
+            'status' => 'pending',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+            'customer_id' => $this->customer->id,
+            'subtotal' => 100,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 100,
+            'delivery_address_line1' => '1 Test St',
+            'delivery_island' => 'Male',
+            'delivery_contact_name' => 'Test',
+            'delivery_contact_phone' => '+9607890001',
+            'delivery_fee' => 20,
+        ]);
+
+        $this->patchJson(
+            "/api/orders/{$order->id}/delivery",
+            ['delivery_island' => 'Hulhumale'],
+            $this->customerAuthHeaders(),
+        )->assertStatus(422);
+
+        $this->assertSame('Male', $order->fresh()->delivery_island);
+    }
+
+    public function test_delivery_update_rejects_non_delivery_order(): void
+    {
+        $order = Order::create([
+            'order_number' => 'PICKUP-NOT-DELIVERY',
+            'type' => 'online_pickup',
+            'status' => 'pending',
+            'customer_id' => $this->customer->id,
+            'subtotal' => 50,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+            'total' => 50,
+        ]);
+
+        $this->patchJson(
+            "/api/orders/{$order->id}/delivery",
+            ['delivery_notes' => 'n/a'],
+            $this->customerAuthHeaders(),
+        )->assertStatus(422);
+    }
+
     public function test_delivery_order_appears_in_kds_with_delivery_type(): void
     {
         $staff = $this->makeStaff('staff', [

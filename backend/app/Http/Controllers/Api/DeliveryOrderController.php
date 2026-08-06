@@ -237,10 +237,27 @@ class DeliveryOrderController extends Controller
             abort(403, 'You do not have permission to update delivery orders.');
         }
 
+        // This endpoint only edits delivery orders.
+        if ($order->type !== 'delivery') {
+            abort(422, 'This endpoint can only update delivery orders.');
+        }
+
         if (!in_array($order->status, ['pending', 'draft', 'payment_pending'], true)) {
             throw ValidationException::withMessages([
                 'status' => "Cannot update delivery details once order is {$order->status}.",
             ]);
+        }
+
+        // 2026-08 audit #5: a fully-paid BML order sits at status=pending with
+        // payment_status=paid. Repricing the zone after payment would change
+        // the total without collecting/refunding the difference — customers
+        // must not self-serve a cheaper→pricier move. Post-payment address
+        // changes go through a staff-approved reprice/refund flow instead.
+        if ($order->payment_status === 'paid' || $order->payment_status === 'partial') {
+            abort(422, 'This order is already paid — delivery changes must go through staff reprice or refund.');
+        }
+        if ($order->payments()->whereIn('status', ['paid', 'completed', 'confirmed'])->exists()) {
+            abort(422, 'This order already has a confirmed payment — delivery changes must go through staff reprice or refund.');
         }
 
         $validated = $request->validate([
