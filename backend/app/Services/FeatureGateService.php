@@ -29,7 +29,7 @@ class FeatureGateService
             'default_enabled' => true,
         ],
         'dine_in_preorder' => [
-            'label' => 'Dine-in pre-order (“Eat here”)',
+            'label' => 'Today — eat here',
             'description' => 'Customers order and pay online, get a reserved table, and eat in. Schedule limits when new eat-here orders are accepted.',
             'default_enabled' => false,
         ],
@@ -44,7 +44,7 @@ class FeatureGateService
             'default_enabled' => true,
         ],
         'pickup_ordering' => [
-            'label' => 'Pickup (today)',
+            'label' => 'Today — pickup',
             'description' => 'Customers can place same-day pickup orders. Schedule limits pickup hours independently of the master online-ordering hours.',
             'default_enabled' => true,
         ],

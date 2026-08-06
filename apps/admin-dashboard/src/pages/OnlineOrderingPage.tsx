@@ -32,6 +32,7 @@ import {
 } from '../api';
 import { OrderingControlTabs } from '../components/OrderingControlTabs';
 import { FeatureGateCard } from './OnlineOrderingPage/FeatureGateCard';
+import { ModeGateCard } from './OnlineOrderingPage/ModeGateCard';
 import {
   DAYS,
   DEFAULT_SCHEDULE,
@@ -101,15 +102,12 @@ export default function OnlineOrderingPage() {
 
   const [status, setStatus]       = useState<OnlineOrderingGateStatus | null>(null);
   const [loading, setLoading]     = useState(true);
-  const [toggling, setToggling]   = useState(false);
-  const [overrideUntil, setOverrideUntil] = useState('');
-  const [savingOverride, setSavingOverride] = useState(false);
   const [toast, setToast]         = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [error, setError]         = useState('');
 
   const [schedule, setSchedule]     = useState<Schedule>(DEFAULT_SCHEDULE);
   const [scheduleLoading, setScheduleLoading] = useState(true);
-  const [scheduleSaving, setScheduleSaving]   = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
 
   const [feeSettings, setFeeSettings] = useState<PackagingFeeSettings | null>(null);
   const [feeSaving, setFeeSaving] = useState(false);
@@ -141,12 +139,6 @@ export default function OnlineOrderingPage() {
   const [featureGates, setFeatureGates] = useState<Record<string, FeatureGateStatus> | null>(null);
 
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryGateStatus | null>(null);
-  const [deliveryToggling, setDeliveryToggling] = useState(false);
-  const [deliveryOverrideUntil, setDeliveryOverrideUntil] = useState('');
-  const [deliverySavingOverride, setDeliverySavingOverride] = useState(false);
-  const [deliverySchedule, setDeliverySchedule] = useState<Schedule>(DEFAULT_SCHEDULE);
-  const [deliveryScheduleEnabled, setDeliveryScheduleEnabled] = useState(false);
-  const [deliveryScheduleSaving, setDeliveryScheduleSaving] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -162,8 +154,6 @@ export default function OnlineOrderingPage() {
         if (s.order_for_tomorrow?.cutoff) {
           setTomorrowCutoff(s.order_for_tomorrow.cutoff);
         }
-        // Always sync — clear the input when the server has no override.
-        setOverrideUntil(toDatetimeLocal(s.override_until));
       })
       .catch(() => setError('Failed to load online ordering status.'))
       .finally(() => setLoading(false));
@@ -180,16 +170,7 @@ export default function OnlineOrderingPage() {
 
   const loadDeliveryGate = () => {
     getDeliveryStatus()
-      .then((s) => {
-        setDeliveryStatus(s);
-        setDeliveryOverrideUntil(toDatetimeLocal(s.override_until));
-        if (s.delivery_schedule) {
-          setDeliverySchedule(parseSchedule(JSON.stringify(s.delivery_schedule)));
-          setDeliveryScheduleEnabled(true);
-        } else {
-          setDeliveryScheduleEnabled(false);
-        }
-      })
+      .then((s) => setDeliveryStatus(s))
       .catch(() => { /* optional until migration runs */ });
   };
 
@@ -451,34 +432,6 @@ export default function OnlineOrderingPage() {
     }
   };
 
-  const saveSchedule = async () => {
-    setScheduleSaving(true);
-    try {
-      const res = await updateOnlineOrderingSchedule(schedule);
-      if (res.status) setStatus(res.status);
-      showToast('Schedule saved.');
-    } catch {
-      showToast('Failed to save schedule.', 'err');
-    } finally {
-      setScheduleSaving(false);
-    }
-  };
-
-  const handleToggle = async () => {
-    if (!status) return;
-    const next = !status.master_switch;
-    setToggling(true);
-    try {
-      await toggleOnlineOrdering(next);
-      showToast(`Online ordering ${next ? 'enabled' : 'disabled'}.`);
-      load();
-    } catch {
-      showToast('Failed to update. Try again.', 'err');
-    } finally {
-      setToggling(false);
-    }
-  };
-
   useEffect(() => {
     if (section !== 'features' && section !== 'channels') return;
     if (featureGates) return;
@@ -502,38 +455,6 @@ export default function OnlineOrderingPage() {
       showToast('Failed to save tomorrow cutoff.', 'err');
     } finally {
       setTomorrowCutoffSaving(false);
-    }
-  };
-
-  const handleSetOverride = async () => {
-    const isoVal = safeIsoFromLocal(overrideUntil);
-    if (!isoVal) {
-      showToast('Please pick a valid date and time first.', 'err');
-      return;
-    }
-    setSavingOverride(true);
-    try {
-      await setOnlineOrderingOverride(isoVal);
-      showToast('Force-open override set.');
-      load();
-    } catch {
-      showToast('Failed to save override.', 'err');
-    } finally {
-      setSavingOverride(false);
-    }
-  };
-
-  const handleClearOverride = async () => {
-    setSavingOverride(true);
-    try {
-      await setOnlineOrderingOverride(null);
-      setOverrideUntil('');
-      showToast('Override cleared.');
-      load();
-    } catch {
-      showToast('Failed to clear override.', 'err');
-    } finally {
-      setSavingOverride(false);
     }
   };
 
@@ -633,72 +554,64 @@ export default function OnlineOrderingPage() {
         </div>
       )}
       {status && (<>
-      <GateStatusCard
-        open={status.open}
-        openText="Accepting online orders"
-        closedText="Online ordering closed"
-        reason={status.reason}
-        reasonLabels={REASON_LABELS}
-        onRefresh={load}
-        switchRow={{
-          on: status.master_switch,
-          toggling,
-          titleOn: 'Online ordering is ON',
-          titleOff: 'Online ordering is OFF',
-          helpOn: <>Customers can place pickup orders online. Delivery also needs Delivery to be on — open the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab above.</>,
-          helpOff: 'All online pickup/delivery orders are blocked. POS is unaffected.',
-          onToggle: () => void handleToggle(),
-        }}
-        override={{
-          value: overrideUntil,
-          onChange: setOverrideUntil,
-          activeUntil: status.override_until,
-          saving: savingOverride,
-          onSet: () => void handleSetOverride(),
-          onClear: () => void handleClearOverride(),
-          help: 'Force the online channel open until a specific time, ignoring the switch and schedule. Useful for promotions outside normal hours.',
-        }}
+      <p style={{ ...S.sectionTitle, marginTop: 0 }}>Today — master</p>
+      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+        Kill switch for all same-day online orders. Each order type below also needs this on.
+      </p>
+      <ModeGateCard
         testId="online-channel-gate"
+        label="Online ordering"
+        description="Master switch for same-day online ordering. Pickup, delivery, and eat here each need this on, plus their own switch below. POS is unaffected."
+        enabled={status.master_switch}
+        open={status.open}
+        schedule={
+          status.schedule_active && !scheduleLoading
+            ? Object.fromEntries(
+                DAYS.filter(({ key }) => schedule[key].enabled).map(({ key }) => [
+                  key,
+                  { enabled: true, windows: schedule[key].windows },
+                ]),
+              )
+            : null
+        }
+        overrideUntil={status.override_until}
+        onToast={showToast}
+        onToggle={async (next) => {
+          await toggleOnlineOrdering(next);
+          load();
+          loadDeliveryGate();
+        }}
+        onSaveSchedule={async (nextSchedule) => {
+          const res = await updateOnlineOrderingSchedule(nextSchedule);
+          if (res.status) setStatus(res.status);
+          if (nextSchedule) {
+            setSchedule(parseSchedule(JSON.stringify(nextSchedule)));
+          } else {
+            setSchedule(withAllDays(DEFAULT_SCHEDULE, false));
+          }
+          load();
+        }}
+        onSetOverride={async (iso) => {
+          await setOnlineOrderingOverride(iso);
+          load();
+        }}
+        footer={(
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="oc-btn-block" style={S.btnSecondary} disabled={scheduleSaving} onClick={() => void applyRamadanPreset()}>
+              Apply Ramadan preset
+            </button>
+            <button type="button" className="oc-btn-block" style={S.btnSecondary} disabled={scheduleSaving} onClick={() => void applyEidPreset()}>
+              Apply Eid preset
+            </button>
+          </div>
+        )}
       />
 
-      {/* Daily Schedule Editor */}
-      <div className="oc-card" style={S.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: '0.5rem' }}>
-          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Daily Schedule</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, true))}>All open</button>
-            <button style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setSchedule((prev) => withAllDays(prev, false))}>All closed</button>
-          </div>
-        </div>
-        <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
-          Online ordering will automatically open and close at these times each day.
-        </p>
-
-        {scheduleLoading ? (
-          <p style={{ color: '#9C8575', fontSize: 13 }}>Loading schedule…</p>
-        ) : (
-          <ScheduleEditor schedule={schedule} onChange={setSchedule} />
-        )}
-
-        <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="oc-btn-block" style={S.btnPrimary} onClick={saveSchedule} disabled={scheduleSaving}>
-            <Save size={14} />
-            {scheduleSaving ? 'Saving…' : 'Save Schedule'}
-          </button>
-          <button type="button" className="oc-btn-block" style={S.btnSecondary} onClick={() => void applyRamadanPreset()}>
-            Apply Ramadan preset (business hours + 5pm–1am online)
-          </button>
-          <button type="button" className="oc-btn-block" style={S.btnSecondary} onClick={() => void applyEidPreset()}>
-            Apply Eid preset (10am–11pm)
-          </button>
-        </div>
-      </div>
-
-      <p style={{ ...S.sectionTitle, marginTop: '0.5rem' }}>Today — by order type</p>
+      <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Today — by order type</p>
       <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
-        Each order type needs the master switch above on, plus its own switch (and optional schedule).
+        Independent on/off and schedule for pickup, delivery, and eat here today.
       </p>
-      {!featureGates && (
+      {(!featureGates || !deliveryStatus) && (
         <p style={{ color: '#9C8575', fontSize: 13 }}>Loading order types…</p>
       )}
       {featureGates?.pickup_ordering && (
@@ -712,141 +625,43 @@ export default function OnlineOrderingPage() {
         />
       )}
       {deliveryStatus && (
-        <>
-          <GateStatusCard
-            open={deliveryStatus.delivery_open}
-            openText="Delivery available"
-            closedText="Delivery unavailable"
-            reason={!deliveryStatus.delivery_open ? (deliveryStatus.message ?? undefined) : null}
-            onRefresh={loadDeliveryGate}
-            switchRow={{
-              on: deliveryStatus.accepting_flag,
-              toggling: deliveryToggling,
-              titleOn: 'Delivery is ON',
-              titleOff: 'Delivery is OFF',
-              helpOn: <>Customers can select delivery at checkout. Zones, fees &amp; capacity are on the <Link to="/delivery-settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Delivery</Link> tab.</>,
-              helpOff: 'Delivery is hidden at checkout. Customers can still order pickup.',
-              onToggle: () => {
-                void (async () => {
-                  setDeliveryToggling(true);
-                  try {
-                    const res = await toggleDelivery(!deliveryStatus.accepting_flag);
-                    setDeliveryStatus(res.delivery_status);
-                    showToast(`Delivery ${res.delivery_accepting_orders ? 'enabled' : 'disabled'}.`);
-                    load();
-                  } catch {
-                    showToast('Failed to update delivery.', 'err');
-                  } finally {
-                    setDeliveryToggling(false);
-                  }
-                })();
-              },
-            }}
-            override={{
-              value: deliveryOverrideUntil,
-              onChange: setDeliveryOverrideUntil,
-              activeUntil: deliveryStatus.override_active ? deliveryStatus.override_until : null,
-              saving: deliverySavingOverride,
-              onSet: () => {
-                void (async () => {
-                  const isoVal = safeIsoFromLocal(deliveryOverrideUntil);
-                  if (!isoVal) {
-                    showToast('Please pick a valid date and time first.', 'err');
-                    return;
-                  }
-                  setDeliverySavingOverride(true);
-                  try {
-                    const res = await setDeliveryOverride(isoVal);
-                    setDeliveryStatus(res.delivery_status);
-                    showToast('Delivery force-open set.');
-                    load();
-                  } catch {
-                    showToast('Failed to save delivery override.', 'err');
-                  } finally {
-                    setDeliverySavingOverride(false);
-                  }
-                })();
-              },
-              onClear: () => {
-                void (async () => {
-                  setDeliverySavingOverride(true);
-                  try {
-                    const res = await setDeliveryOverride(null);
-                    setDeliveryOverrideUntil('');
-                    setDeliveryStatus(res.delivery_status);
-                    showToast('Delivery override cleared.');
-                    load();
-                  } catch {
-                    showToast('Failed to clear delivery override.', 'err');
-                  } finally {
-                    setDeliverySavingOverride(false);
-                  }
-                })();
-              },
-              help: 'Force delivery open until a specific time, ignoring its switch and schedule.',
-            }}
-            testId="today-delivery-gate"
-          />
-          <div className="oc-card" style={S.card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
-              <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Delivery hours</p>
-              <button
-                type="button"
-                style={S.toggleTrack(deliveryScheduleEnabled)}
-                onClick={() => setDeliveryScheduleEnabled((v) => !v)}
-                role="switch"
-                aria-checked={deliveryScheduleEnabled}
-              >
-                <span style={S.toggleThumb(deliveryScheduleEnabled)} />
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 12 }}>
-              {deliveryScheduleEnabled ? 'Delivery only during these windows.' : 'No schedule — delivery available whenever accepting is on.'}
-            </p>
-            {deliveryScheduleEnabled && (
-              <ScheduleEditor schedule={deliverySchedule} onChange={setDeliverySchedule} />
-            )}
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="oc-btn-block"
-                style={S.btnPrimary}
-                disabled={deliveryScheduleSaving}
-                onClick={() => {
-                  void (async () => {
-                    setDeliveryScheduleSaving(true);
-                    try {
-                      const payload = deliveryScheduleEnabled
-                        ? Object.fromEntries(
-                            DAYS.filter(({ key }) => deliverySchedule[key].enabled).map(({ key }) => [
-                              key,
-                              { enabled: true, windows: deliverySchedule[key].windows },
-                            ]),
-                          )
-                        : null;
-                      const res = await updateDeliverySchedule(
-                        payload && Object.keys(payload).length > 0 ? payload : null,
-                      );
-                      setDeliveryStatus(res.delivery_status);
-                      showToast('Delivery schedule saved.');
-                      load();
-                    } catch {
-                      showToast('Failed to save delivery schedule.', 'err');
-                    } finally {
-                      setDeliveryScheduleSaving(false);
-                    }
-                  })();
-                }}
-              >
-                <Save size={14} />
-                {deliveryScheduleSaving ? 'Saving…' : 'Save delivery schedule'}
-              </button>
-              <Link to="/delivery-settings" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
-                Zones, fees, capacity →
-              </Link>
-            </div>
-          </div>
-        </>
+        <ModeGateCard
+          testId="today-delivery-gate"
+          label="Today — delivery"
+          description="Customers can select delivery at checkout when this is on (and the master above is on). Zones, fees, and capacity stay on the Delivery tab."
+          enabled={deliveryStatus.accepting_flag}
+          open={deliveryStatus.delivery_open}
+          schedule={
+            deliveryStatus.schedule_active
+              ? ((deliveryStatus.delivery_schedule as Record<
+                  string,
+                  { enabled?: boolean; windows?: { open: string; close: string }[] }
+                >) ?? null)
+              : null
+          }
+          overrideUntil={deliveryStatus.override_active ? deliveryStatus.override_until : null}
+          onToast={showToast}
+          onToggle={async (next) => {
+            const res = await toggleDelivery(next);
+            setDeliveryStatus(res.delivery_status);
+            load();
+          }}
+          onSaveSchedule={async (nextSchedule) => {
+            const res = await updateDeliverySchedule(nextSchedule);
+            setDeliveryStatus(res.delivery_status);
+            load();
+          }}
+          onSetOverride={async (iso) => {
+            const res = await setDeliveryOverride(iso);
+            setDeliveryStatus(res.delivery_status);
+            load();
+          }}
+          footer={(
+            <Link to="/delivery-settings" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
+              Zones, fees, capacity →
+            </Link>
+          )}
+        />
       )}
       {featureGates?.dine_in_preorder && (
         <FeatureGateCard
