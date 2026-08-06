@@ -33,8 +33,12 @@ class DriverAuthController extends Controller
         // numbers from the same IP is still capped per-number, and one user
         // on a NATed mobile network isn't punished for unrelated traffic.
         $key = 'driver-pin:' . sha1(strtolower($validated['phone']) . '|' . $request->ip());
-        if (RateLimiter::tooManyAttempts($key, 5)) {
-            $retryAfter = RateLimiter::availableIn($key);
+        // Account-level shield: attackers rotating IPs must not get a fresh
+        // budget per IP against the same 4-digit PIN. 20 attempts / hour per
+        // phone regardless of source (progressive lockout, self-heals).
+        $accountKey = 'driver-pin-acct:' . sha1(strtolower($validated['phone']));
+        if (RateLimiter::tooManyAttempts($key, 5) || RateLimiter::tooManyAttempts($accountKey, 20)) {
+            $retryAfter = max(RateLimiter::availableIn($key), RateLimiter::availableIn($accountKey));
 
             return response()->json([
                 'message' => "Too many attempts. Try again in {$retryAfter} seconds.",
@@ -47,11 +51,13 @@ class DriverAuthController extends Controller
 
         if (!$driver || !$driver->pin || !Hash::check($validated['pin'], $driver->pin)) {
             RateLimiter::hit($key, 300); // 5-minute window
+            RateLimiter::hit($accountKey, 3600); // 1-hour account window
 
             return response()->json(['message' => 'Invalid phone number or PIN.'], 401);
         }
 
         RateLimiter::clear($key);
+        RateLimiter::clear($accountKey);
 
         // Revoke old driver tokens to prevent accumulation
         $driver->tokens()->delete();
