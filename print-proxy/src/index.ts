@@ -159,14 +159,28 @@ function validatePayload(payload: unknown): string | null {
   return null;
 }
 
+// ── Text sanitization ─────────────────────────────────────────────────────────
+/**
+ * Strip every C0/C1 control character (ESC 0x1B, GS 0x1D, DEL, …) from
+ * user-derived text. Only the ticket builders below may emit printer control
+ * sequences — order data (item names, notes, modifiers) must never inject
+ * ESC/POS commands like cut, feed, or cash-drawer kick into the byte stream.
+ */
+export const sanitizePrintText = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  // eslint-disable-next-line no-control-regex
+  return String(value).replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
+};
+
 // ── Ticket builders ───────────────────────────────────────────────────────────
 const buildKitchenTicket = (payload: PrintPayload): string => {
+  const s = sanitizePrintText;
   const lines: string[] = [];
   lines.push('\x1B@\n');
   lines.push('BAKE & GRILL\n');
-  lines.push(`${(payload.type || 'KITCHEN').toUpperCase()} TICKET\n`);
-  lines.push(`Order: ${payload.order.order_number}\n`);
-  lines.push(`Type: ${payload.order.type}\n`);
+  lines.push(`${s(payload.type || 'KITCHEN').toUpperCase()} TICKET\n`);
+  lines.push(`Order: ${s(payload.order.order_number)}\n`);
+  lines.push(`Type: ${s(payload.order.type)}\n`);
   if (payload.order.created_at) {
     const timeStr = new Date(payload.order.created_at).toLocaleTimeString('en-US', {
       timeZone: 'Indian/Maldives',
@@ -178,17 +192,17 @@ const buildKitchenTicket = (payload: PrintPayload): string => {
   }
   lines.push('-----------------------------\n');
   payload.order.items.forEach(item => {
-    lines.push(`${item.quantity}x ${item.item_name}\n`);
+    lines.push(`${item.quantity}x ${s(item.item_name)}\n`);
     if (item.packaging_option_name) {
-      lines.push(`  - ${item.packaging_option_name}\n`);
+      lines.push(`  - ${s(item.packaging_option_name)}\n`);
     }
     if (item.modifiers && item.modifiers.length > 0) {
-      lines.push(`  - ${item.modifiers.map(m => m.modifier_name).join(', ')}\n`);
+      lines.push(`  - ${item.modifiers.map(m => s(m.modifier_name)).join(', ')}\n`);
     }
   });
   if (payload.order.notes) {
     lines.push('-----------------------------\n');
-    lines.push(`Notes: ${payload.order.notes}\n`);
+    lines.push(`Notes: ${s(payload.order.notes)}\n`);
   }
   lines.push('\n\n\n');
   lines.push('\x1DVA0');
@@ -196,11 +210,12 @@ const buildKitchenTicket = (payload: PrintPayload): string => {
 };
 
 const buildReceiptTicket = (payload: PrintPayload): string => {
+  const s = sanitizePrintText;
   const lines: string[] = [];
   lines.push('\x1B@\n');
   lines.push('BAKE & GRILL\n');
   lines.push('RECEIPT\n');
-  lines.push(`Order: ${payload.order.order_number}\n`);
+  lines.push(`Order: ${s(payload.order.order_number)}\n`);
   if (payload.order.created_at) {
     lines.push(`Time: ${new Date(payload.order.created_at).toLocaleTimeString()}\n`);
   }
@@ -208,12 +223,12 @@ const buildReceiptTicket = (payload: PrintPayload): string => {
   payload.order.items.forEach(item => {
     const price     = item.unit_price ?? 0;
     const lineTotal = price * item.quantity;
-    lines.push(`${item.quantity}x ${item.item_name}  ${lineTotal.toFixed(2)}\n`);
+    lines.push(`${item.quantity}x ${s(item.item_name)}  ${lineTotal.toFixed(2)}\n`);
     if (item.packaging_option_name) {
-      lines.push(`  - ${item.packaging_option_name}\n`);
+      lines.push(`  - ${s(item.packaging_option_name)}\n`);
     }
     if (item.modifiers && item.modifiers.length > 0) {
-      lines.push(`  - ${item.modifiers.map(m => m.modifier_name).join(', ')}\n`);
+      lines.push(`  - ${item.modifiers.map(m => s(m.modifier_name)).join(', ')}\n`);
     }
   });
   lines.push('-----------------------------\n');
@@ -224,7 +239,7 @@ const buildReceiptTicket = (payload: PrintPayload): string => {
   if (typeof payload.order.total === 'number') lines.push(`Total: ${payload.order.total.toFixed(2)}\n`);
   if (payload.order.payments && payload.order.payments.length > 0) {
     lines.push('Payments:\n');
-    payload.order.payments.forEach(p => lines.push(`  ${p.method}: ${p.amount.toFixed(2)}\n`));
+    payload.order.payments.forEach(p => lines.push(`  ${s(p.method)}: ${p.amount.toFixed(2)}\n`));
   }
   if (payload.order.notes) {
     lines.push('-----------------------------\n');
