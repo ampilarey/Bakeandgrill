@@ -396,10 +396,19 @@ jobs:
         if: steps.deploy.outcome == 'success'
         run: ./scripts/post-deploy-smoke.sh production
 
+      # A configured production deploy that FAILS must fail the job — a green
+      # run while prod is on an old version is worse than a red run. Only a
+      # missing-secrets skip stays soft.
       - name: Deploy skipped or failed
         if: steps.deploy.outcome != 'success'
+        env:
+          HAS_PROD_SECRETS: ${{ secrets.DEPLOY_HOST_PROD != '' && secrets.DEPLOY_SSH_KEY_PROD != '' }}
         run: |
-          echo "::notice::Production deploy skipped or failed. Configure DEPLOY_HOST_PROD, DEPLOY_USER_PROD, and DEPLOY_SSH_KEY_PROD secrets."
+          if [ "$HAS_PROD_SECRETS" = "true" ]; then
+            echo "::error::Production deploy FAILED — production may still be on the previous version. Investigate before re-running."
+            exit 1
+          fi
+          echo "::notice::Production deploy skipped — DEPLOY_HOST_PROD / DEPLOY_USER_PROD / DEPLOY_SSH_KEY_PROD secrets not configured."
 
   contract:
     name: API contract tests (snapshot)
