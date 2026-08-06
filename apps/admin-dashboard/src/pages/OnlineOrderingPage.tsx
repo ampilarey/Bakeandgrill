@@ -3,8 +3,6 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { RefreshCw, AlertTriangle, CheckCircle2, Save } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
-import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
-import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import {
   getOnlineOrderingStatus,
   toggleOnlineOrdering,
@@ -923,20 +921,6 @@ export default function OnlineOrderingPage() {
           </div>
         </div>
       )}
-
-      <div className="oc-card" style={S.card}>
-        <p style={S.sectionTitle}>Service charge</p>
-        <div className="oc-nested-settings">
-          <ServiceChargeSettings embedded />
-        </div>
-      </div>
-
-      <div className="oc-card" style={S.card}>
-        <p style={S.sectionTitle}>Payment commission</p>
-        <div className="oc-nested-settings">
-          <PaymentCommissionSettings embedded />
-        </div>
-      </div>
 
       </>)}
 

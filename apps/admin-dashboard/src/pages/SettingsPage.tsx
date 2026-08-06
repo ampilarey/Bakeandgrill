@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
+import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
+import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
+  getOpsAlertsSettings,
+  updateOpsAlertsSettings,
   type SmsTemplate,
+  type OpsAlertsSettings,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
 import { PageHeader, PageShell } from '../components/SharedUI';
@@ -13,16 +18,18 @@ import { PageHeader, PageShell } from '../components/SharedUI';
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   ordering: '/online-ordering',
   delivery: '/delivery-settings',
-  'ordering-charges': '/online-ordering?section=fees',
+  'ordering-charges': '/settings/charges',
   website: '/content',
   permissions: '/settings/permissions',
   notifications: '/settings/notifications',
+  charges: '/settings/charges',
 };
 
 /** Settings sub-pages now live in the System section rail (no separate hub cards). */
 const SETTINGS_TABS = [
   { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
+  { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
 ] as const;
 
 type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
@@ -124,14 +131,16 @@ const LIFECYCLE_SMS_CONFIG: NotifConfig[] = [
 function NotificationsSettings() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<SmsTemplate[]>([]);
+  const [opsAlerts, setOpsAlerts] = useState<OpsAlertsSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [opsSaving, setOpsSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getSiteSettings(), fetchSmsTemplates()])
-      .then(([settingsRes, templatesRes]) => {
+    Promise.all([getSiteSettings(), fetchSmsTemplates(), getOpsAlertsSettings()])
+      .then(([settingsRes, templatesRes, opsRes]) => {
         const map: Record<string, string> = {};
         Object.values(settingsRes.settings ?? {}).forEach((group) => {
           (group as { key: string; value: string | null }[]).forEach((s) => {
@@ -140,10 +149,27 @@ function NotificationsSettings() {
         });
         setSettings(map);
         setTemplates(templatesRes.templates.filter((t) => t.type === 'customer_notification'));
+        setOpsAlerts(opsRes.settings);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const toggleInventoryReorderAlert = async () => {
+    if (!opsAlerts || opsSaving) return;
+    setOpsSaving(true);
+    setError('');
+    try {
+      const res = await updateOpsAlertsSettings({
+        inventory_reorder_alert_sms: !opsAlerts.inventory_reorder_alert_sms,
+      });
+      setOpsAlerts(res.settings);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+    } finally {
+      setOpsSaving(false);
+    }
+  };
 
   const templateBySlug = (slug: string) => templates.find((t) => t.slug === slug) ?? null;
 
@@ -242,12 +268,81 @@ function NotificationsSettings() {
         LIFECYCLE_SMS_CONFIG,
       )}
 
+      <div style={{ marginBottom: 28 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', margin: '0 0 4px' }}>Staff alerts</h3>
+        <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
+          Internal SMS for ops — not customer order status messages.
+        </p>
+        {loading ? (
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
+        ) : (
+          <label style={{
+            display: 'flex', alignItems: 'flex-start', gap: 12, minHeight: 44,
+            padding: '12px 14px', borderRadius: 10, border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)', cursor: 'pointer',
+          }}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={opsAlerts?.inventory_reorder_alert_sms ?? false}
+              aria-label="Inventory reorder SMS alert"
+              disabled={opsSaving || !opsAlerts}
+              onClick={(e) => {
+                e.preventDefault();
+                void toggleInventoryReorderAlert();
+              }}
+              style={{
+                flexShrink: 0,
+                width: 44,
+                height: 26,
+                borderRadius: 999,
+                border: 'none',
+                padding: 2,
+                marginTop: 2,
+                cursor: opsSaving || !opsAlerts ? 'not-allowed' : 'pointer',
+                background: opsAlerts?.inventory_reorder_alert_sms ? 'var(--color-accent)' : '#D4C4B5',
+                transition: 'background 0.15s',
+              }}
+            >
+              <span style={{
+                display: 'block',
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                background: '#fff',
+                transform: opsAlerts?.inventory_reorder_alert_sms ? 'translateX(18px)' : 'translateX(0)',
+                transition: 'transform 0.15s',
+              }} />
+            </button>
+            <span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
+                Inventory reorder SMS
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
+                Daily digest to owners/managers when inventory hits reorder point (skips snoozed SKUs).
+                Falls back to business phone if staff have no phone.
+              </span>
+            </span>
+          </label>
+        )}
+      </div>
+
       <div style={{ padding: '12px 16px', background: 'var(--color-warning-bg)', border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10 }}>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           Staff SMS templates (new order alerts, shift reminders, etc.) are under{' '}
           <strong>SMS → Templates</strong> and <strong>SMS → Automations</strong>.
+          Delivery-delay SMS stays on Ordering Control → Delivery.
         </p>
       </div>
+    </div>
+  );
+}
+
+function ChargesSettings() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
+      <ServiceChargeSettings />
+      <PaymentCommissionSettings />
     </div>
   );
 }
@@ -304,6 +399,7 @@ export function SettingsPage() {
         <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />
       )}
       {active === 'notifications' && <NotificationsSettings />}
+      {active === 'charges' && <ChargesSettings />}
     </PageShell>
   );
 }
