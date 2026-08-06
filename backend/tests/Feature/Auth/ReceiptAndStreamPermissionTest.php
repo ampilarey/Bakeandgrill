@@ -157,9 +157,11 @@ class ReceiptAndStreamPermissionTest extends TestCase
         $this->assertNotContains($status, [401, 403], 'kds.view must still reach /stream/kds');
     }
 
-    public function test_get_api_orders_unchanged_for_roles(): void
+    public function test_get_api_orders_requires_order_visibility_permission(): void
     {
-        // Regression guard: do not put permission:orders.view on GET /api/orders.
+        // Security policy (2026-08 audit): the staff order list exposes venue
+        // data including customer name/phone, so it requires
+        // pos.active_orders or orders.view — a bare staff token is NOT enough.
         foreach (['owner', 'manager', 'staff'] as $slug) {
             Role::firstOrCreate(
                 ['slug' => $slug],
@@ -176,9 +178,9 @@ class ReceiptAndStreamPermissionTest extends TestCase
             'owner' => 200,
             'manager' => 200,
             'staff' => 200,
-            // kitchen_staff is staff-token capable; index allows any staff token
-            // and scopes via pos.view_all_station_orders (kitchen lacks it → own sales).
-            'kitchen_staff' => 200,
+            // Kitchen staff use /kds/orders — the POS/admin order list (with
+            // customer contact data) is not part of their role.
+            'kitchen_staff' => 403,
         ];
 
         foreach ($cases as $roleSlug => $expected) {
@@ -198,9 +200,9 @@ class ReceiptAndStreamPermissionTest extends TestCase
             );
         }
 
-        // Empty-perm custom role: still staff token → 200 (controller scopes, no route perm).
+        // Empty-perm custom role: staff token alone must be rejected.
         $empty = $this->staffWithSlugs([], 'orders-index-empty@test.com');
         Sanctum::actingAs($empty, ['staff']);
-        $this->getJson('/api/orders')->assertOk();
+        $this->getJson('/api/orders')->assertForbidden();
     }
 }

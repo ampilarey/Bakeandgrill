@@ -50,6 +50,13 @@ class DeliveryOrderController extends Controller
         $isCustomer = $authUser instanceof \App\Models\Customer;
         $isStaff = $authUser instanceof \App\Models\User;
 
+        // Staff creating a delivery sale is still a POS sale — same
+        // permission as ringing any other order (route is shared with
+        // customers, so this cannot live in route middleware).
+        if ($isStaff && !$authUser->hasPermission('pos.ring_sales')) {
+            abort(403, 'You do not have permission to create delivery orders.');
+        }
+
         if (!$isStaff) {
             // Overlay guards emit 503; legacy gate services keep their 422s.
             app(ServiceAvailabilityService::class)->assertAvailable('online_checkout');
@@ -223,6 +230,13 @@ class DeliveryOrderController extends Controller
             abort(403, 'You do not own this order.');
         }
 
+        // Staff need an order-management permission to patch delivery details.
+        if ($user instanceof \App\Models\User
+            && !$user->hasPermission('orders.manage')
+            && !$user->hasPermission('pos.ring_sales')) {
+            abort(403, 'You do not have permission to update delivery orders.');
+        }
+
         if (!in_array($order->status, ['pending', 'draft', 'payment_pending'], true)) {
             throw ValidationException::withMessages([
                 'status' => "Cannot update delivery details once order is {$order->status}.",
@@ -242,6 +256,17 @@ class DeliveryOrderController extends Controller
 
         // Recalculate delivery fee if island changed (discounted base for free-delivery threshold).
         if (isset($validated['delivery_island'])) {
+            // Re-run the same eligibility gate as store(): a customer must not
+            // be able to move an order into an island or window we cannot
+            // serve. Staff edits (phone corrections) stay ungated.
+            if ($user instanceof \App\Models\Customer) {
+                if ($order->fulfil_date !== null) {
+                    $this->deliveryGate->assertDeliveryOpenForTomorrow($validated['delivery_island']);
+                } else {
+                    $this->deliveryGate->assertDeliveryOpen($validated['delivery_island']);
+                }
+            }
+
             $feeLaar = $this->feeCalculator->calculateLaar(
                 $validated['delivery_island'],
                 EffectiveDiscount::discountedSubtotalLaarFromOrder($order),

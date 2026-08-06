@@ -19,7 +19,8 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     routes_domain_mark_loaded('orders.core');
 
     // Orders
-    Route::get('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'index']);
+    Route::get('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'index'])
+        ->middleware('permission.any:pos.active_orders,orders.view');
     Route::post('/orders', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'store'])
         ->middleware(['permission:pos.ring_sales', 'device.active', 'service.available:pos_sales']);
     Route::post('/orders/sync', [App\Http\Controllers\Api\Orders\OrderCreationController::class, 'sync'])
@@ -87,7 +88,7 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
     Route::get('/customers/{id}/pos-summary', [App\Http\Controllers\Api\CustomerController::class, 'posSummary'])
         ->middleware(['permission:customers.lookup', 'throttle:60,1']);
     Route::get('/customers/{id}/addresses', [App\Http\Controllers\Api\CustomerAddressController::class, 'indexForCustomer'])
-        ->middleware('throttle:60,1');
+        ->middleware(['permission:customers.lookup', 'throttle:60,1']);
 
     // ── POS rewards on an in-progress ticket ─────────────────────────────────
     Route::prefix('pos')->group(function (): void {
