@@ -20,8 +20,5 @@
   },
   "dependencies": {
     "heic2any": "^0.0.4"
-  },
-  "overrides": {
-    "esbuild": "^0.28.1"
   }
 }
