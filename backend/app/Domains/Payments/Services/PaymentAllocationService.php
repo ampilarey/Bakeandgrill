@@ -167,6 +167,15 @@ final class PaymentAllocationService
         }
 
         if ($remainingLaar <= 0) {
+            // Order is already fully covered by confirmed payments. A positive
+            // new tender would over-collect (2026-08 audit #3) — e.g. taking
+            // cash on a BML-paid online order that sits at status=pending /
+            // payment_status=paid. A legitimate prepaid dine-in add-on raises
+            // the order total first, so remainingLaar would be > 0 here.
+            if ($incomingLaar > 0) {
+                abort(422, 'This order is already fully paid — no additional payment can be added.');
+            }
+
             return;
         }
 
