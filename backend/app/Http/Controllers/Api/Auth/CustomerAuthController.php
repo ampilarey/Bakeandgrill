@@ -378,7 +378,12 @@ class CustomerAuthController extends Controller
 
     /**
      * Guest checkout — name + phone only, no OTP.
-     * Finds or creates a customer and issues a Sanctum token for one checkout session.
+     *
+     * SECURITY: only ever creates a brand-new customer. If the phone already
+     * belongs to any customer record (active or soft-deleted), the caller must
+     * prove ownership via OTP or password login — otherwise anyone who knows a
+     * phone number could take over that account's session, order history, and
+     * saved addresses.
      */
     public function guestSession(Request $request)
     {
@@ -398,28 +403,18 @@ class CustomerAuthController extends Controller
         RateLimiter::hit($rateKey, 3600);
 
         $existing = Customer::withTrashed()->where('phone', $phone)->first();
-        if ($existing && $existing->trashed()) {
-            $existing->restoreForReregistration();
-            $existing->update(['name' => $input['name']]);
-            $customer = $existing;
-        } elseif ($existing) {
-            if (!$existing->is_active) {
-                throw ValidationException::withMessages([
-                    'phone' => ['This account has been deactivated. Please contact support.'],
-                ]);
-            }
-            $customer = $existing;
-            if (!$customer->name && $input['name']) {
-                $customer->update(['name' => $input['name']]);
-            }
-        } else {
-            $customer = Customer::create([
-                'phone' => $phone,
-                'name' => $input['name'],
-                'loyalty_points' => 0,
-                'tier' => 'bronze',
+        if ($existing) {
+            throw ValidationException::withMessages([
+                'phone' => ['This number already has an account. Please verify with a one-time code or log in with your password.'],
             ]);
         }
+
+        $customer = Customer::create([
+            'phone' => $phone,
+            'name' => $input['name'],
+            'loyalty_points' => 0,
+            'tier' => 'bronze',
+        ]);
 
         $customer->update(['last_login_at' => now()]);
         $this->establishCustomerSession($request, $customer);

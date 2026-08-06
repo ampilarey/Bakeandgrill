@@ -228,7 +228,30 @@ export function AuthBlock({ onSuccess, skipProfileSetup = false }: Props) {
       const res = await guestSession({ phone, name: guestName.trim() });
       onSuccess(displayName(res.customer));
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      // Backend refuses guest sessions for existing accounts (takeover guard).
+      // Route the customer into the verified login flow instead of dead-ending.
+      if (/already has an account/i.test(msg)) {
+        try {
+          const res = await checkPhone(phone);
+          if (res.has_password) {
+            setHint(msg);
+            go("password");
+            return;
+          }
+          const r = await requestOtp(phone, "register");
+          if (import.meta.env.DEV && r.otp) setHint(`Dev OTP: ${r.otp}`);
+          else setHint(t("auth.hint_code_sent"));
+          go("otp");
+          return;
+        } catch (e2) {
+          setError((e2 as Error).message);
+          return;
+        } finally {
+          setLoading(false);
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
