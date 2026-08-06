@@ -22,6 +22,22 @@ use Illuminate\Support\Facades\DB;
 class OrderItemController extends Controller
 {
     /**
+     * True when the order has any real money attached (a confirmed/paid
+     * payment row, or a partial payment_status). Merge/split must be refused
+     * in that case so items and payments never drift apart.
+     */
+    private function hasSettledMoney(Order $order): bool
+    {
+        if ($order->payment_status === 'partial' || $order->payment_status === 'paid') {
+            return true;
+        }
+
+        return $order->payments()
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
+            ->exists();
+    }
+
+    /**
      * PATCH /api/orders/{id}/items
      *
      * Replace the full line-item set on an existing active order.
@@ -300,6 +316,15 @@ class OrderItemController extends Controller
             if (in_array($source->status, $blocked, true) || $source->payment_status === 'paid') {
                 return ['error' => "Source order is {$source->status} — can't merge from it."];
             }
+            // 2026-08 audit #4: merging moves items but leaves payments on the
+            // (soon-cancelled) source, breaking the item↔money link. Refuse
+            // whenever either ticket already has any confirmed/partial money.
+            if ($this->hasSettledMoney($target)) {
+                return ['error' => "Target order has payments — settle or refund before merging."];
+            }
+            if ($this->hasSettledMoney($source)) {
+                return ['error' => "Source order has payments — settle or refund before merging."];
+            }
 
             // Re-parent items. Modifiers travel with their items
             // because OrderItemModifier.order_item_id stays the same.
@@ -393,6 +418,11 @@ class OrderItemController extends Controller
             $blocked = ['paid', 'completed', 'cancelled', 'refunded', 'partially_refunded', 'payment_pending'];
             if (in_array($source->status, $blocked, true) || $source->payment_status === 'paid') {
                 return ['error' => "Order is {$source->status} — can't split."];
+            }
+            // 2026-08 audit #4: splitting moves items to a fresh unpaid order
+            // while payments stay on the source — refuse once money is attached.
+            if ($this->hasSettledMoney($source)) {
+                return ['error' => "Order has payments — settle or refund before splitting."];
             }
 
             $candidateIds = $source->items->pluck('id')->all();
