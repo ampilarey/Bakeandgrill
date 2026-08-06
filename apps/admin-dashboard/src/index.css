@@ -884,8 +884,9 @@ a { text-decoration: none; color: inherit; }
 /* ── Ordering Control — flow layout (online, delivery, pre-order) ── */
 .ordering-page {
   width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
+  /* Fill PageShell on desktop; 720px cap was leaving huge side gutters */
+  max-width: none;
+  margin: 0;
   /* Never let a child force the page wider than the viewport */
   overflow-x: clip;
   min-width: 0;
