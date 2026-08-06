@@ -56,7 +56,7 @@ class KdsController extends Controller
         $orders = Order::with([
             'items.modifiers',
             'items.item:id,menu_group_id,prep_time_minutes,is_available',
-            'table:id,number,label',
+            'table:id,name,location',
             'kitchenDoneBy:id,name',
         ])
             ->whereIn('status', $statuses)
@@ -162,8 +162,7 @@ class KdsController extends Controller
     public static function formatKitchenOrder(Order $order): array
     {
         $tableLabel = $order->ticket_name
-            ?? $order->table?->label
-            ?? $order->table?->number
+            ?? $order->table?->name
             ?? null;
 
         $payload = [
