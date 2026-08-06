@@ -114,6 +114,13 @@ class PaymentService
             ]);
         }
 
+        // ALWAYS send the persisted local_id. When firstOrCreate reused an
+        // existing 'created' payment (first attempt failed before reaching
+        // 'initiated'), the freshly generated timestamp-based $localId differs
+        // from the stored one — and the BML webhook resolves payments by
+        // localId, so a mismatch leaves a paid transaction unreconciled.
+        $localId = $payment->local_id;
+
         // Include orderId in the return URL so bmlReturn() can redirect to the right order page.
         // BML appends its own params (&state=...&transactionId=...) to whatever URL we provide.
         $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/') . '?orderId=' . $order->id);
