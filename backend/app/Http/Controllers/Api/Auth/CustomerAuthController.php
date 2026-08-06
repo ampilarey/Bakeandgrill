@@ -154,6 +154,21 @@ class CustomerAuthController extends Controller
             ]);
         }
 
+        // SECURITY: an email OTP may only be sent to an address that is already
+        // verified for THIS phone's customer. Otherwise anyone knowing a phone
+        // number could have the OTP delivered to their own inbox and take over
+        // the account (2026-08 audit #1). New signups have no verified email →
+        // fall back to SMS.
+        if ($channel === 'email') {
+            $emailOwner = Customer::where('phone', $phone)->first();
+            $storedEmail = $emailOwner?->email ? strtolower(trim($emailOwner->email)) : null;
+            if ($storedEmail === null || $storedEmail !== strtolower((string) $email)) {
+                throw ValidationException::withMessages([
+                    'email' => ['We can only email a code to the address already on this account. Please use SMS instead.'],
+                ]);
+            }
+        }
+
         // Block returning customers with a password from using OTP to "register" —
         // they should use password login instead. For password reset it's always allowed.
         // Soft-deleted customers are allowed through OTP so they can recover their account.
@@ -213,7 +228,8 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($input['phone']);
 
-        $this->otpService->verifyAndConsume($phone, $input['otp']);
+        // Only login/registration OTPs may authenticate — a reset OTP must not.
+        $this->otpService->verifyAndConsume($phone, $input['otp'], CustomerOtpService::LOGIN_PURPOSES);
 
         // Successful verification — clear OTP request rate limit so user can request again cleanly
         RateLimiter::clear('otp-request:login:' . $phone);
@@ -358,7 +374,8 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($input['phone']);
 
-        $this->otpService->verifyAndConsume($phone, $input['otp']);
+        // Only reset-purpose OTPs may reset a password.
+        $this->otpService->verifyAndConsume($phone, $input['otp'], CustomerOtpService::RESET_PURPOSES);
 
         $customer = Customer::where('phone', $phone)->first();
 

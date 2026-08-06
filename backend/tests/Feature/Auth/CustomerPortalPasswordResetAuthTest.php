@@ -33,6 +33,7 @@ class CustomerPortalPasswordResetAuthTest extends TestCase
     {
         return OtpVerification::create([
             'phone' => $phone,
+            'purpose' => 'web-reset',
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes(10),
             'attempts' => $attempts,

@@ -254,17 +254,40 @@ class EventOrderDraftTest extends TestCase
 
         Mail::assertNothingSent();
 
+        // Email channel with no address is rejected.
         $this->postJson('/api/auth/customer/otp/request', [
             'phone' => '7777003',
             'purpose' => 'register',
             'channel' => 'email',
         ])->assertStatus(422);
 
+        // SECURITY (2026-08 audit #1): email OTP to an arbitrary address for a
+        // phone with no verified account email must be rejected — otherwise it
+        // is an account-takeover delivery vector. Registration uses SMS.
         $this->postJson('/api/auth/customer/otp/request', [
             'phone' => '7777003',
             'purpose' => 'register',
             'channel' => 'email',
             'email' => 'new@example.com',
+        ])->assertStatus(422);
+
+        Mail::assertNothingSent();
+
+        // Once an account exists WITH a verified email, that exact address works.
+        $customer = \App\Models\Customer::where('phone', '+9607777003')->first()
+            ?? \App\Models\Customer::create([
+                'phone' => '+9607777003',
+                'name' => 'Verified',
+                'loyalty_points' => 0,
+                'tier' => 'bronze',
+            ]);
+        $customer->update(['email' => 'known@example.com']);
+
+        $this->postJson('/api/auth/customer/otp/request', [
+            'phone' => '7777003',
+            'purpose' => 'reset_password',
+            'channel' => 'email',
+            'email' => 'known@example.com',
         ])->assertOk()->assertJsonPath('channel', 'email');
 
         Mail::assertSent(CustomerOtpMail::class);

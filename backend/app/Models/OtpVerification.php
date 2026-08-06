@@ -12,6 +12,7 @@ class OtpVerification extends Model
         'phone',
         'channel',
         'email',
+        'purpose',
         'code_hash',
         'expires_at',
         'attempts',

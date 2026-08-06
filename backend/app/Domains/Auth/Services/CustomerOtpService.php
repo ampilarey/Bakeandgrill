@@ -23,6 +23,15 @@ class CustomerOtpService
 
     public const TTL_MINUTES = 10;
 
+    /**
+     * Purpose groups — an OTP may only be consumed by a verify path in the
+     * SAME group it was issued for. A reset OTP must never authenticate a
+     * login, and a login OTP must never reset a password.
+     */
+    public const LOGIN_PURPOSES = ['login', 'register', 'web-login'];
+
+    public const RESET_PURPOSES = ['reset_password', 'web-reset'];
+
     public function __construct(
         private readonly SmsService $smsService,
         private readonly CustomerSmsMessageBuilder $smsBuilder,
@@ -45,6 +54,7 @@ class CustomerOtpService
             'phone' => $phone,
             'channel' => $channel,
             'email' => $channel === 'email' ? $email : null,
+            'purpose' => $purpose,
             'code_hash' => Hash::make($otpCode),
             'expires_at' => now()->addMinutes(self::TTL_MINUTES),
             'attempts' => 0,
@@ -82,9 +92,13 @@ class CustomerOtpService
     /**
      * Verify the newest unused OTP for the phone and mark it used.
      *
+     * @param  list<string>|null  $allowedPurposes  Only match OTPs issued for
+     *         one of these purposes. Null keeps legacy any-purpose behaviour
+     *         and must not be used for auth-sensitive flows.
+     *
      * @throws ValidationException
      */
-    public function verifyAndConsume(string $phone, string $code): void
+    public function verifyAndConsume(string $phone, string $code, ?array $allowedPurposes = null): void
     {
         // Order by `id` (auto-increment, monotonic) rather than `created_at`
         // (second-precision timestamp) so two requests within the same wall-
@@ -92,6 +106,7 @@ class CustomerOtpService
         $otpRecord = OtpVerification::where('phone', $phone)
             ->whereNull('used_at')
             ->where('expires_at', '>', now())
+            ->when($allowedPurposes !== null, fn ($q) => $q->whereIn('purpose', $allowedPurposes))
             ->orderByDesc('id')
             ->first();
 

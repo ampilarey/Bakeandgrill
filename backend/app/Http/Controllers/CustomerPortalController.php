@@ -113,7 +113,7 @@ class CustomerPortalController extends Controller
         $phone = $this->normalizePhone($request->phone);
 
         try {
-            $this->otpService->verifyAndConsume($phone, $request->otp);
+            $this->otpService->verifyAndConsume($phone, $request->otp, CustomerOtpService::RESET_PURPOSES);
         } catch (ValidationException $e) {
             return back()
                 ->with('reset_otp_requested', true)
@@ -214,7 +214,7 @@ class CustomerPortalController extends Controller
         }
 
         try {
-            $this->otpService->verifyAndConsume($phone, $request->otp);
+            $this->otpService->verifyAndConsume($phone, $request->otp, CustomerOtpService::LOGIN_PURPOSES);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
