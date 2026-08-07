@@ -66,14 +66,15 @@ jobs:
         working-directory: backend
         # Job-level timeout-minutes has not always killed hung Pint on GHA;
         # hard-cap the process so the job can finish.
-        run: timeout 90s ./vendor/bin/pint --test -v || {
+        run: |
+          set +e
+          timeout 90s ./vendor/bin/pint --test -v
           code=$?
           if [ "$code" -eq 124 ]; then
-            echo "::warning::Pint timed out after 90s — not blocking deploy"
+            echo "::warning::Pint timed out after 90s - not blocking deploy"
             exit 0
           fi
           exit "$code"
-        }
 
   test:
     name: PHPUnit tests
