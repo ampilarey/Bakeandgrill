@@ -6,9 +6,11 @@
 #   - scripts/self-update-test.sh (cron, after it confirms CI is green)
 #
 # Optional arg: expected full SHA to deploy (retries fetch briefly if tip lags).
+# PHP-FPM/nohup often has no HOME — set before `set -u`.
+export HOME="${HOME:-/home/bakeandgrill}"
 set -uo pipefail
 
-export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:$PATH"
+export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:${PATH:-}"
 command -v php >/dev/null || { echo "$(date '+%F %T') php not found on PATH=$PATH"; exit 1; }
 command -v git >/dev/null || { echo "$(date '+%F %T') git not found on PATH"; exit 1; }
 command -v composer >/dev/null || { echo "$(date '+%F %T') composer not found on PATH=$PATH"; exit 1; }

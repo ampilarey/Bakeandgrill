@@ -17,11 +17,14 @@ class TestDeployTrigger
         return dirname(base_path()) . '/scripts/pull-deploy-test.sh';
     }
 
+    public function homePath(): string
+    {
+        return '/home/bakeandgrill';
+    }
+
     public function logPath(): string
     {
-        $home = getenv('HOME') ?: ('/home/' . get_current_user());
-
-        return rtrim((string) $home, '/') . '/self-update-test.log';
+        return $this->homePath() . '/self-update-test.log';
     }
 
     /**
@@ -39,12 +42,15 @@ class TestDeployTrigger
         }
 
         $log = $this->logPath();
+        $home = $this->homePath();
         $shaArg = ($expectedSha !== null && preg_match('/^[0-9a-f]{40}$/i', $expectedSha) === 1)
             ? escapeshellarg($expectedSha)
             : '';
 
+        // Explicit env: PHP-FPM workers often omit HOME, which breaks `set -u` scripts.
         $cmd = sprintf(
-            'nohup bash %s %s >> %s 2>&1 &',
+            'export HOME=%s; nohup bash %s %s >> %s 2>&1 &',
+            escapeshellarg($home),
             escapeshellarg($script),
             $shaArg,
             escapeshellarg($log),
