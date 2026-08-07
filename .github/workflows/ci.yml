@@ -333,7 +333,9 @@ jobs:
   deploy:
     name: Deploy (test — test.bakeandgrill.mv)
     runs-on: ubuntu-latest
-    needs: [frontend, test, test-postgres, contract]
+    # Postgres suite is valuable but often 15–20+ minutes; do not gate TEST
+    # auto-pull on it. SQLite PHPUnit + contract + frontend are enough.
+    needs: [frontend, test, contract]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: test
     steps:
