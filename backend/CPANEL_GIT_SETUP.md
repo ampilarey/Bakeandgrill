@@ -81,10 +81,9 @@ Your site will be live at: https://bakeandgrill.mv
 
 ## TEST auto-pull (recommended)
 
-For `test.bakeandgrill.mv`, prefer the cron self-updater instead of clicking Pull in cPanel:
+For `test.bakeandgrill.mv`, prefer webhook + cron (see `docs/TEST_AUTO_DEPLOY.md`):
 
-```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && bash scripts/install-self-update-cron-test.sh
-```
+1. Set `TEST_DEPLOY_WEBHOOK_SECRET` on the TEST server and in GitHub env `test`
+2. Install cron fallback: `bash scripts/install-self-update-cron-test.sh`
 
-It fetches `main` every minute and deploys only when GitHub Actions is green. Full guide: `docs/TEST_AUTO_DEPLOY.md`.
+After CI is green, Actions hits `POST /api/deploy/test-pull` for an immediate pull. Cron covers failures.

@@ -31,4 +31,4 @@ After the push summary, add a short line like:
 
 then the fenced command block. Mention the expected tip commit hash when known.
 
-If TEST auto-deploy cron is installed (`docs/TEST_AUTO_DEPLOY.md`), also note that test will self-update within ~1 minute after CI is green — still include the manual command as a fallback.
+If TEST auto-deploy is configured (`docs/TEST_AUTO_DEPLOY.md`), note that test should pull immediately after CI is green via webhook (cron fallback ~1 min) — still include the manual command as a fallback.

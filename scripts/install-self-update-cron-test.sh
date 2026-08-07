@@ -27,7 +27,9 @@ for cmd in git php composer curl; do
   fi
 done
 
-chmod +x "$SCRIPT" "$ROOT/scripts/install-self-update-cron-test.sh"
+chmod +x "$SCRIPT" \
+  "$ROOT/scripts/install-self-update-cron-test.sh" \
+  "$ROOT/scripts/pull-deploy-test.sh"
 
 cd "$ROOT"
 git fetch origin main --quiet || {

@@ -2,15 +2,9 @@
 
 ## TEST auto-deploy (preferred)
 
-Once enabled, `test.bakeandgrill.mv` pulls `main` automatically after GitHub Actions is green — no manual pull needed.
+Once enabled, `test.bakeandgrill.mv` pulls `main` **immediately** after GitHub Actions is green (webhook), with a 1-minute cron fallback.
 
-**One-time enable** (cPanel Terminal):
-
-```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && bash scripts/install-self-update-cron-test.sh
-```
-
-See [TEST_AUTO_DEPLOY.md](./TEST_AUTO_DEPLOY.md) for logs, disable, and troubleshooting.
+See [TEST_AUTO_DEPLOY.md](./TEST_AUTO_DEPLOY.md) for the one-time secret + cron setup.
 
 ---
 

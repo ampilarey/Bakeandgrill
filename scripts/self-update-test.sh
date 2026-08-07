@@ -4,32 +4,25 @@
 # Designed for cPanel cron — no inbound SSH required. Every run:
 #   1. fetches origin/main; exits if the server is already current
 #   2. asks the GitHub API whether the new commit's Actions checks are ALL green
-#   3. only then fast-forwards and runs the Laravel deploy steps
+#   3. only then runs scripts/pull-deploy-test.sh
 # Red or still-running CI never deploys.
+#
+# Prefer immediate deploy after merge: GitHub Actions calls POST /api/deploy/test-pull
+# once CI is green (see docs/TEST_AUTO_DEPLOY.md). This cron remains the fallback.
 #
 # Install once (cPanel Terminal):
 #   bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-test.sh
 #
-# Or manually:
-#   chmod +x /home/bakeandgrill/test.bakeandgrill.mv/scripts/self-update-test.sh
-#   (crontab -l 2>/dev/null; echo "* * * * * /home/bakeandgrill/test.bakeandgrill.mv/scripts/self-update-test.sh >> \$HOME/self-update-test.log 2>&1") | crontab -
-#
 # Watch it work:  tail -f ~/self-update-test.log
 set -uo pipefail
 
-# Cron runs with a minimal PATH that often misses php/composer on cPanel.
 export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:$PATH"
-command -v php >/dev/null || { echo "$(date '+%F %T') php not found on PATH=$PATH"; exit 1; }
 command -v git >/dev/null || { echo "$(date '+%F %T') git not found on PATH"; exit 1; }
-command -v composer >/dev/null || { echo "$(date '+%F %T') composer not found on PATH=$PATH"; exit 1; }
+command -v curl >/dev/null || { echo "$(date '+%F %T') curl not found on PATH"; exit 1; }
 
 ROOT="/home/bakeandgrill/test.bakeandgrill.mv"
 REPO="ampilarey/Bakeandgrill"
-LOCK="$HOME/.self-update-test.lock"
-
-# Skip if a previous run is still going (mkdir is atomic; works without flock).
-mkdir "$LOCK" 2>/dev/null || exit 0
-trap 'rmdir "$LOCK"' EXIT
+PULL="$ROOT/scripts/pull-deploy-test.sh"
 
 cd "$ROOT" || { echo "$(date '+%F %T') cannot cd to $ROOT"; exit 1; }
 
@@ -59,34 +52,8 @@ if printf '%s' "$CHECKS" | grep -qE '"conclusion": *"(failure|cancelled|timed_ou
     exit 0
 fi
 
-echo "$(date '+%F %T') deploying ${LOCAL:0:8} -> ${REMOTE:0:8}"
-git merge --ff-only FETCH_HEAD || { echo "$(date '+%F %T') fast-forward failed — manual attention needed"; exit 1; }
-
-cd backend || exit 1
-
-# Refresh vendor only when the lockfile actually changed in this update.
-if git diff --name-only "$LOCAL" "$REMOTE" | grep -q '^backend/composer.lock$'; then
-    composer install --no-dev --optimize-autoloader --no-interaction \
-        || { echo "$(date '+%F %T') composer install failed"; exit 1; }
+if [[ ! -x "$PULL" ]]; then
+  chmod +x "$PULL" 2>/dev/null || true
 fi
 
-# Ensure public/storage -> storage/app/public exists (uploads 403 via the
-# framework's signed /storage route when the symlink is missing).
-php artisan storage:link --force 2>/dev/null \
-    || echo "$(date '+%F %T') WARN: storage:link failed — is backend/public/storage a real directory?"
-
-php artisan migrate --force \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:clear \
-    && php artisan queue:restart \
-    || { echo "$(date '+%F %T') Laravel deploy steps failed"; exit 1; }
-
-# Keep the TEST queue worker alive (separate from production's worker).
-if ! pgrep -f "queue:work.*test.bakeandgrill" >/dev/null 2>&1; then
-    nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 \
-        >> storage/logs/queue-worker.log 2>&1 &
-    echo "$(date '+%F %T') started test queue worker"
-fi
-
-echo "$(date '+%F %T') deploy complete: ${REMOTE:0:8}"
+exec bash "$PULL" "$REMOTE"

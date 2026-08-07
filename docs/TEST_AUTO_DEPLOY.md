@@ -1,58 +1,74 @@
-# TEST Auto-Deploy (cPanel cron)
+# TEST Auto-Deploy
 
-`test.bakeandgrill.mv` can pull and deploy `main` automatically — no inbound SSH and no GitHub webhook required.
+`test.bakeandgrill.mv` deploys `main` automatically. Production is never auto-deployed.
 
-## How it works
+## Immediate path (preferred)
 
-Every minute, cron runs `scripts/self-update-test.sh`, which:
+After CI is green on a push to `main`, GitHub Actions calls:
 
-1. `git fetch origin main`
-2. Exits quietly if the server is already on that commit
-3. Asks the GitHub API whether that commit’s Actions checks are **all green**
-4. Only then fast-forwards and runs Laravel deploy steps (`composer` if lock changed, migrate, caches, `queue:restart`)
+`POST https://test.bakeandgrill.mv/api/deploy/test-pull`
 
-Red or still-running CI never deploys. Production (`public_html`) is **not** touched.
+That starts `scripts/pull-deploy-test.sh` in the background (no 1-minute wait).
+
+### One-time setup
+
+**1. On the TEST server** (cPanel Terminal), pull this code and set a secret:
+
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main
+SECRET=$(openssl rand -hex 32)
+echo "TEST_DEPLOY_WEBHOOK_SECRET=${SECRET}" >> backend/.env
+cd backend && php artisan config:cache
+echo "Save this secret for GitHub: ${SECRET}"
+```
+
+**2. In GitHub** → repo **Settings → Environments → `test`** → add secret:
+
+| Name | Value |
+|---|---|
+| `TEST_DEPLOY_WEBHOOK_SECRET` | same value as in TEST `.env` |
+
+**3. Keep cron as fallback** (still recommended):
+
+```bash
+bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-test.sh
+```
+
+### Verify
+
+```bash
+# Should return 202
+curl -sS -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
+  -H "Authorization: Bearer YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"sha":"'"$(git -C /home/bakeandgrill/test.bakeandgrill.mv rev-parse HEAD)"'"}'
+
+tail -f ~/self-update-test.log
+```
+
+## Cron fallback (~1 minute)
+
+If the webhook secret is missing or the HTTP trigger fails, `scripts/self-update-test.sh` still runs every minute, waits for GitHub Actions check-runs to be green, then deploys.
 
 | Item | Value |
 |---|---|
 | App root | `/home/bakeandgrill/test.bakeandgrill.mv` |
-| Script | `scripts/self-update-test.sh` |
+| Immediate script | `scripts/pull-deploy-test.sh` |
+| Cron script | `scripts/self-update-test.sh` |
 | Installer | `scripts/install-self-update-cron-test.sh` |
 | Log | `~/self-update-test.log` |
-| Schedule | every 1 minute |
 
-## One-time enable (cPanel Terminal)
+## After a merge to `main`
 
-After the scripts exist on the test server (pull once if needed):
+1. GitHub Actions must finish green (`frontend`, `test`, `test-postgres`, `contract`)
+2. Deploy job hits the webhook → TEST pulls that SHA immediately
+3. If webhook/SSH unavailable → cron picks it up within ~1 minute after checks are green
 
-```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv \
-  && git pull origin main \
-  && bash scripts/install-self-update-cron-test.sh
-```
+## Disable webhook
 
-Confirm:
+Remove `TEST_DEPLOY_WEBHOOK_SECRET` from TEST `.env` and from the GitHub `test` environment, then `php artisan config:cache` on the server. Endpoint returns 404 when unset.
 
-```bash
-crontab -l | grep self-update-test
-tail -f ~/self-update-test.log
-```
-
-You should see either silence (already current / waiting on CI) or lines like `deploying …` / `deploy complete: …`.
-
-## After a push to `main`
-
-1. GitHub Actions must finish green
-2. Within about a minute after that, test auto-pulls and deploys
-3. Optional: `tail -f ~/self-update-test.log` to watch it
-
-Manual override (same as before) still works if you need an immediate pull without waiting for cron:
-
-```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart && git log -1 --oneline
-```
-
-## Disable
+## Disable cron
 
 ```bash
 crontab -l | grep -v 'self-update-test.sh' | crontab -
@@ -62,13 +78,13 @@ crontab -l | grep -v 'self-update-test.sh' | crontab -
 
 | Symptom | Fix |
 |---|---|
-| Cron missing | Re-run `bash scripts/install-self-update-cron-test.sh` |
-| `php` / `composer` not found in log | PATH is set in the script for ea-php84; adjust `PATH=` in `self-update-test.sh` if the host uses a different PHP |
-| `CI still running — holding` | Wait for Actions to finish |
-| `CI not green — holding` | Fix the failing workflow, then wait for the next green tip of `main` |
-| `fast-forward failed` | Working tree dirty or diverged — fix on server (`git status`), then re-run |
-| No log lines | Cron may not be running; check cPanel → Cron Jobs, or that the account allows crontab |
+| Actions notice: secret not set | Add `TEST_DEPLOY_WEBHOOK_SECRET` to GitHub env `test` |
+| Webhook HTTP 404 | Secret missing/short on server, or host is not `test.bakeandgrill.mv` — run `config:cache` |
+| Webhook HTTP 401 | GitHub secret ≠ server `.env` value |
+| Webhook HTTP 503 | `proc_open` blocked — cron fallback still works; ask host to allow process spawn |
+| Cron `CI still running` | Normal while Actions is in progress |
+| `fast-forward failed` | Dirty/diverged tree on server — `git status` and fix |
 
-## Why not a GitHub webhook?
+## Why not “pull on merge before CI”?
 
-SSH to the box from Actions is not available (port 22 closed). A public webhook that shells out is harder to harden on cPanel and would risk deploying before CI is green. Minute cron + check-runs gating matches this host’s constraints.
+Deploying red builds to TEST wastes time and can break UAT. Immediate deploy runs only from the Actions deploy job after required checks pass.
