@@ -119,14 +119,15 @@ describe('MediaLibraryPage', () => {
 
   it('filters by collection when collection button is clicked', async () => {
     renderWithRouter(<MediaLibraryPage />);
-    await screen.findByTestId('collections-sidebar');
+    // Wait for collections to load — sidebar mounts before the async list arrives.
+    const menuItemsBtn = await screen.findByTestId('collection-btn-menu-items');
 
     vi.mocked(api.getMedia).mockResolvedValueOnce({
       data: [makeAsset(4)],
       meta: { current_page: 1, last_page: 1, per_page: 24, total: 1 },
     });
 
-    fireEvent.click(screen.getByTestId('collection-btn-menu-items'));
+    fireEvent.click(menuItemsBtn);
 
     await waitFor(() => {
       expect(api.getMedia).toHaveBeenCalledWith(
