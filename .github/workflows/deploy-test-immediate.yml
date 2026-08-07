@@ -1,0 +1,57 @@
+name: Deploy TEST (immediate)
+
+# Fires as soon as main is pushed — does NOT wait for PHPUnit/frontend/CI.
+# This is the fast path for test.bakeandgrill.mv auto-pull.
+# Full CI still runs separately; cron remains a fallback if the webhook fails.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-test-immediate
+  cancel-in-progress: false
+
+jobs:
+  pull-test-now:
+    name: Webhook pull (test.bakeandgrill.mv)
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Trigger TEST deploy webhook
+        id: webhook
+        env:
+          DEPLOY_SECRET: ${{ secrets.TEST_DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "${DEPLOY_SECRET}" ]; then
+            echo "::error::TEST_DEPLOY_WEBHOOK_SECRET missing on GitHub environment 'test'"
+            exit 1
+          fi
+
+          # GitHub may need a moment to expose the new tip to git fetch on the server.
+          for attempt in 1 2 3 4 5 6; do
+            code=$(curl -sS -o /tmp/deploy-webhook.json -w "%{http_code}" \
+              -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
+              -H "Authorization: Bearer ${DEPLOY_SECRET}" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d "{\"sha\":\"${GITHUB_SHA}\"}")
+            echo "Attempt ${attempt}: HTTP ${code}"
+            cat /tmp/deploy-webhook.json || true
+            echo ""
+            if [ "$code" = "202" ]; then
+              echo "TEST deploy triggered for ${GITHUB_SHA}"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "::error::Webhook deploy failed after retries"
+          exit 1
+
+      - name: Brief smoke (homepage + health)
+        run: |
+          # Webhook returns 202 before pull finishes — short wait, then check.
+          sleep 20
+          curl -fsS -o /dev/null -w "health %{http_code}\n" https://test.bakeandgrill.mv/api/health
+          curl -fsS -o /dev/null -w "home %{http_code}\n" https://test.bakeandgrill.mv/

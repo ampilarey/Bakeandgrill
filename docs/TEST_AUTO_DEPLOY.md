@@ -1,94 +1,54 @@
 # TEST Auto-Deploy
 
-`test.bakeandgrill.mv` deploys `main` automatically. Production is never auto-deployed.
+`test.bakeandgrill.mv` pulls `main` automatically. Production is never auto-deployed.
 
-## Immediate path (preferred)
+## Fast path (default)
 
-After CI is green on a push to `main`, GitHub Actions calls:
+On every push to `main`, workflow **Deploy TEST (immediate)** runs right away
+(`.github/workflows/deploy-test-immediate.yml`):
 
-`POST https://test.bakeandgrill.mv/api/deploy/test-pull`
+1. Does **not** wait for PHPUnit / frontend / full CI
+2. `POST https://test.bakeandgrill.mv/api/deploy/test-pull` with the commit SHA
+3. Server runs `scripts/pull-deploy-test.sh` in the background
 
-That starts `scripts/pull-deploy-test.sh` in the background (no 1-minute wait).
+Typical delay: runner pickup + ~20–40s pull (usually under a minute after the push).
 
-### One-time setup
+Full CI still runs in parallel for quality. Cron is only a fallback if the webhook fails.
 
-**1. On the TEST server** (cPanel Terminal), pull this code and set a secret:
+## One-time setup
+
+**1. TEST server secret**
 
 ```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main
+cd /home/bakeandgrill/test.bakeandgrill.mv
 SECRET=$(openssl rand -hex 32)
+sed -i '/^TEST_DEPLOY_WEBHOOK_SECRET=/d' backend/.env
 echo "TEST_DEPLOY_WEBHOOK_SECRET=${SECRET}" >> backend/.env
 cd backend && php artisan config:cache
-echo "Save this secret for GitHub: ${SECRET}"
+echo "$SECRET"
 ```
 
-**2. In GitHub** → repo **Settings → Environments → `test`** → add secret:
+**2. GitHub** → Settings → Environments → **test** → secret  
+`TEST_DEPLOY_WEBHOOK_SECRET` = same value
 
-| Name | Value |
-|---|---|
-| `TEST_DEPLOY_WEBHOOK_SECRET` | same value as in TEST `.env` |
-
-**3. Keep cron as fallback** (still recommended):
+**3. Cron fallback (recommended)**
 
 ```bash
 bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-test.sh
 ```
 
-### Verify
+## After a push to `main`
 
-```bash
-# Load the secret from .env (do not paste it into docs/chat)
-set -a; source /home/bakeandgrill/test.bakeandgrill.mv/backend/.env; set +a
-
-# Should return 202
-AUTH="Authorization: Bearer ${TEST_DEPLOY_WEBHOOK_SECRET}"
-curl -sS -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
-  -H "$AUTH" \
-  -H "Content-Type: application/json" \
-  -d '{"sha":"'"$(git -C /home/bakeandgrill/test.bakeandgrill.mv rev-parse HEAD)"'"}'
-
-tail -f ~/self-update-test.log
-```
-
-## Cron fallback (~1 minute)
-
-If the webhook secret is missing or the HTTP trigger fails, `scripts/self-update-test.sh` still runs every minute, waits for GitHub Actions check-runs to be green, then deploys.
-
-| Item | Value |
-|---|---|
-| App root | `/home/bakeandgrill/test.bakeandgrill.mv` |
-| Immediate script | `scripts/pull-deploy-test.sh` |
-| Cron script | `scripts/self-update-test.sh` |
-| Installer | `scripts/install-self-update-cron-test.sh` |
-| Log | `~/self-update-test.log` |
-
-## After a merge to `main`
-
-1. GitHub Actions must finish green (`frontend`, `test`, `test-postgres`, `contract`)
-2. Deploy job hits the webhook → TEST pulls that SHA immediately
-3. If webhook/SSH unavailable → cron picks it up within ~1 minute after checks are green
+1. Open Actions → **Deploy TEST (immediate)** — should go green within ~1 minute
+2. Refresh https://test.bakeandgrill.mv/
+3. Optional: `tail -f ~/self-update-test.log` on the server
 
 ## Disable webhook
 
-Remove `TEST_DEPLOY_WEBHOOK_SECRET` from TEST `.env` and from the GitHub `test` environment, then `php artisan config:cache` on the server. Endpoint returns 404 when unset.
+Remove `TEST_DEPLOY_WEBHOOK_SECRET` from TEST `.env` and the GitHub `test` environment, then `php artisan config:cache` on the server.
 
 ## Disable cron
 
 ```bash
 crontab -l | grep -v 'self-update-test.sh' | crontab -
 ```
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---|---|
-| Actions notice: secret not set | Add `TEST_DEPLOY_WEBHOOK_SECRET` to GitHub env `test` |
-| Webhook HTTP 404 | Secret missing/short on server, or host is not `test.bakeandgrill.mv` — run `config:cache` |
-| Webhook HTTP 401 | GitHub secret ≠ server `.env` value |
-| Webhook HTTP 503 | `proc_open` blocked — cron fallback still works; ask host to allow process spawn |
-| Cron `CI still running` | Normal while Actions is in progress |
-| `fast-forward failed` | Dirty/diverged tree on server — `git status` and fix |
-
-## Why not “pull on merge before CI”?
-
-Deploying red builds to TEST wastes time and can break UAT. Immediate deploy runs only from the Actions deploy job after required checks pass.

@@ -331,81 +331,19 @@ jobs:
           path: e2e/report/
           retention-days: 7
 
-  deploy:
-    name: Deploy (test — test.bakeandgrill.mv)
+  # Fast TEST pull runs in .github/workflows/deploy-test-immediate.yml on every
+  # main push (does not wait for this CI). This job only re-checks the site
+  # after tests pass.
+  deploy-verify:
+    name: Verify TEST deploy (post-CI smoke)
     runs-on: ubuntu-latest
-    # Postgres suite is valuable but often 15–20+ minutes; do not gate TEST
-    # auto-pull on it. SQLite PHPUnit + contract + frontend are enough.
     needs: [frontend, test, contract]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: test
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy via webhook (immediate)
-        id: webhook
-        continue-on-error: true
-        env:
-          DEPLOY_SECRET: ${{ secrets.TEST_DEPLOY_WEBHOOK_SECRET }}
-        run: |
-          if [ -z "${DEPLOY_SECRET}" ]; then
-            echo "::notice::TEST_DEPLOY_WEBHOOK_SECRET not set — will try SSH, then cron fallback"
-            exit 1
-          fi
-          code=$(curl -sS -o /tmp/deploy-webhook.json -w "%{http_code}" \
-            -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
-            -H "Authorization: Bearer ${DEPLOY_SECRET}" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d "{\"sha\":\"${GITHUB_SHA}\"}")
-          echo "Webhook HTTP ${code}"
-          cat /tmp/deploy-webhook.json || true
-          echo ""
-          if [ "$code" = "202" ]; then
-            echo "Immediate TEST deploy triggered for ${GITHUB_SHA}"
-            exit 0
-          fi
-          echo "::warning::Webhook deploy failed (HTTP ${code})"
-          exit 1
-
-      - name: Deploy via SSH
-        id: deploy
-        if: steps.webhook.outcome != 'success'
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd /home/bakeandgrill/test.bakeandgrill.mv \
-            && git pull origin main \
-            && cd backend \
-            && composer install --no-dev --optimize-autoloader \
-            && php artisan migrate --force \
-            && php artisan storage:link --force \
-            && php artisan config:cache \
-            && php artisan route:cache \
-            && php artisan view:clear \
-            && php artisan app:verify-production-config \
-            && php artisan queue:restart \
-            && (pgrep -f "queue:work.*test.bakeandgrill" >/dev/null || cd /home/bakeandgrill/test.bakeandgrill.mv/backend && nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &) \
-            && pgrep -af "artisan queue:work" | grep test.bakeandgrill || echo "WARN: test queue worker not running" \
-            && echo "Test deploy complete."
-
       - name: Post-deploy smoke (test)
-        if: steps.webhook.outcome == 'success' || steps.deploy.outcome == 'success'
-        run: |
-          # Webhook returns 202 before git pull finishes — give the server a moment.
-          if [ "${{ steps.webhook.outcome }}" = "success" ]; then
-            sleep 45
-          fi
-          ./scripts/post-deploy-smoke.sh test
-
-      - name: Deploy skipped or failed
-        if: steps.webhook.outcome != 'success' && steps.deploy.outcome != 'success'
-        run: |
-          echo "::notice::Immediate webhook/SSH deploy unavailable. Cron fallback: scripts/self-update-test.sh pulls within ~1 minute after checks are green. See docs/TEST_AUTO_DEPLOY.md"
+        run: ./scripts/post-deploy-smoke.sh test
 
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)

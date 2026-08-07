@@ -1317,6 +1317,12 @@
     </script>
 </head>
 <body>
+{{-- TEMP fast-hook proof on TEST only — remove after confirmation --}}
+@if(str_contains((string) config('app.url'), 'test.bakeandgrill.mv'))
+<div id="auto-deploy-live-test" style="position:relative;z-index:9999;background:#1a237e;color:#e8eaf6;text-align:center;padding:0.7rem 1rem;font:600 0.95rem/1.3 system-ui,sans-serif;">
+    FAST HOOK · CODE <span style="color:#82b1ff;">FAST-HOOK-1550</span> · pulled without waiting for full CI
+</div>
+@endif
 @if($gtmId !== '')
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ e($gtmId) }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 @endif
