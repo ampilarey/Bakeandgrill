@@ -56,9 +56,10 @@ regexes = [
     'XERO_[A-Z_]+=\s*$',
 ]
 
-[[allowlists]]
-id = "test-deploy-docs-auth-example"
-description = "Skip commit that briefly documented Bearer YOUR_SECRET placeholder in TEST_AUTO_DEPLOY.md"
-commits = [
-    "921df285478d6a963b76ee137caa5a2616b59527",
+# gitleaks 8.24 (CI) still honors legacy [allowlist] for path skips; [[allowlists]]
+# path-only entries were not suppressing curl-auth-header on historical commits.
+[allowlist]
+description = "TEST_AUTO_DEPLOY.md webhook curl examples use placeholders, not live credentials"
+paths = [
+    '''docs/TEST_AUTO_DEPLOY\.md''',
 ]
