@@ -55,3 +55,14 @@ regexes = [
     'STRIPE_[A-Z_]+=\s*$',
     'XERO_[A-Z_]+=\s*$',
 ]
+
+[[allowlists]]
+id = "test-deploy-docs-auth-example"
+description = "TEST_AUTO_DEPLOY.md curl auth examples are placeholders, not live credentials"
+paths = [
+    'docs/TEST_AUTO_DEPLOY\.md',
+]
+regexTarget = "match"
+regexes = [
+    'Authorization:\s*Bearer\s+',
+]
