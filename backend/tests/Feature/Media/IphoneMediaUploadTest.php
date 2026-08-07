@@ -298,17 +298,10 @@ class IphoneMediaUploadTest extends TestCase
      */
     private function injectExifOrientation(string $path, int $orientation): void
     {
-        // Use Imagick if present; otherwise write a known-good JPEG with EXIF via GD+manual APP1.
-        if (extension_loaded('imagick') && class_exists(\Imagick::class)) {
-            $im = new \Imagick($path);
-            $im->setImageOrientation($orientation);
-            $im->writeImage($path);
-            $im->clear();
-
-            return;
-        }
-
-        // Manual APP1 with Orientation tag (IFD0 tag 0x0112).
+        // Always inject a manual APP1 Orientation tag. Imagick's
+        // setImageOrientation()+writeImage() can bake a transform into the
+        // pixels on some runners while leaving Orientation=6, so GD then
+        // rotates again and this assertion flips back to landscape.
         $jpeg = (string) file_get_contents($path);
         if (!str_starts_with($jpeg, "\xFF\xD8")) {
             $this->markTestSkipped('Not a JPEG');
