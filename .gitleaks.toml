@@ -58,11 +58,7 @@ regexes = [
 
 [[allowlists]]
 id = "test-deploy-docs-auth-example"
-description = "TEST_AUTO_DEPLOY.md curl auth examples are placeholders, not live credentials"
-paths = [
-    'docs/TEST_AUTO_DEPLOY\.md',
-]
-regexTarget = "match"
-regexes = [
-    'Authorization:\s*Bearer\s+',
+description = "Docs curl Bearer example used placeholder YOUR_SECRET (not a live credential)"
+fingerprints = [
+    "921df285478d6a963b76ee137caa5a2616b59527:docs/TEST_AUTO_DEPLOY.md:curl-auth-header:41",
 ]
