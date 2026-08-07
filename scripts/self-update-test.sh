@@ -14,9 +14,10 @@
 #   bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-test.sh
 #
 # Watch it work:  tail -f ~/self-update-test.log
+export HOME="${HOME:-/home/bakeandgrill}"
 set -uo pipefail
 
-export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:$PATH"
+export PATH="$HOME/bin:/usr/local/bin:/opt/cpanel/ea-php84/root/usr/bin:/usr/bin:/bin:${PATH:-}"
 command -v git >/dev/null || { echo "$(date '+%F %T') git not found on PATH"; exit 1; }
 command -v curl >/dev/null || { echo "$(date '+%F %T') curl not found on PATH"; exit 1; }
 
