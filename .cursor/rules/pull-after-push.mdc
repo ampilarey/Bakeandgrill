@@ -30,3 +30,5 @@ After the push summary, add a short line like:
 > **TEST pull** (full/quick — one reason):
 
 then the fenced command block. Mention the expected tip commit hash when known.
+
+If TEST auto-deploy cron is installed (`docs/TEST_AUTO_DEPLOY.md`), also note that test will self-update within ~1 minute after CI is green — still include the manual command as a fallback.

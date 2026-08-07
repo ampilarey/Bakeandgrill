@@ -80,4 +80,13 @@ php artisan migrate --force \
     && php artisan route:cache \
     && php artisan view:clear \
     && php artisan queue:restart \
-    && echo "$(date '+%F %T') deploy complete: ${REMOTE:0:8}"
+    || { echo "$(date '+%F %T') Laravel deploy steps failed"; exit 1; }
+
+# Keep the TEST queue worker alive (separate from production's worker).
+if ! pgrep -f "queue:work.*test.bakeandgrill" >/dev/null 2>&1; then
+    nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 \
+        >> storage/logs/queue-worker.log 2>&1 &
+    echo "$(date '+%F %T') started test queue worker"
+fi
+
+echo "$(date '+%F %T') deploy complete: ${REMOTE:0:8}"

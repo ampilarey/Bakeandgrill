@@ -1,11 +1,27 @@
 # Server Deploy Command
 
-Run this on the server whenever you want to pull the latest code and apply changes.
+## TEST auto-deploy (preferred)
 
-## Full Deploy (use this after any update)
+Once enabled, `test.bakeandgrill.mv` pulls `main` automatically after GitHub Actions is green — no manual pull needed.
+
+**One-time enable** (cPanel Terminal):
 
 ```bash
-cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && bash scripts/install-self-update-cron-test.sh
+```
+
+See [TEST_AUTO_DEPLOY.md](./TEST_AUTO_DEPLOY.md) for logs, disable, and troubleshooting.
+
+---
+
+## Manual TEST deploy
+
+Run this on the server whenever you want to pull immediately (bypass cron).
+
+### Full Deploy (use this after any update)
+
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && cd backend && composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:clear && php artisan queue:restart
 ```
 
 ---

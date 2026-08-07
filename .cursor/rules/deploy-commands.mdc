@@ -16,7 +16,17 @@ There are **two installs** of the app on `sg-s2`. **Always deploy to TEST first.
 
 If the user just says "pull?" with no environment qualifier → **TEST only**. Confirm before touching production.
 
-## TEST deploy
+## TEST auto-deploy
+
+Preferred path: once-minute cron (`scripts/self-update-test.sh`) pulls `main` after CI is green. Install once:
+
+```bash
+cd /home/bakeandgrill/test.bakeandgrill.mv && git pull origin main && bash scripts/install-self-update-cron-test.sh
+```
+
+Details: `docs/TEST_AUTO_DEPLOY.md`. Production is never auto-deployed.
+
+## TEST deploy (manual)
 
 **Full deploy** (new migrations or PHP deps):
 ```bash
