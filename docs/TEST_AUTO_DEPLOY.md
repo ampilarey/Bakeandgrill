@@ -37,9 +37,13 @@ bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-te
 ### Verify
 
 ```bash
+# Load the secret from .env (do not paste it into docs/chat)
+set -a; source /home/bakeandgrill/test.bakeandgrill.mv/backend/.env; set +a
+
 # Should return 202
+AUTH="Authorization: Bearer ${TEST_DEPLOY_WEBHOOK_SECRET}"
 curl -sS -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
-  -H "Authorization: Bearer YOUR_SECRET" \
+  -H "$AUTH" \
   -H "Content-Type: application/json" \
   -d '{"sha":"'"$(git -C /home/bakeandgrill/test.bakeandgrill.mv rev-parse HEAD)"'"}'
 
