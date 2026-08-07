@@ -15,6 +15,11 @@ $GLOBALS['routes_sections'] = [];
 // Health check endpoint
 Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
 
+// TEST-only immediate deploy trigger (GitHub Actions → cPanel). Disabled when
+// TEST_DEPLOY_WEBHOOK_SECRET is unset; always 404 on non-test hosts.
+Route::post('/deploy/test-pull', App\Http\Controllers\Api\TestDeployWebhookController::class)
+    ->middleware('throttle:10,1');
+
 // Public order tracking — no auth required, token in URL acts as shared secret
 Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
     ->middleware('throttle:10,1');

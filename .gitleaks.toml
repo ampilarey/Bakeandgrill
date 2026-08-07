@@ -55,3 +55,11 @@ regexes = [
     'STRIPE_[A-Z_]+=\s*$',
     'XERO_[A-Z_]+=\s*$',
 ]
+
+# gitleaks 8.24 (CI) still honors legacy [allowlist] for path skips; [[allowlists]]
+# path-only entries were not suppressing curl-auth-header on historical commits.
+[allowlist]
+description = "TEST_AUTO_DEPLOY.md webhook curl examples use placeholders, not live credentials"
+paths = [
+    '''docs/TEST_AUTO_DEPLOY\.md''',
+]

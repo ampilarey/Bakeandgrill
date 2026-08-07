@@ -76,3 +76,14 @@ If cPanel asks for SSH key setup:
 4. Select latest commit and deploy
 
 Your site will be live at: https://bakeandgrill.mv
+
+---
+
+## TEST auto-pull (recommended)
+
+For `test.bakeandgrill.mv`, prefer webhook + cron (see `docs/TEST_AUTO_DEPLOY.md`):
+
+1. Set `TEST_DEPLOY_WEBHOOK_SECRET` on the TEST server and in GitHub env `test`
+2. Install cron fallback: `bash scripts/install-self-update-cron-test.sh`
+
+After CI is green, Actions hits `POST /api/deploy/test-pull` for an immediate pull. Cron covers failures.

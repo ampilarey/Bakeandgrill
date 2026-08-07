@@ -326,8 +326,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Deploy via webhook (immediate)
+        id: webhook
+        continue-on-error: true
+        env:
+          DEPLOY_SECRET: ${{ secrets.TEST_DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "${DEPLOY_SECRET}" ]; then
+            echo "::notice::TEST_DEPLOY_WEBHOOK_SECRET not set — will try SSH, then cron fallback"
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/deploy-webhook.json -w "%{http_code}" \
+            -X POST "https://test.bakeandgrill.mv/api/deploy/test-pull" \
+            -H "Authorization: Bearer ${DEPLOY_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d "{\"sha\":\"${GITHUB_SHA}\"}")
+          echo "Webhook HTTP ${code}"
+          cat /tmp/deploy-webhook.json || true
+          echo ""
+          if [ "$code" = "202" ]; then
+            echo "Immediate TEST deploy triggered for ${GITHUB_SHA}"
+            exit 0
+          fi
+          echo "::warning::Webhook deploy failed (HTTP ${code})"
+          exit 1
+
       - name: Deploy via SSH
         id: deploy
+        if: steps.webhook.outcome != 'success'
         continue-on-error: true
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -351,13 +378,18 @@ jobs:
             && echo "Test deploy complete."
 
       - name: Post-deploy smoke (test)
-        if: steps.deploy.outcome == 'success'
-        run: ./scripts/post-deploy-smoke.sh test
+        if: steps.webhook.outcome == 'success' || steps.deploy.outcome == 'success'
+        run: |
+          # Webhook returns 202 before git pull finishes — give the server a moment.
+          if [ "${{ steps.webhook.outcome }}" = "success" ]; then
+            sleep 45
+          fi
+          ./scripts/post-deploy-smoke.sh test
 
       - name: Deploy skipped or failed
-        if: steps.deploy.outcome != 'success'
+        if: steps.webhook.outcome != 'success' && steps.deploy.outcome != 'success'
         run: |
-          echo "::notice::SSH deploy not configured (server port 22 is closed). The test server self-updates via scripts/self-update-test.sh on a 1-minute cron — it deploys this commit once all checks here are green."
+          echo "::notice::Immediate webhook/SSH deploy unavailable. Cron fallback: scripts/self-update-test.sh pulls within ~1 minute after checks are green. See docs/TEST_AUTO_DEPLOY.md"
 
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)

@@ -66,4 +66,9 @@ class RouteSurfaceRegressionTest extends TestCase
     {
         $this->assertRoute('api/payments/bml/webhook', 'POST');
     }
+
+    public function test_test_deploy_webhook_route_exists(): void
+    {
+        $this->assertRoute('api/deploy/test-pull', 'POST');
+    }
 }

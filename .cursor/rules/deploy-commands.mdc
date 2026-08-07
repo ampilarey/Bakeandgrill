@@ -16,7 +16,11 @@ There are **two installs** of the app on `sg-s2`. **Always deploy to TEST first.
 
 If the user just says "pull?" with no environment qualifier → **TEST only**. Confirm before touching production.
 
-## TEST deploy
+## TEST auto-deploy
+
+Preferred path: after CI is green, GitHub Actions calls `POST /api/deploy/test-pull` for an immediate pull. Cron (`scripts/self-update-test.sh`) remains the fallback. Setup: `docs/TEST_AUTO_DEPLOY.md`. Production is never auto-deployed.
+
+## TEST deploy (manual)
 
 **Full deploy** (new migrations or PHP deps):
 ```bash

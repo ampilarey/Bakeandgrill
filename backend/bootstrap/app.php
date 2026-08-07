@@ -55,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // (wired via config/sanctum.php) so stale XSRF cookies cannot 419 POS/admin calls.
         $middleware->validateCsrfTokens(except: [
             'api/auth/staff/*',
+            'api/deploy/test-pull',
         ]);
 
         $middleware->alias([
