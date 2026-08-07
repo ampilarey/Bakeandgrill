@@ -105,4 +105,35 @@ class ReceiptPageTest extends TestCase
             ->assertSee('doc-card-body', false)
             ->assertSee('doc-masthead', false);
     }
+
+    public function test_prepaid_dine_in_receipt_shows_prepaid_online_not_final_paid(): void
+    {
+        $receipt = $this->seedOrder([
+            'order_number' => 'BG-20260527-DINE',
+            'type' => 'dine_in',
+            'status' => 'pending',
+            'payment_status' => 'paid',
+            'user_id' => null,
+            'paid_at' => now(),
+            'delivery_fee' => 0,
+            'total' => 1.00,
+        ]);
+
+        \App\Models\Payment::create([
+            'order_id' => $receipt->order_id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'amount' => 1.00,
+            'amount_laar' => 100,
+            'status' => 'confirmed',
+            'processed_at' => now(),
+        ]);
+
+        $this->get('/receipts/' . $receipt->token)
+            ->assertOk()
+            ->assertSee('Prepaid online')
+            ->assertSee('dine-in visit is finished')
+            ->assertDontSee('Payment confirmed')
+            ->assertSee('Something wrong with this bill?');
+    }
 }

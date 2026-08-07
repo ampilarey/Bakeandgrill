@@ -2,11 +2,9 @@
 
 @php
     $order = $receipt->order;
-    $settlement = \App\Support\OrderSettlement::forOrder($order);
-    $paidOnCredit = $settlement['paid_on_credit'] ?? false;
-    $isPaid = $order->paid_at !== null
-        || in_array($order->status ?? '', ['paid', 'completed', 'delivered', 'refunded'], true);
-    $docTitle = $isPaid ? 'Receipt' : 'Invoice';
+    $doc = \App\Support\ReceiptDocumentState::forOrder($order);
+    $isPaid = $doc['is_final_paid'];
+    $docTitle = $doc['doc_title'];
     $typeLabels = [
         'dine_in' => 'Dine In',
         'takeaway' => 'Takeaway',
@@ -47,9 +45,11 @@
         $waLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : 'https://wa.me/9609120011';
     }
     $receiptRef = $order->order_number ?? ($receipt->token ?? '');
-    $mistakeTotal = $isPaid ? $netTotal : (float) $order->total;
+    $mistakeTotal = $doc['balance_due'] > 0.009
+        ? $doc['balance_due']
+        : ($isPaid ? $netTotal : (float) $order->total);
     $mistakeMsg = 'Hi Bake & Grill — I think there\'s a mistake on '
-        .($isPaid ? 'receipt' : 'bill').' for order '.$receiptRef
+        .$doc['mistake_noun'].' for order '.$receiptRef
         .' for MVR '.number_format($mistakeTotal, 2)
         .'. Mistake: ';
 @endphp
@@ -61,8 +61,8 @@
     @include('partials.document-masthead', [
         'docType' => $docTitle,
         'docNumber' => $order->order_number ?? '',
-        'docBadge' => $isPaid ? ($paidOnCredit ? 'On credit' : 'Paid') : 'Payment pending',
-        'docBadgeClass' => $isPaid ? 'doc-badge--paid' : 'doc-badge--unpaid',
+        'docBadge' => $doc['badge'],
+        'docBadgeClass' => $doc['badge_class'],
     ])
 
     <div class="doc-card-body">
@@ -73,20 +73,9 @@
             <div class="doc-alert doc-alert--error">{{ session('error') }}</div>
         @endif
 
-        @if (!$isPaid)
-            <div class="doc-banner doc-banner--warn">
-                Payment pending — this is your bill. Totals may update until payment is received. Refresh after you pay to see your receipt.
-            </div>
-        @else
-            <div class="doc-banner doc-banner--ok">
-                @if ($paidOnCredit)
-                    Charged to credit account
-                @else
-                    Payment confirmed
-                @endif
-                @if ($order->paid_at)
-                    — {{ $order->paid_at->timezone($tz)->format('D, j M Y g:i A') }}
-                @endif
+        @if ($doc['banner_text'])
+            <div class="doc-banner doc-banner--{{ $doc['banner_kind'] ?? 'ok' }}">
+                {{ $doc['banner_text'] }}
             </div>
         @endif
 
@@ -147,13 +136,16 @@
                 <p><span>GST</span><span>MVR {{ number_format((float) $order->tax_amount, 2) }}</span></p>
             @endif
             <p class="grand"><span>Total</span><span>MVR {{ number_format((float) $order->total, 2) }}</span></p>
+            @if ($doc['balance_due'] > 0.009)
+                <p class="doc-refund"><span>Balance due</span><span>MVR {{ number_format($doc['balance_due'], 2) }}</span></p>
+            @endif
             @if ($refundedTotal > 0.0001)
                 <p class="doc-refund"><span>Refunded</span><span>− MVR {{ number_format($refundedTotal, 2) }}</span></p>
                 <p class="grand"><span>{{ $isFullyRefunded ? 'Refunded total' : 'Amount you paid' }}</span><span>MVR {{ number_format($netTotal, 2) }}</span></p>
             @endif
         </div>
 
-        @if ($isPaid && $order->payments->count() > 0)
+        @if ($doc['show_payments'] && $order->payments->count() > 0)
             <div class="doc-payments">
                 <h3>Payments</h3>
                 @foreach ($order->payments as $p)
@@ -172,7 +164,7 @@
         @endif
 
         <div class="doc-actions">
-            @if ($isPaid)
+            @if ($doc['show_pdf'])
                 <a class="doc-btn doc-btn-primary" href="{{ url('/receipts/' . $receipt->token . '/pdf') }}">Download PDF</a>
             @endif
             <button type="button" class="doc-btn doc-btn-print">Print</button>
@@ -180,10 +172,10 @@
 
         @include('partials.document-mistake-cta', [
             'waHref' => $waLink.'?text='.rawurlencode($mistakeMsg),
-            'ctaLabel' => 'Something wrong with this '.($isPaid ? 'receipt' : 'bill').'?',
+            'ctaLabel' => 'Something wrong with this '.$doc['mistake_noun'].'?',
         ])
 
-        @if ($isPaid)
+        @if ($doc['show_feedback'])
             <div class="doc-feedback">
                 <h3>Share feedback</h3>
                 <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/feedback') }}">

@@ -133,55 +133,58 @@ class StripeController extends Controller
             if ($orderId) {
                 $order = Order::find($orderId);
                 if ($order) {
-                    // Validate the webhook against what we actually created:
-                    // currency must be ours and the amount must match the
-                    // pending intent we recorded (audit #6). A mismatch is
-                    // logged and ignored rather than silently settling.
+                    // Terra residual / pre-Stripe-live hardening: only complete
+                    // intents we previously created locally. Never mint a
+                    // completed payment from a webhook alone.
                     $pending = Payment::where('provider_transaction_id', $pi['id'])
                         ->where('order_id', $order->id)
+                        ->where('gateway', 'stripe')
                         ->first();
-                    if ($currency !== self::CURRENCY
-                        || ($pending && (int) $pending->amount_laar !== $amount)) {
-                        \Illuminate\Support\Facades\Log::warning('Stripe webhook amount/currency mismatch — ignoring', [
+
+                    if (!$pending) {
+                        \Illuminate\Support\Facades\Log::warning('Stripe webhook: no matching local pending intent — ignoring', [
                             'order_id' => $order->id,
                             'intent' => $pi['id'],
                             'webhook_amount_laar' => $amount,
-                            'expected_amount_laar' => $pending?->amount_laar,
                             'currency' => $currency,
                         ]);
 
                         return response('OK', 200);
                     }
 
-                    // Stripe amounts are in laari (smallest unit). Persist both
-                    // columns: amount_laar for integer sums, amount as MVR float
-                    // for receipts/legacy readers — same shape as BML/POS rows.
-                    $payment = Payment::firstOrCreate(
-                        ['idempotency_key' => 'stripe:' . $pi['id']],
-                        [
+                    if ($currency !== self::CURRENCY || (int) $pending->amount_laar !== $amount) {
+                        \Illuminate\Support\Facades\Log::warning('Stripe webhook amount/currency mismatch — ignoring', [
                             'order_id' => $order->id,
-                            'method' => 'stripe',
-                            'amount' => round($amount / 100, 2),
-                            'amount_laar' => $amount,
-                            'status' => 'completed',
-                            'reference_number' => $pi['id'],
-                            'processed_at' => now(),
-                        ],
-                    );
+                            'intent' => $pi['id'],
+                            'webhook_amount_laar' => $amount,
+                            'expected_amount_laar' => $pending->amount_laar,
+                            'currency' => $currency,
+                        ]);
 
-                    // Only fire the domain event when we actually created a new Payment row.
-                    // Duplicate Stripe webhooks carry the same payment_intent ID, so
-                    // firstOrCreate returns the existing row without creating — we skip
-                    // the event and avoid re-running all downstream listeners.
-                    if ($payment->wasRecentlyCreated) {
-                        event(new PaymentConfirmed(new PaymentConfirmedData(
-                            paymentId: $payment->id,
-                            orderId: $order->id,
-                            amountLaar: $amount,
-                            currency: 'mvr',
-                            orderStatus: $order->status,
-                        )));
+                        return response('OK', 200);
                     }
+
+                    // Already completed (duplicate delivery) — acknowledge, no re-event.
+                    if (in_array((string) $pending->status, ['completed', 'paid', 'confirmed'], true)) {
+                        return response('OK', 200);
+                    }
+
+                    $pending->update([
+                        'status' => 'completed',
+                        'reference_number' => $pi['id'],
+                        'processed_at' => now(),
+                        'amount' => round($amount / 100, 2),
+                        'amount_laar' => $amount,
+                        'currency' => strtoupper(self::CURRENCY),
+                    ]);
+
+                    event(new PaymentConfirmed(new PaymentConfirmedData(
+                        paymentId: $pending->id,
+                        orderId: $order->id,
+                        amountLaar: $amount,
+                        currency: 'mvr',
+                        orderStatus: $order->status,
+                    )));
                 }
             }
         }

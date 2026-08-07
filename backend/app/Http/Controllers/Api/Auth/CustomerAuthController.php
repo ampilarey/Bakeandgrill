@@ -154,11 +154,12 @@ class CustomerAuthController extends Controller
             ]);
         }
 
-        // SECURITY: an email OTP may only be sent to an address that is already
-        // verified for THIS phone's customer. Otherwise anyone knowing a phone
-        // number could have the OTP delivered to their own inbox and take over
-        // the account (2026-08 audit #1). New signups have no verified email →
-        // fall back to SMS.
+        // SECURITY: an email OTP may only be sent to the email already stored
+        // on THIS phone's customer account (matching account email — there is
+        // no email_verified_at ownership proof). Otherwise anyone knowing a
+        // phone number could deliver the OTP to their own inbox and take over
+        // the account (2026-08 audit #1). Accounts with no email on file must
+        // use SMS.
         if ($channel === 'email') {
             $emailOwner = Customer::where('phone', $phone)->first();
             $storedEmail = $emailOwner?->email ? strtolower(trim($emailOwner->email)) : null;

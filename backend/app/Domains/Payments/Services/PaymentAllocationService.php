@@ -167,12 +167,14 @@ final class PaymentAllocationService
         }
 
         if ($remainingLaar <= 0) {
-            // Order is already fully covered by confirmed payments. A positive
-            // new tender would over-collect (2026-08 audit #3) — e.g. taking
-            // cash on a BML-paid online order that sits at status=pending /
-            // payment_status=paid. A legitimate prepaid dine-in add-on raises
-            // the order total first, so remainingLaar would be > 0 here.
-            if ($incomingLaar > 0) {
+            // Order is already fully covered by confirmed payments (incl. soft
+            // gift tender). A positive tender would over-collect (2026-08 audit #3).
+            // A zero tender on an already payment_status=paid ticket is also
+            // rejected (Terra residual): it cannot overcharge, but it can move
+            // lifecycle state and re-fire OrderPaid. Zero-amount finalize remains
+            // allowed only while payment_status is not yet paid — e.g. gift /
+            // loyalty / comp tickets the POS closes with { cash, 0 }.
+            if ($incomingLaar > 0 || ($order->payment_status ?? '') === 'paid') {
                 abort(422, 'This order is already fully paid — no additional payment can be added.');
             }
 

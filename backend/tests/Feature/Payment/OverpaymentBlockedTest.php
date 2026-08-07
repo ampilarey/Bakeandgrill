@@ -133,4 +133,63 @@ class OverpaymentBlockedTest extends TestCase
         // Only the original BML payment exists — no second tender was created.
         $this->assertSame(1, \App\Models\Payment::where('order_id', $order->id)->count());
     }
+
+    public function test_cannot_add_zero_tender_to_fully_paid_pending_online_order(): void
+    {
+        // Terra residual: zero cash on an already payment_status=paid ticket
+        // must not slip past the tender cap and re-fire OrderPaid.
+        PermissionCatalogSync::sync();
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'staff'],
+            ['name' => 'Staff', 'description' => 'Staff role', 'is_active' => true],
+        );
+        $user = User::create([
+            'name' => 'Zero Tender Staff',
+            'email' => 'zerotender@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        $device = Device::create([
+            'name' => 'Zero Tender POS',
+            'identifier' => 'ZERO-TENDER-POS',
+            'type' => 'pos',
+            'is_active' => true,
+        ]);
+        $item = Item::factory()->create(['base_price' => 40.0]);
+
+        Sanctum::actingAs($user, ['staff']);
+        $this->postJson('/api/shifts/open', ['opening_cash' => 100])->assertCreated();
+
+        $order = app(\App\Services\OrderCreationService::class)->createFromPayload([
+            'type' => 'online_pickup',
+            'print' => false,
+            'items' => [['item_id' => $item->id, 'quantity' => 1]],
+        ], null);
+
+        \App\Models\Payment::create([
+            'order_id' => $order->id,
+            'method' => 'bml_connect',
+            'gateway' => 'bml',
+            'amount' => $order->total,
+            'amount_laar' => (int) round((float) $order->total * 100),
+            'status' => 'confirmed',
+            'local_id' => 'ZERO-LOCAL-1',
+            'processed_at' => now(),
+        ]);
+        $order->update(['status' => 'pending', 'payment_status' => 'paid', 'paid_at' => now()]);
+
+        $response = $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson("/api/orders/{$order->id}/payments", [
+                'payments' => [['method' => 'cash', 'amount' => 0]],
+                'print_receipt' => false,
+            ]);
+
+        $response->assertStatus(422);
+        $this->assertStringContainsString('already fully paid', (string) $response->json('message'));
+        $this->assertSame(1, \App\Models\Payment::where('order_id', $order->id)->count());
+        $this->assertSame('pending', $order->fresh()->status);
+    }
 }

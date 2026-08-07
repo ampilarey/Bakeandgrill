@@ -95,10 +95,27 @@ class StripeWebhookTest extends TestCase
     // Tests
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function test_valid_payment_intent_succeeded_creates_payment_record(): void
+    private function seedPendingStripeIntent(Order $order, string $piId, int $amountLaar = 5000): Payment
+    {
+        return Payment::create([
+            'order_id' => $order->id,
+            'method' => 'stripe',
+            'gateway' => 'stripe',
+            'currency' => 'MVR',
+            'amount' => round($amountLaar / 100, 2),
+            'amount_laar' => $amountLaar,
+            'provider_transaction_id' => $piId,
+            'idempotency_key' => 'stripe:intent:' . $order->id . ':' . $amountLaar,
+            'status' => 'pending',
+            'processed_at' => now(),
+        ]);
+    }
+
+    public function test_valid_payment_intent_succeeded_completes_local_pending_intent(): void
     {
         $order = $this->makeTestOrder('payment_pending');
         $piId = 'pi_valid_001';
+        $pending = $this->seedPendingStripeIntent($order, $piId, 5000);
         $body = json_encode($this->makePaymentIntentEvent($piId, $order->id, 5000));
         $ts = time();
         $sig = $this->stripeSignature($body, $ts);
@@ -107,13 +124,34 @@ class StripeWebhookTest extends TestCase
 
         $this->assertSame(200, $response->status());
         $this->assertDatabaseHas('payments', [
-            'idempotency_key' => 'stripe:' . $piId,
+            'id' => $pending->id,
             'order_id' => $order->id,
             'method' => 'stripe',
             'status' => 'completed',
             'amount_laar' => 5000,
             'amount' => 50.00,
+            'provider_transaction_id' => $piId,
         ]);
+        $this->assertSame(1, Payment::where('order_id', $order->id)->count());
+    }
+
+    public function test_webhook_without_local_pending_intent_is_ignored(): void
+    {
+        $order = $this->makeTestOrder('payment_pending');
+        $piId = 'pi_orphan_001';
+        $body = json_encode($this->makePaymentIntentEvent($piId, $order->id, 5000));
+        $ts = time();
+        $sig = $this->stripeSignature($body, $ts);
+
+        $response = $this->postWebhook($body, $sig);
+
+        $this->assertSame(200, $response->status());
+        $this->assertDatabaseMissing('payments', [
+            'provider_transaction_id' => $piId,
+            'status' => 'completed',
+        ]);
+        $this->assertSame(0, Payment::where('order_id', $order->id)->count());
+        $this->assertSame('payment_pending', $order->fresh()->status);
     }
 
     public function test_invalid_signature_returns_400_and_order_unchanged(): void
@@ -151,6 +189,7 @@ class StripeWebhookTest extends TestCase
     {
         $order = $this->makeTestOrder('payment_pending');
         $piId = 'pi_dupe_001';
+        $this->seedPendingStripeIntent($order, $piId, 5000);
         $body = json_encode($this->makePaymentIntentEvent($piId, $order->id, 5000));
         $ts = time();
         $sig = $this->stripeSignature($body, $ts);
@@ -158,6 +197,7 @@ class StripeWebhookTest extends TestCase
         // First call
         $this->postWebhook($body, $sig)->assertStatus(200);
         $paymentCountAfterFirst = Payment::count();
+        $this->assertSame('completed', Payment::where('provider_transaction_id', $piId)->value('status'));
 
         // Second call with the same payload — must be idempotent
         // Stripe may re-deliver the same timestamp+body so we build a fresh sig

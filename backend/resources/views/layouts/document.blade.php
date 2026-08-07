@@ -239,6 +239,8 @@
         }
         .doc-banner--warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
         .doc-banner--ok { background: var(--success-bg); border: 1px solid #86efac; color: var(--success-text); }
+        .doc-banner--info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+        [data-theme="dark"] .doc-banner--info { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.35); color: #93c5fd; }
         .doc-meta { display: grid; gap: 0.5rem; margin-bottom: 1.125rem; font-size: 0.9rem; }
         .doc-meta-row { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: baseline; }
         .doc-meta-row span:first-child { color: var(--muted); font-weight: 600; flex-shrink: 0; }
