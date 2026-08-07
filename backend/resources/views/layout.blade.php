@@ -1317,12 +1317,6 @@
     </script>
 </head>
 <body>
-{{-- TEMP auto-pull proof on TEST only — remove after confirmation --}}
-@if(str_contains((string) config('app.url'), 'test.bakeandgrill.mv'))
-<div id="auto-deploy-live-test" style="position:relative;z-index:9999;background:#0f3d2e;color:#eafff3;text-align:center;padding:0.7rem 1rem;font:600 0.95rem/1.3 system-ui,sans-serif;">
-    FULLY AUTOMATIC PULL · CODE <span style="color:#7dffa8;">GREEN-1307</span> · no curl used
-</div>
-@endif
 @if($gtmId !== '')
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ e($gtmId) }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 @endif
