@@ -19,6 +19,8 @@ ROOT="/home/bakeandgrill/test.bakeandgrill.mv"
 LOCK="$HOME/.self-update-test.lock"
 EXPECTED_SHA="${1:-}"
 
+echo "$(date '+%F %T') pull-deploy-test starting (HOME=$HOME expected=${EXPECTED_SHA:-none})"
+
 mkdir "$LOCK" 2>/dev/null || {
   echo "$(date '+%F %T') deploy already in progress — skipping"
   exit 0
@@ -33,16 +35,23 @@ fetch_main() {
 
 fetch_main || { echo "$(date '+%F %T') git fetch failed"; exit 1; }
 
+# Webhook/Actions pass a SHA that must be the tip of origin/main.
+# Feature-branch SHAs will never match — fail fast after a short wait.
 if [[ -n "$EXPECTED_SHA" ]]; then
+  echoed_wait=0
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     REMOTE=$(git rev-parse FETCH_HEAD)
     [[ "$REMOTE" == "$EXPECTED_SHA" ]] && break
+    if [[ "$echoed_wait" -eq 0 ]]; then
+      echo "$(date '+%F %T') waiting for origin/main (${REMOTE:0:8}) to reach ${EXPECTED_SHA:0:8}"
+      echoed_wait=1
+    fi
     sleep 2
     fetch_main || true
   done
   REMOTE=$(git rev-parse FETCH_HEAD)
   if [[ "$REMOTE" != "$EXPECTED_SHA" ]]; then
-    echo "$(date '+%F %T') origin/main tip ${REMOTE:0:8} != expected ${EXPECTED_SHA:0:8} — aborting"
+    echo "$(date '+%F %T') origin/main tip ${REMOTE:0:8} != expected ${EXPECTED_SHA:0:8} — aborting (deploy only accepts main SHAs)"
     exit 1
   fi
 fi
