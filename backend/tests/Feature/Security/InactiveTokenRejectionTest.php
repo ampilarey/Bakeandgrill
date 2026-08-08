@@ -290,4 +290,23 @@ class InactiveTokenRejectionTest extends TestCase
         $this->getJson('/api/auth/me', $this->bearer($this->staffToken))
             ->assertUnauthorized();
     }
+
+    public function test_staff_pin_reset_revokes_existing_tokens(): void
+    {
+        $this->getJson('/api/auth/me', $this->bearer($this->staffToken))->assertOk();
+
+        $owner = $this->makeOwner();
+        $this->forgetAuth();
+        $this->postJson(
+            "/api/admin/staff/{$this->staff->id}/pin",
+            ['pin' => '9876'],
+            $this->staffHeaders($owner),
+        )->assertOk();
+
+        $this->assertSame(0, $this->staff->tokens()->count());
+        $this->assertTrue(Hash::check('9876', $this->staff->fresh()->pin_hash));
+        $this->forgetAuth();
+        $this->getJson('/api/auth/me', $this->bearer($this->staffToken))
+            ->assertUnauthorized();
+    }
 }

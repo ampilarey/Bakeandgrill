@@ -219,4 +219,35 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
 
         $this->assertSame($this->staffRoleId, (int) $this->staff->fresh()->role_id);
     }
+
+    public function test_manager_with_staff_create_cannot_create_owner(): void
+    {
+        // Default managers lack staff.create — grant it so we isolate the
+        // Owner-assignment guard rather than the create-permission gate.
+        $this->manager->grantPermission('staff.create');
+
+        $this->postJson(
+            '/api/admin/staff',
+            [
+                'name' => 'Rogue Owner',
+                'email' => 'rogue-owner@test.local',
+                'role_id' => $this->ownerRoleId,
+                'pin' => '1212',
+            ],
+            $this->staffHeaders($this->manager),
+        )->assertForbidden();
+
+        $this->assertDatabaseMissing('users', ['email' => 'rogue-owner@test.local']);
+    }
+
+    public function test_non_owner_cannot_change_own_role_even_to_non_owner(): void
+    {
+        $this->patchJson(
+            "/api/admin/staff/{$this->manager->id}",
+            ['role_id' => $this->staffRoleId],
+            $this->staffHeaders($this->manager),
+        )->assertForbidden();
+
+        $this->assertSame($this->managerRoleId, (int) $this->manager->fresh()->role_id);
+    }
 }

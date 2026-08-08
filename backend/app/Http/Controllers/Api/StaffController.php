@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -79,7 +81,27 @@ class StaffController extends Controller
         }
     }
 
-    private function assertNotLastActiveOwnerChange(User $target, array $validated): void
+    /**
+     * Lock all active Owner rows so concurrent demote/deactivate/delete
+     * cannot race past a non-atomic count and leave zero active Owners.
+     *
+     * @return Collection<int, User>
+     */
+    private function lockActiveOwners(): Collection
+    {
+        return User::query()
+            ->whereHas('role', fn ($q) => $q->where('slug', 'owner'))
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    /**
+     * Inside a transaction (with active owners locked): block demotion /
+     * deactivation of the last active Owner.
+     */
+    private function assertNotLastActiveOwnerChangeLocked(User $target, array $validated): void
     {
         if (!$this->isOwnerAccount($target) || !$target->is_active) {
             return;
@@ -92,11 +114,7 @@ class StaffController extends Controller
             return;
         }
 
-        $activeOwners = User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))
-            ->where('is_active', true)
-            ->count();
-
-        if ($activeOwners <= 1) {
+        if ($this->lockActiveOwners()->count() <= 1) {
             abort(422, 'Cannot demote or deactivate the last active owner.');
         }
     }
@@ -171,57 +189,62 @@ class StaffController extends Controller
 
         /** @var User $actor */
         $actor = $request->user();
-        $user = User::with('role')->findOrFail($id);
-
-        $this->assertCanManageTarget($actor, $user);
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
+            'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($id)],
             'phone' => 'nullable|string|max:20',
             'role_id' => 'sometimes|exists:roles,id',
             'is_active' => 'sometimes|boolean',
         ]);
 
-        if (isset($validated['role_id'])) {
-            $this->assertCanAssignRole(
-                $actor,
-                (int) $validated['role_id'],
-                $actor->id === $user->id,
-            );
-        }
-
-        $this->assertNotLastActiveOwnerChange($user, $validated);
-
         if (isset($validated['email'])) {
             $validated['email'] = strtolower(trim($validated['email']));
         }
 
-        $tracked = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'role_id', 'is_active']));
-        $before = $user->only(array_keys($tracked));
+        $user = DB::transaction(function () use ($actor, $id, $validated, $request): User {
+            $user = User::with('role')->lockForUpdate()->findOrFail($id);
 
-        $user->update($validated);
-        // Role relation must refresh so subsequent permission checks see the new role.
-        $user->unsetRelation('role');
-        $user->load('role');
+            $this->assertCanManageTarget($actor, $user);
 
-        // Same immediate lockout pattern as drivers: deactivate → revoke PATs.
-        // Middleware also blocks inactive staff; revoke stops token reuse entirely.
-        if (array_key_exists('is_active', $validated) && !$user->is_active) {
-            $user->tokens()->delete();
-        }
+            if (isset($validated['role_id'])) {
+                $this->assertCanAssignRole(
+                    $actor,
+                    (int) $validated['role_id'],
+                    $actor->id === $user->id,
+                );
+            }
 
-        if ($tracked !== []) {
-            $this->audit->log(
-                'staff.updated',
-                'User',
-                $user->id,
-                $before,
-                $user->only(array_keys($tracked)),
-                [],
-                $request,
-            );
-        }
+            // Lock active owners before counting when demoting/deactivating an Owner.
+            $this->assertNotLastActiveOwnerChangeLocked($user, $validated);
+
+            $tracked = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'role_id', 'is_active']));
+            $before = $user->only(array_keys($tracked));
+
+            $user->update($validated);
+            // Role relation must refresh so subsequent permission checks see the new role.
+            $user->unsetRelation('role');
+            $user->load('role');
+
+            // Same immediate lockout pattern as drivers: deactivate → revoke PATs.
+            if (array_key_exists('is_active', $validated) && !$user->is_active) {
+                $user->tokens()->delete();
+            }
+
+            if ($tracked !== []) {
+                $this->audit->log(
+                    'staff.updated',
+                    'User',
+                    $user->id,
+                    $before,
+                    $user->only(array_keys($tracked)),
+                    [],
+                    $request,
+                );
+            }
+
+            return $user;
+        });
 
         return response()->json(['staff' => $this->formatUser($user)]);
     }
@@ -257,24 +280,23 @@ class StaffController extends Controller
 
         /** @var User $actor */
         $actor = $request->user();
-        $user = User::with('role')->findOrFail($id);
 
-        $this->assertCanManageTarget($actor, $user);
+        return DB::transaction(function () use ($actor, $id): JsonResponse {
+            $user = User::with('role')->lockForUpdate()->findOrFail($id);
 
-        // Prevent deleting the last active owner — only applies when the user being
-        // deleted is themselves an owner.
-        if ($user->role?->slug === 'owner' && $user->is_active) {
-            $activeOwners = User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))
-                ->where('is_active', true)
-                ->count();
+            $this->assertCanManageTarget($actor, $user);
 
-            if ($activeOwners <= 1) {
-                return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
+            // Prevent deleting the last active owner — lock active owners first
+            // so concurrent deletes cannot race past a plain count.
+            if ($user->role?->slug === 'owner' && $user->is_active) {
+                if ($this->lockActiveOwners()->count() <= 1) {
+                    return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
+                }
             }
-        }
 
-        $user->delete();
+            $user->delete();
 
-        return response()->json(['message' => 'Staff member removed.']);
+            return response()->json(['message' => 'Staff member removed.']);
+        });
     }
 }
