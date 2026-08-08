@@ -252,7 +252,7 @@ export function OrderStatusPage() {
   const navigate = useNavigate();
   const { clearCart, addItem } = useCart();
   const s = useSiteSettings();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authReady } = useAuth();
   const { t } = useLanguage();
 
   const paymentState = searchParams.get("payment") as PaymentState;
@@ -286,14 +286,24 @@ export function OrderStatusPage() {
       setLoading(false);
       return;
     }
+
+    // Auth race: without a tracking token we cannot decide "need link / login"
+    // until the session check finishes. Stay in loading — do not flash an error.
+    if (!trackingToken && !authReady) {
+      setLoading(true);
+      return;
+    }
+
     try {
       if (trackingToken) {
         // Public link — no login required
         const res = await getOrderByTrackingToken(trackingToken);
         setOrder(res.order);
+        setError("");
       } else if (isAuthenticated) {
         const res = await getOrderDetail(parsedId);
         setOrder(res.order);
+        setError("");
       } else {
         setError(t("track.err_need_link"));
       }
@@ -302,7 +312,7 @@ export function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, trackingToken, orderId, t]);
+  }, [isAuthenticated, authReady, trackingToken, orderId, t]);
 
   useEffect(() => {
     document.title = order?.order_number
@@ -652,8 +662,8 @@ export function OrderStatusPage() {
         )}
 
         {/* ── Loading ────────────────────────────────────── */}
-        {loading && (
-          <div style={S.card}>
+        {loading && !error && (
+          <div style={S.card} data-testid="order-status-loading">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="skeleton" style={{ height: 80, borderRadius: 12 }} />
               <div className="skeleton" style={{ height: 60, borderRadius: 12 }} />
@@ -663,8 +673,9 @@ export function OrderStatusPage() {
         )}
 
         {/* ── Error ─────────────────────────────────────── */}
-        {error && (
-          <div className="banner banner-error">
+        {/* Mutually exclusive with order content — never show both. */}
+        {!loading && error && (
+          <div className="banner banner-error" data-testid="order-status-error">
             <span className="banner-icon">⚠️</span>
             <div style={{ flex: 1 }}>
               <p className="banner-title">{t('track.load_fail_title')}</p>
@@ -684,8 +695,8 @@ export function OrderStatusPage() {
         )}
 
         {/* ── Order content ─────────────────────────────── */}
-        {!loading && order && statusInfo && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {!loading && !error && order && statusInfo && (
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} data-testid="order-status-content">
 
             {/* Status hero card */}
             <div style={{
