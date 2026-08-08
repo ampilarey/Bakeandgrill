@@ -82,8 +82,8 @@ class StaffController extends Controller
     }
 
     /**
-     * Lock all active Owner rows so concurrent demote/deactivate/delete
-     * cannot race past a non-atomic count and leave zero active Owners.
+     * Lock all active Owner rows in deterministic id order so concurrent
+     * demote/deactivate/delete cannot race past a non-atomic count.
      *
      * @return Collection<int, User>
      */
@@ -98,25 +98,19 @@ class StaffController extends Controller
     }
 
     /**
-     * Inside a transaction (with active owners locked): block demotion /
-     * deactivation of the last active Owner.
+     * True when the requested patch would remove this account from the
+     * active-Owner set (demote, deactivate, or both).
      */
-    private function assertNotLastActiveOwnerChangeLocked(User $target, array $validated): void
+    private function wouldRemoveActiveOwner(User $target, array $validated): bool
     {
         if (!$this->isOwnerAccount($target) || !$target->is_active) {
-            return;
+            return false;
         }
 
         $demoting = isset($validated['role_id']) && !$this->roleIdIsOwner((int) $validated['role_id']);
         $deactivating = array_key_exists('is_active', $validated) && $validated['is_active'] === false;
 
-        if (!$demoting && !$deactivating) {
-            return;
-        }
-
-        if ($this->lockActiveOwners()->count() <= 1) {
-            abort(422, 'Cannot demote or deactivate the last active owner.');
-        }
+        return $demoting || $deactivating;
     }
 
     private function formatUser(User $user): array
@@ -203,7 +197,25 @@ class StaffController extends Controller
         }
 
         $user = DB::transaction(function () use ($actor, $id, $validated, $request): User {
-            $user = User::with('role')->lockForUpdate()->findOrFail($id);
+            // For Owner-removing changes, lock the full active-Owner set first
+            // (deterministic id order) to avoid races/deadlocks between concurrent
+            // demote/deactivate requests. Then re-read the target from that set.
+            $preTarget = User::with('role')->findOrFail($id);
+            $removingOwner = $this->wouldRemoveActiveOwner($preTarget, $validated);
+            $activeOwners = null;
+
+            if ($removingOwner) {
+                $activeOwners = $this->lockActiveOwners();
+                $user = $activeOwners->firstWhere('id', $id);
+                if ($user === null) {
+                    // Target left the active-Owner set concurrently — re-lock row.
+                    $user = User::with('role')->lockForUpdate()->findOrFail($id);
+                } else {
+                    $user->loadMissing('role');
+                }
+            } else {
+                $user = User::with('role')->lockForUpdate()->findOrFail($id);
+            }
 
             $this->assertCanManageTarget($actor, $user);
 
@@ -215,8 +227,13 @@ class StaffController extends Controller
                 );
             }
 
-            // Lock active owners before counting when demoting/deactivating an Owner.
-            $this->assertNotLastActiveOwnerChangeLocked($user, $validated);
+            // After authz + row locks: reject if this change would leave zero Owners.
+            if ($this->wouldRemoveActiveOwner($user, $validated)) {
+                $activeCount = $activeOwners?->count() ?? $this->lockActiveOwners()->count();
+                if ($activeCount <= 1) {
+                    abort(422, 'Cannot demote or deactivate the last active owner.');
+                }
+            }
 
             $tracked = array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'role_id', 'is_active']));
             $before = $user->only(array_keys($tracked));
@@ -226,7 +243,7 @@ class StaffController extends Controller
             $user->unsetRelation('role');
             $user->load('role');
 
-            // Same immediate lockout pattern as drivers: deactivate → revoke PATs.
+            // Deactivate → revoke only this staff user's Sanctum tokens (same txn).
             if (array_key_exists('is_active', $validated) && !$user->is_active) {
                 $user->tokens()->delete();
             }
@@ -261,14 +278,16 @@ class StaffController extends Controller
             'pin' => 'required|digits_between:4,8',
         ]);
 
-        $user = User::with('role')->findOrFail($id);
-        $this->assertCanManageTarget($actor, $user);
+        DB::transaction(function () use ($actor, $id, $validated, $request): void {
+            $user = User::with('role')->lockForUpdate()->findOrFail($id);
+            $this->assertCanManageTarget($actor, $user);
 
-        $user->update(['pin_hash' => Hash::make($validated['pin'])]);
-        // PIN reset invalidates existing sessions (mirrors driver PIN reset).
-        $user->tokens()->delete();
+            $user->update(['pin_hash' => Hash::make($validated['pin'])]);
+            // PIN reset invalidates existing sessions for this staff user only.
+            $user->tokens()->delete();
 
-        $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
+            $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
+        });
 
         return response()->json(['message' => 'PIN updated successfully.']);
     }
@@ -282,16 +301,22 @@ class StaffController extends Controller
         $actor = $request->user();
 
         return DB::transaction(function () use ($actor, $id): JsonResponse {
-            $user = User::with('role')->lockForUpdate()->findOrFail($id);
+            $preTarget = User::with('role')->findOrFail($id);
 
-            $this->assertCanManageTarget($actor, $user);
+            // Lock active Owners first (id order) when deleting an active Owner.
+            if ($preTarget->role?->slug === 'owner' && $preTarget->is_active) {
+                $activeOwners = $this->lockActiveOwners();
+                $user = $activeOwners->firstWhere('id', $id) ?? User::with('role')->lockForUpdate()->findOrFail($id);
+                $user->loadMissing('role');
 
-            // Prevent deleting the last active owner — lock active owners first
-            // so concurrent deletes cannot race past a plain count.
-            if ($user->role?->slug === 'owner' && $user->is_active) {
-                if ($this->lockActiveOwners()->count() <= 1) {
+                $this->assertCanManageTarget($actor, $user);
+
+                if ($user->role?->slug === 'owner' && $user->is_active && $activeOwners->count() <= 1) {
                     return response()->json(['message' => 'Cannot delete the last active owner.'], 422);
                 }
+            } else {
+                $user = User::with('role')->lockForUpdate()->findOrFail($id);
+                $this->assertCanManageTarget($actor, $user);
             }
 
             $user->delete();
