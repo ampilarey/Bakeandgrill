@@ -129,9 +129,13 @@ class DomainEventServiceProvider extends EventServiceProvider
             \App\Domains\Payments\Listeners\VoidPurchasedGiftCardOnRefundListener::class,
             ReverseLoyaltyEarnOnRefundListener::class,
             RestoreLoyaltyRedemptionOnRefundListener::class,
+            // Active (unconsumed) holds — rare after pay, but same release path as cancel.
+            ReleaseLoyaltyHoldListener::class,
             ReleasePromoRedemptionOnRefundListener::class,
             DecrementDailySpecialSoldCountListener::class,
             PostGstOnRefundListener::class,
+            // Prepaid dine-in: full refund frees the table (listener no-ops on partial).
+            \App\Domains\Reservations\Listeners\CancelReservationOnOrderCancelledListener::class,
             DispatchWebhookOnDomainEvent::class,
         ],
 

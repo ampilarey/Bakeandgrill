@@ -22,7 +22,8 @@ import {
 import { downloadCSV } from '../utils/csvExport';
 
 const REFUNDABLE_STATUSES = new Set([
-  'paid', 'completed', 'delivered', 'partially_refunded', 'ready', 'preparing', 'in_progress',
+  // `pending` = paid online / collect-tomorrow waiting for kitchen — still refundable.
+  'pending', 'paid', 'completed', 'delivered', 'partially_refunded', 'ready', 'preparing', 'in_progress',
 ]);
 
 const STATUS_OPTIONS = [

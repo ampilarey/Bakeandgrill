@@ -9,15 +9,20 @@ use App\Domains\Orders\Events\OrderPaid;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Item;
+use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyHold;
 use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Reservation;
+use App\Models\RestaurantTable;
 use App\Models\Role;
 use App\Models\Shift;
 use App\Models\SiteSetting;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\OrderFulfilDateService;
+use App\Services\OrderStatusMachine;
 use App\Services\TomorrowDailyCapacityService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,13 +32,11 @@ use Tests\TestCase;
 
 /**
  * Paid collect-tomorrow orders are held from kitchen (fired_at null) until
- * collection day. These tests prove whether the day-before refund path works.
+ * collection day. They sit in status `pending` with payment_status=paid.
  *
- * FINDING (do not "fix" transitions to silence these): a paid unfired
- * tomorrow order sits in status `pending`. RefundController full/partial
- * refunds call OrderStatusTransitionService → refunded / partially_refunded,
- * and OrderStatusMachine rejects `pending → refunded` and
- * `pending → partially_refunded`. The refund never creates a row.
+ * UPDATED: pending → refunded|partially_refunded is now allowed so staff can
+ * refund before kitchen starts / before collection day. Earlier versions of
+ * these tests documented the broken 422; that was incorrect product behaviour.
  */
 class TomorrowOrderRefundTest extends TestCase
 {
@@ -193,7 +196,7 @@ class TomorrowOrderRefundTest extends TestCase
         $this->assertSame(1, 2 - $this->remainingCapacity());
     }
 
-    public function test_full_refund_unfired_tomorrow_order_is_blocked(): void
+    public function test_full_refund_unfired_tomorrow_order_succeeds_and_frees_capacity(): void
     {
         $this->openOwnerShift();
         $order = $this->makePaidUnfiredTomorrowOrder(1);
@@ -204,21 +207,16 @@ class TomorrowOrderRefundTest extends TestCase
             $this->authHeader(),
         );
 
-        // BUG: pending → refunded is rejected by OrderStatusMachine.
-        $response->assertStatus(422);
-        $this->assertStringContainsString(
-            "pending' → 'refunded'",
-            (string) $response->json('message'),
-        );
-        $this->assertDatabaseMissing('refunds', ['order_id' => $order->id]);
-        $this->assertSame('pending', $order->fresh()->status);
-        // Capacity remains consumed — customer cannot rebook the slot.
-        $this->assertSame(1, 2 - $this->remainingCapacity());
-        // Stock still correct (never deducted, never falsely restored).
+        $response->assertCreated();
+        $this->assertDatabaseHas('refunds', ['order_id' => $order->id]);
+        $this->assertSame('refunded', $order->fresh()->status);
+        // Capacity freed — order status is now in EXCLUDED_STATUSES.
+        $this->assertSame(2, $this->remainingCapacity());
+        // Stock never deducted, still untouched.
         $this->assertSame(20, (int) $this->item->fresh()->stock_quantity);
     }
 
-    public function test_partial_refund_unfired_tomorrow_order_is_blocked(): void
+    public function test_partial_refund_unfired_tomorrow_order_succeeds(): void
     {
         $this->openOwnerShift();
         $order = $this->makePaidUnfiredTomorrowOrder(2);
@@ -229,14 +227,108 @@ class TomorrowOrderRefundTest extends TestCase
             $this->authHeader(),
         );
 
-        // BUG: pending → partially_refunded is also rejected.
-        $response->assertStatus(422);
-        $this->assertStringContainsString(
-            "pending' → 'partially_refunded'",
-            (string) $response->json('message'),
-        );
-        $this->assertDatabaseMissing('refunds', ['order_id' => $order->id]);
+        $response->assertCreated();
+        $this->assertDatabaseHas('refunds', ['order_id' => $order->id]);
+        $this->assertSame('partially_refunded', $order->fresh()->status);
+        // Partial refund keeps capacity consumed (still cooking for remaining items).
         $this->assertSame(0, $this->remainingCapacity());
         $this->assertSame(20, (int) $this->item->fresh()->stock_quantity);
+    }
+
+    public function test_paid_pending_order_full_and_partial_refund_allowed_by_machine(): void
+    {
+        $machine = app(OrderStatusMachine::class);
+        $this->assertTrue($machine->isAllowed('pending', 'refunded'));
+        $this->assertTrue($machine->isAllowed('pending', 'partially_refunded'));
+        // Never paid — still blocked.
+        $this->assertFalse($machine->isAllowed('payment_pending', 'refunded'));
+        $this->assertFalse($machine->isAllowed('payment_pending', 'partially_refunded'));
+    }
+
+    public function test_payment_pending_order_cannot_be_refunded(): void
+    {
+        $this->openOwnerShift();
+        $order = Order::factory()->create([
+            'customer_id' => $this->customer->id,
+            'user_id' => null,
+            'type' => 'online_pickup',
+            'status' => 'payment_pending',
+            'payment_status' => 'unpaid',
+            'total' => 50.0,
+            'total_laar' => 5000,
+            'subtotal' => 50.0,
+            'tax_amount' => 0,
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'item_id' => $this->item->id,
+            'item_name' => $this->item->name,
+            'quantity' => 1,
+            'unit_price' => 50.0,
+            'total_price' => 50.0,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->postJson(
+            "/api/orders/{$order->id}/refunds",
+            ['amount' => 50.00, 'reason' => 'Should not work'],
+            $this->authHeader(),
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('refunds', ['order_id' => $order->id]);
+        $this->assertSame('payment_pending', $order->fresh()->status);
+    }
+
+    public function test_full_refund_releases_active_loyalty_hold_and_table_reservation(): void
+    {
+        $this->openOwnerShift();
+        $order = $this->makePaidUnfiredTomorrowOrder(1);
+
+        LoyaltyAccount::create([
+            'customer_id' => $this->customer->id,
+            'points_balance' => 1000,
+            'points_held' => 100,
+            'lifetime_points' => 1000,
+            'tier' => 'bronze',
+        ]);
+        LoyaltyHold::create([
+            'idempotency_key' => 'test-hold-refund-'.$order->id,
+            'customer_id' => $this->customer->id,
+            'order_id' => $order->id,
+            'points_held' => 100,
+            'discount_laar' => 1000,
+            'status' => 'active',
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $table = RestaurantTable::create([
+            'name' => 'T-Refund-1',
+            'capacity' => 4,
+            'status' => 'available',
+            'is_active' => true,
+        ]);
+        $reservation = Reservation::create([
+            'customer_id' => $this->customer->id,
+            'customer_name' => $this->customer->name,
+            'customer_phone' => $this->customer->phone,
+            'order_id' => $order->id,
+            'table_id' => $table->id,
+            'party_size' => 2,
+            'date' => now()->addDay()->toDateString(),
+            'time_slot' => '18:00:00',
+            'status' => 'confirmed',
+        ]);
+
+        $response = $this->postJson(
+            "/api/orders/{$order->id}/refunds",
+            ['amount' => 50.00, 'reason' => 'Release holds'],
+            $this->authHeader(),
+        );
+
+        $response->assertCreated();
+        $this->assertSame('refunded', $order->fresh()->status);
+        $this->assertSame('released', LoyaltyHold::query()->where('order_id', $order->id)->value('status'));
+        $this->assertSame('cancelled', $reservation->fresh()->status);
     }
 }

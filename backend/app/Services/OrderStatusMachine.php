@@ -19,6 +19,8 @@ use App\Models\Order;
  *
  *  payment_pending ─→ paid | pending | cancelled
  *  pending ─→ in_progress | ready | held | paid | partial | payment_pending | cancelled
+ *            | refunded | partially_refunded
+ *            (refund edges: online paid-but-unstarted kitchen queue / collect-tomorrow)
  *  paid ─→ in_progress | ready | completed | out_for_delivery | refunded | partially_refunded | cancelled
  *  partial ─→ paid | in_progress | ready | payment_pending | refunded | partially_refunded | cancelled
  *  in_progress ─→ ready | held | paid | partial | refunded | partially_refunded | cancelled
@@ -47,7 +49,9 @@ class OrderStatusMachine
      */
     private const TRANSITIONS = [
         'payment_pending' => ['paid', 'pending', 'cancelled'],
-        'pending' => ['in_progress', 'ready', 'held', 'paid', 'partial', 'payment_pending', 'cancelled'],
+        // refunded / partially_refunded: paid online orders land here before kitchen
+        // starts them (incl. collect-tomorrow held overnight). Money must be refundable.
+        'pending' => ['in_progress', 'ready', 'held', 'paid', 'partial', 'payment_pending', 'cancelled', 'refunded', 'partially_refunded'],
         'paid' => ['in_progress', 'ready', 'completed', 'out_for_delivery', 'refunded', 'partially_refunded', 'cancelled'],
         'partial' => ['paid', 'in_progress', 'ready', 'payment_pending', 'refunded', 'partially_refunded', 'cancelled'],
         'in_progress' => ['ready', 'held', 'paid', 'partial', 'refunded', 'partially_refunded', 'cancelled'],

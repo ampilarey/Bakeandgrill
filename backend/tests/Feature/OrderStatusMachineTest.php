@@ -125,6 +125,9 @@ class OrderStatusMachineTest extends TestCase
         $this->assertTrue($machine->isAllowed('pending', 'paid'));
         $this->assertTrue($machine->isAllowed('pending', 'held'));
         $this->assertTrue($machine->isAllowed('pending', 'cancelled'));
+        // Paid-but-unstarted online / collect-tomorrow orders sit in pending.
+        $this->assertTrue($machine->isAllowed('pending', 'refunded'));
+        $this->assertTrue($machine->isAllowed('pending', 'partially_refunded'));
         $this->assertTrue($machine->isAllowed('paid', 'in_progress'));
         $this->assertTrue($machine->isAllowed('paid', 'refunded'));
         $this->assertTrue($machine->isAllowed('in_progress', 'ready'));
@@ -156,7 +159,9 @@ class OrderStatusMachineTest extends TestCase
 
         // Cannot skip states arbitrarily
         $this->assertFalse($machine->isAllowed('pending', 'completed'));
-        $this->assertFalse($machine->isAllowed('pending', 'refunded'));
+        // Never paid — nothing to refund
+        $this->assertFalse($machine->isAllowed('payment_pending', 'refunded'));
+        $this->assertFalse($machine->isAllowed('payment_pending', 'partially_refunded'));
     }
 
     /**

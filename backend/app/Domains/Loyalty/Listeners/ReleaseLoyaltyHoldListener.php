@@ -6,11 +6,16 @@ namespace App\Domains\Loyalty\Listeners;
 
 use App\Domains\Loyalty\Services\LoyaltyLedgerService;
 use App\Domains\Orders\Events\OrderCancelled;
+use App\Domains\Orders\Events\OrderRefunded;
 use App\Models\LoyaltyHold;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Releases active loyalty holds when an order is cancelled.
+ * Releases active loyalty holds when an order is cancelled or refunded.
+ *
+ * Paid orders normally consume the hold on OrderPaid (restored via
+ * RestoreLoyaltyRedemptionOnRefundListener). This covers any hold that
+ * is still `active` at cancel/refund time.
  *
  * Synchronous after commit so points_held clears even if the queue worker is down.
  */
@@ -20,7 +25,7 @@ class ReleaseLoyaltyHoldListener
 
     public function __construct(private LoyaltyLedgerService $service) {}
 
-    public function handle(OrderCancelled $event): void
+    public function handle(OrderCancelled|OrderRefunded $event): void
     {
         $orderId = $event->data->orderId;
 
