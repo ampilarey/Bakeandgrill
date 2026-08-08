@@ -98,8 +98,21 @@ class StaffController extends Controller
     }
 
     /**
+     * Normalize Laravel "boolean" rule inputs to a real bool.
+     * Accepts false / 0 / "0" / "false" / "off" / "no" as false, and the
+     * usual truthy counterparts as true — matching `boolean` validation
+     * without requiring clients to send strict JSON booleans only.
+     */
+    private function normalizeBooleanInput(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
      * True when the requested patch would remove this account from the
      * active-Owner set (demote, deactivate, or both).
+     *
+     * Expects is_active (when present) to already be a normalized bool.
      */
     private function wouldRemoveActiveOwner(User $target, array $validated): bool
     {
@@ -194,6 +207,12 @@ class StaffController extends Controller
 
         if (isset($validated['email'])) {
             $validated['email'] = strtolower(trim($validated['email']));
+        }
+
+        // Cast accepted boolean inputs (false / 0 / "0" / …) to one bool so the
+        // last-Owner guard and the persisted update always agree.
+        if (array_key_exists('is_active', $validated)) {
+            $validated['is_active'] = $this->normalizeBooleanInput($validated['is_active']);
         }
 
         $user = DB::transaction(function () use ($actor, $id, $validated, $request): User {

@@ -193,6 +193,58 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
         $this->assertTrue($owner->is_active);
     }
 
+    /**
+     * Laravel's `boolean` rule accepts false, 0, and "0". The last-Owner
+     * guard must treat all three identically after normalization.
+     *
+     * @return list<false|int|string>
+     */
+    public static function inactiveBooleanVariants(): array
+    {
+        return [
+            'false' => [false],
+            'zero_int' => [0],
+            'zero_string' => ['0'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('inactiveBooleanVariants')]
+    public function test_last_active_owner_cannot_be_deactivated_with_boolean_variants(false|int|string $inactiveValue): void
+    {
+        $this->patchJson(
+            "/api/admin/staff/{$this->owner->id}",
+            ['is_active' => $inactiveValue],
+            $this->staffHeaders($this->owner),
+        )->assertStatus(422)
+            ->assertJsonPath('message', 'Cannot demote or deactivate the last active owner.');
+
+        $this->assertTrue($this->owner->fresh()->is_active);
+        $this->assertSame($this->ownerRoleId, (int) $this->owner->fresh()->role_id);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('inactiveBooleanVariants')]
+    public function test_owner_can_deactivate_another_owner_with_boolean_variants_when_safe(false|int|string $inactiveValue): void
+    {
+        $secondOwner = User::create([
+            'name' => 'Owner Two',
+            'email' => 'owner2-deactivate-' . md5((string) json_encode($inactiveValue)) . '@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $this->ownerRoleId,
+            'pin_hash' => Hash::make('4444'),
+            'is_active' => true,
+        ]);
+
+        $this->patchJson(
+            "/api/admin/staff/{$secondOwner->id}",
+            ['is_active' => $inactiveValue],
+            $this->staffHeaders($this->owner),
+        )->assertOk()
+            ->assertJsonPath('staff.is_active', false);
+
+        $this->assertFalse($secondOwner->fresh()->is_active);
+        $this->assertTrue($this->owner->fresh()->is_active);
+    }
+
     public function test_last_active_owner_cannot_be_deleted(): void
     {
         $this->deleteJson(
