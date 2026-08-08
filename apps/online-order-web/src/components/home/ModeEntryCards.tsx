@@ -122,29 +122,6 @@ function ModeCard({ kind, label, hint, statusLine, available, cta, onClick }: Ca
           />
         )}
         {imgFailed && icon}
-        {!available && statusLine && (
-          <span
-            data-testid={`mode-status-chip-${kind}`}
-            style={{
-              position: 'absolute',
-              left: 10,
-              bottom: 10,
-              background: 'rgba(28, 20, 8, 0.82)',
-              color: '#fff',
-              fontSize: '0.6875rem',
-              fontWeight: 700,
-              padding: '0.3rem 0.55rem',
-              borderRadius: 999,
-              letterSpacing: '0.01em',
-              maxWidth: 'calc(100% - 20px)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {statusLine}
-          </span>
-        )}
       </div>
       <div style={{ padding: '0.875rem 1rem 1rem' }}>
         <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-dark)' }}>

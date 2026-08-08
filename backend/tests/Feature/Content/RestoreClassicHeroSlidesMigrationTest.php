@@ -52,6 +52,18 @@ class RestoreClassicHeroSlidesMigrationTest extends TestCase
         $this->assertStringContainsString('Dhivehi breakfast', (string) ($website[0]['title'] ?? ''));
     }
 
+    public function test_migration_leaves_empty_scopes_alone(): void
+    {
+        SiteSetting::query()->whereIn('key', ['hero_slides', 'hero_slide_1', 'hero_slide_2', 'hero_slide_3'])->delete();
+        SiteSetting::bust();
+
+        $this->runRestoreMigration();
+
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website'));
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app'));
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'shared'));
+    }
+
     public function test_migration_does_not_overwrite_existing_multi_slide_heroes(): void
     {
         SiteSetting::query()->whereIn('key', ['hero_slides', 'hero_slide_1', 'hero_slide_2', 'hero_slide_3'])->delete();

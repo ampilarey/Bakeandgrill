@@ -185,7 +185,7 @@ describe('ModeEntryCards informative closed states', () => {
     expect(setModeMock).not.toHaveBeenCalled();
   });
 
-  it('keeps available and unavailable cards visually distinguishable', async () => {
+  it('keeps available and unavailable cards visually distinguishable without an image chip', async () => {
     fetchGate.mockResolvedValue(closedGate({
       open: true,
       reason: null,
@@ -199,12 +199,18 @@ describe('ModeEntryCards informative closed states', () => {
       next_open_window: '2099-08-09T10:00:00+05:00',
     }));
     renderCards();
+    const closed = await screen.findByTestId('mode-entry-dine_in');
     await waitFor(() => {
       expect(screen.getByTestId('mode-entry-delivery').getAttribute('data-available')).toBe('true');
-      expect(screen.getByTestId('mode-entry-dine_in').getAttribute('data-available')).toBe('false');
+      expect(closed.getAttribute('data-available')).toBe('false');
     });
-    expect(screen.getByTestId('mode-status-chip-dine_in')).toBeTruthy();
+    // Closed status once in the card body — never as an overlay chip on the photo.
+    expect(screen.queryByTestId('mode-status-chip-dine_in')).toBeNull();
     expect(screen.queryByTestId('mode-status-chip-delivery')).toBeNull();
+    expect(closed.textContent).toMatch(/Closed until \d{1,2}:\d{2} (AM|PM)/);
+    expect(closed.textContent).toMatch(/Learn more/i);
+    const photo = closed.querySelector('[aria-hidden]') as HTMLElement | null;
+    expect(photo?.style.filter).toContain('grayscale');
   });
 
   it('keeps cards keyboard-focusable and operable when unavailable', async () => {

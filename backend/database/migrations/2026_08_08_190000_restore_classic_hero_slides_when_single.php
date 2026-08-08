@@ -10,8 +10,8 @@ use Illuminate\Database\Migrations\Migration;
 /**
  * TEST currently publishes a single video hero, so mobile looks like "one banner"
  * even though production has the classic 3-slide carousel. Restore the classic
- * slides only when a scope has fewer than 2 renderable slides — leave richer
- * CMS content (e.g. production) untouched.
+ * slides only when a scope has exactly one renderable slide — leave empty
+ * scopes and multi-slide CMS content (e.g. production) untouched.
  */
 return new class extends Migration
 {
@@ -22,8 +22,9 @@ return new class extends Migration
             return;
         }
 
+        $wrote = false;
         foreach (['website', 'order_app', 'shared'] as $scope) {
-            if ($this->renderableCount($scope) >= 2) {
+            if ($this->renderableCount($scope) !== 1) {
                 continue;
             }
 
@@ -31,10 +32,13 @@ return new class extends Migration
             foreach (['hero_slide_1', 'hero_slide_2', 'hero_slide_3'] as $legacyKey) {
                 SiteSetting::set($legacyKey, '{}', $scope, 'en');
             }
+            $wrote = true;
         }
 
-        ContentResolver::bust();
-        SiteSetting::bust();
+        if ($wrote) {
+            ContentResolver::bust();
+            SiteSetting::bust();
+        }
     }
 
     public function down(): void

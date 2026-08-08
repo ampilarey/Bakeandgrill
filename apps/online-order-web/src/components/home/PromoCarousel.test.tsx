@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PromoCarousel } from './PromoCarousel';
@@ -24,6 +24,12 @@ function slide(partial: Partial<HeroSlideRow> & { title: string }): HeroSlideRow
   };
 }
 
+const threeSlides = [
+  slide({ title: 'Slide One' }),
+  slide({ title: 'Slide Two' }),
+  slide({ title: 'Slide Three' }),
+];
+
 describe('PromoCarousel', () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -47,15 +53,10 @@ describe('PromoCarousel', () => {
 
   it('renders prev/next and dots when there are multiple slides', async () => {
     const user = userEvent.setup();
-    const slides = [
-      slide({ title: 'Slide One' }),
-      slide({ title: 'Slide Two' }),
-      slide({ title: 'Slide Three' }),
-    ];
 
     render(
       <MemoryRouter>
-        <PromoCarousel slides={slides} apiOrigin="https://example.test" />
+        <PromoCarousel slides={threeSlides} apiOrigin="https://example.test" />
       </MemoryRouter>,
     );
 
@@ -66,6 +67,25 @@ describe('PromoCarousel', () => {
 
     await user.click(screen.getByRole('button', { name: 'Next slide' }));
     expect(screen.getByRole('tab', { name: 'Slide 2' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('advances and rewinds slides via horizontal swipe', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel slides={threeSlides} apiOrigin="https://example.test" />
+      </MemoryRouter>,
+    );
+
+    const hero = screen.getByTestId('home-promo-hero');
+    expect(screen.getByRole('tab', { name: 'Slide 1' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.touchStart(hero, { touches: [{ clientX: 200 }] });
+    fireEvent.touchEnd(hero, { changedTouches: [{ clientX: 120 }] }); // swipe left → next
+    expect(screen.getByRole('tab', { name: 'Slide 2' })).toHaveAttribute('aria-selected', 'true');
+
+    fireEvent.touchStart(hero, { touches: [{ clientX: 120 }] });
+    fireEvent.touchEnd(hero, { changedTouches: [{ clientX: 200 }] }); // swipe right → prev
+    expect(screen.getByRole('tab', { name: 'Slide 1' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('hides carousel chrome when there is only one slide', () => {

@@ -238,18 +238,8 @@
 .banner-btn:hover { background: rgba(255,255,255,0.22); }
 .banner-btn.prev { left: 1.5rem; }
 .banner-btn.next { right: 1.5rem; }
-/* Mobile: keep chevrons visible — swipe/dots alone were too easy to miss */
-@media (max-width: 768px) {
-    .banner-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
-        background: rgba(20, 14, 8, 0.45);
-        border-color: rgba(255, 255, 255, 0.35);
-    }
-    .banner-btn.prev { left: 0.65rem; }
-    .banner-btn.next { right: 0.65rem; }
-}
+/* Phones: hide chevrons — dots + swipe remain */
+@media (max-width: 768px) { .banner-btn { display: none; } }
 
 .banner-dots {
     position: absolute;
