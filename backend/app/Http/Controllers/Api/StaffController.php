@@ -205,6 +205,12 @@ class StaffController extends Controller
         $user->unsetRelation('role');
         $user->load('role');
 
+        // Same immediate lockout pattern as drivers: deactivate → revoke PATs.
+        // Middleware also blocks inactive staff; revoke stops token reuse entirely.
+        if (array_key_exists('is_active', $validated) && !$user->is_active) {
+            $user->tokens()->delete();
+        }
+
         if ($tracked !== []) {
             $this->audit->log(
                 'staff.updated',
@@ -236,6 +242,8 @@ class StaffController extends Controller
         $this->assertCanManageTarget($actor, $user);
 
         $user->update(['pin_hash' => Hash::make($validated['pin'])]);
+        // PIN reset invalidates existing sessions (mirrors driver PIN reset).
+        $user->tokens()->delete();
 
         $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
 

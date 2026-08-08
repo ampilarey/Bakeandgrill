@@ -42,6 +42,10 @@ class InactiveTokenRejectionTest extends TestCase
 
     private Order $deliveryOrder;
 
+    private Customer $customer;
+
+    private string $customerToken;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -82,16 +86,17 @@ class InactiveTokenRejectionTest extends TestCase
         ]);
         $this->driverToken = $this->driver->createToken('driver-pat', ['driver'])->plainTextToken;
 
-        $customer = Customer::create([
+        $this->customer = Customer::create([
             'name' => 'Loc Customer',
             'phone' => '+9607900099',
             'is_active' => true,
         ]);
+        $this->customerToken = $this->customer->createToken('cust-pat', ['customer'])->plainTextToken;
 
         $this->deliveryOrder = Order::factory()->delivery()->create([
             'status' => 'on_the_way',
             'payment_status' => 'paid',
-            'customer_id' => $customer->id,
+            'customer_id' => $this->customer->id,
             'delivery_driver_id' => $this->driver->id,
         ]);
     }
@@ -219,6 +224,10 @@ class InactiveTokenRejectionTest extends TestCase
             'delivery_contact_phone' => '+9607820288',
         ], $headers)->assertForbidden();
 
+        $this->patchJson("/api/orders/{$this->deliveryOrder->id}/delivery", [
+            'delivery_notes' => 'Should be blocked',
+        ], $headers)->assertForbidden();
+
         $this->postJson("/api/orders/{$this->deliveryOrder->id}/apply-promo", [
             'code' => 'ANYCODE',
         ], $headers)->assertForbidden();
@@ -245,5 +254,40 @@ class InactiveTokenRejectionTest extends TestCase
         $this->driver->update(['is_active' => false]);
         $this->forgetAuth();
         $this->getJson($path, $this->bearer($this->driverToken))->assertForbidden();
+    }
+
+    public function test_active_staff_driver_and_customer_still_work_on_legitimate_routes(): void
+    {
+        $this->getJson('/api/auth/me', $this->bearer($this->staffToken))
+            ->assertOk()
+            ->assertJsonPath('user.id', $this->staff->id);
+
+        $this->getJson('/api/driver/me', $this->bearer($this->driverToken))
+            ->assertOk()
+            ->assertJsonPath('driver.id', $this->driver->id);
+
+        // Shared location endpoint: owning customer may read while active.
+        $this->getJson(
+            "/api/driver/deliveries/{$this->deliveryOrder->id}/location",
+            $this->bearer($this->customerToken),
+        )->assertOk();
+    }
+
+    public function test_staff_deactivation_revokes_existing_tokens(): void
+    {
+        $this->getJson('/api/auth/me', $this->bearer($this->staffToken))->assertOk();
+
+        $owner = $this->makeOwner();
+        $this->forgetAuth();
+        $this->patchJson(
+            "/api/admin/staff/{$this->staff->id}",
+            ['is_active' => false],
+            $this->staffHeaders($owner),
+        )->assertOk();
+
+        $this->assertSame(0, $this->staff->tokens()->count());
+        $this->forgetAuth();
+        $this->getJson('/api/auth/me', $this->bearer($this->staffToken))
+            ->assertUnauthorized();
     }
 }

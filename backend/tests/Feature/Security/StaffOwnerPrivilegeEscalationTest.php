@@ -193,6 +193,17 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
         $this->assertTrue($owner->is_active);
     }
 
+    public function test_last_active_owner_cannot_be_deleted(): void
+    {
+        $this->deleteJson(
+            "/api/admin/staff/{$this->owner->id}",
+            [],
+            $this->staffHeaders($this->owner),
+        )->assertStatus(422);
+
+        $this->assertDatabaseHas('users', ['id' => $this->owner->id]);
+    }
+
     public function test_manager_can_still_update_ordinary_staff(): void
     {
         $this->patchJson(
