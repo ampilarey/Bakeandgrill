@@ -8,12 +8,14 @@ use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Item;
 use App\Models\KitchenProductionBatch;
 use App\Models\KitchenProductionItem;
+use App\Models\KitchenReceivingItem;
 use App\Models\Role;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\KitchenReceivingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class KitchenReceiveIdempotencyTest extends TestCase
@@ -42,6 +44,7 @@ class KitchenReceiveIdempotencyTest extends TestCase
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
+        $this->cashier->grantPermission('kitchen.receiving.receive');
 
         $this->item = Item::create([
             'name' => 'Prep Roll',
@@ -75,8 +78,14 @@ class KitchenReceiveIdempotencyTest extends TestCase
     {
         $service = app(KitchenReceivingService::class);
 
-        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, ['received_qty' => 10]);
-        $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, ['received_qty' => 10]);
+        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, [
+            'received_qty' => 10,
+            'idempotency_key' => 'recv-full-1',
+        ]);
+        $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, [
+            'received_qty' => 10,
+            'idempotency_key' => 'recv-full-1',
+        ]);
 
         $this->assertSame('received', $this->prodItem->fresh()->status);
         $this->assertSame(10, (int) $this->item->fresh()->stock_quantity);
@@ -94,7 +103,6 @@ class KitchenReceiveIdempotencyTest extends TestCase
         $this->assertSame('partially_received', $this->prodItem->fresh()->status);
         $this->assertSame(4, (int) $this->item->fresh()->stock_quantity);
 
-        // Second receipt of 6 is incremental (4+6=10), not a cumulative target of 6.
         $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, [
             'received_qty' => 6,
             'idempotency_key' => 'recv-partial-2',
@@ -118,13 +126,58 @@ class KitchenReceiveIdempotencyTest extends TestCase
         ]);
 
         $this->assertSame(4, (int) $this->item->fresh()->stock_quantity);
-        $this->assertSame(1, \App\Models\KitchenReceivingItem::where('idempotency_key', 'recv-retry-key')->count());
+        $this->assertSame(1, KitchenReceivingItem::where('idempotency_key', 'recv-retry-key')->count());
+    }
+
+    public function test_api_requires_idempotency_key_for_item_receive(): void
+    {
+        Sanctum::actingAs($this->cashier, ['staff']);
+
+        $this->postJson(
+            "/api/kitchen-receiving/{$this->batch->id}/items/{$this->prodItem->id}/receive",
+            ['received_qty' => 4],
+        )->assertStatus(422)
+            ->assertJsonValidationErrors(['idempotency_key']);
+    }
+
+    public function test_idempotency_key_scoped_to_batch_and_item(): void
+    {
+        $service = app(KitchenReceivingService::class);
+        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, [
+            'received_qty' => 2,
+            'idempotency_key' => 'shared-key',
+        ]);
+
+        $otherBatch = KitchenProductionBatch::create([
+            'batch_no' => 'KP-IDEM-2',
+            'status' => 'submitted',
+            'production_type' => 'prepared_stock',
+            'produced_by' => $this->cashier->id,
+            'submitted_at' => now(),
+        ]);
+        $otherItem = KitchenProductionItem::create([
+            'kitchen_production_batch_id' => $otherBatch->id,
+            'item_id' => $this->item->id,
+            'produced_qty' => 5,
+            'expected_receive_qty' => 5,
+            'unit' => 'pcs',
+            'status' => 'submitted',
+        ]);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $service->receiveItem($otherBatch, $otherItem, $this->cashier, [
+            'received_qty' => 1,
+            'idempotency_key' => 'shared-key',
+        ]);
     }
 
     public function test_reject_after_receive_is_blocked(): void
     {
         $service = app(KitchenReceivingService::class);
-        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, ['received_qty' => 10]);
+        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, [
+            'received_qty' => 10,
+            'idempotency_key' => 'recv-then-reject',
+        ]);
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         $service->rejectItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, [

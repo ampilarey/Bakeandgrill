@@ -714,11 +714,63 @@ class PaymentService
 
     private function confirmPayment(Payment $payment, array $payload): void
     {
+        // Retry transient deadlocks. Lock order matches initiate paths:
+        // Order → Payment (never Payment → Order).
+        $maxAttempts = 3;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $this->confirmPaymentOnce($payment, $payload);
+
+                return;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if (!$this->isDeadlockException($e) || $attempt === $maxAttempts) {
+                    throw $e;
+                }
+
+                Log::warning('BML: Deadlock during confirmPayment — retrying', [
+                    'payment_id' => $payment->id,
+                    'attempt' => $attempt,
+                ]);
+                usleep(50_000 * $attempt);
+            }
+        }
+    }
+
+    private function isDeadlockException(\Illuminate\Database\QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        $message = strtolower($e->getMessage());
+
+        return $sqlState === '40001'
+            || $driverCode === 1213
+            || str_contains($message, 'deadlock')
+            || str_contains($message, 'database is locked');
+    }
+
+    private function confirmPaymentOnce(Payment $payment, array $payload): void
+    {
         DB::transaction(function () use ($payment, $payload): void {
-            // Re-fetch with a row lock inside the transaction so two concurrent
-            // webhooks / return-URL callbacks can't both pass the status check
-            // (C-1: TOCTOU race condition → double loyalty earn, double inventory deduction).
-            $locked = Payment::where('id', $payment->id)->lockForUpdate()->first();
+            $orderId = (int) $payment->order_id;
+
+            // Lock Order first, then Payment — same order as initiateBmlPayment /
+            // initiatePartialBmlPayment / Stripe createIntent to avoid deadlocks
+            // under simultaneous checkout + webhook traffic.
+            $order = Order::whereKey($orderId)->lockForUpdate()->first();
+            if (!$order) {
+                Log::error('BML: Order not found during payment confirmation', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $orderId,
+                ]);
+
+                return;
+            }
+
+            $locked = Payment::query()
+                ->where('id', $payment->id)
+                ->where('order_id', $orderId)
+                ->lockForUpdate()
+                ->first();
             $sm = $locked ? PaymentStateMachine::for($locked) : null;
 
             if (!$locked || !$sm->can('confirmed')) {
@@ -737,16 +789,6 @@ class PaymentService
             $this->paymentCommission->applyToPayment($locked);
 
             $this->attributeGatewayPaymentToOpenShift($locked);
-
-            $order = $this->orders->findById($locked->order_id);
-            if (!$order) {
-                Log::error('BML: Order not found during payment confirmation', [
-                    'payment_id' => $locked->id,
-                    'order_id' => $locked->order_id,
-                ]);
-
-                return;
-            }
 
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.

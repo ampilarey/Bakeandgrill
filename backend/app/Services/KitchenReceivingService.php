@@ -94,21 +94,33 @@ class KitchenReceivingService
             }
 
             $idempotencyKey = isset($payload['idempotency_key']) && is_string($payload['idempotency_key'])
-                && $payload['idempotency_key'] !== ''
-                ? $payload['idempotency_key']
-                : null;
-
-            if ($idempotencyKey !== null) {
-                $prior = KitchenReceivingItem::query()
-                    ->where('idempotency_key', $idempotencyKey)
-                    ->first();
-                if ($prior) {
-                    $existingBatch = KitchenReceivingBatch::query()->find($prior->kitchen_receiving_batch_id);
-                    if ($existingBatch) {
-                        return $existingBatch->fresh(['items']) ?? $existingBatch;
-                    }
-                }
+                ? trim($payload['idempotency_key'])
+                : '';
+            if ($idempotencyKey === '') {
+                abort(422, 'idempotency_key is required for item receive.');
             }
+
+            $prior = KitchenReceivingItem::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+            if ($prior) {
+                if ((int) $prior->kitchen_production_item_id !== (int) $lockedItem->id) {
+                    abort(409, 'Idempotency key already used for a different production item.');
+                }
+
+                $existingBatch = KitchenReceivingBatch::query()->find($prior->kitchen_receiving_batch_id);
+                if (
+                    !$existingBatch
+                    || (int) $existingBatch->kitchen_production_batch_id !== (int) $batch->id
+                ) {
+                    abort(409, 'Idempotency key already used for a different production batch.');
+                }
+
+                return $existingBatch->fresh(['items']) ?? $existingBatch;
+            }
+
+            // Re-inject normalized key for receiveProductionItem persistence.
+            $payload['idempotency_key'] = $idempotencyKey;
 
             $qty = (float) ($payload['received_qty'] ?? max(
                 0,

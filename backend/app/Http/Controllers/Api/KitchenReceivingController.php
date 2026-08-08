@@ -66,8 +66,8 @@ class KitchenReceivingController extends Controller
         $item = KitchenProductionItem::where('kitchen_production_batch_id', $batch->id)->where('id', $itemId)->firstOrFail();
         $validated = $request->validate([
             'received_qty' => ['nullable', 'numeric', 'min:0.001'],
-            // Distinguishes a client retry from a new incremental partial receipt.
-            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            // Required so retries cannot silently inflate stock on partial receive.
+            'idempotency_key' => ['required', 'string', 'max:128'],
             'receive_location' => ['nullable', Rule::in(['pos_counter', 'takeaway_counter', 'dine_in_service', 'delivery_packaging', 'storage', 'other'])],
             'condition' => ['nullable', Rule::in(['good', 'cold', 'damaged', 'wrong_item', 'undercooked', 'overcooked', 'missing', 'other'])],
             'notes' => ['nullable', 'string'],
