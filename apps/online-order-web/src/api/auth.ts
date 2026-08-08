@@ -62,8 +62,14 @@ export async function verifyOtp(payload: { phone: string; otp: string }): Promis
   return request<AuthResponse>(ENDPOINTS.CUSTOMER_OTP_VERIFY, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export async function checkSession(): Promise<AuthResponse & { authenticated: boolean }> {
-  return request(ENDPOINTS.CUSTOMER_SESSION_CHECK);
+/**
+ * Probe the shared Laravel customer session (Blade + /order SPA).
+ * anonymous: a guest 401 must not fire auth_expired on cold boot.
+ */
+export async function checkSession(
+  options: { anonymous?: boolean } = { anonymous: true },
+): Promise<AuthResponse & { authenticated: boolean }> {
+  return request(ENDPOINTS.CUSTOMER_SESSION_CHECK, { anonymous: options.anonymous ?? true });
 }
 
 export async function forgotPassword(phone: string): Promise<{ otp?: string }> {

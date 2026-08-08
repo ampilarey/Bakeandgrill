@@ -31,11 +31,37 @@ function getCookie(name: string): string | null {
   return m ? decodeURIComponent(m.split('=').slice(1).join('=')) : null;
 }
 
+/**
+ * Clear a cookie that may have been set with Domain=.parent.tld and/or Secure.
+ * Modern browsers require matching Secure when deleting a Secure cookie.
+ */
 function deleteCookie(name: string) {
   const h = window.location.hostname;
-  const domain =
+  const parentDomain =
     h.includes('.') && !h.startsWith('127.') ? '.' + h.split('.').slice(-2).join('.') : '';
-  document.cookie = `${name}=; Max-Age=0; path=/; domain=${domain}`;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  const base = `${name}=; Max-Age=0; path=/; SameSite=Lax${secure}`;
+  document.cookie = base;
+  if (parentDomain) {
+    document.cookie = `${base}; domain=${parentDomain}`;
+  }
+}
+
+async function probeSession(
+  apply: (name: string | null) => void,
+  reset: () => void,
+): Promise<void> {
+  try {
+    const res = await checkSession({ anonymous: true });
+    if (res.authenticated && res.customer) {
+      const name = toDisplayName(res.customer.name, res.customer.phone);
+      apply(name || null);
+      return;
+    }
+    reset();
+  } catch {
+    reset();
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -56,33 +82,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const revoked = getCookie('_cauth_revoked');
-    if (revoked) {
-      deleteCookie('_cauth_revoked');
-      resetAuth();
-      setAuthReady(true);
-      return;
-    }
+    let cancelled = false;
 
-    checkSession()
-      .then((res) => {
-        if (res.authenticated && res.customer) {
-          const name = toDisplayName(res.customer.name, res.customer.phone);
-          applyCustomer(name || null);
-        }
-      })
-      .catch(() => { /* guest */ })
-      .finally(() => setAuthReady(true));
+    const boot = async () => {
+      // _cauth_revoked is a short-lived logout signal from the Blade site.
+      // Clear it, but ALWAYS probe the live session — the customer may have
+      // logged in again while this cookie was still present (up to 10 minutes).
+      if (getCookie('_cauth_revoked')) {
+        deleteCookie('_cauth_revoked');
+      }
+      await probeSession(applyCustomer, resetAuth);
+      if (!cancelled) setAuthReady(true);
+    };
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     const handleExpired = () => resetAuth();
     const onFocus = () => {
-      const revoked = getCookie('_cauth_revoked');
-      if (revoked) {
-        deleteCookie('_cauth_revoked');
-        resetAuth();
-      }
+      if (!getCookie('_cauth_revoked')) return;
+      deleteCookie('_cauth_revoked');
+      // Blade (or another tab) logged out — confirm against the server rather
+      // than blindly trusting the signal if a new session was established.
+      void probeSession(applyCustomer, resetAuth);
     };
 
     window.addEventListener('auth_expired', handleExpired);

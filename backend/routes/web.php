@@ -57,9 +57,8 @@ Route::post('/customer/verify-otp', [CustomerPortalController::class, 'verifyOtp
 Route::post('/customer/login', [CustomerPortalController::class, 'passwordLogin'])->name('customer.password-login');
 Route::post('/customer/logout', [CustomerPortalController::class, 'logout'])->name('customer.logout');
 
-// Called by the React order app after login to establish a Blade session
-// (so the main website header shows "Hi, [phone]" immediately).
-// Protected by Sanctum Bearer token instead of CSRF — no form token needed.
+// Legacy Bearer → Blade session bridge. The /order SPA shares the session
+// cookie via Sanctum statefulApi(); keep this for older token clients.
 Route::post('/customer/sync-session', [CustomerPortalController::class, 'syncSession'])
     ->withoutMiddleware([Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
     ->middleware(['auth:sanctum', 'customer.token'])

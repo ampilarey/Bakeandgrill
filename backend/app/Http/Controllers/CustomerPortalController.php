@@ -363,12 +363,12 @@ class CustomerPortalController extends Controller
         return redirect($intendedUrl)->with('message', 'Welcome! Your account is all set.');
     }
 
-    // ── Session sync (called by React order app after API login) ─────────────
+    // ── Session sync (legacy Bearer bridge) ──────────────────────────────────
 
     /**
      * Establish a Blade web session from a valid Sanctum Bearer token.
-     * React calls this after every login so the main website header
-     * immediately reflects the logged-in state.
+     * The /order SPA now uses the shared session cookie directly (no Bearer),
+     * so this is only needed for older token-based clients.
      * Protected by auth:sanctum + customer.token; CSRF is waived.
      */
     public function syncSession(Request $request)
@@ -400,8 +400,8 @@ class CustomerPortalController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Tell the React order app (same origin, JS-readable cookie) that
-        // the session was invalidated so it can clear its localStorage token.
+        // Tell open /order SPA tabs (same origin, JS-readable) to re-probe
+        // auth — the session cookie itself is already invalidated above.
         $domain = config('session.domain');
         $secure = $request->isSecure();
         Cookie::queue('_cauth_revoked', '1', 10, '/', $domain, $secure, false, false, 'Lax');

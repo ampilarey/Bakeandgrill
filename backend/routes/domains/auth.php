@@ -40,11 +40,16 @@ Route::prefix('auth/staff')->group(function () {
 |--------------------------------------------------------------------------
 | Customer Authentication Routes
 |--------------------------------------------------------------------------
-| NOTE: No StartSession here — adding StartSession to API routes causes the
-| session cookie to be rewritten without EncryptCookies, which corrupts the
-| Blade site's session and logs users out of the main website.
-| Cross-app auth is handled via a short-lived _cauth handoff cookie set
-| by the Blade login controller (CustomerPortalController).
+| Cross-app auth (Blade site ↔ /order SPA) uses the shared Laravel session
+| cookie via Sanctum statefulApi() in bootstrap/app.php. Sanctum starts the
+| session only when Referer/Origin matches SANCTUM_STATEFUL_DOMAINS.
+|
+| Do NOT add StartSession to this route group — a second session stack can
+| rewrite the session cookie without the same EncryptCookies pipeline and
+| corrupt the Blade site's session. Rely on EnsureFrontendRequestsAreStateful.
+|
+| Logout from Blade sets a short-lived JS-readable _cauth_revoked cookie so
+| open /order tabs clear local auth state; the SPA still re-probes /check.
 |--------------------------------------------------------------------------
 */
 // Guest abandoned-cart snapshot (pre-login). Throttled — phone required.

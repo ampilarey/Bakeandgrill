@@ -11,6 +11,7 @@ use App\Rules\MaldivesPhone;
 use App\Support\CustomerLoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -310,6 +311,11 @@ class CustomerAuthController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
+
+        // Signal other /order tabs (and keep parity with Blade logout).
+        $domain = config('session.domain');
+        $secure = $request->isSecure();
+        Cookie::queue('_cauth_revoked', '1', 10, '/', $domain, $secure, false, false, 'Lax');
 
         return response()->json(['message' => 'Logged out successfully'], 200);
     }
