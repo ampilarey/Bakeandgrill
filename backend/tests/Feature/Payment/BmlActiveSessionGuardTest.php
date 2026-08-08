@@ -9,11 +9,12 @@ use App\Domains\Payments\Services\PaymentService;
 use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
 
 /**
- * Audit #1 — only one active BML session per order+outstanding balance.
+ * Audit #1 — order-level in-flight online payment reservation (any gateway/amount).
  */
 class BmlActiveSessionGuardTest extends TestCase
 {
@@ -132,5 +133,30 @@ class BmlActiveSessionGuardTest extends TestCase
         $again = app(PaymentService::class)->initiateBmlPayment($order, 6000, 'partial:remaining:other-key');
         $this->assertTrue($again['reused']);
         $this->assertSame($result['payment_id'], $again['payment_id']);
+    }
+
+    public function test_pending_partial_blocks_full_balance_bml_session(): void
+    {
+        $order = $this->makeBmlGuardOrder(10000);
+        $this->mockBmlGateway(1);
+
+        app(PaymentService::class)->initiateBmlPayment($order, 5000, 'partial-50');
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        app(PaymentService::class)->initiateBmlPayment($order, 10000, 'full-100');
+    }
+
+    public function test_pending_bml_blocks_stripe_intent_reservation(): void
+    {
+        $order = $this->makeBmlGuardOrder(10000);
+        $this->mockBmlGateway(1);
+        app(PaymentService::class)->initiateBmlPayment($order, 5000, 'partial-50');
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+
+        DB::transaction(function () use ($order) {
+            Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            app(PaymentService::class)->resolveOnlinePaymentReservation($order, 'stripe', 10000);
+        });
     }
 }

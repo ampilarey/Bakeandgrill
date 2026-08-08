@@ -12,6 +12,7 @@ class KitchenReceivingItem extends Model
     protected $fillable = [
         'kitchen_receiving_batch_id', 'kitchen_production_item_id',
         'received_qty', 'rejected_qty', 'missing_qty', 'condition', 'action', 'notes',
+        'idempotency_key',
     ];
 
     protected $casts = [

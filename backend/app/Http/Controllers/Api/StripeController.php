@@ -81,8 +81,27 @@ class StripeController extends Controller
                 abort(422, 'This order is already fully paid.');
             }
 
+            // Order-level reservation across BML/Stripe — block a second online
+            // session while any in-flight payment holds the order.
+            $reserved = $this->payments->resolveOnlinePaymentReservation($order, 'stripe', $amountLaar);
+            if ($reserved?->provider_transaction_id) {
+                $reuse = $this->tryReuseStripeIntent($reserved, $order);
+                if ($reuse !== null) {
+                    return $reuse;
+                }
+                // Same stripe+amount reservation is dead at the gateway — release
+                // it (keep provider id) so a sibling retry row can be created.
+                $reserved->update(['status' => 'failed']);
+                $deadStripe = $reserved;
+                $reserved = null;
+            }
+
             $baseKey = 'stripe:intent:' . $order->id . ':' . $amountLaar;
-            $existing = Payment::query()
+            if (isset($deadStripe)) {
+                $baseKey = $baseKey . ':retry:' . $deadStripe->id;
+            }
+
+            $existing = $reserved ?? Payment::query()
                 ->where('idempotency_key', $baseKey)
                 ->where('gateway', 'stripe')
                 ->lockForUpdate()
@@ -94,24 +113,8 @@ class StripeController extends Controller
                     return $reuse;
                 }
 
-                // Prior PI is dead (canceled/failed) — never overwrite its provider id.
-                // Mint a sibling row under a retry key so delayed webhooks for the
-                // original PI can still settle the original local payment.
-                $baseKey = $baseKey . ':retry:' . $existing->id;
-                $existing = Payment::query()
-                    ->where('idempotency_key', $baseKey)
-                    ->where('gateway', 'stripe')
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($existing?->provider_transaction_id) {
-                    $reuse = $this->tryReuseStripeIntent($existing, $order);
-                    if ($reuse !== null) {
-                        return $reuse;
-                    }
-                    // Exhausted retry row — leave it immutable and fail closed.
-                    abort(409, 'A previous card payment is still reconciling. Please wait or contact staff.');
-                }
+                // Retry-row PI also dead — do not overwrite; fail closed.
+                abort(409, 'A previous card payment is still reconciling. Please wait or contact staff.');
             }
 
             // Locally completed without needing Stripe re-check.

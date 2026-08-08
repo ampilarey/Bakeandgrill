@@ -87,14 +87,38 @@ class KitchenReceiveIdempotencyTest extends TestCase
     {
         $service = app(KitchenReceivingService::class);
 
-        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, ['received_qty' => 4]);
+        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, [
+            'received_qty' => 4,
+            'idempotency_key' => 'recv-partial-1',
+        ]);
         $this->assertSame('partially_received', $this->prodItem->fresh()->status);
         $this->assertSame(4, (int) $this->item->fresh()->stock_quantity);
 
-        $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, ['received_qty' => 10]);
+        // Second receipt of 6 is incremental (4+6=10), not a cumulative target of 6.
+        $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, [
+            'received_qty' => 6,
+            'idempotency_key' => 'recv-partial-2',
+        ]);
         $this->assertSame('received', $this->prodItem->fresh()->status);
         $this->assertSame(10, (int) $this->item->fresh()->stock_quantity);
         $this->assertSame(2, StockMovement::where('idempotency_key', 'like', 'kitchen:receive:prod-item:' . $this->prodItem->id . '%')->count());
+    }
+
+    public function test_receive_idempotency_key_retries_do_not_double_apply(): void
+    {
+        $service = app(KitchenReceivingService::class);
+
+        $service->receiveItem($this->batch, $this->prodItem, $this->cashier, [
+            'received_qty' => 4,
+            'idempotency_key' => 'recv-retry-key',
+        ]);
+        $service->receiveItem($this->batch->fresh(), $this->prodItem->fresh(), $this->cashier, [
+            'received_qty' => 4,
+            'idempotency_key' => 'recv-retry-key',
+        ]);
+
+        $this->assertSame(4, (int) $this->item->fresh()->stock_quantity);
+        $this->assertSame(1, \App\Models\KitchenReceivingItem::where('idempotency_key', 'recv-retry-key')->count());
     }
 
     public function test_reject_after_receive_is_blocked(): void

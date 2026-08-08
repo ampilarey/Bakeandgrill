@@ -26,6 +26,12 @@ use Illuminate\Support\Str;
 
 class PaymentService
 {
+    /** Online gateways that reserve the order until settled or failed. */
+    public const ONLINE_GATEWAYS = ['bml', 'stripe'];
+
+    /** @var list<string> */
+    public const IN_FLIGHT_STATUSES = ['created', 'initiating', 'initiated', 'pending'];
+
     public function __construct(
         private BmlConnectService $bml,
         private PaymentRepositoryInterface $payments,
@@ -34,6 +40,45 @@ class PaymentService
         private OrderPaymentStateService $paymentState,
         private PaymentCommissionService $paymentCommission,
     ) {}
+
+    /**
+     * Find any in-flight online (BML/Stripe) payment for the order.
+     * Caller must hold a lock on the order row.
+     */
+    public function findInFlightOnlinePayment(int $orderId): ?Payment
+    {
+        return Payment::query()
+            ->where('order_id', $orderId)
+            ->whereIn('gateway', self::ONLINE_GATEWAYS)
+            ->whereIn('status', self::IN_FLIGHT_STATUSES)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Enforce a single order-level online payment reservation across gateways
+     * and amounts. Same gateway + same amount may be reused; anything else
+     * conflicts until the active session settles or fails.
+     *
+     * @return Payment|null Existing reusable session for this gateway+amount
+     */
+    public function resolveOnlinePaymentReservation(
+        Order $order,
+        string $gateway,
+        int $amountLaar,
+    ): ?Payment {
+        $active = $this->findInFlightOnlinePayment($order->id);
+        if ($active === null) {
+            return null;
+        }
+
+        if ((string) $active->gateway === $gateway && (int) $active->amount_laar === $amountLaar) {
+            return $active;
+        }
+
+        abort(409, 'An online payment session is already in progress for this order. Complete or cancel it before starting another.');
+    }
 
     /**
      * Initiate a BML online payment for an order (full amount).
@@ -52,23 +97,15 @@ class PaymentService
         $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . $amountLaar);
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-        // Order-scoped active-session guard: under a row lock, reuse any in-flight
-        // BML attempt for this order+amount regardless of client idempotency key.
-        // An exclusive `initiating` claim ensures only one request calls the gateway.
+        // Order-level reservation: under a row lock, at most one in-flight online
+        // payment (any gateway/amount). Same BML amount may be reused; exclusive
+        // `initiating` claim ensures only one request calls the gateway.
         $claim = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar): array {
             Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
-            $active = Payment::query()
-                ->where('order_id', $order->id)
-                ->where('gateway', 'bml')
-                ->where('amount_laar', $amountLaar)
-                ->whereIn('status', ['created', 'initiating', 'initiated', 'pending'])
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->first();
-
-            if ($active) {
-                return $this->claimActiveBmlPayment($active);
+            $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
+            if ($reserved) {
+                return $this->claimActiveBmlPayment($reserved);
             }
 
             $payment = $this->payments->firstOrCreate(
@@ -96,18 +133,10 @@ class PaymentService
                 $retryKey = $idempotencyKey . ':retry:' . now()->timestamp;
                 $retryLocal = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-                // Re-check active session (another tab may have claimed meanwhile).
-                $active = Payment::query()
-                    ->where('order_id', $order->id)
-                    ->where('gateway', 'bml')
-                    ->where('amount_laar', $amountLaar)
-                    ->whereIn('status', ['created', 'initiating', 'initiated', 'pending'])
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($active) {
-                    return $this->claimActiveBmlPayment($active);
+                // Re-check order-level reservation (another tab may have claimed).
+                $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
+                if ($reserved) {
+                    return $this->claimActiveBmlPayment($reserved);
                 }
 
                 $payment = $this->payments->create([
@@ -590,9 +619,12 @@ class PaymentService
             if ($existing->status === 'received') {
                 $stale = $existing->updated_at && $existing->updated_at->lt(now()->subMinutes(5));
                 if (!$stale) {
-                    // Another worker is still processing — acknowledge without
-                    // double-settling; BML can retry if that attempt fails.
-                    return null;
+                    // In-flight processing — must NOT return success to BML.
+                    // A 200 here would stop gateway retries if the first worker
+                    // later fails, leaving a paid gateway txn unsettled locally.
+                    throw new \RuntimeException(
+                        'BML webhook processing already in progress — retry later',
+                    );
                 }
             }
 

@@ -135,4 +135,42 @@ class BmlFailedWebhookRetryTest extends TestCase
 
         $this->assertSame(1, (int) WebhookLog::where('idempotency_key', 'bml:webhook:TXN-WH-RETRY-1')->value('attempt_count'));
     }
+
+    public function test_in_flight_webhook_retry_returns_503_not_200(): void
+    {
+        $payload = [
+            'transactionId' => 'TXN-WH-RETRY-1',
+            'localId' => $this->payment->local_id,
+            'state' => 'CONFIRMED',
+            'amount' => '100.00',
+            'currency' => 'MVR',
+        ];
+        [$raw, $sig] = $this->signedBody($payload);
+
+        WebhookLog::create([
+            'idempotency_key' => 'bml:webhook:TXN-WH-RETRY-1',
+            'gateway' => 'bml',
+            'gateway_event_id' => 'TXN-WH-RETRY-1',
+            'event_type' => 'CONFIRMED',
+            'headers' => [],
+            'raw_body' => $raw,
+            'payload' => $payload,
+            'status' => 'received',
+            'attempt_count' => 1,
+        ]);
+
+        $response = $this->call(
+            'POST',
+            '/api/payments/bml/webhook',
+            [],
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json', 'HTTP_X-BML-Signature' => $sig],
+            $raw,
+        );
+
+        $this->assertSame(503, $response->status());
+        $this->assertSame('initiated', $this->payment->fresh()->status);
+        $this->assertSame('received', WebhookLog::where('idempotency_key', 'bml:webhook:TXN-WH-RETRY-1')->value('status'));
+    }
 }
