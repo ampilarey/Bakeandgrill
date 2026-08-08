@@ -11,6 +11,10 @@ export type OrderDetail = Order & {
   loyalty_points_earned?: number;
   pickup_slot_at?: string | null;
   fulfil_date?: string | null;
+  /** When kitchen received the ticket (null = still held / unstarted). */
+  fired_at?: string | null;
+  /** Server-computed: customer may self-cancel before kitchen starts. */
+  can_cancel?: boolean;
   /** Prepaid dine-in: table hold created with the order. */
   reservation?: {
     status: string;
@@ -117,6 +121,29 @@ export async function createDeliveryOrder(payload: DeliveryOrderPayload): Promis
 
 export async function getOrderDetail(orderId: number): Promise<{ order: OrderDetail }> {
   return request<{ order: OrderDetail }>(`${ENDPOINTS.CUSTOMER_ORDERS}/${orderId}`);
+}
+
+export type CancelCustomerOrderResult = {
+  message: string;
+  order: Pick<OrderDetail, 'id' | 'order_number' | 'status' | 'payment_status' | 'fired_at' | 'can_cancel'> & {
+    reservation?: { status: string } | null;
+  };
+  refund: {
+    id: number;
+    amount: number;
+    status: string;
+    initiated_by: string;
+    reason_category: string | null;
+  } | null;
+  refunded: boolean;
+};
+
+/** Customer self-cancel before kitchen starts (auth: customer session). */
+export async function cancelCustomerOrder(orderId: number): Promise<CancelCustomerOrderResult> {
+  return request<CancelCustomerOrderResult>(`${ENDPOINTS.CUSTOMER_ORDERS}/${orderId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }
 
 export async function getOrderByTrackingToken(trackingToken: string): Promise<{ order: OrderDetail }> {

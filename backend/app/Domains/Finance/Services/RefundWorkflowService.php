@@ -9,6 +9,7 @@ use App\Domains\Menu\Services\ComboChildStockService;
 use App\Domains\Orders\DTOs\OrderRefundedData;
 use App\Domains\Orders\Events\OrderRefunded;
 use App\Domains\Payments\Repositories\PaymentRepositoryInterface;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Refund;
 use App\Models\User;
@@ -409,6 +410,142 @@ class RefundWorkflowService
         $this->notifications->notifyCustomerCompleted($refund);
 
         return $refund->fresh(['order', 'user', 'approver']);
+    }
+
+    /**
+     * Full refund for a customer cancelling their own unstarted order.
+     * Auto-approves immediately — no staff shift, OTP, or two-person approval.
+     *
+     * @return array{refund: Refund, order: Order}
+     */
+    public function refundFullyForCustomerSelfCancel(
+        Order $order,
+        Customer $customer,
+        ?Request $request = null,
+    ): array {
+        if ((int) $order->customer_id !== (int) $customer->id) {
+            abort(403, 'You can only cancel your own orders.');
+        }
+
+        [$refund, $orderFresh, $refundRatio] = DB::transaction(function () use ($order, $customer) {
+            $locked = Order::with(['items.item', 'items.variant', 'customer', 'items.item.comboItems.item'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            if ((int) $locked->customer_id !== (int) $customer->id) {
+                abort(403, 'You can only cancel your own orders.');
+            }
+
+            if (in_array($locked->status, ['cancelled', 'refunded'], true)) {
+                $existing = Refund::query()
+                    ->where('order_id', $locked->id)
+                    ->where('initiated_by', 'customer')
+                    ->whereIn('status', ['approved', 'processed'])
+                    ->latest('id')
+                    ->first();
+
+                return [$existing, $locked, 1.0];
+            }
+
+            $caps = $this->computeCaps($locked);
+            $amountLaar = max(0, $caps['refundable_laar'] - $caps['already_refunded_laar']);
+            if ($amountLaar <= 0) {
+                abort(422, 'Nothing left to refund on this order.');
+            }
+
+            $amount = $amountLaar / 100;
+            $phone = $this->resolveOrderContactPhone($locked) ?? $customer->phone;
+
+            // Online self-cancel: never pull cash from a staff drawer.
+            $drawerLaar = 0;
+
+            $refund = Refund::create([
+                'order_id' => $locked->id,
+                'user_id' => null,
+                'approved_by' => null,
+                'shift_id' => null,
+                'customer_id' => $customer->id,
+                'initiated_by' => 'customer',
+                'amount' => $amount,
+                'drawer_cash_out_laar' => $drawerLaar,
+                'status' => 'pending',
+                'reason' => 'Customer cancelled before kitchen started',
+                'reason_category' => 'order_cancelled',
+                'requested_at' => now(),
+                'no_customer_contact' => false,
+                'refund_phone' => $phone,
+                'phone_added_at_refund' => false,
+                'otp_owner_override' => false,
+                'otp_verified_at' => null,
+                'otp_code_hash' => null,
+            ]);
+
+            $isFullRefund = ($amountLaar + $caps['already_refunded_laar'] >= $caps['refundable_laar'])
+                && $caps['refundable_laar'] > 0;
+            $thisRefundRatio = $caps['refundable_laar'] > 0
+                ? min(1.0, $amountLaar / $caps['refundable_laar'])
+                : 0.0;
+
+            $transitions = app(OrderStatusTransitionService::class);
+            if ($isFullRefund) {
+                if (! in_array($locked->status, ['cancelled', 'refunded'], true)) {
+                    $transitions->transition($locked, 'refunded');
+                }
+            } else {
+                if (! in_array($locked->status, ['cancelled', 'refunded'], true)) {
+                    $transitions->transition($locked, 'partially_refunded');
+                }
+            }
+
+            $locked->refresh();
+            if ($locked->cancellation_reason === null) {
+                $locked->update([
+                    'cancellation_reason' => 'Customer cancelled before kitchen started',
+                    'cancelled_at' => $locked->cancelled_at ?? now(),
+                ]);
+            }
+
+            $this->restoreStock($locked, $refund, $isFullRefund, $thisRefundRatio, null);
+
+            if (in_array($locked->type, ['online_pickup', 'delivery', 'dine_in'], true)) {
+                app(StockReservationService::class)->releaseForOrder($locked->id);
+            }
+
+            $refund->update([
+                'status' => 'approved',
+                'approved_by' => null,
+                'approved_at' => now(),
+            ]);
+
+            return [$refund->fresh(), $locked->fresh(), $thisRefundRatio];
+        });
+
+        if ($refund === null) {
+            abort(422, 'Order already cancelled with no refund record.');
+        }
+
+        app(AuditLogService::class)->log(
+            'customer.order.self_cancelled_refund',
+            'Refund',
+            $refund->id,
+            [],
+            $refund->toArray(),
+            [
+                'order_id' => $orderFresh->id,
+                'customer_id' => $customer->id,
+                'initiated_by' => 'customer',
+            ],
+            $request,
+        );
+
+        $refund->load('order.customer');
+        event(new OrderRefunded(OrderRefundedData::fromRefund($refund, $refundRatio)));
+        $this->notifications->notifyCustomerCompleted($refund);
+
+        return [
+            'refund' => $refund->fresh(['order', 'user', 'approver', 'customer']),
+            'order' => $orderFresh->fresh(),
+        ];
     }
 
     public function reject(Refund $refund, User $approver, string $rejectionReason, ?Request $request = null): Refund

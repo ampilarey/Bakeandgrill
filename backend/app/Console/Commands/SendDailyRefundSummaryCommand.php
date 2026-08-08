@@ -38,7 +38,7 @@ class SendDailyRefundSummaryCommand extends Command
         $end = $day->copy()->endOfDay();
 
         $refunds = Refund::query()
-            ->with(['user', 'approver', 'order.customer'])
+            ->with(['user', 'approver', 'customer', 'order.customer'])
             ->whereBetween('created_at', [$day, $end])
             ->whereIn('status', ['pending', 'approved', 'rejected', 'processed'])
             ->orderBy('id')
@@ -62,9 +62,17 @@ class SendDailyRefundSummaryCommand extends Command
         ];
         foreach ($refunds->take(12) as $r) {
             $flags = $workflow->phoneFlags($r);
-            $req = $r->user?->name ?? '—';
-            $apr = $r->approver?->name ?? ($r->status === 'pending' ? 'pending' : '—');
+            $customerInitiated = ($r->initiated_by ?? 'staff') === 'customer';
+            $req = $customerInitiated
+                ? ('CUSTOMER'.($r->customer?->name ? ':'.$r->customer->name : ''))
+                : ($r->user?->name ?? '—');
+            $apr = $customerInitiated
+                ? 'self'
+                : ($r->approver?->name ?? ($r->status === 'pending' ? 'pending' : '—'));
             $flagBits = [];
+            if ($customerInitiated) {
+                $flagBits[] = 'CUSTOMER-INITIATED';
+            }
             if ($flags['phone_added_at_refund']) {
                 $flagBits[] = 'ADDED';
             }

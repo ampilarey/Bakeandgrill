@@ -678,6 +678,17 @@ const TRANSLATIONS: Translations = {
   "track.status.completed.sub": "Your order was delivered. Enjoy your meal!",
   "track.status.cancelled.label": "Order cancelled",
   "track.status.cancelled.sub": "This order was cancelled. If you were charged, your money will be refunded within 3–5 business days. Message us on WhatsApp if you need help.",
+  "track.status.refunded.label": "Order cancelled — payment returned",
+  "track.status.refunded.sub": "Your order was cancelled and your payment is being returned. Allow a few business days for card refunds to appear.",
+  "track.cancel.button": "Cancel order",
+  "track.cancel.confirm_title": "Cancel this order?",
+  "track.cancel.confirm_body": "Your order will be cancelled. If you already paid, your payment will be returned.",
+  "track.cancel.confirm_yes": "Yes, cancel order",
+  "track.cancel.confirm_no": "Keep my order",
+  "track.cancel.working": "Cancelling…",
+  "track.cancel.done_unpaid": "Order cancelled.",
+  "track.cancel.done_paid": "Order cancelled. Your payment will be returned.",
+  "track.cancel.error": "Could not cancel this order. Please contact the restaurant.",
 
   // ── Reservations ────────────────────────────────────────────────────────────
   "reserve.page_title": "Table Reservation",

@@ -12,6 +12,8 @@ class Refund extends Model
     protected $fillable = [
         'order_id',
         'user_id',
+        'customer_id',
+        'initiated_by',
         'approved_by',
         'shift_id',
         'amount',
@@ -40,6 +42,7 @@ class Refund extends Model
     protected $casts = [
         'order_id' => 'integer',
         'user_id' => 'integer',
+        'customer_id' => 'integer',
         'approved_by' => 'integer',
         'shift_id' => 'integer',
         'amount' => 'decimal:2',
@@ -58,6 +61,17 @@ class Refund extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    /** Customer who self-cancelled (null for staff-requested refunds). */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function isCustomerInitiated(): bool
+    {
+        return ($this->initiated_by ?? 'staff') === 'customer';
     }
 
     /** Requester (cashier who raised the refund). */

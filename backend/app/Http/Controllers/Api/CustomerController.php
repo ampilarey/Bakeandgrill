@@ -8,6 +8,7 @@ use App\Domains\Customers\Services\CustomerCreditService;
 use App\Domains\Customers\Services\CustomerSegmentationService;
 use App\Domains\Deposits\Services\CustomerDepositService;
 use App\Domains\Loyalty\Services\PointsCalculator;
+use App\Domains\Orders\Services\CustomerOrderCancellationService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerSmsOptOutRequest;
@@ -525,6 +526,8 @@ class CustomerController extends Controller
             ->where('type', 'earn')
             ->sum('points');
 
+        $canCancel = app(CustomerOrderCancellationService::class)->customerCanSelfCancel($order);
+
         return response()->json([
             'order' => array_merge([
                 'id' => $order->id,
@@ -546,6 +549,8 @@ class CustomerController extends Controller
                 'loyalty_points_earned' => $loyaltyPointsEarned,
                 'paid_at' => $order->paid_at?->toIso8601String(),
                 'created_at' => $order->created_at->toIso8601String(),
+                'fired_at' => $order->fired_at?->toIso8601String(),
+                'can_cancel' => $canCancel,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'item_id' => $item->item_id,
@@ -590,6 +595,56 @@ class CustomerController extends Controller
             ], [
                 'payment_settlement' => OrderSettlement::forOrder($order),
             ]),
+        ]);
+    }
+
+    /**
+     * POST /api/customer/orders/{id}/cancel
+     *
+     * Customer self-cancel before the kitchen starts. Paid orders are
+     * refunded immediately (no staff OTP / two-person approval).
+     */
+    public function cancelOrder(Request $request, int $id, CustomerOrderCancellationService $cancellation)
+    {
+        $customer = $request->user();
+
+        if (! $customer instanceof Customer) {
+            return response()->json(['message' => 'Forbidden — customer access only.'], 403);
+        }
+
+        $order = Order::query()->findOrFail($id);
+
+        if ((int) $order->customer_id !== (int) $customer->id) {
+            return response()->json(['message' => 'You can only cancel your own orders.'], 403);
+        }
+
+        $result = $cancellation->cancel($customer, $order, $request);
+        $fresh = $result['order'];
+        $canCancel = $cancellation->customerCanSelfCancel($fresh);
+
+        return response()->json([
+            'message' => $result['refunded']
+                ? 'Order cancelled. Your payment will be returned.'
+                : 'Order cancelled.',
+            'order' => [
+                'id' => $fresh->id,
+                'order_number' => $fresh->order_number,
+                'status' => $fresh->status,
+                'payment_status' => $fresh->payment_status,
+                'fired_at' => $fresh->fired_at?->toIso8601String(),
+                'can_cancel' => $canCancel,
+                'reservation' => $fresh->reservation ? [
+                    'status' => $fresh->reservation->status,
+                ] : null,
+            ],
+            'refund' => $result['refund'] ? [
+                'id' => $result['refund']->id,
+                'amount' => (float) $result['refund']->amount,
+                'status' => $result['refund']->status,
+                'initiated_by' => $result['refund']->initiated_by,
+                'reason_category' => $result['refund']->reason_category,
+            ] : null,
+            'refunded' => $result['refunded'],
         ]);
     }
 

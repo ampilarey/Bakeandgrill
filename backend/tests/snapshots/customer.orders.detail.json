@@ -18,6 +18,8 @@
         "loyalty_points_earned": 0,
         "paid_at": null,
         "created_at": "__VOLATILE__",
+        "fired_at": null,
+        "can_cancel": true,
         "items": [],
         "delivery_address_line1": null,
         "delivery_address_line2": null,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
+import { getOrderDetail, getOrderByTrackingToken, getReorderPayload, initiateOnlinePayment, initiatePartialPayment, getWaitTimeEstimate, getMyReferralCode, cancelCustomerOrder, type OrderDetail, type OrderItem as OrderDetailItem, API_ORIGIN } from "../api";
 import { ReviewForm } from "../components/ReviewForm";
 import { BrandedHeader } from "../components/BrandedHeader";
 import { WhatsAppIcon, ViberIcon } from "../components/icons";
@@ -208,6 +208,11 @@ const STATUS_CONFIG: Record<string, {
     subKey: "track.status.cancelled.sub",
     color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
   },
+  refunded: {
+    labelKey: "track.status.refunded.label",
+    subKey: "track.status.refunded.sub",
+    color: "var(--color-error)", bg: "var(--color-error-bg)", icon: "✕",
+  },
 };
 
 // ─── Progress steps ───────────────────────────────────────────────────────────
@@ -272,6 +277,10 @@ export function OrderStatusPage() {
   const [reordering, setReordering] = useState(false);
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [cancelSuccess, setCancelSuccess] = useState("");
 
   const esRef = useRef<EventSource | null>(null);
   // Guard so clearCart() is called at most once per page visit, regardless of
@@ -522,8 +531,34 @@ export function OrderStatusPage() {
     return key ? t(key) : type;
   };
 
-  const isCancelled = order?.status === 'cancelled';
+  const isCancelled = order?.status === 'cancelled' || order?.status === 'refunded';
   const isDone = order?.status === 'completed';
+  const canSelfCancel = Boolean(isAuthenticated && order?.can_cancel);
+
+  const handleConfirmCancel = async () => {
+    if (!order) return;
+    setCancelling(true);
+    setCancelError("");
+    try {
+      const result = await cancelCustomerOrder(order.id);
+      setOrder((prev) => prev ? {
+        ...prev,
+        status: result.order.status,
+        payment_status: result.order.payment_status ?? prev.payment_status,
+        fired_at: result.order.fired_at ?? null,
+        can_cancel: false,
+        reservation: result.order.reservation
+          ? { ...(prev.reservation ?? { date: '', time_slot: '', party_size: 0, table: null }), ...result.order.reservation }
+          : prev.reservation,
+      } : prev);
+      setCancelSuccess(result.refunded ? t('track.cancel.done_paid') : t('track.cancel.done_unpaid'));
+      setShowCancelConfirm(false);
+    } catch {
+      setCancelError(t('track.cancel.error'));
+    } finally {
+      setCancelling(false);
+    }
+  };
   const pointsEarned = order?.loyalty_points_earned ?? 0;
   const showPointsCelebration =
     pointsEarned > 0 &&
@@ -1115,6 +1150,78 @@ export function OrderStatusPage() {
             {/* Review form */}
             {isAuthenticated && ['completed', 'paid', 'delivered'].includes(order.status) && !reviewDone && (
               <ReviewForm orderId={order.id} onDone={() => setReviewDone(true)} />
+            )}
+
+            {/* Customer self-cancel (unstarted only) */}
+            {canSelfCancel && (
+              <div style={{ ...S.card, padding: '1.25rem 1.375rem' }}>
+                {cancelSuccess ? (
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-success)', fontSize: 'var(--text-body)' }}>
+                    {cancelSuccess}
+                  </p>
+                ) : !showCancelConfirm ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { setShowCancelConfirm(true); setCancelError(''); }}
+                      style={{
+                        width: '100%', background: 'transparent', color: 'var(--color-danger, #b91c1c)',
+                        border: '1px solid var(--color-border)', borderRadius: '0.625rem',
+                        padding: '0.75rem 1rem', fontWeight: 700, fontSize: 'var(--text-sm)',
+                        cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+                      }}
+                    >
+                      {t('track.cancel.button')}
+                    </button>
+                  </>
+                ) : (
+                  <div>
+                    <p style={{ fontWeight: 700, fontSize: 'var(--text-body)', margin: '0 0 0.35rem', color: 'var(--color-text)' }}>
+                      {t('track.cancel.confirm_title')}
+                    </p>
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 1rem' }}>
+                      {t('track.cancel.confirm_body')}
+                    </p>
+                    {cancelError && (
+                      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger, #b91c1c)', margin: '0 0 0.75rem' }}>
+                        {cancelError}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={cancelling}
+                        onClick={() => void handleConfirmCancel()}
+                        style={{
+                          flex: 1, minHeight: 44, background: 'var(--color-danger, #b91c1c)', color: 'white',
+                          border: 'none', borderRadius: '0.625rem', padding: '0.65rem 1rem',
+                          fontWeight: 700, fontSize: 'var(--text-sm)', cursor: cancelling ? 'not-allowed' : 'pointer',
+                          fontFamily: 'inherit', opacity: cancelling ? 0.7 : 1,
+                        }}
+                      >
+                        {cancelling ? t('track.cancel.working') : t('track.cancel.confirm_yes')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={cancelling}
+                        onClick={() => { setShowCancelConfirm(false); setCancelError(''); }}
+                        style={{
+                          flex: 1, minHeight: 44, background: 'var(--color-surface-alt)', color: 'var(--color-text)',
+                          border: '1px solid var(--color-border)', borderRadius: '0.625rem', padding: '0.65rem 1rem',
+                          fontWeight: 700, fontSize: 'var(--text-sm)', cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        {t('track.cancel.confirm_no')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {cancelSuccess && !canSelfCancel && (
+              <p style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-success)', fontSize: 'var(--text-body)', margin: 0 }}>
+                {cancelSuccess}
+              </p>
             )}
 
             {/* Support block */}

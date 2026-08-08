@@ -113,6 +113,7 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     Route::patch('/credit/preferences', [CustomerController::class, 'updateCreditPreferences']);
     Route::get('/orders', [CustomerController::class, 'orders']);
     Route::get('/orders/{id}', [CustomerController::class, 'show']);
+    Route::post('/orders/{id}/cancel', [CustomerController::class, 'cancelOrder']);
     Route::post('/orders', [OrderCreationController::class, 'storeCustomer']);
     Route::patch('/profile', [CustomerController::class, 'update']);
     Route::post('/cart/snapshot', [App\Http\Controllers\Api\CustomerCartController::class, 'snapshot']);
