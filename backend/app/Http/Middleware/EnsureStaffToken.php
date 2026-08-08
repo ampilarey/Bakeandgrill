@@ -55,7 +55,9 @@ class EnsureStaffToken
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 
-        if (!$user->is_active) {
+        // Reload from DB — Auth may hold a stale model after deactivation
+        // (tests / long-lived workers). Eloquent attributes are not real properties.
+        if (!($user->fresh()?->is_active ?? false)) {
             return response()->json(['message' => 'Forbidden — account disabled.'], 403);
         }
 

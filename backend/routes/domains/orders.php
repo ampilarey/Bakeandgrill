@@ -153,7 +153,9 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
     routes_domain_mark_loaded('orders.delivery');
 
     Route::middleware(['auth:sanctum', 'staff_or_customer.token'])->group(function () {
-        Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store']);
+        // Staff path also runs device.active.staff (customers skip device checks).
+        Route::post('/orders/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'store'])
+            ->middleware('device.active.staff');
         Route::patch('/orders/{order}/delivery', [App\Http\Controllers\Api\DeliveryOrderController::class, 'update']);
     });
 

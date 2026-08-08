@@ -60,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'device.active' => App\Http\Middleware\EnsureActiveDevice::class,
+            'device.active.staff' => App\Http\Middleware\EnsureStaffActiveDevice::class,
             'bml.signature' => App\Http\Middleware\VerifyBmlSignature::class,
             'role' => App\Http\Middleware\RequireRole::class,
             'permission' => App\Http\Middleware\RequirePermission::class,

@@ -37,7 +37,9 @@ class EnsureStaffOrCustomerToken
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
             }
 
-            if (property_exists($user, 'is_active') && $user->is_active === false) {
+            // Eloquent attributes are not real object properties — never use property_exists().
+            // fresh() avoids stale Auth models after mid-request deactivation.
+            if (!($user->fresh()?->is_active ?? false)) {
                 return response()->json(['message' => 'This account has been deactivated.'], 403);
             }
 
@@ -45,7 +47,7 @@ class EnsureStaffOrCustomerToken
         }
 
         if ($user instanceof Customer) {
-            if (!$user->is_active) {
+            if (!($user->fresh()?->is_active ?? false)) {
                 return response()->json(['message' => 'This account has been deactivated.'], 403);
             }
 
