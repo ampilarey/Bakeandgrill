@@ -15,6 +15,7 @@ import {
   getRestockPlan,
   getSpendHub,
   getSystemHealth,
+  systemHealthComponentLabel,
   fetchPosOverview,
   formatAuditAction,
   fetchMaintenancePreview,
@@ -1208,10 +1209,14 @@ export function DashboardPage() {
             {[
               { label: 'Environment', value: health.environment },
               { label: 'Host', value: health.host ?? '—' },
-              { label: 'Database', value: health.database },
+              { label: 'Database', value: systemHealthComponentLabel(health.database) },
+              { label: 'Redis', value: systemHealthComponentLabel(health.redis) },
+              { label: 'Queue', value: systemHealthComponentLabel(health.queue) },
+              { label: 'Scheduler', value: systemHealthComponentLabel(health.scheduler) },
+              { label: 'Storage', value: systemHealthComponentLabel(health.storage) },
               { label: 'Last Check', value: new Date(health.timestamp).toLocaleTimeString() },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#F9F5F0', borderRadius: 10, padding: '10px 14px' }}>
+              <div key={label} style={{ background: 'var(--color-bg)', borderRadius: 10, padding: '10px 14px' }}>
                 <p style={{ margin: '0 0 2px', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</p>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)', textTransform: 'capitalize' }}>{value}</p>
               </div>

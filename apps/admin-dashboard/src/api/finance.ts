@@ -1484,6 +1484,18 @@ export async function getDepositActivityReport(params: { from: string; to: strin
 
 // ── System Health ─────────────────────────────────────────────────────────────
 
+/** Component probe from GET /admin/system/health (object shape). */
+export type SystemHealthComponent = {
+  ok: boolean;
+  status: string;
+  error?: string | null;
+  driver?: string;
+  disk?: string;
+  failed_jobs_count?: number | null;
+  last_run_at?: string | null;
+  latency_ms?: number | null;
+};
+
 export interface SystemHealth {
   status: string;
   environment: string;
@@ -1491,8 +1503,23 @@ export interface SystemHealth {
   host?: string;
   staging_host?: boolean;
   env_mismatch?: boolean;
-  database: string;
+  /** Legacy string or current `{ ok, status }` probe object. */
+  database: string | SystemHealthComponent;
+  redis?: SystemHealthComponent;
+  queue?: SystemHealthComponent;
+  scheduler?: SystemHealthComponent;
+  storage?: SystemHealthComponent;
   timestamp: string;
+}
+
+/** Safe label for dashboard tiles — never return a raw object (React #31). */
+export function systemHealthComponentLabel(value: unknown): string {
+  if (typeof value === 'string' && value.trim() !== '') return value;
+  if (value && typeof value === 'object' && 'status' in value) {
+    const status = (value as { status?: unknown }).status;
+    if (typeof status === 'string' && status.trim() !== '') return status;
+  }
+  return '—';
 }
 
 export async function getSystemHealth(): Promise<SystemHealth> {
