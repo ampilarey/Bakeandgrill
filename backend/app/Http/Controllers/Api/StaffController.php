@@ -30,6 +30,77 @@ class StaffController extends Controller
         }
     }
 
+    private function actorIsOwner(User $actor): bool
+    {
+        $actor->loadMissing('role');
+
+        return $actor->role?->slug === 'owner';
+    }
+
+    private function isOwnerAccount(User $target): bool
+    {
+        $target->loadMissing('role');
+
+        return $target->role?->slug === 'owner';
+    }
+
+    private function roleIdIsOwner(int $roleId): bool
+    {
+        return Role::where('id', $roleId)->where('slug', 'owner')->exists();
+    }
+
+    /**
+     * Non-owners may manage only non-owner accounts.
+     * Owners may manage any staff account (subject to last-owner guards).
+     */
+    private function assertCanManageTarget(User $actor, User $target): void
+    {
+        if ($this->actorIsOwner($actor)) {
+            return;
+        }
+
+        if ($this->isOwnerAccount($target)) {
+            abort(403, 'Only an owner can manage owner accounts.');
+        }
+    }
+
+    private function assertCanAssignRole(User $actor, int $roleId, bool $isSelf): void
+    {
+        if ($this->actorIsOwner($actor)) {
+            return;
+        }
+
+        if ($isSelf) {
+            abort(403, 'You cannot change your own role.');
+        }
+
+        if ($this->roleIdIsOwner($roleId)) {
+            abort(403, 'Only an owner can assign the owner role.');
+        }
+    }
+
+    private function assertNotLastActiveOwnerChange(User $target, array $validated): void
+    {
+        if (!$this->isOwnerAccount($target) || !$target->is_active) {
+            return;
+        }
+
+        $demoting = isset($validated['role_id']) && !$this->roleIdIsOwner((int) $validated['role_id']);
+        $deactivating = array_key_exists('is_active', $validated) && $validated['is_active'] === false;
+
+        if (!$demoting && !$deactivating) {
+            return;
+        }
+
+        $activeOwners = User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))
+            ->where('is_active', true)
+            ->count();
+
+        if ($activeOwners <= 1) {
+            abort(422, 'Cannot demote or deactivate the last active owner.');
+        }
+    }
+
     private function formatUser(User $user): array
     {
         return [
@@ -63,6 +134,9 @@ class StaffController extends Controller
     {
         $this->authorizePermission($request, 'staff.create');
 
+        /** @var User $actor */
+        $actor = $request->user();
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -70,6 +144,10 @@ class StaffController extends Controller
             'role_id' => 'required|exists:roles,id',
             'pin' => 'required|digits_between:4,8',
         ]);
+
+        if (!$this->actorIsOwner($actor) && $this->roleIdIsOwner((int) $validated['role_id'])) {
+            abort(403, 'Only an owner can create owner accounts.');
+        }
 
         $user = User::create([
             'name' => $validated['name'],
@@ -91,7 +169,11 @@ class StaffController extends Controller
     {
         $this->authorizePermission($request, 'staff.update');
 
-        $user = User::findOrFail($id);
+        /** @var User $actor */
+        $actor = $request->user();
+        $user = User::with('role')->findOrFail($id);
+
+        $this->assertCanManageTarget($actor, $user);
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
@@ -101,6 +183,16 @@ class StaffController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
+        if (isset($validated['role_id'])) {
+            $this->assertCanAssignRole(
+                $actor,
+                (int) $validated['role_id'],
+                $actor->id === $user->id,
+            );
+        }
+
+        $this->assertNotLastActiveOwnerChange($user, $validated);
+
         if (isset($validated['email'])) {
             $validated['email'] = strtolower(trim($validated['email']));
         }
@@ -109,6 +201,8 @@ class StaffController extends Controller
         $before = $user->only(array_keys($tracked));
 
         $user->update($validated);
+        // Role relation must refresh so subsequent permission checks see the new role.
+        $user->unsetRelation('role');
         $user->load('role');
 
         if ($tracked !== []) {
@@ -131,11 +225,16 @@ class StaffController extends Controller
     {
         $this->authorizePermission($request, 'staff.update');
 
+        /** @var User $actor */
+        $actor = $request->user();
+
         $validated = $request->validate([
             'pin' => 'required|digits_between:4,8',
         ]);
 
-        $user = User::findOrFail($id);
+        $user = User::with('role')->findOrFail($id);
+        $this->assertCanManageTarget($actor, $user);
+
         $user->update(['pin_hash' => Hash::make($validated['pin'])]);
 
         $this->audit->log('staff.pin_reset', 'User', $user->id, [], ['reset_by' => $request->user()?->id], [], $request);
@@ -148,7 +247,11 @@ class StaffController extends Controller
     {
         $this->authorizePermission($request, 'staff.delete');
 
-        $user = User::findOrFail($id);
+        /** @var User $actor */
+        $actor = $request->user();
+        $user = User::with('role')->findOrFail($id);
+
+        $this->assertCanManageTarget($actor, $user);
 
         // Prevent deleting the last active owner — only applies when the user being
         // deleted is themselves an owner.

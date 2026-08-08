@@ -46,6 +46,12 @@ class EnsureDriverToken
             return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
         }
 
+        // Reload from DB — Auth may hold a stale model after deactivation
+        // (tests / long-lived workers). Eloquent attributes are not real properties.
+        if (!($user->fresh()?->is_active ?? false)) {
+            return response()->json(['message' => 'This account has been deactivated.'], 403);
+        }
+
         return $next($request);
     }
 }

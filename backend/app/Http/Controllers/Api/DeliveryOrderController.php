@@ -16,6 +16,7 @@ use App\Services\CustomerAddressService;
 use App\Services\DeliveryGateService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
+use App\Services\ShiftAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,10 +52,19 @@ class DeliveryOrderController extends Controller
         $isStaff = $authUser instanceof \App\Models\User;
 
         // Staff creating a delivery sale is still a POS sale — same
-        // permission as ringing any other order (route is shared with
-        // customers, so this cannot live in route middleware).
-        if ($isStaff && !$authUser->hasPermission('pos.ring_sales')) {
-            abort(403, 'You do not have permission to create delivery orders.');
+        // permission + open-shift accountability as ringing any other order
+        // (route is shared with customers, so this cannot live in route middleware).
+        // Device checks run via `device.active.staff` middleware on this route.
+        $staffShiftId = null;
+        if ($isStaff) {
+            if (!$authUser->hasPermission('pos.ring_sales')) {
+                abort(403, 'You do not have permission to create delivery orders.');
+            }
+
+            $staffShiftId = app(ShiftAccessService::class)->requireOpenShift(
+                $authUser,
+                'Open a shift before ringing sales.',
+            )->id;
         }
 
         if (!$isStaff) {
@@ -160,6 +170,12 @@ class DeliveryOrderController extends Controller
         $staffUser = $isCustomer ? null : $authUser;
         if ($isCustomer) {
             $payload['discount_amount'] = 0;
+        }
+
+        // Staff POS delivery must attach the cashier's own open shift
+        // (never a client-supplied or another staff member's shift).
+        if ($isStaff && $staffShiftId !== null) {
+            $payload['shift_id'] = $staffShiftId;
         }
 
         $idempotencyKey = $payload['idempotency_key'] ?? null;

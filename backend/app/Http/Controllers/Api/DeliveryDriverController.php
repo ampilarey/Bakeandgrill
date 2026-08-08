@@ -54,11 +54,18 @@ class DeliveryDriverController extends Controller
             'pin' => ['nullable', 'string', 'digits_between:4,6'],
         ]);
 
-        if (array_key_exists('pin', $validated)) {
+        $pinChanging = array_key_exists('pin', $validated);
+        if ($pinChanging) {
             $validated['pin'] = $validated['pin'] ? Hash::make($validated['pin']) : null;
         }
 
         $driver->update($validated);
+
+        // Immediate lockout: deactivated drivers and PIN resets must not keep old tokens.
+        $deactivated = array_key_exists('is_active', $validated) && !$driver->is_active;
+        if ($deactivated || $pinChanging) {
+            $driver->tokens()->delete();
+        }
 
         return response()->json(['driver' => $this->driverData($driver)]);
     }
@@ -110,7 +117,7 @@ class DeliveryDriverController extends Controller
 
         // The chosen driver must be active. (Clearing the driver is always ok.)
         if ($driverId !== null) {
-            $driver = \App\Models\DeliveryDriver::find($driverId);
+            $driver = DeliveryDriver::find($driverId);
             if (!$driver || !$driver->is_active) {
                 abort(422, 'Selected driver is not active.');
             }

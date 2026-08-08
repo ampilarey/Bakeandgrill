@@ -37,11 +37,15 @@ class EnsureStaffCustomerOrDriverToken
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
             }
 
+            if (!($user->fresh()?->is_active ?? false)) {
+                return response()->json(['message' => 'This account has been deactivated.'], 403);
+            }
+
             return $next($request);
         }
 
         if ($user instanceof Customer) {
-            if (!$user->is_active) {
+            if (!($user->fresh()?->is_active ?? false)) {
                 return response()->json(['message' => 'This account has been deactivated.'], 403);
             }
             if ($user->currentAccessToken() !== null && !$user->tokenCan('customer')) {
@@ -54,6 +58,10 @@ class EnsureStaffCustomerOrDriverToken
         if ($user instanceof DeliveryDriver) {
             if ($user->currentAccessToken() !== null && !$user->tokenCan('driver')) {
                 return response()->json(['message' => 'Forbidden — insufficient token scope.'], 403);
+            }
+
+            if (!($user->fresh()?->is_active ?? false)) {
+                return response()->json(['message' => 'This account has been deactivated.'], 403);
             }
 
             return $next($request);
