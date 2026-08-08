@@ -50,6 +50,11 @@ import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from '@shared/ut
 import { estimateDeliveryFeeLaar } from '@shared/utils/deliveryFeeEstimate';
 import type { CollectOn } from '../utils/collectOn';
 import { cartAllowsTomorrow } from '../utils/collectOn';
+import {
+  addressLoadSelection,
+  addressSelectionTransition,
+  saveAddressRequestFields,
+} from '../utils/checkoutDeliveryAddress';
 
 export type CartItem = {
   id: number;
@@ -393,8 +398,11 @@ export function useCheckout() {
 
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | "new">("new");
+  /** True only for a genuinely new address when the customer wants it saved. */
   const [saveAddress, setSaveAddress] = useState(false);
   const [addressLabel, setAddressLabel] = useState("");
+  /** True when checkout auto-applied the default and the customer has 2+ saved. */
+  const [usingAutoDefaultAddress, setUsingAutoDefaultAddress] = useState(false);
 
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [packagingFeeLaar, setPackagingFeeLaar] = useState(0);
@@ -464,13 +472,19 @@ export function useCheckout() {
         if (cancelled) return;
         const list = res.addresses ?? [];
         setSavedAddresses(list);
-        const defaultAddr = list.find((a) => a.is_default) ?? list[0];
-        if (defaultAddr) {
-          setSelectedAddressId(defaultAddr.id);
-          setDelivery((prev) => ({
-            ...addressToDelivery(defaultAddr),
-            contact_phone: prev.contact_phone || localPhone(defaultAddr.contact_phone),
-          }));
+        const sel = addressLoadSelection(list);
+        setSelectedAddressId(sel.selectedId);
+        setSaveAddress(sel.saveAddress);
+        setUsingAutoDefaultAddress(sel.usingAutoDefault);
+        if (sel.defaultAddrId != null) {
+          const defaultAddr = list.find((a) => a.id === sel.defaultAddrId);
+          if (defaultAddr) {
+            setDelivery((prev) => ({
+              ...addressToDelivery(defaultAddr),
+              contact_phone: prev.contact_phone || localPhone(defaultAddr.contact_phone),
+            }));
+            setAddressLabel(defaultAddr.label ?? '');
+          }
         }
       })
       .catch(() => { /* optional — manual entry still works */ });
@@ -925,17 +939,26 @@ export function useCheckout() {
   };
 
   const applySavedAddress = (id: number | "new") => {
+    const transition = addressSelectionTransition(id);
     setSelectedAddressId(id);
+    setSaveAddress(transition.saveAddress);
+    setUsingAutoDefaultAddress(transition.usingAutoDefault);
     if (id === "new") {
-      setSaveAddress(true);
       return;
     }
     const addr = savedAddresses.find((a) => a.id === id);
     if (addr) {
       setDelivery(addressToDelivery(addr));
-      setSaveAddress(false);
       setAddressLabel(addr.label ?? "");
     }
+  };
+
+  /** Editing a saved address field turns it into a new entry (save ticked). */
+  const markAddressAsNew = () => {
+    const transition = addressSelectionTransition('new');
+    setSelectedAddressId('new');
+    setSaveAddress(transition.saveAddress);
+    setUsingAutoDefaultAddress(transition.usingAutoDefault);
   };
 
   // ── Validation ─────────────────────────────────────────────────────────────
@@ -984,8 +1007,7 @@ export function useCheckout() {
           delivery_contact_phone: localPhone(delivery.contact_phone),
           delivery_notes: delivery.notes || undefined,
           delivery_location_link: delivery.location_link.trim() || undefined,
-          save_address: saveAddress || undefined,
-          address_label: saveAddress ? (addressLabel.trim() || undefined) : undefined,
+          ...saveAddressRequestFields(saveAddress, addressLabel),
           customer_notes: notes || undefined,
           collect_on: collectOn,
           reward_claims: rewardClaimsFromCart(cart),
@@ -1220,8 +1242,8 @@ export function useCheckout() {
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
-    savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
-    saveAddress, setSaveAddress, addressLabel, setAddressLabel,
+    savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress, markAddressAsNew,
+    saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied, setPromoApplied, promoError, promoLoading,
     useLoyalty, setUseLoyalty, deliveryFee, errors, isPlacing, globalError,
     subtotalLaar, discountedSubtotalLaar, taxLaar, deliveryFeeLaar, promoDelta, loyaltyDelta, referralDelta,

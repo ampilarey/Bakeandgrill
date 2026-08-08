@@ -33,6 +33,13 @@ import {
   formatTomorrowDateLabel,
 } from '../utils/collectOn';
 import { isDeliveryBlocked, isPickupBlocked } from '../utils/fulfilmentAvailability';
+import {
+  formatDeliveryDestination,
+  resolveDestinationLabel,
+  shouldShowDeliveryDestination,
+  shouldShowSaveAddressOption,
+  shouldShowUsingDefaultNote,
+} from '../utils/checkoutDeliveryAddress';
 
 function parseFreeDeliveryThreshold(raw: string | undefined): number {
   const n = parseFloat(raw ?? '');
@@ -197,8 +204,8 @@ export function CheckoutPage() {
     collectOn, setCollectOn, allowsTomorrow, cartForcesTomorrow,
     partySize, setPartySize,
     delivery, setDelivery, notes, setNotes,
-    savedAddresses, selectedAddressId, setSelectedAddressId, applySavedAddress,
-    saveAddress, setSaveAddress, addressLabel, setAddressLabel,
+    savedAddresses, selectedAddressId, applySavedAddress, markAddressAsNew,
+    saveAddress, setSaveAddress, addressLabel, setAddressLabel, usingAutoDefaultAddress,
     promoCode, setPromoCode, promoApplied,
     promoError, promoLoading,
     useLoyalty, setUseLoyalty,
@@ -215,6 +222,19 @@ export function CheckoutPage() {
     friendReferralLoading,
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
+
+  const showDeliveryDestination = shouldShowDeliveryDestination(orderType, delivery.address_line1);
+  const destinationLabel = resolveDestinationLabel(selectedAddressId, savedAddresses, addressLabel);
+  const destinationText = formatDeliveryDestination({
+    label: destinationLabel,
+    addressLine1: delivery.address_line1,
+    island: delivery.island,
+  });
+  const showUsingDefaultNote = shouldShowUsingDefaultNote(
+    usingAutoDefaultAddress,
+    savedAddresses.length,
+  );
+  const openAddressPicker = () => setOpenId('fulfillment');
 
   const forTomorrow = collectOn === 'tomorrow';
   const deliveryModeGate = forTomorrow
@@ -697,7 +717,7 @@ export function CheckoutPage() {
           </div>
         )}
         <Field label={t('checkout.label_address')} placeholder={t('checkout.ph_address')}
-          value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); setSelectedAddressId('new'); }} error={errors.address_line1} />
+          value={delivery.address_line1} onChange={(v) => { setDelivery({ ...delivery, address_line1: v }); markAddressAsNew(); }} error={errors.address_line1} />
         <Field label={t('checkout.label_address2')} placeholder={t('checkout.ph_address2')}
           value={delivery.address_line2} onChange={(v) => setDelivery({ ...delivery, address_line2: v })} />
         <Field label={t('checkout.label_island')} placeholder={t('checkout.ph_island')}
@@ -715,8 +735,8 @@ export function CheckoutPage() {
         </div>
         <Field label={t('checkout.label_delivery_notes')} placeholder={t('checkout.ph_delivery_notes')}
           value={delivery.notes} onChange={(v) => setDelivery({ ...delivery, notes: v })} multiline />
-        {isAuthenticated && (selectedAddressId === 'new' || saveAddress) && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {shouldShowSaveAddressOption(isAuthenticated, selectedAddressId) && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="checkout-save-address">
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -996,6 +1016,46 @@ export function CheckoutPage() {
           highlight={deliveryFeeLaar === 0}
         />
       )}
+      {showDeliveryDestination && (
+        <div
+          data-testid="checkout-delivery-destination-summary"
+          style={{
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: '1px dashed var(--color-border)',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text)',
+            lineHeight: 1.4,
+          }}
+        >
+          <div>
+            {t('checkout.delivering_to').replace('{destination}', destinationText)}
+          </div>
+          {showUsingDefaultNote && (
+            <div style={{ marginTop: 2, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              {t('checkout.using_default_address')}
+            </div>
+          )}
+          <button
+            type="button"
+            data-testid="checkout-change-address-summary"
+            onClick={openAddressPicker}
+            style={{
+              marginTop: 6,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: 'var(--color-primary)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {t('checkout.change_address')}
+          </button>
+        </div>
+      )}
       <div style={S.totalRow}>
         <span>{t('checkout.total')}</span>
         <span style={S.totalRowAmount}>MVR {laarToMvr(totalLaar)}</span>
@@ -1168,6 +1228,43 @@ export function CheckoutPage() {
           <div>
             <p className="banner-title">Choose your arrival time</p>
             <p className="banner-sub">Pick when you’ll arrive so we can reserve your table and time the kitchen.</p>
+          </div>
+        </div>
+      )}
+      {showDeliveryDestination && (
+        <div
+          className="banner banner-info"
+          style={{ marginBottom: 12 }}
+          data-testid="checkout-delivery-destination"
+        >
+          <span className="banner-icon" aria-hidden>📍</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="banner-title" style={{ margin: 0 }}>
+              {t('checkout.delivering_to').replace('{destination}', destinationText)}
+            </p>
+            {showUsingDefaultNote && (
+              <p className="banner-sub" style={{ margin: '2px 0 0' }}>
+                {t('checkout.using_default_address')}
+              </p>
+            )}
+            <button
+              type="button"
+              data-testid="checkout-change-address"
+              onClick={openAddressPicker}
+              style={{
+                marginTop: 6,
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                color: 'var(--color-primary)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              {t('checkout.change_address')}
+            </button>
           </div>
         </div>
       )}
