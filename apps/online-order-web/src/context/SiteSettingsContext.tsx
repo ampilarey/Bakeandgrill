@@ -79,6 +79,14 @@ export interface SiteSettings {
   order_home_reviews_title?: string;
   order_mode_delivery_hint?: string;
   order_mode_pickup_hint?: string;
+  order_mode_dine_in_hint?: string;
+  order_mode_delivery_info?: string;
+  order_mode_pickup_info?: string;
+  order_mode_dine_in_info?: string;
+  order_mode_status_available?: string;
+  order_mode_status_unavailable?: string;
+  order_mode_status_unavailable_opens?: string;
+  order_mode_learn_more?: string;
   primary_color?: string;
   delivery_threshold?: string;
   preorder_page_title?: string;
