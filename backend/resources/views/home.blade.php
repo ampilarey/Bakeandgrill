@@ -53,6 +53,7 @@
     transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .banner-slide {
+    flex: 0 0 100%;
     min-width: 100%;
     height: 100%;
     position: relative;
@@ -237,7 +238,18 @@
 .banner-btn:hover { background: rgba(255,255,255,0.22); }
 .banner-btn.prev { left: 1.5rem; }
 .banner-btn.next { right: 1.5rem; }
-@media (max-width: 768px) { .banner-btn { display: none; } }
+/* Mobile: keep chevrons visible — swipe/dots alone were too easy to miss */
+@media (max-width: 768px) {
+    .banner-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+        background: rgba(20, 14, 8, 0.45);
+        border-color: rgba(255, 255, 255, 0.35);
+    }
+    .banner-btn.prev { left: 0.65rem; }
+    .banner-btn.next { right: 0.65rem; }
+}
 
 .banner-dots {
     position: absolute;
@@ -249,8 +261,24 @@
     width: 6px; height: 6px; border-radius: 99px;
     background: rgba(255,255,255,0.3);
     transition: all 0.3s; cursor: pointer;
+    /* Expand tap target without changing visible size */
+    position: relative;
+}
+.banner-dot::before {
+    content: '';
+    position: absolute;
+    inset: -12px -10px;
 }
 .banner-dot.active { width: 24px; background: var(--amber); }
+@media (max-width: 768px) {
+    .banner-dots { bottom: 0.85rem; gap: 8px; }
+    .banner-dot {
+        width: 8px;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.45);
+    }
+    .banner-dot.active { width: 26px; }
+}
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
 @media (min-width: 769px) {
@@ -1035,7 +1063,8 @@
                 @elseif(!empty($slide['image']))
                     <img
                         src="{{ $slide['image'] }}"
-                        loading="{{ $sIdx === 0 ? 'eager' : 'lazy' }}"
+                        loading="eager"
+                        decoding="async"
                         alt="{{ $imgAlt }}"
                         style="object-position:{{ $focalX }}% {{ $focalY }}%;"
                     >

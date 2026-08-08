@@ -105,12 +105,24 @@ export function PromoCarousel({
     setPaused(true);
   };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
+  const endTouch = (clientX: number | null) => {
+    if (touchStartX.current === null || clientX === null) {
+      touchStartX.current = null;
+      setPaused(false);
+      return;
+    }
+    const dx = clientX - touchStartX.current;
     touchStartX.current = null;
     setPaused(false);
     if (Math.abs(dx) > 40) move(dx < 0 ? 1 : -1);
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    endTouch(e.changedTouches[0]?.clientX ?? null);
+  };
+
+  const onTouchCancel = () => {
+    endTouch(null);
   };
 
   const handleImgError = (i: number) => {
@@ -170,6 +182,7 @@ export function PromoCarousel({
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
     >
       {statusSlot}
       {/* Sliding track */}

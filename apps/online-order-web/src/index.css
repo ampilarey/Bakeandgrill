@@ -439,26 +439,33 @@ img.brand-logo--dark { display: none; }
   padding: 0;
   cursor: pointer;
   transition: width 0.3s, background 0.3s;
+  position: relative;
+}
+/* Expand tap target without changing visible size */
+.home-promo-hero__dot::before {
+  content: '';
+  position: absolute;
+  inset: -12px -10px;
 }
 .home-promo-hero__dot.is-active {
   width: 24px;
   background: var(--color-primary, #d4813a);
 }
 .home-promo-hero__btn {
-  display: none;
+  display: flex;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(20, 14, 8, 0.45);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   color: white;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
@@ -470,8 +477,17 @@ img.brand-logo--dark { display: none; }
 .home-promo-hero__btn:hover {
   background: rgba(255, 255, 255, 0.22);
 }
-.home-promo-hero__btn--prev { left: 1.5rem; }
-.home-promo-hero__btn--next { right: 1.5rem; }
+.home-promo-hero__btn--prev { left: 0.65rem; }
+.home-promo-hero__btn--next { right: 0.65rem; }
+@media (max-width: 768px) {
+  .home-promo-hero__dots { bottom: 0.85rem; gap: 8px; }
+  .home-promo-hero__dot {
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.45);
+  }
+  .home-promo-hero__dot.is-active { width: 26px; }
+}
 
 /* Desktop: same height band as main website hero (full-bleed) */
 @media (min-width: 769px) {
@@ -533,9 +549,9 @@ img.brand-logo--dark { display: none; }
     border-radius: 12px;
   }
   .home-promo-hero__btn {
-    display: flex;
     width: 52px;
     height: 52px;
+    font-size: 1.25rem;
     background: rgba(20, 14, 8, 0.35);
     border: 1px solid rgba(255, 255, 255, 0.28);
   }
