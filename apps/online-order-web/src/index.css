@@ -2069,6 +2069,46 @@ textarea.field-input {
   background: var(--color-primary-light);
 }
 
+/* Logged-in: local phone digits + person avatar (no name / "Account" label) */
+.top-nav__account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0.2rem 0.35rem 0.2rem 0.65rem;
+  border-radius: 999px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+.top-nav__account-chip:hover,
+.top-nav__account-chip.is-active,
+.top-nav__account-chip[aria-current="page"] {
+  background: var(--color-primary-light);
+}
+
+.top-nav__account-phone {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.top-nav__account-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  border: 2px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .top-nav__brand-name {
     display: none;
@@ -2081,6 +2121,9 @@ textarea.field-input {
     padding: 0.4rem 0.55rem;
     font-size: 0.8125rem;
     max-width: 6.5rem;
+  }
+  .top-nav__account-phone {
+    font-size: 0.8125rem;
   }
   .top-nav__prayer {
     max-width: 16rem;

@@ -9,6 +9,27 @@ import { useActiveOrder } from '../../hooks/useActiveOrder';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { SHELL_NAV_TABS } from './navTabs';
 
+/** Local phone digits only (AuthContext stores 7-digit local when available). */
+function localPhoneDigits(value: string | null): string | null {
+  if (!value) return null;
+  const digits = value.replace(/[\s-]/g, '');
+  return /^\d{6,}$/.test(digits) ? digits : null;
+}
+
+function PersonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /**
  * Tablet/desktop top bar — logo, text links, prayer strip, account.
  * Brand (logo + name) leaves the order app for the main website.
@@ -47,14 +68,7 @@ export function TopNav() {
   const logoSrc = s.logo || '/logo.png';
   const onAccount =
     location.pathname === '/account' || location.pathname.startsWith('/account/');
-
-  const accountLabel = (() => {
-    if (!isAuthenticated) return t('home.sign_in');
-    if (customerName && !/^\d{6,}$/.test(customerName.replace(/[\s-]/g, ''))) {
-      return customerName.split(/\s+/)[0];
-    }
-    return t('nav.account');
-  })();
+  const phone = isAuthenticated ? localPhoneDigits(customerName) : null;
 
   return (
     <header className={`top-nav${scrolled ? ' is-scrolled' : ''}`}>
@@ -103,13 +117,27 @@ export function TopNav() {
         </div>
 
         <div className="top-nav__actions">
-          <Link
-            to="/account"
-            className={`top-nav__account${onAccount ? ' is-active' : ''}`}
-            aria-current={onAccount ? 'page' : undefined}
-          >
-            {accountLabel}
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              to="/account"
+              className={`top-nav__account-chip${onAccount ? ' is-active' : ''}`}
+              aria-current={onAccount ? 'page' : undefined}
+              aria-label={phone ? `${t('nav.account')} ${phone}` : t('nav.account')}
+            >
+              {phone ? <span className="top-nav__account-phone">{phone}</span> : null}
+              <span className="top-nav__account-avatar" aria-hidden>
+                <PersonIcon />
+              </span>
+            </Link>
+          ) : (
+            <Link
+              to="/account"
+              className={`top-nav__account${onAccount ? ' is-active' : ''}`}
+              aria-current={onAccount ? 'page' : undefined}
+            >
+              {t('home.sign_in')}
+            </Link>
+          )}
         </div>
       </div>
     </header>

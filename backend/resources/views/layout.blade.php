@@ -402,8 +402,7 @@
             flex-shrink: 0;
         }
 
-        .hdr-login,
-        .hdr-account {
+        .hdr-login {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -420,12 +419,53 @@
             transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
             box-sizing: border-box;
         }
-        .hdr-login:hover,
-        .hdr-account:hover {
+        .hdr-login:hover {
             border-color: var(--amber);
             background: var(--amber-light);
             color: var(--amber);
             transform: translateY(-1px);
+        }
+        /* Logged-in desktop: local phone + person icon → /order/account */
+        .hdr-account {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 44px;
+            padding: 0.25rem 0.4rem 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            text-decoration: none;
+            color: var(--text);
+            transition: border-color 0.15s, background 0.15s, color 0.15s;
+            box-sizing: border-box;
+        }
+        .hdr-account:hover {
+            border-color: var(--amber);
+            background: var(--amber-light);
+            color: var(--amber);
+        }
+        .hdr-account__phone {
+            font-size: 0.875rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.01em;
+        }
+        .hdr-account__avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--amber-light);
+            border: 2px solid var(--amber);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--amber);
+            flex-shrink: 0;
+        }
+        .hdr-account__avatar svg {
+            width: 16px;
+            height: 16px;
         }
         .hdr-logout-btn {
             display: inline-flex;
@@ -533,23 +573,41 @@
         }
         .mob-logo img { width: 32px; height: 32px; border-radius: 7px; }
         .mob-hdr-btns { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-        /* Logged-in chip: phone digits only (matches order app). Cap width if name is fallback. */
+        /* Logged-in chip: local phone + person icon (no name). */
         .mob-hdr-account {
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
+            gap: 0.35rem;
             max-width: min(11rem, 42vw);
-            padding: 0.3rem 0.65rem;
+            padding: 0.2rem 0.35rem 0.2rem 0.6rem;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 999px;
             font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--muted);
+            font-weight: 700;
+            color: var(--text);
             text-decoration: none;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        }
+        .mob-hdr-account__phone {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.01em;
+        }
+        .mob-hdr-account__avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--amber-light);
+            border: 1.5px solid var(--amber);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--amber);
+            flex-shrink: 0;
+        }
+        .mob-hdr-account__avatar svg {
+            width: 14px;
+            height: 14px;
         }
         .mob-order-btn {
             padding: 0.45rem 0.875rem;
@@ -1342,11 +1400,17 @@
             @auth('customer')
                 @php
                     $cust = Auth::guard('customer')->user();
-                    // Compact header chip: always phone (matches order app). Name lives on Account.
+                    // Local digits only — never show +960 or the customer name in the chip.
                     $dispPhoneDesk = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
-                    $greetDesk = $dispPhoneDesk !== '' ? $dispPhoneDesk : ($cust->name ?? 'Account');
                 @endphp
-                <a href="/order/account" class="hdr-account" title="{{ $greetDesk }}">Account</a>
+                <a href="/order/account" class="hdr-account" aria-label="{{ $dispPhoneDesk !== '' ? 'My account '.$dispPhoneDesk : 'My account' }}">
+                    @if($dispPhoneDesk !== '')
+                        <span class="hdr-account__phone">{{ $dispPhoneDesk }}</span>
+                    @endif
+                    <span class="hdr-account__avatar" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"/></svg>
+                    </span>
+                </a>
                 <form method="POST" action="{{ route('customer.logout') }}" style="display:inline;">
                     @csrf
                     <button type="submit" class="hdr-logout-btn">Log out</button>
@@ -1411,13 +1475,16 @@
             @auth('customer')
                 @php
                     $cust = Auth::guard('customer')->user();
-                    // Compact header chip: always phone (matches order app). Do NOT prefer name —
-                    // long Dhivehi/English names overflow this pill. Full name is on Account.
+                    // Local digits only — never show +960 or the customer name in the chip.
                     $dispPhone = preg_replace('/^\+?960/', '', preg_replace('/\D/', '', $cust->phone ?? ''));
-                    $greetMob = $dispPhone !== '' ? $dispPhone : ($cust->name ?? 'Account');
                 @endphp
-                <a href="/order/account" class="mob-hdr-account" title="{{ $greetMob }}">
-                    👤 {{ $greetMob }}
+                <a href="/order/account" class="mob-hdr-account" aria-label="{{ $dispPhone !== '' ? 'My account '.$dispPhone : 'My account' }}">
+                    @if($dispPhone !== '')
+                        <span class="mob-hdr-account__phone">{{ $dispPhone }}</span>
+                    @endif
+                    <span class="mob-hdr-account__avatar" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"/></svg>
+                    </span>
                 </a>
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
