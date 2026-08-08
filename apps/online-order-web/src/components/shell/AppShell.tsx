@@ -9,7 +9,6 @@ import { useCart } from '../../context/CartContext';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { getCustomerMe } from '../../api';
 import { isEventFlowPath } from '../../utils/eventFlowPath';
-import { ActiveOrderCapsule } from './ActiveOrderCapsule';
 import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
 import { TopNav } from './TopNav';
@@ -103,7 +102,6 @@ function AppShellChrome() {
         <Outlet />
       </main>
 
-      <ActiveOrderCapsule />
       <FloatingCartBar />
       {!isDesktopShell && <BottomNav />}
     </div>
@@ -140,7 +138,7 @@ function AuthNameHydration() {
 }
 
 /**
- * App chrome: TopNav (≥768) or BottomNav (phone), outlet, capsule, floating cart FAB.
+ * App chrome: TopNav (≥768) or BottomNav (phone), outlet, floating cart FAB.
  * No global marketing footer (rehomed to Account / BrandFooter).
  */
 export function AppShell() {

@@ -62,7 +62,7 @@ describe('ActiveOrderProvider', () => {
     vi.clearAllMocks();
   });
 
-  it('ignores gift_card purchases for the active capsule', async () => {
+  it('ignores gift_card purchases for active-order indicators', async () => {
     fetchMock.mockResolvedValue({
       data: [
         { id: 9, status: 'paid', type: 'gift_card', order_number: 'GC-9' },

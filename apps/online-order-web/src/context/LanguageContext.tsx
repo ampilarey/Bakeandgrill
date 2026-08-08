@@ -59,7 +59,6 @@ const TRANSLATIONS: Translations = {
   "privacy.sec_sharing": "Data Sharing",
   "privacy.sec_rights": "Your Rights",
   "privacy.sec_contact": "Contact Us",
-  "orders.active_capsule": "Order",
   "orders.active_badge": "Active order",
   "rewards.title": "Rewards",
   "rewards.stub_title": "Loyalty & rewards",
