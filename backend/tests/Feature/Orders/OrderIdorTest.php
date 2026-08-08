@@ -94,6 +94,8 @@ class OrderIdorTest extends TestCase
 
     public function test_staff_can_view_any_order(): void
     {
+        \App\Domains\Permissions\PermissionCatalogSync::sync();
+
         $role = Role::firstOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'description' => '', 'is_active' => true]);
         $staff = User::create([
             'name' => 'Manager',
@@ -103,6 +105,7 @@ class OrderIdorTest extends TestCase
             'pin_hash' => Hash::make('1234'),
             'is_active' => true,
         ]);
+        $staff->grantPermission('pos.view_all_station_orders');
 
         Sanctum::actingAs($staff, ['staff']);
 

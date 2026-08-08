@@ -81,7 +81,9 @@ class PosPayPageController extends Controller
                 ->with('success', 'Nothing left to pay on this order.');
         }
 
-        $idempotencyKey = 'paypage:' . $order->id . ':' . now()->format('YmdHis');
+        // Stable per order+remaining balance so retries reuse the same BML session
+        // (PaymentService also guards active sessions server-side).
+        $idempotencyKey = 'paypage:' . $order->id . ':' . $remainingLaar;
         $returnUrl = rtrim((string) config('bml.return_url'), '/')
             . '?orderId=' . $order->id
             . '&receiptToken=' . urlencode($receipt->token);

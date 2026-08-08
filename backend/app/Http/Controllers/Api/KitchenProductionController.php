@@ -131,12 +131,18 @@ class KitchenProductionController extends Controller
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,webp'],
             'type' => ['required', Rule::in(['production_photo', 'waste_photo', 'other'])],
-            'kitchen_production_item_id' => ['nullable', 'integer', 'exists:kitchen_production_items,id'],
+            'kitchen_production_item_id' => ['nullable', 'integer'],
         ]);
+
+        $itemId = $validated['kitchen_production_item_id'] ?? null;
+        if ($itemId !== null) {
+            // Must belong to this production batch — reject cross-parent IDs.
+            $this->findItem($batch->id, (int) $itemId);
+        }
 
         $path = $request->file('file')->store('kitchen-production/' . $batch->id, 'public');
         $attachment = $batch->attachments()->create([
-            'kitchen_production_item_id' => $validated['kitchen_production_item_id'] ?? null,
+            'kitchen_production_item_id' => $itemId,
             'uploaded_by' => $request->user()->id,
             'type' => $validated['type'],
             'file_path' => $path,

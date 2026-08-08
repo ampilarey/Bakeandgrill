@@ -9,6 +9,7 @@ use App\Domains\Auth\Services\PasswordResetGrantService;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Rules\MaldivesPhone;
+use App\Support\CustomerLoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
@@ -165,10 +166,19 @@ class CustomerPortalController extends Controller
             return back()->withErrors(['phone' => 'No account found for this phone number.']);
         }
 
+        if (!$customer->is_active) {
+            return back()->withErrors([
+                'phone' => 'This account has been deactivated. Please contact support.',
+            ]);
+        }
+
         // 'password' is excluded from $fillable — set directly so the hashed cast
         // encrypts once. Mass-assigning throws under preventSilentlyDiscardingAttributes.
         $customer->password = $request->password;
         $customer->save();
+
+        // Match API reset: revoke existing Sanctum bearer tokens after password change.
+        $customer->tokens()->where('name', 'like', 'customer-%')->delete();
 
         Auth::guard('customer')->login($customer);
         $request->session()->regenerate();
@@ -260,14 +270,34 @@ class CustomerPortalController extends Controller
         ]);
 
         $phone = $this->normalizePhone($request->phone);
+        $ip = (string) $request->ip();
+
+        // Same phone+IP / account limits as API password login.
+        if (CustomerLoginThrottle::tooManyAttempts($phone, $ip)) {
+            $seconds = CustomerLoginThrottle::availableInSeconds($phone, $ip);
+
+            return back()->withErrors([
+                'phone' => 'Too many login attempts. Try again in ' . ceil($seconds / 60) . ' minutes.',
+            ])->withInput(['phone' => $request->phone]);
+        }
+
         $customer = Customer::where('phone', $phone)->first();
 
         if (!$customer || empty($customer->password) || !Hash::check($request->password, $customer->password)) {
-            return back()->withErrors(['password' => 'Invalid phone number or password.'])->withInput(['phone' => $request->phone]);
+            CustomerLoginThrottle::hit($phone, $ip);
+
+            // Same generic message as API — do not reveal whether the phone exists.
+            return back()->withErrors([
+                'password' => 'Invalid phone number or password.',
+            ])->withInput(['phone' => $request->phone]);
         }
 
+        CustomerLoginThrottle::clear($phone, $ip);
+
         if (!$customer->is_active) {
-            return back()->withErrors(['phone' => 'This account has been deactivated. Please contact support.'])->withInput(['phone' => $request->phone]);
+            return back()->withErrors([
+                'phone' => 'This account has been deactivated. Please contact support.',
+            ])->withInput(['phone' => $request->phone]);
         }
 
         $customer->update(['last_login_at' => now()]);

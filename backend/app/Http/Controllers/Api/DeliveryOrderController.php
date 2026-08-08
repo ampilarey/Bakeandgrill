@@ -182,6 +182,20 @@ class DeliveryOrderController extends Controller
         if (is_string($idempotencyKey) && $idempotencyKey !== '') {
             $existing = Order::where('idempotency_key', $idempotencyKey)->first();
             if ($existing) {
+                // Never return another actor's order for a reused key.
+                if ($isCustomer) {
+                    if ((int) $existing->customer_id !== (int) $authUser->id) {
+                        abort(409, 'Idempotency key already used.');
+                    }
+                } elseif ($isStaff) {
+                    $sameCustomer = isset($payload['customer_id'])
+                        && (int) $existing->customer_id === (int) $payload['customer_id'];
+                    $sameCashier = (int) ($existing->user_id ?? 0) === (int) $authUser->id;
+                    if (!$sameCustomer && !$sameCashier) {
+                        abort(409, 'Idempotency key already used.');
+                    }
+                }
+
                 $existing->load(['items.modifiers']);
 
                 return response()->json(['order' => $existing], 200);

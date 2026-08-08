@@ -31,11 +31,23 @@ class StripeService
      * @param int $amountLaari Amount in smallest unit (laari for MVR)
      * @param string $currency ISO currency code, e.g. 'mvr', 'usd'
      * @param string $orderId Used as metadata for reconciliation
+     * @param string|null $idempotencyKey Stripe Idempotency-Key (safe retries)
      * @return array{ payment_intent_id: string, client_secret: string }
      */
-    public function createPaymentIntent(int $amountLaari, string $currency, string $orderId): array
-    {
+    public function createPaymentIntent(
+        int $amountLaari,
+        string $currency,
+        string $orderId,
+        ?string $idempotencyKey = null,
+    ): array {
+        $headers = [];
+        if (is_string($idempotencyKey) && $idempotencyKey !== '') {
+            // Stripe supports Idempotency-Key for safe create retries.
+            $headers['Idempotency-Key'] = substr($idempotencyKey, 0, 255);
+        }
+
         $response = Http::withBasicAuth(config('services.stripe.secret_key'), '')
+            ->withHeaders($headers)
             ->asForm()
             ->post(self::BASE_URL . '/payment_intents', [
                 'amount' => $amountLaari,

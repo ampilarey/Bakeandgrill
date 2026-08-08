@@ -119,9 +119,16 @@ class KitchenReceivingController extends Controller
             'kitchen_production_item_id' => ['nullable', 'integer'],
         ]);
 
+        $itemId = $validated['kitchen_production_item_id'] ?? null;
+        if ($itemId !== null) {
+            KitchenProductionItem::where('kitchen_production_batch_id', $batch->id)
+                ->where('id', $itemId)
+                ->firstOrFail();
+        }
+
         $path = $request->file('file')->store('kitchen-receiving/' . $batch->id, 'public');
         $attachment = $batch->attachments()->create([
-            'kitchen_production_item_id' => $validated['kitchen_production_item_id'] ?? null,
+            'kitchen_production_item_id' => $itemId,
             'uploaded_by' => $request->user()->id,
             'type' => $validated['type'],
             'file_path' => $path,

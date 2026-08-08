@@ -8,6 +8,7 @@ use App\Domains\Auth\Services\CustomerOtpService;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Rules\MaldivesPhone;
+use App\Support\CustomerLoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -92,15 +93,9 @@ class CustomerAuthController extends Controller
 
         $phone = $this->normalizePhone($input['phone']);
 
-        // Controller-level rate limit (in addition to route throttle) so lockout
-        // message is friendly and consistent regardless of proxy/throttle config.
-        $rateKey = 'customer-login:' . $phone . ':' . $request->ip();
-        // Account-level limiter — IP rotation must not buy a fresh budget
-        // against the same phone number (20 attempts / hour per account).
-        $accountKey = 'customer-login-acct:' . $phone;
-
-        if (RateLimiter::tooManyAttempts($rateKey, 5) || RateLimiter::tooManyAttempts($accountKey, 20)) {
-            $seconds = max(RateLimiter::availableIn($rateKey), RateLimiter::availableIn($accountKey));
+        // Shared with Blade web login (CustomerLoginThrottle).
+        if (CustomerLoginThrottle::tooManyAttempts($phone, (string) $request->ip())) {
+            $seconds = CustomerLoginThrottle::availableInSeconds($phone, (string) $request->ip());
             throw ValidationException::withMessages([
                 'phone' => ['Too many login attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
             ]);
@@ -109,15 +104,13 @@ class CustomerAuthController extends Controller
         $customer = Customer::where('phone', $phone)->first();
 
         if (!$customer || empty($customer->password) || !Hash::check($input['password'], $customer->password)) {
-            RateLimiter::hit($rateKey, 900); // 15-minute decay per phone+IP
-            RateLimiter::hit($accountKey, 3600); // 1-hour account window
+            CustomerLoginThrottle::hit($phone, (string) $request->ip());
             throw ValidationException::withMessages([
                 'phone' => ['Invalid phone number or password.'],
             ]);
         }
 
-        RateLimiter::clear($rateKey);
-        RateLimiter::clear($accountKey);
+        CustomerLoginThrottle::clear($phone, (string) $request->ip());
 
         if (!$customer->is_active) {
             throw ValidationException::withMessages([
