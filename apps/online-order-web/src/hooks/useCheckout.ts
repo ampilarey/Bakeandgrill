@@ -55,6 +55,15 @@ import {
   addressSelectionTransition,
   saveAddressRequestFields,
 } from '../utils/checkoutDeliveryAddress';
+import {
+  CHECKOUT_PENDING_ORDER_KEY,
+  clearCheckoutPendingOrderId,
+  dueLaarFromOrder,
+  isPendingOrderReusable,
+  isZeroBalanceApiError,
+  readCheckoutPendingOrderId,
+  writeCheckoutPendingOrderId,
+} from '../utils/checkoutPendingOrder';
 
 export type CartItem = {
   id: number;
@@ -97,23 +106,8 @@ export const EMPTY_DELIVERY: DeliveryForm = {
   contact_name: "", contact_phone: "", notes: "", location_link: "",
 };
 
-const PENDING_ORDER_KEY = 'checkout_pending_order_id';
-
-function readPendingOrderId(): number | null {
-  try {
-    const stored = sessionStorage.getItem(PENDING_ORDER_KEY);
-    return stored ? Number(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writePendingOrderId(id: number | null): void {
-  try {
-    if (id) sessionStorage.setItem(PENDING_ORDER_KEY, String(id));
-    else sessionStorage.removeItem(PENDING_ORDER_KEY);
-  } catch { /* ignore quota / private mode */ }
-}
+/** Re-export for callers that clear on reorder / order-status success. */
+export { CHECKOUT_PENDING_ORDER_KEY, clearCheckoutPendingOrderId };
 
 /**
  * Strip Maldivian country code — +9607972434 / 009607972434 → 7972434.
@@ -359,10 +353,10 @@ export function useCheckout() {
   } | null>(null);
   const [promoError, setPromoError]   = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
-  const [pendingOrderId, setPendingOrderIdState] = useState<number | null>(() => readPendingOrderId());
+  const [pendingOrderId, setPendingOrderIdState] = useState<number | null>(() => readCheckoutPendingOrderId());
   const setPendingOrderId = (id: number | null) => {
     setPendingOrderIdState(id);
-    writePendingOrderId(id);
+    writeCheckoutPendingOrderId(id);
   };
 
   const [useLoyalty, setUseLoyalty]   = useState(false);
@@ -984,71 +978,85 @@ export function useCheckout() {
     let giftCardAttachedOrderId: number | null = null;
 
     try {
-      let orderId: number;
+      let orderId: number | null = null;
 
-      // If an order was already created (e.g. payment failed on first attempt),
-      // reuse it instead of creating a duplicate.
+      // Resume only when the stored order still owes money (BML retry).
+      // A paid kitchen-pending order from a prior checkout must NOT be reused —
+      // that is the reorder → "Nothing to pay" collision.
       if (pendingOrderId) {
-        orderId = pendingOrderId;
-      } else if (orderType === "delivery") {
-        const res = await createDeliveryOrder({
-          items: cart.map((item) => ({
-            item_id: item.id,
-            quantity: item.quantity,
-            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
-            packaging_option_id: item.packagingOptionId ?? undefined,
-            modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
-            children: childrenFromCartItem(item),
-          })),
-          delivery_address_line1: delivery.address_line1,
-          delivery_address_line2: delivery.address_line2 || undefined,
-          delivery_island: delivery.island,
-          delivery_contact_name: delivery.contact_name,
-          delivery_contact_phone: localPhone(delivery.contact_phone),
-          delivery_notes: delivery.notes || undefined,
-          delivery_location_link: delivery.location_link.trim() || undefined,
-          ...saveAddressRequestFields(saveAddress, addressLabel),
-          customer_notes: notes || undefined,
-          collect_on: collectOn,
-          reward_claims: rewardClaimsFromCart(cart),
-        });
-        orderId = res.order.id;
-      } else if (orderType === "dine_in") {
-        // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
-        const res = await createCustomerOrder({
-          items: cart.map((item) => ({
-            item_id: item.id,
-            quantity: item.quantity,
-            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
-            modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
-            children: childrenFromCartItem(item),
-          })),
-          type: "dine_in",
-          customer_notes: notes || undefined,
-          pickup_slot_at: pickupSlotAt ?? undefined,
-          party_size: partySize,
-          collect_on: "today",
-          reward_claims: rewardClaimsFromCart(cart),
-        });
-        orderId = res.order.id;
-      } else {
-        const res = await createCustomerOrder({
-          items: cart.map((item) => ({
-            item_id: item.id,
-            quantity: item.quantity,
-            variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
-            packaging_option_id: item.packagingOptionId ?? undefined,
-            modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
-            children: childrenFromCartItem(item),
-          })),
-          type: "online_pickup",
-          customer_notes: notes || undefined,
-          reward_claims: rewardClaimsFromCart(cart),
-          // Pickup slots are same-day only — skip when collecting tomorrow.
-          pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
-          collect_on: collectOn,
-        });
-        orderId = res.order.id;
+        try {
+          const { order: existing } = await getOrderDetail(pendingOrderId);
+          if (isPendingOrderReusable(existing)) {
+            orderId = pendingOrderId;
+          } else {
+            setPendingOrderId(null);
+          }
+        } catch {
+          setPendingOrderId(null);
+        }
+      }
+
+      if (orderId == null) {
+        if (orderType === "delivery") {
+          const res = await createDeliveryOrder({
+            items: cart.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+              packaging_option_id: item.packagingOptionId ?? undefined,
+              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+              children: childrenFromCartItem(item),
+            })),
+            delivery_address_line1: delivery.address_line1,
+            delivery_address_line2: delivery.address_line2 || undefined,
+            delivery_island: delivery.island,
+            delivery_contact_name: delivery.contact_name,
+            delivery_contact_phone: localPhone(delivery.contact_phone),
+            delivery_notes: delivery.notes || undefined,
+            delivery_location_link: delivery.location_link.trim() || undefined,
+            ...saveAddressRequestFields(saveAddress, addressLabel),
+            customer_notes: notes || undefined,
+            collect_on: collectOn,
+            reward_claims: rewardClaimsFromCart(cart),
+          });
+          orderId = res.order.id;
+        } else if (orderType === "dine_in") {
+          // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
+          const res = await createCustomerOrder({
+            items: cart.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+              children: childrenFromCartItem(item),
+            })),
+            type: "dine_in",
+            customer_notes: notes || undefined,
+            pickup_slot_at: pickupSlotAt ?? undefined,
+            party_size: partySize,
+            collect_on: "today",
+            reward_claims: rewardClaimsFromCart(cart),
+          });
+          orderId = res.order.id;
+        } else {
+          const res = await createCustomerOrder({
+            items: cart.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+              packaging_option_id: item.packagingOptionId ?? undefined,
+              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+              children: childrenFromCartItem(item),
+            })),
+            type: "online_pickup",
+            customer_notes: notes || undefined,
+            reward_claims: rewardClaimsFromCart(cart),
+            // Pickup slots are same-day only — skip when collecting tomorrow.
+            pickup_slot_at: collectOn === 'today' ? (pickupSlotAt ?? undefined) : undefined,
+            collect_on: collectOn,
+          });
+          orderId = res.order.id;
+        }
       }
 
       setPendingOrderId(orderId);
@@ -1148,18 +1156,15 @@ export function useCheckout() {
       }
 
       const { order: freshOrder } = await getOrderDetail(orderId);
-      const grandLaar =
-        typeof freshOrder.total_laar === "number"
-          ? freshOrder.total_laar
-          : Math.round(Number(freshOrder.total) * 100);
-      const giftTenderLaar = Math.max(0, Number(freshOrder.gift_card_discount_laar ?? 0));
-      const dueLaar = Math.max(0, grandLaar - giftTenderLaar);
+      // Defer to server remaining balance (settled payments + gift tender).
+      const dueLaar = dueLaarFromOrder(freshOrder);
 
       if (dueLaar <= 0) {
-        // Hold is consumed on zero-balance completion — do not release.
+        // Genuine zero-balance (gift card / loyalty) — complete without card.
         loyaltyHeldForOrderId = null;
         giftCardAttachedOrderId = null;
         await completeZeroBalanceOrder(orderId);
+        setPendingOrderId(null);
         try {
           const historyKey = 'bakegrill_order_history';
           const existing = JSON.parse(localStorage.getItem(historyKey) ?? '[]');
@@ -1178,7 +1183,22 @@ export function useCheckout() {
         return;
       }
 
-      const payment = await initiateOnlinePayment(orderId);
+      let payment;
+      try {
+        payment = await initiateOnlinePayment(orderId);
+      } catch (payErr) {
+        // Server says nothing due — complete without card (never show Pay + error).
+        if (isZeroBalanceApiError(payErr)) {
+          loyaltyHeldForOrderId = null;
+          giftCardAttachedOrderId = null;
+          await completeZeroBalanceOrder(orderId);
+          setPendingOrderId(null);
+          navigate(`/orders/${orderId}`);
+          setIsPlacing(false);
+          return;
+        }
+        throw payErr;
+      }
       if (!payment.payment_url) {
         throw new Error("Payment could not be started. Please try again in a moment.");
       }
@@ -1219,7 +1239,10 @@ export function useCheckout() {
         await removeGiftCard(giftCardAttachedOrderId).catch(() => undefined);
         setGiftCardApplied(null);
       }
-      setGlobalError((e as Error).message);
+      // zero_balance is handled above — never surface as a red "something went wrong".
+      if (!isZeroBalanceApiError(e)) {
+        setGlobalError((e as Error).message);
+      }
       setIsPlacing(false);
     }
   };

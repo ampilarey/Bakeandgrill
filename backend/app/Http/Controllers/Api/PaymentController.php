@@ -45,7 +45,9 @@ class PaymentController extends Controller
         $dueLaar = $this->paymentService->getRemainingBalanceLaar($order);
         if ($dueLaar <= 0) {
             return response()->json([
-                'message' => 'Nothing to pay. Your order is fully covered — use “Place order” again to confirm without card.',
+                // Client handles this by completing via complete-zero-balance (no card).
+                // Do not tell the customer to press a button that is not on screen.
+                'message' => 'Nothing to pay — this order is already fully covered.',
                 'code' => 'zero_balance',
             ], 422);
         }

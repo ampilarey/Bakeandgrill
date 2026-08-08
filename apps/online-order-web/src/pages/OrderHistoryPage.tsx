@@ -12,6 +12,8 @@ import { PageHeader } from '../components/shell/PageHeader';
 import { isGiftCardOrder } from '../utils/giftCardOrder';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
+import { clearCheckoutPendingOrderId } from '../utils/checkoutPendingOrder';
+
 const STATUS_KEY: Record<string, string> = {
   payment_pending: 'order.status.payment_pending',
   pending: 'order.status.pending',
@@ -84,6 +86,8 @@ export function OrderHistoryPage() {
     if (!isAuthenticated) return;
     setReordering(orderId);
     try {
+      // Never resume payment against the previous order after "Order again".
+      clearCheckoutPendingOrderId();
       const payload = await getReorderPayload(orderId);
       const { added, needsPickerCount } = applyReorderPayloadToCart(payload, addItem);
       if (needsPickerCount > 0 && added === 0) {

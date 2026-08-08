@@ -410,6 +410,9 @@ export function CheckoutPage() {
     }
     void handlePlaceAndPay();
   };
+  // Hide the misleading "nothing to pay" red banner (auto-handled in useCheckout).
+  // Never pair that message with a live Pay label — switch to the no-payment label.
+  const zeroBalanceConflict = /nothing to pay/i.test(globalError);
   const placeLabel = isPlacing
     ? t('checkout.processing')
     : placeBlockedByGate
@@ -418,7 +421,7 @@ export function CheckoutPage() {
         ? t('checkout.choose_order_type')
         : !paymentServiceAvailable && amountDueLaar > 0
           ? 'Online payment unavailable'
-          : amountDueLaar <= 0
+          : (amountDueLaar <= 0 || zeroBalanceConflict)
             ? t('checkout.place_no_payment')
             : t('checkout.pay_bml').replace('{amount}', String(laarToMvr(amountDueLaar)));
 
@@ -1283,7 +1286,7 @@ export function CheckoutPage() {
           <a href="/order/privacy" target="_blank" rel="noopener" style={{ color: 'var(--color-primary)' }}>{t('account.link_privacy')}</a>.
         </span>
       </label>
-      {globalError && (
+      {globalError && !zeroBalanceConflict && (
         <div className="banner banner-error" style={{ marginBottom: 12 }}>
           <span className="banner-icon">⚠️</span>
           <div>

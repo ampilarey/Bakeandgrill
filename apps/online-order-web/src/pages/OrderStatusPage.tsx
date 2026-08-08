@@ -11,10 +11,12 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { isGiftCardOrder } from "../utils/giftCardOrder";
 import { applyReorderPayloadToCart } from "../utils/applyReorderToCart";
+import {
+  clearCheckoutPendingOrderId,
+  writeCheckoutPendingOrderId,
+} from "../utils/checkoutPendingOrder";
 
 type PaymentState = "CONFIRMED" | "FAILED" | "PENDING" | null;
-
-const PENDING_ORDER_KEY = "checkout_pending_order_id";
 
 // ─── Driver Tracker ───────────────────────────────────────────────────────────
 
@@ -391,7 +393,7 @@ export function OrderStatusPage() {
     setIsPaying(true);
     setPayError("");
     try {
-      localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
+      writeCheckoutPendingOrderId(order.id);
       const payment = await initiateOnlinePayment(order.id);
       redirectToPayment(payment.payment_url);
     } catch (e) {
@@ -417,7 +419,7 @@ export function OrderStatusPage() {
     setIsPaying(true);
     setPayError("");
     try {
-      localStorage.setItem(PENDING_ORDER_KEY, String(order.id));
+      writeCheckoutPendingOrderId(order.id);
       const payment = await initiatePartialPayment(
         order.id,
         amountLaar,
@@ -434,6 +436,8 @@ export function OrderStatusPage() {
     if (serverPaymentConfirmed && !cartClearedRef.current) {
       cartClearedRef.current = true;
       clearCart();
+      // Paid successfully — do not let the next checkout reuse this order id.
+      clearCheckoutPendingOrderId();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverPaymentConfirmed]);
@@ -557,6 +561,8 @@ export function OrderStatusPage() {
     }
     setReordering(true);
     try {
+      // Force a fresh checkout order — never resume pay on this one.
+      clearCheckoutPendingOrderId();
       const payload = await getReorderPayload(order.id);
       clearCart();
       const { added, needsPickerCount } = applyReorderPayloadToCart(payload, addItem);
