@@ -934,7 +934,7 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #9C8575;
+  color: var(--color-text-muted);
   line-height: 1.2;
 }
 .oc-status-group .oc-chip-strip {
@@ -968,7 +968,7 @@ a { text-decoration: none; color: inherit; }
 .oc-day {
   padding: 10px;
   border-radius: 10px;
-  background: #FDFAF7;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   box-sizing: border-box;
   min-width: 0;
@@ -976,8 +976,8 @@ a { text-decoration: none; color: inherit; }
   width: 100%;
 }
 .oc-day--closed {
-  background: #F5F0EB;
-  border-color: #DDD5CB;
+  background: var(--color-border-light);
+  border-color: var(--color-border);
   opacity: 0.65;
 }
 
@@ -1084,7 +1084,7 @@ a { text-decoration: none; color: inherit; }
   background: none;
   border: none;
   cursor: pointer;
-  color: #C0392B;
+  color: var(--color-danger);
   font-size: 20px;
   line-height: 1;
   padding: 8px 2px;
@@ -1094,9 +1094,9 @@ a { text-decoration: none; color: inherit; }
 .oc-add-window {
   align-self: flex-start;
   font-size: 12px;
-  color: #7B5E3A;
+  color: var(--color-text-secondary);
   background: none;
-  border: 1px dashed #C2A87A;
+  border: 1px dashed var(--color-border);
   border-radius: 8px;
   padding: 6px 12px;
   cursor: pointer;
