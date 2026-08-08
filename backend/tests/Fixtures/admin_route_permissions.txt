@@ -142,8 +142,8 @@ backend/routes/domains/orders.php:146:orders.manage
 backend/routes/domains/orders.php:147:orders.manage
 backend/routes/domains/orders.php:148:orders.manage
 backend/routes/domains/orders.php:149:orders.manage
-backend/routes/domains/orders.php:160:orders.manage
-backend/routes/domains/orders.php:178:pos.ring_sales
+backend/routes/domains/orders.php:162:orders.manage
+backend/routes/domains/orders.php:180:pos.ring_sales
 backend/routes/domains/orders.php:25:pos.ring_sales
 backend/routes/domains/orders.php:27:pos.ring_sales
 backend/routes/domains/orders.php:30:pos.hold_resume

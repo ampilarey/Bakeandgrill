@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Auth;
 
+use App\Domains\Permissions\PermissionCatalog;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Device;
 use App\Models\Order;
@@ -222,6 +223,70 @@ class PosPermissionResolutionTest extends TestCase
 
         $this->getJson("/api/orders/{$order->id}")
             ->assertForbidden();
+    }
+
+    public function test_staff_denied_terminal_receipt_is_403_not_sanitized_200(): void
+    {
+        $order = Order::factory()->paid()->create([
+            'user_id' => $this->manager->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $response = $this->getJson("/api/orders/{$order->id}");
+
+        $response->assertForbidden();
+        $this->assertSame(403, $response->status());
+        $response->assertJsonMissingPath('order');
+        $response->assertJsonMissingPath('view');
+        $this->assertArrayNotHasKey('customer', $response->json() ?? []);
+        $this->assertArrayNotHasKey('payments', $response->json() ?? []);
+    }
+
+    public function test_staff_can_view_own_completed_receipt(): void
+    {
+        $order = Order::factory()->paid()->create([
+            'user_id' => $this->staff->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+
+        Sanctum::actingAs($this->staff, ['staff']);
+
+        $this->getJson("/api/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('order.id', $order->id)
+            ->assertJsonMissingPath('view');
+    }
+
+    public function test_manager_can_view_other_cashier_completed_receipt(): void
+    {
+        $order = Order::factory()->paid()->create([
+            'user_id' => $this->staff->id,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->getJson("/api/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('order.id', $order->id)
+            ->assertJsonMissingPath('view');
+    }
+
+    public function test_completed_receipt_elevated_gates_are_not_in_default_staff_bundle(): void
+    {
+        $staffDefaults = PermissionCatalog::staffSlugs();
+
+        // Either of these unlocks another cashier's finished sale; neither is a
+        // default staff slug (unlike orders.receipts / pos.ring_sales).
+        $this->assertNotContains('orders.manage', $staffDefaults);
+        $this->assertNotContains('pos.view_all_station_orders', $staffDefaults);
+        $this->assertContains('orders.receipts', $staffDefaults);
+        $this->assertContains('pos.ring_sales', $staffDefaults);
     }
 
     public function test_staff_cannot_query_another_cashiers_user_id_filter(): void
