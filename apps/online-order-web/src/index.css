@@ -2171,17 +2171,24 @@ textarea.field-input {
   flex-shrink: 0;
 }
 
+/* Match main-site mobile .mob-hdr-account (compact pill + 28px avatar). */
 .home-account-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
+  max-width: min(11rem, 42vw);
+  padding: 0.2rem 0.35rem 0.2rem 0.6rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
   text-decoration: none;
-  color: inherit;
-  min-height: var(--touch-target);
+  color: var(--color-text);
+  white-space: nowrap;
+  min-height: 0;
 }
 
 .home-account-chip__phone {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -2189,17 +2196,22 @@ textarea.field-input {
 }
 
 .home-account-avatar {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--color-primary-light);
-  border: 2px solid var(--color-primary);
+  border: 1.5px solid var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-primary);
   flex-shrink: 0;
   user-select: none;
+}
+
+.home-account-avatar svg {
+  width: 14px;
+  height: 14px;
 }
 
 .home-sign-in-btn {

@@ -69,7 +69,7 @@ export function GreetingHeader({ customerName, isAuthenticated }: Props) {
             >
               {phone ? <span className="home-account-chip__phone">{phone}</span> : null}
               <span className="home-account-avatar" aria-hidden>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="2" />
                   <path
                     d="M5 19.5c1.5-3.2 4-4.8 7-4.8s5.5 1.6 7 4.8"
