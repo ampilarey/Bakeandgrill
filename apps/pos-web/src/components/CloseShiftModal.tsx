@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, Field, Overlay } from "./OpenShiftModal";
 import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
@@ -15,9 +15,9 @@ type Props = {
 };
 
 /**
- * Show the same numbers the cashier saw in the live shift panel, then
- * ask them to count the drawer. Variance is computed live so the
- * cashier can never be surprised by what closes.
+ * Blind cash count: the cashier enters what is physically in the drawer
+ * without seeing the expected total. Variance is revealed only after a
+ * count is typed — that is the control.
  */
 export function CloseShiftModal({
   summary,
@@ -35,28 +35,18 @@ export function CloseShiftModal({
   const [err, setErr] = useState("");
 
   // Bug-053: every cash-drawer field comes back from Laravel as a
-  // decimal-cast STRING ("125.00"), not a number — the `?? 0`
-  // fallback only catches null/undefined and lets strings through,
-  // which then crash later in toFixed/arithmetic. Coerce on read.
+  // decimal-cast STRING ("125.00"), not a number — coerce on read.
   const expected = Number(summary?.cash_drawer.expected_cash ?? 0);
   const closing = Number.parseFloat(closingCash);
-  const variance = Number.isFinite(closing) ? closing - expected : null;
-
-  // Pre-fill with the expected drawer so the cashier just confirms when
-  // the count matches — the common case in a tight shop. The previous
-  // guard `if (expected && …)` was falsy for an expected of 0, which
-  // forced cashiers to manually type "0" on slow shifts.
-  useEffect(() => {
-    if (closingCash !== "" || summary == null) return;
-    setClosingCash(expected.toFixed(2));
-  }, [expected, closingCash, summary]);
+  const hasCount = closingCash.trim() !== "" && Number.isFinite(closing);
+  const variance = hasCount ? closing - expected : null;
 
   const submit = async () => {
     if (pendingOfflineCount > 0) {
       setErr(`Sync ${pendingOfflineCount} offline order${pendingOfflineCount === 1 ? "" : "s"} before closing the shift.`);
       return;
     }
-    if (closing == null || !Number.isFinite(closing) || closing < 0) {
+    if (!hasCount || closing < 0) {
       setErr("Enter the cash you counted in the drawer.");
       return;
     }
@@ -72,19 +62,27 @@ export function CloseShiftModal({
 
   return (
     <Overlay>
-      <Card title="Close shift" subtitle="Count the cash in the drawer and enter the total below.">
-        <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
-        <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
-        {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
-        {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
-          <Summary
-            label="  incl. credit repayments (cash)"
-            value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
-          />
+      <Card
+        title="Close shift"
+        subtitle="Count the cash in the drawer and enter the total below. The expected amount is hidden until you enter a count."
+      >
+        {/* Blind count: do not show expected, sales breakdown, or variance until counted. */}
+        {hasCount && (
+          <>
+            <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
+            <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
+            {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
+            {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+              <Summary
+                label="  incl. credit repayments (cash)"
+                value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
+              />
+            )}
+            {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
+            {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
+            <Summary label="Expected in drawer" value={expected} bold />
+          </>
         )}
-        {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
-        {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
-        <Summary label="Expected in drawer" value={expected} bold />
 
         {pendingOfflineCount > 0 && (
           <div style={{
@@ -133,19 +131,22 @@ export function CloseShiftModal({
             onChange={(v) => { setClosingCash(v); setErr(""); }}
           />
           <div style={{ marginTop: 6, fontSize: 11, color: "#64748B" }}>
-            Pre-filled with expected. Tap the numpad to adjust if the count differs.
+            Count the drawer first, then type the total. Expected amount appears after you enter a count.
           </div>
         </Field>
 
         {variance != null && (
-          <div style={{
-            marginTop: 12, padding: "10px 12px", borderRadius: 8,
-            background: Math.abs(variance) < 0.005 ? "#DCFCE7"
-              : variance > 0 ? "#FEF3C7" : "#FEE2E2",
-            color: Math.abs(variance) < 0.005 ? "#15803D"
-              : variance > 0 ? "#92400E" : "#B91C1C",
-            display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700,
-          }}>
+          <div
+            data-testid="close-shift-variance"
+            style={{
+              marginTop: 12, padding: "10px 12px", borderRadius: 8,
+              background: Math.abs(variance) < 0.005 ? "#DCFCE7"
+                : variance > 0 ? "#FEF3C7" : "#FEE2E2",
+              color: Math.abs(variance) < 0.005 ? "#15803D"
+                : variance > 0 ? "#92400E" : "#B91C1C",
+              display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700,
+            }}
+          >
             <span>Variance</span>
             <span>{variance >= 0 ? "+" : ""}MVR {variance.toFixed(2)}</span>
           </div>
