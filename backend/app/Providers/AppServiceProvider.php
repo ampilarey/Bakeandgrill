@@ -17,11 +17,15 @@ use App\Observers\ItemObserver;
 use App\Observers\ItemPhotoObserver;
 use App\Observers\OrderObserver;
 use App\Observers\StaffScheduleObserver;
+use App\Domains\System\Services\QueueWorkerHeartbeat;
 use App\Support\BmlSignatureGuard;
 use App\Support\DocumentBrandView;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -78,6 +82,17 @@ class AppServiceProvider extends ServiceProvider
         Item::observe(ItemObserver::class);
         ItemPhoto::observe(ItemPhotoObserver::class);
         Category::observe(CategoryObserver::class);
+
+        // Queue worker liveness — any finished job refreshes the heartbeat stamp.
+        $recordWorkerBeat = static function (): void {
+            try {
+                app(QueueWorkerHeartbeat::class)->record();
+            } catch (\Throwable) {
+                // Never let heartbeat bookkeeping break job completion.
+            }
+        };
+        Event::listen(JobProcessed::class, $recordWorkerBeat);
+        Event::listen(JobFailed::class, $recordWorkerBeat);
 
         View::composer([
             'layouts.pdf',

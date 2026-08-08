@@ -8,16 +8,63 @@ use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\WebhookLog;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Storage;
 
 class SystemHealthService
 {
+    /** Scheduler heartbeat is scheduled every minute — allow a small grace window. */
+    public const SCHEDULER_STALE_AFTER_SECONDS = 300;
+
     public function __construct(
         private readonly SchedulerRunTracker $schedulerRuns = new SchedulerRunTracker,
         private readonly OpsAlertsService $opsAlerts = new OpsAlertsService,
+        private readonly QueueWorkerHeartbeat $queueHeartbeat = new QueueWorkerHeartbeat,
     ) {}
+
+    /**
+     * Protected admin health probe — env snapshot plus operational liveness.
+     * Fail-safe: each component catch → unhealthy with a short reason.
+     *
+     * @return array<string, mixed>
+     */
+    public function admin(): array
+    {
+        $host = request()->getHost();
+        $appUrl = (string) config('app.url');
+        $env = (string) config('app.env');
+        $isStagingHost = str_contains($host, 'test.') || str_contains($host, 'staging.');
+
+        $database = $this->checkDatabase();
+        $redis = $this->checkRedis();
+        $queue = $this->checkQueueWorker();
+        $scheduler = $this->checkScheduler();
+        $storage = $this->checkPublicStorage();
+
+        $componentsOk = $database['ok']
+            && $redis['ok']
+            && $queue['ok']
+            && $scheduler['ok']
+            && $storage['ok'];
+
+        return [
+            'status' => $componentsOk ? 'ok' : 'degraded',
+            'environment' => $env,
+            'app_url' => $appUrl,
+            'host' => $host,
+            'staging_host' => $isStagingHost,
+            'env_mismatch' => $isStagingHost && $env === 'production',
+            'database' => $database,
+            'redis' => $redis,
+            'queue' => $queue,
+            'scheduler' => $scheduler,
+            'storage' => $storage,
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
 
     /**
      * Aggregate operational health signals for the owner dashboard.
@@ -167,7 +214,7 @@ class SystemHealthService
      *
      * @return array{status: string, ok: bool, latency_ms: float|null, error: string|null}
      */
-    private function checkRedis(): array
+    public function checkRedis(): array
     {
         $started = microtime(true);
 
@@ -197,6 +244,258 @@ class SystemHealthService
                 'ok' => false,
                 'latency_ms' => null,
                 'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @return array{ok: bool, status: string, error: string|null}
+     */
+    public function checkDatabase(): array
+    {
+        try {
+            DB::select('select 1');
+
+            return ['ok' => true, 'status' => 'connected', 'error' => null];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 'unreachable',
+                'error' => mb_substr($e->getMessage(), 0, 160),
+            ];
+        }
+    }
+
+    /**
+     * Queue worker liveness + failed_jobs count.
+     * Sync/database drivers used in local/test do not need a long-lived worker.
+     *
+     * @return array{
+     *     ok: bool,
+     *     status: string,
+     *     driver: string,
+     *     worker_last_seen_at: string|null,
+     *     failed_jobs_count: int|null,
+     *     error: string|null
+     * }
+     */
+    public function checkQueueWorker(): array
+    {
+        try {
+            $driver = (string) config('queue.default', 'sync');
+            $failedJobs = null;
+            try {
+                $failedJobs = (int) DB::table('failed_jobs')->count();
+            } catch (\Throwable) {
+                $failedJobs = null;
+            }
+
+            // Sync (and null) run inline — no separate worker process.
+            if (in_array($driver, ['sync', 'null'], true)) {
+                return [
+                    'ok' => true,
+                    'status' => 'sync',
+                    'driver' => $driver,
+                    'worker_last_seen_at' => $this->queueHeartbeat->lastProcessedAt(),
+                    'failed_jobs_count' => $failedJobs,
+                    'error' => null,
+                ];
+            }
+
+            $lastSeen = $this->queueHeartbeat->lastProcessedAt();
+            if ($lastSeen === null) {
+                return [
+                    'ok' => false,
+                    'status' => 'no_heartbeat',
+                    'driver' => $driver,
+                    'worker_last_seen_at' => null,
+                    'failed_jobs_count' => $failedJobs,
+                    'error' => 'No queue worker heartbeat recorded',
+                ];
+            }
+
+            try {
+                $age = Carbon::parse($lastSeen)->diffInSeconds(now());
+            } catch (\Throwable) {
+                return [
+                    'ok' => false,
+                    'status' => 'invalid_heartbeat',
+                    'driver' => $driver,
+                    'worker_last_seen_at' => $lastSeen,
+                    'failed_jobs_count' => $failedJobs,
+                    'error' => 'Unparseable worker heartbeat timestamp',
+                ];
+            }
+
+            if ($age > QueueWorkerHeartbeat::STALE_AFTER_SECONDS) {
+                return [
+                    'ok' => false,
+                    'status' => 'stale',
+                    'driver' => $driver,
+                    'worker_last_seen_at' => $lastSeen,
+                    'failed_jobs_count' => $failedJobs,
+                    'error' => 'Queue worker heartbeat is stale',
+                ];
+            }
+
+            return [
+                'ok' => true,
+                'status' => 'alive',
+                'driver' => $driver,
+                'worker_last_seen_at' => $lastSeen,
+                'failed_jobs_count' => $failedJobs,
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 'error',
+                'driver' => (string) config('queue.default', 'unknown'),
+                'worker_last_seen_at' => null,
+                'failed_jobs_count' => null,
+                'error' => mb_substr($e->getMessage(), 0, 160),
+            ];
+        }
+    }
+
+    /**
+     * Uses SchedulerRunTracker — prefers the every-minute scheduler:heartbeat stamp.
+     *
+     * @return array{
+     *     ok: bool,
+     *     status: string,
+     *     last_run_at: string|null,
+     *     command: string|null,
+     *     error: string|null
+     * }
+     */
+    public function checkScheduler(): array
+    {
+        try {
+            $runs = $this->schedulerRuns->getLastRuns(['scheduler:heartbeat']);
+            $last = $runs['scheduler:heartbeat'] ?? null;
+
+            // Fall back to the newest tracked command if heartbeat was never recorded
+            // (e.g. tracker list grew after deploy) — still better than a silent false OK.
+            if ($last === null) {
+                $all = $this->schedulerRuns->getLastRuns();
+                $newest = null;
+                $newestCmd = null;
+                foreach ($all as $command => $at) {
+                    if (!is_string($at) || $at === '') {
+                        continue;
+                    }
+                    if ($newest === null || strcmp($at, $newest) > 0) {
+                        $newest = $at;
+                        $newestCmd = $command;
+                    }
+                }
+                $last = $newest;
+                $command = $newestCmd;
+            } else {
+                $command = 'scheduler:heartbeat';
+            }
+
+            if ($last === null) {
+                return [
+                    'ok' => false,
+                    'status' => 'never_run',
+                    'last_run_at' => null,
+                    'command' => null,
+                    'error' => 'Scheduler has not recorded any successful run',
+                ];
+            }
+
+            try {
+                $age = Carbon::parse($last)->diffInSeconds(now());
+            } catch (\Throwable) {
+                return [
+                    'ok' => false,
+                    'status' => 'invalid_timestamp',
+                    'last_run_at' => $last,
+                    'command' => $command,
+                    'error' => 'Unparseable scheduler last-run timestamp',
+                ];
+            }
+
+            if ($age > self::SCHEDULER_STALE_AFTER_SECONDS) {
+                return [
+                    'ok' => false,
+                    'status' => 'stale',
+                    'last_run_at' => $last,
+                    'command' => $command,
+                    'error' => 'Scheduler has not run within the expected interval',
+                ];
+            }
+
+            return [
+                'ok' => true,
+                'status' => 'alive',
+                'last_run_at' => $last,
+                'command' => $command,
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 'error',
+                'last_run_at' => null,
+                'command' => null,
+                'error' => mb_substr($e->getMessage(), 0, 160),
+            ];
+        }
+    }
+
+    /**
+     * @return array{ok: bool, status: string, disk: string, error: string|null}
+     */
+    public function checkPublicStorage(): array
+    {
+        $disk = 'public';
+        $path = 'healthcheck/.write-test';
+
+        try {
+            $payload = 'ok:' . now()->timestamp;
+            $written = Storage::disk($disk)->put($path, $payload);
+            if ($written === false) {
+                return [
+                    'ok' => false,
+                    'status' => 'unwritable',
+                    'disk' => $disk,
+                    'error' => 'Public disk put() returned false',
+                ];
+            }
+
+            $read = Storage::disk($disk)->get($path);
+            Storage::disk($disk)->delete($path);
+
+            if ($read !== $payload) {
+                return [
+                    'ok' => false,
+                    'status' => 'read_mismatch',
+                    'disk' => $disk,
+                    'error' => 'Public disk read-back did not match written payload',
+                ];
+            }
+
+            return [
+                'ok' => true,
+                'status' => 'writable',
+                'disk' => $disk,
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            try {
+                Storage::disk($disk)->delete($path);
+            } catch (\Throwable) {
+                // ignore cleanup errors
+            }
+
+            return [
+                'ok' => false,
+                'status' => 'error',
+                'disk' => $disk,
+                'error' => mb_substr($e->getMessage(), 0, 160),
             ];
         }
     }

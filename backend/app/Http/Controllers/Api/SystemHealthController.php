@@ -22,26 +22,12 @@ class SystemHealthController extends Controller
     }
 
     /**
-     * Protected health probe — returns full environment details for internal monitoring.
+     * Protected health probe — env snapshot plus redis / queue / scheduler / storage.
      * Requires auth:sanctum + permission:website.manage.
      */
     public function admin(): JsonResponse
     {
-        $host = request()->getHost();
-        $appUrl = (string) config('app.url');
-        $env = (string) config('app.env');
-        $isStagingHost = str_contains($host, 'test.') || str_contains($host, 'staging.');
-
-        return response()->json([
-            'status' => 'ok',
-            'environment' => $env,
-            'app_url' => $appUrl,
-            'host' => $host,
-            'staging_host' => $isStagingHost,
-            'env_mismatch' => $isStagingHost && $env === 'production',
-            'database' => 'connected',
-            'timestamp' => now()->toIso8601String(),
-        ]);
+        return response()->json($this->health->admin());
     }
 
     /**

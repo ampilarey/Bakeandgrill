@@ -253,6 +253,12 @@ Schedule::command('scheduler:heartbeat')
     ->onFailure($alertOnFailure('scheduler:heartbeat'))
     ->after($trackSuccess('scheduler:heartbeat'));
 
+// Queue worker dead-man's switch — must be processed by `queue:work` / Horizon.
+Schedule::job(App\Jobs\QueueWorkerHeartbeatJob::class)
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('QueueWorkerHeartbeatJob'));
+
 // Horizon metrics snapshots (requires `php artisan horizon` worker)
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes();
