@@ -108,19 +108,27 @@ class AuditLogCoverageTest extends TestCase
 
         $response = $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 10.00,
-            'reason' => 'Customer request',
+            'reason_category' => 'other', 'reason' => 'Customer request',
         ])->assertCreated();
 
         $refundId = (int) $response->json('refund.id');
 
-        $log = AuditLog::where('action', 'refund.created')
+        $requested = AuditLog::where('action', 'refund.requested')
             ->where('model_type', 'Refund')
             ->where('model_id', $refundId)
             ->first();
+        $this->assertNotNull($requested);
+        $this->assertSame($this->owner->id, $requested->user_id);
+        $this->assertSame($order->id, $requested->meta['order_id'] ?? null);
 
-        $this->assertNotNull($log);
-        $this->assertSame($this->owner->id, $log->user_id);
-        $this->assertSame($order->id, $log->meta['order_id'] ?? null);
+        // Owner auto-approves — approval audit trail must exist too.
+        $approved = AuditLog::where('action', 'refund.approved')
+            ->where('model_type', 'Refund')
+            ->where('model_id', $refundId)
+            ->first();
+        $this->assertNotNull($approved);
+        $this->assertSame($order->id, $approved->meta['order_id'] ?? null);
+
         $this->assertDatabaseHas('refunds', ['id' => $refundId, 'order_id' => $order->id]);
     }
 

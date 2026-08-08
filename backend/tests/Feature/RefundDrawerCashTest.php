@@ -89,7 +89,7 @@ class RefundDrawerCashTest extends TestCase
 
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 100.00,
-            'reason' => 'test card refund',
+            'reason_category' => 'other', 'reason' => 'test card refund',
         ])->assertCreated()
             ->assertJsonPath('breakdown.drawer_cash_out_laar', 0)
             ->assertJsonPath('breakdown.external_tender_laar', 10000)
@@ -109,7 +109,7 @@ class RefundDrawerCashTest extends TestCase
 
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 100.00,
-            'reason' => 'cashier hands back cash',
+            'reason_category' => 'other', 'reason' => 'cashier hands back cash',
             'cash_refund_override' => true,
         ])->assertCreated()
             ->assertJsonPath('breakdown.drawer_cash_out_laar', 10000)
@@ -151,7 +151,7 @@ class RefundDrawerCashTest extends TestCase
         // Full refund at order total.
         $response = $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'mixed refund',
+            'reason_category' => 'other', 'reason' => 'mixed refund',
         ])->assertCreated();
 
         $expectedCreditReversedLaar = (int) round($creditMvr * 100);
@@ -187,7 +187,7 @@ class RefundDrawerCashTest extends TestCase
 
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'full credit refund',
+            'reason_category' => 'other', 'reason' => 'full credit refund',
         ])->assertCreated()
             ->assertJsonPath('breakdown.credit_reversed_laar', (int) round($orderTotalMvr * 100))
             ->assertJsonPath('breakdown.drawer_cash_out_laar', 0);
@@ -253,7 +253,7 @@ class RefundDrawerCashTest extends TestCase
 
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'clamp check',
+            'reason_category' => 'other', 'reason' => 'clamp check',
             'cash_refund_override' => true,
         ])->assertCreated()
             ->assertJsonPath('breakdown.drawer_cash_out_laar', $expectedDrawerLaar);
@@ -307,6 +307,7 @@ class RefundDrawerCashTest extends TestCase
             'total_laar' => $totalLaar,
             'paid_at' => now(),
             'shift_id' => $shift->id,
+            'delivery_contact_phone' => '9607700099',
         ]);
         Payment::create([
             'order_id' => $order->id,

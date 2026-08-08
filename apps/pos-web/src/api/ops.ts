@@ -120,6 +120,16 @@ export async function createPurchase(payload: {
   await request("/purchases", { method: "POST", body: JSON.stringify(payload) });
 }
 
+export const REFUND_REASON_CATEGORIES = [
+  { value: "wrong_item", label: "Wrong item" },
+  { value: "quality_complaint", label: "Quality complaint" },
+  { value: "order_cancelled", label: "Order cancelled" },
+  { value: "duplicate_charge", label: "Duplicate charge" },
+  { value: "other", label: "Other" },
+] as const;
+
+export type RefundReasonCategory = (typeof REFUND_REASON_CATEGORIES)[number]["value"];
+
 export async function fetchRefunds(status?: string): Promise<{
   refunds: {
     data: Array<{
@@ -127,7 +137,19 @@ export async function fetchRefunds(status?: string): Promise<{
       amount: number;
       status: string;
       reason: string | null;
+      reason_category?: string | null;
       order_id: number;
+      refund_phone?: string | null;
+      phone_added_at_refund?: boolean;
+      no_customer_contact?: boolean;
+      rejection_reason?: string | null;
+      phone_flags?: {
+        refund_phone?: string | null;
+        phone_added_at_refund?: boolean;
+        has_prior_order_history?: boolean;
+        refunds_last_90_days?: number;
+        otp_owner_override?: boolean;
+      };
     }>;
   };
 }> {
@@ -136,31 +158,26 @@ export async function fetchRefunds(status?: string): Promise<{
 }
 
 /**
- * FIX 1e — POS-triggered refund.
- *
- * The client only sends the amount, an optional reason, and the
- * `cash_refund_override` flag (when the cashier ticks "Refund card
- * portion in cash"). All settlement breakdown is decided server-side:
- * the backend inspects the order's payment mix, reverses each tender
- * proportionally, and returns the resulting per-method laari splits
- * in `breakdown` so we can show the cashier exactly what happened.
- *
- * The `cash_refund_override` boolean is the only mutation lever the
- * POS gets — amounts are never forwarded, which prevents an accidental
- * "refund more card than was charged" bug from the client side.
+ * Request a refund (pending until approved). Money does not move until
+ * an authoriser with orders.refund approves — except owners, who may
+ * auto-approve in one step server-side.
  */
 export async function createRefund(
   orderId: number,
   payload: {
     amount: number;
-    reason?: string;
-    status?: string;
+    reason: string;
+    reason_category: RefundReasonCategory;
     cash_refund_override?: boolean;
+    refund_phone?: string;
   }
 ): Promise<{
   refund: {
     id: number;
     amount?: number;
+    status?: string;
+    refund_phone?: string | null;
+    phone_added_at_refund?: boolean;
     breakdown?: {
       cash_laar?: number;
       card_laar?: number;
@@ -173,10 +190,33 @@ export async function createRefund(
     cash_refund_override?: boolean;
     message?: string;
   };
+  auto_approved?: boolean;
+  breakdown?: Record<string, unknown>;
 }> {
   return request(`/orders/${orderId}/refunds`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function approveRefund(
+  id: number,
+  payload: { otp?: string; owner_override_without_otp?: boolean } = {},
+): Promise<{ refund: { id: number; status: string } }> {
+  return request(`/refunds/${id}/approve`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function resendRefundOtp(id: number): Promise<{ message?: string }> {
+  return request(`/refunds/${id}/resend-otp`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export async function rejectRefund(
+  id: number,
+  rejection_reason: string,
+): Promise<{ refund: { id: number; status: string } }> {
+  return request(`/refunds/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ rejection_reason }),
   });
 }
 

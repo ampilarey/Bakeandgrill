@@ -623,7 +623,7 @@ class CustomerCreditTest extends TestCase
 
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'Customer complaint',
+            'reason_category' => 'other', 'reason' => 'Customer complaint',
         ])->assertCreated();
 
         $this->customer->refresh();

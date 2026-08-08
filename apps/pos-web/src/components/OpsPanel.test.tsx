@@ -8,6 +8,10 @@ vi.mock("../api", () => ({
   adjustPreparedStock: vi.fn(),
   fetchPosMenu: vi.fn().mockResolvedValue({ categories: [], items: [] }),
   snoozeItem: vi.fn(),
+  REFUND_REASON_CATEGORIES: [
+    { value: "wrong_item", label: "Wrong item" },
+    { value: "other", label: "Other" },
+  ],
 }));
 
 type OpsState = ReturnType<typeof useOps>;
@@ -51,8 +55,12 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     setRefundOrderId: noop,
     refundAmount: "",
     setRefundAmount: noop,
+    refundCategory: "",
+    setRefundCategory: noop,
     refundReason: "",
     setRefundReason: noop,
+    refundPhone: "",
+    setRefundPhone: noop,
     refundStatusFilter: "",
     setRefundStatusFilter: noop,
     refunds: [],
@@ -65,6 +73,8 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     handleRecordWaste: noop,
     handleCreatePurchase: noop,
     handleCreateRefund: noop,
+    handleApproveRefund: noop,
+    handleRejectRefund: noop,
     setOpsMessage: noop,
     ...overrides,
   } as OpsState;

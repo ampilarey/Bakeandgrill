@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { createRefund, fetchReceipts, getReceiptLink, sendReceipt } from "../api";
+import {
+  createRefund,
+  fetchReceipts,
+  getReceiptLink,
+  sendReceipt,
+  REFUND_REASON_CATEGORIES,
+  type RefundReasonCategory,
+} from "../api";
 import { localDateYmd } from "../utils/localDate";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
 import { RefundConfirmModal } from "./RefundConfirmModal";
@@ -182,7 +189,10 @@ function ReceiptDetail({
   const [busy, setBusy] = useState<"" | "send" | "refund" | "link" | "print">("");
   const [info, setInfo] = useState("");
   const [refundAmount, setRefundAmount] = useState(Number(receipt.total).toFixed(2));
+  const [refundCategory, setRefundCategory] = useState<RefundReasonCategory | "">("");
   const [refundReason, setRefundReason] = useState("");
+  const orderHasPhone = Boolean(receipt.customer?.phone?.trim());
+  const [walkInRefundPhone, setWalkInRefundPhone] = useState("");
 
   const handleSend = async () => {
     if (!phone.trim()) { setInfo("Enter a phone number."); return; }
@@ -239,34 +249,54 @@ function ReceiptDetail({
   const [pendingRefund, setPendingRefund] = useState<{
     amount: number;
     reason: string;
+    reason_category: RefundReasonCategory;
   } | null>(null);
 
   const handleRefundIntent = () => {
     const amount = Number.parseFloat(refundAmount);
     if (!Number.isFinite(amount) || amount <= 0) { setInfo("Enter a refund amount."); return; }
     if (amount > Number(receipt.total) + 0.005) { setInfo("Refund cannot exceed order total."); return; }
+    if (!refundCategory) { setInfo("Pick a reason category."); return; }
+    if (!refundReason.trim()) { setInfo("Describe the reason."); return; }
+    if (refundCategory === "other" && refundReason.trim().length < 3) {
+      setInfo("Please describe the reason when category is Other.");
+      return;
+    }
+    if (!orderHasPhone && !walkInRefundPhone.trim()) {
+      setInfo("Enter the customer phone for this walk-in refund.");
+      return;
+    }
     setInfo("");
-    setPendingRefund({ amount, reason: refundReason.trim() });
+    setPendingRefund({ amount, reason: refundReason.trim(), reason_category: refundCategory });
   };
 
   const handleRefundConfirmed = async (cashRefundOverride: boolean) => {
     if (!pendingRefund) return;
-    const { amount, reason } = pendingRefund;
+    const { amount, reason, reason_category } = pendingRefund;
     setPendingRefund(null);
     setBusy("refund"); setInfo("");
     try {
-      // FIX 1e — POS sends the override boolean only. Backend
-      // computes the actual cash/card/transfer laari breakdown
-      // and returns it in `refund.breakdown` so we can echo the
-      // exact tender split back to the cashier without ever
-      // trusting a client-computed amount.
       const res = await createRefund(receipt.id, {
         amount,
-        reason: reason || undefined,
+        reason,
+        reason_category,
         ...(cashRefundOverride ? { cash_refund_override: true } : {}),
+        // Never send a phone when the order/customer already has one —
+        // the server rejects overrides. Walk-in add only.
+        ...(!orderHasPhone && walkInRefundPhone.trim()
+          ? { refund_phone: walkInRefundPhone.trim() }
+          : {}),
       });
-      const breakdownMsg = formatRefundBreakdown(res.refund?.breakdown, res.refund?.cash_refund_override);
-      setInfo(breakdownMsg ? `Refund recorded — ${breakdownMsg}` : "Refund recorded.");
+      if (res.auto_approved) {
+        const breakdownMsg = formatRefundBreakdown(res.breakdown as never ?? res.refund?.breakdown, cashRefundOverride);
+        setInfo(breakdownMsg ? `Refund approved — ${breakdownMsg}` : "Refund approved.");
+      } else {
+        setInfo(
+          res.refund?.phone_added_at_refund
+            ? "Refund requested — phone added at refund time; ask customer for OTP before approval."
+            : "Refund requested — OTP sent to customer; awaiting approval.",
+        );
+      }
     } catch (e) { setInfo((e as Error).message || "Refund failed."); }
     finally { setBusy(""); }
   };
@@ -349,30 +379,57 @@ function ReceiptDetail({
         {canRefund && (
         <details>
           <summary style={{ cursor: "pointer", fontSize: 12, color: "#475569", fontWeight: 600 }}>
-            Refund this receipt
+            Request refund
           </summary>
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <input
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-              onFocus={(e) => e.currentTarget.select()}
-              placeholder="Amount"
-              inputMode="decimal"
-              autoComplete="off"
-              style={{
-                width: 110, padding: "8px 10px", borderRadius: 8,
-                border: "1px solid #CBD5E1", fontSize: 13,
-              }}
-            />
-            <input
-              value={refundReason}
-              onChange={(e) => setRefundReason(e.target.value)}
-              placeholder="Reason"
-              style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
-            />
-            <button onClick={handleRefundIntent} disabled={busy === "refund"} style={dangerBtn}>
-              {busy === "refund" ? "…" : "Refund"}
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
+                placeholder="Amount"
+                inputMode="decimal"
+                autoComplete="off"
+                style={{
+                  width: 110, padding: "8px 10px", borderRadius: 8,
+                  border: "1px solid #CBD5E1", fontSize: 13,
+                }}
+              />
+              <select
+                value={refundCategory}
+                onChange={(e) => setRefundCategory(e.target.value as RefundReasonCategory | "")}
+                style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
+              >
+                <option value="">Category…</option>
+                {REFUND_REASON_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Details (required)"
+                style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
+              />
+              <button onClick={handleRefundIntent} disabled={busy === "refund"} style={dangerBtn}>
+                {busy === "refund" ? "…" : "Request"}
+              </button>
+            </div>
+            {orderHasPhone ? (
+              <div style={{ fontSize: 11, color: "#64748B" }}>
+                OTP goes to {receipt.customer?.phone} (order phone — cannot change here).
+              </div>
+            ) : (
+              <input
+                value={walkInRefundPhone}
+                onChange={(e) => setWalkInRefundPhone(e.target.value)}
+                placeholder="Customer phone (required for walk-in)"
+                inputMode="tel"
+                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13 }}
+              />
+            )}
           </div>
         </details>
         )}

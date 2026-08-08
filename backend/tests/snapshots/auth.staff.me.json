@@ -81,6 +81,7 @@
             "orders.manage",
             "orders.receipts",
             "orders.refund",
+            "orders.refund_request",
             "orders.send_payment_link",
             "orders.send_sms_bill",
             "orders.update",

@@ -114,7 +114,7 @@ export function PosShellLayout() {
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
     canAccessOps, canVoidOrders, canManageEvents,
-    canManageOrderStatus, canSendBill, canSendPayLink, canRefund, canCreatePurchaseRequest,
+    canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
     canOpsInventory, canOpsPreparedStock,
@@ -579,7 +579,7 @@ export function PosShellLayout() {
             shiftId={shift.current?.id ?? null}
             initialOrderId={receiptsFocusOrderId}
             receiptResendEnabled={smsNotifications.receipt_resend}
-            canRefund={canRefund && shiftOpen}
+            canRefund={canRequestRefund && shiftOpen}
           />
           </Suspense>
         )}
@@ -684,7 +684,8 @@ export function PosShellLayout() {
               permissions={{
                 inventory: canOpsInventory,
                 preparedStock: canOpsPreparedStock,
-                refunds: canRefund,
+                refunds: canRequestRefund,
+                refundApprove: canApproveRefund,
                 shiftOpen,
               }}
               onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}

@@ -285,7 +285,7 @@ class DepositsTest extends TestCase
 
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'Wrong order',
+            'reason_category' => 'other', 'reason' => 'Wrong order',
         ])->assertCreated();
 
         Sanctum::actingAs($this->manager, ['staff']);

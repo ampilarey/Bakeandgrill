@@ -76,8 +76,9 @@ class ShiftController extends Controller
         // whose money came out of credit / gift / wallet / card don't
         // subtract from the till twice. Legacy rows with NULL fall back to
         // ROUND(amount * 100) — same behaviour as before this fix.
+        // Pending requests must not empty the till — only approved/processed refunds.
         $refundCashOutLaar = (int) Refund::where('shift_id', $shift->id)
-            ->whereNotIn('status', ['rejected'])
+            ->whereIn('status', ['approved', 'processed'])
             ->selectRaw('COALESCE(SUM(COALESCE(drawer_cash_out_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
 

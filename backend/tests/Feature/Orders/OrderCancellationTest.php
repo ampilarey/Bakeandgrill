@@ -140,7 +140,7 @@ class OrderCancellationTest extends TestCase
         // But a manual refund can still be issued by staff
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 30.00, 'reason' => 'Cancelled by staff'],
+            ['amount' => 30.00, 'reason_category' => 'other', 'reason' => 'Cancelled by staff'],
             $this->staffHeaders($owner),
         )->assertStatus(201);
 

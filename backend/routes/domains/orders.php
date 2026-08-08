@@ -66,12 +66,19 @@ if (routes_domain_section_is('orders', 'core') && !routes_domain_loaded('orders.
     Route::post('/receipts/{orderId}/send', [App\Http\Controllers\Api\ReceiptController::class, 'send'])
         ->middleware('permission:orders.receipts');
 
-    // Refunds
+    // Refunds — request (cashier) vs approve/reject (manager/owner).
+    // device.active + throttle kept on money-adjacent endpoints.
     Route::get('/refunds', [App\Http\Controllers\Api\RefundController::class, 'index'])
         ->middleware('permission:orders.refund');
     Route::get('/refunds/{id}', [App\Http\Controllers\Api\RefundController::class, 'show'])
         ->middleware('permission:orders.refund');
     Route::post('/orders/{orderId}/refunds', [App\Http\Controllers\Api\RefundController::class, 'store'])
+        ->middleware(['permission.any:orders.refund_request,orders.refund', 'device.active', 'throttle:10,1']);
+    Route::post('/refunds/{id}/approve', [App\Http\Controllers\Api\RefundController::class, 'approve'])
+        ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
+    Route::post('/refunds/{id}/reject', [App\Http\Controllers\Api\RefundController::class, 'reject'])
+        ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
+    Route::post('/refunds/{id}/resend-otp', [App\Http\Controllers\Api\RefundController::class, 'resendOtp'])
         ->middleware(['permission:orders.refund', 'device.active', 'throttle:10,1']);
 }
 

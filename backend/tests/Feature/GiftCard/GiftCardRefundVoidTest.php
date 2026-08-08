@@ -168,7 +168,7 @@ class GiftCardRefundVoidTest extends TestCase
 
         $res = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50, 'reason' => 'partial'],
+            ['amount' => 50, 'reason_category' => 'other', 'reason' => 'partial'],
             $this->staffHeaders($owner),
         );
         $res->assertStatus(422);

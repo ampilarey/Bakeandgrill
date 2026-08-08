@@ -62,10 +62,10 @@ export function RefundConfirmModal({
       >
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#0F172A" }}>
-            Issue refund?
+            Request refund?
           </div>
           <div style={{ marginTop: 4, fontSize: 13, color: "#64748B" }}>
-            This pays money back to the customer. Cannot be undone from the POS.
+            Money does not leave the drawer until a manager or owner approves. The customer is notified by SMS when a phone is on the order.
           </div>
         </div>
         <div style={{
@@ -142,7 +142,7 @@ export function RefundConfirmModal({
               border: "none", cursor: "pointer", fontSize: 13,
             }}
           >
-            Yes, issue refund
+            Yes, request refund
           </button>
         </div>
       </div>

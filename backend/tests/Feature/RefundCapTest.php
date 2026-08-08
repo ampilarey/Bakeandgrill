@@ -83,6 +83,7 @@ class RefundCapTest extends TestCase
             'discount_amount' => 0,
             'total' => 100.0,
             'total_laar' => 10000,
+            'delivery_contact_phone' => '9607700001',
         ]);
         Payment::create([
             'order_id' => $order->id,
@@ -96,7 +97,7 @@ class RefundCapTest extends TestCase
         // BUG: old code allowed this. Should now be 422.
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 75.00,
-            'reason' => 'over-refund attempt',
+            'reason_category' => 'other', 'reason' => 'over-refund attempt',
         ])->assertStatus(422)
             ->assertSeeText('exceed amount paid');
 
@@ -124,6 +125,7 @@ class RefundCapTest extends TestCase
             'discount_amount' => 0,
             'total' => 100.0,
             'total_laar' => 10000,
+            'delivery_contact_phone' => '9607700002',
         ]);
         Payment::create([
             'order_id' => $order->id,
@@ -136,7 +138,7 @@ class RefundCapTest extends TestCase
 
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 50.00,
-            'reason' => 'returning to customer',
+            'reason_category' => 'other', 'reason' => 'returning to customer',
         ])->assertCreated();
 
         $this->assertSame(1, Refund::where('order_id', $order->id)->count());
@@ -160,6 +162,7 @@ class RefundCapTest extends TestCase
             'total' => 100.0,
             'total_laar' => 10000,
             'paid_at' => now(),
+            'delivery_contact_phone' => '9607700003',
         ]);
         Payment::create([
             'order_id' => $order->id,
@@ -173,12 +176,14 @@ class RefundCapTest extends TestCase
         // First refund — 60 MVR — fine.
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 60.00,
+            'reason_category' => 'other', 'reason' => 'test refund',
         ])->assertCreated();
 
         // Second refund — 50 MVR — would push to 110 MVR refunded against
         // 100 MVR paid. Must be rejected.
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 50.00,
+            'reason_category' => 'other', 'reason' => 'test refund',
         ])->assertStatus(422);
 
         $this->assertSame(1, Refund::where('order_id', $order->id)->count());
@@ -200,6 +205,7 @@ class RefundCapTest extends TestCase
             'discount_amount' => 0,
             'total' => 100.0,
             'total_laar' => 10000,
+            'delivery_contact_phone' => '9607700004',
         ]);
         // 50 MVR paid + 50 MVR failed (e.g. card declined retry)
         Payment::create([
@@ -221,6 +227,7 @@ class RefundCapTest extends TestCase
         // Cap is 50 (only the cash payment), not 100.
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 75.00,
+            'reason_category' => 'other', 'reason' => 'test refund',
         ])->assertStatus(422);
     }
 }

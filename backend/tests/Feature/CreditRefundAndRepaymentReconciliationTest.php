@@ -137,7 +137,7 @@ class CreditRefundAndRepaymentReconciliationTest extends TestCase
 
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $orderTotalMvr,
-            'reason' => 'Order returned',
+            'reason_category' => 'other', 'reason' => 'Order returned',
         ])->assertCreated();
 
         // Refund row must record zero drawer cash — money moved on the ledger,

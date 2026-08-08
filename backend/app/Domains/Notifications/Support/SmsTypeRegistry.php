@@ -94,6 +94,9 @@ final class SmsTypeRegistry
             self::def('customer_order_preparing', 'Order preparing', 'transactional', true, false, 'customer_order_preparing', 'sms_customer_preparing_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_ready', 'Order ready', 'transactional', true, false, 'customer_order_ready_pickup', 'sms_customer_ready_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
             self::def('customer_order_on_the_way', 'Order on the way', 'transactional', true, false, 'customer_order_on_the_way', 'sms_customer_on_the_way_enabled', 'sms.transactional.manage', false, 'The ordering customer', false),
+            self::def('customer_refund_requested', 'Refund requested', 'transactional', true, false, 'customer_refund_requested', 'sms_customer_refund_requested_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
+            self::def('customer_refund_completed', 'Refund completed', 'transactional', true, false, 'customer_refund_completed', 'sms_customer_refund_completed_enabled', 'sms.transactional.manage', false, 'Refund phone (order phone or walk-in add)', false),
+            self::def('customer_refund_otp', 'Refund verification OTP', 'system', true, false, 'customer_refund_otp', null, 'sms.transactional.manage', true, 'Refund phone — customer reads code to cashier', true),
             self::def('pos_send_bill', 'POS send bill', 'transactional', true, false, 'customer_send_bill', 'sms_pos_send_bill_enabled', 'orders.send_sms_bill', false, 'The ordering customer', true),
             self::def('pos_send_pay_link', 'POS payment link', 'transactional', true, false, 'customer_send_pay_link', 'sms_pos_send_pay_link_enabled', 'orders.send_payment_link', false, 'The ordering customer', true),
             self::def('pos_fire_to_kitchen', 'Fire to kitchen', 'transactional', true, false, 'customer_fire_to_kitchen', 'sms_pos_fire_to_kitchen_enabled', 'sms.transactional.manage', false, 'The ordering customer', true),
@@ -105,6 +108,8 @@ final class SmsTypeRegistry
             self::def('staff_order_out_for_delivery', 'Staff: out for delivery', 'staff', true, false, 'order_out_for_delivery', 'staff_sms_order_out_for_delivery_enabled', 'sms.transactional.manage', false, 'Assigned / on-shift staff (or fallback)', false),
             self::def('staff_no_staff_found', 'Staff: no staff found', 'staff', true, false, 'no_staff_found', 'staff_sms_no_staff_found_enabled', 'sms.transactional.manage', false, 'Fallback staff / managers', false),
             self::def('staff_new_customer', 'Staff: new customer', 'staff', true, false, 'customer_new', 'staff_sms_new_customer_enabled', 'sms.transactional.manage', false, 'Configured staff recipients', false),
+            self::def('staff_refund_requested', 'Staff: refund awaiting approval', 'staff', true, false, 'staff_refund_requested', 'sms_staff_refund_requested_enabled', 'sms.transactional.manage', false, 'Staff with orders.refund', false),
+            self::def('owner_daily_refund_summary', 'Owner: daily refund summary', 'staff', true, false, 'owner_daily_refund_summary', 'sms_owner_daily_refund_summary_enabled', 'sms.transactional.manage', false, 'Owner phone(s)', false),
 
             // Marketing
             self::def('marketing_campaign', 'Bulk campaign', 'marketing', true, true, null, 'sms_marketing_campaigns_enabled', 'sms.campaigns.send', false, 'Campaign audience', true),
@@ -270,7 +275,8 @@ final class SmsTypeRegistry
 
         return ($entry['category'] ?? '') === 'auth'
             || str_starts_with($entry['key'], 'auth_')
-            || $entry['key'] === 'discount_approval_otp';
+            || $entry['key'] === 'discount_approval_otp'
+            || $entry['key'] === 'customer_refund_otp';
     }
 
     /**
@@ -281,7 +287,7 @@ final class SmsTypeRegistry
     public static function sampleVariables(string $typeKey): array
     {
         return match ($typeKey) {
-            'auth_customer_otp', 'auth_staff_password_reset', 'discount_approval_otp' => [
+            'auth_customer_otp', 'auth_staff_password_reset', 'discount_approval_otp', 'customer_refund_otp' => [
                 'code' => '123456',
                 'minutes' => '10',
                 'brand' => 'Bake & Grill',

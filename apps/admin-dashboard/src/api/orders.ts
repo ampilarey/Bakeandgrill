@@ -173,21 +173,54 @@ export async function kdsRecall(id: number): Promise<void> {
 
 // ── Refunds ───────────────────────────────────────────────────────────────────
 
+export const REFUND_REASON_CATEGORIES = [
+  { value: 'wrong_item', label: 'Wrong item' },
+  { value: 'quality_complaint', label: 'Quality complaint' },
+  { value: 'order_cancelled', label: 'Order cancelled' },
+  { value: 'duplicate_charge', label: 'Duplicate charge' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export type RefundReasonCategory = (typeof REFUND_REASON_CATEGORIES)[number]['value'];
+
+export type RefundPhoneFlags = {
+  refund_phone?: string | null;
+  phone_added_at_refund?: boolean;
+  has_prior_order_history?: boolean;
+  refunds_last_90_days?: number;
+  otp_verified?: boolean;
+  otp_owner_override?: boolean;
+};
+
 export interface AdminRefund {
   id: number;
   order_id: number;
   order?: { id: number; order_number: string };
   amount: number;
   reason: string | null;
+  reason_category?: string | null;
+  rejection_reason?: string | null;
   status: string;
-  processed_at: string | null;
+  refund_phone?: string | null;
+  phone_added_at_refund?: boolean;
+  otp_owner_override?: boolean;
+  phone_flags?: RefundPhoneFlags;
+  requested_at?: string | null;
+  approved_at?: string | null;
+  processed_at?: string | null;
   created_at: string;
   user?: { id: number; name: string };
+  approver?: { id: number; name: string } | null;
 }
 
 export async function fetchAdminRefunds(params?: { page?: number; status?: string }): Promise<{
   refunds: { data: AdminRefund[]; current_page: number; last_page: number; total: number };
-  meta?: { approved_amount_total?: number };
+  meta?: {
+    approved_amount_total?: number;
+    pending_count?: number;
+    phone_added_pending?: number;
+    otp_override_pending?: number;
+  };
 }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
@@ -195,8 +228,32 @@ export async function fetchAdminRefunds(params?: { page?: number; status?: strin
   return req(`/refunds?${qs}`);
 }
 
-export async function issueRefund(orderId: number, data: { amount: number; reason?: string }): Promise<{ refund: AdminRefund }> {
+export async function issueRefund(
+  orderId: number,
+  data: {
+    amount: number;
+    reason: string;
+    reason_category: RefundReasonCategory;
+    cash_refund_override?: boolean;
+    refund_phone?: string;
+  },
+): Promise<{ refund: AdminRefund; auto_approved?: boolean; phone_flags?: RefundPhoneFlags }> {
   return req(`/orders/${orderId}/refunds`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function approveRefund(
+  id: number,
+  data: { otp?: string; owner_override_without_otp?: boolean } = {},
+): Promise<{ refund: AdminRefund; phone_flags?: RefundPhoneFlags }> {
+  return req(`/refunds/${id}/approve`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function resendRefundOtp(id: number): Promise<{ refund: AdminRefund; message?: string }> {
+  return req(`/refunds/${id}/resend-otp`, { method: 'POST', body: JSON.stringify({}) });
+}
+
+export async function rejectRefund(id: number, rejection_reason: string): Promise<{ refund: AdminRefund }> {
+  return req(`/refunds/${id}/reject`, { method: 'POST', body: JSON.stringify({ rejection_reason }) });
 }
 
 export async function getRefund(id: number): Promise<{ refund: AdminRefund }> {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Orders\Services;
 
+use App\Domains\Auth\Services\ApprovalOtpCoder;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -13,7 +14,6 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * SMS one-time-code approval for manual POS discounts (§3A).
@@ -26,6 +26,7 @@ final class DiscountApprovalService
         private readonly SmsService $sms,
         private readonly CustomerSmsMessageBuilder $messages,
         private readonly AuditLogService $audit,
+        private readonly ApprovalOtpCoder $otp,
     ) {}
 
     /**
@@ -69,8 +70,9 @@ final class DiscountApprovalService
             abort(422, 'Discount amount must be greater than zero.');
         }
 
-        $ttl = DiscountSettings::codeTtlMinutes();
-        $plainCode = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        $issued = $this->otp->issue();
+        $plainCode = $issued['plain'];
+        $ttl = $issued['ttl_minutes'];
         $percent = $subtotalLaar > 0
             ? round($decision->discountLaar * 100 / $subtotalLaar, 1)
             : 0.0;
@@ -85,8 +87,8 @@ final class DiscountApprovalService
             'discount_percent' => $percent,
             'reason' => $decision->reason,
             'reason_note' => $decision->reasonNote,
-            'code_hash' => Hash::make($plainCode),
-            'expires_at' => now()->addMinutes($ttl),
+            'code_hash' => $issued['hash'],
+            'expires_at' => $issued['expires_at'],
             'attempts' => 0,
             'status' => 'pending',
         ]);
@@ -170,30 +172,31 @@ final class DiscountApprovalService
             abort(422, 'This approval code is no longer valid.');
         }
 
-        if ($approval->expires_at === null || $approval->expires_at->isPast()) {
-            $approval->update(['status' => 'expired']);
-            abort(422, 'Approval code expired.');
-        }
+        $this->otp->assertValid(
+            $approval->code_hash,
+            $approval->expires_at,
+            (int) $approval->attempts,
+            $code,
+            function (array $state) use ($approval): void {
+                if (! empty($state['expired'])) {
+                    $approval->update(['status' => 'expired']);
 
-        $maxAttempts = DiscountSettings::maxAttempts();
-        if ((int) $approval->attempts >= $maxAttempts) {
-            $approval->update(['status' => 'failed']);
-            abort(422, 'Too many attempts. Request a new code.');
-        }
+                    return;
+                }
+                if (! empty($state['failed'])) {
+                    $approval->update([
+                        'attempts' => $state['attempts'] ?? $approval->attempts,
+                        'status' => 'failed',
+                    ]);
 
-        $code = trim($code);
-        if ($code === '' || !Hash::check($code, (string) $approval->code_hash)) {
-            $attempts = (int) $approval->attempts + 1;
-            $status = $attempts >= $maxAttempts ? 'failed' : 'pending';
-            $approval->update([
-                'attempts' => $attempts,
-                'status' => $status,
-            ]);
-            if ($status === 'failed') {
-                abort(422, 'Too many attempts. Request a new code.');
-            }
-            abort(422, 'Invalid code.');
-        }
+                    return;
+                }
+                if (isset($state['attempts'])) {
+                    $approval->update(['attempts' => $state['attempts']]);
+                }
+            },
+            'approval',
+        );
 
         // Amount binding: optional body discount_amount must match the pending record.
         if ($request !== null && $request->has('discount_amount')) {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   adjustInventory,
+  approveRefund,
   closeShift,
   createCashMovement,
   createPurchase,
@@ -11,6 +12,8 @@ import {
   fetchSuppliers,
   getCurrentShift,
   openShift,
+  rejectRefund,
+  type RefundReasonCategory,
 } from "../api";
 import { localDateYmd } from "../utils/localDate";
 
@@ -85,14 +88,34 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([emptyPurchaseLine()]);
   const [refundOrderId, setRefundOrderId] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
+  const [refundCategory, setRefundCategory] = useState<RefundReasonCategory | "">("");
   const [refundReason, setRefundReason] = useState("");
+  const [refundPhone, setRefundPhone] = useState("");
   const [refundStatusFilter, setRefundStatusFilter] = useState("");
   // FIX 1e — ops-side "Refund card portion in cash". Same semantics
   // as the ReceiptsPanel checkbox: the POS only forwards the flag;
   // the backend decides the actual per-tender laari splits.
   const [refundCashOverride, setRefundCashOverride] = useState(false);
   const [refunds, setRefunds] = useState<
-    Array<{ id: number; amount: number; status: string; reason: string | null; order_id: number }>
+    Array<{
+      id: number;
+      amount: number;
+      status: string;
+      reason: string | null;
+      reason_category?: string | null;
+      order_id: number;
+      refund_phone?: string | null;
+      phone_added_at_refund?: boolean;
+      no_customer_contact?: boolean;
+      rejection_reason?: string | null;
+      phone_flags?: {
+        refund_phone?: string | null;
+        phone_added_at_refund?: boolean;
+        has_prior_order_history?: boolean;
+        refunds_last_90_days?: number;
+        otp_owner_override?: boolean;
+      };
+    }>
   >([]);
 
   // Load static ops data (shift, inventory, suppliers) when entering ops mode.
@@ -127,8 +150,11 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
 
     fetchRefunds(refundStatusFilter || undefined)
       .then((r) => setRefunds(r.refunds.data))
-      .catch(() => setOpsMessage("Unable to load refunds."));
-  }, [isLoggedIn, viewMode, refundStatusFilter, setOpsMessage]);
+      .catch(() => {
+        // Listing requires orders.refund — request-only cashiers skip history.
+        setRefunds([]);
+      });
+  }, [isLoggedIn, viewMode, refundStatusFilter]);
 
   const handleOpenShift = () => {
     const value = Number.parseFloat(openingCash);
@@ -255,23 +281,79 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     );
   };
 
+  const refreshRefundList = () =>
+    fetchRefunds(refundStatusFilter || undefined)
+      .then((r) => setRefunds(r.refunds.data))
+      .catch(() => { /* list requires orders.refund — ignore for request-only cashiers */ });
+
   const handleCreateRefund = () => {
     const orderId = Number.parseInt(refundOrderId, 10);
     const amount = Number.parseFloat(refundAmount);
     if (!Number.isFinite(orderId) || orderId <= 0) { setOpsMessage("Enter a valid order ID."); return; }
     if (!Number.isFinite(amount) || amount <= 0) { setOpsMessage("Enter a valid refund amount."); return; }
+    if (!refundCategory) { setOpsMessage("Pick a reason category."); return; }
+    if (!refundReason.trim()) { setOpsMessage("Describe the reason."); return; }
+    if (refundCategory === "other" && refundReason.trim().length < 3) {
+      setOpsMessage("Please describe the reason when category is Other.");
+      return;
+    }
     createRefund(orderId, {
       amount,
-      reason: refundReason || undefined,
+      reason: refundReason.trim(),
+      reason_category: refundCategory,
       ...(refundCashOverride ? { cash_refund_override: true } : {}),
+      ...(refundPhone.trim() ? { refund_phone: refundPhone.trim() } : {}),
     })
-      .then(() => {
-        setRefundOrderId(""); setRefundAmount(""); setRefundReason("");
+      .then((res) => {
+        setRefundOrderId(""); setRefundAmount(""); setRefundCategory(""); setRefundReason("");
+        setRefundPhone("");
         setRefundCashOverride(false);
-        return fetchRefunds(refundStatusFilter || undefined);
+        setOpsMessage(
+          res.auto_approved
+            ? "Refund approved."
+            : "Refund requested — ask the customer for the OTP, then approve.",
+        );
+        return refreshRefundList();
       })
-      .then((r) => setRefunds(r.refunds.data))
-      .catch(() => setOpsMessage("Unable to record refund."));
+      .catch((e: unknown) => setOpsMessage((e as Error)?.message || "Unable to request refund."));
+  };
+
+  const handleApproveRefund = (id: number) => {
+    const otp = window.prompt(
+      "Enter the 4-digit code from the customer's phone.\nOwner only: type OVERRIDE if the customer cannot receive SMS.",
+    );
+    if (otp === null) return;
+    const trimmed = otp.trim();
+    if (!trimmed) {
+      setOpsMessage("Customer OTP is required to approve.");
+      return;
+    }
+    const payload = trimmed.toUpperCase() === "OVERRIDE"
+      ? { owner_override_without_otp: true }
+      : { otp: trimmed };
+    approveRefund(id, payload)
+      .then(() => {
+        setOpsMessage(
+          payload.owner_override_without_otp
+            ? "Refund approved (owner OTP override)."
+            : "Refund approved.",
+        );
+        return refreshRefundList();
+      })
+      .catch((e: unknown) => setOpsMessage((e as Error)?.message || "Unable to approve refund."));
+  };
+
+  const handleRejectRefund = (id: number, rejection_reason: string) => {
+    if (!rejection_reason.trim()) {
+      setOpsMessage("Enter a rejection reason.");
+      return;
+    }
+    rejectRefund(id, rejection_reason.trim())
+      .then(() => {
+        setOpsMessage("Refund rejected — no money moved.");
+        return refreshRefundList();
+      })
+      .catch(() => setOpsMessage("Unable to reject refund."));
   };
 
   return {
@@ -284,12 +366,15 @@ export function useOps(isLoggedIn: boolean, viewMode: "pos" | "ops") {
     suppliers, purchaseSupplierId, setPurchaseSupplierId, purchaseDate, setPurchaseDate,
     purchaseLines, addPurchaseLine, removePurchaseLine, updatePurchaseLine,
     refundOrderId, setRefundOrderId,
-    refundAmount, setRefundAmount, refundReason, setRefundReason,
+    refundAmount, setRefundAmount,
+    refundCategory, setRefundCategory,
+    refundReason, setRefundReason,
+    refundPhone, setRefundPhone,
     refundStatusFilter, setRefundStatusFilter, refunds,
     refundCashOverride, setRefundCashOverride,
     handleOpenShift, handleCloseShift, handleCashMovement,
     handleAdjustInventory, handleRecordWaste, handleCreatePurchase,
-    handleCreateRefund,
+    handleCreateRefund, handleApproveRefund, handleRejectRefund,
     setOpsMessage,
   };
 }

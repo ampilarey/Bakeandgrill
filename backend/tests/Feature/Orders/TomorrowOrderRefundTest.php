@@ -203,7 +203,7 @@ class TomorrowOrderRefundTest extends TestCase
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50.00, 'reason' => 'Customer cancelled before collection day'],
+            ['amount' => 50.00, 'reason_category' => 'other', 'reason' => 'Customer cancelled before collection day'],
             $this->authHeader(),
         );
 
@@ -223,7 +223,7 @@ class TomorrowOrderRefundTest extends TestCase
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50.00, 'reason' => 'Cancel one of two'],
+            ['amount' => 50.00, 'reason_category' => 'other', 'reason' => 'Cancel one of two'],
             $this->authHeader(),
         );
 
@@ -271,7 +271,7 @@ class TomorrowOrderRefundTest extends TestCase
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50.00, 'reason' => 'Should not work'],
+            ['amount' => 50.00, 'reason_category' => 'other', 'reason' => 'Should not work'],
             $this->authHeader(),
         );
 
@@ -322,7 +322,7 @@ class TomorrowOrderRefundTest extends TestCase
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50.00, 'reason' => 'Release holds'],
+            ['amount' => 50.00, 'reason_category' => 'other', 'reason' => 'Release holds'],
             $this->authHeader(),
         );
 

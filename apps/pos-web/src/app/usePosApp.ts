@@ -86,13 +86,16 @@ export function usePosApp() {
   const canPaySplit = hasPosPermission(staffPermissions, "payments.split");
   const canApplyDiscount = hasPosPermission(staffPermissions, "promotions.discounts");
   const canUseRewards = canApplyDiscount || hasPosPermission(staffPermissions, "loyalty.redeem");
-  const canRefund = hasPosPermission(staffPermissions, "orders.refund");
+  const canApproveRefund = hasPosPermission(staffPermissions, "orders.refund");
+  const canRequestRefund = hasPosPermission(staffPermissions, "orders.refund_request")
+    || canApproveRefund;
+  const canRefund = canRequestRefund;
   const canSendBill = hasPosPermission(staffPermissions, "orders.send_sms_bill");
   const canSendPayLink = hasPosPermission(staffPermissions, "orders.send_payment_link");
   const canManageOrderStatus = hasPosPermission(staffPermissions, "pos.manage_order_status");
   const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
   const canViewKds = hasPosPermission(staffPermissions, "kds.view");
-  const canAccessOps = canOpsInventory || canOpsPreparedStock || canRefund;
+  const canAccessOps = canOpsInventory || canOpsPreparedStock || canRequestRefund;
   // FIX 17 — a user with `pos.active_orders` is a POS user (kitchen-side
   // expediter/manager who watches active orders), not a KDS-only kitchen
   // hand, so they must NOT be shunted into the kitchen-only landing page.
@@ -1197,7 +1200,7 @@ export function usePosApp() {
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
-    canUseRewards, canRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
+    canUseRewards, canRefund, canRequestRefund, canApproveRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
     canBuyAssigned, canKitchenReceive, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,

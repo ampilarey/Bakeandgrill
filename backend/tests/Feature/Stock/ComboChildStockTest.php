@@ -379,7 +379,8 @@ class ComboChildStockTest extends TestCase
         Sanctum::actingAs($owner, ['staff']);
         $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => (float) $order->total,
-            'reason' => 'Full refund',
+            'reason_category' => 'other', 'reason' => 'Full refund',
+            'refund_phone' => '9607700111',
         ])->assertCreated();
 
         $child->refresh();

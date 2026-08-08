@@ -101,7 +101,7 @@ class RefundFlowTest extends TestCase
 
         $response = $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 10.00, 'reason' => 'Customer request'],
+            ['amount' => 10.00, 'reason_category' => 'other', 'reason' => 'Customer request'],
             $this->authHeader($this->owner),
         );
 
@@ -123,7 +123,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 10.00, 'status' => 'rejected'],
+            ['amount' => 10.00, 'status' => 'rejected', 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )
             ->assertStatus(422)
@@ -141,7 +141,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 0],
+            ['amount' => 0, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(422);
     }
@@ -155,7 +155,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 99.99],
+            ['amount' => 99.99, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(422);
     }
@@ -168,14 +168,14 @@ class RefundFlowTest extends TestCase
         // First partial refund — OK
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 30.00],
+            ['amount' => 30.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(201);
 
         // Second partial refund that would exceed total — should fail
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 30.00],
+            ['amount' => 30.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(422);
     }
@@ -189,7 +189,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 40.00],
+            ['amount' => 40.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(201);
 
@@ -206,7 +206,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 50.00],
+            ['amount' => 50.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(201);
 
@@ -254,7 +254,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 15.00],
+            ['amount' => 15.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             $this->authHeader($this->owner),
         )->assertStatus(201);
 
@@ -270,7 +270,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 10.00],
+            ['amount' => 10.00, 'reason_category' => 'other', 'reason' => 'test refund'],
         )->assertStatus(401);
     }
 
@@ -282,7 +282,7 @@ class RefundFlowTest extends TestCase
 
         $this->postJson(
             "/api/orders/{$order->id}/refunds",
-            ['amount' => 10.00],
+            ['amount' => 10.00, 'reason_category' => 'other', 'reason' => 'test refund'],
             ['Authorization' => "Bearer {$token}"],
         )->assertStatus(403);
     }

@@ -23,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('discount.apply', [DiscountPolicy::class, 'apply']);
+        Gate::define('refund.request', [RefundPolicy::class, 'request']);
         Gate::define('refund.process', [RefundPolicy::class, 'process']);
         Gate::define('order.void', [VoidPolicy::class, 'void']);
         Gate::define('stock.manage', [StockPolicy::class, 'manage']);

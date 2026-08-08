@@ -9,6 +9,13 @@ vi.mock("../api", () => ({
   adjustPreparedStock: vi.fn(),
   fetchPosMenu: vi.fn().mockResolvedValue({ categories: [], items: [] }),
   snoozeItem: vi.fn(),
+  REFUND_REASON_CATEGORIES: [
+    { value: "wrong_item", label: "Wrong item" },
+    { value: "quality_complaint", label: "Quality complaint" },
+    { value: "order_cancelled", label: "Order cancelled" },
+    { value: "duplicate_charge", label: "Duplicate charge" },
+    { value: "other", label: "Other" },
+  ],
 }));
 
 type OpsState = ReturnType<typeof useOps>;
@@ -50,7 +57,11 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     updatePurchaseLine: noop,
     refundOrderId: "42",
     refundAmount: "12.50",
+    refundCategory: "wrong_item",
+    setRefundCategory: noop,
     refundReason: "Wrong item",
+    refundPhone: "",
+    setRefundPhone: noop,
     setRefundOrderId: noop,
     setRefundAmount: noop,
     setRefundReason: noop,
@@ -66,6 +77,8 @@ function makeOps(overrides: Partial<OpsState> = {}): OpsState {
     handleRecordWaste: noop,
     handleCreatePurchase: noop,
     handleCreateRefund: noop,
+    handleApproveRefund: noop,
+    handleRejectRefund: noop,
     setOpsMessage: noop,
     ...overrides,
   } as OpsState;
@@ -76,7 +89,7 @@ describe("OpsPanel refund confirmation", () => {
     vi.clearAllMocks();
   });
 
-  it("does not call createRefund on the first Record refund click", async () => {
+  it("does not call createRefund on the first Request click", async () => {
     const user = userEvent.setup();
     const handleCreateRefund = vi.fn();
     render(
@@ -87,16 +100,17 @@ describe("OpsPanel refund confirmation", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Refunds/i }));
-    await user.click(screen.getByRole("button", { name: /^Record refund$/i }));
+    await user.click(screen.getByRole("button", { name: /^Request$/i }));
 
     expect(handleCreateRefund).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: /Confirm refund/i })).toBeTruthy();
     expect(screen.getByText(/MVR 12\.50/)).toBeTruthy();
-    expect(screen.getByText(/Wrong item/)).toBeTruthy();
+    // Reason appears in the confirm dialog row (category option also says "Wrong item").
+    expect(screen.getAllByText(/Wrong item/).length).toBeGreaterThan(0);
     expect(screen.getByText(/ON — card portion in cash/i)).toBeTruthy();
   });
 
-  it("calls createRefund only after Yes, issue refund", async () => {
+  it("calls createRefund only after Yes, request refund", async () => {
     const user = userEvent.setup();
     const handleCreateRefund = vi.fn();
     render(
@@ -107,10 +121,10 @@ describe("OpsPanel refund confirmation", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Refunds/i }));
-    await user.click(screen.getByRole("button", { name: /^Record refund$/i }));
+    await user.click(screen.getByRole("button", { name: /^Request$/i }));
     expect(handleCreateRefund).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /Yes, issue refund/i }));
+    await user.click(screen.getByRole("button", { name: /Yes, request refund/i }));
     expect(handleCreateRefund).toHaveBeenCalledTimes(1);
   });
 });

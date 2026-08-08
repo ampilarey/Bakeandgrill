@@ -112,6 +112,13 @@ Schedule::command('credit:send-payment-reminders')
     ->onFailure($alertOnFailure('credit:send-payment-reminders'))
     ->after($trackSuccess('credit:send-payment-reminders'));
 
+// Refunds: owner daily summary (deterrent — who asked, who approved, no-contact)
+Schedule::command('refunds:send-daily-summary')
+    ->dailyAt('08:45')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('refunds:send-daily-summary'))
+    ->after($trackSuccess('refunds:send-daily-summary'));
+
 // Inventory: check reorder points daily at 08:00
 Schedule::command('inventory:check-reorder')
     ->dailyAt('08:00')

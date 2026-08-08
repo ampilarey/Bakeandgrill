@@ -39,13 +39,14 @@ class StaffRefundPermissionTest extends TestCase
     public function test_staff_without_refund_permission_cannot_issue_refund(): void
     {
         $this->staff->revokePermission('orders.refund');
+        $this->staff->revokePermission('orders.refund_request');
         Sanctum::actingAs($this->staff, ['staff']);
 
         $order = Order::factory()->paid()->create();
 
         $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 10,
-            'reason' => 'Test refund',
+            'reason_category' => 'other', 'reason' => 'Test refund',
         ])->assertForbidden();
     }
 }

@@ -498,7 +498,7 @@ class PreparedStockTest extends TestCase
 
         $response = $this->postJson("/api/orders/{$order->id}/refunds", [
             'amount' => 100.0,
-            'reason' => 'Customer request',
+            'reason_category' => 'other', 'reason' => 'Customer request',
         ]);
 
         $response->assertCreated();
@@ -781,14 +781,16 @@ class PreparedStockTest extends TestCase
 
         $r1 = $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $total,
-            'reason' => 'Customer complaint',
+            'reason_category' => 'other', 'reason' => 'Customer complaint',
+            'refund_phone' => '9607700112',
         ]);
         $r1->assertStatus(201);
 
         // Second refund attempt — must fail (already fully refunded)
         $r2 = $this->postJson("/api/orders/{$orderId}/refunds", [
             'amount' => $total,
-            'reason' => 'Duplicate request',
+            'reason_category' => 'other', 'reason' => 'Duplicate request',
+            'refund_phone' => '9607700112',
         ]);
         $r2->assertStatus(422);
 

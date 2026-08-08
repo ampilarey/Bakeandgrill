@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useSse } from '../hooks/useSse';
 import {
   fetchOrders, fetchOrder, resumeOrder, holdOrder, sendOrderBill, sendPayLink, cancelOrder,
-  addOrderPayments, issueRefund,
+  addOrderPayments, issueRefund, REFUND_REASON_CATEGORIES, type RefundReasonCategory,
   getReceiptLinkForOrder, sendReceiptForOrder,
   createInvoiceFromOrder, sendInvoiceToCustomer,
   fetchDeliveryDrivers, assignDeliveryDriver,
@@ -94,6 +94,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const [driverAssigning, setDriverAssigning] = useState(false);
   const [showRefund, setShowRefund] = useState(false);
   const [refundAmount, setRefundAmount] = useState('');
+  const [refundCategory, setRefundCategory] = useState<RefundReasonCategory | ''>('');
   const [refundReason, setRefundReason] = useState('');
   const [refundBusy, setRefundBusy] = useState(false);
   const [refundError, setRefundError] = useState('');
@@ -111,13 +112,14 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   const canRecordPayment = can('pos.ring_sales');
   const canReceipts = can('orders.receipts');
   const canInvoice = can('finance.invoices');
-  const canRefund = can('orders.refund');
+  const canRequestRefund = can('orders.refund_request') || can('orders.refund');
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const openRefundForm = () => {
     if (!order) return;
     setRefundAmount(parseFloat(String(order.total ?? 0)).toFixed(2));
+    setRefundCategory('');
     setRefundReason('');
     setRefundError('');
     setShowRefund(true);
@@ -125,13 +127,22 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   };
 
   const submitRefund = async () => {
-    if (!order) return;
+    if (!order || !refundCategory) return;
     const amt = parseFloat(refundAmount);
     setRefundBusy(true); setRefundError(''); setActionErr('');
     try {
-      await issueRefund(order.id, { amount: amt, reason: refundReason.trim() });
-      showToast(`Refund of MVR ${amt.toFixed(2)} issued.`);
+      const res = await issueRefund(order.id, {
+        amount: amt,
+        reason_category: refundCategory,
+        reason: refundReason.trim(),
+      });
+      showToast(
+        res.auto_approved
+          ? `Refund of MVR ${amt.toFixed(2)} approved.`
+          : `Refund of MVR ${amt.toFixed(2)} requested — awaiting approval.`,
+      );
       setShowRefund(false);
+      setRefundCategory('');
       setRefundReason('');
       reload();
       onOrderUpdated();
@@ -151,15 +162,23 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       setRefundError('Enter a valid refund amount.');
       return;
     }
+    if (!refundCategory) {
+      setRefundError('Pick a reason category.');
+      return;
+    }
     if (!refundReason.trim()) {
-      setRefundError('A reason is required before issuing a refund.');
+      setRefundError('Describe the reason.');
+      return;
+    }
+    if (refundCategory === 'other' && refundReason.trim().length < 3) {
+      setRefundError('Please describe the reason when category is Other.');
       return;
     }
     setRefundError('');
     askRefundConfirm({
-      title: 'Confirm refund',
-      message: `Issue MVR ${amt.toFixed(2)} refund for order #${order?.order_number}?\n\nReason: ${refundReason.trim()}\n\nYou need an open shift to process refunds.`,
-      confirmLabel: 'Issue refund',
+      title: 'Confirm refund request',
+      message: `Request MVR ${amt.toFixed(2)} refund for order #${order?.order_number}?\n\nReason: ${refundReason.trim()}\n\nMoney does not leave the drawer until approved. Customer is notified by SMS when a phone is on the order.`,
+      confirmLabel: 'Request refund',
       danger: true,
       onConfirm: () => void submitRefund(),
     });
@@ -324,7 +343,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             </div>
 
             {/* Action buttons */}
-            {(canManage || canHoldResume || canSendBill || canSendPayLink || canRecordPayment || canRefund || canVoid) && (
+            {(canManage || canHoldResume || canSendBill || canSendPayLink || canRecordPayment || canRequestRefund || canVoid) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
               {canHoldResume && order.status === 'held' && (
                 <Btn small onClick={() => doAction('resume', () => resumeOrder(order.id), 'Order resumed')}>
@@ -421,11 +440,11 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   💵 Record Payment
                 </Btn>
               )}
-              {canRefund
+              {canRequestRefund
                 && !['cancelled', 'refunded'].includes(order.status)
                 && (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial' || REFUNDABLE_STATUSES.has(order.status)) && (
                 <Btn small variant="danger" onClick={openRefundForm}>
-                  Process Refund
+                  Request Refund
                 </Btn>
               )}
             </div>
@@ -622,7 +641,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
 
             {showRefund && (
               <div style={{ background: 'var(--color-danger-bg)', border: '1px solid #FECACA', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>Process Refund</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-danger-strong)', marginBottom: 12 }}>Request Refund</div>
                 {refundError && (
                   <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 10 }}>{refundError}</p>
                 )}
@@ -635,23 +654,36 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                     style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                   />
                 </label>
+                <label style={{ display: 'block', marginBottom: 10 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Category *</span>
+                  <select
+                    value={refundCategory}
+                    onChange={(e) => setRefundCategory(e.target.value as RefundReasonCategory | '')}
+                    style={{ width: '100%', height: 36, padding: '0 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', boxSizing: 'border-box' }}
+                  >
+                    <option value="">Select…</option>
+                    {REFUND_REASON_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </label>
                 <label style={{ display: 'block', marginBottom: 12 }}>
-                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Reason *</span>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Details *</span>
                   <textarea
                     rows={3}
-                    placeholder="Why is this being refunded?"
+                    placeholder="Describe what happened…"
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                   />
                 </label>
                 <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                  Requires an open shift. Amount is capped at what was paid minus prior refunds.
+                  Requires an open shift. Approval needed before money moves. SMS goes to the phone on this order.
                 </p>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <Btn small variant="ghost" onClick={() => { setShowRefund(false); setRefundError(''); }}>Cancel</Btn>
                   <Btn small variant="danger" disabled={refundBusy} onClick={handleRefundClick}>
-                    {refundBusy ? '…' : 'Issue Refund'}
+                    {refundBusy ? '…' : 'Request Refund'}
                   </Btn>
                 </div>
               </div>

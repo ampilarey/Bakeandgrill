@@ -4,7 +4,9 @@ import {
   fetchPosMenu,
   fetchPreparedStock,
   snoozeItem,
+  REFUND_REASON_CATEGORIES,
   type PreparedStockRow,
+  type RefundReasonCategory,
 } from "../api";
 import type { Item } from "../types";
 import type { useOps } from "../hooks/useOps";
@@ -33,6 +35,7 @@ type OpsPermissions = {
   inventory?: boolean;
   preparedStock?: boolean;
   refunds?: boolean;
+  refundApprove?: boolean;
   shiftOpen?: boolean;
 };
 
@@ -134,7 +137,7 @@ export function OpsPanel(props: OpsState & {
         {activeTab === "availability" && (
           <AvailabilityTab setOpsMessage={ops.setOpsMessage} onMenuRefresh={onMenuRefresh} />
         )}
-        {activeTab === "refunds"    && <RefundsTab ops={ops} />}
+        {activeTab === "refunds"    && <RefundsTab ops={ops} canApprove={!!permissions?.refundApprove} />}
       </div>
     </div>
   );
@@ -799,7 +802,7 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
   );
 }
 
-function RefundsTab({ ops }: { ops: OpsState }) {
+function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean }) {
   const statusOptions = [
     { value: "", label: "All statuses" },
     { value: "pending", label: "Pending" },
@@ -808,14 +811,14 @@ function RefundsTab({ ops }: { ops: OpsState }) {
     { value: "rejected", label: "Rejected" },
   ];
 
-  // Two-step refund (same pattern as ReceiptsPanel): first tap stages a
-  // confirm modal; createRefund only runs after "Yes, issue refund".
   const [pendingRefund, setPendingRefund] = useState<{
     orderId: number;
     amount: number;
     reason: string;
     cashOverride: boolean;
   } | null>(null);
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const handleRefundIntent = () => {
     const orderId = Number.parseInt(ops.refundOrderId, 10);
@@ -826,6 +829,18 @@ function RefundsTab({ ops }: { ops: OpsState }) {
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       ops.setOpsMessage("Enter a valid refund amount.");
+      return;
+    }
+    if (!ops.refundCategory) {
+      ops.setOpsMessage("Pick a reason category.");
+      return;
+    }
+    if (!ops.refundReason.trim()) {
+      ops.setOpsMessage("Describe the reason.");
+      return;
+    }
+    if (ops.refundCategory === "other" && ops.refundReason.trim().length < 3) {
+      ops.setOpsMessage("Please describe the reason when category is Other.");
       return;
     }
     ops.setOpsMessage("");
@@ -841,11 +856,11 @@ function RefundsTab({ ops }: { ops: OpsState }) {
     <>
       <Header
         title="Refunds"
-        subtitle="Issue refunds against past orders and review refund history."
+        subtitle="Request refunds for approval. Money moves only after an authoriser approves."
       />
 
-      <FormCard title="Record refund" help="Use the order ID from Receipts or Active orders. Amount is in MVR.">
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 10 }}>
+      <FormCard title="Request refund" help="Use the order ID from Receipts or Active orders. Amount is in MVR. Walk-in phone is only used when the order has no stored number — existing numbers cannot be changed here.">
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr 1.6fr auto", gap: 10 }}>
           <input
             value={ops.refundOrderId}
             onChange={(e) => ops.setRefundOrderId(e.target.value)}
@@ -860,14 +875,31 @@ function RefundsTab({ ops }: { ops: OpsState }) {
             inputMode="decimal"
             style={fieldStyle}
           />
+          <select
+            value={ops.refundCategory}
+            onChange={(e) => ops.setRefundCategory(e.target.value as RefundReasonCategory | "")}
+            style={fieldStyle}
+          >
+            <option value="">Category…</option>
+            {REFUND_REASON_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
           <input
             value={ops.refundReason}
             onChange={(e) => ops.setRefundReason(e.target.value)}
-            placeholder="Reason (optional)"
+            placeholder="Details (required)"
             style={fieldStyle}
           />
-          <PrimaryBtn onClick={handleRefundIntent}>Record refund</PrimaryBtn>
+          <PrimaryBtn onClick={handleRefundIntent}>Request</PrimaryBtn>
         </div>
+        <input
+          value={ops.refundPhone}
+          onChange={(e) => ops.setRefundPhone(e.target.value)}
+          placeholder="Walk-in phone (only if order has none)"
+          inputMode="tel"
+          style={{ ...fieldStyle, marginTop: 8, width: "100%" }}
+        />
         <label style={{
           display: "flex", alignItems: "center", gap: 8, marginTop: 8,
           fontSize: 12, color: C.muted, cursor: "pointer",
@@ -878,7 +910,7 @@ function RefundsTab({ ops }: { ops: OpsState }) {
             onChange={(e) => ops.setRefundCashOverride(e.target.checked)}
             style={{ width: 15, height: 15 }}
           />
-          Refund card portion in cash (backend decides breakdown)
+          Refund card portion in cash (applied on approval)
         </label>
       </FormCard>
 
@@ -897,56 +929,121 @@ function RefundsTab({ ops }: { ops: OpsState }) {
         />
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Filter</span>
-        <select
-          value={ops.refundStatusFilter}
-          onChange={(e) => ops.setRefundStatusFilter(e.target.value)}
-          style={{ ...fieldStyle, width: "auto", minWidth: 160 }}
-        >
-          {statusOptions.map((o) => (
-            <option key={o.value || "all"} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <span style={{ fontSize: 12, color: C.subtle }}>{ops.refunds.length} shown</span>
-      </div>
-
-      {ops.refunds.length === 0 ? (
-        <Empty emoji="↩️" title="No refunds" body="Nothing matches this filter yet." />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {ops.refunds.map((r) => (
-            <div
-              key={r.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr auto auto",
-                gap: 12,
-                alignItems: "center",
-                padding: "12px 14px",
-                borderRadius: 10,
-                border: `1px solid ${C.border}`,
-                background: "#FAFAFA",
-                fontSize: 13,
-              }}
+      {canApprove && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>Filter</span>
+            <select
+              value={ops.refundStatusFilter}
+              onChange={(e) => ops.setRefundStatusFilter(e.target.value)}
+              style={{ ...fieldStyle, width: "auto", minWidth: 160 }}
             >
-              <span style={{ fontWeight: 800, color: C.text }}>#{r.id}</span>
-              <span style={{ color: C.muted }}>
-                Order {r.order_id}
-                {r.reason ? ` · ${r.reason}` : ""}
-              </span>
-              <span style={{ fontWeight: 700, color: C.text }}>MVR {Number(r.amount).toFixed(2)}</span>
-              <span style={{
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                color: r.status === "rejected" ? C.danger : r.status === "pending" ? C.warn : C.success,
-              }}>
-                {r.status}
-              </span>
+              {statusOptions.map((o) => (
+                <option key={o.value || "all"} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: 12, color: C.subtle }}>{ops.refunds.length} shown</span>
+          </div>
+
+          {ops.refunds.length === 0 ? (
+            <Empty emoji="↩️" title="No refunds" body="Nothing matches this filter yet." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {ops.refunds.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "auto 1fr auto auto",
+                    gap: 12,
+                    alignItems: "center",
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: `1px solid ${r.no_customer_contact ? "#FECACA" : C.border}`,
+                    background: r.no_customer_contact ? "#FEF2F2" : "#FAFAFA",
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ fontWeight: 800, color: C.text }}>#{r.id}</span>
+                  <span style={{ color: C.muted }}>
+                    Order {r.order_id}
+                    {r.reason ? ` · ${r.reason}` : ""}
+                    {(r.phone_flags?.refund_phone ?? r.refund_phone) ? ` · ${r.phone_flags?.refund_phone ?? r.refund_phone}` : ""}
+                    {r.phone_flags?.phone_added_at_refund ? " · ADDED" : ""}
+                    {r.phone_flags?.has_prior_order_history === false ? " · NO HISTORY" : ""}
+                    {(r.phone_flags?.refunds_last_90_days ?? 0) > 0 ? ` · ${r.phone_flags?.refunds_last_90_days} refunds/90d` : ""}
+                    {r.phone_flags?.otp_owner_override ? " · OTP OVERRIDE" : ""}
+                    {r.no_customer_contact ? " · NO CONTACT" : ""}
+                    {r.rejection_reason ? ` · Rejected: ${r.rejection_reason}` : ""}
+                    {r.status === "pending" && (
+                      <span style={{ display: "inline-flex", gap: 6, marginLeft: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => ops.handleApproveRefund(r.id)}
+                          style={{
+                            padding: "4px 10px", fontSize: 11, fontWeight: 700, borderRadius: 8,
+                            border: "none", background: C.success, color: "#fff", cursor: "pointer",
+                          }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setRejectId(r.id); setRejectReason(""); }}
+                          style={{
+                            padding: "4px 10px", fontSize: 11, fontWeight: 700, borderRadius: 8,
+                            border: "none", background: C.danger, color: "#fff", cursor: "pointer",
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ fontWeight: 700, color: C.text }}>MVR {Number(r.amount).toFixed(2)}</span>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    color: r.status === "rejected" ? C.danger : r.status === "pending" ? C.warn : C.success,
+                  }}>
+                    {r.status}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {rejectId !== null && (
+            <FormCard title="Reject refund" help="Rejection reason is required. No money moves.">
+              <div style={{ display: "flex", gap: 10 }}>
+                <input
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Why decline this refund?"
+                  style={{ ...fieldStyle, flex: 1 }}
+                />
+                <PrimaryBtn onClick={() => {
+                  ops.handleRejectRefund(rejectId, rejectReason);
+                  setRejectId(null);
+                  setRejectReason("");
+                }}>
+                  Confirm reject
+                </PrimaryBtn>
+                <button
+                  type="button"
+                  onClick={() => setRejectId(null)}
+                  style={{
+                    padding: "8px 12px", borderRadius: 8, fontWeight: 700, fontSize: 13,
+                    background: "#fff", color: C.text, border: `1px solid ${C.border2}`, cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </FormCard>
+          )}
+        </>
       )}
     </>
   );
