@@ -28,19 +28,26 @@ class OrderVisibilityService
 
     /**
      * Full order payload including customer PII and payment rows.
+     *
+     * Terminal sales (completed / cancelled / refunded) require ownership or an
+     * elevated station/orders permission. `pos.ring_sales` alone only unlocks
+     * live tickets so a cashier can settle a parked handover — not another
+     * cashier's finished receipt.
      */
     public function staffCanViewFullOrder(User $user, Order $order): bool
     {
+        if ((int) $order->user_id === (int) $user->id) {
+            return true;
+        }
         if ($this->permissions->hasPermission($user, 'pos.view_all_station_orders')) {
             return true;
         }
         if ($this->permissions->hasPermission($user, 'orders.manage')) {
             return true;
         }
-        if ($this->permissions->hasPermission($user, 'pos.ring_sales')) {
-            return true;
-        }
-        if ((int) $order->user_id === (int) $user->id) {
+        // Live tickets only — not completed/cancelled/refunded receipts.
+        if ($this->permissions->hasPermission($user, 'pos.ring_sales')
+            && $this->isHandoffVisibleOrder($order)) {
             return true;
         }
 
