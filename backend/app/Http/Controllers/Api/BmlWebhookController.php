@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Handles BML Connect payment webhook callbacks.
  *
- * Returns 200 for successfully processed or duplicate (idempotent) webhooks.
- * Returns 503 for signature verification failures so BML can retry with a valid payload.
+ * Returns 200 for successfully processed or terminal duplicate (processed/ignored) webhooks.
+ * Returns 503 for signature failures, in-flight processing, or processing errors so BML retries.
  */
 class BmlWebhookController extends Controller
 {

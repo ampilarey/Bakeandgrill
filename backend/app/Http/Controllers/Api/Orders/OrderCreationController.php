@@ -449,13 +449,25 @@ class OrderCreationController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $order = Order::with(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at'])
-            ->findOrFail($id);
+        $visibility = app(OrderVisibilityService::class);
+        $user = $request->user();
+        $order = Order::findOrFail($id);
 
-        if (!app(OrderVisibilityService::class)->staffCanViewOrder($request->user(), $order)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+        if ($visibility->staffCanViewFullOrder($user, $order)) {
+            $order->load(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at']);
+
+            return response()->json(['order' => $order]);
         }
 
-        return response()->json(['order' => $order]);
+        if ($visibility->staffCanViewKitchenSummary($user, $order)) {
+            $order->load(['items.modifiers', 'table:id,name', 'user:id,name']);
+
+            return response()->json([
+                'order' => $visibility->kitchenSummary($order),
+                'view' => 'kitchen_summary',
+            ]);
+        }
+
+        return response()->json(['message' => 'Forbidden.'], 403);
     }
 }

@@ -44,24 +44,26 @@ class KitchenReceivingService
     public function receiveAll(KitchenProductionBatch $batch, User $user, array $payload, ?Request $request = null): KitchenReceivingBatch
     {
         return DB::transaction(function () use ($batch, $user, $payload, $request) {
-            $batch->load('items');
-            $receivingBatch = $this->createReceivingBatch($batch, $user, $payload);
+            $lockedBatch = KitchenProductionBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $lockedBatch->load('items');
+            $receivingBatch = $this->createReceivingBatch($lockedBatch, $user, $payload);
 
-            foreach ($batch->items as $prodItem) {
-                if (in_array($prodItem->status, ['received', 'cancelled'], true)) {
+            foreach ($lockedBatch->items as $prodItem) {
+                $item = KitchenProductionItem::whereKey($prodItem->id)->lockForUpdate()->first();
+                if (!$item || in_array((string) $item->status, ['received', 'cancelled', 'rejected'], true)) {
                     continue;
                 }
                 $this->receiveProductionItem(
                     $receivingBatch,
-                    $prodItem,
-                    (float) $prodItem->produced_qty,
+                    $item,
+                    (float) $item->produced_qty,
                     $payload,
                     $user,
                     $request,
                 );
             }
 
-            return $this->finalizeReceivingBatch($receivingBatch, $batch, $user, $request);
+            return $this->finalizeReceivingBatch($receivingBatch, $lockedBatch->fresh(['items']), $user, $request);
         });
     }
 
@@ -74,7 +76,58 @@ class KitchenReceivingService
         ?Request $request = null,
     ): KitchenReceivingBatch {
         return DB::transaction(function () use ($batch, $prodItem, $user, $payload, $request) {
-            $qty = (float) ($payload['received_qty'] ?? $prodItem->produced_qty);
+            KitchenProductionBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $lockedItem = KitchenProductionItem::whereKey($prodItem->id)->lockForUpdate()->firstOrFail();
+
+            if (in_array((string) $lockedItem->status, ['received', 'cancelled', 'rejected'], true)) {
+                // Idempotent no-op for fully terminal items — return latest receiving batch.
+                $existing = KitchenReceivingBatch::query()
+                    ->where('kitchen_production_batch_id', $batch->id)
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($existing) {
+                    return $existing->fresh(['items']) ?? $existing;
+                }
+
+                abort(422, 'This production item can no longer be received.');
+            }
+
+            $idempotencyKey = isset($payload['idempotency_key']) && is_string($payload['idempotency_key'])
+                ? trim($payload['idempotency_key'])
+                : '';
+            if ($idempotencyKey === '') {
+                abort(422, 'idempotency_key is required for item receive.');
+            }
+
+            $prior = KitchenReceivingItem::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+            if ($prior) {
+                if ((int) $prior->kitchen_production_item_id !== (int) $lockedItem->id) {
+                    abort(409, 'Idempotency key already used for a different production item.');
+                }
+
+                $existingBatch = KitchenReceivingBatch::query()->find($prior->kitchen_receiving_batch_id);
+                if (
+                    !$existingBatch
+                    || (int) $existingBatch->kitchen_production_batch_id !== (int) $batch->id
+                ) {
+                    abort(409, 'Idempotency key already used for a different production batch.');
+                }
+
+                return $existingBatch->fresh(['items']) ?? $existingBatch;
+            }
+
+            // Re-inject normalized key for receiveProductionItem persistence.
+            $payload['idempotency_key'] = $idempotencyKey;
+
+            $qty = (float) ($payload['received_qty'] ?? max(
+                0,
+                (float) $lockedItem->produced_qty - (float) KitchenReceivingItem::query()
+                    ->where('kitchen_production_item_id', $lockedItem->id)
+                    ->sum('received_qty'),
+            ));
             $receivingBatch = KitchenReceivingBatch::firstOrCreate(
                 [
                     'kitchen_production_batch_id' => $batch->id,
@@ -88,7 +141,7 @@ class KitchenReceivingService
                 ],
             );
 
-            $this->receiveProductionItem($receivingBatch, $prodItem, $qty, $payload, $user, $request);
+            $this->receiveProductionItem($receivingBatch, $lockedItem, $qty, $payload, $user, $request);
 
             return $this->finalizeReceivingBatch($receivingBatch, $batch->fresh(['items']), $user, $request);
         });
@@ -103,6 +156,21 @@ class KitchenReceivingService
         ?Request $request = null,
     ): KitchenReceivingItem {
         return DB::transaction(function () use ($batch, $prodItem, $user, $payload, $request) {
+            KitchenProductionBatch::whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $lockedItem = KitchenProductionItem::whereKey($prodItem->id)->lockForUpdate()->firstOrFail();
+
+            if (in_array((string) $lockedItem->status, ['received', 'cancelled', 'rejected'], true)) {
+                abort(422, 'This production item can no longer be rejected.');
+            }
+
+            // Partially received items must not be rejected after stock was accepted.
+            $alreadyReceived = (float) KitchenReceivingItem::query()
+                ->where('kitchen_production_item_id', $lockedItem->id)
+                ->sum('received_qty');
+            if ($alreadyReceived > 0 || $lockedItem->status === 'partially_received') {
+                abort(422, 'Cannot reject an item that has already been partially received.');
+            }
+
             $receivingBatch = KitchenReceivingBatch::create([
                 'kitchen_production_batch_id' => $batch->id,
                 'received_by' => $user->id,
@@ -112,26 +180,26 @@ class KitchenReceivingService
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $rejectedQty = (float) ($payload['rejected_qty'] ?? $prodItem->produced_qty);
+            $rejectedQty = (float) ($payload['rejected_qty'] ?? $lockedItem->produced_qty);
             $recvItem = KitchenReceivingItem::create([
                 'kitchen_receiving_batch_id' => $receivingBatch->id,
-                'kitchen_production_item_id' => $prodItem->id,
+                'kitchen_production_item_id' => $lockedItem->id,
                 'received_qty' => 0,
                 'rejected_qty' => $rejectedQty,
-                'missing_qty' => max(0, (float) $prodItem->produced_qty - $rejectedQty),
+                'missing_qty' => max(0, (float) $lockedItem->produced_qty - $rejectedQty),
                 'condition' => $payload['condition'] ?? 'damaged',
                 'action' => 'reject',
                 'notes' => $payload['notes'] ?? null,
             ]);
 
-            $prodItem->update(['status' => 'rejected']);
+            $lockedItem->update(['status' => 'rejected']);
 
             KitchenProductionVariance::create([
                 'kitchen_production_batch_id' => $batch->id,
-                'kitchen_production_item_id' => $prodItem->id,
+                'kitchen_production_item_id' => $lockedItem->id,
                 'variance_type' => 'rejected',
                 'qty' => $rejectedQty,
-                'unit' => $prodItem->unit,
+                'unit' => $lockedItem->unit,
                 'reason' => $payload['notes'] ?? null,
                 'recorded_by' => $user->id,
             ]);
@@ -214,36 +282,78 @@ class KitchenReceivingService
         array $payload,
         User $user,
         ?Request $request,
-    ): KitchenReceivingItem {
-        $expected = (float) $prodItem->expected_receive_qty ?: (float) $prodItem->produced_qty;
-        $receivedQty = min($qty, (float) $prodItem->produced_qty);
-        $missing = max(0, $expected - $receivedQty);
+    ): ?KitchenReceivingItem {
+        if (in_array((string) $prodItem->status, ['received', 'cancelled', 'rejected'], true)) {
+            return null;
+        }
+
+        $produced = (float) $prodItem->produced_qty;
+        $expected = (float) $prodItem->expected_receive_qty ?: $produced;
+
+        $idempotencyKey = isset($payload['idempotency_key']) && is_string($payload['idempotency_key'])
+            && $payload['idempotency_key'] !== ''
+            ? $payload['idempotency_key']
+            : null;
+
+        if ($idempotencyKey !== null) {
+            $existingByKey = KitchenReceivingItem::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+            if ($existingByKey) {
+                return $existingByKey;
+            }
+        }
+
+        // Cumulative accepted quantity across prior receiving rows for this item.
+        $priorAccepted = (float) KitchenReceivingItem::query()
+            ->where('kitchen_production_item_id', $prodItem->id)
+            ->sum('received_qty');
+
+        if ($priorAccepted >= $produced && $produced > 0) {
+            $prodItem->update(['status' => 'received']);
+
+            return null;
+        }
+
+        // received_qty is always an incremental acceptance for this request
+        // (not a cumulative target). Retries must send idempotency_key.
+        $remaining = max(0, $produced - $priorAccepted);
+        $incremental = min(max(0, $qty), $remaining);
+        $targetCumulative = $priorAccepted + $incremental;
+
+        if ($incremental <= 0) {
+            // Already fully received or zero qty — no-op.
+            return null;
+        }
+
+        $missing = max(0, $expected - $targetCumulative);
 
         $recvItem = KitchenReceivingItem::create([
             'kitchen_receiving_batch_id' => $receivingBatch->id,
             'kitchen_production_item_id' => $prodItem->id,
-            'received_qty' => $receivedQty,
+            'received_qty' => $incremental,
             'rejected_qty' => 0,
             'missing_qty' => $missing,
             'condition' => $payload['condition'] ?? 'good',
-            'action' => $receivedQty >= $expected ? 'accept' : 'partial_accept',
+            'action' => $targetCumulative >= $expected ? 'accept' : 'partial_accept',
             'notes' => $payload['notes'] ?? null,
+            'idempotency_key' => $idempotencyKey,
         ]);
 
-        $newStatus = $receivedQty >= (float) $prodItem->produced_qty ? 'received' : 'partially_received';
+        $newStatus = $targetCumulative >= $produced ? 'received' : 'partially_received';
         $prodItem->update(['status' => $newStatus]);
 
         if ($prodItem->order_item_id) {
             $orderItem = OrderItem::find($prodItem->order_item_id);
             if ($orderItem) {
                 $orderItem->update([
-                    'kitchen_received_qty' => $receivedQty,
+                    'kitchen_received_qty' => $targetCumulative,
                     'status' => $newStatus === 'received' ? 'received' : 'produced',
                 ]);
             }
         }
 
-        if ($missing > 0) {
+        if ($missing > 0 && $newStatus === 'received') {
             KitchenProductionVariance::create([
                 'kitchen_production_batch_id' => $prodItem->kitchen_production_batch_id,
                 'kitchen_production_item_id' => $prodItem->id,
@@ -254,15 +364,19 @@ class KitchenReceivingService
             ]);
         }
 
-        $stockUnits = max(0, (int) round((float) $receivedQty, 0, PHP_ROUND_HALF_UP));
-        $this->applyPreparedStock($receivingBatch, $prodItem, $stockUnits, $user);
+        $stockUnits = max(0, (int) round($incremental, 0, PHP_ROUND_HALF_UP));
+        $this->applyPreparedStock($receivingBatch, $prodItem, $stockUnits, $user, $targetCumulative);
 
         $this->audit->log(
             'kitchen.receiving.received',
             'KitchenReceivingItem',
             $recvItem->id,
             [],
-            ['received_qty' => $receivedQty, 'status' => $newStatus],
+            [
+                'received_qty' => $incremental,
+                'cumulative_received_qty' => $targetCumulative,
+                'status' => $newStatus,
+            ],
             ['batch_id' => $prodItem->kitchen_production_batch_id, 'order_id' => $prodItem->order_id, 'user_id' => $user->id, 'source' => 'pos'],
             $request,
         );
@@ -306,6 +420,7 @@ class KitchenReceivingService
         KitchenProductionItem $prodItem,
         int $qty,
         User $user,
+        ?float $cumulativeReceived = null,
     ): void {
         $batch = $prodItem->batch ?? KitchenProductionBatch::find($prodItem->kitchen_production_batch_id);
         if (!$batch || $batch->production_type !== 'prepared_stock') {
@@ -324,7 +439,10 @@ class KitchenReceivingService
             return;
         }
 
-        $key = 'kitchen:receive:' . $receivingBatch->id . ':item:' . $prodItem->id;
+        // Stable per production-item cumulative watermark so retries / new
+        // receiving batches cannot inflate prepared stock for the same units.
+        $watermark = $cumulativeReceived ?? $qty;
+        $key = 'kitchen:receive:prod-item:' . $prodItem->id . ':to:' . round((float) $watermark, 4);
 
         if ($prodItem->variant_id) {
             $variant = Variant::find($prodItem->variant_id);
@@ -355,7 +473,7 @@ class KitchenReceivingService
             'KitchenProductionItem',
             $prodItem->id,
             [],
-            ['delta' => $qty],
+            ['delta' => $qty, 'cumulative' => $watermark],
             ['receiving_batch_id' => $receivingBatch->id, 'user_id' => $user->id],
             null,
         );

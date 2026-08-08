@@ -66,6 +66,8 @@ class KitchenReceivingController extends Controller
         $item = KitchenProductionItem::where('kitchen_production_batch_id', $batch->id)->where('id', $itemId)->firstOrFail();
         $validated = $request->validate([
             'received_qty' => ['nullable', 'numeric', 'min:0.001'],
+            // Required so retries cannot silently inflate stock on partial receive.
+            'idempotency_key' => ['required', 'string', 'max:128'],
             'receive_location' => ['nullable', Rule::in(['pos_counter', 'takeaway_counter', 'dine_in_service', 'delivery_packaging', 'storage', 'other'])],
             'condition' => ['nullable', Rule::in(['good', 'cold', 'damaged', 'wrong_item', 'undercooked', 'overcooked', 'missing', 'other'])],
             'notes' => ['nullable', 'string'],
@@ -119,9 +121,16 @@ class KitchenReceivingController extends Controller
             'kitchen_production_item_id' => ['nullable', 'integer'],
         ]);
 
+        $itemId = $validated['kitchen_production_item_id'] ?? null;
+        if ($itemId !== null) {
+            KitchenProductionItem::where('kitchen_production_batch_id', $batch->id)
+                ->where('id', $itemId)
+                ->firstOrFail();
+        }
+
         $path = $request->file('file')->store('kitchen-receiving/' . $batch->id, 'public');
         $attachment = $batch->attachments()->create([
-            'kitchen_production_item_id' => $validated['kitchen_production_item_id'] ?? null,
+            'kitchen_production_item_id' => $itemId,
             'uploaded_by' => $request->user()->id,
             'type' => $validated['type'],
             'file_path' => $path,

@@ -11,6 +11,7 @@ use App\Domains\Shared\Support\StateMachine;
  *
  * Statuses:
  *   created    — payment record exists, gateway not yet called
+ *   initiating — exclusive claim while calling the gateway (prevents duplicate sessions)
  *   initiated  — redirect sent to BML gateway
  *   pending    — awaiting webhook confirmation
  *   confirmed  — webhook received, payment successful (terminal)
@@ -31,7 +32,8 @@ class PaymentStateMachine extends StateMachine
     protected function transitions(): array
     {
         return [
-            'created' => ['initiated', 'confirmed', 'cancelled'],
+            'created' => ['initiating', 'initiated', 'confirmed', 'cancelled'],
+            'initiating' => ['initiated', 'failed', 'cancelled', 'created'],
             'initiated' => ['pending', 'confirmed', 'cancelled', 'failed'],
             'pending' => ['confirmed', 'failed', 'cancelled', 'expired'],
             'confirmed' => ['refunded'],

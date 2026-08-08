@@ -26,6 +26,12 @@ use Illuminate\Support\Str;
 
 class PaymentService
 {
+    /** Online gateways that reserve the order until settled or failed. */
+    public const ONLINE_GATEWAYS = ['bml', 'stripe'];
+
+    /** @var list<string> */
+    public const IN_FLIGHT_STATUSES = ['created', 'initiating', 'initiated', 'pending'];
+
     public function __construct(
         private BmlConnectService $bml,
         private PaymentRepositoryInterface $payments,
@@ -34,6 +40,45 @@ class PaymentService
         private OrderPaymentStateService $paymentState,
         private PaymentCommissionService $paymentCommission,
     ) {}
+
+    /**
+     * Find any in-flight online (BML/Stripe) payment for the order.
+     * Caller must hold a lock on the order row.
+     */
+    public function findInFlightOnlinePayment(int $orderId): ?Payment
+    {
+        return Payment::query()
+            ->where('order_id', $orderId)
+            ->whereIn('gateway', self::ONLINE_GATEWAYS)
+            ->whereIn('status', self::IN_FLIGHT_STATUSES)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Enforce a single order-level online payment reservation across gateways
+     * and amounts. Same gateway + same amount may be reused; anything else
+     * conflicts until the active session settles or fails.
+     *
+     * @return Payment|null Existing reusable session for this gateway+amount
+     */
+    public function resolveOnlinePaymentReservation(
+        Order $order,
+        string $gateway,
+        int $amountLaar,
+    ): ?Payment {
+        $active = $this->findInFlightOnlinePayment($order->id);
+        if ($active === null) {
+            return null;
+        }
+
+        if ((string) $active->gateway === $gateway && (int) $active->amount_laar === $amountLaar) {
+            return $active;
+        }
+
+        abort(409, 'An online payment session is already in progress for this order. Complete or cancel it before starting another.');
+    }
 
     /**
      * Initiate a BML online payment for an order (full amount).
@@ -49,11 +94,21 @@ class PaymentService
         ?string $returnUrl = null,
     ): array {
         $amountLaar = $amountLaar ?? $this->orderTotalLaar($order);
-        $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . now()->format('Ymd'));
+        $idempotencyKey = $idempotencyKey ?? ('bml:init:' . $order->id . ':' . $amountLaar);
         $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
 
-        $payment = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar) {
-            return $this->payments->firstOrCreate(
+        // Order-level reservation: under a row lock, at most one in-flight online
+        // payment (any gateway/amount). Same BML amount may be reused; exclusive
+        // `initiating` claim ensures only one request calls the gateway.
+        $claim = DB::transaction(function () use ($order, $idempotencyKey, $localId, $amountLaar): array {
+            Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
+            if ($reserved) {
+                return $this->claimActiveBmlPayment($reserved);
+            }
+
+            $payment = $this->payments->firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
                 [
                     'order_id' => $order->id,
@@ -67,73 +122,77 @@ class PaymentService
                     'processed_at' => now(),
                 ],
             );
+
+            // firstOrCreate may return a terminal row for this key — mint a fresh attempt.
+            if (in_array((string) $payment->status, ['confirmed', 'paid', 'completed', 'failed', 'cancelled', 'expired', 'refunded'], true)) {
+                Log::warning('BML: Idempotency key maps to terminal payment, issuing new attempt', [
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ]);
+
+                $retryKey = $idempotencyKey . ':retry:' . now()->timestamp;
+                $retryLocal = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+
+                // Re-check order-level reservation (another tab may have claimed).
+                $reserved = $this->resolveOnlinePaymentReservation($order, 'bml', $amountLaar);
+                if ($reserved) {
+                    return $this->claimActiveBmlPayment($reserved);
+                }
+
+                $payment = $this->payments->create([
+                    'idempotency_key' => $retryKey,
+                    'order_id' => $order->id,
+                    'method' => 'bml_connect',
+                    'gateway' => 'bml',
+                    'currency' => config('bml.default_currency', 'MVR'),
+                    'amount' => round($amountLaar / 100, 2),
+                    'amount_laar' => $amountLaar,
+                    'local_id' => $retryLocal,
+                    'status' => 'created',
+                    'processed_at' => now(),
+                ]);
+            }
+
+            return $this->claimActiveBmlPayment($payment);
         });
 
-        // Payment already initiated — reconstruct the BML pay URL from stored transaction ID.
-        if ($payment->status === 'initiated') {
-            $baseUrl = rtrim(config('bml.base_url', 'https://api.merchants.bankofmaldives.com.mv'), '/');
-            $payUrl = $payment->provider_transaction_id
-                ? "{$baseUrl}/pay/{$payment->provider_transaction_id}"
-                : null;
+        $payment = $claim['payment'];
 
-            Log::info('BML: Reusing existing initiated payment', [
-                'payment_id' => $payment->id,
-                'order_id' => $order->id,
-                'transaction_id' => $payment->provider_transaction_id,
-                'payment_url' => $payUrl,
-            ]);
-
-            return [
-                'payment_url' => $payUrl,
-                'payment_id' => $payment->id,
-                'local_id' => $payment->local_id,
-                'reused' => true,
-            ];
+        if ($claim['mode'] === 'reuse') {
+            return $this->bmlReuseResponse($payment, $order);
         }
 
-        // Payment in an unexpected terminal state — create a fresh one.
-        if (!in_array($payment->status, ['created'], true)) {
-            Log::warning('BML: Payment in unexpected state, issuing new attempt', [
-                'payment_id' => $payment->id,
-                'status' => $payment->status,
-            ]);
-            $idempotencyKey .= ':retry:' . now()->timestamp;
-            $localId = $this->bml->normalizeLocalId('BG-' . $order->order_number . '-' . now()->format('His'));
+        if ($claim['mode'] === 'wait') {
+            $ready = $this->waitForBmlProviderId($payment);
+            if ($ready && $ready->provider_transaction_id) {
+                return $this->bmlReuseResponse($ready, $order);
+            }
 
-            $payment = $this->payments->create([
-                'idempotency_key' => $idempotencyKey,
-                'order_id' => $order->id,
-                'method' => 'bml_connect',
-                'gateway' => 'bml',
-                'currency' => config('bml.default_currency', 'MVR'),
-                'amount' => round($amountLaar / 100, 2),
-                'amount_laar' => $amountLaar,
-                'local_id' => $localId,
-                'status' => 'created',
-                'processed_at' => now(),
-            ]);
+            throw new \RuntimeException('A payment session is already being started for this order. Please retry in a moment.');
         }
 
-        // ALWAYS send the persisted local_id. When firstOrCreate reused an
-        // existing 'created' payment (first attempt failed before reaching
-        // 'initiated'), the freshly generated timestamp-based $localId differs
-        // from the stored one — and the BML webhook resolves payments by
-        // localId, so a mismatch leaves a paid transaction unreconciled.
-        $localId = $payment->local_id;
-
-        // Include orderId in the return URL so bmlReturn() can redirect to the right order page.
-        // BML appends its own params (&state=...&transactionId=...) to whatever URL we provide.
+        // ALWAYS send the persisted local_id so webhooks reconcile correctly.
+        $localId = (string) $payment->local_id;
         $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/') . '?orderId=' . $order->id);
 
-        $result = $this->bml->createPayment(
-            $payment->amount_laar,
-            $localId,
-            returnUrl: $bmlReturnUrl,
-        );
+        try {
+            $result = $this->bml->createPayment(
+                (int) $payment->amount_laar,
+                $localId,
+                returnUrl: $bmlReturnUrl,
+            );
+        } catch (\Throwable $e) {
+            // Release the exclusive claim so a later retry can start a new session.
+            $fresh = Payment::query()->find($payment->id);
+            if ($fresh && $fresh->status === 'initiating') {
+                PaymentStateMachine::for($fresh)->transition('failed', [
+                    'gateway_response' => ['error' => $e->getMessage()],
+                ]);
+            }
+            throw $e;
+        }
 
-        // Persist transaction ID and advance state via the state machine so all
-        // payment status changes go through a single, validated transition path.
-        PaymentStateMachine::for($payment)->transition('initiated', [
+        PaymentStateMachine::for($payment->fresh())->transition('initiated', [
             'provider_transaction_id' => $result['transaction_id'],
         ]);
 
@@ -151,6 +210,98 @@ class PaymentService
             'local_id' => $localId,
             'reused' => false,
         ];
+    }
+
+    /**
+     * @return array{mode: 'reuse'|'initiate'|'wait', payment: Payment}
+     */
+    private function claimActiveBmlPayment(Payment $payment): array
+    {
+        $status = (string) $payment->status;
+
+        if (in_array($status, ['initiated', 'pending'], true) && filled($payment->provider_transaction_id)) {
+            return ['mode' => 'reuse', 'payment' => $payment];
+        }
+
+        if ($status === 'initiating') {
+            if (filled($payment->provider_transaction_id)) {
+                return ['mode' => 'reuse', 'payment' => $payment];
+            }
+
+            // Stale exclusive claim (crashed request) — reclaim for initiation.
+            if ($payment->updated_at && $payment->updated_at->lt(now()->subMinutes(2))) {
+                $payment->forceFill(['updated_at' => now()])->save();
+
+                return ['mode' => 'initiate', 'payment' => $payment->fresh() ?? $payment];
+            }
+
+            return ['mode' => 'wait', 'payment' => $payment];
+        }
+
+        if ($status === 'created') {
+            PaymentStateMachine::for($payment)->transition('initiating');
+
+            return ['mode' => 'initiate', 'payment' => $payment->fresh() ?? $payment];
+        }
+
+        // Unexpected non-terminal without provider id — treat as initiate claim.
+        if (!filled($payment->provider_transaction_id)) {
+            $payment->update(['status' => 'initiating']);
+
+            return ['mode' => 'initiate', 'payment' => $payment->fresh() ?? $payment];
+        }
+
+        return ['mode' => 'reuse', 'payment' => $payment];
+    }
+
+    private function bmlReuseResponse(Payment $payment, Order $order): array
+    {
+        $configured = config('bml.base_url');
+        $baseUrl = rtrim(
+            (is_string($configured) && $configured !== ''
+                ? $configured
+                : 'https://api.merchants.bankofmaldives.com.mv/public'),
+            '/',
+        );
+        // Pay URLs use the merchant portal host (strip trailing /public if present).
+        $payBase = preg_replace('#/public$#', '', $baseUrl) ?: $baseUrl;
+        $payUrl = $payment->provider_transaction_id
+            ? "{$payBase}/pay/{$payment->provider_transaction_id}"
+            : null;
+
+        Log::info('BML: Reusing existing initiated payment', [
+            'payment_id' => $payment->id,
+            'order_id' => $order->id,
+            'transaction_id' => $payment->provider_transaction_id,
+            'payment_url' => $payUrl,
+        ]);
+
+        return [
+            'payment_url' => $payUrl,
+            'payment_id' => $payment->id,
+            'local_id' => $payment->local_id,
+            'reused' => true,
+        ];
+    }
+
+    private function waitForBmlProviderId(Payment $payment): ?Payment
+    {
+        for ($i = 0; $i < 5; $i++) {
+            usleep(200_000);
+            $fresh = Payment::query()->find($payment->id);
+            if (!$fresh) {
+                return null;
+            }
+            if (filled($fresh->provider_transaction_id)
+                && in_array((string) $fresh->status, ['initiated', 'pending', 'confirmed', 'paid', 'completed'], true)) {
+                return $fresh;
+            }
+            if (in_array((string) $fresh->status, ['failed', 'cancelled', 'expired'], true)) {
+                return null;
+            }
+        }
+
+        return Payment::query()->find($payment->id);
     }
 
     /**
@@ -437,10 +588,19 @@ class PaymentService
             }
         }
 
-        $log = DB::transaction(function () use ($idempotencyKey, $rawBody, $payload, $headers): WebhookLog {
-            return WebhookLog::firstOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
+        // Concurrency-safe claim: only `processed`/`ignored` are terminal duplicates.
+        // A prior `failed` delivery must be reclaimable so BML retries can settle
+        // a payment that already succeeded at the gateway. In-flight `received`
+        // rows are not re-entered unless stale (crashed worker).
+        $log = DB::transaction(function () use ($idempotencyKey, $rawBody, $payload, $headers): ?WebhookLog {
+            $existing = WebhookLog::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing === null) {
+                return WebhookLog::create([
+                    'idempotency_key' => $idempotencyKey,
                     'gateway' => 'bml',
                     'gateway_event_id' => $payload['transactionId'] ?? null,
                     'event_type' => $payload['state'] ?? 'unknown',
@@ -448,23 +608,59 @@ class PaymentService
                     'raw_body' => $rawBody,
                     'payload' => $payload,
                     'status' => 'received',
-                ],
-            );
+                    'attempt_count' => 1,
+                ]);
+            }
+
+            if (in_array($existing->status, ['processed', 'ignored'], true)) {
+                return null; // true duplicate — skip
+            }
+
+            if ($existing->status === 'received') {
+                $stale = $existing->updated_at && $existing->updated_at->lt(now()->subMinutes(5));
+                if (!$stale) {
+                    // In-flight processing — must NOT return success to BML.
+                    // A 200 here would stop gateway retries if the first worker
+                    // later fails, leaving a paid gateway txn unsettled locally.
+                    throw new \RuntimeException(
+                        'BML webhook processing already in progress — retry later',
+                    );
+                }
+            }
+
+            // Reclaim failed (or stale received) for another processing attempt.
+            $priorError = $existing->error_message;
+            $existing->update([
+                'status' => 'received',
+                'error_message' => $priorError,
+                'headers' => $headers,
+                'raw_body' => $rawBody,
+                'payload' => $payload,
+                'event_type' => $payload['state'] ?? $existing->event_type,
+                'attempt_count' => (int) ($existing->attempt_count ?? 1) + 1,
+            ]);
+
+            return $existing->fresh();
         });
 
-        if ($log->status !== 'received') {
-            Log::info('BML: Duplicate webhook, skipping', ['idempotency_key' => $idempotencyKey]);
+        if ($log === null) {
+            Log::info('BML: Duplicate or in-flight webhook, skipping', ['idempotency_key' => $idempotencyKey]);
 
             return;
         }
 
         try {
             $this->processWebhookPayload($payload, $log);
-            $log->update(['status' => 'processed', 'processed_at' => now()]);
+            $log->update(['status' => 'processed', 'processed_at' => now(), 'error_message' => null]);
         } catch (\Throwable $e) {
-            $log->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
+            $attempt = (int) ($log->attempt_count ?? 1);
+            $log->update([
+                'status' => 'failed',
+                'error_message' => sprintf('[attempt %d] %s', $attempt, $e->getMessage()),
+            ]);
             Log::error('BML: Webhook processing failed', [
                 'idempotency_key' => $idempotencyKey,
+                'attempt' => $attempt,
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -518,11 +714,63 @@ class PaymentService
 
     private function confirmPayment(Payment $payment, array $payload): void
     {
+        // Retry transient deadlocks. Lock order matches initiate paths:
+        // Order → Payment (never Payment → Order).
+        $maxAttempts = 3;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            try {
+                $this->confirmPaymentOnce($payment, $payload);
+
+                return;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if (!$this->isDeadlockException($e) || $attempt === $maxAttempts) {
+                    throw $e;
+                }
+
+                Log::warning('BML: Deadlock during confirmPayment — retrying', [
+                    'payment_id' => $payment->id,
+                    'attempt' => $attempt,
+                ]);
+                usleep(50_000 * $attempt);
+            }
+        }
+    }
+
+    private function isDeadlockException(\Illuminate\Database\QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        $message = strtolower($e->getMessage());
+
+        return $sqlState === '40001'
+            || $driverCode === 1213
+            || str_contains($message, 'deadlock')
+            || str_contains($message, 'database is locked');
+    }
+
+    private function confirmPaymentOnce(Payment $payment, array $payload): void
+    {
         DB::transaction(function () use ($payment, $payload): void {
-            // Re-fetch with a row lock inside the transaction so two concurrent
-            // webhooks / return-URL callbacks can't both pass the status check
-            // (C-1: TOCTOU race condition → double loyalty earn, double inventory deduction).
-            $locked = Payment::where('id', $payment->id)->lockForUpdate()->first();
+            $orderId = (int) $payment->order_id;
+
+            // Lock Order first, then Payment — same order as initiateBmlPayment /
+            // initiatePartialBmlPayment / Stripe createIntent to avoid deadlocks
+            // under simultaneous checkout + webhook traffic.
+            $order = Order::whereKey($orderId)->lockForUpdate()->first();
+            if (!$order) {
+                Log::error('BML: Order not found during payment confirmation', [
+                    'payment_id' => $payment->id,
+                    'order_id' => $orderId,
+                ]);
+
+                return;
+            }
+
+            $locked = Payment::query()
+                ->where('id', $payment->id)
+                ->where('order_id', $orderId)
+                ->lockForUpdate()
+                ->first();
             $sm = $locked ? PaymentStateMachine::for($locked) : null;
 
             if (!$locked || !$sm->can('confirmed')) {
@@ -541,16 +789,6 @@ class PaymentService
             $this->paymentCommission->applyToPayment($locked);
 
             $this->attributeGatewayPaymentToOpenShift($locked);
-
-            $order = $this->orders->findById($locked->order_id);
-            if (!$order) {
-                Log::error('BML: Order not found during payment confirmation', [
-                    'payment_id' => $locked->id,
-                    'order_id' => $locked->order_id,
-                ]);
-
-                return;
-            }
 
             // C-2: Compare in laari (integer) to avoid float precision errors where
             // e.g. 100.00 (float) >= 100.00 (float) could fail with 99.9999... representation.

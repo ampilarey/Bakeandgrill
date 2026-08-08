@@ -9,17 +9,29 @@ use App\Domains\Payments\Events\PaymentConfirmed;
 use App\Domains\Payments\Gateway\StripeService;
 use App\Domains\Payments\Services\PaymentService;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
+use App\Services\ShiftAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StripeController extends Controller
 {
     /** Server-fixed currency — never trust a caller-supplied value. */
     private const CURRENCY = 'mvr';
+
+    /** @var list<string> */
+    private const REUSABLE_INTENT_STATUSES = [
+        'requires_payment_method',
+        'requires_confirmation',
+        'requires_action',
+        'processing',
+    ];
 
     public function __construct(
         private StripeService $stripe,
@@ -36,63 +48,113 @@ class StripeController extends Controller
             'order_id' => ['required', 'integer', 'exists:orders,id'],
         ]);
 
-        // Customer tokens may only pay their own orders.
-        // Staff tokens may initiate payment on any order.
         $user = $request->user();
+
+        // Staff path mirrors POS delivery: ring_sales + open shift.
+        // Device checks run via `device.active.staff` middleware on this route.
+        if ($user instanceof User) {
+            if (!$user->hasPermission('pos.ring_sales')) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+            app(ShiftAccessService::class)->requireOpenShift(
+                $user,
+                'Open a shift before taking payments.',
+            );
+        } elseif (!($user instanceof Customer)) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
 
         return DB::transaction(function () use ($validated, $user): JsonResponse {
             $order = Order::lockForUpdate()->findOrFail($validated['order_id']);
 
-            if ($user?->tokenCan('customer')) {
-                if ($order->customer_id !== $user->id) {
-                    return response()->json(['message' => 'Forbidden.'], 403);
-                }
-            } elseif (!$user?->tokenCan('staff')) {
+            if ($user instanceof Customer && $order->customer_id !== $user->id) {
                 return response()->json(['message' => 'Forbidden.'], 403);
             }
 
-            // Terminal / non-payable orders take no new intent.
             if (in_array($order->status, ['cancelled', 'refunded', 'completed'], true)
                 || $order->payment_status === 'paid') {
                 abort(422, 'This order is not awaiting payment.');
             }
 
-            // 2026-08 audit #6: charge only the canonical remaining balance,
-            // never the raw order total (which would over-charge a partially
-            // paid order and re-charge a paid one).
             $amountLaar = $this->payments->getRemainingBalanceLaar($order);
             if ($amountLaar <= 0) {
                 abort(422, 'This order is already fully paid.');
             }
 
-            // Reuse a pending Stripe intent for this order + amount so repeated
-            // taps do not mint duplicate full-order charges. The client_secret
-            // is a secret and is never persisted — re-fetch it from Stripe.
-            $idempotencyKey = 'stripe:intent:' . $order->id . ':' . $amountLaar;
-            $existing = Payment::where('idempotency_key', $idempotencyKey)
-                ->where('status', 'pending')
-                ->first();
-            if ($existing && $existing->provider_transaction_id) {
-                $intent = $this->stripe->getPaymentIntent($existing->provider_transaction_id);
-                $reusableStates = ['requires_payment_method', 'requires_confirmation', 'requires_action', 'processing'];
-                if (in_array($intent['status'] ?? '', $reusableStates, true) && !empty($intent['client_secret'])) {
-                    return response()->json([
-                        'payment_intent_id' => $existing->provider_transaction_id,
-                        'client_secret' => $intent['client_secret'],
-                        'reused' => true,
-                    ]);
+            // Order-level reservation across BML/Stripe — block a second online
+            // session while any in-flight payment holds the order.
+            $reserved = $this->payments->resolveOnlinePaymentReservation($order, 'stripe', $amountLaar);
+            if ($reserved?->provider_transaction_id) {
+                $reuse = $this->tryReuseStripeIntent($reserved, $order);
+                if ($reuse !== null) {
+                    return $reuse;
                 }
+                // Same stripe+amount reservation is dead at the gateway — release
+                // it (keep provider id) so a sibling retry row can be created.
+                $reserved->update(['status' => 'failed']);
+                $deadStripe = $reserved;
+                $reserved = null;
+            }
+
+            $baseKey = 'stripe:intent:' . $order->id . ':' . $amountLaar;
+            if (isset($deadStripe)) {
+                $baseKey = $baseKey . ':retry:' . $deadStripe->id;
+            }
+
+            $existing = $reserved ?? Payment::query()
+                ->where('idempotency_key', $baseKey)
+                ->where('gateway', 'stripe')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing?->provider_transaction_id) {
+                $reuse = $this->tryReuseStripeIntent($existing, $order);
+                if ($reuse !== null) {
+                    return $reuse;
+                }
+
+                // Retry-row PI also dead — do not overwrite; fail closed.
+                abort(409, 'A previous card payment is still reconciling. Please wait or contact staff.');
+            }
+
+            // Locally completed without needing Stripe re-check.
+            if ($existing && in_array((string) $existing->status, ['completed', 'paid', 'confirmed'], true)) {
+                return response()->json([
+                    'payment_intent_id' => $existing->provider_transaction_id,
+                    'status' => 'succeeded',
+                    'already_paid' => true,
+                    'reused' => true,
+                ]);
             }
 
             $result = $this->stripe->createPaymentIntent(
                 $amountLaar,
                 self::CURRENCY,
                 (string) $order->id,
+                $baseKey,
             );
 
-            Payment::updateOrCreate(
-                ['idempotency_key' => $idempotencyKey],
-                [
+            if ($existing) {
+                // Only attach a PI when the row has none yet (never replace).
+                if ($existing->provider_transaction_id
+                    && $existing->provider_transaction_id !== ($result['payment_intent_id'] ?? null)) {
+                    abort(409, 'A previous card payment is still reconciling. Please wait or contact staff.');
+                }
+
+                $existing->update([
+                    'order_id' => $order->id,
+                    'method' => 'stripe',
+                    'gateway' => 'stripe',
+                    'currency' => strtoupper(self::CURRENCY),
+                    'amount' => round($amountLaar / 100, 2),
+                    'amount_laar' => $amountLaar,
+                    'provider_transaction_id' => $result['payment_intent_id'] ?? $existing->provider_transaction_id,
+                    'status' => 'pending',
+                    'processed_at' => now(),
+                ]);
+            } else {
+                Payment::create([
+                    'idempotency_key' => $baseKey,
                     'order_id' => $order->id,
                     'method' => 'stripe',
                     'gateway' => 'stripe',
@@ -102,8 +164,8 @@ class StripeController extends Controller
                     'provider_transaction_id' => $result['payment_intent_id'] ?? null,
                     'status' => 'pending',
                     'processed_at' => now(),
-                ],
-            );
+                ]);
+            }
 
             return response()->json($result + ['reused' => false]);
         });
@@ -131,29 +193,32 @@ class StripeController extends Controller
             $currency = strtolower((string) ($pi['currency'] ?? self::CURRENCY));
 
             if ($orderId) {
-                $order = Order::find($orderId);
-                if ($order) {
-                    // Terra residual / pre-Stripe-live hardening: only complete
-                    // intents we previously created locally. Never mint a
-                    // completed payment from a webhook alone.
-                    $pending = Payment::where('provider_transaction_id', $pi['id'])
+                DB::transaction(function () use ($pi, $orderId, $amount, $currency): void {
+                    $order = Order::lockForUpdate()->find($orderId);
+                    if (!$order) {
+                        return;
+                    }
+
+                    $pending = Payment::query()
+                        ->where('provider_transaction_id', $pi['id'])
                         ->where('order_id', $order->id)
                         ->where('gateway', 'stripe')
+                        ->lockForUpdate()
                         ->first();
 
                     if (!$pending) {
-                        \Illuminate\Support\Facades\Log::warning('Stripe webhook: no matching local pending intent — ignoring', [
+                        Log::warning('Stripe webhook: no matching local pending intent — ignoring', [
                             'order_id' => $order->id,
                             'intent' => $pi['id'],
                             'webhook_amount_laar' => $amount,
                             'currency' => $currency,
                         ]);
 
-                        return response('OK', 200);
+                        return;
                     }
 
                     if ($currency !== self::CURRENCY || (int) $pending->amount_laar !== $amount) {
-                        \Illuminate\Support\Facades\Log::warning('Stripe webhook amount/currency mismatch — ignoring', [
+                        Log::warning('Stripe webhook amount/currency mismatch — ignoring', [
                             'order_id' => $order->id,
                             'intent' => $pi['id'],
                             'webhook_amount_laar' => $amount,
@@ -161,34 +226,70 @@ class StripeController extends Controller
                             'currency' => $currency,
                         ]);
 
-                        return response('OK', 200);
+                        return;
                     }
 
-                    // Already completed (duplicate delivery) — acknowledge, no re-event.
-                    if (in_array((string) $pending->status, ['completed', 'paid', 'confirmed'], true)) {
-                        return response('OK', 200);
-                    }
-
-                    $pending->update([
-                        'status' => 'completed',
-                        'reference_number' => $pi['id'],
-                        'processed_at' => now(),
-                        'amount' => round($amount / 100, 2),
-                        'amount_laar' => $amount,
-                        'currency' => strtoupper(self::CURRENCY),
-                    ]);
-
-                    event(new PaymentConfirmed(new PaymentConfirmedData(
-                        paymentId: $pending->id,
-                        orderId: $order->id,
-                        amountLaar: $amount,
-                        currency: 'mvr',
-                        orderStatus: $order->status,
-                    )));
-                }
+                    $this->finalizeSucceededStripeIntent($pending, $order, $pi);
+                });
             }
         }
 
         return response('OK', 200);
+    }
+
+    private function tryReuseStripeIntent(Payment $existing, Order $order): ?JsonResponse
+    {
+        $intent = $this->stripe->getPaymentIntent((string) $existing->provider_transaction_id);
+        $status = (string) ($intent['status'] ?? '');
+
+        if ($status === 'succeeded') {
+            $this->finalizeSucceededStripeIntent($existing, $order, $intent);
+
+            return response()->json([
+                'payment_intent_id' => $existing->provider_transaction_id,
+                'status' => 'succeeded',
+                'already_paid' => true,
+                'reused' => true,
+            ]);
+        }
+
+        if (in_array($status, self::REUSABLE_INTENT_STATUSES, true) && !empty($intent['client_secret'])) {
+            return response()->json([
+                'payment_intent_id' => $existing->provider_transaction_id,
+                'client_secret' => $intent['client_secret'],
+                'reused' => true,
+            ]);
+        }
+
+        // canceled / payment_failed / unknown → caller may mint a retry row.
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $intent
+     */
+    private function finalizeSucceededStripeIntent(Payment $payment, Order $order, array $intent): void
+    {
+        if (in_array((string) $payment->status, ['completed', 'paid', 'confirmed'], true)) {
+            return;
+        }
+
+        $amount = (int) ($intent['amount'] ?? $payment->amount_laar);
+        $payment->update([
+            'status' => 'completed',
+            'reference_number' => $intent['id'] ?? $payment->provider_transaction_id,
+            'processed_at' => now(),
+            'amount' => round($amount / 100, 2),
+            'amount_laar' => $amount,
+            'currency' => strtoupper(self::CURRENCY),
+        ]);
+
+        event(new PaymentConfirmed(new PaymentConfirmedData(
+            paymentId: $payment->id,
+            orderId: $order->id,
+            amountLaar: $amount,
+            currency: 'mvr',
+            orderStatus: $order->status,
+        )));
     }
 }

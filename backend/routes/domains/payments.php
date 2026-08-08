@@ -25,8 +25,9 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);
 });
 
-// Stripe Payment Gateway (customer or staff; ownership enforced in controller)
-Route::middleware(['auth:sanctum', 'staff_or_customer.token'])->group(function () {
+// Stripe Payment Gateway (customer or staff; ownership + POS checks in controller).
+// Staff path also runs device.active.staff (customers skip device checks).
+Route::middleware(['auth:sanctum', 'staff_or_customer.token', 'device.active.staff'])->group(function () {
     Route::post('/stripe/intent', [App\Http\Controllers\Api\StripeController::class, 'createIntent']);
 });
 // Stripe webhook — public, no auth, uses raw body

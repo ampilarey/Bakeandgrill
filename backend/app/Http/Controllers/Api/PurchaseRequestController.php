@@ -274,8 +274,14 @@ class PurchaseRequestController extends Controller
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,pdf,webp'],
             'type' => ['required', Rule::in(['request_photo', 'receipt', 'delivery_note', 'other'])],
-            'purchase_request_item_id' => ['nullable', 'integer', 'exists:purchase_request_items,id'],
+            'purchase_request_item_id' => ['nullable', 'integer'],
         ]);
+
+        $itemId = $validated['purchase_request_item_id'] ?? null;
+        if ($itemId !== null) {
+            // Must belong to this purchase request — reject cross-parent IDs.
+            $this->findItem($pr->id, (int) $itemId);
+        }
 
         /** @var User $user */
         $user = $request->user();
@@ -284,7 +290,7 @@ class PurchaseRequestController extends Controller
 
         $attachment = PurchaseRequestAttachment::create([
             'purchase_request_id' => $pr->id,
-            'purchase_request_item_id' => $validated['purchase_request_item_id'] ?? null,
+            'purchase_request_item_id' => $itemId,
             'uploaded_by' => $user->id,
             'type' => $validated['type'],
             'file_path' => $path,

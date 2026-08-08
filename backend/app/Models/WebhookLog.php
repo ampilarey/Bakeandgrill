@@ -19,6 +19,7 @@ class WebhookLog extends Model
         'raw_body',
         'payload',
         'status',
+        'attempt_count',
         'error_message',
         'processed_at',
         // Outgoing webhook subscription log fields

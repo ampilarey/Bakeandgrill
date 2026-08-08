@@ -27,6 +27,13 @@ cd "$ROOT"
 git pull origin main
 cd backend
 composer install --no-dev --optimize-autoloader
+
+# Production must fail closed on misconfiguration (matches CI / app:verify-production-config).
+if [[ "$ENV" == "production" || "$ENV" == "prod" ]]; then
+  echo "Verifying production configuration..."
+  php artisan app:verify-production-config
+fi
+
 php artisan migrate --force
 php artisan storage:link --force 2>/dev/null || true
 php artisan config:cache

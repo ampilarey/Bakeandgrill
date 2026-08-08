@@ -304,8 +304,10 @@ class KitchenProductionWorkflowTest extends TestCase
         $prodItemId = KitchenProductionBatch::find($batchId)->items()->first()->id;
 
         Sanctum::actingAs($this->cashier, ['staff']);
-        $this->postJson("/api/kitchen-receiving/{$batchId}/items/{$prodItemId}/receive", ['received_qty' => 1])
-            ->assertOk();
+        $this->postJson("/api/kitchen-receiving/{$batchId}/items/{$prodItemId}/receive", [
+            'received_qty' => 1,
+            'idempotency_key' => 'workflow-recv-' . $prodItemId,
+        ])->assertOk();
 
         Sanctum::actingAs($this->manager, ['staff']);
 
