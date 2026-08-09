@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Overlay } from "./OpenShiftModal";
 import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
@@ -133,18 +133,6 @@ export function CloseShiftModal({
       : countedLaari != null
         ? fromLaari(countedLaari)
         : 0;
-
-  /** Non-zero rows for the one-line summary under the counted total. */
-  const countedLines = useMemo(() => {
-    if (method !== "denominations") return [];
-    return [...DEFAULT_NOTE_DENOMS_LAARI, ...COMMON_COIN_DENOMS_LAARI, ...MORE_DENOMS_LAARI]
-      .map((face) => ({ face, qty: parseCount(counts[face]) }))
-      .filter((x) => x.qty > 0)
-      .map(({ face, qty }) => {
-        const unit = face >= 500 ? "note" : "coin";
-        return `${qty} × ${labelForLaari(face)} ${unit}${qty === 1 ? "" : "s"}`;
-      });
-  }, [method, counts]);
 
   /**
    * A count against a hidden face must never be silently dropped: force the
@@ -291,7 +279,7 @@ export function CloseShiftModal({
           </div>
           <p className="close-shift-sheet__subtitle">
             {method === "denominations"
-              ? "Count what is in the drawer — tap a note, enter how many."
+              ? "Count what is in the drawer — use − and + on each note (hold to repeat)."
               : "Enter the total cash you counted in the drawer."}
           </p>
           {attemptsSoFar >= 1 && step === "count" && (
@@ -482,11 +470,6 @@ export function CloseShiftModal({
                 <span>Counted cash</span>
                 <strong>MVR {countedDisplay.toFixed(2)}</strong>
               </div>
-              {countedLines.length > 0 && (
-                <div className="close-shift-counted-summary" data-testid="close-shift-counted-summary">
-                  {countedLines.join(" · ")}
-                </div>
-              )}
             </div>
 
             {method === "denominations" && (
@@ -614,6 +597,64 @@ export function CloseShiftModal({
   );
 }
 
+/**
+ * − / + with press-and-hold auto-repeat: one step on press, then repeats
+ * after 450ms every 110ms while held. The click that follows pointerup is
+ * suppressed so a tap never double-steps; keyboard activation (plain click
+ * with no pointerdown) still works.
+ */
+function StepperBtn({ label, onStep, children }: {
+  label: string;
+  onStep: () => void;
+  children: React.ReactNode;
+}) {
+  const timeoutRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const skipClickRef = useRef(false);
+
+  const stop = () => {
+    if (timeoutRef.current != null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (intervalRef.current != null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  useEffect(() => stop, []);
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="close-shift-stepper-btn"
+      onPointerDown={() => {
+        skipClickRef.current = true;
+        onStep();
+        stop();
+        timeoutRef.current = window.setTimeout(() => {
+          intervalRef.current = window.setInterval(onStep, 110);
+        }, 450);
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => {
+        if (skipClickRef.current) {
+          skipClickRef.current = false;
+          return;
+        }
+        onStep();
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function DenomSection({
   title,
   faces,
@@ -660,14 +701,9 @@ function DenomSection({
             >
               <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
               <div className="close-shift-denom-row__stepper" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  aria-label={`Decrease ${labelForLaari(face)}`}
-                  className="close-shift-stepper-btn"
-                  onClick={() => onBump(face, -1)}
-                >
+                <StepperBtn label={`Decrease ${labelForLaari(face)}`} onStep={() => onBump(face, -1)}>
                   −
-                </button>
+                </StepperBtn>
                 <span
                   data-testid={`denom-count-${face}`}
                   className="close-shift-denom-row__count"
@@ -675,14 +711,9 @@ function DenomSection({
                 >
                   {qty}
                 </span>
-                <button
-                  type="button"
-                  aria-label={`Increase ${labelForLaari(face)}`}
-                  className="close-shift-stepper-btn"
-                  onClick={() => onBump(face, 1)}
-                >
+                <StepperBtn label={`Increase ${labelForLaari(face)}`} onStep={() => onBump(face, 1)}>
                   +
-                </button>
+                </StepperBtn>
               </div>
               <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
                 <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
