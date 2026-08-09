@@ -235,9 +235,6 @@ export function CloseShiftModal({
   };
 
   const reviewBalanced = review?.matches === true;
-  /** Numbers are shown only if the SERVER put them in the response. */
-  const reviewHasNumbers = review?.expected_cash != null && review?.variance != null;
-  const reviewVarianceLaari = review?.variance != null ? Math.round(review.variance * 100) : 0;
 
   const submitClose = async () => {
     const payload = basePayload();
@@ -551,54 +548,27 @@ export function CloseShiftModal({
           <div className="close-shift-review-backdrop" data-testid="close-shift-review">
             <div className="close-shift-review" role="dialog" aria-modal="true" aria-label="Review count">
               {reviewBalanced ? (
+                /* No figures here either — the count list already shows them. */
                 <>
                   <div className="close-shift-review__badge is-ok" data-testid="close-shift-review-balanced">
                     Balanced
                   </div>
                   <p className="close-shift-review__message">
-                    Balanced — you counted MVR {(review.counted_cash ?? countedDisplay).toFixed(2)} and
-                    that matches the drawer.
+                    Balanced — the cash matches.
                   </p>
                 </>
               ) : (
+                /* NEVER render a cash figure in this popup — not the expected
+                   total, not the variance, not even the counted echo — no
+                   matter what the server returned or who is logged in.
+                   Owners reconcile in the Z-report / shift history instead. */
                 <>
-                  {reviewHasNumbers ? (
-                    /* Owner/manager: the server revealed the reconciliation. */
-                    <>
-                      <div
-                        className={`close-shift-review__badge ${reviewVarianceLaari > 0 ? "is-over" : "is-short"}`}
-                        data-testid="close-shift-review-variance"
-                      >
-                        {reviewVarianceLaari > 0 ? "Over" : "Short"} MVR {Math.abs(review.variance ?? 0).toFixed(2)}
-                      </div>
-                      <div className="close-shift-review__rows">
-                        <div className="close-shift-review__row">
-                          <span>You counted</span>
-                          <strong data-testid="close-shift-review-counted">
-                            MVR {(review.counted_cash ?? countedDisplay).toFixed(2)}
-                          </strong>
-                        </div>
-                        <div className="close-shift-review__row">
-                          <span>Expected in drawer</span>
-                          <strong data-testid="close-shift-review-expected">
-                            MVR {(review.expected_cash ?? 0).toFixed(2)}
-                          </strong>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    /* Cashier: the server withheld every number — no target,
-                       no size, no direction. Plain words only. */
-                    <>
-                      <div className="close-shift-review__title" data-testid="close-shift-review-mismatch">
-                        The cash does not match
-                      </div>
-                      <p className="close-shift-review__message">
-                        The amount you counted is different from what the drawer should hold.
-                        Write what happened, then close the shift.
-                      </p>
-                    </>
-                  )}
+                  <div className="close-shift-review__title" data-testid="close-shift-review-mismatch">
+                    The cash does not match
+                  </div>
+                  <p className="close-shift-review__message">
+                    Your counted amount does not match the actual cash amount. Please enter the reason.
+                  </p>
                   <label className="close-shift-review__reason-label" htmlFor="close-shift-reason">
                     Reason (required)
                   </label>

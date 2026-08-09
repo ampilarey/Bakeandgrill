@@ -51,8 +51,8 @@ describe("CloseShiftModal cashier secrecy (review popup)", () => {
 
     const popup = await screen.findByTestId("close-shift-review");
     expect(popup.textContent).toMatch(/The cash does not match/);
-    expect(popup.textContent).toMatch(/different from what the drawer should hold/i);
-    expect(popup.textContent).toMatch(/write what happened/i);
+    expect(popup.textContent).toMatch(/does not match the actual cash amount/i);
+    expect(popup.textContent).toMatch(/please enter the reason/i);
     // No digits other than nothing at all: no expected (350), no variance
     // (50), no counted echo, no over/short direction.
     expect(popup.textContent).not.toMatch(/\d/);
@@ -81,7 +81,7 @@ describe("CloseShiftModal cashier secrecy (review popup)", () => {
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ notes: "Drawer bumped" }));
   });
 
-  it("match popup shows the cashier's own counted total and no reason box", async () => {
+  it("match popup shows the balanced message and no reason box", async () => {
     const user = userEvent.setup();
     renderModal(vi.fn().mockResolvedValue({ matches: true, attempt_number: 1 }));
 
@@ -90,11 +90,13 @@ describe("CloseShiftModal cashier secrecy (review popup)", () => {
     await user.click(screen.getByRole("button", { name: "Review & close" }));
 
     const popup = await screen.findByTestId("close-shift-review");
-    expect(popup.textContent).toMatch(/Balanced — you counted MVR 300\.00 and that matches the drawer/);
+    expect(popup.textContent).toMatch(/Balanced — the cash matches\./);
     expect(screen.queryByPlaceholderText(/Short change/i)).toBeNull();
   });
+});
 
-  it("owner-shaped response (with numbers) still shows the full breakdown", async () => {
+describe("CloseShiftModal round 3 — no cash amounts in the popup, for anybody", () => {
+  it("owner-shaped mismatch response: popup renders no MVR figure at all", async () => {
     const user = userEvent.setup();
     renderModal(vi.fn().mockResolvedValue({
       matches: false,
@@ -109,9 +111,86 @@ describe("CloseShiftModal cashier secrecy (review popup)", () => {
     await user.click(screen.getByRole("button", { name: "Review & close" }));
 
     const popup = await screen.findByTestId("close-shift-review");
-    expect(popup.textContent).toMatch(/Short MVR 50\.00/);
-    expect(screen.getByTestId("close-shift-review-counted").textContent).toContain("MVR 300.00");
-    expect(screen.getByTestId("close-shift-review-expected").textContent).toContain("MVR 350.00");
+    // The UI must be safe regardless of what the API sent back.
+    expect(popup.textContent).not.toMatch(/MVR/);
+    expect(popup.textContent).not.toMatch(/\d/);
+    expect(popup.textContent).not.toMatch(/expected/i);
+    expect(popup.textContent).not.toMatch(/over|short/i);
+  });
+
+  it("cashier-shaped mismatch response: popup renders no MVR figure at all", async () => {
+    const user = userEvent.setup();
+    renderModal(vi.fn().mockResolvedValue({ matches: false, attempt_number: 1 }));
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+
+    const popup = await screen.findByTestId("close-shift-review");
+    expect(popup.textContent).not.toMatch(/MVR/);
+    expect(popup.textContent).not.toMatch(/\d/);
+  });
+
+  it("balanced popup renders no MVR figure, whatever the server sent", async () => {
+    const user = userEvent.setup();
+    renderModal(vi.fn().mockResolvedValue({
+      matches: true,
+      attempt_number: 1,
+      counted_cash: 300,
+      expected_cash: 300,
+      variance: 0,
+    }));
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+
+    const popup = await screen.findByTestId("close-shift-review");
+    expect(popup.textContent).toMatch(/Balanced — the cash matches\./);
+    expect(popup.textContent).not.toMatch(/MVR/);
+    expect(popup.textContent).not.toMatch(/\d/);
+  });
+
+  it("mismatch popup contains the exact required sentence", async () => {
+    const user = userEvent.setup();
+    renderModal(vi.fn().mockResolvedValue({ matches: false, attempt_number: 1 }));
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+
+    const popup = await screen.findByTestId("close-shift-review");
+    expect(popup.textContent).toContain(
+      "Your counted amount does not match the actual cash amount. Please enter the reason.",
+    );
+  });
+
+  it("closing with a mismatch is still blocked until a reason is typed", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    renderModal(
+      vi.fn().mockResolvedValue({
+        matches: false,
+        attempt_number: 1,
+        counted_cash: 300,
+        expected_cash: 350,
+        variance: -50,
+      }),
+      onConfirm,
+    );
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+    await screen.findByTestId("close-shift-review");
+
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
+    expect(await screen.findByText(/reason for the cash variance/i)).toBeTruthy();
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.type(screen.getByPlaceholderText(/Short change/i), "Till bumped");
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ notes: "Till bumped" }));
   });
 });
 

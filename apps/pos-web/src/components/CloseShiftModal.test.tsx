@@ -123,7 +123,7 @@ describe("CloseShiftModal two-step blind close", () => {
     await user.click(screen.getByRole("button", { name: "Review & close" }));
 
     expect(await screen.findByTestId("close-shift-review-balanced")).toBeTruthy();
-    expect(screen.getByText(/Balanced — you counted MVR 300\.00 and that matches the drawer/)).toBeTruthy();
+    expect(screen.getByText(/Balanced — the cash matches\./)).toBeTruthy();
     expect(screen.queryByPlaceholderText(/Short change/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Back to count" })).toBeTruthy();
 
@@ -140,7 +140,7 @@ describe("CloseShiftModal two-step blind close", () => {
     });
   });
 
-  it("review with a difference shows short/over and blocks closing until a reason is typed", async () => {
+  it("review with a difference shows the plain mismatch wording and blocks closing until a reason is typed", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
@@ -156,10 +156,10 @@ describe("CloseShiftModal two-step blind close", () => {
     await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByRole("button", { name: "Review & close" }));
 
-    const badge = await screen.findByTestId("close-shift-review-variance");
-    expect(badge.textContent).toMatch(/Short MVR 50\.00/);
-    expect(screen.getByTestId("close-shift-review-counted").textContent).toContain("MVR 300.00");
-    expect(screen.getByTestId("close-shift-review-expected").textContent).toContain("MVR 350.00");
+    const popup = await screen.findByTestId("close-shift-review");
+    expect(popup.textContent).toMatch(/The cash does not match/);
+    // Round 3: never any cash figure in the popup, whatever the server sent.
+    expect(popup.textContent).not.toMatch(/MVR/);
 
     await user.click(screen.getByTestId("close-shift-confirm-btn"));
     expect(await screen.findByText(/reason for the cash variance/i)).toBeTruthy();
@@ -175,25 +175,6 @@ describe("CloseShiftModal two-step blind close", () => {
         }),
       );
     });
-  });
-
-  it("shows Over wording when the drawer has too much cash", async () => {
-    const user = userEvent.setup();
-    render(
-      <CloseShiftModal
-        summary={summary()}
-        onReviewCount={reviewAgainst(250)}
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByTestId("denom-row-10000"));
-    await user.click(screen.getByRole("button", { name: "Digit 3" }));
-    await user.click(screen.getByRole("button", { name: "Review & close" }));
-
-    const badge = await screen.findByTestId("close-shift-review-variance");
-    expect(badge.textContent).toMatch(/Over MVR 50\.00/);
   });
 
   it("count again preserves the entered numbers and records a second attempt", async () => {
@@ -222,7 +203,7 @@ describe("CloseShiftModal two-step blind close", () => {
     await user.click(screen.getByTestId("denom-row-10000"));
     await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByRole("button", { name: "Review & close" }));
-    await screen.findByTestId("close-shift-review-variance");
+    await screen.findByTestId("close-shift-review-mismatch");
 
     await user.click(screen.getByTestId("close-shift-count-again"));
 
