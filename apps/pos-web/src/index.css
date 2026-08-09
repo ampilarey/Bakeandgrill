@@ -1022,6 +1022,7 @@ html, body, #root {
   min-width: 0;
 }
 
+/* Light card in the POS family — dark slate is for TEXT, not fill. */
 .close-shift-totals__counted {
   display: flex;
   justify-content: space-between;
@@ -1029,15 +1030,17 @@ html, body, #root {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #0F172A;
-  color: #fff;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  color: #64748B;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .close-shift-totals__counted strong {
   font-size: 20px;
   font-weight: 800;
+  color: #0F172A;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1094,9 +1097,10 @@ html, body, #root {
   gap: 6px;
 }
 
+/* Same key language as the POS cash numpad (white key, slate border). */
 .close-shift-pad__key {
   min-height: 44px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #CBD5E1;
   border-radius: 10px;
   background: #fff;
   color: #0F172A;
@@ -1146,9 +1150,10 @@ html, body, #root {
   color: #475569;
 }
 
+/* Same accent-filled primary as the POS Charge / save buttons. */
 .close-shift-btn--primary {
   border: none;
-  background: #0F172A;
+  background: #D4813A;
   color: #fff;
 }
 
@@ -1285,17 +1290,32 @@ html, body, #root {
   background: #E2E8F0;
 }
 
+/* Count box: light surface, dark number — not a filled black block. */
 .close-shift-denom-row__count {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 44px;
   border-radius: 10px;
-  background: #0F172A;
-  color: #fff;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
   font-size: 18px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+}
+
+/* A box with a count entered reads as filled-in: soft accent tint. */
+.close-shift-denom-row.has-count .close-shift-denom-row__count {
+  background: #FFF7ED;
+  border-color: #D4813A;
+}
+
+/* Inside the selected (already amber-tinted) row, keep the box legible. */
+.close-shift-denom-row.is-selected .close-shift-denom-row__count {
+  background: #FFFFFF;
+  border-color: #D4813A;
 }
 
 .close-shift-denom-row__totals {
@@ -1638,7 +1658,6 @@ html, body, #root {
 
   .close-shift-pad__key {
     min-height: 46px;
-    background: #F8FAFC;
   }
 
   .close-shift-btn {
