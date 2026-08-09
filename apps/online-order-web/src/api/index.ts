@@ -12,6 +12,7 @@ export * from './addresses';
 export * from './eventOrders';
 export * from './serviceStatus';
 export * from './serviceUnavailable';
+export * from './pageBlocks';
 
 // Re-export shared types that pages import from '../api'
 export type {

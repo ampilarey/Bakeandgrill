@@ -7,8 +7,10 @@ import {
   fetchCustomerOrders,
   getReorderPayload,
   fetchFeaturedReviews,
+  fetchPageBlocks,
   API_ORIGIN,
   type FeaturedReview,
+  type PageBlockRow,
 } from '../api';
 import type { Offer, Order } from '../api';
 import { getLoyaltyAccount } from '../api/promotions';
@@ -34,32 +36,19 @@ import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
-const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'];
-
-function resolveHomeSectionOrder(raw: string | undefined | null): string[] {
-  let decoded: unknown = [];
-  try {
-    decoded = raw ? JSON.parse(raw) : [];
-  } catch {
-    decoded = [];
-  }
-
-  const allowed = new Set(HOME_SECTION_DEFAULT);
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-  if (Array.isArray(decoded)) {
-    for (const id of decoded) {
-      if (typeof id !== 'string' || !allowed.has(id) || seen.has(id)) continue;
-      seen.add(id);
-      ordered.push(id);
-    }
-  }
-  for (const id of HOME_SECTION_DEFAULT) {
-    if (!seen.has(id)) ordered.push(id);
-  }
-
-  return ordered;
-}
+/** Legacy fallback when page_blocks is empty or failed to load. */
+const LEGACY_ORDER_APP_BLOCKS: PageBlockRow[] = [
+  { id: 0, app: 'order_app', page: 'home', block_type: 'greeting', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'prayer_bar', position: 1, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'hero', position: 2, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'opening_status', position: 3, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 4, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'specials', position: 5, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'reviews', position: 6, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'categories', position: 7, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'reorder_strip', position: 8, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: 0, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 9, is_enabled: true, content_mode: 'shared', settings: {} },
+];
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -81,6 +70,7 @@ export function HomePage() {
   const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
   const [chipsLoading, setChipsLoading] = useState(true);
+  const [pageBlocks, setPageBlocks] = useState<PageBlockRow[] | null>(null);
   const {
     settings: s,
     heroSlides,
@@ -100,16 +90,6 @@ export function HomePage() {
   const viberLink = s.business_viber || 'viber://chat?number=9609120011';
   const officeOrdersEnabled =
     s.office_orders_enabled !== '0' && s.office_orders_enabled !== 'false';
-  const sectionOn = (key: keyof typeof s, fallback = true) => {
-    const raw = s[key];
-    if (raw === undefined || raw === null || raw === '') return fallback;
-    const normalized = String(raw).trim().toLowerCase();
-    return !['false', '0', 'no', 'off'].includes(normalized);
-  };
-  const heroEnabled = sectionOn('section_hero_enabled');
-  const specialsEnabled = sectionOn('section_specials_enabled');
-  const categoriesEnabled = sectionOn('section_categories_enabled');
-  const reviewsEnabled = sectionOn('section_reviews_enabled');
   const officeHeadline =
     s.office_orders_headline || t('home.corp_headline_default');
   const officeSubtext =
@@ -118,6 +98,17 @@ export function HomePage() {
   const siteName = s.site_name || 'Bake & Grill';
 
   usePageTitle(null);
+
+  // ── Home layout from page_blocks (authoritative). Degrade if empty/failed. ─
+  useEffect(() => {
+    const previewToken = new URLSearchParams(window.location.search).get('previewToken');
+    fetchPageBlocks({ app: 'order_app', previewToken })
+      .then((res) => {
+        const rows = (res.blocks ?? []).filter((b) => b.is_enabled);
+        setPageBlocks(rows.length > 0 ? rows : LEGACY_ORDER_APP_BLOCKS);
+      })
+      .catch(() => setPageBlocks(LEGACY_ORDER_APP_BLOCKS));
+  }, []);
 
   // ── Tomorrow-ordering gate (separate from today’s online ordering badge) ───
   // Open only when the owner gate is on AND at least one item allows pre-order.
@@ -253,19 +244,11 @@ export function HomePage() {
     loyaltyPoints,
   };
 
-  const hero = heroEnabled ? (
-    <PromoCarousel
-      slides={heroSlides}
-      apiOrigin={API_ORIGIN}
-      logoSrc={logoSrc}
-      siteName={siteName}
-      fallbackTitle={text('home_hero_fallback_title', '')}
-      fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-      statusSlot={statusBadge}
-    />
-  ) : null;
+  const blocks = pageBlocks ?? LEGACY_ORDER_APP_BLOCKS;
+  const openingStatusEnabled = blocks.some((b) => b.block_type === 'opening_status' && b.is_enabled);
+  const heroStatusSlot = openingStatusEnabled ? statusBadge : null;
 
-  const reviewSection = reviewsEnabled && reviews.length > 0 ? (
+  const reviewSection = reviews.length > 0 ? (
     <section
       style={{
         padding: '1.25rem var(--page-gutter) 0.5rem',
@@ -305,151 +288,197 @@ export function HomePage() {
     </section>
   ) : null;
 
-  const orderedHomeSections: ReactNode[] = [];
-  let reviewsInserted = false;
-  const insertReviews = (anchor: string) => {
-    if (!reviewSection || reviewsInserted) return;
-    orderedHomeSections.push(<div key={`reviews-after-${anchor}`}>{reviewSection}</div>);
-    reviewsInserted = true;
-  };
-  const reviewAfterSpecials = specialsEnabled;
-  for (const sectionId of resolveHomeSectionOrder(s.home_section_order)) {
-    if (sectionId === 'specials') {
-      if (specialsEnabled) {
-        orderedHomeSections.push(<SpecialsCarousel key="specials" offers={offers} apiOrigin={API_ORIGIN} />);
-        if (reviewAfterSpecials) insertReviews('specials');
-      }
-      continue;
-    }
-    if (sectionId === 'categories') {
-      if (categoriesEnabled) {
-        orderedHomeSections.push(
+  const officeBlock = officeOrdersEnabled ? (
+    <section
+      key="office-catering"
+      style={{
+        borderTop: '1px solid var(--color-border)',
+        padding: '2rem var(--page-gutter)',
+        background: 'var(--color-surface-alt)',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '520px',
+          margin: '0 auto',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-2xl)',
+          padding: '1.5rem',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+          <h2
+            style={{
+              fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+              fontWeight: 800,
+              color: 'var(--color-dark)',
+              margin: '0 0 0.5rem',
+            }}
+          >
+            {officeHeadline}
+          </h2>
+          <p
+            style={{
+              fontSize: '0.875rem',
+              color: 'var(--color-text-muted)',
+              margin: 0,
+              lineHeight: 1.55,
+            }}
+          >
+            {officeSubtext}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/events')}
+          style={{
+            width: '100%',
+            padding: '0.875rem',
+            background: 'var(--color-primary)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '12px',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Plan your event
+        </button>
+      </div>
+    </section>
+  ) : null;
+
+  const nodes: ReactNode[] = [];
+  let chipsPlaced = false;
+  let trustPlaced = false;
+  let officePlaced = false;
+
+  for (const block of blocks) {
+    if (!block.is_enabled) continue;
+    const key = `${block.block_type}-${block.id}-${block.position}`;
+
+    switch (block.block_type) {
+      case 'greeting':
+        if (!isDesktopShell) {
+          nodes.push(
+            <GreetingHeader
+              key={key}
+              customerName={customerName}
+              isAuthenticated={isAuthenticated}
+            />,
+          );
+        }
+        break;
+      case 'prayer_bar':
+        if (!isDesktopShell) {
+          nodes.push(
+            <div key={key} className="home-prayer-wrap">
+              <PrayerBar />
+            </div>,
+          );
+        }
+        break;
+      case 'hero':
+      case 'promo_carousel':
+        // Phone: chips sit between prayer and hero (historical). Desktop: chips after hero.
+        if (!isDesktopShell && !chipsPlaced) {
+          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />);
+          chipsPlaced = true;
+        }
+        nodes.push(
+          <PromoCarousel
+            key={key}
+            slides={heroSlides}
+            apiOrigin={API_ORIGIN}
+            logoSrc={logoSrc}
+            siteName={siteName}
+            fallbackTitle={text('home_hero_fallback_title', '')}
+            fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
+            statusSlot={heroStatusSlot}
+          />,
+        );
+        if (isDesktopShell && !chipsPlaced) {
+          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} />);
+          chipsPlaced = true;
+        }
+        break;
+      case 'opening_status':
+        // Absorbed into hero statusSlot — never a standalone strip (visual parity).
+        break;
+      case 'mode_cards':
+        nodes.push(<ModeEntryCards key={key} />);
+        if (!trustPlaced) {
+          nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
+          trustPlaced = true;
+        }
+        break;
+      case 'specials':
+        nodes.push(<SpecialsCarousel key={key} offers={offers} apiOrigin={API_ORIGIN} />);
+        break;
+      case 'reviews':
+        if (reviewSection) nodes.push(<div key={key}>{reviewSection}</div>);
+        break;
+      case 'categories':
+        nodes.push(
           <CategoryShortcuts
-            key="categories"
+            key={key}
             categories={homepageCategories}
             eyebrow={text('home_categories_eyebrow', '')}
             title={text('home_categories_title', '')}
           />,
         );
-        if (!reviewAfterSpecials) insertReviews('categories');
-      }
-      continue;
+        break;
+      case 'reorder_strip':
+        nodes.push(
+          <ReorderStrip
+            key={key}
+            orders={recentOrders}
+            customerName={customerName}
+            reorderingId={reorderingId}
+            onReorder={(order) => void handleReorder(order)}
+          />,
+        );
+        if (!officePlaced && officeBlock) {
+          nodes.push(officeBlock);
+          officePlaced = true;
+        }
+        break;
+      case 'brand_footer':
+        if (!officePlaced && officeBlock) {
+          nodes.push(officeBlock);
+          officePlaced = true;
+        }
+        nodes.push(
+          <BrandFooter
+            key={key}
+            whatsappLink={waLink}
+            viberLink={viberLink}
+            logoSrc={logoSrc}
+            siteName={siteName}
+            blurb={text('footer_text', '')}
+            thanks={text('footer_thanks', '')}
+            chatLabel={text('home_chat_label', '')}
+          />,
+        );
+        break;
+      default:
+        // Unknown block types render nothing — never white-screen the home page.
+        break;
     }
   }
-  insertReviews('ordered-sections');
 
-  return (
-    <div className="home-page">
-      {isDesktopShell ? (
-        <>
-          {/* Desktop/iPad: prayer lives in TopNav; hero → chips */}
-          {hero}
-          <StatChipsRow {...chipsProps} />
-        </>
-      ) : (
-        <>
-          {/* Phone: greeting → prayer → hero (status on banner) */}
-          <GreetingHeader
-            customerName={customerName}
-            isAuthenticated={isAuthenticated}
-          />
-          <div className="home-prayer-wrap">
-            <PrayerBar />
-          </div>
-          <StatChipsRow {...chipsProps} hideLoyalty />
-          {hero}
-        </>
-      )}
+  if (!chipsPlaced) {
+    nodes.unshift(
+      isDesktopShell
+        ? <StatChipsRow key="stat-chips" {...chipsProps} />
+        : <StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />,
+    );
+  }
+  if (!trustPlaced) nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
+  if (!officePlaced && officeBlock) nodes.push(officeBlock);
 
-      <ModeEntryCards />
-
-      {/* ── 5b. Trust strip (CMS) ─────────────────────────────────────────── */}
-      <TrustStrip items={trustItems} />
-
-      {orderedHomeSections}
-
-      {/* ── 7. Reorder strip ──────────────────────────────────────────────── */}
-      <ReorderStrip
-        orders={recentOrders}
-        customerName={customerName}
-        reorderingId={reorderingId}
-        onReorder={(order) => void handleReorder(order)}
-      />
-
-      {/* ── 8. Corporate / office catering block ─────────────────────────── */}
-      {officeOrdersEnabled && (
-        <section
-          style={{
-            borderTop: '1px solid var(--color-border)',
-            padding: '2rem var(--page-gutter)',
-            background: 'var(--color-surface-alt)',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: '520px',
-              margin: '0 auto',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-2xl)',
-              padding: '1.5rem',
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-              <h2
-                style={{
-                  fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
-                  fontWeight: 800,
-                  color: 'var(--color-dark)',
-                  margin: '0 0 0.5rem',
-                }}
-              >
-                {officeHeadline}
-              </h2>
-              <p
-                style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--color-text-muted)',
-                  margin: 0,
-                  lineHeight: 1.55,
-                }}
-              >
-                {officeSubtext}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/events')}
-              style={{
-                width: '100%',
-                padding: '0.875rem',
-                background: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '12px',
-                fontWeight: 700,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              Plan your event
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* ── 9. Brand footer ───────────────────────────────────────────────── */}
-      <BrandFooter
-        whatsappLink={waLink}
-        viberLink={viberLink}
-        logoSrc={logoSrc}
-        siteName={siteName}
-        blurb={text('footer_text', '')}
-        thanks={text('footer_thanks', '')}
-        chatLabel={text('home_chat_label', '')}
-      />
-    </div>
-  );
+  return <div className="home-page">{nodes}</div>;
 }

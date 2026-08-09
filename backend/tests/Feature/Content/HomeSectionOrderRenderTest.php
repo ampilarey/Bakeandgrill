@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Content;
 
+use App\Domains\Content\Blocks\HomeLayoutMigrator;
 use App\Domains\Content\ContentResolver;
 use App\Models\DailySpecial;
 use App\Models\Item;
@@ -27,17 +28,30 @@ class HomeSectionOrderRenderTest extends TestCase
         $this->createActiveSpecial();
 
         SiteSetting::set('offers_headline', 'Phase Specials', 'website');
+        SiteSetting::set('cta_band_headline', 'CTA-FIRST-MARKER', 'website');
         SiteSetting::set('home_section_order', '["cta","specials","featured","categories","proof","location"]', 'website');
         SiteSetting::set('home_section_order', '["categories","specials","featured","proof","cta","location"]', 'order_app');
+        // page_blocks is authoritative — re-seed from the settings under test.
+        HomeLayoutMigrator::migrate();
+
+        $types = array_column(
+            \App\Domains\Content\Blocks\HomeLayoutSnapshot::fromPageBlocks('website'),
+            'type',
+        );
+        $this->assertSame(
+            ['hero', 'cta', 'specials', 'featured', 'categories', 'proof', 'location'],
+            $types,
+            'Migrated page_blocks must put cta before specials.',
+        );
 
         $html = $this->get('/')->assertOk()->getContent();
 
-        $ctaPos = strpos($html, 'Hungry?');
+        $ctaPos = strpos($html, 'CTA-FIRST-MARKER');
         $specialsPos = strpos($html, 'Phase Specials');
 
         $this->assertNotFalse($ctaPos, 'Expected CTA band to render.');
         $this->assertNotFalse($specialsPos, 'Expected specials section to render.');
-        $this->assertLessThan($specialsPos, $ctaPos);
+        $this->assertLessThan($specialsPos, $ctaPos, 'CTA should render before specials when ordered first.');
         $this->assertSame(
             '["categories","specials","featured","proof","cta","location"]',
             ContentResolver::for('order_app')->get('home_section_order'),
@@ -47,6 +61,7 @@ class HomeSectionOrderRenderTest extends TestCase
     public function test_hero_stays_before_ordered_sections(): void
     {
         SiteSetting::set('home_section_order', '["cta","featured","categories","proof","location","specials"]', 'website');
+        HomeLayoutMigrator::migrate();
 
         $html = $this->get('/')->assertOk()->getContent();
 
@@ -65,6 +80,7 @@ class HomeSectionOrderRenderTest extends TestCase
         SiteSetting::set('offers_headline', 'Phase Specials', 'website');
         SiteSetting::set('home_section_order', '["specials","cta","featured","categories","proof","location"]', 'website');
         SiteSetting::set('section_specials_enabled', 'false', 'website');
+        HomeLayoutMigrator::migrate();
 
         $html = $this->get('/')->assertOk()->getContent();
 
