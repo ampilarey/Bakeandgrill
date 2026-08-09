@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CloseShiftModal, type CountAttemptResult } from "./CloseShiftModal";
@@ -77,7 +77,7 @@ describe("CloseShiftModal two-step blind close", () => {
     expect(screen.getByTestId("denom-count-10000").textContent).toBe("1");
   });
 
-  it("enters counts from the sticky pad and lists non-zero rows under the total", async () => {
+  it("enters counts from the desktop pad after selecting a denomination", async () => {
     const user = userEvent.setup();
     render(
       <CloseShiftModal
@@ -88,22 +88,42 @@ describe("CloseShiftModal two-step blind close", () => {
       />,
     );
 
-    expect(screen.queryByTestId("close-shift-counted-summary")).toBeNull();
-
     await user.click(screen.getByTestId("denom-row-2000"));
     await user.click(screen.getByRole("button", { name: "Digit 1" }));
     await user.click(screen.getByRole("button", { name: "Digit 2" }));
     expect(screen.getByTestId("denom-count-2000").textContent).toBe("12");
     expect(screen.getByTestId("close-shift-pad-count").textContent).toMatch(/12/);
+    expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 240.00");
+  });
 
-    // The counted summary names the non-zero rows so the cashier can see
-    // what made the total even when those rows are scrolled away.
-    await user.click(screen.getByTestId("close-shift-more-coins"));
-    await user.click(screen.getByTestId("denom-row-100"));
-    await user.click(screen.getByRole("button", { name: "Digit 2" }));
-    const strip = screen.getByTestId("close-shift-counted-summary");
-    expect(strip.textContent).toContain("12 × MVR 20 notes");
-    expect(strip.textContent).toContain("2 × MVR 1 coins");
+  it("press-and-hold on + auto-repeats the count", async () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <CloseShiftModal
+          summary={summary()}
+          onReviewCount={reviewAgainst(350)}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />,
+      );
+
+      const plus = screen.getByRole("button", { name: "Increase MVR 100" });
+      fireEvent.pointerDown(plus); // immediate single step
+      expect(screen.getByTestId("denom-count-10000").textContent).toBe("1");
+
+      // Hold: repeat starts after 450ms, then every 110ms.
+      act(() => { vi.advanceTimersByTime(450 + 110 * 4); });
+      const held = Number(screen.getByTestId("denom-count-10000").textContent);
+      expect(held).toBeGreaterThanOrEqual(4);
+
+      fireEvent.pointerUp(plus);
+      fireEvent.click(plus); // trailing click after a press must not double-step
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(Number(screen.getByTestId("denom-count-10000").textContent)).toBe(held);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("review with a matching count shows the balanced message and no reason box", async () => {

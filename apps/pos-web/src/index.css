@@ -1045,18 +1045,6 @@ html, body, #root {
   white-space: nowrap;
 }
 
-/* One-line receipt of the non-zero rows, for when they are off-screen. */
-.close-shift-counted-summary {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  white-space: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  padding: 0 2px 2px;
-}
-
 .close-shift-pad {
   display: flex;
   flex-direction: column;
@@ -1285,6 +1273,10 @@ html, body, #root {
   touch-action: manipulation;
   line-height: 1;
   padding: 0;
+  /* Press-and-hold auto-repeats — stop long-press text-select/callout. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .close-shift-stepper-btn:active {
@@ -1753,8 +1745,10 @@ html, body, #root {
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
-  .close-shift-pad__key {
-    min-height: 52px;
+  /* iPads count with the − / + steppers (hold to repeat); the keypad is
+   * only for "Enter total instead", which brings its own. */
+  .close-shift-pad {
+    display: none;
   }
 
   .close-shift-btn {
