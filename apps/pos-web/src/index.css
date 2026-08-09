@@ -1278,7 +1278,7 @@ html, body, #root {
  * line total stacked on the RIGHT. */
 .close-shift-denom-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) 68px;
   gap: 8px;
   align-items: stretch;
   min-height: 88px;
@@ -1396,7 +1396,8 @@ html, body, #root {
 
 .close-shift-stepper-btn {
   width: 100%;
-  height: 30px;
+  max-width: 60px;
+  height: 32px;
   border-radius: 999px;
   border: none;
   background: #E2E8F0;
@@ -1799,7 +1800,7 @@ html, body, #root {
   }
 
   .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 48px;
+    grid-template-columns: minmax(0, 1fr) 56px;
     min-height: 78px;
     padding: 6px;
     gap: 6px;
@@ -1828,7 +1829,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 28px;
+    max-width: 54px;
+    height: 30px;
     font-size: 15px;
   }
 
@@ -1890,7 +1892,7 @@ html, body, #root {
 /* Very narrow (320–360px): keep the − control touchable without overflow. */
 @media (max-width: 360px) {
   .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-columns: minmax(0, 1fr) 48px;
   }
 }
 
@@ -2060,7 +2062,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 34px;
+    max-width: 64px;
+    height: 36px;
     font-size: 18px;
   }
 
@@ -2205,7 +2208,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 30px;
+    max-width: 58px;
+    height: 32px;
   }
 
   .close-shift-rail {
