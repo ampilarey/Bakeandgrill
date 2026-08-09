@@ -52,4 +52,9 @@ class Shift extends Model
     {
         return $this->hasMany(CashMovement::class);
     }
+
+    public function cashCountAttempts(): HasMany
+    {
+        return $this->hasMany(ShiftCashCountAttempt::class)->orderBy('attempt_number');
+    }
 }

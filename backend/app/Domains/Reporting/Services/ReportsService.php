@@ -1083,7 +1083,7 @@ class ReportsService
         $shifts = Shift::query()
             ->whereNotNull('closed_at')
             ->whereBetween('closed_at', [$from, $to])
-            ->with(['user:id,name', 'device:id,name'])
+            ->with(['user:id,name', 'device:id,name', 'cashCountAttempts'])
             ->orderByDesc('closed_at')
             ->get();
 
@@ -1101,6 +1101,11 @@ class ReportsService
                 'expected_cash' => $s->expected_cash !== null ? (float) $s->expected_cash : null,
                 'variance' => $s->variance !== null ? (float) $s->variance : null,
                 'notes' => $s->notes,
+                // Blind-count trail: >1 means the drawer was recounted before close.
+                'count_attempts' => $s->cashCountAttempts->count(),
+                'first_attempt_variance' => $s->cashCountAttempts->first() !== null
+                    ? (float) $s->cashCountAttempts->first()->variance
+                    : null,
             ])->values()->all(),
         ];
     }

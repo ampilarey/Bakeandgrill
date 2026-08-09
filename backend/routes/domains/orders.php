@@ -134,6 +134,10 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
         ->middleware(['permission:pos.open_shift', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/close', [App\Http\Controllers\Api\ShiftController::class, 'close'])
         ->middleware(['permission:pos.close_shift', 'throttle:pos-shift']);
+    // Blind-count review: records a count attempt and returns the variance
+    // without closing. Same permission + ownership rules as close.
+    Route::post('/shifts/{id}/count-attempt', [App\Http\Controllers\Api\ShiftController::class, 'countAttempt'])
+        ->middleware(['permission:pos.close_shift', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/force-close', [App\Http\Controllers\Api\ShiftController::class, 'forceClose'])
         ->middleware(['permission:shifts.view_all_history', 'throttle:pos-shift']);
     Route::post('/shifts/{id}/cash-movements', [App\Http\Controllers\Api\CashMovementController::class, 'store'])

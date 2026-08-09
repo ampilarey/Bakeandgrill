@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
+import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
 import { ticketStage } from "../utils/openTicketUtils";
 import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
@@ -1033,6 +1033,29 @@ export function usePosApp() {
     else if (canViewShiftHistory) setPane("shift_history");
     else setPane("shift");
   };
+  /**
+   * Blind-count review step: records the attempt server-side and returns
+   * counted / expected / variance for the review popup. Never closes.
+   */
+  const handleCountAttempt = async (payload: {
+    closingCash: number;
+    cashCountMethod: "denominations" | "plain_total";
+    denominations?: Record<string, number>;
+    foreignCurrency?: Array<{
+      currency: string;
+      denomination: number;
+      count: number;
+      accepted_mvr: number;
+    }>;
+  }) => {
+    if (!shift.current) throw new Error("No open shift.");
+    return recordCountAttempt(shift.current.id, {
+      closing_cash: payload.closingCash,
+      cash_count_method: payload.cashCountMethod,
+      denominations: payload.denominations,
+      foreign_currency: payload.foreignCurrency,
+    });
+  };
   const handleSaveTicketSubmit = async (name: string, note: string | undefined, fireToKitchen: boolean) => {
     try {
       await order.handleSaveTicket(name, note, fireToKitchen);
@@ -1237,7 +1260,7 @@ export function usePosApp() {
     deliveryFeeEst, ops, refreshOfflineCounts, filteredItems, refreshOpenTickets, order,
     chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshTables,
     refreshQuickNotes, isRefreshingAll, refreshAll, checkDeviceStatus, handleLogin, handlePasswordLogin,
-    handleLogout, handleOpenShift, handleCloseShift, handleSaveTicketSubmit, handleUnlock,
+    handleLogout, handleOpenShift, handleCloseShift, handleCountAttempt, handleSaveTicketSubmit, handleUnlock,
     lockScreen, drawerItems, paneAllowed, persistDeviceDbId,
   };
 }

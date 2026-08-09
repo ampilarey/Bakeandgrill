@@ -9,7 +9,11 @@ export async function getShiftSummary(shiftId: number): Promise<{
     cash_refunds: number;
     paid_in: number;
     paid_out: number;
-    expected_cash: number;
+    /**
+     * Blind count: OMITTED by the server while the shift is open unless the
+     * viewer is owner/manager. Absent ≠ zero.
+     */
+    expected_cash?: number;
     /** FIX 4 — cash-in tagged as credit_repayment for this shift (already counted in paid_in). */
     credit_repayments_cash?: number;
     credit_repayments_cash_laar?: number;
@@ -115,6 +119,35 @@ export async function closeShift(
   message?: string;
 }> {
   return request(`/shifts/${shiftId}/close`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Blind-count review: records a count attempt server-side and returns the
+ * reconciliation. Does NOT close the shift and needs no variance reason.
+ */
+export async function recordCountAttempt(
+  shiftId: number,
+  payload: {
+    closing_cash: number;
+    cash_count_method?: "denominations" | "plain_total";
+    denominations?: Record<string, number>;
+    foreign_currency?: Array<{
+      currency: string;
+      denomination: number;
+      count: number;
+      accepted_mvr: number;
+    }>;
+  }
+): Promise<{
+  counted_cash: number;
+  expected_cash: number;
+  variance: number;
+  attempt_number: number;
+}> {
+  return request(`/shifts/${shiftId}/count-attempt`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

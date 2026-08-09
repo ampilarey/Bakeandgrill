@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Field, Overlay } from "./OpenShiftModal";
 import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
@@ -7,7 +7,6 @@ import {
   NOTE_DENOMS_LAARI,
   RARE_COIN_DENOMS_LAARI,
   breakdownPayload,
-  formatForeignHeldSummary,
   fromLaari,
   hasAnyDenomEntry,
   labelForLaari,
@@ -32,6 +31,13 @@ export type CloseShiftConfirmPayload = {
   }>;
 };
 
+export type CountAttemptResult = {
+  counted_cash: number;
+  expected_cash: number;
+  variance: number;
+  attempt_number: number;
+};
+
 type Props = {
   summary: ShiftSummary | null;
   pendingOfflineCount?: number;
@@ -39,18 +45,24 @@ type Props = {
   pendingOfflineCardTotal?: number;
   pendingOfflineTransferTotal?: number;
   onSyncNow?: () => void;
+  /** Records a count attempt server-side and returns the reconciliation. */
+  onReviewCount: (payload: CloseShiftConfirmPayload) => Promise<CountAttemptResult>;
   onConfirm: (payload: CloseShiftConfirmPayload) => Promise<void>;
   onCancel: () => void;
 };
 
 /**
- * Blind cash count via denomination breakdown (default) or plain total.
- * Expected drawer total stays hidden until a count is entered.
+ * Two-step blind close.
  *
- * Layout: two panes. The count list scrolls; a totals rail (counted cash,
- * expected, variance, count pad, actions) is a right column on desktop/iPad
- * landscape and a sticky footer on phones — so the counted total is always
- * visible in BOTH methods once the cashier enters an amount.
+ * Step 1 (count screen): denomination list or plain total, foreign currency,
+ * counted cash + keypad. NOTHING here reveals the expected drawer total or
+ * the variance — the count must be blind.
+ *
+ * Step 2 (review popup, via "Review & close"): records a count attempt on
+ * the server, then shows counted vs expected vs variance. Balanced closes
+ * straight away; a difference requires a written reason (the server enforces
+ * this too). "Count again" returns to step 1 with every number preserved —
+ * every attempt is recorded, so recounting is visible to the owner.
  */
 export function CloseShiftModal({
   summary,
@@ -59,6 +71,7 @@ export function CloseShiftModal({
   pendingOfflineCardTotal = 0,
   pendingOfflineTransferTotal = 0,
   onSyncNow,
+  onReviewCount,
   onConfirm,
   onCancel,
 }: Props) {
@@ -67,17 +80,18 @@ export function CloseShiftModal({
   const [plainTotal, setPlainTotal] = useState("");
   const [showRareCoins, setShowRareCoins] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
-  const [showExpected, setShowExpected] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
   const [foreignRows, setForeignRows] = useState<ForeignCurrencyRow[]>([]);
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   /** Selected face for the sticky count pad (laari). */
   const [activeFace, setActiveFace] = useState<number>(NOTE_DENOMS_LAARI[0]);
-
-  const expected = Number(summary?.cash_drawer.expected_cash ?? 0);
-  const expectedLaari = toLaari(expected);
+  /** Two-step flow. */
+  const [step, setStep] = useState<"count" | "review">("count");
+  const [review, setReview] = useState<CountAttemptResult | null>(null);
+  const [reason, setReason] = useState("");
+  /** Attempts recorded so far — shown quietly after a recount. */
+  const [attemptsSoFar, setAttemptsSoFar] = useState(0);
+  const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const countedLaari = useMemo(() => {
     if (method === "denominations") return totalLaariFromCounts(counts);
@@ -90,11 +104,6 @@ export function CloseShiftModal({
     method === "denominations"
       ? hasAnyDenomEntry(counts)
       : plainTotal.trim() !== "" && countedLaari != null;
-
-  const closing = hasCount && countedLaari != null ? fromLaari(countedLaari) : null;
-  const varianceLaari =
-    hasCount && countedLaari != null ? countedLaari - expectedLaari : null;
-  const variance = varianceLaari != null ? fromLaari(varianceLaari) : null;
 
   const foreignPayload = useMemo(() => {
     return foreignRows
@@ -114,9 +123,7 @@ export function CloseShiftModal({
       .filter((x): x is NonNullable<typeof x> => x != null);
   }, [foreignRows]);
 
-  const foreignSummary = formatForeignHeldSummary(foreignPayload);
-
-  /** Counted cash shown in the rail — live for both methods. */
+  /** Counted cash — live for both methods, integer laari underneath. */
   const countedDisplay =
     method === "denominations"
       ? fromLaari(totalLaariFromCounts(counts))
@@ -124,8 +131,19 @@ export function CloseShiftModal({
         ? fromLaari(countedLaari)
         : 0;
 
+  /** Non-zero rows for the one-line summary under the counted total. */
+  const countedLines = useMemo(() => {
+    if (method !== "denominations") return [];
+    return [...NOTE_DENOMS_LAARI, ...COMMON_COIN_DENOMS_LAARI, ...RARE_COIN_DENOMS_LAARI]
+      .map((face) => ({ face, qty: parseCount(counts[face]) }))
+      .filter((x) => x.qty > 0)
+      .map(({ face, qty }) => {
+        const unit = face >= 500 ? "note" : "coin";
+        return `${qty} × ${labelForLaari(face)} ${unit}${qty === 1 ? "" : "s"}`;
+      });
+  }, [method, counts]);
+
   const activeCount = counts[activeFace] ?? "";
-  const needsVarianceNote = variance != null && Math.abs(variance) >= 0.005;
 
   const setCount = (face: number, raw: string) => {
     if (raw !== "" && !/^\d{0,5}$/.test(raw)) return;
@@ -133,8 +151,15 @@ export function CloseShiftModal({
     setErr("");
   };
 
-  const bumpCount = (face: number, delta: number) => {
+  const selectFace = (face: number) => {
     setActiveFace(face);
+    // Keep the row the keypad is driving visible in the scroll list.
+    // (Optional-called: jsdom has no scrollIntoView.)
+    rowRefs.current[face]?.scrollIntoView?.({ block: "nearest" });
+  };
+
+  const bumpCount = (face: number, delta: number) => {
+    selectFace(face);
     setCounts((prev) => {
       const next = Math.max(0, Math.min(99999, parseCount(prev[face]) + delta));
       return { ...prev, [face]: next === 0 ? "" : String(next) };
@@ -161,30 +186,57 @@ export function CloseShiftModal({
     setCount(activeFace, cur + key);
   };
 
-  const submit = async () => {
+  const basePayload = (): CloseShiftConfirmPayload | null => {
+    if (!hasCount || countedLaari == null) return null;
+    return {
+      closingCash: fromLaari(countedLaari),
+      cashCountMethod: method,
+      denominations: method === "denominations" ? breakdownPayload(counts) : undefined,
+      foreignCurrency: foreignPayload.length ? foreignPayload : undefined,
+    };
+  };
+
+  /** Step 1 → step 2. Blocks exactly as the old single-step close did. */
+  const startReview = async () => {
     if (pendingOfflineCount > 0) {
       setErr(`Sync ${pendingOfflineCount} offline order${pendingOfflineCount === 1 ? "" : "s"} before closing the shift.`);
       return;
     }
-    if (!hasCount || closing == null || countedLaari == null) {
+    const payload = basePayload();
+    if (payload == null) {
       setErr(method === "denominations"
         ? "Enter the count for each denomination in the drawer."
         : "Enter the cash you counted in the drawer.");
       return;
     }
-    if (varianceLaari != null && Math.abs(varianceLaari) >= 1 && !notes.trim()) {
+    setBusy(true);
+    try {
+      const res = await onReviewCount(payload);
+      setReview(res);
+      setAttemptsSoFar(res.attempt_number);
+      setReason("");
+      setStep("review");
+      setErr("");
+    } catch (e) {
+      setErr((e as Error).message || "Could not check the count.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reviewVarianceLaari = review != null ? Math.round(review.variance * 100) : 0;
+  const reviewBalanced = review != null && Math.abs(reviewVarianceLaari) < 1;
+
+  const submitClose = async () => {
+    const payload = basePayload();
+    if (payload == null || review == null) return;
+    if (!reviewBalanced && !reason.trim()) {
       setErr("Enter a reason for the cash variance before closing.");
       return;
     }
     setBusy(true);
     try {
-      await onConfirm({
-        closingCash: closing,
-        notes: notes.trim() || undefined,
-        cashCountMethod: method,
-        denominations: method === "denominations" ? breakdownPayload(counts) : undefined,
-        foreignCurrency: foreignPayload.length ? foreignPayload : undefined,
-      });
+      await onConfirm({ ...payload, notes: reason.trim() || undefined });
     } catch (e) {
       setErr((e as Error).message || "Could not close shift.");
     } finally {
@@ -192,8 +244,26 @@ export function CloseShiftModal({
     }
   };
 
+  const backToCount = () => {
+    setStep("count");
+    setErr("");
+  };
+
+  // Stable identity: Overlay's focus trap re-runs (and moves focus) whenever
+  // onEscape changes, so an inline closure here would steal focus from the
+  // reason input on every keystroke.
+  const handleEscape = useCallback(() => {
+    if (busy) return;
+    if (step === "review") {
+      setStep("count");
+      setErr("");
+      return;
+    }
+    onCancel();
+  }, [busy, step, onCancel]);
+
   return (
-    <Overlay className="close-shift-overlay" onEscape={busy ? undefined : onCancel}>
+    <Overlay className="close-shift-overlay" onEscape={handleEscape}>
       <div className="close-shift-sheet" data-testid="close-shift-sheet">
         <header className="close-shift-sheet__header">
           <div className="close-shift-sheet__title-row">
@@ -212,13 +282,18 @@ export function CloseShiftModal({
           </div>
           <p className="close-shift-sheet__subtitle">
             {method === "denominations"
-              ? "Tap a note, enter how many. Expected stays hidden until you count."
-              : "Enter the total cash you counted. Expected stays hidden until you do."}
+              ? "Count what is in the drawer — tap a note, enter how many."
+              : "Enter the total cash you counted in the drawer."}
           </p>
+          {attemptsSoFar >= 1 && step === "count" && (
+            <p className="close-shift-recount-note" data-testid="close-shift-recount-note">
+              You have counted this drawer {attemptsSoFar + 1} times.
+            </p>
+          )}
         </header>
 
         <div className="close-shift-sheet__content">
-          {/* ── Main scrollable pane: the count itself ─────────────────── */}
+          {/* ── Step 1: the count. Nothing here reveals the target. ─────── */}
           <div className="close-shift-sheet__body">
             {pendingOfflineCount > 0 && (
               <div className="close-shift-alert close-shift-alert--danger">
@@ -254,16 +329,18 @@ export function CloseShiftModal({
                   faces={[...NOTE_DENOMS_LAARI]}
                   counts={counts}
                   activeFace={activeFace}
-                  onSelect={setActiveFace}
+                  onSelect={selectFace}
                   onBump={bumpCount}
+                  rowRefs={rowRefs}
                 />
                 <DenomSection
                   title="Coins"
                   faces={[...COMMON_COIN_DENOMS_LAARI]}
                   counts={counts}
                   activeFace={activeFace}
-                  onSelect={setActiveFace}
+                  onSelect={selectFace}
                   onBump={bumpCount}
+                  rowRefs={rowRefs}
                 />
                 <button
                   type="button"
@@ -279,8 +356,9 @@ export function CloseShiftModal({
                     faces={[...RARE_COIN_DENOMS_LAARI]}
                     counts={counts}
                     activeFace={activeFace}
-                    onSelect={setActiveFace}
+                    onSelect={selectFace}
                     onBump={bumpCount}
+                    rowRefs={rowRefs}
                   />
                 )}
               </div>
@@ -309,7 +387,7 @@ export function CloseShiftModal({
               {showForeign && (
                 <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
                   <div className="close-shift-hint">
-                    Record only — does not change expected cash, counted cash, or variance.
+                    Record only — does not change the counted cash.
                     Enter the MVR value you accepted it as at the till.
                   </div>
                   {foreignRows.map((row, idx) => (
@@ -382,83 +460,19 @@ export function CloseShiftModal({
                 </div>
               )}
             </div>
-
-            {!needsVarianceNote && !showNotes && (
-              <button
-                type="button"
-                className="close-shift-link-btn close-shift-link-btn--quiet"
-                onClick={() => setShowNotes(true)}
-              >
-                Add a note (optional)
-              </button>
-            )}
           </div>
 
-          {/* ── Rail: totals, pad, actions. Right column on wide screens,
-                 sticky footer on phones. Counted cash always visible. ──── */}
+          {/* ── Footer/rail: counted cash, keypad, actions. No target. ──── */}
           <aside className="close-shift-rail">
             <div className="close-shift-totals" data-testid="close-shift-totals">
               <div className="close-shift-totals__counted" data-testid="close-shift-running-total">
                 <span>Counted cash</span>
                 <strong>MVR {countedDisplay.toFixed(2)}</strong>
               </div>
-
-              {hasCount && (
-                <>
-                  <button
-                    type="button"
-                    className="close-shift-totals__expected"
-                    aria-expanded={showExpected}
-                    onClick={() => setShowExpected((v) => !v)}
-                  >
-                    <span>Expected MVR {expected.toFixed(2)}</span>
-                    <span className="close-shift-totals__chev">{showExpected ? "Hide" : "Details"}</span>
-                  </button>
-
-                  {showExpected && (
-                    <div className="close-shift-summary" data-testid="close-shift-expected-summary">
-                      <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
-                      <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
-                      {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
-                      {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
-                        <Summary
-                          label="  incl. credit repayments (cash)"
-                          value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
-                        />
-                      )}
-                      {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
-                      {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
-                      <Summary label="Expected in drawer" value={expected} bold />
-                    </div>
-                  )}
-
-                  {variance != null && (
-                    <div
-                      data-testid="close-shift-variance"
-                      className={`close-shift-variance${
-                        Math.abs(variance) < 0.005
-                          ? " is-ok"
-                          : variance > 0
-                            ? " is-over"
-                            : " is-short"
-                      }`}
-                    >
-                      <div className="close-shift-variance__row">
-                        <span>
-                          {Math.abs(variance) < 0.005 ? "Balanced" : variance > 0 ? "Over" : "Short"}
-                        </span>
-                        <span>{variance >= 0 ? "+" : ""}MVR {variance.toFixed(2)}</span>
-                      </div>
-                      {foreignSummary && Math.abs(variance) >= 0.005 && (
-                        <div data-testid="close-shift-fx-beside-variance" className="close-shift-variance__fx">
-                          {variance < 0 ? `Short MVR ${Math.abs(variance).toFixed(2)}` : `Over MVR ${variance.toFixed(2)}`}
-                          {" · "}
-                          {foreignSummary}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+              {countedLines.length > 0 && (
+                <div className="close-shift-counted-summary" data-testid="close-shift-counted-summary">
+                  {countedLines.join(" · ")}
+                </div>
               )}
             </div>
 
@@ -478,8 +492,7 @@ export function CloseShiftModal({
                     </span>
                   </span>
                 </div>
-                {/* 4-column pad (C/⌫/0 in the last column) keeps it to 3 rows,
-                    which is what lets the phone footer stay short. */}
+                {/* 4-column pad (C/⌫/0 in the last column) keeps it to 3 rows. */}
                 <div className="close-shift-pad__keys" role="group" aria-label="Count keypad">
                   {["1", "2", "3", "clear", "4", "5", "6", "back", "7", "8", "9", "0"].map((key) => (
                     <button
@@ -498,38 +511,94 @@ export function CloseShiftModal({
               </div>
             )}
 
-            {(needsVarianceNote || showNotes) && (
-              <div className="close-shift-rail__notes">
-                <label className="close-shift-rail__notes-label">
-                  {needsVarianceNote ? "Variance reason (required)" : "Notes (optional)"}
-                </label>
-                <input
-                  value={notes}
-                  onChange={(e) => { setNotes(e.target.value); setErr(""); }}
-                  placeholder={
-                    needsVarianceNote
-                      ? "e.g. Short change / found cash on floor"
-                      : "e.g. Found MVR 10 on floor"
-                  }
-                  className={`close-shift-input close-shift-notes${
-                    needsVarianceNote && !notes.trim() ? " is-required" : ""
-                  }`}
-                />
-              </div>
-            )}
-
-            {err && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
+            {err && step === "count" && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
 
             <div className="close-shift-actions">
               <button type="button" onClick={onCancel} disabled={busy} className="close-shift-btn close-shift-btn--secondary">
                 Cancel
               </button>
-              <button type="button" onClick={submit} disabled={busy} className="close-shift-btn close-shift-btn--danger">
-                {busy ? "Closing…" : "Close shift"}
+              <button
+                type="button"
+                data-testid="close-shift-review-btn"
+                onClick={() => void startReview()}
+                disabled={busy}
+                className="close-shift-btn close-shift-btn--primary"
+              >
+                {busy && step === "count" ? "Checking…" : "Review & close"}
               </button>
             </div>
           </aside>
         </div>
+
+        {/* ── Step 2: review popup. The only place variance is shown. ───── */}
+        {step === "review" && review != null && (
+          <div className="close-shift-review-backdrop" data-testid="close-shift-review">
+            <div className="close-shift-review" role="dialog" aria-modal="true" aria-label="Review count">
+              {reviewBalanced ? (
+                <>
+                  <div className="close-shift-review__badge is-ok" data-testid="close-shift-review-balanced">
+                    Balanced
+                  </div>
+                  <p className="close-shift-review__message">
+                    Balanced — you counted MVR {review.counted_cash.toFixed(2)} and that matches the drawer.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    className={`close-shift-review__badge ${reviewVarianceLaari > 0 ? "is-over" : "is-short"}`}
+                    data-testid="close-shift-review-variance"
+                  >
+                    {reviewVarianceLaari > 0 ? "Over" : "Short"} MVR {Math.abs(review.variance).toFixed(2)}
+                  </div>
+                  <div className="close-shift-review__rows">
+                    <div className="close-shift-review__row">
+                      <span>You counted</span>
+                      <strong data-testid="close-shift-review-counted">MVR {review.counted_cash.toFixed(2)}</strong>
+                    </div>
+                    <div className="close-shift-review__row">
+                      <span>Expected in drawer</span>
+                      <strong data-testid="close-shift-review-expected">MVR {review.expected_cash.toFixed(2)}</strong>
+                    </div>
+                  </div>
+                  <label className="close-shift-review__reason-label" htmlFor="close-shift-reason">
+                    Reason (required)
+                  </label>
+                  <input
+                    id="close-shift-reason"
+                    value={reason}
+                    onChange={(e) => { setReason(e.target.value); setErr(""); }}
+                    placeholder="e.g. Short change / found cash on floor"
+                    className={`close-shift-input close-shift-notes${!reason.trim() ? " is-required" : ""}`}
+                  />
+                </>
+              )}
+
+              {err && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
+
+              <div className="close-shift-actions">
+                <button
+                  type="button"
+                  data-testid="close-shift-count-again"
+                  onClick={backToCount}
+                  disabled={busy}
+                  className="close-shift-btn close-shift-btn--secondary"
+                >
+                  {reviewBalanced ? "Back to count" : "Count again"}
+                </button>
+                <button
+                  type="button"
+                  data-testid="close-shift-confirm-btn"
+                  onClick={() => void submitClose()}
+                  disabled={busy}
+                  className="close-shift-btn close-shift-btn--danger"
+                >
+                  {busy ? "Closing…" : "Close shift"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Overlay>
   );
@@ -542,6 +611,7 @@ function DenomSection({
   activeFace,
   onSelect,
   onBump,
+  rowRefs,
 }: {
   title: string;
   faces: number[];
@@ -549,6 +619,7 @@ function DenomSection({
   activeFace: number;
   onSelect: (face: number) => void;
   onBump: (face: number, delta: number) => void;
+  rowRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
 }) {
   const unit = title.toLowerCase().includes("coin") ? "coin" : "note";
   return (
@@ -564,6 +635,7 @@ function DenomSection({
               key={face}
               role="button"
               tabIndex={0}
+              ref={(el) => { rowRefs.current[face] = el; }}
               data-testid={`denom-row-${face}`}
               aria-pressed={selected}
               className={`close-shift-denom-row${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
@@ -609,15 +681,6 @@ function DenomSection({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function Summary({ label, value, bold, negative }: { label: string; value: number; bold?: boolean; negative?: boolean }) {
-  return (
-    <div className={`close-shift-summary__row${bold ? " is-bold" : ""}`}>
-      <span>{label}</span>
-      <span>{negative ? "−" : ""}MVR {Math.abs(value).toFixed(2)}</span>
     </div>
   );
 }

@@ -98,7 +98,7 @@ export function ShiftPanel({
                   muted
                 />
               )}
-              <Row label="Expected in drawer" value={summary.cash_drawer.expected_cash} bold />
+              <Row label="Expected in drawer" value={Number(summary.cash_drawer.expected_cash ?? 0)} bold />
             </>
           ) : (
             <div

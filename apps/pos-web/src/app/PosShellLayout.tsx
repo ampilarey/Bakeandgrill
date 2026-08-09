@@ -129,7 +129,7 @@ export function PosShellLayout() {
     setNotePickerKey, menu, cart, deliveryFeeEst, ops, filteredItems, refreshOpenTickets,
     order, chargeTotal, handleAttachCustomer, handleDetachCustomer, posUpdate, refreshAll,
     refreshTables, isRefreshingAll, openTicketsCount, openTicketsCritical, kitchenHandoverSettings, handleClearCart,
-    handleLogout, lockScreen, handleOpenShift, handleCloseShift, handleSaveTicketSubmit,
+    handleLogout, lockScreen, handleOpenShift, handleCloseShift, handleCountAttempt, handleSaveTicketSubmit,
     refreshOfflineCounts, drawerItems, showPreferences, setShowPreferences,
     showRequestItemModal, setShowRequestItemModal, showSendBill, setShowSendBill,
     showCharge, setShowCharge, chargeCreditEligible, chargeCreditAvailable,
@@ -903,6 +903,7 @@ export function PosShellLayout() {
             setShowCloseShift(false);
             setShowOfflineSyncPanel(true);
           }}
+          onReviewCount={handleCountAttempt}
           onConfirm={handleCloseShift}
           onCancel={() => setShowCloseShift(false)}
         />
