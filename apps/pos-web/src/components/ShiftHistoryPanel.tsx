@@ -62,12 +62,15 @@ export function ShiftHistoryPanel({ onClose, staffRole = null }: Props) {
             >
               <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 13 }}>
                 <span>#{s.id}</span>
+                {/* Cashier responses carry no variance — show a neutral dash. */}
                 <span style={{
-                  color: Math.abs(Number(s.variance ?? 0)) < 0.005
-                    ? (selectedId === s.id ? "#86EFAC" : "#15803D")
-                    : (selectedId === s.id ? "#FDE68A" : "#92400E"),
+                  color: s.variance == null
+                    ? (selectedId === s.id ? "#CBD5E1" : "#64748B")
+                    : Math.abs(Number(s.variance)) < 0.005
+                      ? (selectedId === s.id ? "#86EFAC" : "#15803D")
+                      : (selectedId === s.id ? "#FDE68A" : "#92400E"),
                 }}>
-                  {variance(s)}
+                  {s.variance == null ? "—" : variance(s)}
                 </span>
               </div>
               <div style={{ fontSize: 11, marginTop: 4, color: selectedId === s.id ? "#CBD5E1" : "#64748B" }}>
@@ -99,9 +102,13 @@ function ShiftDetail({
   staffRole: string | null | undefined;
 }) {
   const isClosed = !!shift.closed_at;
-  // Closed shifts keep full Expected/variance. Open rows in history must
-  // not leak expected drawer cash to cashiers (same control as ShiftPanel).
-  const showExpectedMath = isClosed || canSeeOpenShiftExpectedCash(staffRole);
+  // The server strips expected_cash/variance for cashiers (blind count):
+  // render the reconciliation only when the response actually carries it.
+  // Open rows additionally require the manager/owner role (same control
+  // as ShiftPanel).
+  const hasReconciliation = shift.expected_cash != null && shift.variance != null;
+  const showExpectedMath = (isClosed && hasReconciliation)
+    || (!isClosed && canSeeOpenShiftExpectedCash(staffRole));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -149,6 +156,14 @@ function ShiftDetail({
                 Count method: {shift.cash_count_method === "denominations" ? "denominations" : "plain total"}
               </div>
             )}
+          </>
+        ) : isClosed ? (
+          <>
+            <Row label="Counted" value={Number(shift.closing_cash ?? 0)} bold />
+            <div style={{ fontSize: 12, color: "#64748B", paddingTop: 6, lineHeight: 1.4 }}>
+              The drawer reconciliation for this shift is recorded and visible to
+              managers and owners.
+            </div>
           </>
         ) : (
           <div style={{ fontSize: 12, color: "#64748B", paddingTop: 6, lineHeight: 1.4 }}>

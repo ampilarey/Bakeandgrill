@@ -181,7 +181,8 @@ class ShiftController extends Controller
 
             $expectedLaari = LaariConverter::toLaar($expectedCash);
             $countedLaari = LaariConverter::toLaar($counted['closing_cash']);
-            $variance = LaariConverter::toMvr($countedLaari - $expectedLaari);
+            $varianceLaari = $countedLaari - $expectedLaari;
+            $variance = LaariConverter::toMvr($varianceLaari);
 
             $attemptNumber = (int) ShiftCashCountAttempt::where('shift_id', $shift->id)->max('attempt_number') + 1;
             ShiftCashCountAttempt::create([
@@ -197,15 +198,26 @@ class ShiftController extends Controller
             ]);
 
             return [
+                'matches' => abs($varianceLaari) < 1,
+                'attempt_number' => $attemptNumber,
                 'counted_cash' => $counted['closing_cash'],
                 'expected_cash' => $expectedCash,
                 'variance' => $variance,
-                'attempt_number' => $attemptNumber,
             ];
         });
 
         if ($result === null) {
             return response()->json(['message' => 'Shift already closed.'], 422);
+        }
+
+        // The cashier must not learn the target, the size of the difference,
+        // or the direction — only whether it matches. Owner/manager keep the
+        // full reconciliation (the attempt row stores it for everyone).
+        if (! $this->canSeeOpenShiftExpectedCash($request->user())) {
+            $result = [
+                'matches' => $result['matches'],
+                'attempt_number' => $result['attempt_number'],
+            ];
         }
 
         return response()->json($result);
@@ -426,11 +438,30 @@ class ShiftController extends Controller
             $query->where('user_id', $user?->id);
         }
 
-        return response()->json([
-            'shifts' => $query
-                ->with(['user:id,name', 'device:id,name,identifier', 'cashCountAttempts'])
-                ->get(),
-        ]);
+        $shifts = $query
+            ->with(['user:id,name', 'device:id,name,identifier', 'cashCountAttempts'])
+            ->get();
+
+        // Cashiers reviewing their own past shifts must not see the expected
+        // totals or variances (their own counted totals are fine). This also
+        // covers the embedded count attempts. Owner/manager unchanged.
+        if (! $this->canSeeOpenShiftExpectedCash($user)) {
+            $rows = $shifts->map(function (Shift $s) {
+                $row = $s->toArray();
+                unset($row['expected_cash'], $row['variance']);
+                $row['cash_count_attempts'] = array_map(function (array $attempt) {
+                    unset($attempt['expected_cash'], $attempt['variance']);
+
+                    return $attempt;
+                }, $row['cash_count_attempts'] ?? []);
+
+                return $row;
+            })->values();
+
+            return response()->json(['shifts' => $rows]);
+        }
+
+        return response()->json(['shifts' => $shifts]);
     }
 
     /**
@@ -720,8 +751,16 @@ class ShiftController extends Controller
             totalRevenue: $totalRevenue,
         )));
 
+        // Blind count round 2: handing the cashier the closed shift model
+        // would reveal the exact shortage one second after closing. Strip
+        // the reconciliation fields unless the closer is owner/manager.
+        $shiftBody = $shift->toArray();
+        if (! $this->canSeeOpenShiftExpectedCash($request->user())) {
+            unset($shiftBody['expected_cash'], $shiftBody['variance']);
+        }
+
         $response = [
-            'shift' => $shift,
+            'shift' => $shiftBody,
             'cash_sales' => $cashSales,
             'cash_in' => $cashIn,
             'cash_out' => $cashOut,

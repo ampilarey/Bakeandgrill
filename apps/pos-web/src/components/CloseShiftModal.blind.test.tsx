@@ -32,9 +32,7 @@ function renderModal() {
       onConfirm={vi.fn()}
       onCancel={vi.fn()}
       onReviewCount={vi.fn().mockResolvedValue({
-        counted_cash: 200,
-        expected_cash: 350,
-        variance: -150,
+        matches: false,
         attempt_number: 1,
       })}
     />,

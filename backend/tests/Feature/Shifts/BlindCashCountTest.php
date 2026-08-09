@@ -89,27 +89,64 @@ class BlindCashCountTest extends TestCase
             ->assertJsonPath('cash_drawer.expected_cash', 100);
     }
 
-    public function test_count_attempt_records_and_returns_variance_without_closing(): void
+    public function test_count_attempt_as_cashier_returns_only_matches_and_attempt_number(): void
     {
         $res = $this->postJson("/api/shifts/{$this->shift->id}/count-attempt", [
             'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
             'denominations' => ['5000' => 1], // 50 vs expected 100 — no reason required
         ])->assertOk();
 
-        $res->assertJsonPath('counted_cash', 50)
-            ->assertJsonPath('expected_cash', 100)
-            ->assertJsonPath('variance', -50)
+        // The cashier learns ONLY that it does not match — never the target,
+        // the size of the difference, or the direction.
+        $res->assertJsonPath('matches', false)
             ->assertJsonPath('attempt_number', 1);
+        $body = json_encode($res->json());
+        $this->assertStringNotContainsString('expected_cash', $body);
+        $this->assertStringNotContainsString('variance', $body);
+        $this->assertStringNotContainsString('counted_cash', $body);
 
         $this->shift->refresh();
         $this->assertNull($this->shift->closed_at, 'A count attempt must not close the shift.');
+    }
 
+    public function test_count_attempt_still_records_true_numbers_for_a_cashier(): void
+    {
+        $this->postJson("/api/shifts/{$this->shift->id}/count-attempt", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+        ])->assertOk();
+
+        // The audit row keeps the full reconciliation even though the
+        // response hid it — check the database, not the response.
         $attempt = ShiftCashCountAttempt::where('shift_id', $this->shift->id)->firstOrFail();
         $this->assertSame(1, $attempt->attempt_number);
         $this->assertFalse((bool) $attempt->is_accepted);
         $this->assertSame(['5000' => 1], $attempt->breakdown);
+        $this->assertEqualsWithDelta(50.0, (float) $attempt->counted_cash, 0.001);
+        $this->assertEqualsWithDelta(100.0, (float) $attempt->expected_cash, 0.001);
         $this->assertEqualsWithDelta(-50.0, (float) $attempt->variance, 0.001);
         $this->assertSame($this->cashier->id, $attempt->user_id);
+    }
+
+    public function test_count_attempt_as_owner_returns_full_reconciliation(): void
+    {
+        $owner = $this->makeOwner();
+        Sanctum::actingAs($owner, ['staff']);
+        $ownerShift = Shift::create([
+            'user_id' => $owner->id,
+            'opened_at' => now()->subHour(),
+            'opening_cash' => 100,
+        ]);
+
+        $this->postJson("/api/shifts/{$ownerShift->id}/count-attempt", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+        ])->assertOk()
+            ->assertJsonPath('matches', false)
+            ->assertJsonPath('counted_cash', 50)
+            ->assertJsonPath('expected_cash', 100)
+            ->assertJsonPath('variance', -50)
+            ->assertJsonPath('attempt_number', 1);
     }
 
     public function test_count_attempt_supports_plain_total(): void
@@ -118,13 +155,85 @@ class BlindCashCountTest extends TestCase
             'cash_count_method' => CashDenominationCatalog::METHOD_PLAIN_TOTAL,
             'closing_cash' => 100,
         ])->assertOk()
-            ->assertJsonPath('variance', 0)
+            ->assertJsonPath('matches', true)
             ->assertJsonPath('attempt_number', 1);
 
         $this->assertSame(
             CashDenominationCatalog::METHOD_PLAIN_TOTAL,
             ShiftCashCountAttempt::where('shift_id', $this->shift->id)->value('cash_count_method'),
         );
+    }
+
+    public function test_close_response_for_cashier_carries_no_expected_cash_or_variance(): void
+    {
+        $res = $this->postJson("/api/shifts/{$this->shift->id}/close", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+            'notes' => 'Short — will explain',
+        ])->assertOk();
+
+        $shiftBody = $res->json('shift');
+        $this->assertArrayNotHasKey('expected_cash', $shiftBody);
+        $this->assertArrayNotHasKey('variance', $shiftBody);
+        // The database still has the real reconciliation.
+        $this->shift->refresh();
+        $this->assertEqualsWithDelta(-50.0, (float) $this->shift->variance, 0.001);
+        $this->assertEqualsWithDelta(100.0, (float) $this->shift->expected_cash, 0.001);
+    }
+
+    public function test_close_response_for_owner_keeps_expected_cash_and_variance(): void
+    {
+        $owner = $this->makeOwner();
+        Sanctum::actingAs($owner, ['staff']);
+        $ownerShift = Shift::create([
+            'user_id' => $owner->id,
+            'opened_at' => now()->subHour(),
+            'opening_cash' => 100,
+        ]);
+
+        $this->postJson("/api/shifts/{$ownerShift->id}/close", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+            'notes' => 'Owner close',
+        ])->assertOk()
+            ->assertJsonPath('shift.expected_cash', fn ($v) => $v !== null)
+            ->assertJsonPath('shift.variance', fn ($v) => $v !== null);
+    }
+
+    public function test_cashier_history_carries_no_expected_cash_or_variance_anywhere(): void
+    {
+        // One review + close so the shift also has embedded attempts.
+        $this->postJson("/api/shifts/{$this->shift->id}/count-attempt", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => [],
+        ])->assertOk();
+        $this->postJson("/api/shifts/{$this->shift->id}/close", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+            'notes' => 'short',
+        ])->assertOk();
+
+        $json = $this->getJson('/api/shifts/history')->assertOk()->json();
+        $body = json_encode($json);
+        $this->assertStringNotContainsString('expected_cash', $body);
+        $this->assertStringNotContainsString('"variance"', $body);
+    }
+
+    public function test_owner_history_keeps_expected_cash_and_variance(): void
+    {
+        $this->postJson("/api/shifts/{$this->shift->id}/close", [
+            'cash_count_method' => CashDenominationCatalog::METHOD_DENOMINATIONS,
+            'denominations' => ['5000' => 1],
+            'notes' => 'short',
+        ])->assertOk();
+
+        $owner = $this->makeOwner();
+        Sanctum::actingAs($owner, ['staff']);
+        $this->getJson('/api/shifts/history')
+            ->assertOk()
+            ->assertJsonPath('shifts.0.id', $this->shift->id)
+            ->assertJsonPath('shifts.0.expected_cash', fn ($v) => $v !== null)
+            ->assertJsonPath('shifts.0.variance', fn ($v) => $v !== null);
     }
 
     public function test_count_attempt_rejects_someone_elses_shift(): void
@@ -218,10 +327,13 @@ class BlindCashCountTest extends TestCase
             'foreign_currency' => [
                 ['currency' => 'USD', 'denomination' => 50, 'count' => 1, 'accepted_mvr' => 770],
             ],
-        ])->assertOk()
-            ->assertJsonPath('counted_cash', 50)
-            ->assertJsonPath('expected_cash', 100)
-            ->assertJsonPath('variance', -50);
+        ])->assertOk()->assertJsonPath('matches', false);
+
+        // Record-only: the stored attempt maths ignore the USD note entirely.
+        $attempt = ShiftCashCountAttempt::where('shift_id', $this->shift->id)->firstOrFail();
+        $this->assertEqualsWithDelta(50.0, (float) $attempt->counted_cash, 0.001);
+        $this->assertEqualsWithDelta(100.0, (float) $attempt->expected_cash, 0.001);
+        $this->assertEqualsWithDelta(-50.0, (float) $attempt->variance, 0.001);
     }
 
     public function test_history_surfaces_count_attempts_for_the_closed_shift(): void
