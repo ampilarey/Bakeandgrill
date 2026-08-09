@@ -901,7 +901,10 @@ html, body, #root {
 }
 
 /* ── Close shift sheet (denomination blind count) ───────────────────────────
- * Dense till rows + sticky count pad. Full-height sheet on ≤840px.
+ * Two panes: scrollable count list + totals rail (counted cash, expected,
+ * variance, count pad, actions). The rail is a right column on desktop and
+ * iPad landscape, and a sticky footer on phones — the counted total is
+ * always on screen in both count methods.
  */
 .close-shift-overlay {
   align-items: stretch !important;
@@ -913,14 +916,38 @@ html, body, #root {
 .close-shift-sheet {
   display: flex;
   flex-direction: column;
-  width: min(100%, 560px);
-  max-height: min(94dvh, 900px);
+  width: min(100%, 800px);
+  max-height: min(94dvh, 860px);
   margin: auto;
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   animation: pos-scale-in 0.18s ease-out;
+}
+
+/* Desktop / iPad landscape: count list left, totals rail right */
+.close-shift-sheet__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.close-shift-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  border-left: 1px solid #E2E8F0;
+  background: #F8FAFC;
+}
+
+.close-shift-rail .close-shift-alert {
+  margin: 0;
 }
 
 .close-shift-sheet__header {
@@ -974,32 +1001,71 @@ html, body, #root {
   padding: 8px 12px 12px;
 }
 
-.close-shift-sheet__footer {
-  flex-shrink: 0;
-  padding: 8px 12px max(10px, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid #E2E8F0;
-  background: #fff;
+/* Totals block: counted (always visible) + expected + variance */
+.close-shift-totals {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.close-shift-running-total {
+.close-shift-totals__counted {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
   background: #0F172A;
   color: #fff;
   font-size: 13px;
   font-weight: 600;
 }
 
-.close-shift-running-total strong {
-  font-size: 18px;
+.close-shift-totals__counted strong {
+  font-size: 20px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.close-shift-totals__expected {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  background: #fff;
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-totals__chev {
+  color: #64748B;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.close-shift-rail__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.close-shift-rail__notes-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .close-shift-pad {
@@ -1045,7 +1111,7 @@ html, body, #root {
   min-height: 44px;
   border: 1px solid #E2E8F0;
   border-radius: 10px;
-  background: #F8FAFC;
+  background: #fff;
   color: #0F172A;
   font-size: 18px;
   font-weight: 800;
@@ -1061,12 +1127,13 @@ html, body, #root {
 .close-shift-pad__key.is-muted {
   font-size: 15px;
   color: #475569;
-  background: #fff;
+  background: #F1F5F9;
 }
 
 .close-shift-actions {
   display: flex;
   gap: 8px;
+  margin-top: auto;
 }
 
 .close-shift-btn {
@@ -1098,40 +1165,10 @@ html, body, #root {
   color: #fff;
 }
 
-.close-shift-summary-wrap {
-  margin-bottom: 8px;
-}
-
-.close-shift-summary-toggle {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #E2E8F0;
-  background: #F8FAFC;
-  color: #0F172A;
-  font-size: 13px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.close-shift-summary-toggle__chev {
-  color: #64748B;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .close-shift-summary {
-  margin-top: 6px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: #F8FAFC;
+  background: #fff;
   border: 1px solid #E2E8F0;
 }
 
@@ -1405,8 +1442,7 @@ html, body, #root {
 }
 
 .close-shift-variance {
-  margin-top: 12px;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 700;
@@ -1440,7 +1476,7 @@ html, body, #root {
   opacity: 0.9;
 }
 
-/* Phone + iPad portrait — edge-to-edge sheet */
+/* Phone + iPad portrait — edge-to-edge sheet; rail becomes a sticky footer */
 @media (max-width: 840px) {
   .close-shift-overlay {
     padding: 0 !important;
@@ -1460,8 +1496,28 @@ html, body, #root {
     padding-top: max(10px, env(safe-area-inset-top, 0px));
   }
 
+  .close-shift-sheet__content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .close-shift-rail {
+    flex: 0 0 auto;
+    max-height: 62dvh;
+    gap: 8px;
+    padding: 8px 12px max(10px, env(safe-area-inset-bottom, 0px));
+    border-left: none;
+    border-top: 1px solid #E2E8F0;
+    background: #fff;
+  }
+
   .close-shift-pad__key {
-    min-height: 48px;
+    min-height: 46px;
+    background: #F8FAFC;
+  }
+
+  .close-shift-summary {
+    background: #F8FAFC;
   }
 
   .close-shift-btn {
@@ -1533,12 +1589,12 @@ html, body, #root {
     font-size: 16px;
   }
 
-  .close-shift-running-total {
+  .close-shift-totals__counted {
     padding: 6px 10px;
   }
 
-  .close-shift-running-total strong {
-    font-size: 15px;
+  .close-shift-totals__counted strong {
+    font-size: 16px;
   }
 
   .close-shift-btn {
