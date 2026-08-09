@@ -1356,12 +1356,12 @@ html, body, #root {
 
 .close-shift-stepper-btn {
   width: 100%;
-  height: 40px;
-  border-radius: 999px;
+  height: 36px;
+  border-radius: 10px;
   border: none;
   background: #EEF2F7;
   color: #94A3B8;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
@@ -1787,8 +1787,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 34px;
-    font-size: 18px;
+    height: 32px;
+    font-size: 16px;
   }
 
   .close-shift-denom-row__line {
@@ -2019,8 +2019,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 44px;
-    font-size: 22px;
+    height: 40px;
+    font-size: 19px;
   }
 
   .close-shift-denom-row__line {
@@ -2164,7 +2164,7 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 40px;
+    height: 36px;
   }
 
   .close-shift-rail {
