@@ -352,16 +352,18 @@ export function CloseShiftModal({
                 )}
               </div>
             ) : (
-              <Field label="Counted cash">
-                <CashInput
-                  autoFocus
-                  value={plainTotal}
-                  onChange={(v) => { setPlainTotal(v); setErr(""); }}
-                />
-                <div className="close-shift-hint">
-                  Escape hatch for a chaotic till. Prefer counting by denomination when you can.
-                </div>
-              </Field>
+              <div className="close-shift-plain-total">
+                <Field label="Counted cash">
+                  <CashInput
+                    autoFocus
+                    value={plainTotal}
+                    onChange={(v) => { setPlainTotal(v); setErr(""); }}
+                  />
+                  <div className="close-shift-hint">
+                    Escape hatch for a chaotic till. Prefer counting by denomination when you can.
+                  </div>
+                </Field>
+              </div>
             )}
 
             <div className="close-shift-foreign">
@@ -465,12 +467,16 @@ export function CloseShiftModal({
 
           {/* ── Footer/rail: counted cash, keypad, actions. No target. ──── */}
           <aside className="close-shift-rail">
-            <div className="close-shift-totals" data-testid="close-shift-totals">
-              <div className="close-shift-totals__counted" data-testid="close-shift-running-total">
-                <span>Counted cash</span>
-                <strong>MVR {countedDisplay.toFixed(2)}</strong>
+            {/* In "Enter total instead" the big input IS the counted amount —
+                don't duplicate it here. */}
+            {method === "denominations" && (
+              <div className="close-shift-totals" data-testid="close-shift-totals">
+                <div className="close-shift-totals__counted" data-testid="close-shift-running-total">
+                  <span>Counted cash</span>
+                  <strong>MVR {countedDisplay.toFixed(2)}</strong>
+                </div>
               </div>
-            </div>
+            )}
 
             {method === "denominations" && (
               <div className="close-shift-pad" data-testid="close-shift-count-pad">
