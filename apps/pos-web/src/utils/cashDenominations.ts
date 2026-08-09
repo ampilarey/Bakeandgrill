@@ -5,7 +5,7 @@
 
 export const NOTE_DENOMS_LAARI = [100_000, 50_000, 10_000, 5_000, 2_000, 1_000, 500] as const;
 export const COMMON_COIN_DENOMS_LAARI = [200, 100, 50, 25] as const;
-export const RARE_COIN_DENOMS_LAARI = [20, 10, 5, 1] as const;
+export const RARE_COIN_DENOMS_LAARI = [20, 10, 5, 2, 1] as const;
 
 /**
  * Default drawer faces for the close-shift count. The MVR 1000 note is very

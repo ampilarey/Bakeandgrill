@@ -17,7 +17,7 @@ final class CashDenominationCatalog
     public const COMMON_COINS_LAARI = [200, 100, 50, 25];
 
     /** @var list<int> */
-    public const RARE_COINS_LAARI = [20, 10, 5, 1];
+    public const RARE_COINS_LAARI = [20, 10, 5, 2, 1];
 
     public const METHOD_DENOMINATIONS = 'denominations';
 
