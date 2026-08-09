@@ -478,8 +478,10 @@ export function CloseShiftModal({
                     </span>
                   </span>
                 </div>
+                {/* 4-column pad (C/⌫/0 in the last column) keeps it to 3 rows,
+                    which is what lets the phone footer stay short. */}
                 <div className="close-shift-pad__keys" role="group" aria-label="Count keypad">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].map((key) => (
+                  {["1", "2", "3", "clear", "4", "5", "6", "back", "7", "8", "9", "0"].map((key) => (
                     <button
                       key={key}
                       type="button"
