@@ -747,23 +747,24 @@ function DenomSection({
                     }
                   }}
                 />
-                <span className="close-shift-denom-photo__caption">{label}</span>
+              </StepperBtn>
+
+              {/* Right column: count → − → line total. */}
+              <span className="close-shift-denom-row__meta" onClick={(e) => e.stopPropagation()}>
                 <span
                   data-testid={`denom-count-${face}`}
-                  className="close-shift-denom-photo__count"
+                  className="close-shift-denom-row__count"
                   aria-label={`Count of ${label}`}
                 >
                   {qty}
                 </span>
-              </StepperBtn>
-
-              <StepperBtn label={`Decrease ${label}`} onStep={() => onBump(face, -1)}>
-                −
-              </StepperBtn>
-
-              <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
-                <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
-                <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+                <StepperBtn label={`Decrease ${label}`} onStep={() => onBump(face, -1)}>
+                  −
+                </StepperBtn>
+                <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
+                  <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
+                  <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+                </span>
               </span>
             </div>
           );

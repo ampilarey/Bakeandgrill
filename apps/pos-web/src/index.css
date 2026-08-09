@@ -1193,13 +1193,9 @@ html, body, #root {
   gap: 12px;
 }
 
-/* Each denomination group is one panel — not a stack of separate cards. */
+/* Denomination groups: small section title + a grid of separate cards. */
 .close-shift-denom-section {
   margin-top: 0;
-  background: #fff;
-  border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  overflow: hidden;
 }
 
 .close-shift-denom-section__title {
@@ -1209,32 +1205,31 @@ html, body, #root {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin: 0;
-  padding: 10px 14px 8px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
+  padding: 2px 2px 8px;
 }
 
 .close-shift-denom-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(88px, 1fr);
+  gap: 10px;
 }
 
-/* Till list row: photo (+) | − | line total.
- * Hairline separators (banking/POS list), not individual bordered cards. */
+/* One card per denomination: photo (the + control) LEFT; count, − and the
+ * line total stacked on the RIGHT. */
 .close-shift-denom-row {
   display: grid;
-  grid-template-columns: auto 48px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  min-height: 64px;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 88px;
   height: auto;
-  padding: 8px 12px;
-  border: none;
-  border-bottom: 1px solid #F1F5F9;
-  border-radius: 0;
+  padding: 8px;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
   background: #fff;
   color: #334155;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   cursor: default;
   touch-action: manipulation;
   user-select: none;
@@ -1242,32 +1237,27 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-.close-shift-denom-row:last-child {
-  border-bottom: none;
-}
-
 .close-shift-denom-row.is-selected {
-  background: #FFF7ED;
-  box-shadow: inset 4px 0 0 #D4813A;
+  border-color: #D4813A;
+  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.30), 0 4px 14px rgba(212, 129, 58, 0.18);
 }
 
 .close-shift-denom-row.has-count:not(.is-selected) {
-  background: #FAFBFC;
+  border-color: #E8D5BF;
+  background: #FFFDF9;
 }
 
 /* Photo = + control. Tap / hold to count up. */
 .close-shift-denom-photo {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   margin: 0;
-  padding: 4px;
-  border: 1.5px solid #E2E8F0;
+  padding: 6px;
+  border: none;
   border-radius: 12px;
-  background: #F8FAFC;
+  background: #F1F5F9;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
@@ -1276,77 +1266,66 @@ html, body, #root {
   font-family: inherit;
   color: inherit;
   min-width: 0;
+  min-height: 0;
 }
 
 .close-shift-denom-photo:active {
-  background: #FFF7ED;
-  border-color: #D4813A;
+  background: #FFEDD5;
 }
 
 .close-shift-denom-row.is-selected .close-shift-denom-photo {
-  border-color: #D4813A;
-  background: #fff;
+  background: #FFF7ED;
 }
 
 .close-shift-denom-photo__img {
   display: block;
   object-fit: cover;
   pointer-events: none;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22);
 }
 
 .close-shift-denom-photo--note .close-shift-denom-photo__img {
-  width: 96px;
-  height: 46px;
-  border-radius: 5px;
+  width: min(100%, 118px);
+  height: 54px;
+  border-radius: 6px;
 }
 
 .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
 }
 
-.close-shift-denom-photo__caption {
-  font-size: 11px;
-  font-weight: 800;
-  color: #475569;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.close-shift-denom-photo__count {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #0F172A;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
+/* Right column: count on top, − under it, line total at the bottom. */
+.close-shift-denom-row__meta {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+  gap: 4px;
+  min-width: 0;
 }
 
-.close-shift-denom-row.has-count .close-shift-denom-photo__count {
-  background: #D4813A;
+.close-shift-denom-row__count {
+  font-size: 20px;
+  font-weight: 800;
+  color: #CBD5E1;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.close-shift-denom-row.has-count .close-shift-denom-row__count {
+  color: #D4813A;
 }
 
 .close-shift-stepper-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
   border: 1px solid #CBD5E1;
   background: #fff;
   color: #0F172A;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -1366,29 +1345,29 @@ html, body, #root {
 .close-shift-denom-row__totals {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 2px;
-  text-align: right;
+  align-items: center;
   min-width: 0;
   overflow: hidden;
 }
 
-/* Declutter: "0 notes / MVR 0.00" adds nothing — show the line total only
- * once a count is entered. (visibility keeps the row geometry stable.) */
+/* Declutter: "MVR 0.00" adds nothing — show the line total only once a
+ * count is entered. (visibility keeps the card geometry stable.) */
 .close-shift-denom-row:not(.has-count) .close-shift-denom-row__totals {
   visibility: hidden;
 }
 
+/* "2 notes" is for screen readers / tests — the big count says it visually. */
 .close-shift-denom-row__qty {
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748B;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
 }
 
 .close-shift-denom-row__line {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   color: #0F172A;
   font-variant-numeric: tabular-nums;
@@ -1706,98 +1685,58 @@ html, body, #root {
 
   .close-shift-denom-section__title {
     flex: 0 0 auto;
+    padding: 0 2px 6px;
   }
 
+  /* Phone: 2-across cards, sized so Notes (3 rows) + Coins (2 rows) fit
+   * 390×844 without scrolling. */
   .close-shift-denom-grid {
     flex: 1 1 auto;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(86px, 1fr);
-    gap: 0;
+    grid-auto-rows: minmax(78px, 1fr);
+    gap: 8px;
   }
 
-  /* Phone: 2-col tiles — photo + − side by side, line total underneath.
-   * Compact enough that Notes (3 rows) + Coins (2 rows) fit 390×844
-   * without scrolling. */
   .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 44px;
-    grid-template-rows: auto auto;
-    height: auto;
-    min-height: 86px;
-    padding: 8px;
-    gap: 4px 8px;
-    align-items: center;
-    align-content: center;
-    border: none;
-    border-radius: 0;
-    border-right: 1px solid #F1F5F9;
-    border-bottom: 1px solid #F1F5F9;
-  }
-
-  .close-shift-denom-row:nth-child(2n) {
-    border-right: none;
-  }
-
-  .close-shift-denom-row.is-selected {
-    box-shadow: inset 0 0 0 2px #D4813A;
-    z-index: 1;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    min-height: 78px;
+    padding: 6px;
+    gap: 6px;
+    border-radius: 14px;
   }
 
   .close-shift-denom-photo {
-    grid-column: 1;
-    grid-row: 1;
-    width: 100%;
     padding: 4px;
-    gap: 2px;
+    border-radius: 10px;
   }
 
   .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: min(100%, 84px);
-    height: 38px;
+    width: min(100%, 92px);
+    height: 42px;
   }
 
   .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
   }
 
-  .close-shift-denom-photo__caption {
-    font-size: 10px;
+  .close-shift-denom-row__meta {
+    gap: 3px;
   }
 
-  .close-shift-denom-photo__count {
-    min-width: 22px;
-    height: 22px;
-    font-size: 12px;
+  .close-shift-denom-row__count {
+    font-size: 16px;
   }
 
   .close-shift-stepper-btn {
-    grid-column: 2;
-    grid-row: 1;
-    width: 44px;
-    height: 100%;
-    min-height: 44px;
-  }
-
-  .close-shift-denom-row__totals {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: flex-end;
-    gap: 6px;
-    text-align: right;
-    min-height: 15px;
-  }
-
-  .close-shift-denom-row__qty {
-    display: none;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 18px;
   }
 
   .close-shift-denom-row__line {
-    font-size: 12px;
-    font-weight: 800;
-    color: #0F172A;
+    font-size: 10px;
   }
 
   /* "Enter total instead" fills and centres instead of leaving a blank
@@ -1849,16 +1788,12 @@ html, body, #root {
     display: none;
   }
 
-  .close-shift-denom-photo__caption {
-    font-size: 11px;
-  }
 }
 
 /* Very narrow (320–360px): keep the − control touchable without overflow. */
 @media (max-width: 360px) {
-  .close-shift-stepper-btn {
-    width: 44px;
-    height: 44px;
+  .close-shift-denom-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
   }
 }
 
@@ -1986,72 +1921,56 @@ html, body, #root {
     padding: 12px 18px 10px;
   }
 
-  /* Portrait: ONE column — photo till list inside Notes/Coins panels.
-   * Ten default rows must fit 768×1024 without scrolling. */
+  /* Portrait: two-across cards — big photos, ten default cards fit
+   * 768×1024 without scrolling. */
   .close-shift-denom-grid {
     flex: 1 1 auto;
     display: grid;
-    grid-template-columns: 1fr;
-    grid-auto-rows: minmax(62px, 1fr);
-    gap: 0;
-  }
-
-  .close-shift-denom-row {
-    height: auto;
-    min-height: 62px;
-    grid-template-columns: auto 52px minmax(100px, 1fr);
-    align-items: center;
-    gap: 18px;
-    padding: 5px 18px;
-  }
-
-  .close-shift-denom-photo {
-    min-width: 116px;
-    padding: 4px 10px;
-    flex-direction: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(104px, 1fr);
     gap: 10px;
   }
 
-  /* Row layout: badge sits on the photo corner, not over the label. */
-  .close-shift-denom-photo__count {
-    top: 2px;
-    left: 2px;
-    right: auto;
+  .close-shift-denom-row {
+    grid-template-columns: minmax(0, 1fr) 78px;
+    min-height: 104px;
+    padding: 10px;
+    gap: 10px;
+    border-radius: 18px;
   }
 
-  .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: 92px;
-    height: 44px;
-  }
-
-  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 44px;
-    height: 44px;
-  }
-
-  .close-shift-denom-photo__caption {
-    font-size: 13px;
-  }
-
-  .close-shift-denom-photo__count {
-    min-width: 26px;
-    height: 26px;
-    font-size: 13px;
-  }
-
-  .close-shift-stepper-btn {
-    width: 52px;
-    height: 52px;
-    font-size: 24px;
+  .close-shift-denom-photo {
+    padding: 8px;
     border-radius: 14px;
   }
 
-  .close-shift-denom-row__qty {
-    font-size: 13px;
+  .close-shift-denom-photo--note .close-shift-denom-photo__img {
+    width: min(100%, 146px);
+    height: 68px;
+    border-radius: 8px;
+  }
+
+  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
+    width: 68px;
+    height: 68px;
+  }
+
+  .close-shift-denom-row__meta {
+    gap: 5px;
+  }
+
+  .close-shift-denom-row__count {
+    font-size: 24px;
+  }
+
+  .close-shift-stepper-btn {
+    height: 44px;
+    font-size: 22px;
+    border-radius: 12px;
   }
 
   .close-shift-denom-row__line {
-    font-size: 16px;
+    font-size: 13px;
   }
 
   .close-shift-inline-toggles {
@@ -2163,35 +2082,40 @@ html, body, #root {
     padding-bottom: 10px;
   }
 
+  /* Landscape: three-across cards — Notes 6 → 2 rows, Coins 4 → 2 rows. */
   .close-shift-denom-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(58px, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: minmax(88px, 1fr);
+    gap: 10px;
+  }
+
+  .close-shift-denom-section:nth-child(1),
+  .close-shift-denom-section:nth-child(2) {
+    flex: 1 1 0;
   }
 
   .close-shift-denom-row {
-    min-height: 58px;
-    padding: 4px 14px;
-    gap: 12px;
-    border-right: 1px solid #F1F5F9;
-  }
-
-  .close-shift-denom-row:nth-child(2n) {
-    border-right: none;
+    min-height: 88px;
+    padding: 8px;
+    gap: 8px;
   }
 
   .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: 84px;
-    height: 40px;
+    width: min(100%, 118px);
+    height: 54px;
   }
 
   .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 40px;
-    height: 40px;
+    width: 54px;
+    height: 54px;
+  }
+
+  .close-shift-denom-row__count {
+    font-size: 20px;
   }
 
   .close-shift-stepper-btn {
-    width: 48px;
-    height: 48px;
+    height: 40px;
   }
 
   .close-shift-rail {
