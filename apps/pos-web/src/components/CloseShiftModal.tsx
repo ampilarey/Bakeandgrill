@@ -45,10 +45,7 @@ type Props = {
 
 /**
  * Blind cash count via denomination breakdown (default) or plain total.
- * Expected drawer total stays hidden until a count is entered.
- *
- * Layout: sheet with sticky header/footer so Cancel / Close / running total
- * stay reachable on phone and iPad while the denomination list scrolls.
+ * Mobile: dense one-line rows + sticky integer pad (no OS keyboard).
  */
 export function CloseShiftModal({
   summary,
@@ -65,10 +62,14 @@ export function CloseShiftModal({
   const [plainTotal, setPlainTotal] = useState("");
   const [showRareCoins, setShowRareCoins] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
+  const [showExpected, setShowExpected] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [foreignRows, setForeignRows] = useState<ForeignCurrencyRow[]>([]);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  /** Selected face for the sticky count pad (laari). */
+  const [activeFace, setActiveFace] = useState<number>(NOTE_DENOMS_LAARI[0]);
 
   const expected = Number(summary?.cash_drawer.expected_cash ?? 0);
   const expectedLaari = toLaari(expected);
@@ -110,6 +111,8 @@ export function CloseShiftModal({
 
   const foreignSummary = formatForeignHeldSummary(foreignPayload);
   const runningTotal = fromLaari(totalLaariFromCounts(counts));
+  const activeCount = counts[activeFace] ?? "";
+  const needsVarianceNote = variance != null && Math.abs(variance) >= 0.005;
 
   const setCount = (face: number, raw: string) => {
     if (raw !== "" && !/^\d{0,5}$/.test(raw)) return;
@@ -118,11 +121,31 @@ export function CloseShiftModal({
   };
 
   const bumpCount = (face: number, delta: number) => {
+    setActiveFace(face);
     setCounts((prev) => {
       const next = Math.max(0, Math.min(99999, parseCount(prev[face]) + delta));
       return { ...prev, [face]: next === 0 ? "" : String(next) };
     });
     setErr("");
+  };
+
+  const padPress = (key: string) => {
+    const cur = counts[activeFace] ?? "";
+    if (key === "clear") {
+      setCount(activeFace, "");
+      return;
+    }
+    if (key === "back") {
+      setCount(activeFace, cur.slice(0, -1));
+      return;
+    }
+    if (!/^\d$/.test(key)) return;
+    if (cur === "0") {
+      setCount(activeFace, key);
+      return;
+    }
+    if (cur.length >= 5) return;
+    setCount(activeFace, cur + key);
   };
 
   const submit = async () => {
@@ -161,50 +184,52 @@ export function CloseShiftModal({
       <div className="close-shift-sheet" data-testid="close-shift-sheet">
         <header className="close-shift-sheet__header">
           <div className="close-shift-sheet__title-row">
-            <div>
-              <h2 className="close-shift-sheet__title">Close shift</h2>
-              <p className="close-shift-sheet__subtitle">
-                Count the notes and coins in the drawer. Expected stays hidden until you enter a count.
-              </p>
-            </div>
-          </div>
-
-          <div className="close-shift-method" role="group" aria-label="Cash count method">
-            <button
-              type="button"
-              className={`close-shift-method__btn${method === "denominations" ? " is-active" : ""}`}
-              aria-pressed={method === "denominations"}
-              onClick={() => { setMethod("denominations"); setErr(""); }}
-            >
-              Denominations
-            </button>
+            <h2 className="close-shift-sheet__title">Close shift</h2>
             <button
               type="button"
               data-testid="close-shift-method-toggle"
-              className={`close-shift-method__btn${method === "plain_total" ? " is-active" : ""}`}
-              aria-pressed={method === "plain_total"}
-              onClick={() => { setMethod("plain_total"); setErr(""); }}
+              className="close-shift-method-link"
+              onClick={() => {
+                setMethod((m) => (m === "denominations" ? "plain_total" : "denominations"));
+                setErr("");
+              }}
             >
-              Total only
+              {method === "denominations" ? "Enter total instead" : "Count by note"}
             </button>
           </div>
+          <p className="close-shift-sheet__subtitle">
+            Tap a note, enter how many. Expected stays hidden until you count.
+          </p>
         </header>
 
         <div className="close-shift-sheet__body">
           {hasCount && (
-            <div className="close-shift-summary" data-testid="close-shift-expected-summary">
-              <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
-              <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
-              {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
-              {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
-                <Summary
-                  label="  incl. credit repayments (cash)"
-                  value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
-                />
+            <div className="close-shift-summary-wrap">
+              <button
+                type="button"
+                className="close-shift-summary-toggle"
+                aria-expanded={showExpected}
+                onClick={() => setShowExpected((v) => !v)}
+              >
+                <span>Expected MVR {expected.toFixed(2)}</span>
+                <span className="close-shift-summary-toggle__chev">{showExpected ? "Hide" : "Details"}</span>
+              </button>
+              {showExpected && (
+                <div className="close-shift-summary" data-testid="close-shift-expected-summary">
+                  <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
+                  <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
+                  {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
+                  {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+                    <Summary
+                      label="  incl. credit repayments (cash)"
+                      value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
+                    />
+                  )}
+                  {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
+                  {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
+                  <Summary label="Expected in drawer" value={expected} bold />
+                </div>
               )}
-              {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
-              {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
-              <Summary label="Expected in drawer" value={expected} bold />
             </div>
           )}
 
@@ -237,8 +262,22 @@ export function CloseShiftModal({
 
           {method === "denominations" ? (
             <div data-testid="close-shift-denomination-grid" className="close-shift-denoms">
-              <DenomSection title="Notes" faces={[...NOTE_DENOMS_LAARI]} counts={counts} onChange={setCount} onBump={bumpCount} />
-              <DenomSection title="Coins" faces={[...COMMON_COIN_DENOMS_LAARI]} counts={counts} onChange={setCount} onBump={bumpCount} />
+              <DenomSection
+                title="Notes"
+                faces={[...NOTE_DENOMS_LAARI]}
+                counts={counts}
+                activeFace={activeFace}
+                onSelect={setActiveFace}
+                onBump={bumpCount}
+              />
+              <DenomSection
+                title="Coins"
+                faces={[...COMMON_COIN_DENOMS_LAARI]}
+                counts={counts}
+                activeFace={activeFace}
+                onSelect={setActiveFace}
+                onBump={bumpCount}
+              />
               <button
                 type="button"
                 data-testid="close-shift-more-coins"
@@ -248,7 +287,14 @@ export function CloseShiftModal({
                 {showRareCoins ? "Hide rare coins" : "More coins"}
               </button>
               {showRareCoins && (
-                <DenomSection title="Rare coins" faces={[...RARE_COIN_DENOMS_LAARI]} counts={counts} onChange={setCount} onBump={bumpCount} />
+                <DenomSection
+                  title="Rare coins"
+                  faces={[...RARE_COIN_DENOMS_LAARI]}
+                  counts={counts}
+                  activeFace={activeFace}
+                  onSelect={setActiveFace}
+                  onBump={bumpCount}
+                />
               )}
             </div>
           ) : (
@@ -375,31 +421,78 @@ export function CloseShiftModal({
             </div>
           )}
 
-          <Field label={variance != null && Math.abs(variance) >= 0.005 ? "Variance reason (required)" : "Notes (optional)"}>
-            <input
-              value={notes}
-              onChange={(e) => { setNotes(e.target.value); setErr(""); }}
-              placeholder={
-                variance != null && Math.abs(variance) >= 0.005
-                  ? "e.g. Short change / found cash on floor"
-                  : "e.g. Found MVR 10 on floor"
-              }
-              className={`close-shift-input close-shift-notes${
-                variance != null && Math.abs(variance) >= 0.005 && !notes.trim() ? " is-required" : ""
-              }`}
-            />
-          </Field>
+          {(needsVarianceNote || showNotes) && (
+            <Field label={needsVarianceNote ? "Variance reason (required)" : "Notes (optional)"}>
+              <input
+                value={notes}
+                onChange={(e) => { setNotes(e.target.value); setErr(""); }}
+                placeholder={
+                  needsVarianceNote
+                    ? "e.g. Short change / found cash on floor"
+                    : "e.g. Found MVR 10 on floor"
+                }
+                className={`close-shift-input close-shift-notes${
+                  needsVarianceNote && !notes.trim() ? " is-required" : ""
+                }`}
+              />
+            </Field>
+          )}
+
+          {!needsVarianceNote && !showNotes && (
+            <button
+              type="button"
+              className="close-shift-link-btn close-shift-link-btn--quiet"
+              onClick={() => setShowNotes(true)}
+            >
+              Add a note (optional)
+            </button>
+          )}
 
           {err && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
         </div>
 
         <footer className="close-shift-sheet__footer">
           {method === "denominations" && (
-            <div data-testid="close-shift-running-total" className="close-shift-running-total">
-              <span>Running total</span>
-              <strong>MVR {runningTotal.toFixed(2)}</strong>
-            </div>
+            <>
+              <div data-testid="close-shift-running-total" className="close-shift-running-total">
+                <span>Running total</span>
+                <strong>MVR {runningTotal.toFixed(2)}</strong>
+              </div>
+
+              <div className="close-shift-pad" data-testid="close-shift-count-pad">
+                <div className="close-shift-pad__active">
+                  <span className="close-shift-pad__face">{labelForLaari(activeFace)}</span>
+                  <span className="close-shift-pad__count" data-testid="close-shift-pad-count">
+                    {activeCount === "" ? "0" : activeCount}
+                    <span className="close-shift-pad__unit">
+                      {" "}
+                      {(() => {
+                        const n = parseCount(activeCount);
+                        const kind = activeFace >= 500 ? "note" : "coin";
+                        return n === 1 ? kind : `${kind}s`;
+                      })()}
+                    </span>
+                  </span>
+                </div>
+                <div className="close-shift-pad__keys" role="group" aria-label="Count keypad">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"].map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`close-shift-pad__key${key === "clear" || key === "back" ? " is-muted" : ""}`}
+                      aria-label={
+                        key === "clear" ? "Clear count" : key === "back" ? "Backspace" : `Digit ${key}`
+                      }
+                      onClick={() => padPress(key)}
+                    >
+                      {key === "clear" ? "C" : key === "back" ? "⌫" : key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
+
           <div className="close-shift-actions">
             <button type="button" onClick={onCancel} disabled={busy} className="close-shift-btn close-shift-btn--secondary">
               Cancel
@@ -418,13 +511,15 @@ function DenomSection({
   title,
   faces,
   counts,
-  onChange,
+  activeFace,
+  onSelect,
   onBump,
 }: {
   title: string;
   faces: number[];
   counts: DenomCounts;
-  onChange: (face: number, raw: string) => void;
+  activeFace: number;
+  onSelect: (face: number) => void;
   onBump: (face: number, delta: number) => void;
 }) {
   const unit = title.toLowerCase().includes("coin") ? "coin" : "note";
@@ -435,17 +530,25 @@ function DenomSection({
         {faces.map((face) => {
           const qty = parseCount(counts[face]);
           const lineMvr = fromLaari(face * qty).toFixed(2);
-          const qtyLabel = `${qty} ${unit}${qty === 1 ? "" : "s"}`;
+          const selected = activeFace === face;
           return (
-            <div key={face} className="close-shift-denom-row" data-testid={`denom-row-${face}`}>
-              <div className="close-shift-denom-row__meta">
-                <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
-                <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
-                  <span className="close-shift-denom-row__qty">{qtyLabel}</span>
-                  <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
-                </span>
-              </div>
-              <div className="close-shift-denom-row__stepper">
+            <div
+              key={face}
+              role="button"
+              tabIndex={0}
+              data-testid={`denom-row-${face}`}
+              aria-pressed={selected}
+              className={`close-shift-denom-row${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
+              onClick={() => onSelect(face)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(face);
+                }
+              }}
+            >
+              <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
+              <div className="close-shift-denom-row__stepper" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   aria-label={`Decrease ${labelForLaari(face)}`}
@@ -454,15 +557,13 @@ function DenomSection({
                 >
                   −
                 </button>
-                <input
+                <span
                   data-testid={`denom-count-${face}`}
+                  className="close-shift-denom-row__count"
                   aria-label={`Count of ${labelForLaari(face)}`}
-                  inputMode="numeric"
-                  value={counts[face] ?? ""}
-                  placeholder="0"
-                  onChange={(e) => onChange(face, e.target.value)}
-                  className="close-shift-denom-row__input"
-                />
+                >
+                  {qty}
+                </span>
                 <button
                   type="button"
                   aria-label={`Increase ${labelForLaari(face)}`}
@@ -472,6 +573,10 @@ function DenomSection({
                   +
                 </button>
               </div>
+              <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
+                <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
+                <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+              </span>
             </div>
           );
         })}

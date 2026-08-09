@@ -32,6 +32,7 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     expect(screen.getByTestId("close-shift-sheet")).toBeTruthy();
     expect(screen.getByTestId("close-shift-denomination-grid")).toBeTruthy();
+    expect(screen.getByTestId("close-shift-count-pad")).toBeTruthy();
     expect(screen.queryByText("Expected in drawer")).toBeNull();
     expect(screen.queryByTestId("close-shift-variance")).toBeNull();
     expect(screen.queryByText(/\+ Cash sales/)).toBeNull();
@@ -55,15 +56,34 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
-    expect(screen.getByTestId("denom-count-10000")).toHaveValue("2");
+    expect(screen.getByTestId("denom-count-10000").textContent).toBe("2");
     expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/2 notes/);
     expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 200\.00/);
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 200.00");
 
     await user.click(screen.getByRole("button", { name: "Decrease MVR 100" }));
-    expect(screen.getByTestId("denom-count-10000")).toHaveValue("1");
+    expect(screen.getByTestId("denom-count-10000").textContent).toBe("1");
     expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/1 note(?!s)/);
     expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 100\.00/);
+  });
+
+  it("enters counts from the sticky pad after selecting a denomination", async () => {
+    const user = userEvent.setup();
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("denom-row-2000"));
+    await user.click(screen.getByRole("button", { name: "Digit 1" }));
+    await user.click(screen.getByRole("button", { name: "Digit 2" }));
+    expect(screen.getByTestId("denom-count-2000").textContent).toBe("12");
+    expect(screen.getByTestId("denom-line-2000").textContent).toMatch(/12 notes/);
+    expect(screen.getByTestId("denom-line-2000").textContent).toMatch(/MVR 240\.00/);
+    expect(screen.getByTestId("close-shift-pad-count").textContent).toMatch(/12/);
   });
 
   it("reveals expected and variance after a denomination count is entered", async () => {
@@ -77,9 +97,13 @@ describe("CloseShiftModal denomination blind cash count", () => {
     );
 
     // 3×100 + 2×20 = 340 → variance −10
-    await user.type(screen.getByTestId("denom-count-10000"), "3");
-    await user.type(screen.getByTestId("denom-count-2000"), "2");
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByTestId("denom-row-2000"));
+    await user.click(screen.getByRole("button", { name: "Digit 2" }));
 
+    expect(screen.getByText(/Expected MVR 350\.00/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Details/i }));
     expect(screen.getByText("Expected in drawer")).toBeTruthy();
     expect(screen.getByText("MVR 350.00")).toBeTruthy();
     const variance = screen.getByTestId("close-shift-variance");
@@ -98,7 +122,8 @@ describe("CloseShiftModal denomination blind cash count", () => {
       />,
     );
 
-    await user.type(screen.getByTestId("denom-count-10000"), "3");
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByRole("button", { name: "Close shift" }));
 
     expect(await screen.findByText(/reason for the cash variance/i)).toBeTruthy();
@@ -157,7 +182,8 @@ describe("CloseShiftModal denomination blind cash count", () => {
       />,
     );
 
-    await user.type(screen.getByTestId("denom-count-10000"), "3");
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByTestId("close-shift-foreign-toggle"));
     await user.click(screen.getByRole("button", { name: /\+ Add foreign note/i }));
     await user.clear(screen.getByLabelText(/Foreign denomination 1/i));
@@ -200,7 +226,8 @@ describe("CloseShiftModal denomination blind cash count", () => {
     );
 
     await user.click(screen.getByTestId("close-shift-more-coins"));
-    await user.type(screen.getByTestId("denom-count-1"), "1");
+    await user.click(screen.getByTestId("denom-row-1"));
+    await user.click(screen.getByRole("button", { name: "Digit 1" }));
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.01");
     expect(screen.getByTestId("close-shift-variance").textContent).toMatch(/0\.00/);
   });
@@ -220,7 +247,8 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     expect(screen.getByText(/2 offline orders not synced/i)).toBeTruthy();
 
-    await user.type(screen.getByTestId("denom-count-50000"), "1");
+    await user.click(screen.getByTestId("denom-row-50000"));
+    await user.click(screen.getByRole("button", { name: "Digit 1" }));
     await user.type(screen.getByPlaceholderText(/Short change|Found MVR/i), "x");
     await user.click(screen.getByRole("button", { name: "Close shift" }));
 

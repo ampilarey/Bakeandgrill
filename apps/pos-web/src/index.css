@@ -901,8 +901,7 @@ html, body, #root {
 }
 
 /* ── Close shift sheet (denomination blind count) ───────────────────────────
- * Desktop/iPad landscape: wide card, 2-col denom grid, sticky footer.
- * Phone / iPad portrait (≤840): full-height sheet, same sticky chrome.
+ * Dense till rows + sticky count pad. Full-height sheet on ≤840px.
  */
 .close-shift-overlay {
   align-items: stretch !important;
@@ -914,8 +913,8 @@ html, body, #root {
 .close-shift-sheet {
   display: flex;
   flex-direction: column;
-  width: min(100%, 720px);
-  max-height: min(92dvh, 860px);
+  width: min(100%, 560px);
+  max-height: min(94dvh, 900px);
   margin: auto;
   background: #fff;
   border-radius: 18px;
@@ -926,53 +925,45 @@ html, body, #root {
 
 .close-shift-sheet__header {
   flex-shrink: 0;
-  padding: 16px 18px 12px;
+  padding: 12px 14px 10px;
   border-bottom: 1px solid #E2E8F0;
   background: #fff;
 }
 
+.close-shift-sheet__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .close-shift-sheet__title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: #0F172A;
   line-height: 1.2;
 }
 
-.close-shift-sheet__subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #64748B;
-  line-height: 1.4;
-}
-
-.close-shift-method {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 4px;
-  border-radius: 12px;
-  background: #F1F5F9;
-}
-
-.close-shift-method__btn {
-  min-height: 44px;
+.close-shift-method-link {
   border: none;
-  border-radius: 10px;
   background: transparent;
-  color: #475569;
-  font-size: 13px;
+  color: #D4813A;
+  font-size: 12px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
+  padding: 8px 4px;
+  min-height: 40px;
   touch-action: manipulation;
+  white-space: nowrap;
 }
 
-.close-shift-method__btn.is-active {
-  background: #fff;
-  color: #0F172A;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+.close-shift-sheet__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.35;
 }
 
 .close-shift-sheet__body {
@@ -980,45 +971,108 @@ html, body, #root {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 18px 16px;
+  padding: 8px 12px 12px;
 }
 
 .close-shift-sheet__footer {
   flex-shrink: 0;
-  padding: 12px 18px max(12px, env(safe-area-inset-bottom, 0px));
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid #E2E8F0;
   background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .close-shift-running-total {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: 10px;
-  background: #F1F5F9;
-  color: #0F172A;
-  font-size: 14px;
+  background: #0F172A;
+  color: #fff;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .close-shift-running-total strong {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-shift-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.close-shift-pad__active {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.close-shift-pad__face {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
+}
+
+.close-shift-pad__count {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-shift-pad__unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+}
+
+.close-shift-pad__keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.close-shift-pad__key {
+  min-height: 44px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-pad__key:active {
+  background: #E2E8F0;
+}
+
+.close-shift-pad__key.is-muted {
+  font-size: 15px;
+  color: #475569;
+  background: #fff;
 }
 
 .close-shift-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .close-shift-btn {
   flex: 1;
   min-height: 48px;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
@@ -1044,8 +1098,37 @@ html, body, #root {
   color: #fff;
 }
 
+.close-shift-summary-wrap {
+  margin-bottom: 8px;
+}
+
+.close-shift-summary-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-summary-toggle__chev {
+  color: #64748B;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .close-shift-summary {
-  margin-bottom: 12px;
+  margin-top: 6px;
   padding: 8px 12px;
   border-radius: 12px;
   background: #F8FAFC;
@@ -1056,7 +1139,7 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 5px 0;
+  padding: 4px 0;
   font-size: 13px;
   color: #475569;
   font-weight: 500;
@@ -1071,7 +1154,7 @@ html, body, #root {
 }
 
 .close-shift-alert {
-  margin: 10px 0;
+  margin: 8px 0;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 13px;
@@ -1108,11 +1191,11 @@ html, body, #root {
 .close-shift-denoms {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .close-shift-denom-section {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .close-shift-denom-section__title {
@@ -1121,79 +1204,64 @@ html, body, #root {
   color: #64748B;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .close-shift-denom-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
 }
 
-/* One clear row per face: face + count/total on top, big stepper below.
- * Always single-column so count and line total never get crushed. */
+/* Dense till row: face | − count + | N notes / MVR */
 .close-shift-denom-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid #E2E8F0;
-  border-radius: 14px;
+  display: grid;
+  grid-template-columns: minmax(64px, 78px) minmax(112px, 1.1fr) minmax(88px, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
   background: #fff;
   color: #334155;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
 }
 
-.close-shift-denom-row__meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+.close-shift-denom-row.is-selected {
+  border-color: #D4813A;
+  background: #FFF7ED;
+  box-shadow: 0 0 0 1px rgba(212, 129, 58, 0.35);
+}
+
+.close-shift-denom-row.has-count:not(.is-selected) {
+  background: #F8FAFC;
 }
 
 .close-shift-denom-row__face {
-  font-size: 16px;
-  font-weight: 800;
-  color: #0F172A;
-  line-height: 1.2;
-}
-
-.close-shift-denom-row__totals {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
-  min-width: 0;
-}
-
-.close-shift-denom-row__qty {
   font-size: 14px;
   font-weight: 800;
   color: #0F172A;
-  letter-spacing: 0.01em;
-}
-
-.close-shift-denom-row__line {
-  font-size: 13px;
-  font-weight: 700;
-  color: #64748B;
+  line-height: 1.15;
 }
 
 .close-shift-denom-row__stepper {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 52px;
-  gap: 8px;
+  grid-template-columns: 40px minmax(36px, 1fr) 40px;
+  gap: 4px;
   align-items: center;
 }
 
 .close-shift-stepper-btn {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   border: 1px solid #CBD5E1;
-  background: #F8FAFC;
+  background: #fff;
   color: #0F172A;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -1205,24 +1273,47 @@ html, body, #root {
   background: #E2E8F0;
 }
 
-.close-shift-denom-row__input {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 52px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1.5px solid #CBD5E1;
-  font-size: 22px;
+.close-shift-denom-row__count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 10px;
+  background: #0F172A;
+  color: #fff;
+  font-size: 18px;
   font-weight: 800;
-  font-family: inherit;
-  background: #F8FAFC;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-shift-denom-row__totals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  text-align: right;
+  min-width: 0;
+}
+
+.close-shift-denom-row__qty {
+  font-size: 13px;
+  font-weight: 800;
   color: #0F172A;
+  white-space: nowrap;
+}
+
+.close-shift-denom-row__line {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748B;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .close-shift-link-btn {
-  margin-top: 10px;
-  min-height: 44px;
+  margin-top: 8px;
+  min-height: 40px;
   padding: 8px 12px;
   border: 1px solid #E2E8F0;
   border-radius: 10px;
@@ -1235,6 +1326,11 @@ html, body, #root {
   touch-action: manipulation;
   width: 100%;
   text-align: center;
+}
+
+.close-shift-link-btn--quiet {
+  background: transparent;
+  border-style: dashed;
 }
 
 .close-shift-hint {
@@ -1361,26 +1457,55 @@ html, body, #root {
   }
 
   .close-shift-sheet__header {
-    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
   }
 
-  .close-shift-sheet__title {
-    font-size: 18px;
+  .close-shift-pad__key {
+    min-height: 48px;
   }
 
   .close-shift-btn {
-    min-height: 52px;
+    min-height: 48px;
   }
 }
 
-/* Narrow phones: stack FX fields — keep denom count/total always visible */
+/* Narrow phones: keep count + line total visible; stack FX */
 @media (max-width: 480px) {
+  .close-shift-sheet__subtitle {
+    display: none;
+  }
+
+  .close-shift-denom-row {
+    grid-template-columns: 58px minmax(108px, 1.2fr) minmax(72px, 0.9fr);
+    min-height: 48px;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
   .close-shift-denom-row__face {
-    font-size: 15px;
+    font-size: 13px;
+  }
+
+  .close-shift-denom-row__count {
+    font-size: 17px;
+    min-height: 38px;
+  }
+
+  .close-shift-stepper-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .close-shift-denom-row__stepper {
+    grid-template-columns: 38px minmax(32px, 1fr) 38px;
   }
 
   .close-shift-denom-row__qty {
-    font-size: 15px;
+    font-size: 12px;
+  }
+
+  .close-shift-denom-row__line {
+    font-size: 11px;
   }
 
   .close-shift-fx-row {
@@ -1393,23 +1518,31 @@ html, body, #root {
   }
 }
 
-/* Short landscape (phone sideways): keep footer compact */
+/* Short landscape: shrink pad, hide helper copy */
 @media (max-width: 900px) and (max-height: 500px) {
   .close-shift-sheet__subtitle {
     display: none;
   }
 
-  .close-shift-sheet__header {
-    padding-bottom: 8px;
+  .close-shift-pad__key {
+    min-height: 36px;
+    font-size: 15px;
+  }
+
+  .close-shift-pad__count {
+    font-size: 16px;
   }
 
   .close-shift-running-total {
     padding: 6px 10px;
-    font-size: 13px;
+  }
+
+  .close-shift-running-total strong {
+    font-size: 15px;
   }
 
   .close-shift-btn {
-    min-height: 44px;
+    min-height: 42px;
     font-size: 14px;
   }
 }
