@@ -174,7 +174,15 @@ const secondary: React.CSSProperties = {
   fontWeight: 600, fontSize: 14, cursor: "pointer",
 };
 
-export function Overlay({ children, onEscape }: { children: React.ReactNode; onEscape?: () => void }) {
+export function Overlay({
+  children,
+  onEscape,
+  className,
+}: {
+  children: React.ReactNode;
+  onEscape?: () => void;
+  className?: string;
+}) {
   // Bug-035: shared modal overlay traps focus while open. Several
   // call-sites (OpenShift, CloseShift, ShiftPanel, history) all
   // route through this Overlay so wiring the trap once here gives
@@ -186,6 +194,7 @@ export function Overlay({ children, onEscape }: { children: React.ReactNode; onE
       ref={ref}
       role="dialog"
       aria-modal="true"
+      className={className}
       style={{
         position: "fixed", inset: 0, zIndex: z.shiftModal,
         background: "rgba(15,23,42,0.55)",

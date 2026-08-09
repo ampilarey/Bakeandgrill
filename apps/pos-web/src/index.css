@@ -900,6 +900,505 @@ html, body, #root {
   to   { transform: rotate(360deg); }
 }
 
+/* ── Close shift sheet (denomination blind count) ───────────────────────────
+ * Desktop/iPad landscape: wide card, 2-col denom grid, sticky footer.
+ * Phone / iPad portrait (≤840): full-height sheet, same sticky chrome.
+ */
+.close-shift-overlay {
+  align-items: stretch !important;
+  justify-content: center !important;
+  padding: max(10px, env(safe-area-inset-top, 0px)) 12px max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  overflow: hidden !important;
+}
+
+.close-shift-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 720px);
+  max-height: min(92dvh, 860px);
+  margin: auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: pos-scale-in 0.18s ease-out;
+}
+
+.close-shift-sheet__header {
+  flex-shrink: 0;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #E2E8F0;
+  background: #fff;
+}
+
+.close-shift-sheet__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0F172A;
+  line-height: 1.2;
+}
+
+.close-shift-sheet__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748B;
+  line-height: 1.4;
+}
+
+.close-shift-method {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #F1F5F9;
+}
+
+.close-shift-method__btn {
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-method__btn.is-active {
+  background: #fff;
+  color: #0F172A;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.close-shift-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 18px 16px;
+}
+
+.close-shift-sheet__footer {
+  flex-shrink: 0;
+  padding: 12px 18px max(12px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #E2E8F0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.close-shift-running-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #F1F5F9;
+  color: #0F172A;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.close-shift-running-total strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.close-shift-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.close-shift-btn {
+  flex: 1;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.close-shift-btn--secondary {
+  border: 1px solid #CBD5E1;
+  background: #fff;
+  color: #475569;
+}
+
+.close-shift-btn--danger {
+  border: none;
+  background: #EF4444;
+  color: #fff;
+}
+
+.close-shift-summary {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+}
+
+.close-shift-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.close-shift-summary__row.is-bold {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #E2E8F0;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.close-shift-alert {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.close-shift-alert--danger {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.close-shift-alert--warn {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.close-shift-alert__meta {
+  margin-top: 4px;
+}
+
+.close-shift-alert__action {
+  margin-top: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #B91C1C;
+  color: #fff;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.close-shift-denoms {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.close-shift-denom-section {
+  margin-top: 8px;
+}
+
+.close-shift-denom-section__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.close-shift-denom-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.close-shift-denom-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 90px) minmax(0, 1fr) minmax(72px, 88px);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 13px;
+  color: #334155;
+}
+
+.close-shift-denom-row__face {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.close-shift-denom-row__stepper {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 6px;
+  align-items: center;
+}
+
+.close-shift-stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1;
+}
+
+.close-shift-stepper-btn:active {
+  background: #E2E8F0;
+}
+
+.close-shift-denom-row__input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  background: #fff;
+  text-align: center;
+  color: #0F172A;
+}
+
+.close-shift-denom-row__line {
+  text-align: right;
+  color: #64748B;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 1em;
+}
+
+.close-shift-link-btn {
+  margin-top: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #F8FAFC;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  width: 100%;
+  text-align: center;
+}
+
+.close-shift-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748B;
+  line-height: 1.4;
+}
+
+.close-shift-foreign {
+  margin-top: 8px;
+}
+
+.close-shift-foreign__panel {
+  margin-top: 8px;
+}
+
+.close-shift-fx-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 70px 1fr 44px;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.close-shift-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  font-size: 15px;
+  font-family: inherit;
+  background: #fff;
+  color: #0F172A;
+}
+
+.close-shift-notes.is-required {
+  border-color: #F87171;
+  border-width: 1.5px;
+}
+
+.close-shift-fx-remove {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #F8FAFC;
+  color: #64748B;
+  font-size: 22px;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1;
+}
+
+.close-shift-add-fx {
+  margin-top: 4px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px dashed #CBD5E1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #475569;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-variance {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.close-shift-variance.is-ok {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.close-shift-variance.is-over {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.close-shift-variance.is-short {
+  background: #FEE2E2;
+  color: #B91C1C;
+}
+
+.close-shift-variance__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.close-shift-variance__fx {
+  margin-top: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* iPad / wide phone landscape: two denomination columns */
+@media (min-width: 640px) {
+  .close-shift-denom-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Phone + iPad portrait — edge-to-edge sheet */
+@media (max-width: 840px) {
+  .close-shift-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .close-shift-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .close-shift-sheet__header {
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+  }
+
+  .close-shift-sheet__title {
+    font-size: 18px;
+  }
+
+  .close-shift-btn {
+    min-height: 52px;
+  }
+}
+
+/* Narrow phones: stack FX fields; hide line totals to free space */
+@media (max-width: 480px) {
+  .close-shift-denom-row {
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+
+  .close-shift-denom-row__line {
+    display: none;
+  }
+
+  .close-shift-fx-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .close-shift-fx-remove {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+/* Short landscape (phone sideways): keep footer compact */
+@media (max-width: 900px) and (max-height: 500px) {
+  .close-shift-sheet__subtitle {
+    display: none;
+  }
+
+  .close-shift-sheet__header {
+    padding-bottom: 8px;
+  }
+
+  .close-shift-running-total {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .close-shift-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+
 /* The "Updated 2m ago" hint next to the menu refresh ↻ is hidden by
  * default (icon-only) and shown on roomier tablet/desktop layouts so
  * cashiers have an at-a-glance staleness indicator without the icon

@@ -30,6 +30,7 @@ describe("CloseShiftModal denomination blind cash count", () => {
       />,
     );
 
+    expect(screen.getByTestId("close-shift-sheet")).toBeTruthy();
     expect(screen.getByTestId("close-shift-denomination-grid")).toBeTruthy();
     expect(screen.queryByText("Expected in drawer")).toBeNull();
     expect(screen.queryByTestId("close-shift-variance")).toBeNull();
@@ -37,6 +38,25 @@ describe("CloseShiftModal denomination blind cash count", () => {
     // Blind: expected 350 must not appear in rendered output yet.
     expect(document.body.textContent).not.toMatch(/350\.00/);
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.00");
+  });
+
+  it("supports +/- steppers on denomination rows", async () => {
+    const user = userEvent.setup();
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
+    await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
+    expect(screen.getByTestId("denom-count-10000")).toHaveValue("2");
+    expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 200.00");
+
+    await user.click(screen.getByRole("button", { name: "Decrease MVR 100" }));
+    expect(screen.getByTestId("denom-count-10000")).toHaveValue("1");
   });
 
   it("reveals expected and variance after a denomination count is entered", async () => {
