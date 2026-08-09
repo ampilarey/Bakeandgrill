@@ -48,7 +48,7 @@ export function usePosApp() {
   const [username, setUsername]       = useState<string>(() => localStorage.getItem("pos_username") ?? "");
   const [pin, setPin]                 = useState("");
   const [cashierName, setCashierName] = useState<string>(() => localStorage.getItem("pos_cashier_name") ?? "");
-  const [, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
+  const [staffRole, setStaffRole] = useState<string>(() => localStorage.getItem("pos_staff_role") ?? "");
   // Cashier's resolved permission slugs (DB grants + role defaults, owner
   // bypass already flattened to all slugs server-side). Persisted in
   // localStorage so the void/refund buttons stay hidden during the brief
@@ -1194,7 +1194,7 @@ export function usePosApp() {
   }, [pane, paneAllowed]);
 
   return {
-    isLoggedIn, username, setUsername, pin, setPin, cashierName, staffPermissions,
+    isLoggedIn, username, setUsername, pin, setPin, cashierName, staffRole, staffPermissions,
     canVoidOrders, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
     canCashInOut, canLockScreen,

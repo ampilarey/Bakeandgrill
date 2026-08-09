@@ -10,6 +10,7 @@ import { CloseShiftModal } from '../components/CloseShiftModal';
 import { SaveTicketModal } from '../components/SaveTicketModal';
 import { OpenTicketsPanel } from '../components/OpenTicketsPanel';
 import { ShiftPanel } from '../components/ShiftPanel';
+import { formatOpenShiftLabel } from '../utils/shiftDisplay';
 import { PosPreferencesModal } from '../components/PosPreferencesModal';
 import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
@@ -110,7 +111,7 @@ function offlineOrderToCartItems(order: OfflineOrderRecord): CartItem[] {
 export function PosShellLayout() {
   const app = usePosAppContext();
   const {
-    isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, deviceId,
+    isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, staffRole, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
     canAccessOps, canVoidOrders, canManageEvents,
@@ -646,12 +647,16 @@ export function PosShellLayout() {
             canCloseShift={canCloseShift}
             canOpenShift={canOpenShift}
             canCashInOut={canCashInOut}
+            staffRole={staffRole}
           />
         )}
 
         {pane === 'shift_history' && (
           <Suspense fallback={<PaneFallback />}>
-            <ShiftHistoryPanel onClose={() => setPane(canAccessOps ? "ops" : "shift")} />
+            <ShiftHistoryPanel
+              staffRole={staffRole}
+              onClose={() => setPane(canAccessOps ? "ops" : "shift")}
+            />
           </Suspense>
         )}
 
@@ -727,7 +732,7 @@ export function PosShellLayout() {
         items={drawerItems}
         active={pane}
         cashierName={cashierName}
-        shiftLabel={shift.current ? `Shift #${shift.current.id} · MVR ${Number(shift.summary?.cash_drawer.expected_cash ?? 0).toFixed(2)} in drawer` : 'No open shift'}
+        shiftLabel={shift.current ? formatOpenShiftLabel(shift.current.id, shift.current.opened_at) : 'No open shift'}
         shiftSalesSummary={
           shift.summary
             ? `${shift.summary.sales_summary.order_count} orders · MVR ${Number(shift.summary.sales_summary.net_sales ?? 0).toFixed(0)}`

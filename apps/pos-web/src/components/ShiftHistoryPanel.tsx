@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { getShiftHistory, getShiftSummary } from "../api";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
+import { canSeeOpenShiftExpectedCash } from "../utils/shiftDisplay";
 
-type Props = { onClose: () => void };
+type Props = { onClose: () => void; staffRole?: string | null };
 
 type ShiftRow = Awaited<ReturnType<typeof getShiftHistory>>["shifts"][number];
 type Summary = Awaited<ReturnType<typeof getShiftSummary>>;
 
-export function ShiftHistoryPanel({ onClose }: Props) {
+export function ShiftHistoryPanel({ onClose, staffRole = null }: Props) {
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -73,7 +74,7 @@ export function ShiftHistoryPanel({ onClose }: Props) {
 
         <div style={{ background: "#F8FAFC", borderRadius: 10, padding: 14, overflow: "auto" }}>
           {selected ? (
-            <ShiftDetail shift={selected} summary={summary} />
+            <ShiftDetail shift={selected} summary={summary} staffRole={staffRole} />
           ) : (
             <EmptyState emoji="📊" title="Pick a shift" body="Select one on the left to see its X/Z report." />
           )}
@@ -83,7 +84,20 @@ export function ShiftHistoryPanel({ onClose }: Props) {
   );
 }
 
-function ShiftDetail({ shift, summary }: { shift: ShiftRow; summary: Summary | null }) {
+function ShiftDetail({
+  shift,
+  summary,
+  staffRole,
+}: {
+  shift: ShiftRow;
+  summary: Summary | null;
+  staffRole: string | null | undefined;
+}) {
+  const isClosed = !!shift.closed_at;
+  // Closed shifts keep full Expected/variance. Open rows in history must
+  // not leak expected drawer cash to cashiers (same control as ShiftPanel).
+  const showExpectedMath = isClosed || canSeeOpenShiftExpectedCash(staffRole);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
@@ -95,12 +109,24 @@ function ShiftDetail({ shift, summary }: { shift: ShiftRow; summary: Summary | n
 
       <Section title="Cash drawer">
         <Row label="Opening cash" value={Number(shift.opening_cash)} />
-        {summary && <Row label="+ Cash sales" value={summary.cash_drawer.cash_sales} />}
-        {summary && summary.cash_drawer.paid_in > 0 && <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />}
-        {summary && summary.cash_drawer.paid_out > 0 && <Row label="− Paid out" value={-summary.cash_drawer.paid_out} />}
-        <Row label="Expected" value={Number(shift.expected_cash ?? 0)} bold />
-        <Row label="Counted" value={Number(shift.closing_cash ?? 0)} bold />
-        <Row label="Variance" value={Number(shift.variance ?? 0)} bold />
+        {showExpectedMath && summary && <Row label="+ Cash sales" value={summary.cash_drawer.cash_sales} />}
+        {showExpectedMath && summary && summary.cash_drawer.paid_in > 0 && (
+          <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />
+        )}
+        {showExpectedMath && summary && summary.cash_drawer.paid_out > 0 && (
+          <Row label="− Paid out" value={-summary.cash_drawer.paid_out} />
+        )}
+        {showExpectedMath ? (
+          <>
+            <Row label="Expected" value={Number(shift.expected_cash ?? 0)} bold />
+            <Row label="Counted" value={Number(shift.closing_cash ?? 0)} bold />
+            <Row label="Variance" value={Number(shift.variance ?? 0)} bold />
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: "#64748B", paddingTop: 6, lineHeight: 1.4 }}>
+            Expected drawer total stays hidden until this shift is closed and counted.
+          </div>
+        )}
       </Section>
 
       {summary && (
@@ -115,9 +141,11 @@ function ShiftDetail({ shift, summary }: { shift: ShiftRow; summary: Summary | n
 
       {summary && Object.keys(summary.tenders ?? {}).length > 0 && (
         <Section title="Tenders">
-          {Object.entries(summary.tenders).map(([m, v]) => (
-            <Row key={m} label={m.replace("_", " ")} value={Number(v)} />
-          ))}
+          {Object.entries(summary.tenders)
+            .filter(([m]) => showExpectedMath || m !== "cash")
+            .map(([m, v]) => (
+              <Row key={m} label={m.replace("_", " ")} value={Number(v)} />
+            ))}
         </Section>
       )}
 

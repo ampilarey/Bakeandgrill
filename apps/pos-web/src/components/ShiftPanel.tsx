@@ -2,6 +2,7 @@ import { useState } from "react";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
 import { CashInput } from "./CashInput";
 import type { ShiftRow, ShiftSummary } from "../hooks/useShift";
+import { canSeeOpenShiftExpectedCash, formatShiftOpenedAt } from "../utils/shiftDisplay";
 
 type Props = {
   shift: ShiftRow | null;
@@ -13,15 +14,14 @@ type Props = {
   canCloseShift?: boolean;
   canOpenShift?: boolean;
   canCashInOut?: boolean;
+  /** Role slug from /auth/me — owner/manager may see expected drawer math. */
+  staffRole?: string | null;
 };
 
 /**
- * Live shift summary screen — the home for cash drawer reconciliation
- * during the shift. Renders the same expected-cash math the close
- * modal uses, so the cashier never sees a surprise at close time. Also
- * surfaces Paid In / Paid Out so cashiers can record cash movements
- * (tips out, supplier pay, owner draw, etc.) without contacting an
- * admin first.
+ * Live shift summary. Cashier view hides expected drawer cash and any
+ * breakdown that reconstructs it (cash sales / refunds / movements).
+ * Managers and owners keep the full reconciliation.
  */
 export function ShiftPanel({
   shift,
@@ -33,7 +33,10 @@ export function ShiftPanel({
   canCloseShift = true,
   canOpenShift = true,
   canCashInOut = true,
+  staffRole = null,
 }: Props) {
+  const showExpected = canSeeOpenShiftExpectedCash(staffRole);
+
   if (!shift || !summary) {
     return (
       <PanelShell title="Shift" onClose={onClose}>
@@ -64,33 +67,50 @@ export function ShiftPanel({
     );
   }
 
+  const tenderEntries = Object.entries(summary.tenders ?? {}).filter(([method]) => {
+    // Cash tender amount === cash_sales — hide from cashiers during an open shift.
+    if (!showExpected && method === "cash") return false;
+    return true;
+  });
+
   return (
     <PanelShell
       title="Current shift"
-      subtitle={`Opened ${formatTime(shift.opened_at)}`}
+      subtitle={`Opened ${formatShiftOpenedAt(shift.opened_at)}`}
       onClose={onClose}
     >
       <div className="pos-shift-summary-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {/* Cash drawer card */}
         <Card title="Cash drawer">
           <Row label="Opening cash" value={summary.cash_drawer.opening_cash} />
-          <Row label="+ Cash sales" value={summary.cash_drawer.cash_sales} />
-          {summary.cash_drawer.cash_refunds > 0 && (
-            <Row label="− Refunds" value={-summary.cash_drawer.cash_refunds} />
+          {showExpected ? (
+            <>
+              <Row label="+ Cash sales" value={summary.cash_drawer.cash_sales} />
+              {summary.cash_drawer.cash_refunds > 0 && (
+                <Row label="− Refunds" value={-summary.cash_drawer.cash_refunds} />
+              )}
+              {summary.cash_drawer.paid_in > 0 && <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />}
+              {summary.cash_drawer.paid_out > 0 && <Row label="− Paid out" value={-summary.cash_drawer.paid_out} />}
+              {Number(summary.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+                <Row
+                  label="  incl. credit repayments (cash)"
+                  value={Number(summary.cash_drawer.credit_repayments_cash ?? 0)}
+                  muted
+                />
+              )}
+              <Row label="Expected in drawer" value={summary.cash_drawer.expected_cash} bold />
+            </>
+          ) : (
+            <div
+              data-testid="blind-drawer-note"
+              style={{ fontSize: 12, color: "#64748B", paddingTop: 6, lineHeight: 1.4 }}
+            >
+              Expected drawer total stays hidden until you count at close.
+            </div>
           )}
-          {summary.cash_drawer.paid_in > 0 && <Row label="+ Paid in" value={summary.cash_drawer.paid_in} />}
-          {summary.cash_drawer.paid_out > 0 && <Row label="− Paid out" value={-summary.cash_drawer.paid_out} />}
-          {Number(summary.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
-            <Row
-              label="  incl. credit repayments (cash)"
-              value={Number(summary.cash_drawer.credit_repayments_cash ?? 0)}
-              muted
-            />
-          )}
-          <Row label="Expected in drawer" value={summary.cash_drawer.expected_cash} bold />
         </Card>
 
-        {/* Sales card */}
+        {/* Sales card — all-tender trade; cannot reconstruct cash drawer alone. */}
         <Card title="Sales">
           <Row label="Orders" value={summary.sales_summary.order_count} count />
           <Row label="Gross sales" value={summary.sales_summary.gross_sales} />
@@ -105,9 +125,11 @@ export function ShiftPanel({
 
         {/* Tender card */}
         <Card title="Tenders" full>
-          {Object.entries(summary.tenders ?? {}).length === 0 ? (
-            <div style={{ fontSize: 12, color: "#94A3B8", padding: 8 }}>No payments yet this shift.</div>
-          ) : Object.entries(summary.tenders).map(([method, amount]) => (
+          {tenderEntries.length === 0 ? (
+            <div style={{ fontSize: 12, color: "#94A3B8", padding: 8 }}>
+              {showExpected ? "No payments yet this shift." : "No non-cash payments yet this shift."}
+            </div>
+          ) : tenderEntries.map(([method, amount]) => (
             <Row key={method} label={methodLabel(method)} value={Number(amount)} />
           ))}
         </Card>
@@ -248,9 +270,4 @@ function methodLabel(m: string): string {
   if (m === "house_account") return "Credit";
   if (m === "bml_pay" || m === "bml" || m === "online") return "BML Pay";
   return m.replace(/_/g, " ");
-}
-
-function formatTime(iso: string): string {
-  try { return new Date(iso).toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", month: "short", day: "2-digit" }); }
-  catch { return iso; }
 }
