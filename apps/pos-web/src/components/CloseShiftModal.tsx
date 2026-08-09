@@ -677,6 +677,13 @@ function StepperBtn({ label, onStep, children, className = "close-shift-stepper-
   );
 }
 
+/** Compact line total: "1500" not "MVR 1500.00"; decimals only when real (0.25, 12.5). */
+function compactMvr(laari: number): string {
+  const mvr = fromLaari(laari);
+  if (Number.isInteger(mvr)) return String(mvr);
+  return mvr.toFixed(2).replace(/0$/, "");
+}
+
 /** /storage URLs live at the site root, not under the API prefix. */
 function absoluteMediaUrl(path: string): string {
   if (/^https?:\/\//.test(path)) return path;
@@ -762,8 +769,9 @@ function DenomSection({
                   −
                 </StepperBtn>
                 <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
-                  <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
-                  <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+                  {/* Full wording for screen readers; the visible total is compact. */}
+                  <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"} · MVR {lineMvr}</span>
+                  <span className="close-shift-denom-row__line">{compactMvr(face * qty)}</span>
                 </span>
               </span>
             </div>

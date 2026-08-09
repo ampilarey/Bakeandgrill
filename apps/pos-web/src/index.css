@@ -1247,17 +1247,20 @@ html, body, #root {
   background: #FFFDF9;
 }
 
-/* Photo = + control. Tap / hold to count up. */
+/* Photo = + control. Tap / hold to count up.
+ * Notes fill the whole tile edge-to-edge; coins stay a centred circle on a
+ * light backing (a round coin can't fill a rectangle). */
 .close-shift-denom-photo {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 6px;
+  padding: 0;
   border: none;
   border-radius: 12px;
   background: #F1F5F9;
+  overflow: hidden;
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
@@ -1273,6 +1276,10 @@ html, body, #root {
   background: #FFEDD5;
 }
 
+.close-shift-denom-photo:active .close-shift-denom-photo__img {
+  filter: brightness(0.86);
+}
+
 .close-shift-denom-row.is-selected .close-shift-denom-photo {
   background: #FFF7ED;
 }
@@ -1281,19 +1288,29 @@ html, body, #root {
   display: block;
   object-fit: cover;
   pointer-events: none;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22);
+}
+
+/* Note tile = exactly the photo (no backing shade visible) — near-native
+ * aspect so the denomination number stays readable. */
+.close-shift-denom-photo--note {
+  width: 100%;
+  max-height: 100%;
+  aspect-ratio: 2.15 / 1;
+  align-self: center;
+  background: transparent;
 }
 
 .close-shift-denom-photo--note .close-shift-denom-photo__img {
-  width: min(100%, 118px);
-  height: 54px;
-  border-radius: 6px;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
 }
 
 .close-shift-denom-photo--coin .close-shift-denom-photo__img {
   width: 54px;
   height: 54px;
   border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22);
 }
 
 /* Right column: count on top, − under it, line total at the bottom. */
@@ -1322,16 +1339,17 @@ html, body, #root {
   width: 100%;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid #CBD5E1;
-  background: #fff;
-  color: #0F172A;
-  font-size: 20px;
-  font-weight: 700;
+  border: 1.5px solid #FECACA;
+  background: #FEF2F2;
+  color: #DC2626;
+  font-size: 22px;
+  font-weight: 800;
   font-family: inherit;
   cursor: pointer;
   touch-action: manipulation;
   line-height: 1;
   padding: 0;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
   /* Press-and-hold auto-repeats — stop long-press text-select/callout. */
   user-select: none;
   -webkit-user-select: none;
@@ -1339,7 +1357,8 @@ html, body, #root {
 }
 
 .close-shift-stepper-btn:active {
-  background: #E2E8F0;
+  background: #FECACA;
+  border-color: #FCA5A5;
 }
 
 .close-shift-denom-row__totals {
@@ -1367,11 +1386,14 @@ html, body, #root {
 }
 
 .close-shift-denom-row__line {
-  font-size: 12px;
+  max-width: 100%;
+  font-size: 14px;
   font-weight: 800;
   color: #0F172A;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .close-shift-link-btn {
@@ -1707,13 +1729,11 @@ html, body, #root {
   }
 
   .close-shift-denom-photo {
-    padding: 4px;
     border-radius: 10px;
   }
 
   .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: min(100%, 92px);
-    height: 42px;
+    border-radius: 10px;
   }
 
   .close-shift-denom-photo--coin .close-shift-denom-photo__img {
@@ -1736,7 +1756,7 @@ html, body, #root {
   }
 
   .close-shift-denom-row__line {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   /* "Enter total instead" fills and centres instead of leaving a blank
@@ -1940,14 +1960,11 @@ html, body, #root {
   }
 
   .close-shift-denom-photo {
-    padding: 8px;
     border-radius: 14px;
   }
 
   .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: min(100%, 146px);
-    height: 68px;
-    border-radius: 8px;
+    border-radius: 14px;
   }
 
   .close-shift-denom-photo--coin .close-shift-denom-photo__img {
@@ -1970,7 +1987,7 @@ html, body, #root {
   }
 
   .close-shift-denom-row__line {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .close-shift-inline-toggles {
@@ -2098,11 +2115,6 @@ html, body, #root {
     min-height: 88px;
     padding: 8px;
     gap: 8px;
-  }
-
-  .close-shift-denom-photo--note .close-shift-denom-photo__img {
-    width: min(100%, 118px);
-    height: 54px;
   }
 
   .close-shift-denom-photo--coin .close-shift-denom-photo__img {
