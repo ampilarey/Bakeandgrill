@@ -1006,6 +1006,22 @@ a { text-decoration: none; color: inherit; }
   max-width: min(92vw, 20rem);
 }
 
+/* Standalone home slot for the status stack when the hero block is off —
+   the stack is normally absolutely positioned over the hero. */
+.home-standalone-status {
+  position: relative;
+  padding: 0.75rem var(--page-gutter) 0;
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+.home-standalone-status .home-ordering-status-stack {
+  position: static;
+  align-items: center;
+  pointer-events: auto;
+}
+
 /* Smaller pill for collect-tomorrow gate (separate from today’s status) */
 .tomorrow-ordering-badge {
   display: inline-flex;

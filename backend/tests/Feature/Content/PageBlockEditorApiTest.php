@@ -39,6 +39,116 @@ class PageBlockEditorApiTest extends TestCase
         HomeLayoutMigrator::migrate();
     }
 
+    /**
+     * A partial PUT must never touch fields that were not in the request.
+     * Regression: update() used to run the raw request through validator
+     * defaults, so PUT {is_enabled:false} reset position to 0 and settings
+     * to [] — turning a section off jumped it to the top and blanked it.
+     */
+    public function test_partial_put_with_only_is_enabled_preserves_position_settings_and_content_mode(): void
+    {
+        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
+        $block->update(['position' => 7, 'settings' => ['headline' => 'Keep me'], 'content_mode' => 'shared']);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", ['is_enabled' => false])->assertOk();
+
+        $fresh = $block->fresh();
+        $this->assertFalse((bool) $fresh->is_enabled);
+        $this->assertSame(7, (int) $fresh->position, 'Partial PUT must not reset position.');
+        $this->assertSame(['headline' => 'Keep me'], $fresh->settings, 'Partial PUT must not blank settings.');
+        $this->assertSame('shared', $fresh->content_mode);
+    }
+
+    public function test_partial_put_with_only_content_mode_preserves_position_settings_and_is_enabled(): void
+    {
+        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
+        $block->update([
+            'position' => 3,
+            'is_enabled' => false,
+            'settings' => ['headline' => 'Keep me'],
+            'content_mode' => 'shared',
+        ]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", ['content_mode' => 'own'])->assertOk();
+
+        $fresh = $block->fresh();
+        $this->assertSame('own', $fresh->content_mode);
+        $this->assertFalse((bool) $fresh->is_enabled, 'Changing content mode must not silently republish a disabled block.');
+        $this->assertSame(3, (int) $fresh->position);
+        // shared → own copies shared content in as a starting point, but the
+        // block's own existing settings must survive the merge.
+        $this->assertSame('Keep me', $fresh->settings['headline'] ?? null);
+    }
+
+    public function test_partial_put_with_only_position_preserves_is_enabled_and_settings(): void
+    {
+        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
+        $block->update(['is_enabled' => false, 'settings' => ['headline' => 'Keep me']]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", ['position' => 5])->assertOk();
+
+        $fresh = $block->fresh();
+        $this->assertSame(5, (int) $fresh->position);
+        $this->assertFalse((bool) $fresh->is_enabled, 'Moving a disabled block must not re-enable it.');
+        $this->assertSame(['headline' => 'Keep me'], $fresh->settings);
+    }
+
+    public function test_partial_put_with_settings_replaces_settings_and_nothing_else(): void
+    {
+        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
+        $block->update(['position' => 4, 'is_enabled' => false, 'settings' => ['headline' => 'Old']]);
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", ['settings' => ['headline' => 'New']])->assertOk();
+
+        $fresh = $block->fresh();
+        $this->assertSame(['headline' => 'New'], $fresh->settings);
+        $this->assertSame(4, (int) $fresh->position);
+        $this->assertFalse((bool) $fresh->is_enabled);
+    }
+
+    public function test_store_with_explicit_position_zero_lands_the_block_first(): void
+    {
+        // Make room at the top, the way a client inserting at position 0 would.
+        PageBlock::query()->where('app', 'order_app')->where('page', 'home')->increment('position');
+
+        $res = $this->postJson('/api/admin/page-blocks', [
+            'app' => 'order_app',
+            'block_type' => 'promo_carousel',
+            'position' => 0,
+        ])->assertCreated();
+
+        $this->assertSame(0, (int) $res->json('block.position'), 'Explicit position 0 must not be replaced by max+1.');
+
+        $first = $this->getJson('/api/admin/page-blocks?app=order_app')->assertOk()->json('blocks.0');
+        $this->assertSame('promo_carousel', $first['block_type']);
+    }
+
+    public function test_reorder_payload_missing_a_block_is_rejected_and_changes_nothing(): void
+    {
+        $before = PageBlock::query()->where('app', 'order_app')->orderBy('position')
+            ->get(['id', 'position', 'is_enabled'])->toArray();
+
+        $blocks = PageBlock::query()->where('app', 'order_app')->orderBy('position')->get();
+        $partial = $blocks->slice(0, $blocks->count() - 1)->values();
+
+        $this->putJson('/api/admin/page-blocks/reorder', [
+            'app' => 'order_app',
+            'page' => 'home',
+            'blocks' => $partial->map(fn (PageBlock $b, int $i) => [
+                'id' => $b->id,
+                'position' => $i,
+                'is_enabled' => (bool) $b->is_enabled,
+            ])->all(),
+        ])->assertStatus(422);
+
+        $this->assertSame(
+            $before,
+            PageBlock::query()->where('app', 'order_app')->orderBy('position')
+                ->get(['id', 'position', 'is_enabled'])->toArray(),
+            'A rejected reorder must leave every block untouched.',
+        );
+    }
+
     public function test_reordering_one_app_does_not_affect_the_other(): void
     {
         $websiteBefore = PageBlock::query()->where('app', 'website')->orderBy('position')->pluck('block_type')->all();

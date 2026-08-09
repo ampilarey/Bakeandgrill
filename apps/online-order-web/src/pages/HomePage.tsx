@@ -307,7 +307,10 @@ export function HomePage() {
 
   const blocks = pageBlocks ?? legacyOrderAppBlocks(s);
   const openingStatusEnabled = blocks.some((b) => b.block_type === 'opening_status' && b.is_enabled);
-  const heroStatusSlot = openingStatusEnabled ? statusBadge : null;
+  const heroEnabled = blocks.some(
+    (b) => b.is_enabled && (b.block_type === 'hero' || b.block_type === 'promo_carousel'),
+  );
+  const heroStatusSlot = openingStatusEnabled && heroEnabled ? statusBadge : null;
 
   const reviewSection = reviews.length > 0 ? (
     <section
@@ -467,7 +470,16 @@ export function HomePage() {
         }
         break;
       case 'opening_status':
-        // Absorbed into hero statusSlot — never a standalone strip (visual parity).
+        // Shown inside the hero statusSlot while the hero is on (visual
+        // parity with the pre-builder home). Standalone only when the hero
+        // is off, so turning the hero off never removes the open/closed badge.
+        if (!heroEnabled && statusBadge) {
+          nodes.push(
+            <div key={key} className="home-standalone-status" data-testid="home-standalone-status">
+              {statusBadge}
+            </div>,
+          );
+        }
         break;
       case 'mode_cards':
         nodes.push(<ModeEntryCards key={key} />);
