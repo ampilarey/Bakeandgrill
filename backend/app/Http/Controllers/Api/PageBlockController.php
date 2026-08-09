@@ -84,11 +84,14 @@ class PageBlockController extends Controller
             'page' => $request->input('page', PageBlock::PAGE_HOME),
         ]);
 
-        $max = (int) PageBlock::query()
-            ->where('app', $data['app'])
-            ->where('page', $data['page'])
-            ->max('position');
-        $data['position'] = $data['position'] > 0 ? $data['position'] : $max + 1;
+        // Append only when no position was sent — an explicit 0 means "first".
+        if ($request->input('position') === null) {
+            $max = (int) PageBlock::query()
+                ->where('app', $data['app'])
+                ->where('page', $data['page'])
+                ->max('position');
+            $data['position'] = $max + 1;
+        }
 
         $block = PageBlock::create($data);
         PageBlockRepository::bust($data['app'], $data['page']);
@@ -99,10 +102,20 @@ class PageBlockController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $block = PageBlock::query()->findOrFail($id);
-        $payload = $request->all();
-        $payload['app'] = $block->app;
-        $payload['page'] = $block->page;
-        $payload['block_type'] = $payload['block_type'] ?? $block->block_type;
+
+        // Merge the request over the block's existing values: a partial PUT
+        // may only change the fields it actually contains. Without this the
+        // validator defaults (position 0, enabled, empty settings) would
+        // overwrite stored values on every partial update.
+        $payload = [
+            'app' => $block->app,
+            'page' => $block->page,
+            'block_type' => $request->input('block_type') ?? $block->block_type,
+            'position' => $request->input('position') ?? (int) $block->position,
+            'is_enabled' => $request->input('is_enabled') ?? (bool) $block->is_enabled,
+            'content_mode' => $request->input('content_mode') ?? $block->content_mode,
+            'settings' => $request->input('settings') ?? ($block->settings ?? []),
+        ];
 
         // shared → own: copy current shared content snapshot into settings.
         $requestedMode = $request->input('content_mode');
@@ -149,6 +162,21 @@ class PageBlockController extends Controller
 
         $app = $validated['app'];
         $page = $validated['page'] ?? PageBlock::PAGE_HOME;
+
+        // A partial list would leave the omitted blocks at stale positions
+        // that can collide with the new ones — require the full page.
+        $sentIds = collect($validated['blocks'])->pluck('id')->map(fn ($v) => (int) $v);
+        $missing = PageBlock::query()
+            ->where('app', $app)
+            ->where('page', $page)
+            ->pluck('id')
+            ->diff($sentIds);
+        if ($missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'blocks' => 'Reorder must include every block on this page — missing block id(s): '
+                    .$missing->implode(', ').'. Reload the layout editor and try again.',
+            ]);
+        }
 
         DB::transaction(function () use ($validated, $app, $page) {
             foreach ($validated['blocks'] as $row) {

@@ -275,6 +275,12 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                 <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
                   {block.description}
                 </div>
+                {block.block_type === 'opening_status' && (
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Shown inside the hero banner while the hero is on — moving it here only
+                    matters when the hero is turned off.
+                  </div>
+                )}
                 {!block.removable && (
                   <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
                     Required — {block.non_removable_reason}

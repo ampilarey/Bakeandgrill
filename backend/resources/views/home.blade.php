@@ -1018,42 +1018,42 @@
     $homeOffers = isset($offers) ? $offers : collect();
     $defaultItemImage = content('default_item_image');
     $stripe = 0;
-    $unknownHomeBlocks = [];
     try {
         $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
     } catch (\Throwable $e) {
         $homeBlocks = collect();
     }
     $usePageBlocks = $homeBlocks->isNotEmpty();
+    // The trust strip is fixed chrome, not a block: it always renders in the
+    // hero slot (immediately under the hero when on, in its place when off),
+    // exactly like the legacy path below.
+    $trustStripRendered = false;
 @endphp
 
 @if($usePageBlocks)
+    @if(!$homeBlocks->contains(fn ($b) => $b->block_type === 'hero'))
+        @include('partials.home.trust-strip')
+        @php $trustStripRendered = true; @endphp
+    @endif
     @foreach($homeBlocks as $homeBlock)
-        @if(!$homeBlock->is_enabled)
-            @continue
-        @endif
         @php $sectionId = $homeBlock->block_type; @endphp
-        @if(!\App\Domains\Content\Blocks\BlockTypeRegistry::isKnown($sectionId))
-            @php $unknownHomeBlocks[] = $sectionId; @endphp
+
+        @if($sectionId === 'hero')
+            @if($homeBlock->is_enabled)
+                @include('partials.home.hero')
+            @endif
+            @unless($trustStripRendered)
+                @include('partials.home.trust-strip')
+                @php $trustStripRendered = true; @endphp
+            @endunless
             @continue
         @endif
 
-        @if($sectionId === 'hero')
-            @include('partials.home.hero')
-            {{-- Trust strip stays immediately under the hero (historical placement). --}}
-            <div class="trust-strip">
-                <div class="trust-inner">
-                    @foreach($trustItems as $ti)
-                    <div class="trust-item">
-                        <div class="trust-icon-wrap">{{ $ti['icon'] ?? '' }}</div>
-                        <div class="trust-text">
-                            <strong>{{ $ti['heading'] ?? '' }}</strong>
-                            <span>{{ $ti['subtext'] ?? '' }}</span>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
+        @if(!$homeBlock->is_enabled)
+            @continue
+        @endif
+        @if(!\App\Domains\Content\Blocks\BlockTypeRegistry::isKnown($sectionId))
+            {{-- Unknown types render nothing here; the admin layout editor reports them. --}}
             @continue
         @endif
 
@@ -1081,19 +1081,7 @@
     @if(content_section_enabled('section_hero_enabled'))
         @include('partials.home.hero')
     @endif
-    <div class="trust-strip">
-        <div class="trust-inner">
-            @foreach($trustItems as $ti)
-            <div class="trust-item">
-                <div class="trust-icon-wrap">{{ $ti['icon'] ?? '' }}</div>
-                <div class="trust-text">
-                    <strong>{{ $ti['heading'] ?? '' }}</strong>
-                    <span>{{ $ti['subtext'] ?? '' }}</span>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
+    @include('partials.home.trust-strip')
     @php
         $order = \App\Domains\Content\HomeSectionOrder::resolve(content('home_section_order', '[]'));
     @endphp

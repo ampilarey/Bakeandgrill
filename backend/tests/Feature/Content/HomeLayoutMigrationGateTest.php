@@ -111,6 +111,68 @@ class HomeLayoutMigrationGateTest extends TestCase
         );
     }
 
+    /**
+     * End-to-end gate: the snapshot-based tests above compare the migrator
+     * against HomeLayoutSnapshot, but the migrator is FED by that snapshot,
+     * so they cannot catch the snapshot mis-describing the old layout.
+     * This renders the real website home twice — legacy path (empty
+     * page_blocks) vs blocks path (after migrate) — and asserts the same
+     * sections appear in the same order in the actual HTML.
+     */
+    public function test_rendered_website_home_matches_between_legacy_and_blocks_paths(): void
+    {
+        // class="…" needles so the <style> block (.hero-banner { … }) never matches.
+        $markers = [
+            'hero' => 'class="hero-banner"',
+            'trust_strip' => 'class="trust-strip"',
+            'specials' => 'id="offers"',
+            'featured' => 'class="products-grid"',
+            'categories' => 'class="categories-grid"',
+            'proof' => 'class="proof-strip"',
+            'cta' => 'class="cta-band-inner"',
+            'location' => 'class="loc-ctas"',
+        ];
+
+        // The schema migration seeds page_blocks; reverse to reach the true legacy path.
+        HomeLayoutMigrator::reverse();
+        Cache::flush();
+        $this->assertSame(0, PageBlock::query()->count(), 'Expected empty page_blocks before migration.');
+        $legacyHtml = $this->get('/')->assertOk()->getContent();
+        $legacyOrder = $this->orderedMarkers($legacyHtml, $markers);
+
+        $this->assertNotEmpty($legacyOrder, 'Legacy home rendered no known sections — markers are stale.');
+        $this->assertContains('trust_strip', $legacyOrder);
+
+        HomeLayoutMigrator::migrate();
+        Cache::flush();
+
+        $blocksHtml = $this->get('/')->assertOk()->getContent();
+
+        $this->assertSame(
+            $legacyOrder,
+            $this->orderedMarkers($blocksHtml, $markers),
+            'Rendered website home sections differ between the legacy path and the page_blocks path.',
+        );
+    }
+
+    /**
+     * @param  array<string, string>  $markers
+     * @return list<string> marker names present in $html, in document order
+     */
+    private function orderedMarkers(string $html, array $markers): array
+    {
+        $found = [];
+        foreach ($markers as $name => $needle) {
+            $pos = strpos($html, $needle);
+            if ($pos !== false) {
+                $found[$name] = $pos;
+            }
+        }
+        asort($found);
+
+        return array_keys($found);
+    }
+
     public function test_default_website_snapshot_is_hero_plus_home_section_order_defaults(): void
     {
         $types = array_column(HomeLayoutSnapshot::legacyWebsite(), 'type');

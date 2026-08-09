@@ -57,6 +57,22 @@ class PageBlockRenderTest extends TestCase
         $this->get('/')->assertOk()->assertSee('hero-banner', false);
     }
 
+    public function test_trust_strip_still_renders_when_website_hero_block_is_disabled(): void
+    {
+        PageBlock::query()
+            ->where('app', 'website')
+            ->where('block_type', 'hero')
+            ->update(['is_enabled' => false]);
+        Cache::flush();
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('class="hero-banner"', $html, 'Disabled hero must not render.');
+        // Legacy behaviour: the trust strip is independent of the hero and
+        // must keep its historical placement even when the hero is off.
+        $this->assertStringContainsString('class="trust-strip"', $html);
+    }
+
     public function test_empty_page_blocks_degrades_without_blank_page(): void
     {
         PageBlock::query()->delete();
