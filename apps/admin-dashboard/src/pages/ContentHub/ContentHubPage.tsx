@@ -48,6 +48,7 @@ import { MediaPicker } from '../../components/MediaPicker';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
+import { HomeLayoutEditor } from './HomeLayoutEditor';
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
@@ -1223,8 +1224,13 @@ export function ContentHubPage() {
       ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
       : 'Bake & Grill';
 
+    // Homepage: page_blocks layout editor is authoritative (Stage D). Legacy
+    // home_section_order / section_*_enabled chrome is hidden so owners aren't
+    // offered two disagreeing controls — those keys remain until Stage F.
     const chrome: ReactNode =
-      sectionOrderBlock || sectionEnableBlocks.length > 0 ? (
+      sectionName === 'Homepage' ? (
+        <HomeLayoutEditor />
+      ) : sectionOrderBlock || sectionEnableBlocks.length > 0 ? (
         <>
           {sectionOrderBlock ? renderSectionOrder(sectionOrderBlock) : null}
           {sectionEnableBlocks.length > 0 ? (

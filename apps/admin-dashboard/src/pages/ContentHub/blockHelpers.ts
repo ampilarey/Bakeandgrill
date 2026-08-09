@@ -29,7 +29,7 @@ const KEY_HELPERS: Record<string, string> = {
   proof_details: 'Small stats next to the social-proof section.',
   proof_stat: 'Big number in the social-proof section.',
   proof_label: 'Label under the big social-proof number.',
-  home_section_order: 'Drag order of home page sections (specials, featured, etc.).',
+  home_section_order: 'Legacy order list — use Home page layout at the top of Homepage instead.',
   meta_title: 'Default browser title and search result title for the website.',
   meta_description: 'Short summary search engines and link previews can show.',
   footer_text: 'Text in the website footer.',
