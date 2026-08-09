@@ -228,6 +228,14 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/admin/content/{key}/share', [App\Http\Controllers\Api\ContentController::class, 'share']);
         Route::post('/admin/content/{key}/split', [App\Http\Controllers\Api\ContentController::class, 'split']);
         Route::post('/admin/content/{key}/copy', [App\Http\Controllers\Api\ContentController::class, 'copy']);
+
+        // Home page builder — layout instances per app (not content keys).
+        Route::get('/admin/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'index']);
+        Route::post('/admin/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'store']);
+        Route::put('/admin/page-blocks/reorder', [App\Http\Controllers\Api\PageBlockController::class, 'reorder']);
+        Route::post('/admin/page-blocks/preview-token', [App\Http\Controllers\Api\PageBlockController::class, 'previewToken']);
+        Route::put('/admin/page-blocks/{id}', [App\Http\Controllers\Api\PageBlockController::class, 'update']);
+        Route::delete('/admin/page-blocks/{id}', [App\Http\Controllers\Api\PageBlockController::class, 'destroy']);
     });
 
     // ─── Permissions Management (Owner only) ───────────────────────────────────

@@ -163,6 +163,10 @@ Route::get('/content', [App\Http\Controllers\Api\ContentController::class, 'publ
 Route::get('/content/preview', [App\Http\Controllers\Api\ContentPreviewController::class, 'draftContent'])
     ->middleware('throttle:60,1');
 
+// Home page layout blocks (public render path — one query per page).
+Route::get('/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'publicIndex'])
+    ->middleware('throttle:60,1');
+
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 
