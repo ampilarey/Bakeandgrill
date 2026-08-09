@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Overlay } from "./OpenShiftModal";
 import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
+import { fetchCurrencyImages, getApiBaseUrl } from "../api";
 import {
   COMMON_COIN_DENOMS_LAARI,
   DEFAULT_NOTE_DENOMS_LAARI,
@@ -96,6 +97,16 @@ export function CloseShiftModal({
   /** Attempts recorded so far — shown quietly after a recount. */
   const [attemptsSoFar, setAttemptsSoFar] = useState(0);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  /** Owner-uploaded photo overrides (face → URL); bundled photos otherwise. */
+  const [customImages, setCustomImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let alive = true;
+    void fetchCurrencyImages().then((images) => {
+      if (alive) setCustomImages(images);
+    });
+    return () => { alive = false; };
+  }, []);
 
   const countedLaari = useMemo(() => {
     if (method === "denominations") return totalLaariFromCounts(counts);
@@ -330,6 +341,7 @@ export function CloseShiftModal({
                   onSelect={selectFace}
                   onBump={bumpCount}
                   rowRefs={rowRefs}
+                  customImages={customImages}
                 />
                 <DenomSection
                   title="Coins"
@@ -339,6 +351,7 @@ export function CloseShiftModal({
                   onSelect={selectFace}
                   onBump={bumpCount}
                   rowRefs={rowRefs}
+                  customImages={customImages}
                 />
                 {moreOpen && (
                   <DenomSection
@@ -349,6 +362,7 @@ export function CloseShiftModal({
                     onSelect={selectFace}
                     onBump={bumpCount}
                     rowRefs={rowRefs}
+                    customImages={customImages}
                   />
                 )}
               </div>
@@ -663,6 +677,16 @@ function StepperBtn({ label, onStep, children, className = "close-shift-stepper-
   );
 }
 
+/** /storage URLs live at the site root, not under the API prefix. */
+function absoluteMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  try {
+    return new URL(path, getApiBaseUrl()).toString();
+  } catch {
+    return path;
+  }
+}
+
 function DenomSection({
   title,
   faces,
@@ -671,6 +695,7 @@ function DenomSection({
   onSelect,
   onBump,
   rowRefs,
+  customImages,
 }: {
   title: string;
   faces: number[];
@@ -679,6 +704,7 @@ function DenomSection({
   onSelect: (face: number) => void;
   onBump: (face: number, delta: number) => void;
   rowRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
+  customImages: Record<string, string>;
 }) {
   return (
     <div className="close-shift-denom-section">
@@ -692,6 +718,8 @@ function DenomSection({
           const selected = activeFace === face;
           const label = labelForLaari(face);
           const asset = currencyAssetForLaari(face);
+          const custom = customImages[String(face)];
+          const src = custom ? absoluteMediaUrl(custom) : asset.src;
           return (
             <div
               key={face}
@@ -708,10 +736,16 @@ function DenomSection({
                 className={`close-shift-denom-photo close-shift-denom-photo--${asset.kind}`}
               >
                 <img
-                  src={asset.src}
+                  src={src}
                   alt=""
                   draggable={false}
                   className="close-shift-denom-photo__img"
+                  onError={(e) => {
+                    // Custom photo missing/broken — fall back to the bundled one.
+                    if (custom && e.currentTarget.src !== asset.src) {
+                      e.currentTarget.src = asset.src;
+                    }
+                  }}
                 />
                 <span className="close-shift-denom-photo__caption">{label}</span>
                 <span
