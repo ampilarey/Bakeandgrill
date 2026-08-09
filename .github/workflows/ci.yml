@@ -35,6 +35,35 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: true
           GITLEAKS_FAIL_ON_LEAK: "true"
 
+  composer-audit:
+    name: Composer security audit
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Fails the job (and therefore CI) when any advisory is present.
+      - name: Run composer audit
+        working-directory: backend
+        run: composer audit --no-interaction
+
   lint:
     name: Pint (code style)
     runs-on: ubuntu-latest
@@ -337,7 +366,7 @@ jobs:
   deploy-verify:
     name: Verify TEST deploy (post-CI smoke)
     runs-on: ubuntu-latest
-    needs: [frontend, test, contract]
+    needs: [frontend, test, contract, composer-audit]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
@@ -348,7 +377,7 @@ jobs:
   deploy-production:
     name: Deploy (production — bakeandgrill.mv)
     runs-on: ubuntu-latest
-    needs: [frontend, test, test-postgres, contract, e2e-gate]
+    needs: [frontend, test, test-postgres, contract, e2e-gate, composer-audit]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     environment: production
     steps:
