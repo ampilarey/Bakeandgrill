@@ -7,6 +7,15 @@ export const NOTE_DENOMS_LAARI = [100_000, 50_000, 10_000, 5_000, 2_000, 1_000, 
 export const COMMON_COIN_DENOMS_LAARI = [200, 100, 50, 25] as const;
 export const RARE_COIN_DENOMS_LAARI = [20, 10, 5, 1] as const;
 
+/**
+ * Default drawer faces for the close-shift count. The MVR 1000 note is very
+ * rare in this till, so it lives with the rare coins behind
+ * "More notes & coins" — keeping the default list to ten rows that fit a
+ * phone and an iPad without scrolling.
+ */
+export const DEFAULT_NOTE_DENOMS_LAARI = [50_000, 10_000, 5_000, 2_000, 1_000, 500] as const;
+export const MORE_DENOMS_LAARI = [100_000, ...RARE_COIN_DENOMS_LAARI] as const;
+
 export const ALL_DENOMS_LAARI = [
   ...NOTE_DENOMS_LAARI,
   ...COMMON_COIN_DENOMS_LAARI,

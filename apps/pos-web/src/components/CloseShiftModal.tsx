@@ -4,8 +4,8 @@ import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
 import {
   COMMON_COIN_DENOMS_LAARI,
-  NOTE_DENOMS_LAARI,
-  RARE_COIN_DENOMS_LAARI,
+  DEFAULT_NOTE_DENOMS_LAARI,
+  MORE_DENOMS_LAARI,
   breakdownPayload,
   fromLaari,
   hasAnyDenomEntry,
@@ -32,10 +32,13 @@ export type CloseShiftConfirmPayload = {
 };
 
 export type CountAttemptResult = {
-  counted_cash: number;
-  expected_cash: number;
-  variance: number;
+  /** Server verdict — the only thing a cashier learns. */
+  matches: boolean;
   attempt_number: number;
+  /** Present only when the server chose to reveal them (owner/manager). */
+  counted_cash?: number;
+  expected_cash?: number;
+  variance?: number;
 };
 
 type Props = {
@@ -78,13 +81,13 @@ export function CloseShiftModal({
   const [method, setMethod] = useState<CashCountMethod>("denominations");
   const [counts, setCounts] = useState<DenomCounts>({});
   const [plainTotal, setPlainTotal] = useState("");
-  const [showRareCoins, setShowRareCoins] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [showForeign, setShowForeign] = useState(false);
   const [foreignRows, setForeignRows] = useState<ForeignCurrencyRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   /** Selected face for the sticky count pad (laari). */
-  const [activeFace, setActiveFace] = useState<number>(NOTE_DENOMS_LAARI[0]);
+  const [activeFace, setActiveFace] = useState<number>(DEFAULT_NOTE_DENOMS_LAARI[0]);
   /** Two-step flow. */
   const [step, setStep] = useState<"count" | "review">("count");
   const [review, setReview] = useState<CountAttemptResult | null>(null);
@@ -134,7 +137,7 @@ export function CloseShiftModal({
   /** Non-zero rows for the one-line summary under the counted total. */
   const countedLines = useMemo(() => {
     if (method !== "denominations") return [];
-    return [...NOTE_DENOMS_LAARI, ...COMMON_COIN_DENOMS_LAARI, ...RARE_COIN_DENOMS_LAARI]
+    return [...DEFAULT_NOTE_DENOMS_LAARI, ...COMMON_COIN_DENOMS_LAARI, ...MORE_DENOMS_LAARI]
       .map((face) => ({ face, qty: parseCount(counts[face]) }))
       .filter((x) => x.qty > 0)
       .map(({ face, qty }) => {
@@ -142,6 +145,13 @@ export function CloseShiftModal({
         return `${qty} × ${labelForLaari(face)} ${unit}${qty === 1 ? "" : "s"}`;
       });
   }, [method, counts]);
+
+  /**
+   * A count against a hidden face must never be silently dropped: force the
+   * "More notes & coins" section open (and un-collapsible) while it holds one.
+   */
+  const hiddenHasCount = MORE_DENOMS_LAARI.some((face) => parseCount(counts[face]) > 0);
+  const moreOpen = showMore || hiddenHasCount;
 
   const activeCount = counts[activeFace] ?? "";
 
@@ -224,8 +234,10 @@ export function CloseShiftModal({
     }
   };
 
-  const reviewVarianceLaari = review != null ? Math.round(review.variance * 100) : 0;
-  const reviewBalanced = review != null && Math.abs(reviewVarianceLaari) < 1;
+  const reviewBalanced = review?.matches === true;
+  /** Numbers are shown only if the SERVER put them in the response. */
+  const reviewHasNumbers = review?.expected_cash != null && review?.variance != null;
+  const reviewVarianceLaari = review?.variance != null ? Math.round(review.variance * 100) : 0;
 
   const submitClose = async () => {
     const payload = basePayload();
@@ -326,7 +338,7 @@ export function CloseShiftModal({
               <div data-testid="close-shift-denomination-grid" className="close-shift-denoms">
                 <DenomSection
                   title="Notes"
-                  faces={[...NOTE_DENOMS_LAARI]}
+                  faces={[...DEFAULT_NOTE_DENOMS_LAARI]}
                   counts={counts}
                   activeFace={activeFace}
                   onSelect={selectFace}
@@ -342,18 +354,10 @@ export function CloseShiftModal({
                   onBump={bumpCount}
                   rowRefs={rowRefs}
                 />
-                <button
-                  type="button"
-                  data-testid="close-shift-more-coins"
-                  className="close-shift-link-btn"
-                  onClick={() => setShowRareCoins((v) => !v)}
-                >
-                  {showRareCoins ? "Hide rare coins" : "More coins"}
-                </button>
-                {showRareCoins && (
+                {moreOpen && (
                   <DenomSection
-                    title="Rare coins"
-                    faces={[...RARE_COIN_DENOMS_LAARI]}
+                    title="More notes & coins"
+                    faces={[...MORE_DENOMS_LAARI]}
                     counts={counts}
                     activeFace={activeFace}
                     onSelect={selectFace}
@@ -376,14 +380,26 @@ export function CloseShiftModal({
             )}
 
             <div className="close-shift-foreign">
-              <button
-                type="button"
-                data-testid="close-shift-foreign-toggle"
-                className="close-shift-link-btn"
-                onClick={() => setShowForeign((v) => !v)}
-              >
-                {showForeign ? "Hide foreign currency" : "Foreign currency held (optional)"}
-              </button>
+              <div className="close-shift-inline-toggles">
+                {method === "denominations" && !hiddenHasCount && (
+                  <button
+                    type="button"
+                    data-testid="close-shift-more-coins"
+                    className="close-shift-link-btn"
+                    onClick={() => setShowMore((v) => !v)}
+                  >
+                    {moreOpen ? "Hide notes & coins" : "More notes & coins"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  data-testid="close-shift-foreign-toggle"
+                  className="close-shift-link-btn"
+                  onClick={() => setShowForeign((v) => !v)}
+                >
+                  {showForeign ? "Hide foreign currency" : "Foreign currency"}
+                </button>
+              </div>
               {showForeign && (
                 <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
                   <div className="close-shift-hint">
@@ -540,27 +556,49 @@ export function CloseShiftModal({
                     Balanced
                   </div>
                   <p className="close-shift-review__message">
-                    Balanced — you counted MVR {review.counted_cash.toFixed(2)} and that matches the drawer.
+                    Balanced — you counted MVR {(review.counted_cash ?? countedDisplay).toFixed(2)} and
+                    that matches the drawer.
                   </p>
                 </>
               ) : (
                 <>
-                  <div
-                    className={`close-shift-review__badge ${reviewVarianceLaari > 0 ? "is-over" : "is-short"}`}
-                    data-testid="close-shift-review-variance"
-                  >
-                    {reviewVarianceLaari > 0 ? "Over" : "Short"} MVR {Math.abs(review.variance).toFixed(2)}
-                  </div>
-                  <div className="close-shift-review__rows">
-                    <div className="close-shift-review__row">
-                      <span>You counted</span>
-                      <strong data-testid="close-shift-review-counted">MVR {review.counted_cash.toFixed(2)}</strong>
-                    </div>
-                    <div className="close-shift-review__row">
-                      <span>Expected in drawer</span>
-                      <strong data-testid="close-shift-review-expected">MVR {review.expected_cash.toFixed(2)}</strong>
-                    </div>
-                  </div>
+                  {reviewHasNumbers ? (
+                    /* Owner/manager: the server revealed the reconciliation. */
+                    <>
+                      <div
+                        className={`close-shift-review__badge ${reviewVarianceLaari > 0 ? "is-over" : "is-short"}`}
+                        data-testid="close-shift-review-variance"
+                      >
+                        {reviewVarianceLaari > 0 ? "Over" : "Short"} MVR {Math.abs(review.variance ?? 0).toFixed(2)}
+                      </div>
+                      <div className="close-shift-review__rows">
+                        <div className="close-shift-review__row">
+                          <span>You counted</span>
+                          <strong data-testid="close-shift-review-counted">
+                            MVR {(review.counted_cash ?? countedDisplay).toFixed(2)}
+                          </strong>
+                        </div>
+                        <div className="close-shift-review__row">
+                          <span>Expected in drawer</span>
+                          <strong data-testid="close-shift-review-expected">
+                            MVR {(review.expected_cash ?? 0).toFixed(2)}
+                          </strong>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* Cashier: the server withheld every number — no target,
+                       no size, no direction. Plain words only. */
+                    <>
+                      <div className="close-shift-review__title" data-testid="close-shift-review-mismatch">
+                        The cash does not match
+                      </div>
+                      <p className="close-shift-review__message">
+                        The amount you counted is different from what the drawer should hold.
+                        Write what happened, then close the shift.
+                      </p>
+                    </>
+                  )}
                   <label className="close-shift-review__reason-label" htmlFor="close-shift-reason">
                     Reason (required)
                   </label>
@@ -621,12 +659,13 @@ function DenomSection({
   onBump: (face: number, delta: number) => void;
   rowRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
 }) {
-  const unit = title.toLowerCase().includes("coin") ? "coin" : "note";
   return (
     <div className="close-shift-denom-section">
       <div className="close-shift-denom-section__title">{title}</div>
       <div className="close-shift-denom-grid">
         {faces.map((face) => {
+          // Mixed sections ("More notes & coins") need a per-face unit.
+          const unit = face >= 500 ? "note" : "coin";
           const qty = parseCount(counts[face]);
           const lineMvr = fromLaari(face * qty).toFixed(2);
           const selected = activeFace === face;

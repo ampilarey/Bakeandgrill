@@ -20,14 +20,18 @@ function summary(overrides: Partial<Record<string, unknown>> = {}): ShiftSummary
   } as ShiftSummary;
 }
 
-/** Review stub that reconciles against expected = MVR 350. */
+/** Owner/manager-shaped review stub reconciling against expected MVR. */
 function reviewAgainst(expected: number) {
-  return vi.fn(async (payload: { closingCash: number }): Promise<CountAttemptResult> => ({
-    counted_cash: payload.closingCash,
-    expected_cash: expected,
-    variance: Math.round((payload.closingCash - expected) * 100) / 100,
-    attempt_number: 1,
-  }));
+  return vi.fn(async (payload: { closingCash: number }): Promise<CountAttemptResult> => {
+    const variance = Math.round((payload.closingCash - expected) * 100) / 100;
+    return {
+      matches: Math.abs(Math.round(variance * 100)) < 1,
+      counted_cash: payload.closingCash,
+      expected_cash: expected,
+      variance,
+      attempt_number: 1,
+    };
+  });
 }
 
 describe("CloseShiftModal two-step blind close", () => {
@@ -197,10 +201,12 @@ describe("CloseShiftModal two-step blind close", () => {
     let attempt = 0;
     const onReviewCount = vi.fn(async (payload: { closingCash: number }): Promise<CountAttemptResult> => {
       attempt += 1;
+      const variance = Math.round((payload.closingCash - 350) * 100) / 100;
       return {
+        matches: Math.abs(Math.round(variance * 100)) < 1,
         counted_cash: payload.closingCash,
         expected_cash: 350,
-        variance: Math.round((payload.closingCash - 350) * 100) / 100,
+        variance,
         attempt_number: attempt,
       };
     });

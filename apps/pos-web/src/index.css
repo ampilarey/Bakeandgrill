@@ -1200,7 +1200,7 @@ html, body, #root {
 }
 
 .close-shift-denom-section {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .close-shift-denom-section__title {
@@ -1209,7 +1209,7 @@ html, body, #root {
   color: #64748B;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .close-shift-denom-grid {
@@ -1225,8 +1225,8 @@ html, body, #root {
   grid-template-columns: 74px minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 6px;
   align-items: center;
-  height: 56px;
-  padding: 4px 8px;
+  height: 52px;
+  padding: 3px 8px;
   border: 1.5px solid #E2E8F0;
   border-radius: 12px;
   background: #fff;
@@ -1339,6 +1339,22 @@ html, body, #root {
   touch-action: manipulation;
   width: 100%;
   text-align: center;
+}
+
+/* "More notes & coins" + "Foreign currency" share one 44px row. */
+.close-shift-inline-toggles {
+  display: flex;
+  gap: 8px;
+}
+
+.close-shift-inline-toggles .close-shift-link-btn {
+  margin-top: 0;
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .close-shift-hint {
@@ -1461,6 +1477,13 @@ html, body, #root {
   color: #B91C1C;
 }
 
+/* Cashier mismatch: plain words, no numbers. */
+.close-shift-review__title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #B91C1C;
+}
+
 .close-shift-review__message {
   margin: 0;
   font-size: 15px;
@@ -1511,10 +1534,12 @@ html, body, #root {
   margin-top: 2px;
 }
 
-/* ── Phones AND iPad portrait — edge-to-edge sheet, list on top, short
- * footer below. Step 1 has no expected/variance/reason, so the footer is
- * just counted cash + pad + buttons and the list keeps most of the screen. */
-@media (max-width: 840px) {
+/* ── Phones — edge-to-edge sheet, list on top, short footer below.
+ * Denominations become a TWO-COLUMN grid of cells (face / count / line
+ * total) and the − / + steppers disappear: the keypad does that job and
+ * the width is needed for the columns. Tapping a cell selects it.
+ * Default state must fit 390×844 with no scrolling. */
+@media (max-width: 699px) {
   .close-shift-overlay {
     padding: 0 !important;
     align-items: stretch !important;
@@ -1549,6 +1574,64 @@ html, body, #root {
     background: #fff;
   }
 
+  /* Two-column cells */
+  .close-shift-denom-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .close-shift-denom-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 58px;
+    padding: 7px 10px;
+    gap: 2px 6px;
+    align-items: center;
+  }
+
+  .close-shift-denom-row__face {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 13px;
+  }
+
+  /* Stepper column collapses to just the count box */
+  .close-shift-denom-row__stepper {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+  }
+
+  .close-shift-stepper-btn {
+    display: none;
+  }
+
+  .close-shift-denom-row__count {
+    min-width: 46px;
+    min-height: 40px;
+    font-size: 17px;
+  }
+
+  .close-shift-denom-row__totals {
+    grid-column: 1;
+    grid-row: 2;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 6px;
+    text-align: left;
+  }
+
+  .close-shift-denom-row__qty {
+    display: none;
+  }
+
+  .close-shift-denom-row__line {
+    font-size: 11px;
+  }
+
   .close-shift-pad {
     gap: 4px;
   }
@@ -1570,47 +1653,6 @@ html, body, #root {
   .close-shift-review {
     margin-bottom: max(8px, env(safe-area-inset-bottom, 0px));
   }
-}
-
-/* iPad portrait gets bigger touch targets than a phone */
-@media (min-width: 700px) and (max-width: 840px) {
-  .close-shift-pad__key {
-    min-height: 52px;
-  }
-
-  .close-shift-btn {
-    min-height: 50px;
-  }
-}
-
-/* Narrow phones (down to 320px): tighten gaps, keep 44px touch targets,
- * never overflow horizontally. */
-@media (max-width: 480px) {
-  .close-shift-sheet__subtitle {
-    display: none;
-  }
-
-  .close-shift-denom-row {
-    grid-template-columns: 64px minmax(0, 1.25fr) minmax(0, 1fr);
-    padding: 4px 6px;
-    gap: 4px;
-  }
-
-  .close-shift-denom-row__face {
-    font-size: 12px;
-  }
-
-  .close-shift-denom-row__stepper {
-    grid-template-columns: 44px minmax(32px, 1fr) 44px;
-  }
-
-  .close-shift-denom-row__qty {
-    font-size: 12px;
-  }
-
-  .close-shift-denom-row__line {
-    font-size: 11px;
-  }
 
   .close-shift-fx-row {
     grid-template-columns: 1fr 1fr;
@@ -1619,6 +1661,56 @@ html, body, #root {
   .close-shift-fx-remove {
     grid-column: 1 / -1;
     width: 100%;
+  }
+}
+
+/* Narrow phones (down to 320px) */
+@media (max-width: 480px) {
+  .close-shift-sheet__subtitle {
+    display: none;
+  }
+
+  .close-shift-denom-row__face {
+    font-size: 12px;
+  }
+}
+
+/* ── iPads (portrait 768/820 and landscape 1024) — edge-to-edge sheet,
+ * single-column list LEFT, rail RIGHT, so the keypad never covers the
+ * list and the default ten rows fit without scrolling. */
+@media (min-width: 700px) and (max-width: 1024px) {
+  .close-shift-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .close-shift-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .close-shift-sheet__header {
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
+  }
+
+  .close-shift-sheet__content {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .close-shift-rail {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .close-shift-pad__key {
+    min-height: 52px;
+  }
+
+  .close-shift-btn {
+    min-height: 50px;
   }
 }
 

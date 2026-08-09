@@ -48,8 +48,9 @@ export async function getShiftHistory(): Promise<{
     closed_at: string | null;
     opening_cash: number;
     closing_cash: number;
-    expected_cash: number;
-    variance: number;
+    /** Absent for cashiers — the server strips the drawer reconciliation. */
+    expected_cash?: number | null;
+    variance?: number | null;
     cash_count_method?: "denominations" | "plain_total" | null;
     cash_count_breakdown?: Record<string, number> | null;
     foreign_currency_held?: ForeignCurrencyHeld[] | null;
@@ -111,7 +112,8 @@ export async function closeShift(
     }>;
   }
 ): Promise<{
-  shift: { id: number; expected_cash: number | null; variance: number | null };
+  /** expected_cash / variance are stripped for cashiers. */
+  shift: { id: number; expected_cash?: number | null; variance?: number | null };
   cash_sales: number;
   cash_in: number;
   cash_out: number;
@@ -125,8 +127,10 @@ export async function closeShift(
 }
 
 /**
- * Blind-count review: records a count attempt server-side and returns the
- * reconciliation. Does NOT close the shift and needs no variance reason.
+ * Blind-count review: records a count attempt server-side. Does NOT close
+ * the shift and needs no variance reason. Cashiers get only {matches,
+ * attempt_number}; owner/manager responses also carry the reconciliation
+ * numbers — the UI renders whatever the server chose to reveal.
  */
 export async function recordCountAttempt(
   shiftId: number,
@@ -142,10 +146,11 @@ export async function recordCountAttempt(
     }>;
   }
 ): Promise<{
-  counted_cash: number;
-  expected_cash: number;
-  variance: number;
+  matches: boolean;
   attempt_number: number;
+  counted_cash?: number;
+  expected_cash?: number;
+  variance?: number;
 }> {
   return request(`/shifts/${shiftId}/count-attempt`, {
     method: "POST",
