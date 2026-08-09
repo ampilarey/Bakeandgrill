@@ -40,7 +40,7 @@ describe("CloseShiftModal denomination blind cash count", () => {
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.00");
   });
 
-  it("supports +/- steppers on denomination rows", async () => {
+  it("supports +/- steppers and shows per-note count and line total", async () => {
     const user = userEvent.setup();
     render(
       <CloseShiftModal
@@ -50,13 +50,20 @@ describe("CloseShiftModal denomination blind cash count", () => {
       />,
     );
 
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/0 notes/);
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 0\.00/);
+
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
     expect(screen.getByTestId("denom-count-10000")).toHaveValue("2");
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/2 notes/);
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 200\.00/);
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 200.00");
 
     await user.click(screen.getByRole("button", { name: "Decrease MVR 100" }));
     expect(screen.getByTestId("denom-count-10000")).toHaveValue("1");
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/1 note(?!s)/);
+    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 100\.00/);
   });
 
   it("reveals expected and variance after a denomination count is entered", async () => {

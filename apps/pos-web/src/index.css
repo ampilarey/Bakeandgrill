@@ -1125,44 +1125,75 @@ html, body, #root {
 }
 
 .close-shift-denom-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
+/* One clear row per face: face + count/total on top, big stepper below.
+ * Always single-column so count and line total never get crushed. */
 .close-shift-denom-row {
-  display: grid;
-  grid-template-columns: minmax(72px, 90px) minmax(0, 1fr) minmax(72px, 88px);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
+  padding: 12px;
   border: 1px solid #E2E8F0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #fff;
-  font-size: 13px;
   color: #334155;
 }
 
+.close-shift-denom-row__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
 .close-shift-denom-row__face {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: #0F172A;
+  line-height: 1.2;
+}
+
+.close-shift-denom-row__totals {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+  min-width: 0;
+}
+
+.close-shift-denom-row__qty {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: 0.01em;
+}
+
+.close-shift-denom-row__line {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748B;
 }
 
 .close-shift-denom-row__stepper {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-  gap: 6px;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  gap: 8px;
   align-items: center;
 }
 
 .close-shift-stepper-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
   border: 1px solid #CBD5E1;
   background: #F8FAFC;
   color: #0F172A;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -1177,24 +1208,16 @@ html, body, #root {
 .close-shift-denom-row__input {
   width: 100%;
   box-sizing: border-box;
-  min-height: 44px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #CBD5E1;
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 52px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid #CBD5E1;
+  font-size: 22px;
+  font-weight: 800;
   font-family: inherit;
-  background: #fff;
+  background: #F8FAFC;
   text-align: center;
   color: #0F172A;
-}
-
-.close-shift-denom-row__line {
-  text-align: right;
-  color: #64748B;
-  font-size: 12px;
-  font-weight: 600;
-  min-height: 1em;
 }
 
 .close-shift-link-btn {
@@ -1321,13 +1344,6 @@ html, body, #root {
   opacity: 0.9;
 }
 
-/* iPad / wide phone landscape: two denomination columns */
-@media (min-width: 640px) {
-  .close-shift-denom-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 /* Phone + iPad portrait — edge-to-edge sheet */
 @media (max-width: 840px) {
   .close-shift-overlay {
@@ -1357,14 +1373,14 @@ html, body, #root {
   }
 }
 
-/* Narrow phones: stack FX fields; hide line totals to free space */
+/* Narrow phones: stack FX fields — keep denom count/total always visible */
 @media (max-width: 480px) {
-  .close-shift-denom-row {
-    grid-template-columns: 68px minmax(0, 1fr);
+  .close-shift-denom-row__face {
+    font-size: 15px;
   }
 
-  .close-shift-denom-row__line {
-    display: none;
+  .close-shift-denom-row__qty {
+    font-size: 15px;
   }
 
   .close-shift-fx-row {

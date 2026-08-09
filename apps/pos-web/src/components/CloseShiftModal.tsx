@@ -427,22 +427,30 @@ function DenomSection({
   onChange: (face: number, raw: string) => void;
   onBump: (face: number, delta: number) => void;
 }) {
+  const unit = title.toLowerCase().includes("coin") ? "coin" : "note";
   return (
     <div className="close-shift-denom-section">
       <div className="close-shift-denom-section__title">{title}</div>
       <div className="close-shift-denom-grid">
         {faces.map((face) => {
           const qty = parseCount(counts[face]);
-          const line = qty > 0 ? `MVR ${fromLaari(face * qty).toFixed(2)}` : "";
+          const lineMvr = fromLaari(face * qty).toFixed(2);
+          const qtyLabel = `${qty} ${unit}${qty === 1 ? "" : "s"}`;
           return (
-            <label key={face} className="close-shift-denom-row">
-              <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
+            <div key={face} className="close-shift-denom-row" data-testid={`denom-row-${face}`}>
+              <div className="close-shift-denom-row__meta">
+                <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
+                <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
+                  <span className="close-shift-denom-row__qty">{qtyLabel}</span>
+                  <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+                </span>
+              </div>
               <div className="close-shift-denom-row__stepper">
                 <button
                   type="button"
                   aria-label={`Decrease ${labelForLaari(face)}`}
                   className="close-shift-stepper-btn"
-                  onClick={(e) => { e.preventDefault(); onBump(face, -1); }}
+                  onClick={() => onBump(face, -1)}
                 >
                   −
                 </button>
@@ -459,13 +467,12 @@ function DenomSection({
                   type="button"
                   aria-label={`Increase ${labelForLaari(face)}`}
                   className="close-shift-stepper-btn"
-                  onClick={(e) => { e.preventDefault(); onBump(face, 1); }}
+                  onClick={() => onBump(face, 1)}
                 >
                   +
                 </button>
               </div>
-              <span className="close-shift-denom-row__line">{line}</span>
-            </label>
+            </div>
           );
         })}
       </div>
