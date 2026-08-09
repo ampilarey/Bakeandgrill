@@ -903,9 +903,8 @@ html, body, #root {
 /* ── Close shift sheet (blind two-step count) ───────────────────────────────
  * Step 1 shows ONLY the count: denomination list, foreign currency, counted
  * cash + keypad. Expected cash / variance live exclusively in the review
- * popup (step 2). Layout: two panes ≥841px (desktop, iPad landscape);
- * stacked list + short footer ≤840px (phones, iPad portrait).
- * No horizontal scrolling from 320px up.
+ * popup (step 2). Desktop: list left + rail right. Phone / touch tablet:
+ * stacked list + compact footer. No horizontal scrolling from 320px up.
  */
 .close-shift-overlay {
   align-items: stretch !important;
@@ -922,13 +921,13 @@ html, body, #root {
   max-height: min(94dvh, 860px);
   margin: auto;
   background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
   overflow: hidden;
   animation: pos-scale-in 0.18s ease-out;
 }
 
-/* Desktop / iPad landscape: count list left, footer rail right */
+/* Desktop: count list left, footer rail right */
 .close-shift-sheet__content {
   flex: 1 1 auto;
   min-height: 0;
@@ -939,12 +938,12 @@ html, body, #root {
 .close-shift-rail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   min-height: 0;
   min-width: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px;
+  padding: 14px;
   border-left: 1px solid #E2E8F0;
   background: #F8FAFC;
 }
@@ -955,7 +954,7 @@ html, body, #root {
 
 .close-shift-sheet__header {
   flex-shrink: 0;
-  padding: 12px 14px 10px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid #E2E8F0;
   background: #fff;
 }
@@ -964,13 +963,14 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .close-shift-sheet__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
+  letter-spacing: -0.02em;
   color: #0F172A;
   line-height: 1.2;
 }
@@ -979,26 +979,26 @@ html, body, #root {
   border: none;
   background: transparent;
   color: #D4813A;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  padding: 8px 4px;
+  padding: 8px 2px;
   min-height: 44px;
   touch-action: manipulation;
   white-space: nowrap;
 }
 
 .close-shift-sheet__subtitle {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 12px;
   color: #64748B;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 /* Quiet, factual — recounts are recorded either way. */
 .close-shift-recount-note {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
   font-weight: 600;
   color: #92400E;
@@ -1011,7 +1011,7 @@ html, body, #root {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 8px 12px 12px;
+  padding: 10px 14px 12px;
 }
 
 /* Counted cash — always visible; the only number step 1 shows. */
@@ -1022,15 +1022,15 @@ html, body, #root {
   min-width: 0;
 }
 
-/* Light card in the POS family — dark slate is for TEXT, not fill. */
+/* Summary chip — quiet chrome, strong tabular total. */
 .close-shift-totals__counted {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 14px;
   border-radius: 12px;
-  background: #FFFFFF;
+  background: #fff;
   border: 1px solid #E2E8F0;
   color: #64748B;
   font-size: 13px;
@@ -1038,8 +1038,9 @@ html, body, #root {
 }
 
 .close-shift-totals__counted strong {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
+  letter-spacing: -0.02em;
   color: #0F172A;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1111,14 +1112,14 @@ html, body, #root {
 
 .close-shift-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
 }
 
 .close-shift-btn {
   flex: 1;
   min-height: 48px;
-  padding: 12px 14px;
+  padding: 12px 16px;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
@@ -1189,26 +1190,31 @@ html, body, #root {
 .close-shift-denoms {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .close-shift-denom-section {
-  margin-top: 4px;
+  margin-top: 6px;
+}
+
+.close-shift-denom-section:first-child {
+  margin-top: 0;
 }
 
 .close-shift-denom-section__title {
   font-size: 11px;
   font-weight: 700;
-  color: #64748B;
+  color: #94A3B8;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 4px;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  padding-left: 2px;
 }
 
 .close-shift-denom-grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 /* Till row: face | − count + | N notes / MVR line total.
@@ -1216,12 +1222,12 @@ html, body, #root {
  * The stepper cluster is fixed-width (not stretched) so rows read cleanly. */
 .close-shift-denom-row {
   display: grid;
-  grid-template-columns: 74px max-content minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 78px max-content minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
   height: 52px;
-  padding: 3px 8px;
-  border: 1.5px solid #E2E8F0;
+  padding: 4px 10px;
+  border: 1px solid #E2E8F0;
   border-radius: 12px;
   background: #fff;
   color: #334155;
@@ -1230,21 +1236,24 @@ html, body, #root {
   user-select: none;
   min-width: 0;
   box-sizing: border-box;
+  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
 .close-shift-denom-row.is-selected {
   border-color: #D4813A;
   background: #FFF7ED;
-  box-shadow: 0 0 0 1px rgba(212, 129, 58, 0.35);
+  box-shadow: inset 3px 0 0 #D4813A;
 }
 
 .close-shift-denom-row.has-count:not(.is-selected) {
   background: #F8FAFC;
+  border-color: #CBD5E1;
 }
 
 .close-shift-denom-row__face {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
+  letter-spacing: -0.01em;
   color: #0F172A;
   line-height: 1.15;
   white-space: nowrap;
@@ -1254,7 +1263,7 @@ html, body, #root {
 .close-shift-denom-row__stepper {
   display: grid;
   grid-template-columns: 44px 72px 44px;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
   min-width: 0;
 }
@@ -1290,8 +1299,8 @@ html, body, #root {
   justify-content: center;
   min-height: 44px;
   border-radius: 10px;
-  background: #F8FAFC;
-  border: 1px solid #CBD5E1;
+  background: #F1F5F9;
+  border: 1px solid transparent;
   color: #0F172A;
   font-size: 18px;
   font-weight: 800;
@@ -1302,13 +1311,15 @@ html, body, #root {
 /* A box with a count entered reads as filled-in: soft accent tint. */
 .close-shift-denom-row.has-count .close-shift-denom-row__count {
   background: #FFF7ED;
-  border-color: #D4813A;
+  border-color: #FDBA74;
+  color: #9A3412;
 }
 
 /* Inside the selected (already amber-tinted) row, keep the box legible. */
 .close-shift-denom-row.is-selected .close-shift-denom-row__count {
   background: #FFFFFF;
   border-color: #D4813A;
+  color: #0F172A;
 }
 
 .close-shift-denom-row__totals {
@@ -1316,7 +1327,7 @@ html, body, #root {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   text-align: right;
   min-width: 0;
   overflow: hidden;
@@ -1329,16 +1340,16 @@ html, body, #root {
 }
 
 .close-shift-denom-row__qty {
-  font-size: 13px;
-  font-weight: 800;
-  color: #0F172A;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748B;
   white-space: nowrap;
 }
 
 .close-shift-denom-row__line {
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748B;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0F172A;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1349,7 +1360,7 @@ html, body, #root {
   padding: 8px 12px;
   border: 1px solid #E2E8F0;
   border-radius: 10px;
-  background: #F8FAFC;
+  background: #fff;
   color: #475569;
   font-size: 13px;
   font-weight: 700;
@@ -1364,6 +1375,7 @@ html, body, #root {
 .close-shift-inline-toggles {
   display: flex;
   gap: 8px;
+  margin-top: 4px;
 }
 
 .close-shift-inline-toggles .close-shift-link-btn {
@@ -1384,11 +1396,11 @@ html, body, #root {
 }
 
 .close-shift-foreign {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .close-shift-foreign__panel {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .close-shift-fx-row {
@@ -1451,7 +1463,7 @@ html, body, #root {
 .close-shift-review-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1465,11 +1477,11 @@ html, body, #root {
   overflow-y: auto;
   background: #fff;
   border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  padding: 20px;
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.28);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   animation: pos-scale-in 0.15s ease-out;
 }
 
@@ -1477,8 +1489,9 @@ html, body, #root {
   align-self: flex-start;
   padding: 8px 14px;
   border-radius: 999px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .close-shift-review__badge.is-ok {
@@ -1574,8 +1587,11 @@ html, body, #root {
   }
 
   .close-shift-sheet__header {
-    padding-top: max(8px, env(safe-area-inset-top, 0px));
-    padding-bottom: 8px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) 14px 10px;
+  }
+
+  .close-shift-sheet__title {
+    font-size: 18px;
   }
 
   .close-shift-sheet__content {
@@ -1586,11 +1602,19 @@ html, body, #root {
   .close-shift-rail {
     flex: 0 0 auto;
     max-height: 52dvh;
-    gap: 6px;
-    padding: 8px 12px max(8px, env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom, 0px));
     border-left: none;
     border-top: 1px solid #E2E8F0;
-    background: #fff;
+    background: #F8FAFC;
+  }
+
+  .close-shift-totals__counted {
+    padding: 10px 12px;
+  }
+
+  .close-shift-totals__counted strong {
+    font-size: 20px;
   }
 
   /* Two-column cells WITH − / + steppers, same as the iPad rows.
@@ -1602,6 +1626,7 @@ html, body, #root {
   .close-shift-sheet__body {
     display: flex;
     flex-direction: column;
+    padding: 8px 12px 10px;
   }
 
   .close-shift-denoms {
@@ -1613,7 +1638,11 @@ html, body, #root {
   .close-shift-denom-section {
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
+    margin-top: 10px;
+  }
+
+  .close-shift-denom-section:first-child {
+    margin-top: 0;
   }
 
   .close-shift-denom-section:nth-child(1) {
@@ -1635,7 +1664,7 @@ html, body, #root {
     flex: 1 1 auto;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(80px, 1fr);
+    grid-auto-rows: minmax(84px, 1fr);
     gap: 8px;
   }
 
@@ -1643,11 +1672,16 @@ html, body, #root {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
     height: auto;
-    min-height: 80px;
-    padding: 8px 10px;
-    gap: 6px;
+    min-height: 84px;
+    padding: 10px 10px 8px;
+    gap: 8px;
     align-items: center;
-    align-content: center;
+    align-content: space-between;
+    border-radius: 14px;
+  }
+
+  .close-shift-denom-row.is-selected {
+    box-shadow: inset 0 0 0 1.5px #D4813A;
   }
 
   /* "Enter total instead" fills and centres instead of leaving a blank
@@ -1688,6 +1722,8 @@ html, body, #root {
 
   .close-shift-denom-row__line {
     font-size: 12px;
+    font-weight: 800;
+    color: #0F172A;
   }
 
   .close-shift-denom-row__stepper {
@@ -1702,12 +1738,13 @@ html, body, #root {
   .close-shift-stepper-btn {
     width: 100%;
     height: 44px;
+    background: #F8FAFC;
   }
 
   .close-shift-denom-row__count {
     min-width: 0;
     min-height: 44px;
-    font-size: 18px;
+    font-size: 20px;
   }
 
   /* No footer keypad on phones — "Enter total instead" covers typing. */
@@ -1820,10 +1857,23 @@ html, body, #root {
     margin: 0;
   }
 
-  /* Comfortable side gutters — the content should sit inset on a tablet,
-   * not run edge-to-edge. Scales 32px (portrait) → 72px (12.9" landscape). */
+  /* Comfortable side gutters — content sits inset on a tablet, not
+   * edge-to-edge. Scales 40px (portrait) → 96px (12.9" landscape). */
   .close-shift-sheet__header {
-    padding: max(10px, env(safe-area-inset-top, 0px)) clamp(32px, 5vw, 72px) 8px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) clamp(40px, 6vw, 96px) 12px;
+  }
+
+  .close-shift-sheet__title {
+    font-size: 22px;
+  }
+
+  .close-shift-sheet__subtitle {
+    font-size: 13px;
+    max-width: 42rem;
+  }
+
+  .close-shift-method-link {
+    font-size: 14px;
   }
 
   .close-shift-sheet__content {
@@ -1834,7 +1884,7 @@ html, body, #root {
   .close-shift-sheet__body {
     display: flex;
     flex-direction: column;
-    padding: 12px clamp(32px, 5vw, 72px) 14px;
+    padding: 14px clamp(40px, 6vw, 96px) 12px;
   }
 
   .close-shift-denoms {
@@ -1846,7 +1896,11 @@ html, body, #root {
   .close-shift-denom-section {
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
+    margin-top: 12px;
+  }
+
+  .close-shift-denom-section:first-child {
+    margin-top: 0;
   }
 
   /* Notes = three grid rows, Coins = two — stretch in that ratio so all
@@ -1865,36 +1919,39 @@ html, body, #root {
   .close-shift-denom-section__title {
     flex: 0 0 auto;
     font-size: 12px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
-  /* Portrait: ONE column — ten balanced full-width rows fill the height
-   * naturally, instead of two columns of inflated half-empty cards. */
+  /* Portrait: ONE column — ten balanced full-width till rows. */
   .close-shift-denom-grid {
     flex: 1 1 auto;
     display: grid;
     grid-template-columns: 1fr;
-    grid-auto-rows: minmax(64px, 1fr);
+    grid-auto-rows: minmax(60px, 1fr);
     gap: 8px;
   }
 
-  /* Symmetric till row: face left, − count + dead centre, total right. */
+  /* Symmetric till row: face left, − count + centre, total right. */
   .close-shift-denom-row {
     height: auto;
-    min-height: 64px;
-    grid-template-columns: minmax(90px, 1fr) max-content minmax(90px, 1fr);
+    min-height: 60px;
+    grid-template-columns: minmax(100px, 1.1fr) max-content minmax(100px, 1fr);
     align-items: center;
-    gap: 10px;
-    padding: 6px 16px;
+    gap: 16px;
+    padding: 8px 18px;
     border-radius: 14px;
   }
 
+  .close-shift-denom-row.is-selected {
+    box-shadow: inset 4px 0 0 #D4813A;
+  }
+
   .close-shift-denom-row__face {
-    font-size: 17px;
+    font-size: 18px;
   }
 
   .close-shift-denom-row__stepper {
-    grid-template-columns: 52px 76px 52px;
+    grid-template-columns: 52px 84px 52px;
     gap: 8px;
   }
 
@@ -1903,16 +1960,31 @@ html, body, #root {
     height: 52px;
     font-size: 22px;
     border-radius: 12px;
+    background: #F8FAFC;
   }
 
   .close-shift-denom-row__count {
     min-height: 52px;
-    font-size: 20px;
+    font-size: 22px;
     border-radius: 12px;
   }
 
   .close-shift-denom-row__qty {
     font-size: 13px;
+  }
+
+  .close-shift-denom-row__line {
+    font-size: 15px;
+  }
+
+  .close-shift-inline-toggles {
+    margin-top: 6px;
+    gap: 10px;
+  }
+
+  .close-shift-link-btn {
+    min-height: 46px;
+    font-size: 14px;
   }
 
   /* "Enter total instead": one centred column that fills the height the
@@ -1923,7 +1995,7 @@ html, body, #root {
     flex-direction: column;
     justify-content: center;
     width: 100%;
-    max-width: 560px;
+    max-width: 520px;
     margin: 0 auto;
   }
 
@@ -1931,19 +2003,18 @@ html, body, #root {
     min-height: 64px !important;
   }
 
-  /* Rail → one compact bottom bar: counted card | Cancel | Review & close.
-   * Same side gutters as the list so everything lines up. */
+  /* Footer dock: counted cash | Cancel | Review & close — same gutters. */
   .close-shift-rail {
     flex: 0 0 auto;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
-    padding: 10px clamp(32px, 5vw, 72px) max(10px, env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+    padding: 12px clamp(40px, 6vw, 96px) max(12px, env(safe-area-inset-bottom, 0px));
     border-left: none;
     border-top: 1px solid #E2E8F0;
-    background: #fff;
+    background: #F8FAFC;
     overflow-y: visible;
   }
 
@@ -1958,11 +2029,13 @@ html, body, #root {
   }
 
   .close-shift-totals__counted {
-    padding: 10px 14px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: #fff;
   }
 
   .close-shift-totals__counted strong {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .close-shift-pad {
@@ -1973,31 +2046,59 @@ html, body, #root {
     flex: 0 0 auto;
     flex-direction: row;
     margin-top: 0;
+    gap: 10px;
   }
 
   /* Review & close is the main action; Cancel is secondary. */
   .close-shift-btn {
     min-height: 54px;
     font-size: 16px;
+    border-radius: 14px;
   }
 
   .close-shift-btn--secondary {
     flex: 0 0 auto;
-    min-width: 130px;
+    min-width: 128px;
   }
 
   .close-shift-btn--danger,
   .close-shift-btn--primary {
     flex: 0 0 auto;
-    min-width: 230px;
+    min-width: 220px;
   }
 }
 
 /* Landscape tablets: two columns — five rows of wide, balanced cells. */
 @media (min-width: 700px) and (pointer: coarse) and (orientation: landscape) {
+  .close-shift-sheet__header {
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
+    padding-bottom: 10px;
+  }
+
+  .close-shift-sheet__body {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .close-shift-denom-section {
+    margin-top: 10px;
+  }
+
   .close-shift-denom-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    grid-auto-rows: minmax(56px, 1fr);
+  }
+
+  .close-shift-denom-row {
+    min-height: 56px;
+    padding: 6px 16px;
+    gap: 12px;
+  }
+
+  .close-shift-rail {
+    padding-top: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
   }
 }
 
