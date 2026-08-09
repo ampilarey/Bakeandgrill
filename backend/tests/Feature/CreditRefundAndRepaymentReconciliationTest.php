@@ -124,7 +124,10 @@ class CreditRefundAndRepaymentReconciliationTest extends TestCase
             ])
             ->assertOk();
 
-        // Capture expected cash BEFORE the refund.
+        // Capture expected cash BEFORE the refund. Blind count: staff no
+        // longer receive expected_cash on an open shift, so read the
+        // reconciliation as the owner.
+        Sanctum::actingAs($this->owner, ['staff']);
         $before = $this->getJson("/api/shifts/{$shift->id}/summary")->assertOk()->json();
         $expectedBefore = $before['cash_drawer']['expected_cash'] ?? null;
         $this->assertNotNull($expectedBefore);
@@ -147,7 +150,7 @@ class CreditRefundAndRepaymentReconciliationTest extends TestCase
 
         // Original shift's expected cash is UNCHANGED — the refund did not
         // reduce the till because the refund reversed a credit balance.
-        Sanctum::actingAs($this->staff, ['staff']);
+        Sanctum::actingAs($this->owner, ['staff']);
         $after = $this->getJson("/api/shifts/{$shift->id}/summary")->assertOk()->json();
         $expectedAfter = $after['cash_drawer']['expected_cash'] ?? null;
         $this->assertSame(

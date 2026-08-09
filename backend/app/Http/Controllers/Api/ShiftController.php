@@ -20,6 +20,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\Shift;
+use App\Models\ShiftCashCountAttempt;
 use App\Services\AuditLogService;
 use App\Services\PermissionService;
 use App\Support\LaariConverter;
@@ -114,6 +115,100 @@ class ShiftController extends Controller
             'credit_repayments_cash' => round($creditRepaymentsCashLaar / 100, 2),
             'expected' => round($expectedLaar / 100, 2),
         ];
+    }
+
+    /**
+     * Same role rule as canSeeOpenShiftExpectedCash in the POS client:
+     * only owner/manager may see the expected total of an OPEN drawer.
+     */
+    private function canSeeOpenShiftExpectedCash($user): bool
+    {
+        $slug = strtolower(trim((string) ($user?->role?->slug ?? '')));
+
+        return in_array($slug, ['owner', 'manager'], true);
+    }
+
+    /**
+     * Counted cash from a close/count-attempt payload — the single place the
+     * two endpoints share, so a review can never disagree with the close.
+     *
+     * @return array{method: string, breakdown: array<string,int>|null, closing_cash: float}
+     */
+    private function countedCashFromRequest(CloseShiftRequest $request): array
+    {
+        $method = (string) ($request->input('cash_count_method')
+            ?? CashDenominationCatalog::METHOD_PLAIN_TOTAL);
+
+        if ($method === CashDenominationCatalog::METHOD_DENOMINATIONS) {
+            $rawCounts = is_array($request->input('denominations'))
+                ? $request->input('denominations')
+                : [];
+
+            return [
+                'method' => $method,
+                'breakdown' => CashDenominationCatalog::normalizeBreakdown($rawCounts),
+                'closing_cash' => LaariConverter::toMvr(CashDenominationCatalog::totalLaariFromCounts($rawCounts)),
+            ];
+        }
+
+        return [
+            'method' => CashDenominationCatalog::METHOD_PLAIN_TOTAL,
+            'breakdown' => null,
+            'closing_cash' => (float) $request->input('closing_cash'),
+        ];
+    }
+
+    /**
+     * Blind-count review: computes counted vs expected, RECORDS the attempt,
+     * and returns the reconciliation — without closing the shift and without
+     * requiring a variance reason. The attempt log is what makes it safe to
+     * show the cashier the variance and let them recount: the owner can see
+     * every count that was made.
+     */
+    public function countAttempt(CloseShiftRequest $request, int $id)
+    {
+        $result = DB::transaction(function () use ($request, $id) {
+            $shift = Shift::where('user_id', $request->user()?->id)
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if ($shift->closed_at) {
+                return null;
+            }
+
+            $counted = $this->countedCashFromRequest($request);
+            $expectedCash = $this->expectedCashFor($shift)['expected'];
+
+            $expectedLaari = LaariConverter::toLaar($expectedCash);
+            $countedLaari = LaariConverter::toLaar($counted['closing_cash']);
+            $variance = LaariConverter::toMvr($countedLaari - $expectedLaari);
+
+            $attemptNumber = (int) ShiftCashCountAttempt::where('shift_id', $shift->id)->max('attempt_number') + 1;
+            ShiftCashCountAttempt::create([
+                'shift_id' => $shift->id,
+                'user_id' => $request->user()?->id,
+                'attempt_number' => $attemptNumber,
+                'cash_count_method' => $counted['method'],
+                'counted_cash' => $counted['closing_cash'],
+                'expected_cash' => $expectedCash,
+                'variance' => $variance,
+                'breakdown' => $counted['breakdown'],
+                'is_accepted' => false,
+            ]);
+
+            return [
+                'counted_cash' => $counted['closing_cash'],
+                'expected_cash' => $expectedCash,
+                'variance' => $variance,
+                'attempt_number' => $attemptNumber,
+            ];
+        });
+
+        if ($result === null) {
+            return response()->json(['message' => 'Shift already closed.'], 422);
+        }
+
+        return response()->json($result);
     }
 
     /**
@@ -234,6 +329,25 @@ class ShiftController extends Controller
             ->whereNotIn('status', ['cancelled', 'refunded', 'completed'])
             ->count();
 
+        // Blind count: while the shift is OPEN only owner/manager may see the
+        // expected drawer total (same role rule as canSeeOpenShiftExpectedCash
+        // in the POS). Omit the field — do not send 0 — so the client can tell
+        // "not allowed" from "genuinely zero". Closed shifts are unchanged.
+        $cashDrawer = [
+            'opening_cash' => $openingCash,
+            'cash_sales' => $cashSales,
+            'cash_refunds' => $cashRefunds,
+            'paid_in' => $cashIn,
+            'paid_out' => $cashOut,
+            'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
+            'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
+            'credit_repayments_cash_laar' => $cash['credit_repayments_cash_laar'] ?? 0,
+            'credit_repayments_cash' => $cash['credit_repayments_cash'] ?? 0,
+        ];
+        if ($shift->closed_at !== null || $this->canSeeOpenShiftExpectedCash($user)) {
+            $cashDrawer['expected_cash'] = $expectedCash;
+        }
+
         return response()->json([
             'shift' => [
                 'id' => $shift->id,
@@ -242,18 +356,7 @@ class ShiftController extends Controller
                 'user_id' => $shift->user_id,
                 'device_id' => $shift->device_id,
             ],
-            'cash_drawer' => [
-                'opening_cash' => $openingCash,
-                'cash_sales' => $cashSales,
-                'cash_refunds' => $cashRefunds,
-                'paid_in' => $cashIn,
-                'paid_out' => $cashOut,
-                'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
-                'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
-                'credit_repayments_cash_laar' => $cash['credit_repayments_cash_laar'] ?? 0,
-                'credit_repayments_cash' => $cash['credit_repayments_cash'] ?? 0,
-                'expected_cash' => $expectedCash,
-            ],
+            'cash_drawer' => $cashDrawer,
             'sales_summary' => [
                 'order_count' => $orderCount,
                 'orders_created_count' => $ordersCreatedCount,
@@ -323,7 +426,11 @@ class ShiftController extends Controller
             $query->where('user_id', $user?->id);
         }
 
-        return response()->json(['shifts' => $query->with(['user:id,name', 'device:id,name,identifier'])->get()]);
+        return response()->json([
+            'shifts' => $query
+                ->with(['user:id,name', 'device:id,name,identifier', 'cashCountAttempts'])
+                ->get(),
+        ]);
     }
 
     /**
@@ -473,20 +580,10 @@ class ShiftController extends Controller
             $cash = $this->expectedCashFor($shift);
             $expectedCash = $cash['expected'];
 
-            $method = (string) ($request->input('cash_count_method')
-                ?? CashDenominationCatalog::METHOD_PLAIN_TOTAL);
-            $breakdown = null;
-            if ($method === CashDenominationCatalog::METHOD_DENOMINATIONS) {
-                $rawCounts = is_array($request->input('denominations'))
-                    ? $request->input('denominations')
-                    : [];
-                $breakdown = CashDenominationCatalog::normalizeBreakdown($rawCounts);
-                $closingLaari = CashDenominationCatalog::totalLaariFromCounts($rawCounts);
-                $closingCash = LaariConverter::toMvr($closingLaari);
-            } else {
-                $method = CashDenominationCatalog::METHOD_PLAIN_TOTAL;
-                $closingCash = (float) $request->input('closing_cash');
-            }
+            $counted = $this->countedCashFromRequest($request);
+            $method = $counted['method'];
+            $breakdown = $counted['breakdown'];
+            $closingCash = $counted['closing_cash'];
 
             // Foreign notes are recorded only — never enter expected/counted/variance.
             $foreignHeld = $this->normalizeForeignCurrencyHeld($request->input('foreign_currency'));
@@ -510,6 +607,21 @@ class ShiftController extends Controller
                 'cash_count_breakdown' => $breakdown,
                 'foreign_currency_held' => $foreignHeld,
                 'notes' => $notes !== '' ? $notes : $shift->notes,
+            ]);
+
+            // The accepted count joins the attempt log so the full recount
+            // history (reviews + final) reads as one sequence.
+            $attemptNumber = (int) ShiftCashCountAttempt::where('shift_id', $shift->id)->max('attempt_number') + 1;
+            ShiftCashCountAttempt::create([
+                'shift_id' => $shift->id,
+                'user_id' => $request->user()?->id,
+                'attempt_number' => $attemptNumber,
+                'cash_count_method' => $method,
+                'counted_cash' => $closingCash,
+                'expected_cash' => $expectedCash,
+                'variance' => $variance,
+                'breakdown' => $breakdown,
+                'is_accepted' => true,
             ]);
 
             return $shift;
@@ -557,6 +669,30 @@ class ShiftController extends Controller
             ],
             $request,
         );
+
+        // A recount happened — leave a distinct trail for the owner beside
+        // the attempt rows themselves.
+        $attempts = ShiftCashCountAttempt::where('shift_id', $shift->id)
+            ->orderBy('attempt_number')
+            ->get();
+        if ($attempts->count() > 1) {
+            app(AuditLogService::class)->log(
+                'shift.closed_after_recount',
+                'Shift',
+                $shift->id,
+                [],
+                [
+                    'attempts' => $attempts->map(fn (ShiftCashCountAttempt $a) => [
+                        'attempt_number' => $a->attempt_number,
+                        'counted_cash' => (float) $a->counted_cash,
+                        'variance' => (float) $a->variance,
+                        'is_accepted' => (bool) $a->is_accepted,
+                    ])->all(),
+                ],
+                ['attempt_count' => $attempts->count()],
+                $request,
+            );
+        }
 
         $orderCount = (int) Payment::query()
             ->where('shift_id', $shift->id)

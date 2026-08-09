@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { CloseShiftModal } from "./CloseShiftModal";
+import { CloseShiftModal, type CountAttemptResult } from "./CloseShiftModal";
 import type { ShiftSummary } from "../hooks/useShift";
 
-function summary(overrides: Partial<ShiftSummary["cash_drawer"]> = {}): ShiftSummary {
+function summary(overrides: Partial<Record<string, unknown>> = {}): ShiftSummary {
   return {
     cash_drawer: {
       opening_cash: 100,
@@ -13,18 +13,29 @@ function summary(overrides: Partial<ShiftSummary["cash_drawer"]> = {}): ShiftSum
       paid_out: 0,
       cash_refunds: 0,
       credit_repayments_cash: 0,
-      expected_cash: 350,
-      ...overrides,
+      // expected_cash intentionally absent — the server omits it for cashiers.
     },
     open_unpaid_orders: 0,
+    ...overrides,
   } as ShiftSummary;
 }
 
-describe("CloseShiftModal denomination blind cash count", () => {
-  it("starts with denomination entry and hides expected until a count is entered", () => {
+/** Review stub that reconciles against expected = MVR 350. */
+function reviewAgainst(expected: number) {
+  return vi.fn(async (payload: { closingCash: number }): Promise<CountAttemptResult> => ({
+    counted_cash: payload.closingCash,
+    expected_cash: expected,
+    variance: Math.round((payload.closingCash - expected) * 100) / 100,
+    attempt_number: 1,
+  }));
+}
+
+describe("CloseShiftModal two-step blind close", () => {
+  it("starts on the count screen with denomination entry and the count pad", () => {
     render(
       <CloseShiftModal
         summary={summary()}
+        onReviewCount={reviewAgainst(350)}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -33,11 +44,8 @@ describe("CloseShiftModal denomination blind cash count", () => {
     expect(screen.getByTestId("close-shift-sheet")).toBeTruthy();
     expect(screen.getByTestId("close-shift-denomination-grid")).toBeTruthy();
     expect(screen.getByTestId("close-shift-count-pad")).toBeTruthy();
-    expect(screen.queryByText("Expected in drawer")).toBeNull();
-    expect(screen.queryByTestId("close-shift-variance")).toBeNull();
-    expect(screen.queryByText(/\+ Cash sales/)).toBeNull();
-    // Blind: expected 350 must not appear in rendered output yet.
-    expect(document.body.textContent).not.toMatch(/350\.00/);
+    expect(screen.getByRole("button", { name: "Review & close" })).toBeTruthy();
+    expect(screen.queryByTestId("close-shift-review")).toBeNull();
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.00");
   });
 
@@ -46,13 +54,13 @@ describe("CloseShiftModal denomination blind cash count", () => {
     render(
       <CloseShiftModal
         summary={summary()}
+        onReviewCount={reviewAgainst(350)}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
 
     expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/0 notes/);
-    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 0\.00/);
 
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
     await user.click(screen.getByRole("button", { name: "Increase MVR 100" }));
@@ -63,60 +71,44 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     await user.click(screen.getByRole("button", { name: "Decrease MVR 100" }));
     expect(screen.getByTestId("denom-count-10000").textContent).toBe("1");
-    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/1 note(?!s)/);
-    expect(screen.getByTestId("denom-line-10000").textContent).toMatch(/MVR 100\.00/);
   });
 
-  it("enters counts from the sticky pad after selecting a denomination", async () => {
+  it("enters counts from the sticky pad and lists non-zero rows under the total", async () => {
     const user = userEvent.setup();
     render(
       <CloseShiftModal
         summary={summary()}
+        onReviewCount={reviewAgainst(350)}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
+
+    expect(screen.queryByTestId("close-shift-counted-summary")).toBeNull();
 
     await user.click(screen.getByTestId("denom-row-2000"));
     await user.click(screen.getByRole("button", { name: "Digit 1" }));
     await user.click(screen.getByRole("button", { name: "Digit 2" }));
     expect(screen.getByTestId("denom-count-2000").textContent).toBe("12");
-    expect(screen.getByTestId("denom-line-2000").textContent).toMatch(/12 notes/);
-    expect(screen.getByTestId("denom-line-2000").textContent).toMatch(/MVR 240\.00/);
     expect(screen.getByTestId("close-shift-pad-count").textContent).toMatch(/12/);
-  });
 
-  it("reveals expected and variance after a denomination count is entered", async () => {
-    const user = userEvent.setup();
-    render(
-      <CloseShiftModal
-        summary={summary()}
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    );
-
-    // 3×100 + 2×20 = 340 → variance −10
-    await user.click(screen.getByTestId("denom-row-10000"));
-    await user.click(screen.getByRole("button", { name: "Digit 3" }));
-    await user.click(screen.getByTestId("denom-row-2000"));
+    // The counted summary names the non-zero rows so the cashier can see
+    // what made the total even when those rows are scrolled away.
+    await user.click(screen.getByTestId("close-shift-more-coins"));
+    await user.click(screen.getByTestId("denom-row-100"));
     await user.click(screen.getByRole("button", { name: "Digit 2" }));
-
-    expect(screen.getByText(/Expected MVR 350\.00/)).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: /Details/i }));
-    expect(screen.getByText("Expected in drawer")).toBeTruthy();
-    expect(screen.getByText("MVR 350.00")).toBeTruthy();
-    const variance = screen.getByTestId("close-shift-variance");
-    expect(variance.textContent).toContain("10.00");
-    expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 340.00");
+    const strip = screen.getByTestId("close-shift-counted-summary");
+    expect(strip.textContent).toContain("12 × MVR 20 notes");
+    expect(strip.textContent).toContain("2 × MVR 1 coins");
   });
 
-  it("requires a variance note when the denomination total does not match expected", async () => {
+  it("review with a matching count shows the balanced message and no reason box", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi.fn();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
       <CloseShiftModal
         summary={summary()}
+        onReviewCount={reviewAgainst(300)}
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
@@ -124,32 +116,134 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     await user.click(screen.getByTestId("denom-row-10000"));
     await user.click(screen.getByRole("button", { name: "Digit 3" }));
-    await user.click(screen.getByRole("button", { name: "Close shift" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
 
-    expect(await screen.findByText(/reason for the cash variance/i)).toBeTruthy();
-    expect(onConfirm).not.toHaveBeenCalled();
+    expect(await screen.findByTestId("close-shift-review-balanced")).toBeTruthy();
+    expect(screen.getByText(/Balanced — you counted MVR 300\.00 and that matches the drawer/)).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/Short change/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Back to count" })).toBeTruthy();
 
-    await user.type(screen.getByPlaceholderText(/Short change/i), "Short change");
-    await user.click(screen.getByRole("button", { name: "Close shift" }));
-
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledWith(
         expect.objectContaining({
           closingCash: 300,
-          notes: "Short change",
           cashCountMethod: "denominations",
           denominations: { "10000": 3 },
+          notes: undefined,
         }),
       );
     });
   });
 
-  it("supports the plain-total fallback and records the method", async () => {
+  it("review with a difference shows short/over and blocks closing until a reason is typed", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     render(
       <CloseShiftModal
         summary={summary()}
+        onReviewCount={reviewAgainst(350)}
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+
+    const badge = await screen.findByTestId("close-shift-review-variance");
+    expect(badge.textContent).toMatch(/Short MVR 50\.00/);
+    expect(screen.getByTestId("close-shift-review-counted").textContent).toContain("MVR 300.00");
+    expect(screen.getByTestId("close-shift-review-expected").textContent).toContain("MVR 350.00");
+
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
+    expect(await screen.findByText(/reason for the cash variance/i)).toBeTruthy();
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    await user.type(screen.getByPlaceholderText(/Short change/i), "Short change at lunch");
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
+    await waitFor(() => {
+      expect(onConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          closingCash: 300,
+          notes: "Short change at lunch",
+        }),
+      );
+    });
+  });
+
+  it("shows Over wording when the drawer has too much cash", async () => {
+    const user = userEvent.setup();
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onReviewCount={reviewAgainst(250)}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+
+    const badge = await screen.findByTestId("close-shift-review-variance");
+    expect(badge.textContent).toMatch(/Over MVR 50\.00/);
+  });
+
+  it("count again preserves the entered numbers and records a second attempt", async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    const onReviewCount = vi.fn(async (payload: { closingCash: number }): Promise<CountAttemptResult> => {
+      attempt += 1;
+      return {
+        counted_cash: payload.closingCash,
+        expected_cash: 350,
+        variance: Math.round((payload.closingCash - 350) * 100) / 100,
+        attempt_number: attempt,
+      };
+    });
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onReviewCount={onReviewCount}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("denom-row-10000"));
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+    await screen.findByTestId("close-shift-review-variance");
+
+    await user.click(screen.getByTestId("close-shift-count-again"));
+
+    // Every entered number survives the round trip.
+    expect(screen.getByTestId("denom-count-10000").textContent).toBe("3");
+    expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 300.00");
+    // The recount is not hidden.
+    expect(screen.getByTestId("close-shift-recount-note").textContent).toMatch(/counted this drawer 2 times/i);
+
+    await user.click(screen.getByTestId("denom-row-5000"));
+    await user.click(screen.getByRole("button", { name: "Digit 1" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+    await screen.findByTestId("close-shift-review-balanced");
+
+    expect(onReviewCount).toHaveBeenCalledTimes(2);
+    expect(onReviewCount).toHaveBeenLastCalledWith(
+      expect.objectContaining({ closingCash: 350, denominations: { "10000": 3, "5000": 1 } }),
+    );
+  });
+
+  it("plain-total fallback goes through the same review step", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onReviewCount={reviewAgainst(350)}
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
@@ -159,8 +253,10 @@ describe("CloseShiftModal denomination blind cash count", () => {
     await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByRole("button", { name: "Digit 5" }));
     await user.click(screen.getByRole("button", { name: "Digit 0" }));
-    await user.click(screen.getByRole("button", { name: "Close shift" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
 
+    expect(await screen.findByTestId("close-shift-review-balanced")).toBeTruthy();
+    await user.click(screen.getByTestId("close-shift-confirm-btn"));
     await waitFor(() => {
       expect(onConfirm).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -171,13 +267,14 @@ describe("CloseShiftModal denomination blind cash count", () => {
     });
   });
 
-  it("records foreign currency beside variance without changing the maths", async () => {
+  it("foreign currency is record-only: it never changes the counted total", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    const onReviewCount = reviewAgainst(300);
     render(
       <CloseShiftModal
         summary={summary()}
-        onConfirm={onConfirm}
+        onReviewCount={onReviewCount}
+        onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
@@ -186,40 +283,30 @@ describe("CloseShiftModal denomination blind cash count", () => {
     await user.click(screen.getByRole("button", { name: "Digit 3" }));
     await user.click(screen.getByTestId("close-shift-foreign-toggle"));
     await user.click(screen.getByRole("button", { name: /\+ Add foreign note/i }));
-    await user.clear(screen.getByLabelText(/Foreign denomination 1/i));
     await user.type(screen.getByLabelText(/Foreign denomination 1/i), "50");
-    await user.clear(screen.getByLabelText(/Accepted MVR 1/i));
     await user.type(screen.getByLabelText(/Accepted MVR 1/i), "770");
 
-    expect(screen.getByTestId("close-shift-fx-beside-variance").textContent).toMatch(/Short MVR 50\.00/);
-    expect(screen.getByTestId("close-shift-fx-beside-variance").textContent).toMatch(/USD 50 held/);
+    // Counted stays the MVR count only.
+    expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 300.00");
 
-    await user.type(screen.getByPlaceholderText(/Short change/i), "USD in drawer");
-    await user.click(screen.getByRole("button", { name: "Close shift" }));
-
-    await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(
-        expect.objectContaining({
-          closingCash: 300,
-          cashCountMethod: "denominations",
-          foreignCurrency: [
-            expect.objectContaining({
-              currency: "USD",
-              denomination: 50,
-              count: 1,
-              accepted_mvr: 770,
-            }),
-          ],
-        }),
-      );
-    });
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+    await screen.findByTestId("close-shift-review");
+    expect(onReviewCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        closingCash: 300,
+        foreignCurrency: [
+          expect.objectContaining({ currency: "USD", denomination: 50, count: 1, accepted_mvr: 770 }),
+        ],
+      }),
+    );
   });
 
   it("includes rare coins behind More coins and sums them in laari", async () => {
     const user = userEvent.setup();
     render(
       <CloseShiftModal
-        summary={summary({ expected_cash: 0.01 })}
+        summary={summary()}
+        onReviewCount={reviewAgainst(0.01)}
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -229,18 +316,18 @@ describe("CloseShiftModal denomination blind cash count", () => {
     await user.click(screen.getByTestId("denom-row-1"));
     await user.click(screen.getByRole("button", { name: "Digit 1" }));
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.01");
-    expect(screen.getByTestId("close-shift-variance").textContent).toMatch(/0\.00/);
   });
 
-  it("blocks closing while offline orders are unsynced", async () => {
+  it("blocks the review while offline orders are unsynced", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi.fn();
+    const onReviewCount = vi.fn();
     render(
       <CloseShiftModal
         summary={summary()}
         pendingOfflineCount={2}
         pendingOfflineCashTotal={40}
-        onConfirm={onConfirm}
+        onReviewCount={onReviewCount}
+        onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
     );
@@ -249,10 +336,27 @@ describe("CloseShiftModal denomination blind cash count", () => {
 
     await user.click(screen.getByTestId("denom-row-50000"));
     await user.click(screen.getByRole("button", { name: "Digit 1" }));
-    await user.type(screen.getByPlaceholderText(/Short change|Found MVR/i), "x");
-    await user.click(screen.getByRole("button", { name: "Close shift" }));
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
 
     expect(await screen.findByText(/Sync 2 offline orders before closing/i)).toBeTruthy();
-    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onReviewCount).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("close-shift-review")).toBeNull();
+  });
+
+  it("blocks the review when no count has been entered", async () => {
+    const user = userEvent.setup();
+    const onReviewCount = vi.fn();
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onReviewCount={onReviewCount}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Review & close" }));
+    expect(await screen.findByText(/Enter the count for each denomination/i)).toBeTruthy();
+    expect(onReviewCount).not.toHaveBeenCalled();
   });
 });

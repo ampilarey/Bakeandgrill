@@ -214,7 +214,12 @@ class OpenOrderContinuationTest extends TestCase
         Sanctum::actingAs($this->ahmed, ['staff']);
         $this->postJson("/api/shifts/{$ahmedShift->id}/close", ['closing_cash' => 100])->assertOk();
 
-        Sanctum::actingAs($this->sara, ['staff']);
+        // Blind count: staff no longer receive expected_cash on an open
+        // shift — verify the collector-shift maths as a manager instead.
+        $manager = $this->makeManager();
+        $manager->grantPermission('shifts.view_own_history');
+        $manager->grantPermission('shifts.view_all_history');
+        Sanctum::actingAs($manager, ['staff']);
         $summary = $this->getJson("/api/shifts/{$saraShift->id}/summary")->assertOk()->json('cash_drawer');
         $this->assertEquals(75.0, (float) $summary['expected_cash']);
     }
