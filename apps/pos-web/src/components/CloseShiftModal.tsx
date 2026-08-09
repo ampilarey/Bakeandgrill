@@ -355,6 +355,7 @@ export function CloseShiftModal({
                 />
                 {moreOpen && (
                   <DenomSection
+                    className="close-shift-denom-section--more"
                     title="More notes & coins"
                     faces={[...MORE_DENOMS_LAARI]}
                     counts={counts}
@@ -383,14 +384,18 @@ export function CloseShiftModal({
 
             <div className="close-shift-foreign">
               <div className="close-shift-inline-toggles">
-                {method === "denominations" && !hiddenHasCount && (
+                {method === "denominations" && (
                   <button
                     type="button"
                     data-testid="close-shift-more-coins"
                     className="close-shift-link-btn"
+                    // A count against a hidden face must never be silently
+                    // dropped — lock the section open instead of hiding
+                    // this button (which looked like it vanished).
+                    disabled={hiddenHasCount}
                     onClick={() => setShowMore((v) => !v)}
                   >
-                    {moreOpen ? "Hide notes & coins" : "More notes & coins"}
+                    {hiddenHasCount ? "In use — counted above" : moreOpen ? "Hide notes & coins" : "More notes & coins"}
                   </button>
                 )}
                 <button
@@ -703,6 +708,7 @@ function DenomSection({
   onBump,
   rowRefs,
   customImages,
+  className,
 }: {
   title: string;
   faces: number[];
@@ -712,9 +718,10 @@ function DenomSection({
   onBump: (face: number, delta: number) => void;
   rowRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
   customImages: Record<string, string>;
+  className?: string;
 }) {
   return (
-    <div className="close-shift-denom-section">
+    <div className={`close-shift-denom-section${className ? ` ${className}` : ""}`}>
       <div className="close-shift-denom-section__title">{title}</div>
       <div className="close-shift-denom-grid">
         {faces.map((face) => {

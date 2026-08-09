@@ -217,8 +217,11 @@ describe("CloseShiftModal MVR 1000 behind More notes & coins", () => {
     await user.click(screen.getByRole("button", { name: "Digit 2" }));
 
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 2000.00");
-    // The section cannot be collapsed away while it holds a count.
-    expect(screen.queryByTestId("close-shift-more-coins")).toBeNull();
+    // The section cannot be collapsed away while it holds a count — the
+    // toggle stays visible but locked (disabled).
+    const toggle = screen.getByTestId("close-shift-more-coins") as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
+    await user.click(toggle);
     expect(screen.getByTestId("denom-row-100000")).toBeTruthy();
   });
 
@@ -231,7 +234,7 @@ describe("CloseShiftModal MVR 1000 behind More notes & coins", () => {
     await user.click(screen.getByRole("button", { name: "Digit 5" }));
 
     expect(screen.getByTestId("close-shift-running-total").textContent).toContain("MVR 0.05");
-    expect(screen.queryByTestId("close-shift-more-coins")).toBeNull();
+    expect((screen.getByTestId("close-shift-more-coins") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("denom-row-1")).toBeTruthy();
   });
 });

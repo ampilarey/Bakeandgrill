@@ -1215,6 +1215,25 @@ html, body, #root {
   gap: 10px;
 }
 
+/* The expandable extras look different from the two always-on sections:
+ * a tinted, dashed panel so it never blends into Notes/Coins above. */
+.close-shift-denom-section--more {
+  padding: 10px;
+  border: 1.5px dashed #94A3B8;
+  border-radius: 18px;
+  background: #E2E8F0;
+}
+
+.close-shift-denom-section--more .close-shift-denom-section__title {
+  color: #475569;
+  padding-top: 0;
+}
+
+.close-shift-denom-section--more .close-shift-denom-row {
+  border-color: #CBD5E1;
+  box-shadow: none;
+}
+
 /* One card per denomination: photo (the + control) LEFT; count, − and the
  * line total stacked on the RIGHT. */
 .close-shift-denom-row {
@@ -1338,10 +1357,10 @@ html, body, #root {
 .close-shift-stepper-btn {
   width: 100%;
   height: 40px;
-  border-radius: 10px;
-  border: 1.5px solid #FECACA;
-  background: #FEF2F2;
-  color: #DC2626;
+  border-radius: 999px;
+  border: none;
+  background: #EEF2F7;
+  color: #94A3B8;
   font-size: 22px;
   font-weight: 800;
   font-family: inherit;
@@ -1349,7 +1368,7 @@ html, body, #root {
   touch-action: manipulation;
   line-height: 1;
   padding: 0;
-  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.08);
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
   /* Press-and-hold auto-repeats — stop long-press text-select/callout. */
   user-select: none;
   -webkit-user-select: none;
@@ -1357,8 +1376,18 @@ html, body, #root {
 }
 
 .close-shift-stepper-btn:active {
-  background: #FECACA;
-  border-color: #FCA5A5;
+  background: #E2E8F0;
+}
+
+/* Something to remove → the − lights up red. */
+.close-shift-denom-row.has-count .close-shift-stepper-btn {
+  background: #EF4444;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+}
+
+.close-shift-denom-row.has-count .close-shift-stepper-btn:active {
+  background: #DC2626;
 }
 
 .close-shift-denom-row__totals {
@@ -1411,6 +1440,12 @@ html, body, #root {
   touch-action: manipulation;
   width: 100%;
   text-align: center;
+}
+
+/* Locked while the "More" section holds a count — visible, not clickable. */
+.close-shift-link-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* "More notes & coins" + "Foreign currency" share one 44px row. */
@@ -1695,14 +1730,16 @@ html, body, #root {
     flex: 0 1 auto;
   }
 
+  /* Grow 3:2 into spare height, but NEVER shrink below content — with the
+   * "More" section open the body scrolls instead of sections overlapping. */
   .close-shift-denom-section:nth-child(1) {
     flex: 3 1 0;
-    min-height: 0;
+    min-height: max-content;
   }
 
   .close-shift-denom-section:nth-child(2) {
     flex: 2 1 0;
-    min-height: 0;
+    min-height: max-content;
   }
 
   .close-shift-denom-section__title {
@@ -1751,7 +1788,6 @@ html, body, #root {
 
   .close-shift-stepper-btn {
     height: 34px;
-    border-radius: 9px;
     font-size: 18px;
   }
 
@@ -1925,14 +1961,16 @@ html, body, #root {
 
   /* Notes = three grid rows, Coins = two — stretch in that ratio.
    * ("More" is a third section; once open the body scrolls.) */
+  /* Grow 3:2 into spare height, but NEVER shrink below content — with the
+   * "More" section open the body scrolls instead of sections overlapping. */
   .close-shift-denom-section:nth-child(1) {
     flex: 3 1 0;
-    min-height: 0;
+    min-height: max-content;
   }
 
   .close-shift-denom-section:nth-child(2) {
     flex: 2 1 0;
-    min-height: 0;
+    min-height: max-content;
   }
 
   .close-shift-denom-section__title {
@@ -1983,7 +2021,6 @@ html, body, #root {
   .close-shift-stepper-btn {
     height: 44px;
     font-size: 22px;
-    border-radius: 12px;
   }
 
   .close-shift-denom-row__line {
