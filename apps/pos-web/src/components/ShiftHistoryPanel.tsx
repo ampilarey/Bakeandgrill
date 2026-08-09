@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { getShiftHistory, getShiftSummary } from "../api";
 import { EmptyState, PanelShell } from "./OpenTicketsPanel";
 import { canSeeOpenShiftExpectedCash } from "../utils/shiftDisplay";
+import {
+  formatForeignHeldSummary,
+  fromLaari,
+  labelForLaari,
+} from "../utils/cashDenominations";
 
 type Props = { onClose: () => void; staffRole?: string | null };
 
@@ -120,7 +125,30 @@ function ShiftDetail({
           <>
             <Row label="Expected" value={Number(shift.expected_cash ?? 0)} bold />
             <Row label="Counted" value={Number(shift.closing_cash ?? 0)} bold />
-            <Row label="Variance" value={Number(shift.variance ?? 0)} bold />
+            <div data-testid="shift-history-variance">
+              <Row label="Variance" value={Number(shift.variance ?? 0)} bold />
+              {(() => {
+                const fx = shift.foreign_currency_held ?? [];
+                const v = Number(shift.variance ?? 0);
+                if (!fx.length || Math.abs(v) < 0.005) return null;
+                const summary = formatForeignHeldSummary(fx);
+                return (
+                  <div
+                    data-testid="shift-history-fx-beside-variance"
+                    style={{ fontSize: 12, color: "#92400E", marginTop: 4, fontWeight: 600 }}
+                  >
+                    {v < 0 ? `Short MVR ${Math.abs(v).toFixed(2)}` : `Over MVR ${v.toFixed(2)}`}
+                    {" · "}
+                    {summary}
+                  </div>
+                );
+              })()}
+            </div>
+            {shift.cash_count_method && (
+              <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
+                Count method: {shift.cash_count_method === "denominations" ? "denominations" : "plain total"}
+              </div>
+            )}
           </>
         ) : (
           <div style={{ fontSize: 12, color: "#64748B", paddingTop: 6, lineHeight: 1.4 }}>
@@ -128,6 +156,48 @@ function ShiftDetail({
           </div>
         )}
       </Section>
+
+      {isClosed && shift.cash_count_breakdown && Object.keys(shift.cash_count_breakdown).length > 0 && (
+        <Section title="Denomination breakdown">
+          <div data-testid="shift-history-denom-breakdown">
+            {Object.entries(shift.cash_count_breakdown)
+              .map(([laari, count]) => ({ laari: Number(laari), count: Number(count) }))
+              .filter((r) => r.count > 0)
+              .sort((a, b) => b.laari - a.laari)
+              .map((r) => (
+                <div
+                  key={r.laari}
+                  style={{
+                    display: "flex", justifyContent: "space-between", padding: "4px 0",
+                    fontSize: 13, color: "#475569",
+                  }}
+                >
+                  <span>{labelForLaari(r.laari)} × {r.count}</span>
+                  <span>MVR {fromLaari(r.laari * r.count).toFixed(2)}</span>
+                </div>
+              ))}
+          </div>
+        </Section>
+      )}
+
+      {isClosed && (shift.foreign_currency_held?.length ?? 0) > 0 && (
+        <Section title="Foreign currency held">
+          <div data-testid="shift-history-foreign-currency">
+            {shift.foreign_currency_held!.map((r, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex", justifyContent: "space-between", padding: "4px 0",
+                  fontSize: 13, color: "#475569",
+                }}
+              >
+                <span>{r.currency} {Number(r.denomination)} × {r.count}</span>
+                <span>accepted MVR {Number(r.accepted_mvr).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {summary && (
         <Section title="Sales">

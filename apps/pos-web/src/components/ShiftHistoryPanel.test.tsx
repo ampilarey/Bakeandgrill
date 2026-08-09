@@ -57,6 +57,53 @@ describe("ShiftHistoryPanel", () => {
     });
   });
 
+  it("shows denomination breakdown and foreign currency on closed shifts", async () => {
+    getShiftHistory.mockResolvedValue({
+      shifts: [{
+        id: 11,
+        opened_at: "2026-08-08T08:00:00+00:00",
+        closed_at: "2026-08-08T16:00:00+00:00",
+        opening_cash: 100,
+        closing_cash: 300,
+        expected_cash: 350,
+        variance: -50,
+        cash_count_method: "denominations",
+        cash_count_breakdown: { "10000": 3 },
+        foreign_currency_held: [
+          { currency: "USD", denomination: 50, count: 1, accepted_mvr: 770 },
+        ],
+        notes: null,
+      }],
+    });
+    getShiftSummary.mockResolvedValue({
+      cash_drawer: {
+        opening_cash: 100,
+        cash_sales: 250,
+        paid_in: 0,
+        paid_out: 0,
+        cash_refunds: 0,
+        expected_cash: 350,
+      },
+      sales_summary: {
+        order_count: 3,
+        gross_sales: 400,
+        discounts: 0,
+        refunds: 0,
+        net_sales: 400,
+      },
+      tenders: { cash: 250 },
+    });
+
+    render(<ShiftHistoryPanel onClose={vi.fn()} staffRole="staff" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("shift-history-denom-breakdown").textContent).toMatch(/MVR 100 × 3/);
+      expect(screen.getByTestId("shift-history-foreign-currency").textContent).toMatch(/USD 50/);
+      expect(screen.getByTestId("shift-history-fx-beside-variance").textContent).toMatch(/Short MVR 50\.00/);
+      expect(screen.getByTestId("shift-history-fx-beside-variance").textContent).toMatch(/USD 50 held/);
+    });
+  });
+
   it("hides Expected for an open shift in history when role is staff", async () => {
     getShiftHistory.mockResolvedValue({
       shifts: [{

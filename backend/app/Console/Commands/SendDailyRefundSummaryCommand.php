@@ -9,6 +9,7 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\Refund;
 use App\Models\Role;
+use App\Models\Shift;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Models\SiteSetting;
@@ -98,6 +99,35 @@ class SendDailyRefundSummaryCommand extends Command
             );
         }
 
+        // Foreign currency held at close — record only; show beside refunds so
+        // an unexplained shortfall can be judged against notes in the drawer.
+        $fxShifts = Shift::query()
+            ->whereBetween('closed_at', [$day, $end])
+            ->whereNotNull('foreign_currency_held')
+            ->get(['id', 'variance', 'foreign_currency_held']);
+        $fxBits = [];
+        foreach ($fxShifts as $shift) {
+            $rows = is_array($shift->foreign_currency_held) ? $shift->foreign_currency_held : [];
+            foreach ($rows as $row) {
+                $cur = (string) ($row['currency'] ?? '');
+                $amt = (float) ($row['denomination'] ?? 0) * (int) ($row['count'] ?? 0);
+                if ($cur === '' || $amt <= 0) {
+                    continue;
+                }
+                $fxBits[] = sprintf(
+                    'Shift#%d %s %s held (accepted MVR %s; variance MVR %s)',
+                    $shift->id,
+                    $cur,
+                    number_format($amt, 2),
+                    number_format((float) ($row['accepted_mvr'] ?? (($row['accepted_mvr_laari'] ?? 0) / 100)), 2),
+                    number_format((float) ($shift->variance ?? 0), 2),
+                );
+            }
+        }
+        if ($fxBits !== []) {
+            $lines[] = 'Foreign currency held: '.implode('; ', $fxBits);
+        }
+
         $detail = implode("\n", $lines);
 
         $template = SmsTemplate::query()->where('slug', 'owner_daily_refund_summary')->first();
@@ -108,6 +138,9 @@ class SendDailyRefundSummaryCommand extends Command
             [(string) $count, number_format($total, 2), (string) $phoneAdded, (string) $overrides, (string) $phoneAdded],
             $smsBody,
         );
+        if ($fxBits !== []) {
+            $smsBody .= ' FX held: '.count($fxBits).' note(s).';
+        }
 
         $ownerRole = Role::query()->where('slug', 'owner')->first();
         $owners = $ownerRole

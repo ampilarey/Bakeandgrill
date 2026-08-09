@@ -681,6 +681,18 @@ export function DashboardPage() {
                 <StatCard label="Pending Devices" value={String(posOverview.pending_devices)} accent="var(--color-warning)" icon={Monitor} />
                 <StatCard label="Voids Today" value={String(posOverview.today_voids)} accent="var(--color-danger)" icon={Trash2} />
                 <StatCard label="Refunds Today" value={String(posOverview.today_refunds)} accent="var(--color-text-secondary)" icon={Receipt} />
+                {(summary?.foreign_currency_held?.length ?? 0) > 0 && (
+                  <StatCard
+                    label="FX held (shifts)"
+                    value={String(summary!.foreign_currency_held!.length)}
+                    sub={summary!.foreign_currency_held!
+                      .map((r) => `${r.currency} ${Number(r.denomination) * r.count}`)
+                      .slice(0, 2)
+                      .join(' · ')}
+                    accent="var(--color-warning)"
+                    icon={CreditCard}
+                  />
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
@@ -780,6 +792,27 @@ export function DashboardPage() {
           <StatCard label="Tax"        value={fmt(summary.tax)}        accent="var(--color-warning)" icon={Receipt} />
           <StatCard label="Expenses"   value={fmt(summary.expenses)}   accent="#f97316" icon={CreditCard} />
           <StatCard label="Waste Cost" value={fmt(summary.waste_cost)} accent="var(--color-danger)" icon={Trash2} />
+          {(summary.refunds ?? 0) > 0 && (
+            <StatCard label="Refunds" value={fmt(summary.refunds ?? 0)} accent="var(--color-text-secondary)" icon={Receipt} />
+          )}
+          {(summary.foreign_currency_held?.length ?? 0) > 0 && (
+            <StatCard
+              label="Foreign currency held"
+              value={String(summary.foreign_currency_held!.length)}
+              sub={summary.foreign_currency_held!
+                .map((r) => {
+                  const face = Number(r.denomination) * r.count;
+                  const v = Number(r.variance);
+                  const varBit = Math.abs(v) >= 0.005
+                    ? (v < 0 ? ` · short MVR ${Math.abs(v).toFixed(0)}` : ` · over MVR ${v.toFixed(0)}`)
+                    : '';
+                  return `${r.currency} ${face}${varBit}`;
+                })
+                .join(' · ')}
+              accent="var(--color-warning)"
+              icon={CreditCard}
+            />
+          )}
           {creditExposure && creditExposure.total_balance > 0 && (
             <StatCard
               label="Credit Exposure"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -33,6 +33,11 @@ function isStaleOpenShift(openedAt: string, closedAt: string | null): boolean {
   return (Date.now() - new Date(openedAt).getTime()) >= 24 * 60 * 60 * 1000;
 }
 
+function denomLabel(laari: number): string {
+  if (laari >= 100 && laari % 100 === 0) return `MVR ${laari / 100}`;
+  return `${laari} laari`;
+}
+
 function AdminShiftTable({
   rows,
   showForceClose,
@@ -44,6 +49,8 @@ function AdminShiftTable({
   onForceClose?: (id: number) => void;
   highlightId?: number | null;
 }) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
   if (rows.length === 0) return <EmptyState message="No shifts found." />;
 
   return (
@@ -60,14 +67,24 @@ function AdminShiftTable({
           {rows.map((s) => {
             const stale = isStaleOpenShift(s.opened_at, s.closed_at);
             const highlighted = highlightId != null && s.id === highlightId;
+            const colSpan = 8 + (showForceClose ? 1 : 0);
+            const hasDetail = !!(s.cash_count_breakdown || (s.foreign_currency_held?.length ?? 0) > 0 || s.cash_count_method);
+            const expanded = expandedId === s.id;
+            const variance = Number(s.variance ?? 0);
+            const fx = s.foreign_currency_held ?? [];
+            const fxSummary = fx.length
+              ? fx.map((r) => `${r.currency} ${Number(r.denomination) * r.count}`).join(' · ') + ' held'
+              : '';
             return (
+            <Fragment key={s.id}>
             <tr
-              key={s.id}
               id={highlighted ? `shift-${s.id}` : undefined}
+              onClick={() => hasDetail && setExpandedId(expanded ? null : s.id)}
               style={{
                 background: highlighted ? '#FEF8F2' : stale ? 'var(--color-warning-bg)' : undefined,
                 outline: highlighted ? '2px solid var(--color-primary)' : undefined,
                 outlineOffset: -2,
+                cursor: hasDetail ? 'pointer' : undefined,
               }}
             >
               <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: highlighted ? 'var(--color-primary)' : 'var(--color-text)' }}>
@@ -94,13 +111,54 @@ function AdminShiftTable({
                 {s.variance != null ? (
                   <Badge color={Math.abs(s.variance) < 0.01 ? 'green' : 'red'}>{formatMVR(s.variance)}</Badge>
                 ) : '—'}
+                {fxSummary && Math.abs(variance) >= 0.01 && (
+                  <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
+                    {variance < 0 ? `Short ${formatMVR(Math.abs(variance))}` : `Over ${formatMVR(variance)}`}
+                    {' · '}{fxSummary}
+                  </div>
+                )}
               </td>
               {showForceClose && (
                 <td style={TD}>
-                  <Btn small variant="secondary" onClick={() => onForceClose?.(s.id)}>Force close</Btn>
+                  <Btn small variant="secondary" onClick={(e) => { e.stopPropagation(); onForceClose?.(s.id); }}>Force close</Btn>
                 </td>
               )}
             </tr>
+            {expanded && hasDetail && (
+              <tr>
+                <td colSpan={colSpan} style={{ ...TD, background: 'var(--color-bg)', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  <div data-testid={`shift-admin-detail-${s.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {s.cash_count_method && (
+                      <div>Count method: <strong>{s.cash_count_method === 'denominations' ? 'denominations' : 'plain total'}</strong></div>
+                    )}
+                    {s.cash_count_breakdown && Object.keys(s.cash_count_breakdown).length > 0 && (
+                      <div>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Denomination breakdown</div>
+                        {Object.entries(s.cash_count_breakdown)
+                          .map(([laari, count]) => ({ laari: Number(laari), count: Number(count) }))
+                          .filter((r) => r.count > 0)
+                          .sort((a, b) => b.laari - a.laari)
+                          .map((r) => (
+                            <div key={r.laari}>{denomLabel(r.laari)} × {r.count} = MVR {((r.laari * r.count) / 100).toFixed(2)}</div>
+                          ))}
+                      </div>
+                    )}
+                    {fx.length > 0 && (
+                      <div>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Foreign currency held (record only)</div>
+                        {fx.map((r, i) => (
+                          <div key={i}>
+                            {r.currency} {Number(r.denomination)} × {r.count}
+                            {' — accepted '}{formatMVR(r.accepted_mvr)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+            </Fragment>
             );
           })}
         </tbody>

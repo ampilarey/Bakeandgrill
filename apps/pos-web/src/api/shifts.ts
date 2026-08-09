@@ -27,6 +27,14 @@ export async function getShiftSummary(shiftId: number): Promise<{
   return request(`/shifts/${shiftId}/summary`);
 }
 
+export type ForeignCurrencyHeld = {
+  currency: string;
+  denomination: number;
+  count: number;
+  accepted_mvr_laari?: number;
+  accepted_mvr: number;
+};
+
 export async function getShiftHistory(): Promise<{
   shifts: Array<{
     id: number;
@@ -38,6 +46,9 @@ export async function getShiftHistory(): Promise<{
     closing_cash: number;
     expected_cash: number;
     variance: number;
+    cash_count_method?: "denominations" | "plain_total" | null;
+    cash_count_breakdown?: Record<string, number> | null;
+    foreign_currency_held?: ForeignCurrencyHeld[] | null;
     notes: string | null;
   }>;
 }> {
@@ -83,7 +94,18 @@ export async function openShift(payload: {
 
 export async function closeShift(
   shiftId: number,
-  payload: { closing_cash: number; notes?: string }
+  payload: {
+    closing_cash: number;
+    notes?: string;
+    cash_count_method?: "denominations" | "plain_total";
+    denominations?: Record<string, number>;
+    foreign_currency?: Array<{
+      currency: string;
+      denomination: number;
+      count: number;
+      accepted_mvr: number;
+    }>;
+  }
 ): Promise<{
   shift: { id: number; expected_cash: number | null; variance: number | null };
   cash_sales: number;

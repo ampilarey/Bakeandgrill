@@ -42,6 +42,14 @@ export type PosOverview = {
   }>;
 };
 
+export type ShiftForeignCurrencyHeld = {
+  currency: string;
+  denomination: number;
+  count: number;
+  accepted_mvr_laari?: number;
+  accepted_mvr: number;
+};
+
 export type ShiftHistoryRow = {
   id: number;
   user_id: number;
@@ -52,6 +60,10 @@ export type ShiftHistoryRow = {
   closing_cash: number | null;
   expected_cash: number | null;
   variance: number | null;
+  cash_count_method?: 'denominations' | 'plain_total' | null;
+  cash_count_breakdown?: Record<string, number> | null;
+  foreign_currency_held?: ShiftForeignCurrencyHeld[] | null;
+  notes?: string | null;
   user?: { id: number; name: string };
   device?: { id: number; name: string; identifier?: string };
 };

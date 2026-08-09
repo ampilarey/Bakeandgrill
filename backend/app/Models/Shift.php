@@ -19,6 +19,9 @@ class Shift extends Model
         'closing_cash',
         'expected_cash',
         'variance',
+        'cash_count_method',
+        'cash_count_breakdown',
+        'foreign_currency_held',
         'notes',
     ];
 
@@ -29,6 +32,8 @@ class Shift extends Model
         'closing_cash' => 'decimal:2',
         'expected_cash' => 'decimal:2',
         'variance' => 'decimal:2',
+        'cash_count_breakdown' => 'array',
+        'foreign_currency_held' => 'array',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];

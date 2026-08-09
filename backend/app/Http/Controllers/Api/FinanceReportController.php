@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Purchase;
 use App\Models\Refund;
+use App\Models\Shift;
 use App\Models\WasteLog;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -225,6 +226,27 @@ class FinanceReportController extends Controller
             ->value('total');
         $netRevenue = round($revenue - $refundsTotal, 2);
 
+        // Foreign currency held at shift close — record only, never in cash math.
+        $foreignCurrencyHeld = Shift::query()
+            ->whereBetween('closed_at', [$from, $to])
+            ->whereNotNull('foreign_currency_held')
+            ->get(['id', 'user_id', 'variance', 'foreign_currency_held', 'closed_at'])
+            ->flatMap(function (Shift $shift) {
+                $rows = is_array($shift->foreign_currency_held) ? $shift->foreign_currency_held : [];
+
+                return collect($rows)->map(fn (array $row) => [
+                    'shift_id' => $shift->id,
+                    'user_id' => $shift->user_id,
+                    'variance' => (float) ($shift->variance ?? 0),
+                    'currency' => (string) ($row['currency'] ?? ''),
+                    'denomination' => (float) ($row['denomination'] ?? 0),
+                    'count' => (int) ($row['count'] ?? 0),
+                    'accepted_mvr' => (float) ($row['accepted_mvr'] ?? (($row['accepted_mvr_laari'] ?? 0) / 100)),
+                ]);
+            })
+            ->values()
+            ->all();
+
         $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
         $purchases = (float) Purchase::whereDate('purchase_date', $date)
             ->whereIn('status', ['received', 'partial'])
@@ -273,6 +295,7 @@ class FinanceReportController extends Controller
             'payment_processing_fees' => $paymentProcessingFees,
             'payment_commission' => $commissionSummary,
             'net_profit' => $profit,
+            'foreign_currency_held' => $foreignCurrencyHeld,
             'by_type' => $byType->map(fn ($r) => [
                 'type' => $r->order_type ?? 'unknown',
                 'count' => (int) $r->count,

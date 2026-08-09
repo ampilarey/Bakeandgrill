@@ -1010,8 +1010,23 @@ export function usePosApp() {
     try { await shift.open(openingCash, notes, deviceDbId); setShowOpenShift(false); }
     finally { setOpenShiftBusy(false); }
   };
-  const handleCloseShift = async (closingCash: number, notes?: string) => {
-    await shift.close(closingCash, notes);
+  const handleCloseShift = async (payload: {
+    closingCash: number;
+    notes?: string;
+    cashCountMethod: "denominations" | "plain_total";
+    denominations?: Record<string, number>;
+    foreignCurrency?: Array<{
+      currency: string;
+      denomination: number;
+      count: number;
+      accepted_mvr: number;
+    }>;
+  }) => {
+    await shift.close(payload.closingCash, payload.notes, {
+      cash_count_method: payload.cashCountMethod,
+      denominations: payload.denominations,
+      foreign_currency: payload.foreignCurrency,
+    });
     setShowCloseShift(false);
     if (canRingSales) setPane("sales");
     else if (canAccessOps) setPane("ops");

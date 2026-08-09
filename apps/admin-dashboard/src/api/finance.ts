@@ -281,7 +281,33 @@ export async function getCashFlow(from: string, to: string): Promise<{ total_inf
   return req(`/reports/finance/cash-flow?from=${from}&to=${to}`);
 }
 
-export async function getDailySummary(date: string): Promise<{ date: string; revenue: number; tax: number; orders: number; avg_order: number; expenses: number; purchases: number; waste_cost: number; payment_processing_fees?: number; payment_commission?: PaymentCommissionSummary; net_profit: number; by_type: { type: string; count: number; revenue: number }[]; top_items: { name: string; qty: number; revenue: number }[] }> {
+export type DailySummaryForeignCurrency = {
+  shift_id: number;
+  user_id: number | null;
+  variance: number;
+  currency: string;
+  denomination: number;
+  count: number;
+  accepted_mvr: number;
+};
+
+export async function getDailySummary(date: string): Promise<{
+  date: string;
+  revenue: number;
+  refunds?: number;
+  tax: number;
+  orders: number;
+  avg_order: number;
+  expenses: number;
+  purchases: number;
+  waste_cost: number;
+  payment_processing_fees?: number;
+  payment_commission?: PaymentCommissionSummary;
+  net_profit: number;
+  foreign_currency_held?: DailySummaryForeignCurrency[];
+  by_type: { type: string; count: number; revenue: number }[];
+  top_items: { name: string; qty: number; revenue: number }[];
+}> {
   return req(`/reports/finance/daily-summary?date=${date}`);
 }
 

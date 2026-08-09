@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Payments\Services\PaymentCommissionService;
+use App\Domains\Shifts\CashDenominationCatalog;
 use App\Domains\Shifts\DTOs\ShiftClosedData;
 use App\Domains\Shifts\DTOs\ShiftOpenedData;
 use App\Domains\Shifts\Events\ShiftClosed;
@@ -21,6 +22,7 @@ use App\Models\Refund;
 use App\Models\Shift;
 use App\Services\AuditLogService;
 use App\Services\PermissionService;
+use App\Support\LaariConverter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -112,6 +114,42 @@ class ShiftController extends Controller
             'credit_repayments_cash' => round($creditRepaymentsCashLaar / 100, 2),
             'expected' => round($expectedLaar / 100, 2),
         ];
+    }
+
+    /**
+     * Record-only foreign notes held in the drawer at close.
+     * Never adjusts expected cash, counted cash, or variance.
+     *
+     * @return list<array{currency:string,denomination:float,count:int,accepted_mvr_laari:int,accepted_mvr:float}>|null
+     */
+    private function normalizeForeignCurrencyHeld(mixed $rows): ?array
+    {
+        if (! is_array($rows) || $rows === []) {
+            return null;
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $currency = strtoupper(trim((string) ($row['currency'] ?? '')));
+            $count = (int) ($row['count'] ?? 0);
+            if ($currency === '' || $count < 1) {
+                continue;
+            }
+            $acceptedMvr = (float) ($row['accepted_mvr'] ?? 0);
+            $acceptedLaari = LaariConverter::toLaar($acceptedMvr);
+            $out[] = [
+                'currency' => substr($currency, 0, 3),
+                'denomination' => round((float) ($row['denomination'] ?? 0), 2),
+                'count' => $count,
+                'accepted_mvr_laari' => $acceptedLaari,
+                'accepted_mvr' => LaariConverter::toMvr($acceptedLaari),
+            ];
+        }
+
+        return $out === [] ? null : $out;
     }
 
     /**
@@ -434,11 +472,32 @@ class ShiftController extends Controller
 
             $cash = $this->expectedCashFor($shift);
             $expectedCash = $cash['expected'];
-            $closingCash = (float) $request->input('closing_cash');
-            $variance = $closingCash - $expectedCash;
+
+            $method = (string) ($request->input('cash_count_method')
+                ?? CashDenominationCatalog::METHOD_PLAIN_TOTAL);
+            $breakdown = null;
+            if ($method === CashDenominationCatalog::METHOD_DENOMINATIONS) {
+                $rawCounts = is_array($request->input('denominations'))
+                    ? $request->input('denominations')
+                    : [];
+                $breakdown = CashDenominationCatalog::normalizeBreakdown($rawCounts);
+                $closingLaari = CashDenominationCatalog::totalLaariFromCounts($rawCounts);
+                $closingCash = LaariConverter::toMvr($closingLaari);
+            } else {
+                $method = CashDenominationCatalog::METHOD_PLAIN_TOTAL;
+                $closingCash = (float) $request->input('closing_cash');
+            }
+
+            // Foreign notes are recorded only — never enter expected/counted/variance.
+            $foreignHeld = $this->normalizeForeignCurrencyHeld($request->input('foreign_currency'));
+
+            $expectedLaari = LaariConverter::toLaar($expectedCash);
+            $closingLaari = LaariConverter::toLaar($closingCash);
+            $varianceLaari = $closingLaari - $expectedLaari;
+            $variance = LaariConverter::toMvr($varianceLaari);
             $notes = trim((string) ($request->input('notes') ?? ''));
 
-            if (abs($variance) >= 0.005 && $notes === '') {
+            if (abs($varianceLaari) >= 1 && $notes === '') {
                 return ['error' => 'Notes are required when cash variance is not zero.'];
             }
 
@@ -447,6 +506,9 @@ class ShiftController extends Controller
                 'closing_cash' => $closingCash,
                 'expected_cash' => $expectedCash,
                 'variance' => $variance,
+                'cash_count_method' => $method,
+                'cash_count_breakdown' => $breakdown,
+                'foreign_currency_held' => $foreignHeld,
                 'notes' => $notes !== '' ? $notes : $shift->notes,
             ]);
 

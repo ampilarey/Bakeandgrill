@@ -350,9 +350,28 @@ export function useShift(isLoggedIn: boolean, deviceApproved: boolean, deviceIde
     return res.shift;
   }, [refresh]);
 
-  const close = useCallback(async (closingCash: number, notes?: string) => {
+  const close = useCallback(async (
+    closingCash: number,
+    notes?: string,
+    extras?: {
+      cash_count_method?: "denominations" | "plain_total";
+      denominations?: Record<string, number>;
+      foreign_currency?: Array<{
+        currency: string;
+        denomination: number;
+        count: number;
+        accepted_mvr: number;
+      }>;
+    },
+  ) => {
     if (!current) throw new Error("No open shift to close.");
-    const res = await closeShift(current.id, { closing_cash: closingCash, notes });
+    const res = await closeShift(current.id, {
+      closing_cash: closingCash,
+      notes,
+      cash_count_method: extras?.cash_count_method,
+      denominations: extras?.denominations,
+      foreign_currency: extras?.foreign_currency,
+    });
     setCurrent(null);
     setSummary(null);
     clearShiftCaches();
