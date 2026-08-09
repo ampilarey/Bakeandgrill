@@ -1103,7 +1103,7 @@ html, body, #root {
 
 .close-shift-pad__keys {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
@@ -1476,8 +1476,10 @@ html, body, #root {
   opacity: 0.9;
 }
 
-/* Phone + iPad portrait — edge-to-edge sheet; rail becomes a sticky footer */
-@media (max-width: 840px) {
+/* iPad (portrait and landscape) — edge-to-edge full-height sheet, but keep
+ * the two panes side by side: the count list gets the full height of the
+ * screen and the rail never covers it. 700–840px ≈ iPad portrait widths. */
+@media (min-width: 700px) and (max-width: 840px) {
   .close-shift-overlay {
     padding: 0 !important;
     align-items: stretch !important;
@@ -1497,26 +1499,110 @@ html, body, #root {
   }
 
   .close-shift-sheet__content {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .close-shift-rail {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .close-shift-pad__key {
+    min-height: 52px;
+  }
+
+  .close-shift-btn {
+    min-height: 50px;
+  }
+}
+
+/* Phones — edge-to-edge sheet; rail becomes a compact sticky footer.
+ * Kept deliberately short (one-row pad column savings, paired
+ * expected/variance chips) so most of the screen stays with the list. */
+@media (max-width: 699px) {
+  .close-shift-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .close-shift-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .close-shift-sheet__header {
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: 8px;
+  }
+
+  .close-shift-sheet__content {
     display: flex;
     flex-direction: column;
   }
 
   .close-shift-rail {
     flex: 0 0 auto;
-    max-height: 62dvh;
-    gap: 8px;
-    padding: 8px 12px max(10px, env(safe-area-inset-bottom, 0px));
+    max-height: 58dvh;
+    gap: 6px;
+    padding: 8px 12px max(8px, env(safe-area-inset-bottom, 0px));
     border-left: none;
     border-top: 1px solid #E2E8F0;
     background: #fff;
   }
 
-  .close-shift-pad__key {
-    min-height: 46px;
-    background: #F8FAFC;
+  /* Counted on its own line; expected + variance share the next line */
+  .close-shift-totals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .close-shift-totals__counted {
+    grid-column: 1 / -1;
+    padding: 8px 12px;
+  }
+
+  .close-shift-totals__counted strong {
+    font-size: 18px;
+  }
+
+  .close-shift-totals__expected {
+    min-height: 44px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 5px 10px;
+    font-size: 12px;
   }
 
   .close-shift-summary {
+    grid-column: 1 / -1;
+    background: #F8FAFC;
+  }
+
+  .close-shift-variance {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 44px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  .close-shift-variance__row {
+    gap: 8px;
+  }
+
+  .close-shift-pad {
+    gap: 4px;
+  }
+
+  .close-shift-pad__key {
+    min-height: 46px;
     background: #F8FAFC;
   }
 
