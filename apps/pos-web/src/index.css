@@ -1398,7 +1398,7 @@ html, body, #root {
   width: 100%;
   max-width: 60px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: none;
   background: #E2E8F0;
   color: #94A3B8;
