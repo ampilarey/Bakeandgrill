@@ -204,6 +204,7 @@ describe("CloseShiftModal MVR 1000 behind More notes & coins", () => {
 
     await user.click(screen.getByTestId("close-shift-more-coins"));
     expect(screen.getByTestId("denom-row-100000")).toBeTruthy();
+    expect(screen.getByTestId("denom-row-2")).toBeTruthy(); // 2 laari coin
     expect(screen.getByTestId("denom-row-1")).toBeTruthy(); // rare coin beside it
   });
 
