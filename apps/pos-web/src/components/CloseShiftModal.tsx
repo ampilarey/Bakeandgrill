@@ -45,7 +45,12 @@ type Props = {
 
 /**
  * Blind cash count via denomination breakdown (default) or plain total.
- * Mobile: dense one-line rows + sticky integer pad (no OS keyboard).
+ * Expected drawer total stays hidden until a count is entered.
+ *
+ * Layout: two panes. The count list scrolls; a totals rail (counted cash,
+ * expected, variance, count pad, actions) is a right column on desktop/iPad
+ * landscape and a sticky footer on phones — so the counted total is always
+ * visible in BOTH methods once the cashier enters an amount.
  */
 export function CloseShiftModal({
   summary,
@@ -110,7 +115,15 @@ export function CloseShiftModal({
   }, [foreignRows]);
 
   const foreignSummary = formatForeignHeldSummary(foreignPayload);
-  const runningTotal = fromLaari(totalLaariFromCounts(counts));
+
+  /** Counted cash shown in the rail — live for both methods. */
+  const countedDisplay =
+    method === "denominations"
+      ? fromLaari(totalLaariFromCounts(counts))
+      : countedLaari != null
+        ? fromLaari(countedLaari)
+        : 0;
+
   const activeCount = counts[activeFace] ?? "";
   const needsVarianceNote = variance != null && Math.abs(variance) >= 0.005;
 
@@ -198,267 +211,258 @@ export function CloseShiftModal({
             </button>
           </div>
           <p className="close-shift-sheet__subtitle">
-            Tap a note, enter how many. Expected stays hidden until you count.
+            {method === "denominations"
+              ? "Tap a note, enter how many. Expected stays hidden until you count."
+              : "Enter the total cash you counted. Expected stays hidden until you do."}
           </p>
         </header>
 
-        <div className="close-shift-sheet__body">
-          {hasCount && (
-            <div className="close-shift-summary-wrap">
-              <button
-                type="button"
-                className="close-shift-summary-toggle"
-                aria-expanded={showExpected}
-                onClick={() => setShowExpected((v) => !v)}
-              >
-                <span>Expected MVR {expected.toFixed(2)}</span>
-                <span className="close-shift-summary-toggle__chev">{showExpected ? "Hide" : "Details"}</span>
-              </button>
-              {showExpected && (
-                <div className="close-shift-summary" data-testid="close-shift-expected-summary">
-                  <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
-                  <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
-                  {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
-                  {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
-                    <Summary
-                      label="  incl. credit repayments (cash)"
-                      value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
-                    />
-                  )}
-                  {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
-                  {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
-                  <Summary label="Expected in drawer" value={expected} bold />
-                </div>
-              )}
-            </div>
-          )}
+        <div className="close-shift-sheet__content">
+          {/* ── Main scrollable pane: the count itself ─────────────────── */}
+          <div className="close-shift-sheet__body">
+            {pendingOfflineCount > 0 && (
+              <div className="close-shift-alert close-shift-alert--danger">
+                {pendingOfflineCount} offline order{pendingOfflineCount === 1 ? "" : "s"} not synced yet.
+                {pendingOfflineCashTotal > 0 && (
+                  <div className="close-shift-alert__meta">Pending cash: MVR {pendingOfflineCashTotal.toFixed(2)}</div>
+                )}
+                {(pendingOfflineCardTotal > 0 || pendingOfflineTransferTotal > 0) && (
+                  <div className="close-shift-alert__meta">
+                    Pending card/QR MVR {pendingOfflineCardTotal.toFixed(2)} · transfer MVR {pendingOfflineTransferTotal.toFixed(2)}
+                  </div>
+                )}
+                {onSyncNow && (
+                  <button type="button" onClick={onSyncNow} className="close-shift-alert__action">
+                    Sync now
+                  </button>
+                )}
+              </div>
+            )}
 
-          {pendingOfflineCount > 0 && (
-            <div className="close-shift-alert close-shift-alert--danger">
-              {pendingOfflineCount} offline order{pendingOfflineCount === 1 ? "" : "s"} not synced yet.
-              {pendingOfflineCashTotal > 0 && (
-                <div className="close-shift-alert__meta">Pending cash: MVR {pendingOfflineCashTotal.toFixed(2)}</div>
-              )}
-              {(pendingOfflineCardTotal > 0 || pendingOfflineTransferTotal > 0) && (
-                <div className="close-shift-alert__meta">
-                  Pending card/QR MVR {pendingOfflineCardTotal.toFixed(2)} · transfer MVR {pendingOfflineTransferTotal.toFixed(2)}
-                </div>
-              )}
-              {onSyncNow && (
-                <button type="button" onClick={onSyncNow} className="close-shift-alert__action">
-                  Sync now
-                </button>
-              )}
-            </div>
-          )}
+            {Number(summary?.open_unpaid_orders ?? 0) > 0 && (
+              <div className="close-shift-alert close-shift-alert--warn">
+                This shift has {summary!.open_unpaid_orders} open unpaid order
+                {summary!.open_unpaid_orders === 1 ? "" : "s"} created during it.
+                They will stay active and can be paid by another staff shift.
+              </div>
+            )}
 
-          {Number(summary?.open_unpaid_orders ?? 0) > 0 && (
-            <div className="close-shift-alert close-shift-alert--warn">
-              This shift has {summary!.open_unpaid_orders} open unpaid order
-              {summary!.open_unpaid_orders === 1 ? "" : "s"} created during it.
-              They will stay active and can be paid by another staff shift.
-            </div>
-          )}
-
-          {method === "denominations" ? (
-            <div data-testid="close-shift-denomination-grid" className="close-shift-denoms">
-              <DenomSection
-                title="Notes"
-                faces={[...NOTE_DENOMS_LAARI]}
-                counts={counts}
-                activeFace={activeFace}
-                onSelect={setActiveFace}
-                onBump={bumpCount}
-              />
-              <DenomSection
-                title="Coins"
-                faces={[...COMMON_COIN_DENOMS_LAARI]}
-                counts={counts}
-                activeFace={activeFace}
-                onSelect={setActiveFace}
-                onBump={bumpCount}
-              />
-              <button
-                type="button"
-                data-testid="close-shift-more-coins"
-                className="close-shift-link-btn"
-                onClick={() => setShowRareCoins((v) => !v)}
-              >
-                {showRareCoins ? "Hide rare coins" : "More coins"}
-              </button>
-              {showRareCoins && (
+            {method === "denominations" ? (
+              <div data-testid="close-shift-denomination-grid" className="close-shift-denoms">
                 <DenomSection
-                  title="Rare coins"
-                  faces={[...RARE_COIN_DENOMS_LAARI]}
+                  title="Notes"
+                  faces={[...NOTE_DENOMS_LAARI]}
                   counts={counts}
                   activeFace={activeFace}
                   onSelect={setActiveFace}
                   onBump={bumpCount}
                 />
-              )}
-            </div>
-          ) : (
-            <Field label="Counted cash">
-              <CashInput
-                autoFocus
-                value={plainTotal}
-                onChange={(v) => { setPlainTotal(v); setErr(""); }}
-              />
-              <div className="close-shift-hint">
-                Escape hatch for a chaotic till. Prefer counting by denomination when you can.
-              </div>
-            </Field>
-          )}
-
-          <div className="close-shift-foreign">
-            <button
-              type="button"
-              data-testid="close-shift-foreign-toggle"
-              className="close-shift-link-btn"
-              onClick={() => setShowForeign((v) => !v)}
-            >
-              {showForeign ? "Hide foreign currency" : "Foreign currency held (optional)"}
-            </button>
-            {showForeign && (
-              <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
-                <div className="close-shift-hint">
-                  Record only — does not change expected cash, counted cash, or variance.
-                  Enter the MVR value you accepted it as at the till.
-                </div>
-                {foreignRows.map((row, idx) => (
-                  <div key={idx} className="close-shift-fx-row">
-                    <input
-                      aria-label={`Foreign currency ${idx + 1}`}
-                      value={row.currency}
-                      onChange={(e) => {
-                        const next = [...foreignRows];
-                        next[idx] = { ...row, currency: e.target.value.toUpperCase().slice(0, 3) };
-                        setForeignRows(next);
-                      }}
-                      placeholder="USD"
-                      className="close-shift-input"
-                    />
-                    <input
-                      aria-label={`Foreign denomination ${idx + 1}`}
-                      value={row.denomination}
-                      onChange={(e) => {
-                        const next = [...foreignRows];
-                        next[idx] = { ...row, denomination: e.target.value };
-                        setForeignRows(next);
-                      }}
-                      placeholder="Denom"
-                      inputMode="decimal"
-                      className="close-shift-input"
-                    />
-                    <input
-                      aria-label={`Foreign count ${idx + 1}`}
-                      value={row.count}
-                      onChange={(e) => {
-                        if (e.target.value !== "" && !/^\d{0,4}$/.test(e.target.value)) return;
-                        const next = [...foreignRows];
-                        next[idx] = { ...row, count: e.target.value };
-                        setForeignRows(next);
-                      }}
-                      placeholder="Qty"
-                      inputMode="numeric"
-                      className="close-shift-input"
-                    />
-                    <input
-                      aria-label={`Accepted MVR ${idx + 1}`}
-                      value={row.accepted_mvr}
-                      onChange={(e) => {
-                        const next = [...foreignRows];
-                        next[idx] = { ...row, accepted_mvr: e.target.value };
-                        setForeignRows(next);
-                      }}
-                      placeholder="Accepted MVR"
-                      inputMode="decimal"
-                      className="close-shift-input"
-                    />
-                    <button
-                      type="button"
-                      aria-label={`Remove foreign row ${idx + 1}`}
-                      className="close-shift-fx-remove"
-                      onClick={() => setForeignRows(foreignRows.filter((_, i) => i !== idx))}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                <DenomSection
+                  title="Coins"
+                  faces={[...COMMON_COIN_DENOMS_LAARI]}
+                  counts={counts}
+                  activeFace={activeFace}
+                  onSelect={setActiveFace}
+                  onBump={bumpCount}
+                />
                 <button
                   type="button"
-                  className="close-shift-add-fx"
-                  onClick={() => setForeignRows([...foreignRows, { currency: "USD", denomination: "", count: "1", accepted_mvr: "" }])}
+                  data-testid="close-shift-more-coins"
+                  className="close-shift-link-btn"
+                  onClick={() => setShowRareCoins((v) => !v)}
                 >
-                  + Add foreign note
+                  {showRareCoins ? "Hide rare coins" : "More coins"}
                 </button>
+                {showRareCoins && (
+                  <DenomSection
+                    title="Rare coins"
+                    faces={[...RARE_COIN_DENOMS_LAARI]}
+                    counts={counts}
+                    activeFace={activeFace}
+                    onSelect={setActiveFace}
+                    onBump={bumpCount}
+                  />
+                )}
               </div>
+            ) : (
+              <Field label="Counted cash">
+                <CashInput
+                  autoFocus
+                  value={plainTotal}
+                  onChange={(v) => { setPlainTotal(v); setErr(""); }}
+                />
+                <div className="close-shift-hint">
+                  Escape hatch for a chaotic till. Prefer counting by denomination when you can.
+                </div>
+              </Field>
+            )}
+
+            <div className="close-shift-foreign">
+              <button
+                type="button"
+                data-testid="close-shift-foreign-toggle"
+                className="close-shift-link-btn"
+                onClick={() => setShowForeign((v) => !v)}
+              >
+                {showForeign ? "Hide foreign currency" : "Foreign currency held (optional)"}
+              </button>
+              {showForeign && (
+                <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
+                  <div className="close-shift-hint">
+                    Record only — does not change expected cash, counted cash, or variance.
+                    Enter the MVR value you accepted it as at the till.
+                  </div>
+                  {foreignRows.map((row, idx) => (
+                    <div key={idx} className="close-shift-fx-row">
+                      <input
+                        aria-label={`Foreign currency ${idx + 1}`}
+                        value={row.currency}
+                        onChange={(e) => {
+                          const next = [...foreignRows];
+                          next[idx] = { ...row, currency: e.target.value.toUpperCase().slice(0, 3) };
+                          setForeignRows(next);
+                        }}
+                        placeholder="USD"
+                        className="close-shift-input"
+                      />
+                      <input
+                        aria-label={`Foreign denomination ${idx + 1}`}
+                        value={row.denomination}
+                        onChange={(e) => {
+                          const next = [...foreignRows];
+                          next[idx] = { ...row, denomination: e.target.value };
+                          setForeignRows(next);
+                        }}
+                        placeholder="Denom"
+                        inputMode="decimal"
+                        className="close-shift-input"
+                      />
+                      <input
+                        aria-label={`Foreign count ${idx + 1}`}
+                        value={row.count}
+                        onChange={(e) => {
+                          if (e.target.value !== "" && !/^\d{0,4}$/.test(e.target.value)) return;
+                          const next = [...foreignRows];
+                          next[idx] = { ...row, count: e.target.value };
+                          setForeignRows(next);
+                        }}
+                        placeholder="Qty"
+                        inputMode="numeric"
+                        className="close-shift-input"
+                      />
+                      <input
+                        aria-label={`Accepted MVR ${idx + 1}`}
+                        value={row.accepted_mvr}
+                        onChange={(e) => {
+                          const next = [...foreignRows];
+                          next[idx] = { ...row, accepted_mvr: e.target.value };
+                          setForeignRows(next);
+                        }}
+                        placeholder="Accepted MVR"
+                        inputMode="decimal"
+                        className="close-shift-input"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Remove foreign row ${idx + 1}`}
+                        className="close-shift-fx-remove"
+                        onClick={() => setForeignRows(foreignRows.filter((_, i) => i !== idx))}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="close-shift-add-fx"
+                    onClick={() => setForeignRows([...foreignRows, { currency: "USD", denomination: "", count: "1", accepted_mvr: "" }])}
+                  >
+                    + Add foreign note
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!needsVarianceNote && !showNotes && (
+              <button
+                type="button"
+                className="close-shift-link-btn close-shift-link-btn--quiet"
+                onClick={() => setShowNotes(true)}
+              >
+                Add a note (optional)
+              </button>
             )}
           </div>
 
-          {variance != null && (
-            <div
-              data-testid="close-shift-variance"
-              className={`close-shift-variance${
-                Math.abs(variance) < 0.005
-                  ? " is-ok"
-                  : variance > 0
-                    ? " is-over"
-                    : " is-short"
-              }`}
-            >
-              <div className="close-shift-variance__row">
-                <span>Variance</span>
-                <span>{variance >= 0 ? "+" : ""}MVR {variance.toFixed(2)}</span>
+          {/* ── Rail: totals, pad, actions. Right column on wide screens,
+                 sticky footer on phones. Counted cash always visible. ──── */}
+          <aside className="close-shift-rail">
+            <div className="close-shift-totals" data-testid="close-shift-totals">
+              <div className="close-shift-totals__counted" data-testid="close-shift-running-total">
+                <span>Counted cash</span>
+                <strong>MVR {countedDisplay.toFixed(2)}</strong>
               </div>
-              {foreignSummary && Math.abs(variance) >= 0.005 && (
-                <div data-testid="close-shift-fx-beside-variance" className="close-shift-variance__fx">
-                  {variance < 0 ? `Short MVR ${Math.abs(variance).toFixed(2)}` : `Over MVR ${variance.toFixed(2)}`}
-                  {" · "}
-                  {foreignSummary}
-                </div>
+
+              {hasCount && (
+                <>
+                  <button
+                    type="button"
+                    className="close-shift-totals__expected"
+                    aria-expanded={showExpected}
+                    onClick={() => setShowExpected((v) => !v)}
+                  >
+                    <span>Expected MVR {expected.toFixed(2)}</span>
+                    <span className="close-shift-totals__chev">{showExpected ? "Hide" : "Details"}</span>
+                  </button>
+
+                  {showExpected && (
+                    <div className="close-shift-summary" data-testid="close-shift-expected-summary">
+                      <Summary label="Opening cash" value={Number(summary?.cash_drawer.opening_cash ?? 0)} />
+                      <Summary label="+ Cash sales" value={Number(summary?.cash_drawer.cash_sales ?? 0)} />
+                      {Number(summary?.cash_drawer.paid_in ?? 0) > 0 && <Summary label="+ Paid in" value={Number(summary!.cash_drawer.paid_in)} />}
+                      {Number(summary?.cash_drawer.credit_repayments_cash ?? 0) > 0 && (
+                        <Summary
+                          label="  incl. credit repayments (cash)"
+                          value={Number(summary!.cash_drawer.credit_repayments_cash ?? 0)}
+                        />
+                      )}
+                      {Number(summary?.cash_drawer.paid_out ?? 0) > 0 && <Summary label="− Paid out" value={Number(summary!.cash_drawer.paid_out)} negative />}
+                      {Number(summary?.cash_drawer.cash_refunds ?? 0) > 0 && <Summary label="− Refunds" value={Number(summary!.cash_drawer.cash_refunds)} negative />}
+                      <Summary label="Expected in drawer" value={expected} bold />
+                    </div>
+                  )}
+
+                  {variance != null && (
+                    <div
+                      data-testid="close-shift-variance"
+                      className={`close-shift-variance${
+                        Math.abs(variance) < 0.005
+                          ? " is-ok"
+                          : variance > 0
+                            ? " is-over"
+                            : " is-short"
+                      }`}
+                    >
+                      <div className="close-shift-variance__row">
+                        <span>
+                          {Math.abs(variance) < 0.005 ? "Balanced" : variance > 0 ? "Over" : "Short"}
+                        </span>
+                        <span>{variance >= 0 ? "+" : ""}MVR {variance.toFixed(2)}</span>
+                      </div>
+                      {foreignSummary && Math.abs(variance) >= 0.005 && (
+                        <div data-testid="close-shift-fx-beside-variance" className="close-shift-variance__fx">
+                          {variance < 0 ? `Short MVR ${Math.abs(variance).toFixed(2)}` : `Over MVR ${variance.toFixed(2)}`}
+                          {" · "}
+                          {foreignSummary}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          )}
 
-          {(needsVarianceNote || showNotes) && (
-            <Field label={needsVarianceNote ? "Variance reason (required)" : "Notes (optional)"}>
-              <input
-                value={notes}
-                onChange={(e) => { setNotes(e.target.value); setErr(""); }}
-                placeholder={
-                  needsVarianceNote
-                    ? "e.g. Short change / found cash on floor"
-                    : "e.g. Found MVR 10 on floor"
-                }
-                className={`close-shift-input close-shift-notes${
-                  needsVarianceNote && !notes.trim() ? " is-required" : ""
-                }`}
-              />
-            </Field>
-          )}
-
-          {!needsVarianceNote && !showNotes && (
-            <button
-              type="button"
-              className="close-shift-link-btn close-shift-link-btn--quiet"
-              onClick={() => setShowNotes(true)}
-            >
-              Add a note (optional)
-            </button>
-          )}
-
-          {err && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
-        </div>
-
-        <footer className="close-shift-sheet__footer">
-          {method === "denominations" && (
-            <>
-              <div data-testid="close-shift-running-total" className="close-shift-running-total">
-                <span>Running total</span>
-                <strong>MVR {runningTotal.toFixed(2)}</strong>
-              </div>
-
+            {method === "denominations" && (
               <div className="close-shift-pad" data-testid="close-shift-count-pad">
                 <div className="close-shift-pad__active">
                   <span className="close-shift-pad__face">{labelForLaari(activeFace)}</span>
@@ -490,18 +494,40 @@ export function CloseShiftModal({
                   ))}
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          <div className="close-shift-actions">
-            <button type="button" onClick={onCancel} disabled={busy} className="close-shift-btn close-shift-btn--secondary">
-              Cancel
-            </button>
-            <button type="button" onClick={submit} disabled={busy} className="close-shift-btn close-shift-btn--danger">
-              {busy ? "Closing…" : "Close shift"}
-            </button>
-          </div>
-        </footer>
+            {(needsVarianceNote || showNotes) && (
+              <div className="close-shift-rail__notes">
+                <label className="close-shift-rail__notes-label">
+                  {needsVarianceNote ? "Variance reason (required)" : "Notes (optional)"}
+                </label>
+                <input
+                  value={notes}
+                  onChange={(e) => { setNotes(e.target.value); setErr(""); }}
+                  placeholder={
+                    needsVarianceNote
+                      ? "e.g. Short change / found cash on floor"
+                      : "e.g. Found MVR 10 on floor"
+                  }
+                  className={`close-shift-input close-shift-notes${
+                    needsVarianceNote && !notes.trim() ? " is-required" : ""
+                  }`}
+                />
+              </div>
+            )}
+
+            {err && <div className="close-shift-alert close-shift-alert--danger">{err}</div>}
+
+            <div className="close-shift-actions">
+              <button type="button" onClick={onCancel} disabled={busy} className="close-shift-btn close-shift-btn--secondary">
+                Cancel
+              </button>
+              <button type="button" onClick={submit} disabled={busy} className="close-shift-btn close-shift-btn--danger">
+                {busy ? "Closing…" : "Close shift"}
+              </button>
+            </div>
+          </aside>
+        </div>
       </div>
     </Overlay>
   );
