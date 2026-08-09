@@ -1820,8 +1820,10 @@ html, body, #root {
     margin: 0;
   }
 
+  /* Comfortable side gutters — the content should sit inset on a tablet,
+   * not run edge-to-edge. Scales 32px (portrait) → 72px (12.9" landscape). */
   .close-shift-sheet__header {
-    padding: max(10px, env(safe-area-inset-top, 0px)) 16px 8px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) clamp(32px, 5vw, 72px) 8px;
   }
 
   .close-shift-sheet__content {
@@ -1832,7 +1834,7 @@ html, body, #root {
   .close-shift-sheet__body {
     display: flex;
     flex-direction: column;
-    padding: 10px 16px 14px;
+    padding: 12px clamp(32px, 5vw, 72px) 14px;
   }
 
   .close-shift-denoms {
@@ -1929,7 +1931,8 @@ html, body, #root {
     min-height: 64px !important;
   }
 
-  /* Rail → one compact bottom bar: counted card | Cancel | Review & close. */
+  /* Rail → one compact bottom bar: counted card | Cancel | Review & close.
+   * Same side gutters as the list so everything lines up. */
   .close-shift-rail {
     flex: 0 0 auto;
     flex-direction: row;
@@ -1937,7 +1940,7 @@ html, body, #root {
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
-    padding: 10px 16px max(10px, env(safe-area-inset-bottom, 0px));
+    padding: 10px clamp(32px, 5vw, 72px) max(10px, env(safe-area-inset-bottom, 0px));
     border-left: none;
     border-top: 1px solid #E2E8F0;
     background: #fff;
