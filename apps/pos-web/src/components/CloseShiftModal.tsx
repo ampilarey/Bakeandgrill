@@ -505,7 +505,9 @@ export function CloseShiftModal({
                     </span>
                   </span>
                 </div>
-                {/* 4-column pad (C/⌫/0 in the last column) keeps it to 3 rows. */}
+                {/* iPad/desktop rail keypad (hidden on phones, where the
+                    per-cell − / + steppers do the job and "Enter total
+                    instead" covers typing a number). 4 columns = 3 rows. */}
                 <div className="close-shift-pad__keys" role="group" aria-label="Count keypad">
                   {["1", "2", "3", "clear", "4", "5", "6", "back", "7", "8", "9", "0"].map((key) => (
                     <button
