@@ -1269,10 +1269,12 @@ export function ContentHubPage() {
       return !contentBlocks.some((c) => c.key === titleKey);
     }).length;
     const brandCardCount = isBrandKit ? brandBlocksByKey.size : 0;
+    // Homepage layout chrome replaces legacy section-order/enable cards (Stage D).
+    const isHomeLayout = sectionName === 'Homepage';
     const cardCount = brandCardCount
       + visibleRegularCount
-      + sectionEnableBlocks.length
-      + (sectionOrderBlock ? 1 : 0);
+      + (isHomeLayout ? 0 : sectionEnableBlocks.length)
+      + (isHomeLayout ? 0 : (sectionOrderBlock ? 1 : 0));
 
     return (
       <SectionEditor

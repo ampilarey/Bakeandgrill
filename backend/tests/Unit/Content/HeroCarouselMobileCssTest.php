@@ -14,13 +14,16 @@ class HeroCarouselMobileCssTest extends TestCase
     {
         $blade = file_get_contents(resource_path('views/home.blade.php'));
         $this->assertIsString($blade);
+        $heroPartial = file_get_contents(resource_path('views/partials/home/hero.blade.php'));
+        $this->assertIsString($heroPartial);
 
         $this->assertMatchesRegularExpression(
             '/@media\s*\(max-width:\s*768px\)\s*\{\s*\.banner-btn\s*\{\s*display:\s*none/',
             $blade,
         );
         $this->assertStringContainsString('.banner-dots', $blade);
-        $this->assertStringContainsString('Touch swipe support for mobile', $blade);
+        // Swipe JS lives with the hero block partial (page_blocks render path).
+        $this->assertStringContainsString('Touch swipe support for mobile', $heroPartial);
         $this->assertMatchesRegularExpression(
             '/@media\s*\(min-width:\s*769px\)[\s\S]*?\.banner-btn\s*\{/',
             $blade,

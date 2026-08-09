@@ -203,7 +203,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
         border: '1px solid var(--color-border)',
         borderRadius: 12,
         padding: 14,
-        background: 'var(--color-surface, #fff)',
+        background: 'var(--color-surface)',
         marginBottom: 12,
       }}
     >
@@ -235,7 +235,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
             style={{
               ...btnSecondary,
               background: app === tab.id ? 'var(--color-primary)' : 'transparent',
-              color: app === tab.id ? '#fff' : 'var(--color-text-secondary)',
+              color: app === tab.id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
               borderColor: app === tab.id ? 'var(--color-primary)' : 'var(--color-border)',
             }}
           >
@@ -259,7 +259,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                 padding: '10px 12px',
                 borderRadius: 10,
                 border: '1px solid var(--color-border)',
-                background: block.is_enabled ? 'var(--color-bg, #fafafa)' : 'var(--color-border-light, #f3f3f3)',
+                background: block.is_enabled ? 'var(--color-bg)' : 'var(--color-border-light)',
                 opacity: block.is_enabled ? 1 : 0.7,
               }}
             >
@@ -276,7 +276,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                   {block.description}
                 </div>
                 {!block.removable && (
-                  <div style={{ fontSize: 11, color: 'var(--color-warning-strong, #92400e)', marginTop: 4, fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
                     Required — {block.non_removable_reason}
                   </div>
                 )}
@@ -290,7 +290,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                       style={{
                         ...chipBtn,
                         background: block.content_mode === 'shared' ? 'var(--color-primary)' : 'transparent',
-                        color: block.content_mode === 'shared' ? '#fff' : 'var(--color-text-secondary)',
+                        color: block.content_mode === 'shared' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
                       }}
                     >
                       Shared (both apps)
@@ -302,7 +302,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                       style={{
                         ...chipBtn,
                         background: block.content_mode === 'own' ? 'var(--color-primary)' : 'transparent',
-                        color: block.content_mode === 'own' ? '#fff' : 'var(--color-text-secondary)',
+                        color: block.content_mode === 'own' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
                       }}
                     >
                       This app only
@@ -364,7 +364,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-danger)', fontWeight: 600 }}>{error}</div>
       )}
       {previewMsg && (
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-success, #15803d)' }}>{previewMsg}</div>
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-success)' }}>{previewMsg}</div>
       )}
     </div>
   );
@@ -374,7 +374,7 @@ const btnSecondary: React.CSSProperties = {
   padding: '8px 12px',
   borderRadius: 8,
   border: '1px solid var(--color-border)',
-  background: '#fff',
+  background: 'var(--color-surface)',
   fontSize: 12,
   fontWeight: 700,
   cursor: 'pointer',
@@ -385,14 +385,14 @@ const btnPrimary: React.CSSProperties = {
   ...btnSecondary,
   background: 'var(--color-primary)',
   borderColor: 'var(--color-primary)',
-  color: '#fff',
+  color: 'var(--color-bg)',
 };
 
 const btnTiny: React.CSSProperties = {
   padding: '4px 8px',
   borderRadius: 6,
   border: '1px solid var(--color-border)',
-  background: '#fff',
+  background: 'var(--color-surface)',
   fontSize: 11,
   fontWeight: 600,
   cursor: 'pointer',

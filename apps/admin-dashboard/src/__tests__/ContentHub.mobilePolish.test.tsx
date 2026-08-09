@@ -41,6 +41,39 @@ vi.mock('../components/MediaPicker', () => ({
   MediaPicker: () => null,
 }));
 
+vi.mock('../api/pageBlocks', () => ({
+  fetchAdminPageBlocks: vi.fn(async (app: string) => ({
+    app,
+    page: 'home',
+    blocks: [
+      {
+        id: 1,
+        app,
+        page: 'home',
+        block_type: 'hero',
+        position: 0,
+        is_enabled: true,
+        content_mode: 'shared',
+        settings: {},
+        label: 'Hero banner',
+        description: 'Top slideshow on the home page.',
+        removable: true,
+        supports_shared_content: true,
+      },
+    ],
+    available_types: [],
+    unknown_types: [],
+  })),
+  reorderPageBlocks: vi.fn(),
+  updatePageBlock: vi.fn(),
+  deletePageBlock: vi.fn(),
+  createPageBlock: vi.fn(),
+  createPageBlockPreviewToken: vi.fn(async () => ({
+    token: 'layout-preview',
+    expires_in: 900,
+  })),
+}));
+
 const heroEnable = {
   key: 'section_hero_enabled',
   label: 'Show Hero Section',
@@ -261,7 +294,9 @@ describe('ContentHub mobile polish — systemic', () => {
       expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Homepage');
     });
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getByTestId('content-mode-home_section_order')).toBeTruthy();
+    // Homepage chrome is the page_blocks layout editor (legacy order card hidden).
+    expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
+    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
 
     fireEvent.click(screen.getByTestId('section-rail-Footer'));
     await waitFor(() => {
@@ -321,12 +356,12 @@ describe('ContentHub mobile polish — systemic', () => {
     await waitFor(() => {
       expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Homepage');
     });
-    // order + enable + proof_stat = 3
-    expect(screen.getByTestId('section-editor-count').textContent).toBe('3 blocks');
-    const homeCards = document.querySelectorAll(
-      '[data-testid="section-order-home_section_order"], [data-testid="section-enable-section_proof_enabled"], [data-testid="block-card-proof_stat"]',
-    );
-    expect(homeCards.length).toBe(3);
+    // Layout editor chrome + proof_stat content card (legacy order/enable hidden).
+    expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
+    expect(screen.getByTestId('section-editor-count').textContent).toMatch(/^1 blocks?$/);
+    expect(screen.getByTestId('block-card-proof_stat')).toBeTruthy();
+    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
+    expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
   });
 
   it('scope tabs still say Website / Order app (labelForScope not broken)', async () => {
@@ -382,9 +417,10 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     mockBlocks();
   });
 
-  it('mobile structure exposes full-width title containers on block, enable, and order cards', async () => {
+  it('mobile structure exposes full-width title containers on Homepage content cards', async () => {
     openSection('Homepage');
     await screen.findByTestId('section-editor');
+    await screen.findByTestId('home-layout-editor');
 
     // jsdom does not evaluate @media from stylesheets; apply the same mobile
     // stacking rules the 767px query in index.css defines, then assert structure.
@@ -395,35 +431,45 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
       .hub-block-card-actions { width: 100%; flex-shrink: 1; }
       .hub-section-enable { display: flex; flex-direction: column; align-items: stretch; }
       .hub-section-enable-face { width: 100%; flex: none; }
-      .hub-section-order-top { display: flex; flex-direction: column; align-items: stretch; }
-      .hub-section-order-titles { width: 100%; flex: none; }
     `;
     document.head.appendChild(style);
 
-    const orderCard = screen.getByTestId('section-order-home_section_order');
-    const orderTitles = orderCard.querySelector('.hub-section-order-titles') as HTMLElement;
-    const enableCard = screen.getByTestId('section-enable-section_proof_enabled');
-    const enableFace = enableCard.querySelector('.hub-section-enable-face') as HTMLElement;
+    // Legacy order/enable chrome is replaced by the layout editor on Homepage.
+    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
+    expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
+
     const blockCard = screen.getByTestId('block-card-proof_stat');
     const blockTitles = blockCard.querySelector('.hub-block-card-titles') as HTMLElement;
     const blockTop = blockCard.querySelector('.hub-block-card-top') as HTMLElement;
-    const orderTop = orderCard.querySelector('.hub-section-order-top') as HTMLElement;
 
-    expect(orderTitles).toBeTruthy();
-    expect(enableFace).toBeTruthy();
     expect(blockTitles).toBeTruthy();
-
     expect(getComputedStyle(blockTop).flexDirection).toBe('column');
-    expect(getComputedStyle(enableCard).flexDirection).toBe('column');
-    expect(getComputedStyle(orderTop).flexDirection).toBe('column');
     expect(getComputedStyle(blockTitles).width).toBe('100%');
-    expect(getComputedStyle(enableFace).width).toBe('100%');
-    expect(getComputedStyle(orderTitles).width).toBe('100%');
 
     const helper = within(blockCard).getByText(
       /Large number shown in the social proof band/i,
     );
     expect(helper.textContent!.trim().split(/\s+/).length).toBeGreaterThanOrEqual(4);
+
+    style.remove();
+  });
+
+  it('mobile structure exposes full-width face on section-enable cards', async () => {
+    openSection('Footer');
+    await screen.findByTestId('section-enable-section_footer_enabled');
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .hub-section-enable { display: flex; flex-direction: column; align-items: stretch; }
+      .hub-section-enable-face { width: 100%; flex: none; }
+    `;
+    document.head.appendChild(style);
+
+    const enableCard = screen.getByTestId('section-enable-section_footer_enabled');
+    const enableFace = enableCard.querySelector('.hub-section-enable-face') as HTMLElement;
+    expect(enableFace).toBeTruthy();
+    expect(getComputedStyle(enableCard).flexDirection).toBe('column');
+    expect(getComputedStyle(enableFace).width).toBe('100%');
 
     style.remove();
   });

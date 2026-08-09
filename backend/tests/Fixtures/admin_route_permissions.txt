@@ -208,12 +208,12 @@ backend/routes/domains/staff.php:184:staff.view
 backend/routes/domains/staff.php:188:integrations.xero
 backend/routes/domains/staff.php:199:integrations.webhooks
 backend/routes/domains/staff.php:211:website.manage
-backend/routes/domains/staff.php:234:roles_permissions.manage
-backend/routes/domains/staff.php:243:reports.view
-backend/routes/domains/staff.php:251:website.manage
-backend/routes/domains/staff.php:254:website.manage
-backend/routes/domains/staff.php:257:website.manage
+backend/routes/domains/staff.php:242:roles_permissions.manage
+backend/routes/domains/staff.php:251:reports.view
+backend/routes/domains/staff.php:259:website.manage
 backend/routes/domains/staff.php:262:website.manage
+backend/routes/domains/staff.php:265:website.manage
+backend/routes/domains/staff.php:270:website.manage
 backend/routes/domains/staff.php:34:settings.update
 backend/routes/domains/staff.php:53:service_availability.view
 backend/routes/domains/staff.php:55:service_availability.view
