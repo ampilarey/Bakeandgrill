@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
+import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
@@ -30,6 +31,7 @@ const SETTINGS_TABS = [
   { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
+  { id: 'currency',      label: 'Currency Photos',       desc: 'Note & coin photos shown on the POS cash count' },
 ] as const;
 
 type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
@@ -400,6 +402,7 @@ export function SettingsPage() {
       )}
       {active === 'notifications' && <NotificationsSettings />}
       {active === 'charges' && <ChargesSettings />}
+      {active === 'currency' && <CurrencyPhotosSettings />}
     </PageShell>
   );
 }
