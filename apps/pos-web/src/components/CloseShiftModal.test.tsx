@@ -244,6 +244,32 @@ describe("CloseShiftModal two-step blind close", () => {
     );
   });
 
+  it("Enter total instead shows the counted amount once — no duplicate readout", async () => {
+    const user = userEvent.setup();
+    render(
+      <CloseShiftModal
+        summary={summary()}
+        onReviewCount={reviewAgainst(350)}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByTestId("close-shift-method-toggle"));
+    // The big input IS the counted amount — the footer readout must not
+    // duplicate it.
+    expect(screen.queryByTestId("close-shift-running-total")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Digit 3" }));
+    await user.click(screen.getByRole("button", { name: "Digit 5" }));
+    await user.click(screen.getByRole("button", { name: "Digit 0" }));
+    expect(screen.queryByTestId("close-shift-running-total")).toBeNull();
+
+    // Back on the denomination view the readout returns.
+    await user.click(screen.getByTestId("close-shift-method-toggle"));
+    expect(screen.getByTestId("close-shift-running-total")).toBeTruthy();
+  });
+
   it("plain-total fallback goes through the same review step", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn().mockResolvedValue(undefined);
