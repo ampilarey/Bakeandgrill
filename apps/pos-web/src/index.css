@@ -1715,9 +1715,10 @@ html, body, #root {
   }
 }
 
-/* ── iPads (portrait 768/820 and landscape 1024) — edge-to-edge sheet,
- * single-column list LEFT, rail RIGHT, so the keypad never covers the
- * list and the default ten rows fit without scrolling. */
+/* ── Tablets (width-based fallback: iPad mini/9th-gen portrait 768–834 and
+ * small windows up to 1024) — edge-to-edge sheet, single-column list LEFT,
+ * rail RIGHT, so nothing covers the list and the ten default rows fit
+ * without scrolling. */
 @media (min-width: 700px) and (max-width: 1024px) {
   .close-shift-overlay {
     padding: 0 !important;
@@ -1745,8 +1746,44 @@ html, body, #root {
     padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 
-  /* iPads count with the − / + steppers (hold to repeat); the keypad is
-   * only for "Enter total instead", which brings its own. */
+  .close-shift-btn {
+    min-height: 50px;
+  }
+}
+
+/* ── All touch tablets, ANY width — modern iPads in landscape are wider
+ * than 1024 (10th gen 1080, Air 1180, Pro 11" 1194, Pro 12.9" 1366) and
+ * were falling into the desktop layout. `pointer: coarse` catches every
+ * iPad regardless of size/orientation: edge-to-edge two panes and NO
+ * keypad — counting is − / + (hold to repeat); "Enter total instead"
+ * brings its own keypad. Fine-pointer desktops keep the rail keypad. */
+@media (min-width: 700px) and (pointer: coarse) {
+  .close-shift-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  .close-shift-sheet {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .close-shift-sheet__header {
+    padding-top: max(10px, env(safe-area-inset-top, 0px));
+  }
+
+  .close-shift-sheet__content {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .close-shift-rail {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
   .close-shift-pad {
     display: none;
   }
