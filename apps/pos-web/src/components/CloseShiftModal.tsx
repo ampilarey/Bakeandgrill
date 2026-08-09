@@ -7,6 +7,7 @@ import {
   DEFAULT_NOTE_DENOMS_LAARI,
   MORE_DENOMS_LAARI,
   breakdownPayload,
+  currencyAssetForLaari,
   fromLaari,
   hasAnyDenomEntry,
   labelForLaari,
@@ -279,7 +280,7 @@ export function CloseShiftModal({
           </div>
           <p className="close-shift-sheet__subtitle">
             {method === "denominations"
-              ? "Count what is in the drawer — use − and + on each note (hold to repeat)."
+              ? "Tap or hold a note/coin photo to add — use − to remove (hold to repeat)."
               : "Enter the total cash you counted in the drawer."}
           </p>
           {attemptsSoFar >= 1 && step === "count" && (
@@ -604,15 +605,16 @@ export function CloseShiftModal({
 }
 
 /**
- * − / + with press-and-hold auto-repeat: one step on press, then repeats
- * after 450ms every 110ms while held. The click that follows pointerup is
- * suppressed so a tap never double-steps; keyboard activation (plain click
- * with no pointerdown) still works.
+ * Press-and-hold auto-repeat: one step on press, then repeats after 450ms
+ * every 110ms while held. The click that follows pointerup is suppressed so
+ * a tap never double-steps; keyboard activation (plain click with no
+ * pointerdown) still works.
  */
-function StepperBtn({ label, onStep, children }: {
+function StepperBtn({ label, onStep, children, className = "close-shift-stepper-btn" }: {
   label: string;
   onStep: () => void;
   children: React.ReactNode;
+  className?: string;
 }) {
   const timeoutRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -635,7 +637,7 @@ function StepperBtn({ label, onStep, children }: {
     <button
       type="button"
       aria-label={label}
-      className="close-shift-stepper-btn"
+      className={className}
       onPointerDown={() => {
         skipClickRef.current = true;
         onStep();
@@ -688,39 +690,43 @@ function DenomSection({
           const qty = parseCount(counts[face]);
           const lineMvr = fromLaari(face * qty).toFixed(2);
           const selected = activeFace === face;
+          const label = labelForLaari(face);
+          const asset = currencyAssetForLaari(face);
           return (
             <div
               key={face}
-              role="button"
-              tabIndex={0}
               ref={(el) => { rowRefs.current[face] = el; }}
               data-testid={`denom-row-${face}`}
               aria-pressed={selected}
-              className={`close-shift-denom-row${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
+              className={`close-shift-denom-row close-shift-denom-row--${asset.kind}${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
               onClick={() => onSelect(face)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(face);
-                }
-              }}
             >
-              <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
-              <div className="close-shift-denom-row__stepper" onClick={(e) => e.stopPropagation()}>
-                <StepperBtn label={`Decrease ${labelForLaari(face)}`} onStep={() => onBump(face, -1)}>
-                  −
-                </StepperBtn>
+              {/* Photo is the + control — tap / hold to count up. */}
+              <StepperBtn
+                label={`Increase ${label}`}
+                onStep={() => onBump(face, 1)}
+                className={`close-shift-denom-photo close-shift-denom-photo--${asset.kind}`}
+              >
+                <img
+                  src={asset.src}
+                  alt=""
+                  draggable={false}
+                  className="close-shift-denom-photo__img"
+                />
+                <span className="close-shift-denom-photo__caption">{label}</span>
                 <span
                   data-testid={`denom-count-${face}`}
-                  className="close-shift-denom-row__count"
-                  aria-label={`Count of ${labelForLaari(face)}`}
+                  className="close-shift-denom-photo__count"
+                  aria-label={`Count of ${label}`}
                 >
                   {qty}
                 </span>
-                <StepperBtn label={`Increase ${labelForLaari(face)}`} onStep={() => onBump(face, 1)}>
-                  +
-                </StepperBtn>
-              </div>
+              </StepperBtn>
+
+              <StepperBtn label={`Decrease ${label}`} onStep={() => onBump(face, -1)}>
+                −
+              </StepperBtn>
+
               <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
                 <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
                 <span className="close-shift-denom-row__line">MVR {lineMvr}</span>

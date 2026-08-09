@@ -44,6 +44,31 @@ export function labelForLaari(laari: number): string {
   return `${laari} laari`;
 }
 
+/** Thumbnail under `/pos/currency/` for the close-shift photo count UI. */
+export function currencyAssetForLaari(laari: number): { src: string; kind: "note" | "coin" } {
+  const base = (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) || "/pos/";
+  const kind: "note" | "coin" = laari >= 500 ? "note" : "coin";
+  const file =
+    laari === 100_000 ? "note-1000.webp"
+    : laari === 50_000 ? "note-500.webp"
+    : laari === 10_000 ? "note-100.webp"
+    : laari === 5_000 ? "note-50.webp"
+    : laari === 2_000 ? "note-20.webp"
+    : laari === 1_000 ? "note-10.webp"
+    : laari === 500 ? "note-5.webp"
+    : laari === 200 ? "coin-2.webp"
+    : laari === 100 ? "coin-1.webp"
+    : laari === 50 ? "coin-0.50.webp"
+    : laari === 25 ? "coin-0.25.webp"
+    : laari === 20 ? "coin-0.20.webp"
+    : laari === 10 ? "coin-0.10.webp"
+    : laari === 5 ? "coin-0.05.webp"
+    : laari === 2 ? "coin-0.02.webp"
+    : laari === 1 ? "coin-0.01.webp"
+    : kind === "note" ? "note-5.webp" : "coin-1.webp";
+  return { src: `${base}currency/${file}`, kind };
+}
+
 /** Parse a count box: empty → 0. */
 export function parseCount(raw: string | undefined | null): number {
   if (raw == null || raw.trim() === "") return 0;
