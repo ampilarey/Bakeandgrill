@@ -1193,6 +1193,54 @@ html, body, #root {
   gap: 12px;
 }
 
+/* Anchor for the "More notes & coins" overlay. */
+.close-shift-sheet__body {
+  position: relative;
+}
+
+.close-shift-more-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.42);
+  -webkit-backdrop-filter: blur(1.5px);
+  backdrop-filter: blur(1.5px);
+}
+
+.close-shift-more-overlay__panel {
+  width: 100%;
+  max-width: 760px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 18px;
+  background: #EEF2F7;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.35);
+}
+
+.close-shift-more-overlay__done {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  background: #0F172A;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close-shift-more-overlay__done:active {
+  background: #1E293B;
+}
+
 /* Denomination groups: small section title + a grid of separate cards. */
 .close-shift-denom-section {
   margin-top: 0;
@@ -1215,23 +1263,15 @@ html, body, #root {
   gap: 10px;
 }
 
-/* The expandable extras look different from the two always-on sections:
- * a tinted, dashed panel so it never blends into Notes/Coins above. */
-.close-shift-denom-section--more {
-  padding: 10px;
-  border: 1.5px dashed #94A3B8;
-  border-radius: 18px;
-  background: #E2E8F0;
-}
-
+/* Inside the overlay panel the extras keep their own tint. */
 .close-shift-denom-section--more .close-shift-denom-section__title {
-  color: #475569;
-  padding-top: 0;
+  color: #334155;
+  font-size: 12px;
+  padding-top: 2px;
 }
 
 .close-shift-denom-section--more .close-shift-denom-row {
   border-color: #CBD5E1;
-  box-shadow: none;
 }
 
 /* One card per denomination: photo (the + control) LEFT; count, − and the
@@ -1356,12 +1396,12 @@ html, body, #root {
 
 .close-shift-stepper-btn {
   width: 100%;
-  height: 36px;
-  border-radius: 10px;
+  height: 30px;
+  border-radius: 999px;
   border: none;
-  background: #EEF2F7;
+  background: #E2E8F0;
   color: #94A3B8;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
@@ -1442,10 +1482,11 @@ html, body, #root {
   text-align: center;
 }
 
-/* Locked while the "More" section holds a count — visible, not clickable. */
-.close-shift-link-btn:disabled {
-  opacity: 0.55;
-  cursor: default;
+/* Money is counted inside the (closed) More overlay — make that loud. */
+.close-shift-link-btn--counted {
+  border-color: #D4813A;
+  background: #FFF7ED;
+  color: #9A5B22;
 }
 
 /* "More notes & coins" + "Foreign currency" share one 44px row. */
@@ -1787,8 +1828,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 32px;
-    font-size: 16px;
+    height: 28px;
+    font-size: 15px;
   }
 
   .close-shift-denom-row__line {
@@ -2019,8 +2060,8 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 40px;
-    font-size: 19px;
+    height: 34px;
+    font-size: 18px;
   }
 
   .close-shift-denom-row__line {
@@ -2164,7 +2205,7 @@ html, body, #root {
   }
 
   .close-shift-stepper-btn {
-    height: 36px;
+    height: 30px;
   }
 
   .close-shift-rail {

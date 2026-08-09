@@ -147,11 +147,15 @@ export function CloseShiftModal({
         : 0;
 
   /**
-   * A count against a hidden face must never be silently dropped: force the
-   * "More notes & coins" section open (and un-collapsible) while it holds one.
+   * A count against a hidden face must never be silently dropped: while the
+   * overlay is closed, the toggle button shows how much is counted inside.
    */
-  const hiddenHasCount = MORE_DENOMS_LAARI.some((face) => parseCount(counts[face]) > 0);
-  const moreOpen = showMore || hiddenHasCount;
+  const hiddenLaari = MORE_DENOMS_LAARI.reduce(
+    (sum, face) => sum + face * parseCount(counts[face]),
+    0,
+  );
+  const hiddenHasCount = hiddenLaari > 0;
+  const moreOpen = showMore;
 
   const activeCount = counts[activeFace] ?? "";
 
@@ -353,19 +357,6 @@ export function CloseShiftModal({
                   rowRefs={rowRefs}
                   customImages={customImages}
                 />
-                {moreOpen && (
-                  <DenomSection
-                    className="close-shift-denom-section--more"
-                    title="More notes & coins"
-                    faces={[...MORE_DENOMS_LAARI]}
-                    counts={counts}
-                    activeFace={activeFace}
-                    onSelect={selectFace}
-                    onBump={bumpCount}
-                    rowRefs={rowRefs}
-                    customImages={customImages}
-                  />
-                )}
               </div>
             ) : (
               <div className="close-shift-plain-total">
@@ -382,20 +373,51 @@ export function CloseShiftModal({
               </div>
             )}
 
+            {/* "More" lives in a dimmed overlay so the main list never
+             * reflows or scrolls away — close it and you're exactly where
+             * you were. Counts made inside stay in the total either way. */}
+            {method === "denominations" && moreOpen && (
+              <div
+                className="close-shift-more-overlay"
+                data-testid="close-shift-more-overlay"
+                onClick={() => setShowMore(false)}
+              >
+                <div className="close-shift-more-overlay__panel" onClick={(e) => e.stopPropagation()}>
+                  <DenomSection
+                    className="close-shift-denom-section--more"
+                    title="More notes & coins"
+                    faces={[...MORE_DENOMS_LAARI]}
+                    counts={counts}
+                    activeFace={activeFace}
+                    onSelect={selectFace}
+                    onBump={bumpCount}
+                    rowRefs={rowRefs}
+                    customImages={customImages}
+                  />
+                  <button
+                    type="button"
+                    data-testid="close-shift-more-done"
+                    className="close-shift-more-overlay__done"
+                    onClick={() => setShowMore(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="close-shift-foreign">
               <div className="close-shift-inline-toggles">
                 {method === "denominations" && (
                   <button
                     type="button"
                     data-testid="close-shift-more-coins"
-                    className="close-shift-link-btn"
-                    // A count against a hidden face must never be silently
-                    // dropped — lock the section open instead of hiding
-                    // this button (which looked like it vanished).
-                    disabled={hiddenHasCount}
+                    className={`close-shift-link-btn${hiddenHasCount ? " close-shift-link-btn--counted" : ""}`}
                     onClick={() => setShowMore((v) => !v)}
                   >
-                    {hiddenHasCount ? "In use — counted above" : moreOpen ? "Hide notes & coins" : "More notes & coins"}
+                    {hiddenHasCount
+                      ? `More · ${compactMvr(hiddenLaari)} counted`
+                      : "More notes & coins"}
                   </button>
                 )}
                 <button
