@@ -351,6 +351,25 @@ html, body, #root {
   opacity: 0.85;
   pointer-events: none;
 }
+
+/* Credit in the main tender row is phone-only; iPad keeps the
+ * secondary "Credit Account" chip (see mobile block below). */
+.pos-charge-credit-inline {
+  display: none !important;
+}
+.pos-charge-tender-btn--credit {
+  background: #EFF6FF !important;
+  color: #1D4ED8 !important;
+  border: 1px solid #BFDBFE !important;
+}
+.pos-charge-tender-btn--credit-active {
+  background: #1D4ED8 !important;
+  color: #fff !important;
+  border: 1px solid #1D4ED8 !important;
+}
+.pos-charge-credit-inline.is-muted {
+  opacity: 0.7;
+}
 .pos-cart-body {
   flex: 1;
   min-height: 0;
@@ -630,10 +649,28 @@ html, body, #root {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 6px !important;
   }
+  /* When Credit joins the row, squeeze five equal chips. */
+  .pos-charge-tenders:has(.pos-charge-credit-inline) {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+  .pos-charge-credit-inline {
+    display: flex !important;
+  }
+  .pos-charge-credit-row-btn {
+    display: none !important;
+  }
+  /* Secondary row only needed for wallet once Credit is inline. */
+  .pos-charge-extra-tenders:not(:has(.pos-charge-wallet-btn)) {
+    display: none !important;
+  }
+  /* Attach / no-account hints only after Credit is selected. */
+  .pos-charge-credit-hints:not(.is-active) .pos-charge-credit-hint {
+    display: none;
+  }
   .pos-charge-tender-btn {
     min-height: 44px !important;
     padding: 10px 2px !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     border-radius: 10px !important;
     touch-action: manipulation;
     white-space: nowrap;
@@ -642,6 +679,9 @@ html, body, #root {
   }
   .pos-charge-tender-btn--active {
     box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.45);
+  }
+  .pos-charge-tender-btn--credit-active {
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.4);
   }
   .pos-charge-confirm-label {
     display: flex;

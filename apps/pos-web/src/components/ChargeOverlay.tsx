@@ -478,7 +478,9 @@ export function ChargeOverlay({
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
-              {/* Base tenders always share one equal-width row (iPad-friendly). */}
+              {/* Base tenders share one equal-width row. On phones, Credit
+                  joins this row (short label); iPad keeps Credit Account
+                  on the secondary row below (see .pos-charge-credit-*). */}
               <div
                 className="pos-charge-tenders"
                 style={{
@@ -502,11 +504,36 @@ export function ChargeOverlay({
                     }}
                   >{METHOD_LABEL[m]}</button>
                 ))}
+                {(creditEligible || canPayCredit) && !isOffline && (
+                  <button
+                    type="button"
+                    className={[
+                      "pos-charge-tender-btn",
+                      "pos-charge-credit-inline",
+                      method === "house_account"
+                        ? "pos-charge-tender-btn--active pos-charge-tender-btn--credit-active"
+                        : "pos-charge-tender-btn--credit",
+                      !creditEligible ? "is-muted" : "",
+                    ].filter(Boolean).join(" ")}
+                    onClick={() => {
+                      setMethod("house_account");
+                      // FIX 8 — force a fresh customer credit summary
+                      // the moment the cashier taps this tender so the
+                      // banner shows the live available balance, not
+                      // a stale value from when the overlay opened.
+                      onSelectCredit?.();
+                    }}
+                  >
+                    Credit
+                  </button>
+                )}
               </div>
               {((creditEligible || canPayCredit) || walletEligible) && !isOffline && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <div className="pos-charge-extra-tenders" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {(creditEligible || canPayCredit) && (
                     <button
+                      type="button"
+                      className="pos-charge-credit-row-btn"
                       onClick={() => {
                         setMethod("house_account");
                         // FIX 8 — force a fresh customer credit summary
@@ -529,6 +556,8 @@ export function ChargeOverlay({
                   )}
                   {walletEligible && (
                     <button
+                      type="button"
+                      className="pos-charge-wallet-btn"
                       onClick={() => setMethod("wallet")}
                       style={{
                         flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
@@ -542,31 +571,33 @@ export function ChargeOverlay({
                 </div>
               )}
               {/*
-                FIX 9c — discoverability hints. Rendered as muted rows
-                below the tender chips so cashiers see WHY the Credit
-                button is disabled instead of guessing:
+                FIX 9c — discoverability hints. On iPad/desktop these stay
+                visible under the Credit Account chip. On phones they only
+                appear after Credit is selected (saves vertical space).
                   • has permission, no customer → "attach a customer"
                   • has permission, customer without credit account →
                     "customer has no credit account"
               */}
-              {canPayCredit && !isOffline && !hasAttachedCustomer && (
-                <div style={{
-                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                  fontSize: 12, color: "#64748B",
-                }}>
-                  Attach a customer to charge a credit account.
-                </div>
-              )}
-              {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
-                <div style={{
-                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                  fontSize: 12, color: "#64748B",
-                }}>
-                  Customer has no credit account.
-                </div>
-              )}
+              <div className={`pos-charge-credit-hints${method === "house_account" ? " is-active" : ""}`}>
+                {canPayCredit && !isOffline && !hasAttachedCustomer && (
+                  <div className="pos-charge-credit-hint" style={{
+                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                    fontSize: 12, color: "#64748B",
+                  }}>
+                    Attach a customer to charge a credit account.
+                  </div>
+                )}
+                {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
+                  <div className="pos-charge-credit-hint" style={{
+                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                    fontSize: 12, color: "#64748B",
+                  }}>
+                    Customer has no credit account.
+                  </div>
+                )}
+              </div>
               {method === "house_account" && (
                 <div style={{
                   marginTop: 8, padding: "10px 12px", borderRadius: 8,
