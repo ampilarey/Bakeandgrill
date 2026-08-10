@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Field, Overlay } from "./OpenShiftModal";
 import { CashInput } from "./CashInput";
 import type { ShiftSummary } from "../hooks/useShift";
+import { fetchCurrencyImages, getApiBaseUrl } from "../api";
 import {
   COMMON_COIN_DENOMS_LAARI,
   DEFAULT_NOTE_DENOMS_LAARI,
   MORE_DENOMS_LAARI,
   breakdownPayload,
+  currencyAssetForLaari,
   fromLaari,
   hasAnyDenomEntry,
   labelForLaari,
@@ -95,6 +97,16 @@ export function CloseShiftModal({
   /** Attempts recorded so far — shown quietly after a recount. */
   const [attemptsSoFar, setAttemptsSoFar] = useState(0);
   const rowRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  /** Owner-uploaded photo overrides (face → URL); bundled photos otherwise. */
+  const [customImages, setCustomImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let alive = true;
+    void fetchCurrencyImages().then((images) => {
+      if (alive) setCustomImages(images);
+    });
+    return () => { alive = false; };
+  }, []);
 
   const countedLaari = useMemo(() => {
     if (method === "denominations") return totalLaariFromCounts(counts);
@@ -135,11 +147,18 @@ export function CloseShiftModal({
         : 0;
 
   /**
-   * A count against a hidden face must never be silently dropped: force the
-   * "More notes & coins" section open (and un-collapsible) while it holds one.
+   * A count against a hidden face must never be silently dropped: while the
+   * overlay is closed, the toggle button shows how much is counted inside.
    */
-  const hiddenHasCount = MORE_DENOMS_LAARI.some((face) => parseCount(counts[face]) > 0);
-  const moreOpen = showMore || hiddenHasCount;
+  const hiddenLaari = MORE_DENOMS_LAARI.reduce(
+    (sum, face) => sum + face * parseCount(counts[face]),
+    0,
+  );
+  const hiddenHasCount = hiddenLaari > 0;
+  const moreOpen = showMore;
+
+  /** Foreign rows with a recorded MVR value — shown on the toggle when closed. */
+  const foreignNotedCount = foreignRows.filter((r) => r.accepted_mvr.trim() !== "").length;
 
   const activeCount = counts[activeFace] ?? "";
 
@@ -279,7 +298,7 @@ export function CloseShiftModal({
           </div>
           <p className="close-shift-sheet__subtitle">
             {method === "denominations"
-              ? "Count what is in the drawer — use − and + on each note (hold to repeat)."
+              ? "Tap or hold a note/coin photo to add — use − to remove (hold to repeat)."
               : "Enter the total cash you counted in the drawer."}
           </p>
           {attemptsSoFar >= 1 && step === "count" && (
@@ -329,6 +348,7 @@ export function CloseShiftModal({
                   onSelect={selectFace}
                   onBump={bumpCount}
                   rowRefs={rowRefs}
+                  customImages={customImages}
                 />
                 <DenomSection
                   title="Coins"
@@ -338,18 +358,8 @@ export function CloseShiftModal({
                   onSelect={selectFace}
                   onBump={bumpCount}
                   rowRefs={rowRefs}
+                  customImages={customImages}
                 />
-                {moreOpen && (
-                  <DenomSection
-                    title="More notes & coins"
-                    faces={[...MORE_DENOMS_LAARI]}
-                    counts={counts}
-                    activeFace={activeFace}
-                    onSelect={selectFace}
-                    onBump={bumpCount}
-                    rowRefs={rowRefs}
-                  />
-                )}
               </div>
             ) : (
               <div className="close-shift-plain-total">
@@ -366,29 +376,75 @@ export function CloseShiftModal({
               </div>
             )}
 
+            {/* "More" lives in a dimmed overlay so the main list never
+             * reflows or scrolls away — close it and you're exactly where
+             * you were. Counts made inside stay in the total either way. */}
+            {method === "denominations" && moreOpen && (
+              <div
+                className="close-shift-more-overlay"
+                data-testid="close-shift-more-overlay"
+                onClick={() => setShowMore(false)}
+              >
+                <div className="close-shift-more-overlay__panel" onClick={(e) => e.stopPropagation()}>
+                  <DenomSection
+                    className="close-shift-denom-section--more"
+                    title="More notes & coins"
+                    faces={[...MORE_DENOMS_LAARI]}
+                    counts={counts}
+                    activeFace={activeFace}
+                    onSelect={selectFace}
+                    onBump={bumpCount}
+                    rowRefs={rowRefs}
+                    customImages={customImages}
+                  />
+                  <button
+                    type="button"
+                    data-testid="close-shift-more-done"
+                    className="close-shift-more-overlay__done"
+                    onClick={() => setShowMore(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="close-shift-foreign">
               <div className="close-shift-inline-toggles">
-                {method === "denominations" && !hiddenHasCount && (
+                {method === "denominations" && (
                   <button
                     type="button"
                     data-testid="close-shift-more-coins"
-                    className="close-shift-link-btn"
+                    className={`close-shift-link-btn${hiddenHasCount ? " close-shift-link-btn--counted" : ""}`}
                     onClick={() => setShowMore((v) => !v)}
                   >
-                    {moreOpen ? "Hide notes & coins" : "More notes & coins"}
+                    {hiddenHasCount
+                      ? `More · ${compactMvr(hiddenLaari)} counted`
+                      : "More notes & coins"}
                   </button>
                 )}
                 <button
                   type="button"
                   data-testid="close-shift-foreign-toggle"
-                  className="close-shift-link-btn"
+                  className={`close-shift-link-btn${foreignNotedCount > 0 ? " close-shift-link-btn--counted" : ""}`}
                   onClick={() => setShowForeign((v) => !v)}
                 >
-                  {showForeign ? "Hide foreign currency" : "Foreign currency"}
+                  {foreignNotedCount > 0
+                    ? `Foreign currency · ${foreignNotedCount} noted`
+                    : "Foreign currency"}
                 </button>
               </div>
+              {/* Same popup pattern as "More notes & coins": dim the sheet,
+               * panel on top — the main list never moves. */}
               {showForeign && (
-                <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
+                <div
+                  className="close-shift-more-overlay"
+                  data-testid="close-shift-foreign-overlay"
+                  onClick={() => setShowForeign(false)}
+                >
+                  <div className="close-shift-more-overlay__panel" onClick={(e) => e.stopPropagation()}>
+                    <div className="close-shift-denom-section__title">Foreign currency</div>
+                    <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
                   <div className="close-shift-hint">
                     Record only — does not change the counted cash.
                     Enter the MVR value you accepted it as at the till.
@@ -460,6 +516,16 @@ export function CloseShiftModal({
                   >
                     + Add foreign note
                   </button>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="close-shift-foreign-done"
+                      className="close-shift-more-overlay__done"
+                      onClick={() => setShowForeign(false)}
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -604,15 +670,16 @@ export function CloseShiftModal({
 }
 
 /**
- * − / + with press-and-hold auto-repeat: one step on press, then repeats
- * after 450ms every 110ms while held. The click that follows pointerup is
- * suppressed so a tap never double-steps; keyboard activation (plain click
- * with no pointerdown) still works.
+ * Press-and-hold auto-repeat: one step on press, then repeats after 450ms
+ * every 110ms while held. The click that follows pointerup is suppressed so
+ * a tap never double-steps; keyboard activation (plain click with no
+ * pointerdown) still works.
  */
-function StepperBtn({ label, onStep, children }: {
+function StepperBtn({ label, onStep, children, className = "close-shift-stepper-btn" }: {
   label: string;
   onStep: () => void;
   children: React.ReactNode;
+  className?: string;
 }) {
   const timeoutRef = useRef<number | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -635,7 +702,7 @@ function StepperBtn({ label, onStep, children }: {
     <button
       type="button"
       aria-label={label}
-      className="close-shift-stepper-btn"
+      className={className}
       onPointerDown={() => {
         skipClickRef.current = true;
         onStep();
@@ -661,6 +728,23 @@ function StepperBtn({ label, onStep, children }: {
   );
 }
 
+/** Compact line total: "1500" not "MVR 1500.00"; decimals only when real (0.25, 12.5). */
+function compactMvr(laari: number): string {
+  const mvr = fromLaari(laari);
+  if (Number.isInteger(mvr)) return String(mvr);
+  return mvr.toFixed(2).replace(/0$/, "");
+}
+
+/** /storage URLs live at the site root, not under the API prefix. */
+function absoluteMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  try {
+    return new URL(path, getApiBaseUrl()).toString();
+  } catch {
+    return path;
+  }
+}
+
 function DenomSection({
   title,
   faces,
@@ -669,6 +753,8 @@ function DenomSection({
   onSelect,
   onBump,
   rowRefs,
+  customImages,
+  className,
 }: {
   title: string;
   faces: number[];
@@ -677,9 +763,11 @@ function DenomSection({
   onSelect: (face: number) => void;
   onBump: (face: number, delta: number) => void;
   rowRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
+  customImages: Record<string, string>;
+  className?: string;
 }) {
   return (
-    <div className="close-shift-denom-section">
+    <div className={`close-shift-denom-section${className ? ` ${className}` : ""}`}>
       <div className="close-shift-denom-section__title">{title}</div>
       <div className="close-shift-denom-grid">
         {faces.map((face) => {
@@ -688,42 +776,56 @@ function DenomSection({
           const qty = parseCount(counts[face]);
           const lineMvr = fromLaari(face * qty).toFixed(2);
           const selected = activeFace === face;
+          const label = labelForLaari(face);
+          const asset = currencyAssetForLaari(face);
+          const custom = customImages[String(face)];
+          const src = custom ? absoluteMediaUrl(custom) : asset.src;
           return (
             <div
               key={face}
-              role="button"
-              tabIndex={0}
               ref={(el) => { rowRefs.current[face] = el; }}
               data-testid={`denom-row-${face}`}
               aria-pressed={selected}
-              className={`close-shift-denom-row${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
+              className={`close-shift-denom-row close-shift-denom-row--${asset.kind}${selected ? " is-selected" : ""}${qty > 0 ? " has-count" : ""}`}
               onClick={() => onSelect(face)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(face);
-                }
-              }}
             >
-              <span className="close-shift-denom-row__face">{labelForLaari(face)}</span>
-              <div className="close-shift-denom-row__stepper" onClick={(e) => e.stopPropagation()}>
-                <StepperBtn label={`Decrease ${labelForLaari(face)}`} onStep={() => onBump(face, -1)}>
-                  −
-                </StepperBtn>
+              {/* Photo is the + control — tap / hold to count up. */}
+              <StepperBtn
+                label={`Increase ${label}`}
+                onStep={() => onBump(face, 1)}
+                className={`close-shift-denom-photo close-shift-denom-photo--${asset.kind}`}
+              >
+                <img
+                  src={src}
+                  alt=""
+                  draggable={false}
+                  className="close-shift-denom-photo__img"
+                  onError={(e) => {
+                    // Custom photo missing/broken — fall back to the bundled one.
+                    if (custom && e.currentTarget.src !== asset.src) {
+                      e.currentTarget.src = asset.src;
+                    }
+                  }}
+                />
+              </StepperBtn>
+
+              {/* Right column: count → − → line total. */}
+              <span className="close-shift-denom-row__meta" onClick={(e) => e.stopPropagation()}>
                 <span
                   data-testid={`denom-count-${face}`}
                   className="close-shift-denom-row__count"
-                  aria-label={`Count of ${labelForLaari(face)}`}
+                  aria-label={`Count of ${label}`}
                 >
                   {qty}
                 </span>
-                <StepperBtn label={`Increase ${labelForLaari(face)}`} onStep={() => onBump(face, 1)}>
-                  +
+                <StepperBtn label={`Decrease ${label}`} onStep={() => onBump(face, -1)}>
+                  −
                 </StepperBtn>
-              </div>
-              <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
-                <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"}</span>
-                <span className="close-shift-denom-row__line">MVR {lineMvr}</span>
+                <span className="close-shift-denom-row__totals" data-testid={`denom-line-${face}`}>
+                  {/* Full wording for screen readers; the visible total is compact. */}
+                  <span className="close-shift-denom-row__qty">{qty} {unit}{qty === 1 ? "" : "s"} · MVR {lineMvr}</span>
+                  <span className="close-shift-denom-row__line">{compactMvr(face * qty)}</span>
+                </span>
               </span>
             </div>
           );

@@ -229,6 +229,10 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/admin/content/{key}/split', [App\Http\Controllers\Api\ContentController::class, 'split']);
         Route::post('/admin/content/{key}/copy', [App\Http\Controllers\Api\ContentController::class, 'copy']);
 
+        // POS close-shift currency photos (note/coin thumbnails).
+        Route::post('/admin/currency-images/{face}', [App\Http\Controllers\Api\CurrencyImageController::class, 'store'])->whereNumber('face');
+        Route::delete('/admin/currency-images/{face}', [App\Http\Controllers\Api\CurrencyImageController::class, 'destroy'])->whereNumber('face');
+
         // Home page builder — layout instances per app (not content keys).
         Route::get('/admin/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'index']);
         Route::post('/admin/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'store']);

@@ -172,6 +172,10 @@ Route::get('/page-blocks', [App\Http\Controllers\Api\PageBlockController::class,
 Route::get('/site-settings/public', [App\Http\Controllers\Api\SiteSettingsController::class, 'public'])
     ->middleware('throttle:60,1');
 
+// POS close-shift currency photos — public map of face → custom photo URL.
+Route::get('/currency-images', [App\Http\Controllers\Api\CurrencyImageController::class, 'index'])
+    ->middleware('throttle:60,1');
+
 require __DIR__ . '/domains/signage.php';
 
 Route::get('/system/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);

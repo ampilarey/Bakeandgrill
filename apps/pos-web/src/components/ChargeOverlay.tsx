@@ -1,9 +1,60 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { fetchCurrencyImages, getApiBaseUrl } from "../api";
+import { currencyAssetForLaari } from "../utils/cashDenominations";
 import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
+
+/** Maldivian note faces (MVR) available as photo quick-tenders. */
+export const QUICK_NOTES_MVR = [5, 10, 20, 50, 100, 500, 1000] as const;
+
+/**
+ * Pick up to `max` note photos for Charge quick amounts.
+ *
+ * Cashiers multi-select notes into Received, so we must offer useful
+ * notes *below* the total (e.g. 500+100+50 for a 605 bill) as well as
+ * covering notes above it — not only faces ≥ total (which left a 605
+ * bill with just the 1000 photo).
+ *
+ * Strategy: take the largest notes under the total (combine), then the
+ * smallest notes at/above the total (single-note cover / change), fill
+ * to `max`, display ascending.
+ */
+export function pickChargeQuickNotes(total: number, max = 5): number[] {
+  if (!(total > 0) || max <= 0) return [];
+  const belowDesc = QUICK_NOTES_MVR.filter((n) => n < total).slice().sort((a, b) => b - a);
+  const aboveAsc = QUICK_NOTES_MVR.filter((n) => n >= total).slice().sort((a, b) => a - b);
+
+  const picked: number[] = [];
+  const used = new Set<number>();
+  const take = (n: number) => {
+    if (picked.length >= max || used.has(n)) return;
+    picked.push(n);
+    used.add(n);
+  };
+
+  // Prefer up to 3 combine-friendly notes under the total (largest first).
+  for (const n of belowDesc.slice(0, 3)) take(n);
+  // Then covering notes (smallest overpay first).
+  for (const n of aboveAsc) take(n);
+  // Fill remaining slots from leftover below notes, then any leftover above.
+  for (const n of belowDesc) take(n);
+  for (const n of aboveAsc) take(n);
+
+  return picked.sort((a, b) => a - b);
+}
+
+/** /storage URLs live at the site root, not under the API prefix. */
+function absoluteMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  try {
+    return new URL(path, getApiBaseUrl()).toString();
+  } catch {
+    return path;
+  }
+}
 
 type Props = {
   total: number;
@@ -144,8 +195,21 @@ export function ChargeOverlay({
       || (deliveryFee ?? 0) > 0
       || (giftTender ?? 0) > 0
     ));
+  /** Phone: collapse Discount / service / fees / gift under a chevron so
+   *  the Received | breakdown row stays short. iPad always shows all. */
+  const hasExtraBreakdown =
+    (discount ?? 0) > 0
+    || (serviceCharge ?? 0) > 0
+    || (packagingFee ?? 0) > 0
+    || (deliveryFee ?? 0) > 0
+    || (giftTender ?? 0) > 0;
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
+  /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
+  const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
+  /** Owner-uploaded note photos (laari face → URL); bundled assets otherwise. */
+  const [customImages, setCustomImages] = useState<Record<string, string>>({});
   /**
    * Split-tender mode. When on, the cashier enters how much is being
    * collected on the selected non-cash method; the remainder is
@@ -155,10 +219,42 @@ export function ChargeOverlay({
    */
   const [split, setSplit] = useState(false);
   const [splitAmount, setSplitAmount] = useState<string>("");
+  /** Phone Charge layout: Received sits beside Subtotal/GST (one CashInput only). */
+  const [isPhoneCharge, setIsPhoneCharge] = useState(() => {
+    try {
+      return typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 840px)").matches;
+    } catch {
+      return false;
+    }
+  });
+
+  // Same source as Close shift — Admin → Currency Photos.
+  useEffect(() => {
+    let alive = true;
+    void fetchCurrencyImages().then((images) => {
+      if (alive) setCustomImages(images);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 840px)");
+    const apply = () => setIsPhoneCharge(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   // Reset the received-amount input whenever the total or method changes —
   // otherwise a stale value from a prior order can linger.
-  useEffect(() => { setReceived(total > 0 ? total.toFixed(2) : ""); }, [total, method]);
+  useEffect(() => {
+    setReceived(total > 0 ? total.toFixed(2) : "");
+    setSelectedNotes([]);
+    setBreakdownOpen(false);
+  }, [total, method]);
 
   useEffect(() => {
     if (method === "house_account" || method === "wallet") return;
@@ -207,58 +303,32 @@ export function ChargeOverlay({
       ? Number.isFinite(receivedNum) && receivedNum >= total
       : true);
 
-  // Quick-amount buttons.
-  //
-  // Old logic produced nonsense like `ceil(total) + 5` (e.g. for a
-  // 37.50 total it suggested 43, 48, 58, 88 …). Cashiers don't see
-  // payments like that — customers hand them actual MVR denominations.
-  //
-  // New algorithm, tuned for Maldivian cash:
-  //   - Notes:  5, 10, 20, 50, 100, 500, 1000
-  //   - Coins:  0.25, 0.50, 1, 2  (rarely "quick", usually exact)
-  //
-  // We surface, in this order, capped at 6 chips:
-  //   1. The exact total (cashier confirms when the customer hands
-  //      the precise amount in coins).
-  //   2. Each single-note denomination that's >= total — for
-  //      "customer hands one bill" which is the dominant case.
-  //   3. A few round-up combinations (the next multiple of 50 / 100
-  //      / 500 etc.) so things like a 235 total surface 250 and 300,
-  //      not 240 (which nobody actually hands in MVR notes). Steps
-  //      are tiered by magnitude so the small/large total cases both
-  //      stay sensible.
-  const quick = useMemo<number[]>(() => {
-    if (total <= 0) return [];
+  // Quick tenders: note photos the cashier can tap (multi-select) plus
+  // an Exact button. Always aim for 5 useful faces — mix of notes below
+  // the total (combine) and at/above it (single cover). Tapping toggles;
+  // Received = sum of selected faces (e.g. 10 + 20 → 30).
+  const quickNotes = useMemo<number[]>(() => pickChargeQuickNotes(total, 5), [total]);
 
-    const exact = Math.round(total * 100) / 100;
-    const set = new Set<number>([exact]);
+  const exactTotal = Math.round(total * 100) / 100;
+  const exactSelected =
+    selectedNotes.length === 0
+    && Number.isFinite(receivedNum)
+    && Math.abs(receivedNum - exactTotal) < 0.005;
 
-    const NOTES = [5, 10, 20, 50, 100, 500, 1000];
-    for (const note of NOTES) {
-      if (note >= total) set.add(note);
-    }
+  const applySelectedNotes = (notes: number[]) => {
+    setSelectedNotes(notes);
+    const sum = notes.reduce((a, b) => a + b, 0);
+    setReceived(sum > 0 ? sum.toFixed(2) : "");
+  };
 
-    // Step sizes scale with the total so we don't suggest MVR 240 for
-    // a MVR 235 order (no Maldivian customer combines notes like that).
-    const steps =
-      total < 20  ? [5, 10, 20, 50, 100] :
-      total < 100 ? [10, 20, 50, 100, 500] :
-      total < 500 ? [50, 100, 500, 1000] :
-                    [100, 500, 1000];
-    for (const step of steps) {
-      const r = Math.ceil(total / step) * step;
-      if (r > total) set.add(r);
-    }
-
-    return Array.from(set)
-      .filter((v) => v >= total)
-      .sort((a, b) => a - b)
-      .slice(0, 6);
-  }, [total]);
+  const toggleNote = (face: number) => {
+    const next = selectedNotes.includes(face)
+      ? selectedNotes.filter((n) => n !== face)
+      : [...selectedNotes, face];
+    applySelectedNotes(next);
+  };
 
   // Pretty-print: whole MVR → no decimals, fractional → 2 dp.
-  // The previous overlay used `.toFixed(0)` everywhere, which silently
-  // turned a 37.50 "exact" chip into "MVR 38" — visibly wrong.
   const fmtChip = (n: number) =>
     Number.isInteger(n) ? `MVR ${n}` : `MVR ${n.toFixed(2)}`;
 
@@ -406,35 +476,76 @@ export function ChargeOverlay({
             justifyContent: "center", alignItems: "stretch", background: "#0F172A",
             color: "#fff",
           }}>
-            {showBreakdown && (
-              <div className="pos-charge-breakdown" style={{
-                marginBottom: 18, padding: "10px 14px", borderRadius: 10,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                fontSize: 13, color: "#CBD5E1",
-                display: "grid", rowGap: 4,
-              }}>
-                <Line label="Subtotal" value={subtotal ?? 0} />
-                {(discount ?? 0) > 0 && (
-                  <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
-                )}
-                {(serviceCharge ?? 0) > 0 && (
-                  <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
-                )}
-                {(packagingFee ?? 0) > 0 && (
-                  <Line label="Packaging" value={packagingFee ?? 0} />
-                )}
-                {(deliveryFee ?? 0) > 0 && (
-                  <Line label="Delivery fee" value={deliveryFee ?? 0} />
-                )}
-                {(tax ?? 0) > 0 && (
-                  <Line label="GST" value={tax ?? 0} />
-                )}
-                {(giftTender ?? 0) > 0 && (
-                  <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
-                )}
-              </div>
-            )}
+            {/* On phones: Received | Subtotal/GST share one row. iPad/desktop
+                hide the received card here and keep it in the tender column. */}
+            <div className={`pos-charge-summary-top${method === "cash" && !fullyCovered && isPhoneCharge ? " has-received" : ""}`}>
+              {method === "cash" && !fullyCovered && isPhoneCharge && (
+                <div className="pos-charge-received-card">
+                  <p className="pos-charge-received-label">Received</p>
+                  <CashInput
+                    autoFocus
+                    value={received}
+                    onChange={(v) => {
+                      setSelectedNotes([]);
+                      setReceived(v);
+                    }}
+                    placeholder="0.00"
+                    showNumpad={false}
+                  />
+                </div>
+              )}
+              {showBreakdown && (
+                <div
+                  className={[
+                    "pos-charge-breakdown",
+                    isPhoneCharge && hasExtraBreakdown && !breakdownOpen ? "is-collapsed" : "",
+                    isPhoneCharge && breakdownOpen ? "is-expanded" : "",
+                  ].filter(Boolean).join(" ")}
+                  style={{
+                  marginBottom: 18, padding: "10px 14px", borderRadius: 10,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: 13, color: "#CBD5E1",
+                  display: "grid", rowGap: 4,
+                }}>
+                  <Line label="Subtotal" value={subtotal ?? 0} />
+                  {/* Phone collapsed: only Subtotal + GST. Extras expand on tap.
+                      iPad / expanded phone: full stack. */}
+                  {(!isPhoneCharge || breakdownOpen) && (discount ?? 0) > 0 && (
+                    <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
+                  )}
+                  {(!isPhoneCharge || breakdownOpen) && (serviceCharge ?? 0) > 0 && (
+                    <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
+                  )}
+                  {(!isPhoneCharge || breakdownOpen) && (packagingFee ?? 0) > 0 && (
+                    <Line label="Packaging" value={packagingFee ?? 0} />
+                  )}
+                  {(!isPhoneCharge || breakdownOpen) && (deliveryFee ?? 0) > 0 && (
+                    <Line label="Delivery fee" value={deliveryFee ?? 0} />
+                  )}
+                  {(tax ?? 0) > 0 && (
+                    <Line label="GST" value={tax ?? 0} />
+                  )}
+                  {(!isPhoneCharge || breakdownOpen) && (giftTender ?? 0) > 0 && (
+                    <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
+                  )}
+                  {isPhoneCharge && hasExtraBreakdown && (
+                    <button
+                      type="button"
+                      className="pos-charge-breakdown-toggle"
+                      aria-expanded={breakdownOpen}
+                      aria-label={breakdownOpen ? "Hide fee details" : "Show fee details"}
+                      onClick={() => setBreakdownOpen((open) => !open)}
+                    >
+                      <span
+                        className={`pos-charge-breakdown-chevron${breakdownOpen ? " is-open" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <div className={`pos-charge-amounts${method === "cash" ? " pos-charge-amounts--cash" : ""}`}>
               <div className="pos-charge-due-block">
                 <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
@@ -470,7 +581,9 @@ export function ChargeOverlay({
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
-              {/* Base tenders always share one equal-width row (iPad-friendly). */}
+              {/* Base tenders share one equal-width row. On phones, Credit
+                  joins this row (short label); iPad keeps Credit Account
+                  on the secondary row below (see .pos-charge-credit-*). */}
               <div
                 className="pos-charge-tenders"
                 style={{
@@ -494,11 +607,42 @@ export function ChargeOverlay({
                     }}
                   >{METHOD_LABEL[m]}</button>
                 ))}
+                {(creditEligible || canPayCredit) && !isOffline && (
+                  <button
+                    type="button"
+                    className={[
+                      "pos-charge-tender-btn",
+                      "pos-charge-credit-inline",
+                      method === "house_account" ? "pos-charge-tender-btn--active" : "",
+                      !creditEligible ? "is-muted" : "",
+                    ].filter(Boolean).join(" ")}
+                    onClick={() => {
+                      setMethod("house_account");
+                      // FIX 8 — force a fresh customer credit summary
+                      // the moment the cashier taps this tender so the
+                      // banner shows the live available balance, not
+                      // a stale value from when the overlay opened.
+                      onSelectCredit?.();
+                    }}
+                    style={{
+                      padding: "12px 6px", borderRadius: 10,
+                      background: method === "house_account" ? "#0F172A" : "#fff",
+                      color: method === "house_account" ? "#fff" : "#0F172A",
+                      border: `1px solid ${method === "house_account" ? "#0F172A" : "#CBD5E1"}`,
+                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      minWidth: 0,
+                    }}
+                  >
+                    Credit
+                  </button>
+                )}
               </div>
               {((creditEligible || canPayCredit) || walletEligible) && !isOffline && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <div className="pos-charge-extra-tenders" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                   {(creditEligible || canPayCredit) && (
                     <button
+                      type="button"
+                      className="pos-charge-credit-row-btn"
                       onClick={() => {
                         setMethod("house_account");
                         // FIX 8 — force a fresh customer credit summary
@@ -521,6 +665,8 @@ export function ChargeOverlay({
                   )}
                   {walletEligible && (
                     <button
+                      type="button"
+                      className="pos-charge-wallet-btn"
                       onClick={() => setMethod("wallet")}
                       style={{
                         flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
@@ -534,31 +680,33 @@ export function ChargeOverlay({
                 </div>
               )}
               {/*
-                FIX 9c — discoverability hints. Rendered as muted rows
-                below the tender chips so cashiers see WHY the Credit
-                button is disabled instead of guessing:
+                FIX 9c — discoverability hints. On iPad/desktop these stay
+                visible under the Credit Account chip. On phones they only
+                appear after Credit is selected (saves vertical space).
                   • has permission, no customer → "attach a customer"
                   • has permission, customer without credit account →
                     "customer has no credit account"
               */}
-              {canPayCredit && !isOffline && !hasAttachedCustomer && (
-                <div style={{
-                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                  fontSize: 12, color: "#64748B",
-                }}>
-                  Attach a customer to charge a credit account.
-                </div>
-              )}
-              {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
-                <div style={{
-                  marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                  background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                  fontSize: 12, color: "#64748B",
-                }}>
-                  Customer has no credit account.
-                </div>
-              )}
+              <div className={`pos-charge-credit-hints${method === "house_account" ? " is-active" : ""}`}>
+                {canPayCredit && !isOffline && !hasAttachedCustomer && (
+                  <div className="pos-charge-credit-hint" style={{
+                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                    fontSize: 12, color: "#64748B",
+                  }}>
+                    Attach a customer to charge a credit account.
+                  </div>
+                )}
+                {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
+                  <div className="pos-charge-credit-hint" style={{
+                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
+                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
+                    fontSize: 12, color: "#64748B",
+                  }}>
+                    Customer has no credit account.
+                  </div>
+                )}
+              </div>
               {method === "house_account" && (
                 <div style={{
                   marginTop: 8, padding: "10px 12px", borderRadius: 8,
@@ -656,44 +804,86 @@ export function ChargeOverlay({
 
             {method === "cash" && !fullyCovered && (
               <>
-                <div>
-                  <p style={tinyLabel}>Received from customer</p>
-                  <CashInput
-                    autoFocus
-                    value={received}
-                    onChange={setReceived}
-                    placeholder="0.00"
-                  />
-                </div>
+                {/* iPad/desktop: received + numpad live here. Phones show
+                    Received in the top card and a numpad-only control below. */}
+                {!isPhoneCharge && (
+                  <div className="pos-charge-received-desktop">
+                    <p style={tinyLabel}>Received from customer</p>
+                    <CashInput
+                      autoFocus
+                      value={received}
+                      onChange={(v) => {
+                        setSelectedNotes([]);
+                        setReceived(v);
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
 
                 <div className="pos-charge-quick-amounts">
                   <p style={tinyLabel}>Quick amounts</p>
                   <div className="pos-charge-quick-grid">
-                    {quick.map((q) => {
-                      const isExact = Math.abs(q - total) < 0.005;
+                    <button
+                      type="button"
+                      data-testid="charge-quick-exact"
+                      className={`pos-charge-quick-btn pos-charge-quick-btn--exact${exactSelected ? " is-selected" : ""}`}
+                      onClick={() => {
+                        setSelectedNotes([]);
+                        setReceived(exactTotal.toFixed(2));
+                      }}
+                    >
+                      <span className="pos-charge-quick-btn-label">{fmtChip(exactTotal)}</span>
+                      <span className="pos-charge-quick-exact" aria-hidden="true">EXACT</span>
+                    </button>
+                    {quickNotes.map((face) => {
+                      const selected = selectedNotes.includes(face);
+                      const laari = face * 100;
+                      const asset = currencyAssetForLaari(laari);
+                      const custom = customImages[String(laari)];
+                      const src = custom ? absoluteMediaUrl(custom) : asset.src;
                       return (
                         <button
-                          key={q}
+                          key={face}
                           type="button"
-                          className="pos-charge-quick-btn"
-                          onClick={() => setReceived(q.toFixed(2))}
-                          style={{
-                            fontWeight: 700,
-                            background: isExact ? "#0F172A" : "#fff",
-                            color: isExact ? "#fff" : "#0F172A",
-                            border: `1px solid ${isExact ? "#0F172A" : "#CBD5E1"}`,
-                            cursor: "pointer",
-                          }}
+                          data-testid={`charge-quick-note-${face}`}
+                          aria-pressed={selected}
+                          aria-label={`Add MVR ${face} note`}
+                          className={`pos-charge-quick-btn pos-charge-quick-btn--note${selected ? " is-selected" : ""}`}
+                          onClick={() => toggleNote(face)}
                         >
-                          <span className="pos-charge-quick-btn-label">{fmtChip(q)}</span>
-                          {isExact && (
-                            <span className="pos-charge-quick-exact" aria-hidden="true">EXACT</span>
-                          )}
+                          <img
+                            src={src}
+                            alt=""
+                            draggable={false}
+                            className="pos-charge-quick-note-img"
+                            onError={(e) => {
+                              if (custom && e.currentTarget.src !== asset.src) {
+                                e.currentTarget.src = asset.src;
+                              }
+                            }}
+                          />
                         </button>
                       );
                     })}
                   </div>
                 </div>
+
+                {/* Phone: amount shows in the top Received card; numpad here
+                    so cashiers can still type any amount (no OS keyboard). */}
+                {isPhoneCharge && (
+                  <div className="pos-charge-mobile-numpad">
+                    <CashInput
+                      value={received}
+                      onChange={(v) => {
+                        setSelectedNotes([]);
+                        setReceived(v);
+                      }}
+                      showField={false}
+                      showNumpad
+                    />
+                  </div>
+                )}
               </>
             )}
 

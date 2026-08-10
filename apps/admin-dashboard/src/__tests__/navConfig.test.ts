@@ -64,6 +64,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/settings/permissions', permissions: ['settings.update', 'roles_permissions.manage'] },
   { to: '/settings/notifications', permissions: ['settings.update', 'roles_permissions.manage'] },
   { to: '/settings/charges', permission: 'settings.update' },
+  { to: '/settings/currency', permission: 'website.manage' },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
   { to: '/webhooks', permission: 'integrations.webhooks' },

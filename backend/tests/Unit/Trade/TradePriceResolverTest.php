@@ -184,4 +184,83 @@ class TradePriceResolverTest extends TestCase
         $this->assertTrue($result->found);
         $this->assertSame(13500, $result->priceLaar);
     }
+
+    #[Test]
+    public function variant_with_own_account_row_uses_that_row(): void
+    {
+        $this->item->update(['has_variants' => true, 'wholesale_price_laar' => 8000]);
+        $variant = Variant::create([
+            'item_id' => $this->item->id,
+            'name' => 'Large',
+            'price' => 150.00,
+            'is_active' => true,
+        ]);
+
+        TradePriceListEntry::create([
+            'trade_account_id' => $this->account->id,
+            'item_id' => $this->item->id,
+            'variant_id' => null,
+            'price_laar' => 5000,
+            'is_active' => true,
+        ]);
+        TradePriceListEntry::create([
+            'trade_account_id' => $this->account->id,
+            'item_id' => $this->item->id,
+            'variant_id' => $variant->id,
+            'price_laar' => 6200,
+            'is_active' => true,
+        ]);
+
+        $result = $this->resolver->resolve($this->account, $this->item, $variant);
+
+        $this->assertTrue($result->found);
+        $this->assertSame(6200, $result->priceLaar);
+        $this->assertSame('account_list', $result->source);
+    }
+
+    #[Test]
+    public function variant_without_row_falls_back_to_account_item_level_row(): void
+    {
+        // Bug: previously skipped the item-level 5000 and returned retail_discount
+        // (variant 120.00 − 10% = 10800) — more than double the agreed shop price.
+        $this->item->update(['has_variants' => true, 'wholesale_price_laar' => 9000]);
+        $variant = Variant::create([
+            'item_id' => $this->item->id,
+            'name' => 'Pack',
+            'price' => 120.00,
+            'is_active' => true,
+        ]);
+
+        TradePriceListEntry::create([
+            'trade_account_id' => $this->account->id,
+            'item_id' => $this->item->id,
+            'variant_id' => null,
+            'price_laar' => 5000,
+            'is_active' => true,
+        ]);
+
+        $result = $this->resolver->resolve($this->account, $this->item, $variant);
+
+        $this->assertTrue($result->found);
+        $this->assertSame(5000, $result->priceLaar);
+        $this->assertSame('account_list', $result->source);
+    }
+
+    #[Test]
+    public function variant_with_neither_account_row_falls_through_to_item_wholesale(): void
+    {
+        $this->item->update(['has_variants' => true, 'wholesale_price_laar' => 7700]);
+        $variant = Variant::create([
+            'item_id' => $this->item->id,
+            'name' => 'Pack',
+            'price' => 120.00,
+            'is_active' => true,
+        ]);
+
+        $result = $this->resolver->resolve($this->account, $this->item, $variant);
+
+        $this->assertTrue($result->found);
+        $this->assertSame(7700, $result->priceLaar);
+        $this->assertSame('item_wholesale', $result->source);
+    }
 }

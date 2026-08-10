@@ -11,7 +11,7 @@ export default defineConfig({
       injectRegister: false,
       filename: 'sw.js',
       manifestFilename: 'manifest.webmanifest',
-      includeAssets: ['logo.png', 'pos-version.json'],
+      includeAssets: ['logo.png', 'pos-version.json', 'currency/**/*'],
       manifest: {
         name: 'Bake & Grill — POS',
         short_name: 'B&G POS',
@@ -52,7 +52,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//, /^\/pos-version\.json$/],
         // Do NOT precache index.html — iPad PWAs kept serving the old shell
         // from Workbox even after "Update Now". Hashed JS/CSS can stay cached.
-        globPatterns: ['**/*.{js,css,ico,png,svg,woff2,webmanifest,json}'],
+        globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2,webmanifest,json}'],
         globIgnores: ['**/index.html'],
         runtimeCaching: [
           {

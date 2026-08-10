@@ -23,6 +23,9 @@ type Props = {
   /** Hide the numpad (input becomes display-only — useful when the
    *  value is purely confirmatory and editing is rare). */
   showNumpad?: boolean;
+  /** Hide the text field (numpad-only). Used on phone Charge when the
+   *  Received amount already shows in the top summary card. */
+  showField?: boolean;
 };
 
 const C = {
@@ -36,14 +39,14 @@ const C = {
 };
 
 export function CashInput({
-  value, onChange, autoFocus, placeholder = "0.00", showNumpad = true,
+  value, onChange, autoFocus, placeholder = "0.00", showNumpad = true, showField = true,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
 
   useEffect(() => {
-    if (autoFocus) inputRef.current?.focus();
-  }, [autoFocus]);
+    if (autoFocus && showField) inputRef.current?.focus();
+  }, [autoFocus, showField]);
 
   // Validate / sanitize an arbitrary string keypress so the value
   // stays a well-formed decimal: at most one ".", digits only.
@@ -79,55 +82,57 @@ export function CashInput({
 
   return (
     <div>
-      <div style={{ position: "relative" }} onClick={() => inputRef.current?.focus()}>
-        <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => apply(e.target.value)}
-          onFocus={(e) => { setFocused(true); e.currentTarget.select(); }}
-          onBlur={() => setFocused(false)}
-          type="text"
-          // inputMode="none" → tell iPad/Android Safari NOT to pop a
-          // soft keyboard. Hardware keyboards keep working.
-          inputMode="none"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          placeholder={placeholder}
-          aria-label="Amount in MVR"
-          style={{
-            width: "100%", boxSizing: "border-box",
-            padding: "14px 16px", borderRadius: 10,
-            border: `2px solid ${focused ? C.primary : C.border2}`,
-            fontSize: 24, fontWeight: 700,
-            textAlign: "right", background: "#fff",
-            // Empty value uses muted placeholder color; filled amounts stay dark.
-            color: value === "" ? C.muted : C.text,
-            outline: "none",
-            fontVariantNumeric: "tabular-nums",
-            caretColor: "transparent",
-            cursor: "pointer",
-          }}
-        />
-        <span
-          aria-hidden="true"
-          style={{
-            position: "absolute", left: 16, top: "50%",
-            transform: "translateY(-50%)",
-            fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: "0.06em",
-          }}
-        >
-          MVR
-        </span>
-      </div>
+      {showField && (
+        <div style={{ position: "relative" }} onClick={() => inputRef.current?.focus()}>
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => apply(e.target.value)}
+            onFocus={(e) => { setFocused(true); e.currentTarget.select(); }}
+            onBlur={() => setFocused(false)}
+            type="text"
+            // inputMode="none" → tell iPad/Android Safari NOT to pop a
+            // soft keyboard. Hardware keyboards keep working.
+            inputMode="none"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            placeholder={placeholder}
+            aria-label="Amount in MVR"
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "14px 16px", borderRadius: 10,
+              border: `2px solid ${focused ? C.primary : C.border2}`,
+              fontSize: 24, fontWeight: 700,
+              textAlign: "right", background: "#fff",
+              // Empty value uses muted placeholder color; filled amounts stay dark.
+              color: value === "" ? C.muted : C.text,
+              outline: "none",
+              fontVariantNumeric: "tabular-nums",
+              caretColor: "transparent",
+              cursor: "pointer",
+            }}
+          />
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute", left: 16, top: "50%",
+              transform: "translateY(-50%)",
+              fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: "0.06em",
+            }}
+          >
+            MVR
+          </span>
+        </div>
+      )}
 
-      {showNumpad && <DecimalNumpad onPress={press} />}
+      {showNumpad && <DecimalNumpad onPress={press} flushTop={!showField} />}
     </div>
   );
 }
 
-function DecimalNumpad({ onPress }: { onPress: (k: string) => void }) {
+function DecimalNumpad({ onPress, flushTop = false }: { onPress: (k: string) => void; flushTop?: boolean }) {
   const keys: Array<{ k: string; label: string; variant?: "muted" | "danger" }> = [
     { k: "1", label: "1" }, { k: "2", label: "2" }, { k: "3", label: "3" },
     { k: "4", label: "4" }, { k: "5", label: "5" }, { k: "6", label: "6" },
@@ -141,7 +146,7 @@ function DecimalNumpad({ onPress }: { onPress: (k: string) => void }) {
     <div
       className="pos-cash-numpad"
       style={{
-        marginTop: 10,
+        marginTop: flushTop ? 0 : 10,
         display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6,
       }}
     >

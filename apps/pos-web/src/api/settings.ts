@@ -10,6 +10,26 @@ export async function fetchPublicSiteSettings(): Promise<Record<string, string |
     return {};
   }
 }
+/**
+ * Owner-uploaded note/coin photos for the close-shift count.
+ * Keys are face values in laari; values are absolute-path URLs under
+ * /storage/currency/. Missing key = use the thumbnail bundled with the POS.
+ * Cached per app load — cashiers open the close sheet more than once.
+ */
+let _currencyImagesCache: Record<string, string> | null = null;
+
+export async function fetchCurrencyImages(): Promise<Record<string, string>> {
+  if (_currencyImagesCache) return _currencyImagesCache;
+  try {
+    const data = await request<{ images: Record<string, string> }>("/currency-images");
+    _currencyImagesCache = data.images ?? {};
+  } catch {
+    // Offline or endpoint missing — bundled photos still work.
+    _currencyImagesCache = {};
+  }
+  return _currencyImagesCache;
+}
+
 export async function fetchPosQuickNotes(): Promise<string[]> {
   try {
     const settings = await fetchPublicSiteSettings();
