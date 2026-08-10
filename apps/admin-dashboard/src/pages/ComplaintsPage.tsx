@@ -10,6 +10,7 @@ import { useToast } from '../components/ui';
 import {
   addComplaintContactLog,
   fetchAdminComplaints,
+  fetchComplaintPhotoBlob,
   getComplaint,
   updateComplaintStatus,
   type AdminComplaint,
@@ -214,6 +215,28 @@ export default function ComplaintsPage() {
               {' · '}
               {detail.status}
               {detail.comment ? <p style={{ marginTop: 8 }}>{detail.comment}</p> : null}
+              {detail.has_photo ? (
+                <p style={{ marginTop: 8 }}>
+                  <Btn
+                    small
+                    variant="ghost"
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          const blob = await fetchComplaintPhotoBlob(detail.id);
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                          setTimeout(() => URL.revokeObjectURL(url), 60_000);
+                        } catch (e) {
+                          toast.error((e as Error).message || 'Could not open photo');
+                        }
+                      })();
+                    }}
+                  >
+                    View customer photo
+                  </Btn>
+                </p>
+              ) : null}
             </div>
 
             {canManage && (

@@ -34,6 +34,7 @@ class ComplaintService
      *   comment?: ?string,
      *   photo_disk?: ?string,
      *   photo_path?: ?string,
+     *   photo_upload_id?: ?string,
      *   idempotency_key?: ?string,
      *   receipt_feedback_id?: ?int,
      *   items?: list<array{order_item_id?: int|null, item_name: string, quantity?: float|int, unit_price_laar?: int, line_total_laar?: int}>
@@ -62,7 +63,9 @@ class ComplaintService
             Complaint::CATEGORY_BILL_WRONG_AMOUNT,
         ], true);
 
-        $complaint = DB::transaction(function () use ($data, $receipt, $invoice, $order, $category, $isFoodSafety, $needsRefund) {
+        [$photoDisk, $photoPath] = $this->resolvePhoto($data);
+
+        $complaint = DB::transaction(function () use ($data, $receipt, $invoice, $order, $category, $isFoodSafety, $needsRefund, $photoDisk, $photoPath) {
             $complaint = Complaint::create([
                 'reference_number' => 'PENDING',
                 'receipt_id' => $receipt?->id,
@@ -73,8 +76,8 @@ class ComplaintService
                 'source' => $data['source'] ?? ($invoice ? 'invoice' : 'receipt'),
                 'category' => $category,
                 'comment' => $data['comment'] ?? null,
-                'photo_disk' => $data['photo_disk'] ?? null,
-                'photo_path' => $data['photo_path'] ?? null,
+                'photo_disk' => $photoDisk,
+                'photo_path' => $photoPath,
                 'status' => Complaint::STATUS_NEW,
                 'needs_refund_review' => $needsRefund,
                 'is_food_safety' => $isFoodSafety,
@@ -120,6 +123,39 @@ class ComplaintService
         }
 
         return $complaint->fresh(['items', 'order', 'customer']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: ?string, 1: ?string}  [disk, path]
+     */
+    private function resolvePhoto(array $data): array
+    {
+        if (! empty($data['photo_path']) && is_string($data['photo_path'])) {
+            return [
+                isset($data['photo_disk']) && is_string($data['photo_disk'])
+                    ? $data['photo_disk']
+                    : ComplaintPhotoService::DISK,
+                $data['photo_path'],
+            ];
+        }
+
+        $uploadId = isset($data['photo_upload_id']) ? trim((string) $data['photo_upload_id']) : '';
+        if ($uploadId === '') {
+            return [null, null];
+        }
+
+        try {
+            $path = app(ComplaintPhotoService::class)->pathForUploadId($uploadId);
+            if ($path === null) {
+                return [null, null];
+            }
+
+            return [ComplaintPhotoService::DISK, $path];
+        } catch (\Throwable) {
+            // Photo attach is best-effort — complaint must still save.
+            return [null, null];
+        }
     }
 
     /**

@@ -451,6 +451,7 @@
         .doc-refund { color: var(--danger-text); font-weight: 700; }
         .doc-feedback { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
         .doc-feedback h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+        .doc-feedback-label { margin: 0 0 0.4rem; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
         .doc-feedback label { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 0.25rem; }
         .doc-feedback select, .doc-feedback textarea {
             width: 100%;
@@ -462,7 +463,31 @@
             background: var(--surface);
             color: var(--text);
         }
-        .doc-feedback textarea { min-height: 88px; resize: vertical; }
+        .doc-feedback textarea { min-height: 72px; resize: vertical; }
+        .doc-star-row {
+            display: flex;
+            gap: 0.35rem;
+            margin: 0 0 0.85rem;
+        }
+        .doc-star {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: #d6cdc3;
+            font-size: 2rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0.15rem 0.2rem;
+            min-width: 44px;
+            min-height: 44px;
+        }
+        .doc-star.is-on { color: var(--accent, #d4813a); }
+        .doc-review-invite {
+            margin-top: 0.85rem;
+            padding: 0.85rem 0 0;
+            border-top: 1px dashed var(--border);
+        }
+        .doc-review-invite p { margin: 0 0 0.65rem; font-size: 0.95rem; }
         .doc-footer {
             max-width: 1280px;
             margin: 0 auto;

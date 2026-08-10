@@ -1,4 +1,4 @@
-import { req } from './client';
+import { req, requestBlob } from './client';
 
 export type ComplaintStatus =
   | 'new'
@@ -13,6 +13,7 @@ export type AdminComplaint = {
   category: string;
   status: ComplaintStatus;
   comment?: string | null;
+  has_photo?: boolean;
   needs_refund_review: boolean;
   is_food_safety: boolean;
   owner_alert_status: string;
@@ -92,4 +93,8 @@ export async function addComplaintContactLog(
     `/complaints/${id}/contact-logs`,
     { method: 'POST', body: JSON.stringify(body) },
   );
+}
+
+export async function fetchComplaintPhotoBlob(id: number): Promise<Blob> {
+  return requestBlob(`/complaints/${id}/photo`);
 }

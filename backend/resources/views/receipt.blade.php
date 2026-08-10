@@ -183,24 +183,34 @@
         ])
 
         @if ($doc['show_feedback'])
-            <div class="doc-feedback">
+            <div class="doc-feedback" data-receipt-rating-root data-order-id="{{ $receipt->order_id }}">
                 <h3>Share feedback</h3>
-                <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/feedback') }}">
+                <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/feedback') }}" data-rating-form>
                     @csrf
-                    <label for="rating">Rating</label>
-                    <select name="rating" id="rating" required style="margin-bottom: 10px;">
-                        <option value="5">5 — Excellent</option>
-                        <option value="4">4 — Good</option>
-                        <option value="3">3 — Okay</option>
-                        <option value="2">2 — Poor</option>
-                        <option value="1">1 — Very poor</option>
-                    </select>
+                    <p class="doc-feedback-label">Tap a star</p>
+                    <div class="doc-star-row" role="radiogroup" aria-label="Rating">
+                        @for ($star = 1; $star <= 5; $star++)
+                            <button
+                                type="button"
+                                class="doc-star"
+                                data-star="{{ $star }}"
+                                aria-label="{{ $star }} star{{ $star === 1 ? '' : 's' }}"
+                                aria-checked="false"
+                                role="radio"
+                            >★</button>
+                        @endfor
+                    </div>
+                    <input type="hidden" name="rating" id="rating" value="" required data-rating-input>
                     <label for="comments">Comments (optional)</label>
-                    <textarea name="comments" id="comments" rows="4" placeholder="Tell us how we did"></textarea>
+                    <textarea name="comments" id="comments" rows="3" placeholder="Tell us how we did"></textarea>
                     <div class="doc-actions" style="margin-top: 12px;">
-                        <button class="doc-btn doc-btn-primary" type="submit">Submit feedback</button>
+                        <button class="doc-btn doc-btn-primary" type="submit" data-rating-submit disabled>Submit feedback</button>
                     </div>
                 </form>
+                <div class="doc-review-invite" data-review-invite hidden>
+                    <p>Glad you enjoyed it. Want to leave a <strong>public</strong> review? You’ll need to sign in — it’s optional.</p>
+                    <a class="doc-btn doc-btn-primary" href="{{ url('/order/account') }}">Leave a public review</a>
+                </div>
             </div>
         @endif
 
@@ -214,6 +224,46 @@
         document.querySelectorAll('.doc-btn-print').forEach(function (btn) {
             btn.addEventListener('click', function () { window.print(); });
         });
+
+        (function () {
+            var root = document.querySelector('[data-receipt-rating-root]');
+            if (!root) return;
+            var input = root.querySelector('[data-rating-input]');
+            var submit = root.querySelector('[data-rating-submit]');
+            var invite = root.querySelector('[data-review-invite]');
+            var stars = root.querySelectorAll('[data-star]');
+
+            function paint(n) {
+                stars.forEach(function (btn) {
+                    var v = parseInt(btn.getAttribute('data-star'), 10);
+                    var on = v <= n;
+                    btn.classList.toggle('is-on', on);
+                    btn.setAttribute('aria-checked', v === n ? 'true' : 'false');
+                });
+            }
+
+            stars.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var n = parseInt(btn.getAttribute('data-star'), 10);
+                    if (!n) return;
+                    input.value = String(n);
+                    paint(n);
+                    if (submit) submit.disabled = false;
+
+                    if (n <= 2) {
+                        if (invite) invite.hidden = true;
+                        var cta = document.querySelector('[data-complaint-root]');
+                        if (cta && typeof cta.openComplaint === 'function') {
+                            cta.openComplaint('something_else');
+                        }
+                    } else if (n >= 4) {
+                        if (invite) invite.hidden = false;
+                    } else if (invite) {
+                        invite.hidden = true;
+                    }
+                });
+            });
+        })();
     </script>
 @endpush
 

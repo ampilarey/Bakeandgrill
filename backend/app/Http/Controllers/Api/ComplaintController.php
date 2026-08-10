@@ -69,7 +69,12 @@ class ComplaintController extends Controller
             ])
             ->findOrFail($id);
 
-        return response()->json(['complaint' => $complaint]);
+        $payload = $complaint->toArray();
+        $payload['has_photo'] = is_string($complaint->photo_path) && $complaint->photo_path !== '';
+        // Staff fetch photos via the dedicated private route — never expose storage paths.
+        unset($payload['photo_path'], $payload['photo_disk']);
+
+        return response()->json(['complaint' => $payload]);
     }
 
     public function updateStatus(Request $request, int $id): JsonResponse

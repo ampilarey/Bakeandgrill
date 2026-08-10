@@ -117,6 +117,10 @@ Route::post('/receipts/{token}/complaints', [App\Http\Controllers\Api\PublicComp
     ->middleware('throttle:20,1');
 Route::post('/invoices/{token}/complaints', [App\Http\Controllers\Api\PublicComplaintController::class, 'storeForInvoice'])
     ->middleware('throttle:20,1');
+Route::post('/receipts/{token}/complaint-photos', [App\Http\Controllers\Api\ComplaintPhotoController::class, 'uploadForReceipt'])
+    ->middleware('throttle:20,1');
+Route::post('/invoices/{token}/complaint-photos', [App\Http\Controllers\Api\ComplaintPhotoController::class, 'uploadForInvoice'])
+    ->middleware('throttle:20,1');
 
 Route::get('/event-quotes/{token}', [App\Http\Controllers\Api\EventQuoteController::class, 'show'])
     ->middleware('throttle:30,1');

@@ -76,7 +76,6 @@ class PublicComplaintController extends Controller
             'order_item_ids' => ['nullable', 'array', 'max:30'],
             'order_item_ids.*' => ['integer'],
             'idempotency_key' => ['nullable', 'string', 'max:128'],
-            // Stage 3 will accept photo_upload_id; ignored safely here.
             'photo_upload_id' => ['nullable', 'string', 'max:64'],
         ]);
 
@@ -123,6 +122,7 @@ class PublicComplaintController extends Controller
             'category' => $validated['category'],
             'comment' => $validated['comment'] ?? null,
             'items' => $items,
+            'photo_upload_id' => $validated['photo_upload_id'] ?? null,
             'idempotency_key' => $idem,
         ]);
 

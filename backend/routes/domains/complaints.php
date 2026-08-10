@@ -20,3 +20,6 @@ Route::patch('/complaints/{id}/status', [ComplaintController::class, 'updateStat
 Route::post('/complaints/{id}/contact-logs', [ComplaintController::class, 'addContactLog'])
     ->middleware('permission:complaints.manage')
     ->whereNumber('id');
+Route::get('/complaints/{id}/photo', [\App\Http\Controllers\Api\ComplaintPhotoController::class, 'showStaff'])
+    ->middleware('permission:complaints.view')
+    ->whereNumber('id');

@@ -18,7 +18,20 @@
     $formId = 'complaint-form-'.substr(sha1(($complaintEndpoint ?? '').$ctaLabel), 0, 8);
 @endphp
 
-<div class="doc-mistake-cta" data-complaint-root data-endpoint="{{ $complaintEndpoint }}" data-wa-fallback="{{ $waHref }}">
+@php
+    $photoEndpoint = $photoEndpoint ?? (
+        is_string($complaintEndpoint)
+            ? preg_replace('#/complaints$#', '/complaint-photos', $complaintEndpoint)
+            : null
+    );
+@endphp
+<div
+    class="doc-mistake-cta"
+    data-complaint-root
+    data-endpoint="{{ $complaintEndpoint }}"
+    data-photo-endpoint="{{ $photoEndpoint }}"
+    data-wa-fallback="{{ $waHref }}"
+>
     <button type="button" class="doc-btn doc-mistake-cta__btn" data-complaint-open>
         {{ $ctaLabel }}
     </button>
@@ -95,9 +108,28 @@
         var sendBtn = root.querySelector('[data-complaint-send]');
         var errEl = root.querySelector('[data-complaint-error]');
         var endpoint = root.getAttribute('data-endpoint');
+        var photoEndpoint = root.getAttribute('data-photo-endpoint');
         var selected = null;
         var sending = false;
         var idem = uid();
+
+        function selectCategory(value) {
+            if (!value) return;
+            root.querySelectorAll('[data-complaint-cat]').forEach(function (b) {
+                var on = b.getAttribute('data-complaint-cat') === value;
+                b.classList.toggle('is-selected', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            selected = value;
+            if (sendBtn) sendBtn.disabled = !selected;
+        }
+
+        // Allow star-rating UI (or other callers) to open with a preselected category.
+        root.openComplaint = function (category) {
+            if (panel) panel.hidden = false;
+            if (category) selectCategory(category);
+            try { panel && panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+        };
 
         if (openBtn && panel) {
             openBtn.addEventListener('click', function () {
@@ -107,26 +139,52 @@
 
         root.querySelectorAll('[data-complaint-cat]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                root.querySelectorAll('[data-complaint-cat]').forEach(function (b) {
-                    b.classList.remove('is-selected');
-                    b.setAttribute('aria-pressed', 'false');
-                });
-                btn.classList.add('is-selected');
-                btn.setAttribute('aria-pressed', 'true');
-                selected = btn.getAttribute('data-complaint-cat');
-                if (sendBtn) sendBtn.disabled = !selected;
+                selectCategory(btn.getAttribute('data-complaint-cat'));
             });
         });
 
         // Preselected category (e.g. from low star rating)
         var pre = root.querySelector('[data-complaint-cat].is-selected');
         if (pre) {
-            selected = pre.getAttribute('data-complaint-cat');
-            if (sendBtn) sendBtn.disabled = !selected;
+            selectCategory(pre.getAttribute('data-complaint-cat'));
             if (panel) panel.hidden = false;
         }
 
         if (!sendBtn || !endpoint) return;
+
+        function csrfHeaders(extra) {
+            var csrf = document.querySelector('meta[name="csrf-token"]');
+            var headers = Object.assign({
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }, extra || {});
+            if (csrf) headers['X-CSRF-TOKEN'] = csrf.getAttribute('content');
+            return headers;
+        }
+
+        function uploadPhotoIfAny() {
+            var input = root.querySelector('[data-complaint-photo]');
+            var file = input && input.files && input.files[0] ? input.files[0] : null;
+            if (!file || !photoEndpoint) {
+                return Promise.resolve(null);
+            }
+            var fd = new FormData();
+            fd.append('photo', file);
+            return fetch(photoEndpoint, {
+                method: 'POST',
+                headers: csrfHeaders(),
+                body: fd,
+                credentials: 'same-origin'
+            }).then(function (res) {
+                return res.json().then(function (data) {
+                    if (!res.ok) return null;
+                    return (data && data.upload_id) ? data.upload_id : null;
+                });
+            }).catch(function () {
+                // Upload failure must never lose the complaint.
+                return null;
+            });
+        }
 
         sendBtn.addEventListener('click', function () {
             if (!selected || sending) return;
@@ -141,27 +199,24 @@
             var commentEl = root.querySelector('[data-complaint-comment]');
             var comment = commentEl ? (commentEl.value || '').trim() : '';
 
-            var body = {
-                category: selected,
-                order_item_ids: itemIds,
-                comment: comment || null,
-                idempotency_key: idem
-            };
+            uploadPhotoIfAny().then(function (uploadId) {
+                var body = {
+                    category: selected,
+                    order_item_ids: itemIds,
+                    comment: comment || null,
+                    idempotency_key: idem,
+                    photo_upload_id: uploadId
+                };
 
-            var csrf = document.querySelector('meta[name="csrf-token"]');
-            fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    ...(csrf ? { 'X-CSRF-TOKEN': csrf.getAttribute('content') } : {})
-                },
-                body: JSON.stringify(body),
-                credentials: 'same-origin'
-            }).then(function (res) {
-                return res.json().then(function (data) {
-                    return { ok: res.ok, status: res.status, data: data };
+                return fetch(endpoint, {
+                    method: 'POST',
+                    headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(body),
+                    credentials: 'same-origin'
+                }).then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, status: res.status, data: data };
+                    });
                 });
             }).then(function (result) {
                 if (!result.ok) {
