@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, FileText,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -86,6 +86,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
       { to: '/wholesale', icon: Store, label: 'Wholesale shops', permission: 'trade.view', description: 'Trade accounts & shop prices' },
       { to: '/wholesale/deliveries', icon: Truck, label: 'Wholesale deliveries', permission: 'trade.view', description: 'Dispatch notes & reconciliation' },
+      { to: '/wholesale/invoicing', icon: FileText, label: 'Wholesale invoicing', permission: 'trade.view', description: 'Bill reconciled deliveries' },
     ],
   },
   {
@@ -345,6 +346,7 @@ export const PERM_ALIASES: Record<string, string[]> = {
     'trade.manage_prices',
     'trade.dispatch',
     'trade.reconcile',
+    'trade.invoice',
   ],
 };
 

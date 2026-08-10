@@ -104,4 +104,5 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'trade.manage_prices', gates: 'Edit per-shop wholesale prices', typical: 'Owner' },
   { slug: 'trade.dispatch', gates: 'Dispatch consignment deliveries to shops', typical: 'Owner' },
   { slug: 'trade.reconcile', gates: 'Reconcile what sold and what came back', typical: 'Owner' },
+  { slug: 'trade.invoice', gates: 'Raise wholesale tax invoices and resolve billing blocks', typical: 'Owner' },
 ];

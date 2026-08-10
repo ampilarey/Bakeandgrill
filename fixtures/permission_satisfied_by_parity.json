@@ -203,7 +203,8 @@
             "trade.manage_accounts",
             "trade.manage_prices",
             "trade.dispatch",
-            "trade.reconcile"
+            "trade.reconcile",
+            "trade.invoice"
         ]
     }
 }

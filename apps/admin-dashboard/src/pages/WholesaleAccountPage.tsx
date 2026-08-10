@@ -245,11 +245,21 @@ export default function WholesaleAccountPage() {
         section="Wholesale"
         title={account.shop_name}
         subtitle={account.is_active ? 'Active trade account' : 'Inactive — not used for new deliveries'}
-        action={canManageAccounts && account.is_active ? (
-          <Btn variant="secondary" onClick={() => void handleDeactivate()} disabled={saving}>
-            Deactivate
-          </Btn>
-        ) : undefined}
+        action={(
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <Link to={`/wholesale/${account.id}/invoicing`} style={{ textDecoration: 'none' }}>
+              <Btn variant="secondary">Raise invoice</Btn>
+            </Link>
+            <Link to={`/wholesale/${account.id}/statement`} style={{ textDecoration: 'none' }}>
+              <Btn variant="secondary">Statement</Btn>
+            </Link>
+            {canManageAccounts && account.is_active && (
+              <Btn variant="secondary" onClick={() => void handleDeactivate()} disabled={saving}>
+                Deactivate
+              </Btn>
+            )}
+          </div>
+        )}
       />
 
       {error && <ErrorMsg message={error} />}

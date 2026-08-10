@@ -88,6 +88,7 @@ final class PermissionCatalog
             'trade.manage_prices',
             'trade.dispatch',
             'trade.reconcile',
+            'trade.invoice',
         ],
     ];
 
