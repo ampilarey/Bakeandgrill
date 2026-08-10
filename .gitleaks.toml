@@ -25,7 +25,11 @@ paths = ['\.env\.example$']
 id = "test-tokens"
 description = "Test tokens generated in PHPUnit tests are not real credentials"
 paths = [
-    'backend/tests/',
+    '''(^|/)backend/tests/.*''',
+]
+regexes = [
+    # PHPUnit fixtures often use opaque idempotency / token strings that trip generic-api-key.
+    '''idempotency_key['\"]?\s*=>\s*['\"][^'\"]+['\"]''',
 ]
 
 [[allowlists]]

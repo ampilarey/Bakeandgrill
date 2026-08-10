@@ -87,7 +87,7 @@ class PurgeOrdersCommandTest extends TestCase
             'notes' => 'Wholesale consignment — charged to customer credit account.',
         ]);
         $invoicePayment = Payment::create([
-            'idempotency_key' => 'purge-invoice-pay-1',
+            'idempotency_key' => 'purge-inv-pay-001',
             'order_id' => null,
             'invoice_id' => $invoice->id,
             'method' => 'cash',
