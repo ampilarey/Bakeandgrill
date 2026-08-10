@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { currencyAssetForLaari } from "../utils/cashDenominations";
 import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
+
+/** Maldivian note faces (MVR) offered as photo quick-tenders when ≥ amount due. */
+const QUICK_NOTES_MVR = [5, 10, 20, 50, 100, 500, 1000] as const;
 
 type Props = {
   total: number;
@@ -146,6 +150,8 @@ export function ChargeOverlay({
     ));
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
+  /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
+  const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
   /**
    * Split-tender mode. When on, the cashier enters how much is being
    * collected on the selected non-cash method; the remainder is
@@ -158,7 +164,10 @@ export function ChargeOverlay({
 
   // Reset the received-amount input whenever the total or method changes —
   // otherwise a stale value from a prior order can linger.
-  useEffect(() => { setReceived(total > 0 ? total.toFixed(2) : ""); }, [total, method]);
+  useEffect(() => {
+    setReceived(total > 0 ? total.toFixed(2) : "");
+    setSelectedNotes([]);
+  }, [total, method]);
 
   useEffect(() => {
     if (method === "house_account" || method === "wallet") return;
@@ -207,58 +216,35 @@ export function ChargeOverlay({
       ? Number.isFinite(receivedNum) && receivedNum >= total
       : true);
 
-  // Quick-amount buttons.
-  //
-  // Old logic produced nonsense like `ceil(total) + 5` (e.g. for a
-  // 37.50 total it suggested 43, 48, 58, 88 …). Cashiers don't see
-  // payments like that — customers hand them actual MVR denominations.
-  //
-  // New algorithm, tuned for Maldivian cash:
-  //   - Notes:  5, 10, 20, 50, 100, 500, 1000
-  //   - Coins:  0.25, 0.50, 1, 2  (rarely "quick", usually exact)
-  //
-  // We surface, in this order, capped at 6 chips:
-  //   1. The exact total (cashier confirms when the customer hands
-  //      the precise amount in coins).
-  //   2. Each single-note denomination that's >= total — for
-  //      "customer hands one bill" which is the dominant case.
-  //   3. A few round-up combinations (the next multiple of 50 / 100
-  //      / 500 etc.) so things like a 235 total surface 250 and 300,
-  //      not 240 (which nobody actually hands in MVR notes). Steps
-  //      are tiered by magnitude so the small/large total cases both
-  //      stay sensible.
-  const quick = useMemo<number[]>(() => {
+  // Quick tenders: note photos the cashier can tap (multi-select) plus
+  // an Exact button. Same note filter as before — each MVR note that is
+  // >= the amount due — capped at 5 photos. Tapping notes toggles them;
+  // Received = sum of selected faces (e.g. 10 + 20 → 30).
+  const quickNotes = useMemo<number[]>(() => {
     if (total <= 0) return [];
-
-    const exact = Math.round(total * 100) / 100;
-    const set = new Set<number>([exact]);
-
-    const NOTES = [5, 10, 20, 50, 100, 500, 1000];
-    for (const note of NOTES) {
-      if (note >= total) set.add(note);
-    }
-
-    // Step sizes scale with the total so we don't suggest MVR 240 for
-    // a MVR 235 order (no Maldivian customer combines notes like that).
-    const steps =
-      total < 20  ? [5, 10, 20, 50, 100] :
-      total < 100 ? [10, 20, 50, 100, 500] :
-      total < 500 ? [50, 100, 500, 1000] :
-                    [100, 500, 1000];
-    for (const step of steps) {
-      const r = Math.ceil(total / step) * step;
-      if (r > total) set.add(r);
-    }
-
-    return Array.from(set)
-      .filter((v) => v >= total)
-      .sort((a, b) => a - b)
-      .slice(0, 6);
+    return QUICK_NOTES_MVR.filter((note) => note >= total).slice(0, 5);
   }, [total]);
 
+  const exactTotal = Math.round(total * 100) / 100;
+  const exactSelected =
+    selectedNotes.length === 0
+    && Number.isFinite(receivedNum)
+    && Math.abs(receivedNum - exactTotal) < 0.005;
+
+  const applySelectedNotes = (notes: number[]) => {
+    setSelectedNotes(notes);
+    const sum = notes.reduce((a, b) => a + b, 0);
+    setReceived(sum > 0 ? sum.toFixed(2) : "");
+  };
+
+  const toggleNote = (face: number) => {
+    const next = selectedNotes.includes(face)
+      ? selectedNotes.filter((n) => n !== face)
+      : [...selectedNotes, face];
+    applySelectedNotes(next);
+  };
+
   // Pretty-print: whole MVR → no decimals, fractional → 2 dp.
-  // The previous overlay used `.toFixed(0)` everywhere, which silently
-  // turned a 37.50 "exact" chip into "MVR 38" — visibly wrong.
   const fmtChip = (n: number) =>
     Number.isInteger(n) ? `MVR ${n}` : `MVR ${n.toFixed(2)}`;
 
@@ -661,34 +647,49 @@ export function ChargeOverlay({
                   <CashInput
                     autoFocus
                     value={received}
-                    onChange={setReceived}
+                    onChange={(v) => {
+                      setSelectedNotes([]);
+                      setReceived(v);
+                    }}
                     placeholder="0.00"
                   />
                 </div>
 
                 <div className="pos-charge-quick-amounts">
-                  <p style={tinyLabel}>Quick amounts</p>
+                  <p style={tinyLabel}>Quick amounts — tap notes to add</p>
                   <div className="pos-charge-quick-grid">
-                    {quick.map((q) => {
-                      const isExact = Math.abs(q - total) < 0.005;
+                    <button
+                      type="button"
+                      data-testid="charge-quick-exact"
+                      className={`pos-charge-quick-btn pos-charge-quick-btn--exact${exactSelected ? " is-selected" : ""}`}
+                      onClick={() => {
+                        setSelectedNotes([]);
+                        setReceived(exactTotal.toFixed(2));
+                      }}
+                    >
+                      <span className="pos-charge-quick-btn-label">{fmtChip(exactTotal)}</span>
+                      <span className="pos-charge-quick-exact" aria-hidden="true">EXACT</span>
+                    </button>
+                    {quickNotes.map((face) => {
+                      const selected = selectedNotes.includes(face);
+                      const asset = currencyAssetForLaari(face * 100);
                       return (
                         <button
-                          key={q}
+                          key={face}
                           type="button"
-                          className="pos-charge-quick-btn"
-                          onClick={() => setReceived(q.toFixed(2))}
-                          style={{
-                            fontWeight: 700,
-                            background: isExact ? "#0F172A" : "#fff",
-                            color: isExact ? "#fff" : "#0F172A",
-                            border: `1px solid ${isExact ? "#0F172A" : "#CBD5E1"}`,
-                            cursor: "pointer",
-                          }}
+                          data-testid={`charge-quick-note-${face}`}
+                          aria-pressed={selected}
+                          aria-label={`Add MVR ${face} note`}
+                          className={`pos-charge-quick-btn pos-charge-quick-btn--note${selected ? " is-selected" : ""}`}
+                          onClick={() => toggleNote(face)}
                         >
-                          <span className="pos-charge-quick-btn-label">{fmtChip(q)}</span>
-                          {isExact && (
-                            <span className="pos-charge-quick-exact" aria-hidden="true">EXACT</span>
-                          )}
+                          <img
+                            src={asset.src}
+                            alt=""
+                            draggable={false}
+                            className="pos-charge-quick-note-img"
+                          />
+                          <span className="pos-charge-quick-note-face">MVR {face}</span>
                         </button>
                       );
                     })}

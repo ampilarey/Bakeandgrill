@@ -283,23 +283,45 @@ html, body, #root {
 .pos-charge-quick-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
 }
 .pos-charge-quick-btn {
   position: relative;
   box-sizing: border-box;
   width: 100%;
-  height: 48px;
-  min-height: 48px;
-  max-height: 48px;
-  padding: 0 6px;
-  border-radius: 8px;
+  min-height: 64px;
+  padding: 6px;
+  border-radius: 10px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   font-size: 13px;
   line-height: 1.1;
   touch-action: manipulation;
+  cursor: pointer;
+  border: 1.5px solid #CBD5E1;
+  background: #fff;
+  color: #0F172A;
+  font-family: inherit;
+  font-weight: 700;
+}
+.pos-charge-quick-btn.is-selected {
+  border-color: #D4813A;
+  background: #FFF7ED;
+  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.28);
+}
+.pos-charge-quick-btn--exact {
+  background: #0F172A;
+  border-color: #0F172A;
+  color: #fff;
+  min-height: 64px;
+}
+.pos-charge-quick-btn--exact.is-selected {
+  background: #0F172A;
+  border-color: #D4813A;
+  box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.35);
 }
 .pos-charge-quick-btn-label {
   overflow: hidden;
@@ -307,11 +329,25 @@ html, body, #root {
   white-space: nowrap;
   max-width: 100%;
 }
+.pos-charge-quick-note-img {
+  display: block;
+  width: min(100%, 96px);
+  height: 44px;
+  object-fit: cover;
+  border-radius: 5px;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+}
+.pos-charge-quick-note-face {
+  font-size: 11px;
+  font-weight: 800;
+  color: #475569;
+  line-height: 1;
+}
+.pos-charge-quick-btn--note.is-selected .pos-charge-quick-note-face {
+  color: #9A5B22;
+}
 .pos-charge-quick-exact {
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -683,18 +719,19 @@ html, body, #root {
     overflow: visible !important;
   }
   .pos-charge-quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
   }
   .pos-charge-quick-btn {
-    height: 52px;
-    min-height: 52px;
-    max-height: 52px;
+    min-height: 76px;
     border-radius: 12px;
     font-size: 14px;
   }
+  .pos-charge-quick-note-img {
+    width: min(100%, 110px);
+    height: 50px;
+  }
   .pos-charge-quick-exact {
-    bottom: 4px;
     font-size: 9px;
   }
   .pos-cash-numpad {
