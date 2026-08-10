@@ -1349,14 +1349,18 @@ html, body, #root {
   pointer-events: none;
 }
 
-/* Note tile = exactly the photo (no backing shade visible) — near-native
- * aspect so the denomination number stays readable. */
-.close-shift-denom-photo--note {
+/* Every photo tile — note or coin — is the same 15:7 box (real rufiyaa
+ * note proportions: 15 cm × 7 cm), so all cards look identical. Notes
+ * fill the box edge-to-edge; coins sit centred on their light plate. */
+.close-shift-denom-photo--note,
+.close-shift-denom-photo--coin {
   width: 100%;
   max-height: 100%;
-  /* Real Maldivian rufiyaa note: 15 cm × 7 cm. */
   aspect-ratio: 15 / 7;
   align-self: center;
+}
+
+.close-shift-denom-photo--note {
   background: transparent;
 }
 
