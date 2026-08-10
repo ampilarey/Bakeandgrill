@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Complaints\Services\ComplaintService;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
@@ -136,6 +137,8 @@ class ReceiptController extends Controller
             'comments' => $validated['comments'] ?? null,
             'submitted_at' => now(),
         ]);
+
+        app(ComplaintService::class)->fromReceiptFeedback($receipt, $feedback);
 
         app(AuditLogService::class)->log(
             'receipt.feedback',

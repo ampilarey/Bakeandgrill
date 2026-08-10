@@ -242,6 +242,10 @@ final class PermissionCatalog
             ['group' => 'Delivery', 'slug' => 'delivery.view', 'name' => 'View deliveries'],
             ['group' => 'Delivery', 'slug' => 'delivery.manage', 'name' => 'Manage deliveries'],
 
+            // Customer complaints — owner-only by default
+            ['group' => 'Complaints', 'slug' => 'complaints.view', 'name' => 'View complaints', 'description' => 'See customer complaint queue, photos and history'],
+            ['group' => 'Complaints', 'slug' => 'complaints.manage', 'name' => 'Manage complaints', 'description' => 'Update status, contact log and resolution notes'],
+
             // Wholesale consignment (Stage A) — owner-only by default
             ['group' => 'Wholesale', 'slug' => 'trade.view', 'name' => 'View trade accounts', 'description' => 'See wholesale shops, price lists and deliveries'],
             ['group' => 'Wholesale', 'slug' => 'trade.manage_accounts', 'name' => 'Manage trade accounts', 'description' => 'Create and edit wholesale shop terms'],
@@ -311,6 +315,8 @@ final class PermissionCatalog
     public static function ownerOnlySlugs(): array
     {
         return [
+            'complaints.manage',
+            'complaints.view',
             'customers.credit.repay',
             'customers.credit.writeoff',
             'customers.deposit.adjust',

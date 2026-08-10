@@ -9,6 +9,8 @@
         "pos_staff_role": "owner",
         "pos_staff_permissions": [
             "admin.access",
+            "complaints.manage",
+            "complaints.view",
             "customers.analytics",
             "customers.create",
             "customers.credit.manage",

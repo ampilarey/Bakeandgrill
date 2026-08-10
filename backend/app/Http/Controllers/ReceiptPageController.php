@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Complaints\Services\ComplaintService;
 use App\Http\Requests\ReceiptFeedbackRequest;
 use App\Models\Order;
 use App\Models\Receipt;
@@ -12,6 +13,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReceiptPageController extends Controller
 {
+    public function __construct(
+        private readonly ComplaintService $complaints,
+    ) {}
+
     public function show($token)
     {
         $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds'])
@@ -50,12 +55,15 @@ class ReceiptPageController extends Controller
             return redirect()->back()->with('error', 'Feedback is available after payment.');
         }
 
-        ReceiptFeedback::create([
+        $feedback = ReceiptFeedback::create([
             'receipt_id' => $receipt->id,
             'rating' => $request->validated()['rating'],
             'comments' => $request->validated()['comments'] ?? null,
             'submitted_at' => now(),
         ]);
+
+        // Bridge the previously dead form into the complaint notification path.
+        $this->complaints->fromReceiptFeedback($receipt, $feedback);
 
         return redirect()->back()->with('success', 'Thank you for the feedback.');
     }

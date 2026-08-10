@@ -16,6 +16,10 @@ backend/routes/domains/catalog.php:57:menu.manage
 backend/routes/domains/catalog.php:66:menu.manage
 backend/routes/domains/catalog.php:76:menu.manage
 backend/routes/domains/catalog.php:99:customers.manage
+backend/routes/domains/complaints.php:13:complaints.view
+backend/routes/domains/complaints.php:15:complaints.view
+backend/routes/domains/complaints.php:18:complaints.manage
+backend/routes/domains/complaints.php:21:complaints.manage
 backend/routes/domains/devices.php:23:devices.view
 backend/routes/domains/devices.php:24:devices.view
 backend/routes/domains/devices.php:26:devices.manage
