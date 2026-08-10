@@ -452,8 +452,8 @@ img.brand-logo--dark { display: none; }
   background: var(--color-primary, #d4813a);
 }
 .home-promo-hero__btn {
-  /* Phones: visible chevrons (36px circle); desktop enlarges via min-width 769 */
-  display: flex;
+  /* Phones: hidden — swipe + dots only; desktop shows via min-width 769 */
+  display: none;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
