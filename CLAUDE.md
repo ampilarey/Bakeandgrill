@@ -2,6 +2,9 @@
 
 Project notes for agents and developers working in this repo.
 
+Cursor Cloud VM setup, ports, and local service commands live in `AGENTS.md` (environment
+only). Project rules and conventions live here and under `.cursor/rules/`.
+
 ## Admin colour tokens
 
 When writing or editing admin dashboard page styles (`apps/admin-dashboard/src/pages/**`),
@@ -33,3 +36,21 @@ To regenerate the hex-in-style baseline after migrating a page:
 ```bash
 cd apps/admin-dashboard && node scripts/generate-hex-style-baseline.mjs
 ```
+
+## Local database: MySQL/MariaDB, not PostgreSQL
+
+Although `README.md`, `docker-compose.yml`, and `backend/.env.example` default to
+`DB_CONNECTION=pgsql`, a **fresh `php artisan migrate` fails on PostgreSQL**:
+migration `2026_07_22_150000_add_scope_to_site_settings` uses a `HAVING` clause on
+a SELECT alias (`having "c" > 1`), which MySQL/MariaDB and SQLite accept but
+PostgreSQL rejects (`column "c" does not exist`). The migrations already branch on
+`mysql`/`mariadb` vs `pgsql` drivers, and `.env.example` documents MySQL as a
+supported local option. Use **MySQL/MariaDB** for local/dev. Do not switch dev to
+`pgsql` without first fixing that migration. Automated tests are unaffected —
+`phpunit.xml` forces SQLite in-memory.
+
+## Queue worker vs synchronous SMS
+
+The queue worker (`php artisan queue:work redis`) is only needed for async listeners
+(loyalty, inventory, outgoing webhooks, campaign SMS). Payment/order SMS send
+synchronously.

@@ -1,8 +1,26 @@
 # Selling to Other Shops (Sale-or-Return) — Plan
 
-Status: proposed, not yet built. **Revision 2** — revised after an external review by Terra and
-a second pass over the codebase. Every factual claim in that review was checked and confirmed;
-two were worse than reported. Changes from revision 1 are listed in §15.
+Status: **Stages A–F built.** Revision 2 of the plan (external review by Terra + codebase
+pass) is the design this implementation followed. The body below still describes the original
+build; treat “proposed / not yet built” framing in later sections as obsolete for A–F.
+
+| Stage | State |
+|---|---|
+| A — trade accounts and wholesale prices | Built |
+| B+C — dispatch, stock out, return inspection, reconciliation | Built |
+| D — invoicing, allocations, credit ledger, receivable payments, GST | Built |
+| E — shop-facing deliveries, report sales, statement, pay | Built |
+| F — owner reports and wholesale as a revenue channel | Built |
+
+**Still open before a real shop uses it:**
+
+1. **End-to-end rehearsal on the test install** — set up an account and prices, dispatch,
+   reconcile including a deliberate reported-vs-counted mismatch, invoice, take a part
+   payment, and confirm the figures reach the P&L.
+2. **Accountant confirmation: GST on invoice vs payment basis.** 
+   `WholesaleChannelAggregator::recognizesOnPayment()` selects between the two revenue
+   recognition paths, and **both are covered by tests**, so either answer is safe in code —
+   but the business still needs to know which basis it is on.
 
 The owner's words: *"we send 10 momo sets to a shop, maybe 5 sold, 5 dustbin. They pay for
 5. They might pay all together at the end of the month or middle of the month."*
