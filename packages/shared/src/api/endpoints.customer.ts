@@ -75,4 +75,12 @@ export const CUSTOMER_ENDPOINTS = {
   // SSE streams (customer-scoped)
   STREAM_ORDER_STATUS:        (orderId: number) => `/stream/orders/${orderId}/status`,
   STREAM_TICKET:              (orderId: number) => `/orders/${orderId}/stream-ticket`,
+
+  // Stage E — shop-facing wholesale (own trade account only)
+  CUSTOMER_TRADE_DELIVERIES:  '/customer/trade/deliveries',
+  CUSTOMER_TRADE_DELIVERY:    (id: number) => `/customer/trade/deliveries/${id}`,
+  CUSTOMER_TRADE_REPORT_SALES:(id: number) => `/customer/trade/deliveries/${id}/report-sales`,
+  CUSTOMER_TRADE_STATEMENT:   '/customer/trade/statement',
+  CUSTOMER_TRADE_INVOICE_PDF: (id: number) => `/customer/trade/invoices/${id}/pdf`,
+  CUSTOMER_TRADE_INVOICE_PAY: (id: number) => `/customer/trade/invoices/${id}/pay`,
 } as const;

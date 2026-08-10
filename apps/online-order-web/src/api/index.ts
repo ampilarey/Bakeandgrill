@@ -10,6 +10,7 @@ export * from './promotions';
 export * from './customer';
 export * from './addresses';
 export * from './eventOrders';
+export * from './trade';
 export * from './serviceStatus';
 export * from './serviceUnavailable';
 export * from './pageBlocks';

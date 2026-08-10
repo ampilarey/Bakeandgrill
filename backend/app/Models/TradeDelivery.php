@@ -45,6 +45,7 @@ class TradeDelivery extends Model
         'missing_waived_by',
         'self_reconciled',
         'reported_by',
+        'reported_by_customer_id',
         'reported_at',
         'credit_override_reason',
         'credit_override_by',
@@ -88,6 +89,16 @@ class TradeDelivery extends Model
     public function reconciler(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reconciled_by');
+    }
+
+    public function reportedByCustomer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'reported_by_customer_id');
+    }
+
+    public function salesReportSubmissions(): HasMany
+    {
+        return $this->hasMany(TradeSalesReportSubmission::class);
     }
 
     public function isImmutable(): bool

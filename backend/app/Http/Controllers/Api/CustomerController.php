@@ -310,6 +310,10 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Forbidden - customer access only'], 403);
         }
 
+        $hasTradeAccount = $customer->tradeAccount()
+            ->where('is_active', true)
+            ->exists();
+
         return response()->json([
             'customer' => [
                 'id' => $customer->id,
@@ -321,7 +325,9 @@ class CustomerController extends Controller
                 'tier' => $customer->tier,
                 'preferred_language' => $customer->preferred_language,
                 'last_order_at' => $customer->last_order_at,
+                'has_trade_account' => $hasTradeAccount,
             ],
+            'has_trade_account' => $hasTradeAccount,
             'credit' => $customer->credit_enabled
                 ? app(CustomerCreditService::class)->customerFacingSummary($customer)
                 : null,
