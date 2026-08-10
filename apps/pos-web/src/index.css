@@ -766,7 +766,7 @@ html, body, #root {
   }
   .pos-charge-breakdown {
     margin-bottom: 0 !important;
-    padding: 8px 10px !important;
+    padding: 8px 10px 4px !important;
     font-size: 11px !important;
     row-gap: 2px !important;
     min-width: 0;
@@ -774,9 +774,40 @@ html, body, #root {
     border: 1px solid rgba(153, 246, 228, 0.35) !important;
     color: #ECFDF5 !important;
     border-radius: 12px !important;
+    align-content: start;
+  }
+  /* Match Received card height when only Subtotal + GST + chevron show. */
+  .pos-charge-breakdown.is-collapsed {
+    min-height: 72px;
   }
   .pos-charge-breakdown > div > span:first-child {
     color: #CCFBF1 !important;
+  }
+  .pos-charge-breakdown-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 2px 0 0;
+    padding: 4px 0 2px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pos-charge-breakdown-chevron {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #99F6E4;
+    border-bottom: 2px solid #99F6E4;
+    transform: rotate(45deg);
+    opacity: 0.9;
+    transition: transform 0.15s ease;
+  }
+  .pos-charge-breakdown-chevron.is-open {
+    transform: rotate(225deg);
+    margin-top: 4px;
   }
   .pos-charge-amounts--cash {
     display: grid;

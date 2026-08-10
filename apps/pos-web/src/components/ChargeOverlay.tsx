@@ -159,6 +159,15 @@ export function ChargeOverlay({
       || (deliveryFee ?? 0) > 0
       || (giftTender ?? 0) > 0
     ));
+  /** Phone: collapse Discount / service / fees / gift under a chevron so
+   *  the Received | breakdown row stays short. iPad always shows all. */
+  const hasExtraBreakdown =
+    (discount ?? 0) > 0
+    || (serviceCharge ?? 0) > 0
+    || (packagingFee ?? 0) > 0
+    || (deliveryFee ?? 0) > 0
+    || (giftTender ?? 0) > 0;
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [method, setMethod] = useState<ChargeMethod>("cash");
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
@@ -208,6 +217,7 @@ export function ChargeOverlay({
   useEffect(() => {
     setReceived(total > 0 ? total.toFixed(2) : "");
     setSelectedNotes([]);
+    setBreakdownOpen(false);
   }, [total, method]);
 
   useEffect(() => {
@@ -452,7 +462,13 @@ export function ChargeOverlay({
                 </div>
               )}
               {showBreakdown && (
-                <div className="pos-charge-breakdown" style={{
+                <div
+                  className={[
+                    "pos-charge-breakdown",
+                    isPhoneCharge && hasExtraBreakdown && !breakdownOpen ? "is-collapsed" : "",
+                    isPhoneCharge && breakdownOpen ? "is-expanded" : "",
+                  ].filter(Boolean).join(" ")}
+                  style={{
                   marginBottom: 18, padding: "10px 14px", borderRadius: 10,
                   background: "rgba(255,255,255,0.06)",
                   border: "1px solid rgba(255,255,255,0.08)",
@@ -460,23 +476,39 @@ export function ChargeOverlay({
                   display: "grid", rowGap: 4,
                 }}>
                   <Line label="Subtotal" value={subtotal ?? 0} />
-                  {(discount ?? 0) > 0 && (
+                  {/* Phone collapsed: only Subtotal + GST. Extras expand on tap.
+                      iPad / expanded phone: full stack. */}
+                  {(!isPhoneCharge || breakdownOpen) && (discount ?? 0) > 0 && (
                     <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
                   )}
-                  {(serviceCharge ?? 0) > 0 && (
+                  {(!isPhoneCharge || breakdownOpen) && (serviceCharge ?? 0) > 0 && (
                     <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
                   )}
-                  {(packagingFee ?? 0) > 0 && (
+                  {(!isPhoneCharge || breakdownOpen) && (packagingFee ?? 0) > 0 && (
                     <Line label="Packaging" value={packagingFee ?? 0} />
                   )}
-                  {(deliveryFee ?? 0) > 0 && (
+                  {(!isPhoneCharge || breakdownOpen) && (deliveryFee ?? 0) > 0 && (
                     <Line label="Delivery fee" value={deliveryFee ?? 0} />
                   )}
                   {(tax ?? 0) > 0 && (
                     <Line label="GST" value={tax ?? 0} />
                   )}
-                  {(giftTender ?? 0) > 0 && (
+                  {(!isPhoneCharge || breakdownOpen) && (giftTender ?? 0) > 0 && (
                     <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
+                  )}
+                  {isPhoneCharge && hasExtraBreakdown && (
+                    <button
+                      type="button"
+                      className="pos-charge-breakdown-toggle"
+                      aria-expanded={breakdownOpen}
+                      aria-label={breakdownOpen ? "Hide fee details" : "Show fee details"}
+                      onClick={() => setBreakdownOpen((open) => !open)}
+                    >
+                      <span
+                        className={`pos-charge-breakdown-chevron${breakdownOpen ? " is-open" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </button>
                   )}
                 </div>
               )}
