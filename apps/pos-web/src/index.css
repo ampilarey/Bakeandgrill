@@ -833,8 +833,15 @@ html, body, #root {
   .pos-charge-quick-note-img {
     border-radius: 3px;
   }
-  .pos-cash-numpad {
-    display: none !important;
+  .pos-charge-mobile-numpad .pos-cash-numpad {
+    gap: 6px !important;
+    margin-top: 0 !important;
+  }
+  .pos-charge-mobile-numpad .pos-cash-numpad-key {
+    min-height: 48px !important;
+    font-size: 20px !important;
+    border-radius: 10px !important;
+    padding: 10px 0 !important;
   }
   .pos-charge-footer {
     flex-shrink: 0;

@@ -739,8 +739,8 @@ export function ChargeOverlay({
 
             {method === "cash" && !fullyCovered && (
               <>
-                {/* iPad/desktop: received + numpad live here. Phones use the
-                    compact Received card beside Subtotal/GST instead. */}
+                {/* iPad/desktop: received + numpad live here. Phones show
+                    Received in the top card and a numpad-only control below. */}
                 {!isPhoneCharge && (
                   <div className="pos-charge-received-desktop">
                     <p style={tinyLabel}>Received from customer</p>
@@ -803,6 +803,22 @@ export function ChargeOverlay({
                     })}
                   </div>
                 </div>
+
+                {/* Phone: amount shows in the top Received card; numpad here
+                    so cashiers can still type any amount (no OS keyboard). */}
+                {isPhoneCharge && (
+                  <div className="pos-charge-mobile-numpad">
+                    <CashInput
+                      value={received}
+                      onChange={(v) => {
+                        setSelectedNotes([]);
+                        setReceived(v);
+                      }}
+                      showField={false}
+                      showNumpad
+                    />
+                  </div>
+                )}
               </>
             )}
 
