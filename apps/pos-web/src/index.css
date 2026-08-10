@@ -1354,7 +1354,8 @@ html, body, #root {
 .close-shift-denom-photo--note {
   width: 100%;
   max-height: 100%;
-  aspect-ratio: 2.15 / 1;
+  /* Real Maldivian rufiyaa note: 15 cm × 7 cm. */
+  aspect-ratio: 15 / 7;
   align-self: center;
   background: transparent;
 }
