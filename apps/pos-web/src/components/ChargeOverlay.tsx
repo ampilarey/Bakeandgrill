@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { fetchCurrencyImages, getApiBaseUrl } from "../api";
 import { currencyAssetForLaari } from "../utils/cashDenominations";
 import { z } from "../theme";
 
@@ -8,6 +9,16 @@ export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_ac
 
 /** Maldivian note faces (MVR) offered as photo quick-tenders when ≥ amount due. */
 const QUICK_NOTES_MVR = [5, 10, 20, 50, 100, 500, 1000] as const;
+
+/** /storage URLs live at the site root, not under the API prefix. */
+function absoluteMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  try {
+    return new URL(path, getApiBaseUrl()).toString();
+  } catch {
+    return path;
+  }
+}
 
 type Props = {
   total: number;
@@ -152,6 +163,8 @@ export function ChargeOverlay({
   const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
   const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
+  /** Owner-uploaded note photos (laari face → URL); bundled assets otherwise. */
+  const [customImages, setCustomImages] = useState<Record<string, string>>({});
   /**
    * Split-tender mode. When on, the cashier enters how much is being
    * collected on the selected non-cash method; the remainder is
@@ -161,6 +174,15 @@ export function ChargeOverlay({
    */
   const [split, setSplit] = useState(false);
   const [splitAmount, setSplitAmount] = useState<string>("");
+
+  // Same source as Close shift — Admin → Currency Photos.
+  useEffect(() => {
+    let alive = true;
+    void fetchCurrencyImages().then((images) => {
+      if (alive) setCustomImages(images);
+    });
+    return () => { alive = false; };
+  }, []);
 
   // Reset the received-amount input whenever the total or method changes —
   // otherwise a stale value from a prior order can linger.
@@ -672,7 +694,10 @@ export function ChargeOverlay({
                     </button>
                     {quickNotes.map((face) => {
                       const selected = selectedNotes.includes(face);
-                      const asset = currencyAssetForLaari(face * 100);
+                      const laari = face * 100;
+                      const asset = currencyAssetForLaari(laari);
+                      const custom = customImages[String(laari)];
+                      const src = custom ? absoluteMediaUrl(custom) : asset.src;
                       return (
                         <button
                           key={face}
@@ -684,10 +709,15 @@ export function ChargeOverlay({
                           onClick={() => toggleNote(face)}
                         >
                           <img
-                            src={asset.src}
+                            src={src}
                             alt=""
                             draggable={false}
                             className="pos-charge-quick-note-img"
+                            onError={(e) => {
+                              if (custom && e.currentTarget.src !== asset.src) {
+                                e.currentTarget.src = asset.src;
+                              }
+                            }}
                           />
                         </button>
                       );
