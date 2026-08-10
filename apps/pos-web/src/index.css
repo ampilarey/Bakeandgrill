@@ -282,8 +282,7 @@ html, body, #root {
 }
 .pos-charge-quick-grid {
   display: grid;
-  /* Phone default: Exact + up to 3 notes sit on one row. */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 .pos-charge-quick-btn {
@@ -716,19 +715,18 @@ html, body, #root {
     overflow: visible !important;
   }
   .pos-charge-quick-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
   .pos-charge-quick-btn {
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: 10px;
+    font-size: 13px;
   }
   .pos-charge-quick-btn--exact {
-    min-height: 36px;
-    padding: 4px 2px;
+    min-height: 44px;
   }
   .pos-charge-quick-exact {
-    font-size: 8px;
+    font-size: 9px;
   }
   .pos-cash-numpad {
     gap: 8px !important;
