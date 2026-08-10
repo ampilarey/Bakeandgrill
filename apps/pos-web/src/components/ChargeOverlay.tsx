@@ -7,8 +7,44 @@ import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
 
-/** Maldivian note faces (MVR) offered as photo quick-tenders when ≥ amount due. */
-const QUICK_NOTES_MVR = [5, 10, 20, 50, 100, 500, 1000] as const;
+/** Maldivian note faces (MVR) available as photo quick-tenders. */
+export const QUICK_NOTES_MVR = [5, 10, 20, 50, 100, 500, 1000] as const;
+
+/**
+ * Pick up to `max` note photos for Charge quick amounts.
+ *
+ * Cashiers multi-select notes into Received, so we must offer useful
+ * notes *below* the total (e.g. 500+100+50 for a 605 bill) as well as
+ * covering notes above it — not only faces ≥ total (which left a 605
+ * bill with just the 1000 photo).
+ *
+ * Strategy: take the largest notes under the total (combine), then the
+ * smallest notes at/above the total (single-note cover / change), fill
+ * to `max`, display ascending.
+ */
+export function pickChargeQuickNotes(total: number, max = 5): number[] {
+  if (!(total > 0) || max <= 0) return [];
+  const belowDesc = QUICK_NOTES_MVR.filter((n) => n < total).slice().sort((a, b) => b - a);
+  const aboveAsc = QUICK_NOTES_MVR.filter((n) => n >= total).slice().sort((a, b) => a - b);
+
+  const picked: number[] = [];
+  const used = new Set<number>();
+  const take = (n: number) => {
+    if (picked.length >= max || used.has(n)) return;
+    picked.push(n);
+    used.add(n);
+  };
+
+  // Prefer up to 3 combine-friendly notes under the total (largest first).
+  for (const n of belowDesc.slice(0, 3)) take(n);
+  // Then covering notes (smallest overpay first).
+  for (const n of aboveAsc) take(n);
+  // Fill remaining slots from leftover below notes, then any leftover above.
+  for (const n of belowDesc) take(n);
+  for (const n of aboveAsc) take(n);
+
+  return picked.sort((a, b) => a - b);
+}
 
 /** /storage URLs live at the site root, not under the API prefix. */
 function absoluteMediaUrl(path: string): string {
@@ -268,13 +304,10 @@ export function ChargeOverlay({
       : true);
 
   // Quick tenders: note photos the cashier can tap (multi-select) plus
-  // an Exact button. Same note filter as before — each MVR note that is
-  // >= the amount due — capped at 5 photos. Tapping notes toggles them;
+  // an Exact button. Always aim for 5 useful faces — mix of notes below
+  // the total (combine) and at/above it (single cover). Tapping toggles;
   // Received = sum of selected faces (e.g. 10 + 20 → 30).
-  const quickNotes = useMemo<number[]>(() => {
-    if (total <= 0) return [];
-    return QUICK_NOTES_MVR.filter((note) => note >= total).slice(0, 5);
-  }, [total]);
+  const quickNotes = useMemo<number[]>(() => pickChargeQuickNotes(total, 5), [total]);
 
   const exactTotal = Math.round(total * 100) / 100;
   const exactSelected =

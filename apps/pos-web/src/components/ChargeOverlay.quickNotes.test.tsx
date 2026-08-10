@@ -1,13 +1,34 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { ChargeOverlay } from "./ChargeOverlay";
+import { ChargeOverlay, pickChargeQuickNotes } from "./ChargeOverlay";
+
+describe("pickChargeQuickNotes", () => {
+  it("always prefers 5 notes mixing below-total and covering faces", () => {
+    // 35: old logic only offered 50/100/500/1000 (4). Now include
+    // combine notes under 35 as well.
+    expect(pickChargeQuickNotes(35, 5)).toEqual([5, 10, 20, 50, 100]);
+  });
+
+  it("for 605 includes 50/100/500 plus 1000 (not only 1000)", () => {
+    expect(pickChargeQuickNotes(605, 5)).toEqual([20, 50, 100, 500, 1000]);
+  });
+
+  it("for small totals still returns 5 when enough faces exist", () => {
+    expect(pickChargeQuickNotes(8, 5)).toEqual([5, 10, 20, 50, 100]);
+  });
+
+  it("returns empty when total is zero or negative", () => {
+    expect(pickChargeQuickNotes(0, 5)).toEqual([]);
+    expect(pickChargeQuickNotes(-1, 5)).toEqual([]);
+  });
+});
 
 describe("ChargeOverlay quick note photos", () => {
-  it("shows Exact plus up to 5 note photos for notes >= total", () => {
+  it("shows Exact plus 5 note photos for a mid-size total", () => {
     render(
       <ChargeOverlay
-        total={8}
+        total={35}
         submitting={false}
         onClose={() => undefined}
         onConfirm={vi.fn(async () => undefined)}
@@ -15,14 +36,30 @@ describe("ChargeOverlay quick note photos", () => {
     );
 
     expect(screen.getByTestId("charge-quick-exact")).toBeTruthy();
-    // Notes >= 8: 10, 20, 50, 100, 500 (cap 5) — 1000 stays off the list.
+    expect(screen.getByTestId("charge-quick-note-5")).toBeTruthy();
     expect(screen.getByTestId("charge-quick-note-10")).toBeTruthy();
     expect(screen.getByTestId("charge-quick-note-20")).toBeTruthy();
     expect(screen.getByTestId("charge-quick-note-50")).toBeTruthy();
     expect(screen.getByTestId("charge-quick-note-100")).toBeTruthy();
-    expect(screen.getByTestId("charge-quick-note-500")).toBeTruthy();
+    expect(screen.queryByTestId("charge-quick-note-500")).toBeNull();
     expect(screen.queryByTestId("charge-quick-note-1000")).toBeNull();
-    expect(screen.queryByTestId("charge-quick-note-5")).toBeNull();
+  });
+
+  it("for 605 shows combine notes (50/100/500) not only 1000", () => {
+    render(
+      <ChargeOverlay
+        total={605}
+        submitting={false}
+        onClose={() => undefined}
+        onConfirm={vi.fn(async () => undefined)}
+      />,
+    );
+
+    expect(screen.getByTestId("charge-quick-note-20")).toBeTruthy();
+    expect(screen.getByTestId("charge-quick-note-50")).toBeTruthy();
+    expect(screen.getByTestId("charge-quick-note-100")).toBeTruthy();
+    expect(screen.getByTestId("charge-quick-note-500")).toBeTruthy();
+    expect(screen.getByTestId("charge-quick-note-1000")).toBeTruthy();
   });
 
   it("sums selected notes into Received and highlights both", async () => {
