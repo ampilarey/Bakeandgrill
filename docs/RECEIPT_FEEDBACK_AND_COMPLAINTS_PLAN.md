@@ -1,6 +1,9 @@
 # Receipt Complaints, Feedback and the Invoice Page — Plan
 
-Status: proposed, not yet built.
+Status: proposed, not yet built. **Revision 2** — revised after an external review by Terra.
+Every factual claim in that review was checked against the code and confirmed. Two of
+revision 1's recommendations were unsafe as written; both are corrected here. Changes are
+listed in §13.
 
 Owner's ask, in their words: *"I want to add a complain option to the receipt… if there is a
 mistake in the receipt there should be easy way to inform… all the mistakes and complaints must
@@ -9,7 +12,7 @@ less input from the customer. Most customers won't write anything."*
 
 Owner decisions already taken:
 - **The owner gets an SMS** when a complaint is raised.
-- Whether receipt ratings feed staff performance reporting was left to me. See §8.
+- Whether receipt ratings feed staff performance reporting was left to me. See §9.
 
 ---
 
@@ -18,15 +21,18 @@ Owner decisions already taken:
 | Thing | Where | Reality |
 |---|---|---|
 | Feedback form on the receipt | `receipt.blade.php` 178-197, `ReceiptPageController::feedback`, `receipt_feedback` table | **Saves to a table nobody reads.** No event, no SMS, no email, no admin screen. `ReceiptFeedback` appears in 5 files, all write-side. |
-| "Something wrong with this receipt?" | `partials/document-mistake-cta.blade.php`, used by `receipt.blade.php` and `invoice.blade.php` | **Opens WhatsApp.** Nothing is recorded. If the owner misses the message, or replies and forgets, there is no trace it ever happened. |
+| "Something wrong with this receipt?" | `partials/document-mistake-cta.blade.php`, used by `receipt.blade.php` and `invoice.blade.php` | **Opens WhatsApp.** Nothing is recorded. Miss the message, or reply and forget, and there is no trace it happened. |
 | Rating input | `<select>` with 5 options | A dropdown on a phone. Two taps and a scroll to say "good". |
-| Public reviews | `Review` model (`customer_id`, `order_id`, `item_id`, `rating`, `comment`, `type`, `status`) | Built, used for home page featured reviews. Separate from receipt feedback. |
-| Staff SMS routing | `StaffNotificationDispatcher`, `StaffNotificationPref` | Built. Nothing routes feedback through it. |
-| Customer + staff SMS pairs with per-type toggles | Refund templates: `sms_customer_refund_requested_enabled`, `sms_customer_refund_completed_enabled`, `sms_staff_refund_requested_enabled` | Built. **Copy this exact shape** — do not invent a second pattern. |
-| Refund request workflow | `RefundWorkflowService` — cashier requests, owner/manager approves, OTP, audit | Built. Nothing connects a customer complaint to it. |
+| Public reviews | `Review` model; `POST /reviews` behind **`auth:sanctum` + `customer.token`** (`catalog.php:94-95`) | Built, but **authenticated customers only**. Most receipt viewers are guests. See §5. |
+| Staff SMS routing | `StaffNotificationDispatcher::dispatch(Order $order, string $eventType)` | **Order events only** — a hardcoded map of `new_order`, `order_ready`, `order_out_for_delivery`. **Not a general owner-alert mechanism.** See §4. |
+| Refund SMS pattern | `sms_customer_refund_requested_enabled`, `sms_customer_refund_completed_enabled`, `sms_staff_refund_requested_enabled` | Built. **This is the pattern to copy** for complaint SMS. |
+| Refund workflow | `RefundWorkflowService::request()` — requires amount, reason category, reason text, shift id. Line 226: **owner requests are auto-approved in one action with no OTP** | Built. A public complaint has none of those inputs and must never reach this. See §6. |
+| Media upload | `admin/media` behind `auth:sanctum` + `staff.token` + `permission:media.manage` | **Staff only.** Not reusable for public complaint photos. See §7. |
+| Overdue invoices | `invoices:mark-overdue` scheduled command | Built. The page must not depend on it alone. See §8. |
+| Trade invoice payment | `TradeReceivablePaymentService` — filters `whereNotNull('trade_account_id')` | **Rejects non-trade invoices.** There is no generic public invoice payment path. See §8. |
 
-**The honest summary:** the shop currently invites customers to complain into a drawer that does
-not open, and offers a WhatsApp button that documents nothing. Both must change together.
+**The honest summary:** the shop invites customers to complain into a drawer that does not open,
+and offers a WhatsApp button that documents nothing. Both must change together.
 
 ---
 
@@ -34,226 +40,342 @@ not open, and offers a WhatsApp button that documents nothing. Both must change 
 
 > **A useful complaint in two taps and zero typing.**
 
-Most customers will not write a sentence. Every design decision below follows from that. If a
-choice adds a field, it has to earn its place against the chance the customer abandons.
+Most customers will not write a sentence. Every decision below follows from that. Any field that
+is added has to earn its place against the chance the customer abandons.
 
 Two things we already know and must never ask for:
 - **Who they are** — they arrived from an SMS link carrying a receipt token.
-- **Their phone number** — it is on the order. Asking for a callback number is friction for
-  information we already hold.
+- **Their phone number** — it is on the order.
 
 ---
 
 ## 3. The complaint flow
 
-### 3.1 One entry point, not two
+### 3.1 One entry point
 
-Replace the WhatsApp-only CTA. The button stays where it is and keeps its plain wording —
-"Something wrong with this receipt?" — but it opens a short in-page form instead of WhatsApp.
+Replace the WhatsApp-only CTA. The button keeps its place and its plain wording — "Something
+wrong with this receipt?" — but opens a short in-page form instead of WhatsApp.
 
-### 3.2 The form: one required tap
+### 3.2 The form: tap a category, tap Send
 
-**Step 1 — what kind of problem.** Large tap targets, one row each, no dropdown:
+Revision 1 said tapping a category was enough to submit, then described choosing an item
+afterwards. That was contradictory, and a one-tap submit invites accidental complaints. The flow is:
+
+1. Tap a category.
+2. Tap a large **Send** button.
+
+Everything else is optional. Two taps, no typing, no accidents.
+
+**Categories:**
 
 - Wrong item
-- Something missing
+- Missing item
 - Food quality
+- **Food safety or allergy concern** — see §3.5
 - Charged the wrong amount
 - Took too long
+- Delivery problem — shown only on delivery orders
 - Something else
 
-Tapping one is enough to submit. Everything after this is optional.
+**Optional, after the category (never required):**
+- **Which item(s)** — the receipt already lists them; show them as tap targets. Multiple
+  selection allowed. Store both the order-item reference **and an immutable snapshot** of item
+  name, quantity and price, so a later order edit cannot make the complaint unreadable.
+- **A photo** — one tap, opens the camera. Handled per §7.
+- **A comment** — collapsed by default, visibly secondary.
 
-**Step 2 — which item (only for "wrong item", "something missing", "food quality").**
-The receipt already lists what they bought. Show those lines as tap targets and let them tap the
-one affected. Still zero typing, and it converts "the food was bad" into "the chicken momo on
-Tuesday's 14:32 ticket", which is a kitchen fix.
+### 3.3 The confirmation must not over-promise
 
-**Step 3 — optional extras, collapsed by default.**
-- Add a photo (one tap, opens the camera). Reuse the existing media plumbing.
-- A comment box, clearly marked optional and visibly secondary.
+Revision 1 promised a phone call. That is wrong when the order has no phone number, the receipt
+was emailed, or the customer has opted out of SMS.
 
-**Submit** → confirmation naming a real person: *"Got it. We'll look at this today and call you
-on 77xxxxx."*
+Promise only what the available contact method supports:
+- Valid phone and not opted out → "We'll look at this today and call you on 77xxxxx."
+- No usable contact → "We've recorded this. Please quote reference C-1234 if you contact us."
 
-### 3.3 WhatsApp is kept — but after the record exists
+### 3.4 WhatsApp is kept — after the record exists
 
-The owner already runs on WhatsApp and customers like it. Do not remove it; **reorder it.**
-After the complaint is logged, the confirmation offers "Continue on WhatsApp" with the reference
-number pre-filled in the message. The conversation still happens where it always did, but a
-record now exists whether or not anyone replies.
+The owner runs on WhatsApp and customers like it. Do not remove it; **reorder it.** Once the
+complaint is logged, the confirmation offers "Continue on WhatsApp" with the reference number
+pre-filled. The conversation happens where it always did, and a record exists either way.
 
-### 3.4 Ratings stay, separately
+WhatsApp conversations will not flow back into the system automatically, so the complaint needs
+a **contact log** — free-text entries for calls, WhatsApp exchanges and in-person follow-up, each
+stamped with who and when.
 
-The rating is the passive path and should not be tangled with the complaint path. Change the
-`<select>` to five tappable stars — one tap, no scroll. A 4 or 5 star rating invites a public
-review through the existing `Review` model, turning happy customers into the proof on the home
-page. A 1 or 2 star rating opens the complaint form with "Something else" preselected.
+### 3.5 Food safety is not an ordinary complaint
 
----
+An allergy or food-safety report is a different class of problem. It must:
+- alert the owner **immediately and distinctly**, marked urgent
+- never receive the standard "we'll look at this today" wording
+- be visible at the top of the queue regardless of age ordering
 
-## 4. What happens next — the part that matters
+### 3.6 Complaint windows
 
-A complaint that is not routed is the current bug. The lifecycle:
+A receipt link is permanent, so complaints cannot be open forever. Food quality needs a short
+window (a day or two — the food is gone); billing errors deserve a long one (the money is real).
+Set both as settings, state them on the form when a window has closed, and let the owner change
+them without a deploy.
 
-1. **Recorded** — a `receipt_complaint` row: receipt, order, category, item lines, photo,
-   optional comment, status, timestamps, and the shift and cashier who served the order.
-2. **Owner is notified by SMS immediately.** Category, order number, customer name, amount.
-   Through `StaffNotificationDispatcher`, respecting existing staff preferences.
-3. **Customer is acknowledged immediately** — one SMS, with the reference number.
-4. **Status:** `new` → `seen` → `resolved`, with who and when at each step. A resolution note is
-   required to close — "resolved" with no explanation is how a complaint system rots.
-5. **Customer is told when it closes** — one SMS. Optional per complaint, because some are
-   resolved by the phone call itself and a second message is noise.
+### 3.7 Ratings stay, separately
 
-**Two messages maximum per complaint.** Acknowledgement and resolution. Respect
-`customers.sms_opt_out`. Follow the refund SMS template shape exactly, with per-type enable
-flags so the owner can turn any of them off without a deploy.
+The rating is the passive path and should not be tangled with complaints. Replace the `<select>`
+with five tappable stars. A 1 or 2 star rating opens the complaint form with "Something else"
+preselected. A 4 or 5 star rating leads to the review invitation described in §5.
 
 ---
 
-## 5. "Charged the wrong amount" → the refund queue
+## 4. Notification — build it properly, do not borrow the order dispatcher
 
-This is the highest-value connection in the plan.
+`StaffNotificationDispatcher` takes an `Order` and a fixed set of order event types. It is the
+wrong component and must not be bent into shape.
 
-Today, an overcharged customer's only route is to phone the shop and ask a cashier to raise a
-refund. That is precisely the path the owner tightened the refund workflow to control — the
-cashier is both the reporter and the beneficiary.
+Follow the **refund SMS pattern**, which already does exactly this job:
 
-A customer reporting a billing error **in their own words, from their own receipt, with a
-timestamp** is better evidence than a cashier's word.
+- Three new SMS types with editable templates:
+  - staff/owner — complaint received
+  - customer — complaint acknowledged
+  - customer — complaint resolved
+- Three enable/disable settings in the SMS Control Centre, so the owner can silence any of them
+  without a deploy.
+- Send through the existing SMS log with idempotency keys and retry handling.
+- Record per complaint whether the owner alert was **sent, suppressed, failed or retried**.
 
-So: a "charged the wrong amount" complaint creates a **refund request** in the existing
-`RefundWorkflowService` queue, marked `initiated_by => 'customer_complaint'`, with the complaint
-text and the customer's identity attached.
+**The complaint is saved even if every SMS fails.** Notification is a consequence of recording,
+never a precondition.
 
-**It creates a request. It never creates a refund.** Owner or manager approval is still
-required, unchanged, OTP and all. A complaint form that can move money is a free-money button.
-
----
-
-## 6. What the owner sees
-
-- **A complaints screen** in admin: open complaints first, oldest first, with category, order,
-  customer, amount and age.
-- **Open count and oldest age** somewhere seen daily — otherwise complaints rot quietly.
-- **Complaint attached to the order**, visible in POS and admin, so whoever is at the till knows
-  when that customer walks back in.
-- **Patterns over time:** complaints by category, by item, by day. "Wrong item, 40% of
-  complaints, and 30 of those were the same product" is an operational fix, not a mystery.
+**Two customer messages maximum, and that limit counts complaint messages only.** If a refund is
+later raised, its request/OTP/completion messages belong to the refund workflow and are counted
+separately.
 
 ---
 
-## 7. The invoice page — audit and enhancements
+## 5. Public reviews need explicit consent and an account
 
-`invoice.blade.php` is 192 lines and shows: masthead, bill-to, dates, line items, totals, notes,
-PDF/print buttons, the WhatsApp CTA. Findings, worst first:
+`POST /reviews` requires `auth:sanctum` + `customer.token`. Receipt pages are public token pages
+and most viewers are guests, so revision 1's "5 stars invites a public review" cannot work as
+written.
 
-**1. There is no way to pay.** The page shows "Balance due: MVR X" in warning brown and offers
-Download PDF and Print. Stage D built an invoice-keyed payment path, and the wholesale shop
-portal uses it — but anyone who receives an invoice link by SMS cannot pay from it. **Add a Pay
-button** to the public invoice page for unpaid invoices, using the Stage D path. This is the
-single biggest miss on the page and it costs money directly.
-
-**2. No payment history.** The receipt lists payments; the invoice does not. A shop that has
-part-paid sees "Balance due" with no record of what they already paid, which is exactly the
-condition that produces a phone call. **Show payments received against the invoice.**
-
-**3. Overdue is invisible.** The due date renders in muted grey whether it is next week or three
-weeks past. **Show overdue clearly** — "Overdue by 12 days" — with the same visual weight the
-balance already gets.
-
-**4. Trade invoices do not show what they cover.** Stage D built `trade_invoice_allocations`
-precisely so an invoice can be traced to the deliveries behind it, and the customer-facing page
-ignores it. A shop asking "what is this MVR 4,200 for?" cannot self-serve. **List the deliveries
-and dates behind a trade invoice.**
-
-**5. Credit notes are not shown.** If a credit note has been issued against an invoice, the
-invoice page does not mention it. A customer looking at a bill they have already been credited
-for will chase it. **Show credit notes against the invoice.**
-
-**6. Same undocumented WhatsApp CTA** as the receipt — fix it the same way. On an invoice the
-categories differ: wrong amount, wrong items billed, already paid, other. No food-quality
-categories on a bill.
-
-**7. No feedback block, and that is correct.** A bill is not a service moment. Do not add
-star ratings to invoices.
+- **Never** turn private receipt feedback into a public review automatically.
+- A 4-5 star rating shows an **explicit optional invitation** to leave a public review.
+- That invitation sends the customer into the authenticated customer area to write it.
+- Existing review moderation stays in place before anything appears on the website.
 
 ---
 
-## 8. My decision on ratings and staff performance
+## 6. "Charged the wrong amount" — manager-led, never automatic
 
-The owner left this to me. **Attach the shift and cashier to every complaint and rating for
+**This is the most important correction in revision 2.**
+
+Revision 1 said a billing complaint should create a refund request. Checking the code shows why
+that is unsafe:
+
+- `RefundWorkflowService::request()` requires an amount, a reason category, a reason text and a
+  shift id. A customer complaint has none of them.
+- Line 226: **when the requester is the owner, the refund is requested and approved in one
+  action, with no OTP.** A public form reaching that path could approve a refund with no human
+  decision at all.
+
+The corrected flow:
+
+1. A billing complaint is recorded and flagged **`needs_refund_review`**.
+2. A manager investigates the order.
+3. If a refund is justified, the manager **creates the refund request themselves**, with the
+   correct amount, through the existing workflow, unchanged.
+4. The complaint and the refund are linked afterwards, for audit.
+
+Existing approval, OTP, cash drawer and payment controls are untouched. **No public endpoint may
+create, request or approve a refund.**
+
+---
+
+## 7. Customer photos — private, stripped, rate-limited
+
+The media library is staff-authenticated (`permission:media.manage`) and must not be reused for
+public uploads. Complaint photos need their own narrow path:
+
+- Images only, with strict size and dimension limits.
+- **EXIF stripped, including GPS.** A phone photo carries the location it was taken — usually the
+  customer's home. Storing that because someone photographed a wrong momo is a privacy failure.
+- **Private storage**, not the public media library. No guessable or indexable URL.
+- Staff access only, behind a complaint-view permission.
+- Rate-limited per receipt token and per IP.
+- **A complaint always submits successfully without a photo.** An upload failure must never lose
+  the complaint.
+
+---
+
+## 8. The invoice page — audit and corrections
+
+`invoice.blade.php` (192 lines) shows masthead, bill-to, dates, line items, totals, notes,
+PDF/print, and the WhatsApp CTA.
+
+### 8.1 Payment — split by invoice type, no generic Pay button
+
+Revision 1 said "add a Pay button to unpaid invoices". `TradeReceivablePaymentService` filters
+`whereNotNull('trade_account_id')`, so it rejects sale invoices. There is no generic public
+invoice payment path, and inventing one would be a new payment surface built in a hurry.
+
+Correct behaviour, by type:
+- **Sale invoice against an unpaid order** — link to the existing order/receipt payment page,
+  which already works.
+- **Trade invoice** — send the shop to the authenticated trade portal built in Stage E. A public
+  token-based trade payment flow is a separate, deliberate design decision, not a button.
+- **Never show Pay** for purchase invoices, credit notes, cancelled, void or paid invoices.
+
+### 8.2 Payment history
+
+Show date, method, status and amount. **Do not expose gateway references or transaction ids.**
+For sale invoices, avoid double-counting order payments and invoice payments; for trade
+invoices, use invoice-linked payments.
+
+### 8.3 Credit notes must change the balance, not just appear
+
+Showing a credit note is not enough. **The balance due must reflect it.** Otherwise the page
+tells the customer they were credited while still asking for the original total.
+
+### 8.4 Overdue
+
+`invoices:mark-overdue` sets the status daily. The page should also **calculate "Overdue by X
+days" from the due date**, so it stays correct if the scheduled task is late or has not run.
+
+### 8.5 Trade invoices should show what they cover
+
+Stage D built `trade_invoice_allocations` so an invoice can be traced to the deliveries behind
+it. Show those deliveries, grouped by date and reference. A shop asking "what is this MVR 4,200
+for?" should not need to phone.
+
+### 8.6 Complaints on invoices
+
+Same recorded flow as the receipt, with bill-appropriate categories: wrong amount, wrong items
+billed, already paid, something else. **No food categories and no star rating on a bill.**
+
+---
+
+## 9. Ratings and staff performance — my decision
+
+The owner left this to me. **Attach shift and cashier to every complaint and rating for
 investigation. Do not feed receipt ratings into a cashier performance score.**
 
-Reasoning:
-- Knowing who served a customer is essential to investigating a complaint. That is context.
-- Turning it into a score is different, and worse. A receipt rating is confounded — the customer
-  is rating the food, the wait, the weather and the price all at once, and only some of that is
-  the cashier's doing. Per-cashier sample sizes will be small enough that noise looks like signal.
-- The incentive it creates is the real problem: if ratings become a scorecard, the rational move
-  for a cashier is to stop handing out receipt links, or to lean on customers who look unhappy.
-  That suppresses exactly the information the owner is trying to collect.
+- Knowing who served a customer is essential to investigating. That is context.
+- Scoring is different and worse. A receipt rating is confounded — food, wait, price and weather
+  all land in one number — and per-cashier samples will be small enough that noise looks like
+  signal.
+- The incentive is the real problem: once ratings are a scorecard, the rational move is to stop
+  handing out receipt links or to lean on unhappy customers. That suppresses the very information
+  the owner wants.
 
-So: investigate with it, do not score with it. If the owner later wants staff performance
-signals, complaint *categories* attributable to service — "took too long", "wrong item" — are a
-fairer basis than a star average, and should be a separate, deliberate decision.
-
----
-
-## 9. Risks
-
-1. **A complaint that moves money.** Never. Requests only, existing approval unchanged (§5).
-2. **The drawer that does not open, again.** The routing and the admin screen are not optional
-   extras — they are the feature. Do not ship the form without them.
-3. **Notification fatigue.** Two customer messages per complaint, maximum. Owner SMS respects
-   existing staff preferences. An owner who mutes the alerts is back where he started.
-4. **Abuse of the public token.** The receipt token is the only authentication. Rate-limit
-   submissions per token and per IP, and cap photo uploads. One complaint per receipt is the
-   normal case; allow a small number, not unlimited.
-5. **Privacy.** Receipt feedback and complaints are private. Public reviews are public. Never
-   let one leak into the other — a complaint containing a phone number must never reach the home
-   page.
-6. **Friction killing the signal.** Every extra required field cuts completion. If the build
-   drifts toward "please also tell us X", the feature has failed on its own terms.
-7. **Guest customers.** Most receipts go to phone numbers with no account. Nothing may require
-   a login.
+Investigate with it; do not score with it. If staff signals are wanted later, complaint
+*categories* attributable to service — "took too long", "wrong item" — are a fairer basis, and
+that should be a separate, deliberate decision.
 
 ---
 
-## 10. Test plan
+## 10. Status, history and permissions
 
-- Submitting a complaint with only a category succeeds — no other field is required.
-- The owner receives one SMS on submission; the customer receives one acknowledgement.
-- `sms_opt_out` suppresses the customer message and does not suppress the owner's.
-- A "charged the wrong amount" complaint creates a refund **request**, never an approved refund,
-  and the existing approval path is unchanged.
-- Resolving a complaint requires a note and optionally messages the customer once.
-- Two customer messages maximum per complaint, whatever happens.
-- A complaint records the shift and cashier, and no rating is written to any staff score.
-- Rate limiting blocks a flood of submissions on one token.
-- A complaint is visible on the order in POS and admin.
-- A receipt token cannot read or submit against another receipt.
-- The invoice page shows a working Pay button for an unpaid invoice and none for a paid one.
-- The invoice page shows payments received, overdue status, and for a trade invoice the
-  deliveries behind it.
-- A credit note appears on the invoice it was raised against.
-- No public review is created without the customer explicitly choosing to leave one.
+**Statuses:** `new` → `in_progress` → `awaiting_customer` → `resolved`, plus `not_actionable`.
+
+Terra proposed eight states including duplicate and spam. For a shop where the owner *is* the
+complaints department, eight is a form to fill in rather than a tool. Five covers the real cases;
+add duplicate and spam only if volume ever justifies them.
+
+**Every status change records** who, when, an internal note, and a resolution note where
+applicable. Closing requires a resolution note — "resolved" with no explanation is how a
+complaint system rots. Full audit history is kept, plus the contact log from §3.4.
+
+**Permissions.** Revision 1 said complaints should be visible in POS and admin. That needs
+control, because complaints carry customer contact details, photos and internal notes.
+
+- **POS shows a badge only**: "Open customer concern — ask the manager."
+- Full text, photos, contact details, internal notes and history require dedicated
+  `complaints.view` / `complaints.manage` permissions.
+- Owner-only by default, following the manager allowlist rule already established in
+  `PermissionCatalog`.
 
 ---
 
-## 11. Build order
+## 11. Abuse and integrity
 
-**A — Make the existing drawer open.** Route today's feedback and the new complaint record to
-the owner by SMS, acknowledge the customer, add the admin complaints screen and the status
-lifecycle. This is the fix for a live gap and should land first, even before the nicer form.
+- Double-submit protection and idempotency keys — repeated taps and network retries create one
+  complaint, not four.
+- Rate limits per receipt token and per IP.
+- A small cap on open complaints per receipt.
+- Invalid-token and cross-receipt tests: one token can never read or write another's data.
+- Tokens must not appear in logs or cache keys in a recoverable form.
+- No public endpoint may expose another customer's receipt, complaint or photo.
 
-**B — The two-tap form.** Categories, item tapping, optional photo and comment, star rating,
-WhatsApp handoff after logging.
+---
 
-**C — The refund connection.** "Charged the wrong amount" raises a refund request.
+## 12. Test plan
 
-**D — The invoice page.** Pay button, payments, overdue, trade deliveries, credit notes, and the
-same complaint flow with invoice-appropriate categories.
+- A category-only complaint submits successfully; nothing else is required.
+- Tapping a category alone does **not** submit; Send does.
+- Double-click and network retry produce one complaint.
+- Rate limits fire per token and per IP; a capped receipt refuses further complaints.
+- An invalid or foreign token can neither read nor submit.
+- The owner receives one SMS; the customer receives one acknowledgement.
+- `sms_opt_out` suppresses the customer message and never the owner's.
+- SMS failure still saves the complaint, and the failure is recorded on it.
+- Two **complaint** messages maximum; refund workflow messages are counted separately.
+- A billing complaint sets `needs_refund_review` and creates **no** refund and **no** refund
+  request. Assert directly against `RefundWorkflowService` that nothing was called.
+- A food-safety complaint raises an urgent alert with different wording.
+- Photos: EXIF including GPS is stripped; storage is private; an unauthenticated fetch fails; a
+  complaint still submits when the upload fails.
+- No public review is created without the customer explicitly choosing to leave one while
+  authenticated.
+- Closing without a resolution note is refused; status history records every change.
+- POS shows a badge only; full detail requires the complaint permission.
+- Complaint windows close correctly, and the form explains why.
+- Item snapshots survive a later edit to the order.
+- Invoice: Pay appears for a payable sale invoice, routes correctly for a trade invoice, and is
+  absent for paid, void, cancelled, credit-note and purchase invoices.
+- Invoice: payment history shows no gateway references; a credit note reduces the balance due;
+  "overdue by X days" is correct even when the scheduled command has not run.
+- Trade invoice lists the deliveries behind it.
 
-A and D are independent and could run in parallel. C depends on A. B depends on A.
+---
+
+## 13. Build order
+
+1. **Foundation** — complaint model, statuses, audit history, permissions, private photo
+   storage, the three SMS types with settings, and the admin complaint queue. This is the fix for
+   the live gap and lands first, before the nicer form.
+2. **The form** — categories, item selection, optional photo and comment, the confirmation, the
+   WhatsApp handoff.
+3. **Rating redesign** — stars, and the authenticated public-review invitation.
+4. **Refund linkage** — manager-led triage from `needs_refund_review`.
+5. **Invoice page** — payment routing by type, payment history, credit-note-aware balance,
+   overdue calculation, trade deliveries, and the invoice complaint flow.
+
+1 comes first. 5 is independent of 2-4 and can run in parallel. 4 depends on 1.
+
+---
+
+## 14. What changed in revision 2
+
+Prompted by Terra's review; every point below was verified against the code before acceptance.
+
+1. **Refund connection made manager-led** (§6). Revision 1 would have fed a public form into
+   `RefundWorkflowService`, which requires inputs a complaint does not have and **auto-approves
+   for owners with no OTP**. The worst idea in revision 1.
+2. **Notification rebuilt on the refund SMS pattern** (§4). `StaffNotificationDispatcher` takes
+   an `Order` and only knows order events; revision 1 pointed at the wrong component.
+3. **Photos given their own private path** (§7), with **EXIF/GPS stripping** — a privacy risk
+   revision 1 missed entirely.
+4. **Public reviews require consent and an account** (§5). `POST /reviews` is authenticated;
+   revision 1's automatic invitation could not have worked.
+5. **Invoice Pay split by type** (§8.1). `TradeReceivablePaymentService` rejects non-trade
+   invoices; a generic Pay button would have failed on sale invoices.
+6. **Submit flow disambiguated** (§3.2) — category then Send, not category-as-submit.
+7. **Confirmation no longer promises a call** it may not be able to make (§3.3).
+8. **Food safety and allergy** added as an urgent category (§3.5).
+9. **Complaint windows** defined (§3.6).
+10. **POS shows a badge only**; full detail is permission-gated (§10).
+11. **Credit notes must change the balance**, not merely appear (§8.3).
+12. **Overdue calculated on the page**, not trusted to the scheduled command (§8.4).
+13. **Item snapshots** stored alongside references (§3.2).
+14. **Contact log** added for WhatsApp, phone and in-person follow-up (§3.4).
+15. **Abuse protections** expanded (§11).
+16. **Statuses kept to five, not eight** — the one place I did not follow the review. Reasoning
+    in §10.
