@@ -157,6 +157,9 @@ export function CloseShiftModal({
   const hiddenHasCount = hiddenLaari > 0;
   const moreOpen = showMore;
 
+  /** Foreign rows with a recorded MVR value — shown on the toggle when closed. */
+  const foreignNotedCount = foreignRows.filter((r) => r.accepted_mvr.trim() !== "").length;
+
   const activeCount = counts[activeFace] ?? "";
 
   const setCount = (face: number, raw: string) => {
@@ -423,14 +426,25 @@ export function CloseShiftModal({
                 <button
                   type="button"
                   data-testid="close-shift-foreign-toggle"
-                  className="close-shift-link-btn"
+                  className={`close-shift-link-btn${foreignNotedCount > 0 ? " close-shift-link-btn--counted" : ""}`}
                   onClick={() => setShowForeign((v) => !v)}
                 >
-                  {showForeign ? "Hide foreign currency" : "Foreign currency"}
+                  {foreignNotedCount > 0
+                    ? `Foreign currency · ${foreignNotedCount} noted`
+                    : "Foreign currency"}
                 </button>
               </div>
+              {/* Same popup pattern as "More notes & coins": dim the sheet,
+               * panel on top — the main list never moves. */}
               {showForeign && (
-                <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
+                <div
+                  className="close-shift-more-overlay"
+                  data-testid="close-shift-foreign-overlay"
+                  onClick={() => setShowForeign(false)}
+                >
+                  <div className="close-shift-more-overlay__panel" onClick={(e) => e.stopPropagation()}>
+                    <div className="close-shift-denom-section__title">Foreign currency</div>
+                    <div data-testid="close-shift-foreign-section" className="close-shift-foreign__panel">
                   <div className="close-shift-hint">
                     Record only — does not change the counted cash.
                     Enter the MVR value you accepted it as at the till.
@@ -502,6 +516,16 @@ export function CloseShiftModal({
                   >
                     + Add foreign note
                   </button>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="close-shift-foreign-done"
+                      className="close-shift-more-overlay__done"
+                      onClick={() => setShowForeign(false)}
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

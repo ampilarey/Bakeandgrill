@@ -1339,7 +1339,7 @@ html, body, #root {
   filter: brightness(0.86);
 }
 
-.close-shift-denom-row.is-selected .close-shift-denom-photo {
+.close-shift-denom-row.is-selected .close-shift-denom-photo--coin {
   background: #FFF7ED;
 }
 
@@ -1349,15 +1349,15 @@ html, body, #root {
   pointer-events: none;
 }
 
-/* Every photo tile — note or coin — is the same 15:7 box (real rufiyaa
- * note proportions: 15 cm × 7 cm), so all cards look identical. Notes
- * fill the box edge-to-edge; coins sit centred on their light plate. */
+/* Photo tiles fill their cell so every card looks identical. The note
+ * IMAGE keeps its true 15:7 rufiyaa proportions (15 cm × 7 cm) via
+ * object-fit: contain — as large as the cell allows, never distorted.
+ * Coins sit centred on their light plate. */
 .close-shift-denom-photo--note,
 .close-shift-denom-photo--coin {
   width: 100%;
-  max-height: 100%;
-  aspect-ratio: 15 / 7;
-  align-self: center;
+  height: 100%;
+  align-self: stretch;
 }
 
 .close-shift-denom-photo--note {
@@ -1367,7 +1367,7 @@ html, body, #root {
 .close-shift-denom-photo--note .close-shift-denom-photo__img {
   width: 100%;
   height: 100%;
-  border-radius: 12px;
+  object-fit: contain;
 }
 
 .close-shift-denom-photo--coin .close-shift-denom-photo__img {
@@ -2063,12 +2063,33 @@ html, body, #root {
     gap: 10px;
   }
 
+  /* Portrait: cards are narrow (rail takes 300px) — stack the photo on
+   * top at full width with count | − | total in a row underneath. */
   .close-shift-denom-row {
-    grid-template-columns: minmax(0, 1fr) 78px;
-    min-height: 104px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 128px;
     padding: 10px;
-    gap: 10px;
+    gap: 8px;
     border-radius: 18px;
+  }
+
+  .close-shift-denom-row__meta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 30px;
+  }
+
+  .close-shift-denom-row__count {
+    min-width: 24px;
+    text-align: left;
+  }
+
+  .close-shift-denom-row__totals {
+    align-items: flex-end;
+    min-width: 44px;
   }
 
   .close-shift-denom-photo {
@@ -2084,17 +2105,13 @@ html, body, #root {
     height: 68px;
   }
 
-  .close-shift-denom-row__meta {
-    gap: 5px;
-  }
-
   .close-shift-denom-row__count {
     font-size: 15px;
   }
 
   .close-shift-stepper-btn {
-    max-width: 64px;
-    height: 28px;
+    max-width: 130px;
+    height: 30px;
     font-size: 16px;
   }
 
@@ -2186,31 +2203,40 @@ html, body, #root {
 /* Landscape tablets: two columns inside each Notes/Coins panel. */
 @media (min-width: 700px) and (pointer: coarse) and (orientation: landscape) {
 
-  /* Landscape: three-across cards — Notes 6 → 2 rows, Coins 4 → 2 rows. */
+  /* Landscape: same TWO note columns, photo left / controls right. */
   .close-shift-denom-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-auto-rows: minmax(88px, 1fr);
     gap: 10px;
   }
 
-  .close-shift-denom-section:nth-child(1),
-  .close-shift-denom-section:nth-child(2) {
-    flex: 1 1 0;
-  }
-
   .close-shift-denom-row {
+    grid-template-columns: minmax(0, 1fr) 78px;
+    grid-template-rows: none;
     min-height: 88px;
     padding: 8px;
     gap: 8px;
   }
 
-  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 54px;
-    height: 54px;
+  .close-shift-denom-row__meta {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
   }
 
   .close-shift-denom-row__count {
-    font-size: 15px;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .close-shift-denom-row__totals {
+    align-items: center;
+    min-width: 0;
+  }
+
+  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
+    width: 54px;
+    height: 54px;
   }
 
   .close-shift-stepper-btn {
