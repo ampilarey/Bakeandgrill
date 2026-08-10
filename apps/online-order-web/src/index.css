@@ -452,21 +452,21 @@ img.brand-logo--dark { display: none; }
   background: var(--color-primary, #d4813a);
 }
 .home-promo-hero__btn {
-  /* Phones: hidden — dots + swipe remain; desktop shows via min-width 769 */
-  display: none;
+  /* Phones: visible chevrons (36px circle); desktop enlarges via min-width 769 */
+  display: flex;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(20, 14, 8, 0.45);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   color: white;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
@@ -475,11 +475,17 @@ img.brand-logo--dark { display: none; }
   line-height: 1;
   padding: 0;
 }
+/* Expand hit area to 44px without growing the visible circle */
+.home-promo-hero__btn::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
 .home-promo-hero__btn:hover {
   background: rgba(255, 255, 255, 0.22);
 }
-.home-promo-hero__btn--prev { left: 1.5rem; }
-.home-promo-hero__btn--next { right: 1.5rem; }
+.home-promo-hero__btn--prev { left: 0.65rem; }
+.home-promo-hero__btn--next { right: 0.65rem; }
 @media (max-width: 768px) {
   .home-promo-hero__dots { bottom: 0.85rem; gap: 8px; }
   .home-promo-hero__dot {
