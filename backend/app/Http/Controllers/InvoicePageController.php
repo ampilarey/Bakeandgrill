@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Api\InvoiceController;
 use App\Models\Invoice;
+use App\Support\InvoicePagePresenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoicePageController extends Controller
@@ -13,8 +14,12 @@ class InvoicePageController extends Controller
     public function show(string $token)
     {
         $invoice = $this->loadAndHeal($token);
+        $page = InvoicePagePresenter::present($invoice);
 
-        return view('invoice', ['invoice' => $invoice]);
+        return view('invoice', [
+            'invoice' => $invoice,
+            'page' => $page,
+        ]);
     }
 
     public function pdf(string $token)
@@ -32,15 +37,26 @@ class InvoicePageController extends Controller
      */
     private function loadAndHeal(string $token): Invoice
     {
-        $invoice = Invoice::with(['items', 'order.items', 'order.payments', 'customer'])
+        $with = [
+            'items',
+            'order.items',
+            'order.payments',
+            'customer',
+            'payments',
+            'creditNotes',
+            'tradeAllocations.deliveryLine.delivery',
+            'tradeAllocations.deliveryLine.item',
+        ];
+
+        $invoice = Invoice::with($with)
             ->where('token', $token)
             ->firstOrFail();
 
         if (
             $invoice->order
             && $invoice->type === 'sale'
-            && !in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
-            && !$invoice->isOnCreditAccount()
+            && ! in_array($invoice->status, ['paid', 'void', 'cancelled'], true)
+            && ! $invoice->isOnCreditAccount()
         ) {
             $order = $invoice->order;
             $orderLooksPaid = $order->payment_status === 'paid'
@@ -52,7 +68,7 @@ class InvoicePageController extends Controller
 
             if ($orderLooksPaid || $hasCollectedPayments) {
                 app(InvoiceController::class)->syncPaymentStateFromOrder($order);
-                $invoice = Invoice::with(['items', 'order.items', 'order.payments', 'customer'])
+                $invoice = Invoice::with($with)
                     ->where('token', $token)
                     ->firstOrFail();
             }

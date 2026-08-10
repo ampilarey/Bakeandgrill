@@ -3,13 +3,15 @@
 @php
     $siteName = \App\Models\SiteSetting::get('site_name', 'Bake & Grill');
     $onCredit = $invoice->isOnCreditAccount();
-    $balanceDueMvr = $invoice->balanceDueLaar() / 100;
+    $page = $page ?? \App\Support\InvoicePagePresenter::present($invoice);
+    $balanceDueMvr = (float) $page['display_balance_mvr'];
     $displayStatus = $invoice->displayStatusLabel();
     $badgeClass = match (true) {
         $invoice->status === 'paid' => 'doc-badge--paid',
         $onCredit && in_array($invoice->status, ['sent', 'overdue'], true) => 'doc-badge--sent',
         $invoice->status === 'draft' => 'doc-badge--draft',
         $invoice->status === 'sent' => 'doc-badge--sent',
+        ($page['overdue_days'] ?? null) !== null => 'doc-badge--unpaid',
         default => 'doc-badge--unpaid',
     };
     // Open (unpaid) POS bills: always show the live order lines/total.
@@ -94,6 +96,11 @@
                 @if ($invoice->due_date)
                     <p style="margin:0.25rem 0 0; color:var(--muted);">Due: {{ $invoice->due_date->format('d M Y') }}</p>
                 @endif
+                @if (($page['overdue_days'] ?? null) !== null)
+                    <p style="margin:0.25rem 0 0; color:var(--danger-text, #b91c1c); font-weight:700;" data-overdue-days="{{ $page['overdue_days'] }}">
+                        Overdue by {{ $page['overdue_days'] }} {{ $page['overdue_days'] === 1 ? 'day' : 'days' }}
+                    </p>
+                @endif
                 @if ($invoice->paid_at)
                     <p style="margin:0.25rem 0 0; color:var(--success-text); font-weight:600;">Paid: {{ $invoice->paid_at->format('d M Y') }}</p>
                 @elseif ($onCredit && $balanceDueMvr > 0)
@@ -142,12 +149,71 @@
                 <p><span>Discount</span><span>− MVR {{ number_format($displayDiscount, 2) }}</span></p>
             @endif
             <p class="grand"><span>Total</span><span>MVR {{ number_format($displayTotal, 2) }}</span></p>
+            @foreach ($page['credit_notes'] as $cn)
+                <p data-credit-note>
+                    <span>Credit note {{ $cn['number'] }}</span>
+                    <span>− MVR {{ number_format($cn['total_mvr'], 2) }}</span>
+                </p>
+            @endforeach
             @if ($balanceDueMvr > 0 && $invoice->status !== 'paid')
-                <p class="grand" style="color:#92400E;">
+                <p class="grand" style="color:#92400E;" data-balance-due>
                     <span>Balance due</span><span>MVR {{ number_format($balanceDueMvr, 2) }}</span>
+                </p>
+            @elseif (count($page['credit_notes']) > 0 && $balanceDueMvr <= 0 && $invoice->status !== 'paid')
+                <p class="grand" style="color:var(--success-text);" data-balance-due>
+                    <span>Balance due</span><span>MVR 0.00</span>
                 </p>
             @endif
         </div>
+
+        @if (count($page['deliveries']) > 0)
+            <div style="margin-top:1.25rem;" data-trade-deliveries>
+                <p class="doc-eyebrow">Deliveries on this invoice</p>
+                @foreach ($page['deliveries'] as $delivery)
+                    <div style="margin:0.65rem 0 0.35rem;">
+                        <p style="margin:0; font-weight:700;">{{ $delivery['reference'] }} · {{ $delivery['date'] }}</p>
+                        <ul style="margin:0.35rem 0 0; padding-left:1.1rem;">
+                            @foreach ($delivery['lines'] as $line)
+                                <li>
+                                    {{ $line['label'] }}
+                                    — {{ $line['qty'] }}
+                                    @if ($line['kind'] === 'missing') (not returned) @endif
+                                    · MVR {{ number_format($line['amount_mvr'], 2) }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        @if (count($page['payment_history']) > 0)
+            <div style="margin-top:1.25rem;" data-payment-history>
+                <p class="doc-eyebrow">Payment history</p>
+                <div class="doc-table-scroll">
+                    <table class="doc-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Method</th>
+                                <th>Status</th>
+                                <th class="amount">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($page['payment_history'] as $pay)
+                                <tr>
+                                    <td>{{ $pay['date'] }}</td>
+                                    <td>{{ $pay['method'] }}</td>
+                                    <td>{{ $pay['status'] }}</td>
+                                    <td class="amount">MVR {{ number_format($pay['amount_mvr'], 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
 
         @if ($invoice->notes)
             <div style="margin-top:1.25rem;">
@@ -157,7 +223,14 @@
         @endif
 
         <div class="doc-actions">
-            <a class="doc-btn doc-btn-primary" href="{{ url('/invoices/' . $invoice->token . '/pdf') }}">Download PDF</a>
+            @if (!empty($page['pay_cta']))
+                <a
+                    class="doc-btn doc-btn-primary"
+                    href="{{ $page['pay_cta']['href'] }}"
+                    data-pay-cta="{{ $page['pay_cta']['kind'] }}"
+                >{{ $page['pay_cta']['label'] }}</a>
+            @endif
+            <a class="doc-btn {{ empty($page['pay_cta']) ? 'doc-btn-primary' : '' }}" href="{{ url('/invoices/' . $invoice->token . '/pdf') }}">Download PDF</a>
             <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
 
