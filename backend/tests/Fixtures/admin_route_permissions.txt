@@ -229,3 +229,6 @@ backend/routes/domains/staff.php:84:settings.update
 backend/routes/domains/staff.php:88:settings.update
 backend/routes/domains/staff.php:94:reports.financial
 backend/routes/domains/staff.php:96:settings.update
+backend/routes/domains/trade.php:17:trade.view
+backend/routes/domains/trade.php:25:trade.manage_accounts
+backend/routes/domains/trade.php:32:trade.manage_prices

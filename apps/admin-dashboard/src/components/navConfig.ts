@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -84,6 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
+      { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Trade accounts & shop prices' },
     ],
   },
   {
@@ -337,6 +338,7 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'kds.manage_availability': ['menu.manage'],
   'service_availability.view': ['settings.update'],
   'service_availability.manage_public': ['settings.update'],
+  'trade.view': ['trade.manage_accounts', 'trade.manage_prices'],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

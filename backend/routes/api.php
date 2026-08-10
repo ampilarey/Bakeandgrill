@@ -156,6 +156,8 @@ require __DIR__ . '/domains/reservations.php';
 
 require __DIR__ . '/domains/admin_customers.php';
 
+require __DIR__ . '/domains/trade.php';
+
 Route::get('/content', [App\Http\Controllers\Api\ContentController::class, 'public'])
     ->middleware('throttle:60,1');
 

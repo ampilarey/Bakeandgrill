@@ -25,6 +25,7 @@ export * from './kitchen-production';
 export * from './serviceAvailability';
 export * from './media';
 export * from './signage';
+export * from './trade';
 
 // Re-export shared types that were previously re-exported from the monolithic api.ts
 export type { StaffUser } from '@shared/types';

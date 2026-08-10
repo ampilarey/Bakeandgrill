@@ -198,6 +198,10 @@
         ],
         "service_availability.manage_public": [
             "settings.update"
+        ],
+        "trade.view": [
+            "trade.manage_accounts",
+            "trade.manage_prices"
         ]
     }
 }

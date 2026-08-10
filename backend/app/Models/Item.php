@@ -35,6 +35,7 @@ class Item extends Model
         'image_webp_url',
         'thumb_webp_url',
         'base_price',
+        'wholesale_price_laar',
         'price_note',
         'packaging_fee',
         'packaging_fee_mode',
@@ -63,6 +64,16 @@ class Item extends Model
         'combo_discount_pct',
         'show_on_signage',
         'is_signage_promoted',
+    ];
+
+    /**
+     * Wholesale defaults are staff-only. Keep them off public/POS menu payloads
+     * so walk-in clients never see trade pricing (Stage A).
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'wholesale_price_laar',
     ];
 
     public function category(): BelongsTo
@@ -169,6 +180,7 @@ class Item extends Model
         'track_stock' => 'boolean',
         'allow_pre_order' => 'boolean',
         'base_price' => 'decimal:2',
+        'wholesale_price_laar' => 'integer',
         'packaging_fee' => 'decimal:2',
         'cost' => 'decimal:2',
         'tax_rate' => 'decimal:2',

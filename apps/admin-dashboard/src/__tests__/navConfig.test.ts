@@ -35,6 +35,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/waste-logs', permission: 'inventory.manage' },
   { to: '/reservations', permission: 'reservations.manage' },
   { to: '/online-ordering', permission: 'settings.update' },
+  { to: '/wholesale', permission: 'trade.view' },
   { to: '/customers', permission: 'customers.manage' },
   { to: '/customers/growth', permission: 'customers.manage' },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
