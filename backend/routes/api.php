@@ -113,6 +113,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
 Route::get('/receipts/{token}', [ReceiptController::class, 'show']);
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
+Route::post('/receipts/{token}/complaints', [App\Http\Controllers\Api\PublicComplaintController::class, 'storeForReceipt'])
+    ->middleware('throttle:20,1');
+Route::post('/invoices/{token}/complaints', [App\Http\Controllers\Api\PublicComplaintController::class, 'storeForInvoice'])
+    ->middleware('throttle:20,1');
 
 Route::get('/event-quotes/{token}', [App\Http\Controllers\Api\EventQuoteController::class, 'show'])
     ->middleware('throttle:30,1');

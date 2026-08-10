@@ -74,8 +74,8 @@ class ReceiptPageTest extends TestCase
             ->assertSee('BG-20260527-0002')
             ->assertSee('Delivery')
             ->assertSee('Delivery fee')
-            ->assertSee('Something wrong with this bill?')
-            ->assertSee('wa.me', false);
+            ->assertSee('Something wrong with this receipt?')
+            ->assertSee('data-complaint-send', false);
     }
 
     public function test_pay_page_renders_for_unpaid_delivery_order(): void
@@ -134,6 +134,6 @@ class ReceiptPageTest extends TestCase
             ->assertSee('Prepaid online')
             ->assertSee('dine-in visit is finished')
             ->assertDontSee('Payment confirmed')
-            ->assertSee('Something wrong with this bill?');
+            ->assertSee('Something wrong with this receipt?');
     }
 }

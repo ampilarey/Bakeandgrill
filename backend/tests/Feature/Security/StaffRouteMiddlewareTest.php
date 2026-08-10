@@ -21,6 +21,8 @@ class StaffRouteMiddlewareTest extends TestCase
     private const PUBLIC_EXCEPTIONS = [
         'api/site-settings/public',
         'api/stream/order-status/',
+        // Public token-based complaint form on invoice pages (plan §8.6).
+        'api/invoices/{token}/complaints',
     ];
 
     private const STAFF_PREFIXES = [

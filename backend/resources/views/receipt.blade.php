@@ -170,9 +170,16 @@
             <button type="button" class="doc-btn doc-btn-print">Print</button>
         </div>
 
+        @php
+            $complaintForm = \App\Support\ComplaintFormPresenter::forReceipt($receipt);
+        @endphp
         @include('partials.document-mistake-cta', [
             'waHref' => $waLink.'?text='.rawurlencode($mistakeMsg),
-            'ctaLabel' => 'Something wrong with this '.$doc['mistake_noun'].'?',
+            'ctaLabel' => 'Something wrong with this receipt?',
+            'complaintEndpoint' => $complaintForm['endpoint'],
+            'complaintCategories' => $complaintForm['categories'],
+            'complaintItems' => $complaintForm['items'],
+            'complaintWindowClosed' => $complaintForm['window_closed'],
         ])
 
         @if ($doc['show_feedback'])

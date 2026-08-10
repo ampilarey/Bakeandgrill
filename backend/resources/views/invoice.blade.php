@@ -162,9 +162,16 @@
         </div>
 
         @if ($showMistakeCta)
+            @php
+                $complaintForm = \App\Support\ComplaintFormPresenter::forInvoice($invoice);
+            @endphp
             @include('partials.document-mistake-cta', [
                 'waHref' => $waLink.'?text='.rawurlencode($mistakeMsg),
                 'ctaLabel' => 'Something wrong with this bill?',
+                'complaintEndpoint' => $complaintForm['endpoint'],
+                'complaintCategories' => $complaintForm['categories'],
+                'complaintItems' => $complaintForm['items'],
+                'complaintWindowClosed' => $complaintForm['window_closed'],
             ])
         @endif
 

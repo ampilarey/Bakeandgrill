@@ -385,6 +385,53 @@
             color: var(--muted);
             line-height: 1.4;
         }
+        .doc-complaint-panel { margin-top: 0.85rem; text-align: left; }
+        .doc-complaint-lead { margin: 0 0 0.6rem; font-weight: 700; }
+        .doc-complaint-cats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .doc-complaint-cat {
+            min-height: 48px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text);
+            padding: 0.55rem 0.65rem;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+        }
+        .doc-complaint-cat.is-selected {
+            border-color: var(--amber);
+            box-shadow: inset 0 0 0 1px var(--amber);
+            font-weight: 700;
+        }
+        .doc-complaint-send { width: 100%; margin-top: 0.5rem; min-height: 48px; font-size: 1.05rem; }
+        .doc-complaint-optional { margin: 0.55rem 0; }
+        .doc-complaint-optional summary {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.35rem;
+        }
+        .doc-complaint-items { display: grid; gap: 0.35rem; }
+        .doc-complaint-item {
+            display: flex; gap: 0.5rem; align-items: center;
+            min-height: 44px; padding: 0.35rem 0.5rem;
+            border: 1px solid var(--border); border-radius: 8px;
+        }
+        .doc-complaint-error { color: var(--danger-text, #b91c1c); margin-top: 0.5rem; font-size: 0.9rem; }
+        .doc-complaint-done { margin-top: 0.85rem; }
+        .doc-complaint-confirm { font-weight: 600; margin: 0 0 0.35rem; }
+        .doc-complaint-ref { color: var(--muted); margin: 0 0 0.75rem; font-size: 0.9rem; }
+        .doc-complaint-window { color: var(--muted); margin: 0.5rem 0 0; }
+        .doc-complaint-hint { font-size: 0.8rem; color: var(--muted); margin: 0.35rem 0 0; }
+        @media (max-width: 420px) {
+            .doc-complaint-cats { grid-template-columns: 1fr; }
+        }
         .doc-badge {
             display: inline-block;
             padding: 0.25rem 0.625rem;
