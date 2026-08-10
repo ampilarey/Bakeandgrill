@@ -67,6 +67,15 @@ final class PageBlockValidator
             $settings = [];
         }
 
+        // Required settings (a divider's style, an image_text's side) get their
+        // default the first time a block is created, so "add section" never
+        // needs the owner to fill a form before the block can exist.
+        foreach ($def->settingsDefaults as $key => $value) {
+            if (! array_key_exists($key, $settings) || $settings[$key] === null || $settings[$key] === '') {
+                $settings[$key] = $value;
+            }
+        }
+
         if ($def->settingsSchema !== []) {
             $settingsValidator = Validator::make($settings, $def->settingsSchema);
             if ($settingsValidator->fails()) {
@@ -78,6 +87,10 @@ final class PageBlockValidator
             }
             $settings = $settingsValidator->validated();
         }
+
+        // Never store markup we would not be willing to print. Scripts and
+        // event handlers die here, before anything reaches the database.
+        $settings = GenericBlockPresenter::sanitizeSettings($type, $settings);
 
         $mode = (string) ($data['content_mode'] ?? 'shared');
         if ($mode === 'shared' && ! $def->supportsSharedContent) {

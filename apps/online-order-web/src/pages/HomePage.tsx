@@ -34,6 +34,7 @@ import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
+import { renderGenericBlock } from '../components/home/blocks';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
 /** True unless the setting is explicitly off (`0` / `false`). */
@@ -537,9 +538,21 @@ export function HomePage() {
           />,
         );
         break;
-      default:
-        // Unknown block types render nothing — never white-screen the home page.
+      default: {
+        // Generic content blocks (text, image, video, …). `faq_list` is
+        // website-only and is deliberately not handled here, so a row saved
+        // for the wrong app renders nothing. Anything else is an unknown type
+        // and also renders nothing — never white-screen the home page.
+        const generic = renderGenericBlock(
+          block.block_type,
+          key,
+          block.settings ?? {},
+          block.media ?? null,
+          API_ORIGIN,
+        );
+        if (generic) nodes.push(generic);
         break;
+      }
     }
   }
 

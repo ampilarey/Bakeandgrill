@@ -2,6 +2,23 @@ import { req } from './client';
 
 export type PageBlockApp = 'website' | 'order_app';
 
+export type PageBlockMedia = {
+  image?: {
+    url: string;
+    webp?: string | null;
+    thumb?: string | null;
+    thumb_webp?: string | null;
+    alt?: string | null;
+    width?: number | null;
+    height?: number | null;
+  } | null;
+  video?: {
+    url: string;
+    poster_url?: string | null;
+    alt?: string | null;
+  } | null;
+} | null;
+
 export type PageBlockRow = {
   id: number;
   app: PageBlockApp;
@@ -11,11 +28,15 @@ export type PageBlockRow = {
   is_enabled: boolean;
   content_mode: 'shared' | 'own';
   settings: Record<string, unknown>;
+  /** Media resolved server-side for image/video blocks. */
+  media?: PageBlockMedia;
   label: string;
   description: string;
   removable: boolean;
   non_removable_reason?: string | null;
   supports_shared_content: boolean;
+  /** Generic content blocks may be added more than once per page. */
+  allows_multiple?: boolean;
   unknown?: boolean;
 };
 
@@ -27,6 +48,10 @@ export type PageBlockType = {
   removable: boolean;
   non_removable_reason?: string | null;
   supports_shared_content: boolean;
+  allows_multiple?: boolean;
+  /** Laravel rules keyed by settings field — drives the editor form. */
+  settings_schema?: Record<string, string>;
+  settings_defaults?: Record<string, unknown>;
 };
 
 export async function fetchAdminPageBlocks(app: PageBlockApp, page = 'home'): Promise<{

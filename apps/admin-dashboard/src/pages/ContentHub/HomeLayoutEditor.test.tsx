@@ -57,9 +57,38 @@ describe('HomeLayoutEditor', () => {
               removable: true,
               supports_shared_content: true,
             },
+            {
+              id: 11,
+              app: 'website',
+              page: 'home',
+              block_type: 'rich_text',
+              position: 1,
+              is_enabled: true,
+              content_mode: 'own',
+              settings: { heading: 'Our story', body: 'Baked daily.' },
+              label: 'Text block',
+              description: 'A heading and a paragraph',
+              removable: true,
+              supports_shared_content: true,
+              allows_multiple: true,
+            },
           ],
-      available_types: [],
+      available_types: [
+        {
+          type: 'rich_text',
+          label: 'Text block',
+          description: 'A heading and a paragraph',
+          apps: ['website', 'order_app'],
+          removable: true,
+          supports_shared_content: true,
+          allows_multiple: true,
+        },
+      ],
       unknown_types: [],
+    }));
+    createPageBlock.mockResolvedValue({ block: { id: 99, block_type: 'rich_text' } });
+    updatePageBlock.mockImplementation(async (id: number, payload: Record<string, unknown>) => ({
+      block: { id, ...payload },
     }));
   });
 
@@ -77,5 +106,37 @@ describe('HomeLayoutEditor', () => {
     await waitFor(() => expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website'));
     fireEvent.click(screen.getByTestId('home-layout-tab-order_app'));
     await waitFor(() => expect(fetchAdminPageBlocks).toHaveBeenCalledWith('order_app'));
+  });
+
+  it('edits and saves a generic block’s content in place', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-edit-11')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('home-layout-edit-11'));
+    const heading = await screen.findByLabelText('Heading');
+    expect(heading).toHaveValue('Our story');
+
+    fireEvent.change(heading, { target: { value: 'Our newer story' } });
+    fireEvent.click(screen.getByTestId('home-layout-save-settings-rich_text'));
+
+    await waitFor(() =>
+      expect(updatePageBlock).toHaveBeenCalledWith(11, {
+        settings: { heading: 'Our newer story', body: 'Baked daily.' },
+      }),
+    );
+  });
+
+  it('keeps repeatable types in the add list once they are already used', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-rich_text')).toBeInTheDocument());
+
+    expect(screen.getByRole('option', { name: 'Text block' })).toBeInTheDocument();
+  });
+
+  it('does not offer a content form for named sections', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('home-layout-edit-10')).not.toBeInTheDocument();
   });
 });

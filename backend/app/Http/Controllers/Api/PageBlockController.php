@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\Blocks\BlockTypeRegistry;
+use App\Domains\Content\Blocks\GenericBlockPresenter;
 use App\Domains\Content\Blocks\PageBlockRepository;
 use App\Domains\Content\Blocks\PageBlockValidator;
 use App\Domains\Content\ContentDraftStore;
@@ -66,7 +67,9 @@ class PageBlockController extends Controller
 
         $blocks = PageBlockRepository::forPage($app, $page)
             ->filter(fn (PageBlock $b) => $b->is_enabled)
-            ->filter(fn (PageBlock $b) => BlockTypeRegistry::isKnown($b->block_type))
+            // A row saved for the wrong app (hand-edited or left over from an
+            // older layout) must never reach a renderer that cannot show it.
+            ->filter(fn (PageBlock $b) => BlockTypeRegistry::get($b->block_type)?->allowsApp($app) === true)
             ->values();
 
         return response()->json([
@@ -268,6 +271,8 @@ class PageBlockController extends Controller
     private function serialize(PageBlock $block): array
     {
         $def = BlockTypeRegistry::get($block->block_type);
+        $settings = is_array($block->settings) ? $block->settings : [];
+        $media = GenericBlockPresenter::resolveMedia($block->block_type, $settings);
 
         return [
             'id' => $block->id,
@@ -277,12 +282,15 @@ class PageBlockController extends Controller
             'position' => (int) $block->position,
             'is_enabled' => (bool) $block->is_enabled,
             'content_mode' => $block->content_mode,
-            'settings' => $block->settings ?? [],
+            'settings' => $settings,
+            // Media ids mean nothing to the order app — hand it resolved URLs.
+            'media' => $media,
             'label' => $def?->label ?? $block->block_type,
             'description' => $def?->description ?? '',
             'removable' => $def?->removable ?? true,
             'non_removable_reason' => $def?->nonRemovableReason,
             'supports_shared_content' => $def?->supportsSharedContent ?? false,
+            'allows_multiple' => $def?->allowsMultiple ?? false,
             'unknown' => $def === null,
         ];
     }
@@ -298,6 +306,9 @@ class PageBlockController extends Controller
             'removable' => $d->removable,
             'non_removable_reason' => $d->nonRemovableReason,
             'supports_shared_content' => $d->supportsSharedContent,
+            'allows_multiple' => $d->allowsMultiple,
+            'settings_schema' => $d->settingsSchema,
+            'settings_defaults' => $d->settingsDefaults,
         ];
     }
 }

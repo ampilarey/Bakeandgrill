@@ -13,6 +13,7 @@ final class BlockTypeDefinition
     /**
      * @param  list<string>  $apps
      * @param  array<string, string>  $settingsSchema  Laravel validation rules keyed by settings field
+     * @param  array<string, mixed>  $settingsDefaults  Filled in for absent keys before the schema runs
      */
     public function __construct(
         public readonly string $type,
@@ -23,6 +24,8 @@ final class BlockTypeDefinition
         public readonly bool $supportsSharedContent,
         public readonly array $settingsSchema = [],
         public readonly ?string $nonRemovableReason = null,
+        public readonly array $settingsDefaults = [],
+        public readonly bool $allowsMultiple = false,
     ) {}
 
     public function allowsApp(string $app): bool

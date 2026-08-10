@@ -1077,6 +1077,30 @@
             @continue
         @endif
 
+        {{-- Generic content blocks: settings-driven, may appear many times. --}}
+        @if(\App\Domains\Content\Blocks\GenericBlockPresenter::isGeneric($sectionId))
+            @php
+                $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
+                    $sectionId,
+                    is_array($homeBlock->settings) ? $homeBlock->settings : [],
+                );
+                $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
+                $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);
+            @endphp
+            @unless($blockIsEmpty)
+                @php
+                    $stripeIndex = $stripe;
+                    // A divider has no background of its own, so it must not
+                    // shift the alternating stripe of the sections after it.
+                    if ($sectionId !== 'divider') {
+                        $stripe++;
+                    }
+                @endphp
+                @include($genericPartial, ['blockSettings' => $blockSettings, 'stripeIndex' => $stripeIndex])
+            @endunless
+            @continue
+        @endif
+
         @if(!in_array($sectionId, ['specials', 'featured', 'categories', 'proof', 'cta', 'location'], true))
             @continue
         @endif
