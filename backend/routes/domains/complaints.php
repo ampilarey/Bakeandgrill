@@ -23,3 +23,6 @@ Route::post('/complaints/{id}/contact-logs', [ComplaintController::class, 'addCo
 Route::get('/complaints/{id}/photo', [\App\Http\Controllers\Api\ComplaintPhotoController::class, 'showStaff'])
     ->middleware('permission:complaints.view')
     ->whereNumber('id');
+Route::post('/complaints/{id}/link-refund', [ComplaintController::class, 'linkRefund'])
+    ->middleware('permission:complaints.manage')
+    ->whereNumber('id');

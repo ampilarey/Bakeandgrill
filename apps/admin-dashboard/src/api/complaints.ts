@@ -15,11 +15,20 @@ export type AdminComplaint = {
   comment?: string | null;
   has_photo?: boolean;
   needs_refund_review: boolean;
+  refund_id?: number | null;
   is_food_safety: boolean;
   owner_alert_status: string;
   resolution_note?: string | null;
   created_at: string;
   order?: { id: number; order_number: string; total: number } | null;
+  refund?: {
+    id: number;
+    order_id: number;
+    amount: number;
+    status: string;
+    reason_category?: string | null;
+    created_at?: string;
+  } | null;
   customer?: { id: number; name?: string | null; phone?: string | null } | null;
   cashier?: { id: number; name?: string | null } | null;
   items?: Array<{
@@ -97,4 +106,11 @@ export async function addComplaintContactLog(
 
 export async function fetchComplaintPhotoBlob(id: number): Promise<Blob> {
   return requestBlob(`/complaints/${id}/photo`);
+}
+
+export async function linkComplaintRefund(id: number, refundId: number) {
+  return req<{ complaint: AdminComplaint }>(`/complaints/${id}/link-refund`, {
+    method: 'POST',
+    body: JSON.stringify({ refund_id: refundId }),
+  });
 }

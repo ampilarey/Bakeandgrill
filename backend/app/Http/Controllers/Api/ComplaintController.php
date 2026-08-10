@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Complaints\Services\ComplaintService;
 use App\Http\Controllers\Controller;
 use App\Models\Complaint;
+use App\Models\Refund;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -66,6 +67,7 @@ class ComplaintController extends Controller
                 'contactLogs.loggedBy:id,name',
                 'receipt:id,token,order_id',
                 'invoice:id,invoice_number,token',
+                'refund:id,order_id,amount,status,reason_category,created_at',
             ])
             ->findOrFail($id);
 
@@ -75,6 +77,19 @@ class ComplaintController extends Controller
         unset($payload['photo_path'], $payload['photo_disk']);
 
         return response()->json(['complaint' => $payload]);
+    }
+
+    public function linkRefund(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'refund_id' => ['required', 'integer', 'exists:refunds,id'],
+        ]);
+
+        $complaint = Complaint::query()->findOrFail($id);
+        $refund = Refund::query()->findOrFail($validated['refund_id']);
+        $updated = $this->complaints->linkRefund($complaint, $refund, $request->user());
+
+        return response()->json(['complaint' => $updated]);
     }
 
     public function updateStatus(Request $request, int $id): JsonResponse

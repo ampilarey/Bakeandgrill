@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Receipt;
 use App\Models\ReceiptFeedback;
+use App\Models\Refund;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -267,6 +268,40 @@ class ComplaintService
         }
 
         return $complaint->fresh(['statusHistories', 'contactLogs', 'items']);
+    }
+
+    /**
+     * Manager-led audit link only — never creates or approves a refund.
+     */
+    public function linkRefund(Complaint $complaint, Refund $refund, User $actor): Complaint
+    {
+        if ($complaint->order_id && (int) $refund->order_id !== (int) $complaint->order_id) {
+            throw ValidationException::withMessages([
+                'refund_id' => 'Refund must belong to the same order as the complaint.',
+            ]);
+        }
+
+        if ($complaint->refund_id && (int) $complaint->refund_id !== (int) $refund->id) {
+            throw ValidationException::withMessages([
+                'refund_id' => 'This complaint is already linked to a different refund.',
+            ]);
+        }
+
+        DB::transaction(function () use ($complaint, $refund, $actor) {
+            $complaint->refund_id = $refund->id;
+            $complaint->needs_refund_review = false;
+            $complaint->save();
+
+            ComplaintStatusHistory::create([
+                'complaint_id' => $complaint->id,
+                'from_status' => $complaint->status,
+                'to_status' => $complaint->status,
+                'changed_by_user_id' => $actor->id,
+                'internal_note' => 'Linked refund #'.$refund->id.' for audit',
+            ]);
+        });
+
+        return $complaint->fresh(['refund', 'statusHistories', 'items']);
     }
 
     public function addContactLog(

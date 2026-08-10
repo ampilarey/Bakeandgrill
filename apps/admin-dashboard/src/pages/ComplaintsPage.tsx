@@ -12,6 +12,7 @@ import {
   fetchAdminComplaints,
   fetchComplaintPhotoBlob,
   getComplaint,
+  linkComplaintRefund,
   updateComplaintStatus,
   type AdminComplaint,
   type ComplaintStatus,
@@ -68,6 +69,7 @@ export default function ComplaintsPage() {
   const [resolutionNote, setResolutionNote] = useState('');
   const [contactChannel, setContactChannel] = useState<'phone' | 'whatsapp' | 'in_person'>('phone');
   const [contactNote, setContactNote] = useState('');
+  const [refundIdInput, setRefundIdInput] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -99,8 +101,29 @@ export default function ComplaintsPage() {
       );
       setInternalNote('');
       setResolutionNote('');
+      setRefundIdInput(res.complaint.refund_id ? String(res.complaint.refund_id) : '');
     } catch (e) {
       toast.error((e as Error).message);
+    }
+  };
+
+  const saveRefundLink = async () => {
+    if (!detail) return;
+    const rid = parseInt(refundIdInput, 10);
+    if (!Number.isFinite(rid) || rid < 1) {
+      toast.error('Enter a valid refund id');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await linkComplaintRefund(detail.id, rid);
+      setDetail(res.complaint);
+      toast.success('Refund linked for audit');
+      void load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -264,6 +287,45 @@ export default function ComplaintsPage() {
                   </label>
                 )}
                 <Btn onClick={() => void saveStatus()} disabled={busy}>Save status</Btn>
+
+                {(detail.needs_refund_review || detail.refund_id || detail.refund) && (
+                  <>
+                    <hr />
+                    <strong>Refund review</strong>
+                    <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      Billing complaints only flag review. Create the refund yourself on the order
+                      (Refunds / Orders), then link the refund id here for audit. This page never
+                      creates or approves a refund.
+                    </p>
+                    {detail.order?.id ? (
+                      <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                        Order {detail.order.order_number} (#{detail.order.id})
+                      </p>
+                    ) : null}
+                    {detail.refund ? (
+                      <p style={{ margin: 0 }}>
+                        Linked refund #{detail.refund.id} · {detail.refund.status} · MVR{' '}
+                        {Number(detail.refund.amount).toFixed(2)}
+                      </p>
+                    ) : (
+                      <label>
+                        Refund id
+                        <input
+                          value={refundIdInput}
+                          onChange={(e) => setRefundIdInput(e.target.value)}
+                          inputMode="numeric"
+                          style={{ display: 'block', width: '100%', minHeight: 44 }}
+                          placeholder="id from Refunds page"
+                        />
+                      </label>
+                    )}
+                    {!detail.refund && (
+                      <Btn onClick={() => void saveRefundLink()} disabled={busy || !refundIdInput.trim()}>
+                        Link refund
+                      </Btn>
+                    )}
+                  </>
+                )}
 
                 <hr />
                 <strong>Contact log</strong>

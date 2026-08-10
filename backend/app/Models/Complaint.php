@@ -97,6 +97,7 @@ class Complaint extends Model
         'photo_path',
         'status',
         'needs_refund_review',
+        'refund_id',
         'is_food_safety',
         'shift_id',
         'cashier_user_id',
@@ -147,6 +148,11 @@ class Complaint extends Model
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_user_id');
+    }
+
+    public function refund(): BelongsTo
+    {
+        return $this->belongsTo(Refund::class);
     }
 
     public function resolver(): BelongsTo
