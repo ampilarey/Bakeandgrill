@@ -139,4 +139,26 @@ describe('HomeLayoutEditor', () => {
 
     expect(screen.queryByTestId('home-layout-edit-10')).not.toBeInTheDocument();
   });
+
+  it('shouts when a home page has no sections at all', async () => {
+    fetchAdminPageBlocks.mockResolvedValue({
+      app: 'website',
+      page: 'home',
+      blocks: [],
+      available_types: [],
+      unknown_types: [],
+    });
+    render(<HomeLayoutEditor />);
+
+    const warning = await screen.findByTestId('home-layout-empty-warning');
+    expect(warning.textContent).toMatch(/no sections/i);
+    expect(warning.textContent).toMatch(/required chrome/i);
+  });
+
+  it('does not shout when the page has sections', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('home-layout-empty-warning')).not.toBeInTheDocument();
+  });
 });

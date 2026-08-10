@@ -38,7 +38,6 @@ export type ContentBlock = {
   link_state?: 'same' | 'different';
   brand_synced?: boolean;
   section_enable?: boolean;
-  section_order?: boolean;
   deprecated?: boolean;
 };
 

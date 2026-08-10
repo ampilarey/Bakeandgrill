@@ -54,7 +54,6 @@ export interface SiteSettings {
   home_featured_title_handpicked?: string;
   home_featured_subtitle?: string;
   home_proof_eyebrow?: string;
-  home_section_order?: string;
   home_specials_eyebrow?: string;
   home_specials_title?: string;
   home_hero_fallback_title?: string;
@@ -103,13 +102,6 @@ export interface SiteSettings {
   announcement_url?: string;
   announcement_style?: string;
   office_orders_enabled?: string;
-  section_hero_enabled?: string;
-  section_specials_enabled?: string;
-  section_featured_enabled?: string;
-  section_categories_enabled?: string;
-  section_proof_enabled?: string;
-  section_cta_enabled?: string;
-  section_reviews_enabled?: string;
   office_orders_headline?: string;
   office_orders_subtext?: string;
   office_orders_min_guests?: string;
@@ -180,7 +172,6 @@ const DEFAULT_SETTINGS: SiteSettings = {
   business_maps_url:'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives',
   business_whatsapp:'https://wa.me/9609120011',
   business_viber:   'viber://chat?number=9609120011',
-  home_section_order:'["specials","featured","categories","proof","cta","location"]',
 };
 
 export const DEFAULT_TRUST_ITEMS: TrustItemRow[] = [

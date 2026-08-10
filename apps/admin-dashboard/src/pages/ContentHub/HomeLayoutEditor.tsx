@@ -274,6 +274,23 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading layout…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {blocks.length === 0 && !error && (
+            <div
+              role="alert"
+              data-testid="home-layout-empty-warning"
+              style={{
+                border: '2px solid var(--color-danger)',
+                background: 'var(--color-danger-bg)',
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--color-danger-strong)',
+              }}
+            >
+              This home page has no sections — customers will only see required chrome. Add sections below.
+            </div>
+          )}
           {blocks.map((block, index) => (
             <div
               key={block.id}

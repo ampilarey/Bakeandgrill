@@ -73,20 +73,3 @@ if (!function_exists('content')) {
         return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
     }
 }
-
-if (!function_exists('content_section_enabled')) {
-    /**
-     * Whether a homepage section should render (public boolean content key).
-     * Defaults to visible when the key is missing.
-     */
-    function content_section_enabled(string $key): bool
-    {
-        $raw = content($key, 'true');
-        if (is_bool($raw)) {
-            return $raw;
-        }
-        $normalized = strtolower(trim((string) $raw));
-
-        return ! in_array($normalized, ['false', '0', 'no', 'off'], true);
-    }
-}

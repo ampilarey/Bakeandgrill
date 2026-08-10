@@ -80,8 +80,13 @@ class PageBlockRenderTest extends TestCase
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertNotSame('', trim(strip_tags($html)));
-        // Legacy degrade still renders trust strip / page chrome.
-        $this->assertStringContainsString('trust-strip', $html);
+        // Stage F: no legacy section order any more. An empty layout renders
+        // the required chrome only — trust strip plus the layout brand footer —
+        // and never a blank page.
+        $this->assertStringContainsString('class="trust-strip"', $html);
+        $this->assertStringContainsString('site-footer', $html);
+        $this->assertStringNotContainsString('class="cta-band-inner"', $html, 'Empty layout must not resurrect removed sections.');
+        $this->assertStringNotContainsString('class="proof-strip"', $html, 'Empty layout must not resurrect removed sections.');
     }
 
     public function test_public_page_blocks_endpoint_returns_enabled_known_blocks(): void

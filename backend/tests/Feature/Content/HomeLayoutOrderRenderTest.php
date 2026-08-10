@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Content;
 
 use App\Domains\Content\Blocks\HomeLayoutMigrator;
-use App\Domains\Content\ContentResolver;
 use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\SiteSetting;
@@ -13,7 +12,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
-class HomeSectionOrderRenderTest extends TestCase
+/**
+ * Migrating an install that still has a custom legacy order stored in
+ * site_settings must produce page_blocks in that order, and the website home
+ * must render in that order. page_blocks is the only render source.
+ */
+class HomeLayoutOrderRenderTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -52,9 +56,25 @@ class HomeSectionOrderRenderTest extends TestCase
         $this->assertNotFalse($ctaPos, 'Expected CTA band to render.');
         $this->assertNotFalse($specialsPos, 'Expected specials section to render.');
         $this->assertLessThan($specialsPos, $ctaPos, 'CTA should render before specials when ordered first.');
+
+        // The two apps migrate independently — the order app keeps its own order.
         $this->assertSame(
-            '["categories","specials","featured","proof","cta","location"]',
-            ContentResolver::for('order_app')->get('home_section_order'),
+            [
+                'greeting',
+                'prayer_bar',
+                'hero',
+                'opening_status',
+                'mode_cards',
+                'categories',
+                'specials',
+                'reviews',
+                'reorder_strip',
+                'brand_footer',
+            ],
+            array_column(
+                \App\Domains\Content\Blocks\HomeLayoutSnapshot::fromPageBlocks('order_app'),
+                'type',
+            ),
         );
     }
 
