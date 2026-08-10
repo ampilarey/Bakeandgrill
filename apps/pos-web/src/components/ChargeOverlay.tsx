@@ -174,6 +174,16 @@ export function ChargeOverlay({
    */
   const [split, setSplit] = useState(false);
   const [splitAmount, setSplitAmount] = useState<string>("");
+  /** Phone Charge layout: Received sits beside Subtotal/GST (one CashInput only). */
+  const [isPhoneCharge, setIsPhoneCharge] = useState(() => {
+    try {
+      return typeof window !== "undefined"
+        && typeof window.matchMedia === "function"
+        && window.matchMedia("(max-width: 840px)").matches;
+    } catch {
+      return false;
+    }
+  });
 
   // Same source as Close shift — Admin → Currency Photos.
   useEffect(() => {
@@ -182,6 +192,15 @@ export function ChargeOverlay({
       if (alive) setCustomImages(images);
     });
     return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 840px)");
+    const apply = () => setIsPhoneCharge(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
   // Reset the received-amount input whenever the total or method changes —
@@ -414,35 +433,54 @@ export function ChargeOverlay({
             justifyContent: "center", alignItems: "stretch", background: "#0F172A",
             color: "#fff",
           }}>
-            {showBreakdown && (
-              <div className="pos-charge-breakdown" style={{
-                marginBottom: 18, padding: "10px 14px", borderRadius: 10,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                fontSize: 13, color: "#CBD5E1",
-                display: "grid", rowGap: 4,
-              }}>
-                <Line label="Subtotal" value={subtotal ?? 0} />
-                {(discount ?? 0) > 0 && (
-                  <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
-                )}
-                {(serviceCharge ?? 0) > 0 && (
-                  <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
-                )}
-                {(packagingFee ?? 0) > 0 && (
-                  <Line label="Packaging" value={packagingFee ?? 0} />
-                )}
-                {(deliveryFee ?? 0) > 0 && (
-                  <Line label="Delivery fee" value={deliveryFee ?? 0} />
-                )}
-                {(tax ?? 0) > 0 && (
-                  <Line label="GST" value={tax ?? 0} />
-                )}
-                {(giftTender ?? 0) > 0 && (
-                  <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
-                )}
-              </div>
-            )}
+            {/* On phones: Received | Subtotal/GST share one row. iPad/desktop
+                hide the received card here and keep it in the tender column. */}
+            <div className={`pos-charge-summary-top${method === "cash" && !fullyCovered && isPhoneCharge ? " has-received" : ""}`}>
+              {method === "cash" && !fullyCovered && isPhoneCharge && (
+                <div className="pos-charge-received-card">
+                  <p className="pos-charge-received-label">Received</p>
+                  <CashInput
+                    autoFocus
+                    value={received}
+                    onChange={(v) => {
+                      setSelectedNotes([]);
+                      setReceived(v);
+                    }}
+                    placeholder="0.00"
+                    showNumpad={false}
+                  />
+                </div>
+              )}
+              {showBreakdown && (
+                <div className="pos-charge-breakdown" style={{
+                  marginBottom: 18, padding: "10px 14px", borderRadius: 10,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: 13, color: "#CBD5E1",
+                  display: "grid", rowGap: 4,
+                }}>
+                  <Line label="Subtotal" value={subtotal ?? 0} />
+                  {(discount ?? 0) > 0 && (
+                    <Line label="Discount" value={-(discount ?? 0)} accent="#FCD34D" />
+                  )}
+                  {(serviceCharge ?? 0) > 0 && (
+                    <Line label={serviceChargeLabel ?? "Service charge"} value={serviceCharge ?? 0} />
+                  )}
+                  {(packagingFee ?? 0) > 0 && (
+                    <Line label="Packaging" value={packagingFee ?? 0} />
+                  )}
+                  {(deliveryFee ?? 0) > 0 && (
+                    <Line label="Delivery fee" value={deliveryFee ?? 0} />
+                  )}
+                  {(tax ?? 0) > 0 && (
+                    <Line label="GST" value={tax ?? 0} />
+                  )}
+                  {(giftTender ?? 0) > 0 && (
+                    <Line label="Gift card" value={-(giftTender ?? 0)} accent="#FCD34D" />
+                  )}
+                </div>
+              )}
+            </div>
             <div className={`pos-charge-amounts${method === "cash" ? " pos-charge-amounts--cash" : ""}`}>
               <div className="pos-charge-due-block">
                 <p className="pos-charge-due-label" style={{ margin: 0, fontSize: 12, fontWeight: 600,
@@ -701,18 +739,22 @@ export function ChargeOverlay({
 
             {method === "cash" && !fullyCovered && (
               <>
-                <div>
-                  <p style={tinyLabel}>Received from customer</p>
-                  <CashInput
-                    autoFocus
-                    value={received}
-                    onChange={(v) => {
-                      setSelectedNotes([]);
-                      setReceived(v);
-                    }}
-                    placeholder="0.00"
-                  />
-                </div>
+                {/* iPad/desktop: received + numpad live here. Phones use the
+                    compact Received card beside Subtotal/GST instead. */}
+                {!isPhoneCharge && (
+                  <div className="pos-charge-received-desktop">
+                    <p style={tinyLabel}>Received from customer</p>
+                    <CashInput
+                      autoFocus
+                      value={received}
+                      onChange={(v) => {
+                        setSelectedNotes([]);
+                        setReceived(v);
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
 
                 <div className="pos-charge-quick-amounts">
                   <p style={tinyLabel}>Quick amounts</p>

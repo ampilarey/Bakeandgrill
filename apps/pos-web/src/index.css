@@ -361,6 +361,8 @@ html, body, #root {
 .pos-charge-credit-inline.is-muted {
   opacity: 0.7;
 }
+
+/* Received card is only mounted on phones (see isPhoneCharge). */
 .pos-cart-body {
   flex: 1;
   min-height: 0;
@@ -606,8 +608,8 @@ html, body, #root {
     padding-bottom: 0;
   }
 
-  /* Charge overlay — full-screen phone layout: compact due strip,
-   * scrollable tender/numpad, sticky Confirm footer. */
+  /* Charge overlay — full-screen phone layout: try to fit without
+   * scrolling (Received | Subtotal row, compact tenders + quick notes). */
   .pos-charge-overlay {
     align-items: stretch;
     background: #0F172A;
@@ -663,8 +665,8 @@ html, body, #root {
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 44px !important;
-    padding: 10px 2px !important;
+    min-height: 40px !important;
+    padding: 8px 2px !important;
     font-size: 11px !important;
     border-radius: 10px !important;
     touch-action: manipulation;
@@ -680,115 +682,176 @@ html, body, #root {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    font-size: 14px;
+    font-size: 13px;
   }
   .pos-charge-header {
-    padding: 10px 16px 8px;
-    padding-top: max(10px, env(safe-area-inset-top, 0px));
+    padding: 6px 12px;
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
     flex-shrink: 0;
     border-bottom: 1px solid #E2E8F0 !important;
     background: #fff;
   }
   .pos-charge-header h2 {
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: 800;
     line-height: 1.2;
   }
   .pos-charge-close-btn {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 40px;
+    min-height: 40px;
     margin: -4px -8px -4px 0;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 10px;
-    font-size: 26px !important;
+    font-size: 24px !important;
   }
   .pos-charge-summary {
-    padding: 14px 16px 16px !important;
+    padding: 10px 10px 12px !important;
     margin-top: 0;
     justify-content: flex-start !important;
     flex-shrink: 0;
+    gap: 8px;
     background:
       radial-gradient(120% 80% at 100% 0%, rgba(212, 129, 58, 0.22), transparent 55%),
       #0F172A !important;
   }
+  /* Received (warm) | Subtotal/GST (cool) — same row on phones. */
+  .pos-charge-summary-top {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .pos-charge-summary-top.has-received {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .pos-charge-summary-top.has-received:not(:has(.pos-charge-breakdown)) {
+    grid-template-columns: 1fr;
+  }
+  .pos-charge-received-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #FFF7ED 0%, #FFEDD5 100%);
+    border: 1px solid #FDBA74;
+    color: #9A3412;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .pos-charge-received-label {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #C2410C;
+  }
+  .pos-charge-received-card input {
+    padding: 8px 10px 8px 40px !important;
+    border-radius: 8px !important;
+    border-width: 1.5px !important;
+    font-size: 20px !important;
+    background: #fff !important;
+    min-height: 44px;
+  }
+  .pos-charge-received-card [aria-hidden="true"] {
+    left: 10px !important;
+    font-size: 10px !important;
+    color: #EA580C !important;
+  }
   .pos-charge-breakdown {
-    margin-bottom: 10px !important;
+    margin-bottom: 0 !important;
     padding: 8px 10px !important;
-    font-size: 12px !important;
-    row-gap: 3px !important;
+    font-size: 11px !important;
+    row-gap: 2px !important;
+    min-width: 0;
+    background: linear-gradient(160deg, #0F766E 0%, #115E59 100%) !important;
+    border: 1px solid rgba(153, 246, 228, 0.35) !important;
+    color: #ECFDF5 !important;
+    border-radius: 12px !important;
+  }
+  .pos-charge-breakdown > div > span:first-child {
+    color: #CCFBF1 !important;
   }
   .pos-charge-amounts--cash {
     display: grid;
     grid-template-columns: 1.15fr 1fr;
-    gap: 12px;
+    gap: 10px;
     align-items: end;
   }
   .pos-charge-due-label,
   .pos-charge-change-label {
-    font-size: 10px !important;
+    font-size: 9px !important;
     letter-spacing: 0.1em !important;
   }
   .pos-charge-due-value {
-    margin-top: 4px !important;
-    font-size: 30px !important;
+    margin-top: 2px !important;
+    font-size: 26px !important;
     line-height: 1.05 !important;
   }
   .pos-charge-change-label {
     margin-top: 0 !important;
   }
   .pos-charge-change-value {
-    margin-top: 4px !important;
-    font-size: 26px !important;
+    margin-top: 2px !important;
+    font-size: 22px !important;
     line-height: 1.05 !important;
   }
   .pos-charge-tender {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 14px 14px 18px !important;
-    gap: 12px !important;
+    padding: 10px 10px 12px !important;
+    gap: 8px !important;
     overflow: visible !important;
+  }
+  .pos-charge-tender > div > p {
+    margin-bottom: 4px !important;
+  }
+  .pos-charge-quick-amounts > p {
+    margin-bottom: 4px !important;
   }
   .pos-charge-quick-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
   .pos-charge-quick-btn {
-    border-radius: 10px;
-    font-size: 13px;
+    border-radius: 8px;
+    font-size: 12px;
+    padding: 3px;
   }
   .pos-charge-quick-btn--exact {
-    min-height: 44px;
+    min-height: 40px;
   }
   .pos-charge-quick-exact {
-    font-size: 9px;
+    font-size: 8px;
+  }
+  .pos-charge-quick-note-img {
+    border-radius: 3px;
   }
   .pos-cash-numpad {
-    gap: 8px !important;
-    margin-top: 12px !important;
-  }
-  .pos-cash-numpad-key {
-    min-height: 56px !important;
-    font-size: 22px !important;
-    border-radius: 12px !important;
+    display: none !important;
   }
   .pos-charge-footer {
     flex-shrink: 0;
-    padding: 12px 14px !important;
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    padding: 8px 10px !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
     border-top: 1px solid #E2E8F0;
     background: #fff;
-    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
   }
   .pos-charge-footer-actions {
-    gap: 10px !important;
+    gap: 8px !important;
   }
   .pos-charge-cancel,
   .pos-charge-confirm {
-    min-height: 52px !important;
-    border-radius: 14px !important;
-    font-size: 16px !important;
+    min-height: 48px !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
     touch-action: manipulation;
   }
   .pos-charge-confirm {
