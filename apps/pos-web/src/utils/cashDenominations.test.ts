@@ -15,14 +15,14 @@ describe("cashDenominations", () => {
       5_000: "4",
       50: "2",
       25: "1",
-      20: "1",
+      10: "1",
       1: "1",
     });
     expect(total).toBe(
-      3 * 50_000 + 7 * 10_000 + 4 * 5_000 + 2 * 50 + 25 + 20 + 1,
+      3 * 50_000 + 7 * 10_000 + 4 * 5_000 + 2 * 50 + 25 + 10 + 1,
     );
-    expect(total).toBe(240_146);
-    expect(fromLaari(total)).toBe(2401.46);
+    expect(total).toBe(240_136);
+    expect(fromLaari(total)).toBe(2401.36);
   });
 
   it("treats empty denomination boxes as zero", () => {

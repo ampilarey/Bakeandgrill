@@ -95,6 +95,8 @@ export function usePosApp() {
   const canManageOrderStatus = hasPosPermission(staffPermissions, "pos.manage_order_status");
   const canTimeClock = hasPosPermission(staffPermissions, "pos.time_clock");
   const canViewKds = hasPosPermission(staffPermissions, "kds.view");
+  const canTradeDispatch = hasPosPermission(staffPermissions, "trade.dispatch");
+  const canTradeReconcile = hasPosPermission(staffPermissions, "trade.reconcile");
   const canAccessOps = canOpsInventory || canOpsPreparedStock || canRequestRefund;
   // FIX 17 — a user with `pos.active_orders` is a POS user (kitchen-side
   // expediter/manager who watches active orders), not a KDS-only kitchen
@@ -1184,6 +1186,8 @@ export function usePosApp() {
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
     if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
     if (canKitchenReceive && shiftOpen) main.push({ id: "kitchen_receiving", label: "Kitchen receive", icon: "🍳", group: "main" });
+    if (canTradeDispatch) main.push({ id: "wholesale_dispatch", label: "Send to shop", icon: "📦", group: "main" });
+    if (canTradeReconcile) main.push({ id: "wholesale_reconcile", label: "Shop returns", icon: "↩️", group: "main" });
 
     const user: Array<{ id: string; label: string; icon: string; group: "user" }> = [];
     if (!shiftOpen && canOpenShift) {
@@ -1203,6 +1207,7 @@ export function usePosApp() {
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps,
     canManageExpenses, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
+    canTradeDispatch, canTradeReconcile,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
 
@@ -1219,10 +1224,13 @@ export function usePosApp() {
     my_requests: canViewOwnPurchaseRequests,
     buying_list: canBuyAssigned,
     kitchen_receiving: canKitchenReceive && shiftOpen,
+    wholesale_dispatch: canTradeDispatch,
+    wholesale_reconcile: canTradeReconcile,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports,
     canAccessOps, canManageExpenses, canOpenShift, canCloseShift, shiftOpen,
     canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
+    canTradeDispatch, canTradeReconcile,
   ]);
 
   useEffect(() => {
@@ -1240,7 +1248,7 @@ export function usePosApp() {
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canRequestRefund, canApproveRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
-    canBuyAssigned, canKitchenReceive, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
+    canBuyAssigned, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,
     drawerOpen, setDrawerOpen, showPreferences, setShowPreferences, connectivity, isOnline,
     isReachable, offlineQueueCount, offlinePendingCount, offlinePendingTotals,

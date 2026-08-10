@@ -129,6 +129,11 @@ final class SmsTypeRegistry
             self::def('giftcard_delivery', 'Gift card delivery', 'transactional', true, false, 'giftcard_delivery', 'sms_giftcard_enabled', 'sms.transactional.manage', false, 'Gift card recipient phone', false),
             // suppressible=false: legacy callers used type transactional (non-suppressible)
             self::def('service_restoration', 'Service restoration', 'marketing', true, false, 'service_restoration', 'sms_restoration_enabled', 'service_availability.notify', false, 'Customers who signed up for notify-me', true),
+
+            // Wholesale consignment (Stage B+C) — shop dispatch respects sms_opt_out in TradeSmsNotifier;
+            // registry marks suppressible so SmsService also honours opt-out.
+            self::def('trade_dispatch_shop', 'Wholesale dispatch (shop)', 'transactional', true, true, 'trade_dispatch_shop', null, 'trade.dispatch', false, 'Shop contact / customer phone', true),
+            self::def('trade_reconcile_mismatch_owner', 'Wholesale reconcile mismatch (owner)', 'staff', true, false, 'trade_reconcile_mismatch_owner', null, 'trade.reconcile', false, 'Owner phone(s)', false),
         ];
 
         $defs = [];

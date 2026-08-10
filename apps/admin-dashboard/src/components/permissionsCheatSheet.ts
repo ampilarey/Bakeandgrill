@@ -99,7 +99,9 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'events.manage', gates: 'Event quote editor, send quotes, event staff appointment', typical: 'Manager, appointed staff' },
   { slug: 'website.manage', gates: 'Website CMS and system health', typical: 'Owner' },
   { slug: 'roles_permissions.manage', gates: 'Edit role defaults & user overrides', typical: 'Owner' },
-  { slug: 'trade.view', gates: 'View wholesale shops and price lists', typical: 'Owner' },
+  { slug: 'trade.view', gates: 'View wholesale shops, prices and deliveries', typical: 'Owner' },
   { slug: 'trade.manage_accounts', gates: 'Create and edit wholesale shop terms', typical: 'Owner' },
   { slug: 'trade.manage_prices', gates: 'Edit per-shop wholesale prices', typical: 'Owner' },
+  { slug: 'trade.dispatch', gates: 'Dispatch consignment deliveries to shops', typical: 'Owner' },
+  { slug: 'trade.reconcile', gates: 'Reconcile what sold and what came back', typical: 'Owner' },
 ];

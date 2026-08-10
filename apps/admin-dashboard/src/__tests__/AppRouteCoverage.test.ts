@@ -37,8 +37,9 @@ describe('App route coverage', () => {
       'settings/*',
       // Nested catering detail (parent /catering is in nav)
       'catering/:id',
-      // Nested wholesale account detail (parent /wholesale is in nav)
+      // Nested wholesale account / delivery detail (parents in nav)
       'wholesale/:id',
+      'wholesale/deliveries/:id',
       // Delivery tab of Ordering Control — aliased to /online-ordering in NAV_PATH_ALIASES
       'delivery-settings',
     ]);

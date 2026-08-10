@@ -63,6 +63,11 @@ class TradeAccount extends Model
         return $this->hasMany(TradePriceListEntry::class);
     }
 
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(TradeDelivery::class);
+    }
+
     /**
      * Days until payment is due. When unset on the account, use the
      * customer's credit payment terms (default 30).

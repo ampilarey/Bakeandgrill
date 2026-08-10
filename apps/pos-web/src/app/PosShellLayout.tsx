@@ -44,6 +44,12 @@ const EventsPanel = lazy(() =>
 const KitchenReceivingPanel = lazy(() =>
   import('../components/KitchenReceivingPanel').then((m) => ({ default: m.KitchenReceivingPanel })),
 );
+const WholesaleDispatchPanel = lazy(() =>
+  import('../components/WholesaleDispatchPanel').then((m) => ({ default: m.WholesaleDispatchPanel })),
+);
+const WholesaleReconcilePanel = lazy(() =>
+  import('../components/WholesaleReconcilePanel').then((m) => ({ default: m.WholesaleReconcilePanel })),
+);
 const ShiftHistoryPanel = lazy(() =>
   import('../components/ShiftHistoryPanel').then((m) => ({ default: m.ShiftHistoryPanel })),
 );
@@ -114,7 +120,7 @@ export function PosShellLayout() {
     isLoggedIn, isLocked, pane, setPane, drawerOpen, setDrawerOpen, cashierName, staffRole, deviceId,
     shift, shiftOpen, canEnterPosShell, canOpenShift, canCloseShift, canRingSales, canHoldResume,
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
-    canAccessOps, canVoidOrders, canManageEvents,
+    canAccessOps, canVoidOrders, canManageEvents, canTradeDispatch, canTradeReconcile,
     canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
@@ -722,6 +728,23 @@ export function PosShellLayout() {
             onClose={() => setPane(canViewActiveOrders && shiftOpen ? "open_tickets" : canRingSales && shiftOpen ? "sales" : "shift_history")}
             onReceived={() => void refreshOpenTickets()}
           />
+          </Suspense>
+        )}
+
+        {pane === 'wholesale_dispatch' && canTradeDispatch && (
+          <Suspense fallback={<PaneFallback />}>
+            <WholesaleDispatchPanel
+              canOverrideCredit={staffRole === 'owner'}
+              onClose={() => setPane(canRingSales && shiftOpen ? 'sales' : canAccessOps ? 'ops' : 'shift')}
+            />
+          </Suspense>
+        )}
+
+        {pane === 'wholesale_reconcile' && canTradeReconcile && (
+          <Suspense fallback={<PaneFallback />}>
+            <WholesaleReconcilePanel
+              onClose={() => setPane(canRingSales && shiftOpen ? 'sales' : canAccessOps ? 'ops' : 'shift')}
+            />
           </Suspense>
         )}
       </main>

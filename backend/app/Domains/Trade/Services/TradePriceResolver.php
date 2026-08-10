@@ -55,24 +55,37 @@ final class TradePriceResolver
         Item $item,
         ?Variant $variant,
     ): ?int {
-        $query = TradePriceListEntry::query()
-            ->where('trade_account_id', $account->id)
-            ->where('item_id', $item->id)
-            ->where('is_active', true);
-
+        // 1) Variant-specific row when a variant was requested.
         if ($variant !== null) {
-            $query->where('variant_id', $variant->id);
-        } else {
-            $query->whereNull('variant_id');
+            $variantEntry = TradePriceListEntry::query()
+                ->where('trade_account_id', $account->id)
+                ->where('item_id', $item->id)
+                ->where('variant_id', $variant->id)
+                ->where('is_active', true)
+                ->first();
+
+            if ($variantEntry !== null) {
+                // 0 is a legitimate agreed price — do not treat as unset.
+                return (int) $variantEntry->price_laar;
+            }
         }
 
-        $entry = $query->first();
-        if ($entry === null) {
+        // 2) Item-level row (variant_id null) — also the fallback when a
+        //    variant was requested but has no own row. Skipping this step
+        //    previously sent variants through retail_discount and could
+        //    more than double the agreed shop price.
+        $itemEntry = TradePriceListEntry::query()
+            ->where('trade_account_id', $account->id)
+            ->where('item_id', $item->id)
+            ->whereNull('variant_id')
+            ->where('is_active', true)
+            ->first();
+
+        if ($itemEntry === null) {
             return null;
         }
 
-        // 0 is a legitimate agreed price — do not treat as unset.
-        return (int) $entry->price_laar;
+        return (int) $itemEntry->price_laar;
     }
 
     /**

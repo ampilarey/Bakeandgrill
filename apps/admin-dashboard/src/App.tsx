@@ -67,6 +67,7 @@ const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibrary
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
 const WholesalePage           = lazyWithRetry(() => import('./pages/WholesalePage'));
 const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAccountPage'));
+const WholesaleDeliveriesPage = lazyWithRetry(() => import('./pages/WholesaleDeliveriesPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -377,6 +378,16 @@ export default function App() {
                 <Route path="wholesale" element={
                   <PermissionGuard user={user} permission="trade.view">
                     <WholesalePage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/deliveries" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleDeliveriesPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/deliveries/:id" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleDeliveriesPage />
                   </PermissionGuard>
                 } />
                 <Route path="wholesale/:id" element={

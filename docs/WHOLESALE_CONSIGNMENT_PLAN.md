@@ -174,22 +174,30 @@ Over-invoicing is corrected by a credit note through the existing `parent_invoic
 
 ## 4. Stock custody — which stock, and deducted once
 
-Revision 1 said "add new `StockMovement` types". That was wrong: `stock_movements` is keyed to
-`inventory_items`, which are **ingredients**. A finished momo set is an `Item` with
-`stock_quantity` / prepared stock, managed by `StockManagementService`,
-`StockReservationService` and `PreparedStockController`.
+Revision 1 said "add new `StockMovement` types". Revision 2 then claimed `stock_movements` is
+keyed only to ingredients — that was only half right. Corrected in Stage B+C:
+
+**`stock_movements` is a shared audit table.** Ingredient rows set `inventory_item_id` to an
+`inventory_items` id. Finished-goods (prepared menu) rows already set `inventory_item_id = null`,
+`reference_type = 'menu_item'` (or `variant`), and a unique `idempotency_key` — written today by
+`StockManagementService::deductPreparedStock` / `adjustItemPreparedStock` /
+`adjustVariantPreparedStock`. The quantity lives on `items.stock_quantity` /
+`variants.stock_qty`, not on `inventory_items`.
 
 So:
 
 - A trade delivery moves **finished goods** — `items.stock_quantity` (and variant stock where
   the item has variants). It is the same stock the POS and the order app sell from.
-- Dispatch **deducts finished-goods stock once**, at dispatch, and records the movement through
-  the existing prepared-stock service so the adjustment is audited like every other one.
+- Dispatch **deducts finished-goods stock once**, at dispatch, through `StockManagementService`
+  following the `deductPreparedStock` pattern: a `stock_movements` row with
+  `inventory_item_id = null`, type `consignment_out`, `reference_type = 'trade_delivery'`,
+  `reference_id` = the delivery id, stamped `unit_cost`, and a unique idempotency key.
 - Marking a line sold at reconciliation **must not deduct anything again**. The goods left the
   building at dispatch. A test must prove that sold quantity causes no second deduction.
-- Accepted returns add stock back once, on staff acceptance, not on the driver's count.
-- Ingredient-level `stock_movements` are untouched: the ingredients were consumed when the
-  momos were produced, which the kitchen production flow already handles.
+- Accepted returns add stock back once, on staff acceptance (`consignment_in`), not on the
+  driver's count.
+- Ingredient-keyed `stock_movements` (`inventory_item_id` set) are untouched: the ingredients
+  were consumed when the momos were produced, which the kitchen production flow already handles.
 
 Consigned goods are in a third state — not on our shelf, not sold. Available stock for the POS
 and the order app must **exclude** them from the moment of dispatch, or the online menu will

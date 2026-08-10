@@ -82,8 +82,13 @@ final class PermissionCatalog
         // emergency + schedule + restore + notify require the explicit slug.
         'service_availability.view' => ['settings.update'],
         'service_availability.manage_public' => ['settings.update'],
-        // Wholesale — manage implies view only (never alias to website/settings/roles).
-        'trade.view' => ['trade.manage_accounts', 'trade.manage_prices'],
+        // Wholesale — manage/dispatch/reconcile imply view only (never alias to website/settings/roles).
+        'trade.view' => [
+            'trade.manage_accounts',
+            'trade.manage_prices',
+            'trade.dispatch',
+            'trade.reconcile',
+        ],
     ];
 
     /** @return list<array{slug: string, name: string, group: string, description?: string}> */
@@ -237,9 +242,11 @@ final class PermissionCatalog
             ['group' => 'Delivery', 'slug' => 'delivery.manage', 'name' => 'Manage deliveries'],
 
             // Wholesale consignment (Stage A) — owner-only by default
-            ['group' => 'Wholesale', 'slug' => 'trade.view', 'name' => 'View trade accounts', 'description' => 'See wholesale shops and their price lists'],
+            ['group' => 'Wholesale', 'slug' => 'trade.view', 'name' => 'View trade accounts', 'description' => 'See wholesale shops, price lists and deliveries'],
             ['group' => 'Wholesale', 'slug' => 'trade.manage_accounts', 'name' => 'Manage trade accounts', 'description' => 'Create and edit wholesale shop terms'],
             ['group' => 'Wholesale', 'slug' => 'trade.manage_prices', 'name' => 'Manage wholesale prices', 'description' => 'Edit per-shop wholesale price lists'],
+            ['group' => 'Wholesale', 'slug' => 'trade.dispatch', 'name' => 'Dispatch wholesale deliveries', 'description' => 'Send consignment goods to shops'],
+            ['group' => 'Wholesale', 'slug' => 'trade.reconcile', 'name' => 'Reconcile wholesale deliveries', 'description' => 'Record what sold and what came back'],
 
             // Kitchen / KDS
             ['group' => 'Kitchen / KDS', 'slug' => 'kds.view', 'name' => 'View kitchen display', 'description' => 'View KDS queue and stream'],
@@ -313,10 +320,12 @@ final class PermissionCatalog
             'customers.deposit.transfer_credit',
             // Discount cards — owner-issued only by default
             'promotions.discount_cards',
-            // Wholesale Stage A — owner-only unless explicitly granted
+            // Wholesale — owner-only unless explicitly granted
             'trade.view',
             'trade.manage_accounts',
             'trade.manage_prices',
+            'trade.dispatch',
+            'trade.reconcile',
         ];
 
         return array_values(array_diff(self::ownerSlugs(), $excluded));

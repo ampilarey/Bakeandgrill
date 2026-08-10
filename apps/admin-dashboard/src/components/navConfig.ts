@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -40,7 +40,7 @@ export interface NavGroup {
 export const PINNED_NAV_ITEMS: NavItem[] = [];
 
 /** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
-export const NAV_EXACT_MATCH_PATHS = new Set(['/customers']);
+export const NAV_EXACT_MATCH_PATHS = new Set(['/customers', '/wholesale']);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
@@ -84,7 +84,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
-      { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Trade accounts & shop prices' },
+      { to: '/wholesale', icon: Store, label: 'Wholesale shops', permission: 'trade.view', description: 'Trade accounts & shop prices' },
+      { to: '/wholesale/deliveries', icon: Truck, label: 'Wholesale deliveries', permission: 'trade.view', description: 'Dispatch notes & reconciliation' },
     ],
   },
   {
@@ -136,9 +137,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/content', icon: LayoutTemplate, label: 'Content & Branding', permission: 'website.manage', description: 'Website + order app copy, branding & visuals' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
-      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage'], description: 'Role defaults & per-user overrides' },
-      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage'], description: 'Customer SMS alerts for order status' },
+      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
+      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/settings/charges', icon: Percent, label: 'Charges & Fees', permission: 'settings.update', description: 'Service charge and payment commission' },
+      { to: '/settings/currency', icon: Banknote, label: 'Currency Photos', permission: 'website.manage', description: 'Note & coin photos for the POS cash count' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },
@@ -338,7 +340,12 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'kds.manage_availability': ['menu.manage'],
   'service_availability.view': ['settings.update'],
   'service_availability.manage_public': ['settings.update'],
-  'trade.view': ['trade.manage_accounts', 'trade.manage_prices'],
+  'trade.view': [
+    'trade.manage_accounts',
+    'trade.manage_prices',
+    'trade.dispatch',
+    'trade.reconcile',
+  ],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {
