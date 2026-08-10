@@ -1349,15 +1349,18 @@ html, body, #root {
   pointer-events: none;
 }
 
-/* Photo tiles fill their cell so every card looks identical. The note
- * IMAGE keeps its true 15:7 rufiyaa proportions (15 cm × 7 cm) via
- * object-fit: contain — as large as the cell allows, never distorted.
- * Coins sit centred on their light plate. */
+/* Every photo tile — note or coin — is the largest EXACT 15:7 box (real
+ * rufiyaa proportions, 15 cm × 7 cm) that fits its cell, centred. Row
+ * heights are fixed tracks, so the aspect box can never inflate the
+ * layout. Notes fill the box edge-to-edge; coins centre on their plate. */
 .close-shift-denom-photo--note,
 .close-shift-denom-photo--coin {
   width: 100%;
-  height: 100%;
-  align-self: stretch;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: 15 / 7;
+  align-self: center;
+  justify-self: center;
 }
 
 .close-shift-denom-photo--note {
@@ -1367,7 +1370,7 @@ html, body, #root {
 .close-shift-denom-photo--note .close-shift-denom-photo__img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .close-shift-denom-photo--coin .close-shift-denom-photo__img {
@@ -2199,6 +2202,15 @@ html, body, #root {
     min-height: 0;
     padding: 8px;
     gap: 8px;
+  }
+
+  /* Cell here is wider than tall — drive the 15:7 box from the height. */
+  .close-shift-denom-photo--note,
+  .close-shift-denom-photo--coin {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    max-height: none;
   }
 
   .close-shift-denom-row__meta {
