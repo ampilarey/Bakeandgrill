@@ -656,7 +656,7 @@ export function ChargeOverlay({
                 </div>
 
                 <div className="pos-charge-quick-amounts">
-                  <p style={tinyLabel}>Quick amounts — tap notes to add</p>
+                  <p style={tinyLabel}>Quick amounts</p>
                   <div className="pos-charge-quick-grid">
                     <button
                       type="button"
@@ -689,7 +689,6 @@ export function ChargeOverlay({
                             draggable={false}
                             className="pos-charge-quick-note-img"
                           />
-                          <span className="pos-charge-quick-note-face">MVR {face}</span>
                         </button>
                       );
                     })}
