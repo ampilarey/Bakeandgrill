@@ -135,8 +135,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/content', icon: LayoutTemplate, label: 'Content & Branding', permission: 'website.manage', description: 'Website + order app copy, branding & visuals' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
-      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
-      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
+      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage'], description: 'Role defaults & per-user overrides' },
+      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/settings/charges', icon: Percent, label: 'Charges & Fees', permission: 'settings.update', description: 'Service charge and payment commission' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
@@ -277,8 +277,6 @@ export const BOTTOM_TABS: NavItem[] = [
 export const PERM_ALIASES: Record<string, string[]> = {
   'devices.approve': ['devices.manage'],
   'devices.view': ['devices.manage', 'devices.approve'],
-  'roles_permissions.manage': ['website.manage'],
-  'settings.manage': ['website.manage'],
   'settings.update': ['settings.manage'],
   'reports.basic': ['reports.view'],
   'finance.cash_manage': ['payments.cash_manage'],

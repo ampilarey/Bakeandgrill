@@ -17,8 +17,6 @@ final class PermissionCatalog
     public const SATISFIED_BY = [
         'devices.approve' => ['devices.manage'],
         'devices.view' => ['devices.manage', 'devices.approve'],
-        'roles_permissions.manage' => ['website.manage'],
-        'settings.manage' => ['website.manage'],
         'settings.update' => ['settings.manage'],
         'reports.basic' => ['reports.view'],
         'finance.cash_manage' => ['payments.cash_manage'],

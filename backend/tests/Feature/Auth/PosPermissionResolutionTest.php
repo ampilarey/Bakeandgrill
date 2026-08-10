@@ -373,21 +373,27 @@ class PosPermissionResolutionTest extends TestCase
         $this->assertFalse($this->permissions()->hasPermission($this->manager, 'orders.void'));
     }
 
-    public function test_website_manage_satisfies_roles_permissions_manage_route(): void
+    public function test_website_manage_alone_does_not_open_roles_permissions_routes(): void
     {
-        // Before migration sync, owner may only have website.manage from older seeds.
-        // SATISFIED_BY alias should still allow access.
-        $perm = Permission::where('slug', 'website.manage')->first();
-        $this->assertNotNull($perm);
+        // website.manage must not satisfy roles_permissions.manage (privilege
+        // escalation hole). Use a non-owner so the owner short-circuit cannot
+        // mask the alias check — see WebsiteManagePrivilegeEscalationTest.
+        $staffRole = Role::where('slug', 'staff')->firstOrFail();
+        $editor = User::create([
+            'name' => 'Content Editor',
+            'email' => 'content-editor@test.local',
+            'phone' => '7700999',
+            'password' => Hash::make('password'),
+            'role_id' => $staffRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        $editor->grantPermission('website.manage');
 
-        $this->owner->role->permissions()->sync([$perm->id]);
-        $this->owner->unsetRelation('role');
-        $this->owner->load('role.permissions');
-
-        Sanctum::actingAs($this->owner, ['staff']);
+        Sanctum::actingAs($editor, ['staff']);
 
         $this->getJson('/api/permissions')
-            ->assertOk();
+            ->assertForbidden();
     }
 
     public function test_staff_without_ring_sales_cannot_create_order(): void

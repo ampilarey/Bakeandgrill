@@ -9,12 +9,6 @@
             "devices.manage",
             "devices.approve"
         ],
-        "roles_permissions.manage": [
-            "website.manage"
-        ],
-        "settings.manage": [
-            "website.manage"
-        ],
         "settings.update": [
             "settings.manage"
         ],
