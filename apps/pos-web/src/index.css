@@ -1349,22 +1349,28 @@ html, body, #root {
   pointer-events: none;
 }
 
-/* Every photo tile — note or coin — is the largest EXACT 15:7 box (real
- * rufiyaa proportions, 15 cm × 7 cm) that fits its cell, centred. Row
- * heights are fixed tracks, so the aspect box can never inflate the
- * layout. Notes fill the box edge-to-edge; coins centre on their plate. */
-.close-shift-denom-photo--note,
-.close-shift-denom-photo--coin {
+/* Notes: largest EXACT 15:7 box (real rufiyaa, 15 cm × 7 cm) that fits
+ * the cell. Coins: square plate that fills the cell HEIGHT so the coin
+ * reads as large as the card allows (a circle can't fill a 15:7 strip). */
+.close-shift-denom-photo--note {
   width: 100%;
   height: auto;
   max-height: 100%;
   aspect-ratio: 15 / 7;
   align-self: center;
   justify-self: center;
+  background: transparent;
 }
 
-.close-shift-denom-photo--note {
+.close-shift-denom-photo--coin {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  align-self: center;
+  justify-self: center;
   background: transparent;
+  padding: 0;
 }
 
 .close-shift-denom-photo--note .close-shift-denom-photo__img {
@@ -1374,8 +1380,8 @@ html, body, #root {
 }
 
 .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-  width: 54px;
-  height: 54px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.22);
 }
@@ -1823,10 +1829,7 @@ html, body, #root {
     border-radius: 10px;
   }
 
-  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 42px;
-    height: 42px;
-  }
+
 
   .close-shift-denom-row__meta {
     gap: 3px;
@@ -2092,10 +2095,7 @@ html, body, #root {
     border-radius: 14px;
   }
 
-  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 68px;
-    height: 68px;
-  }
+
 
   .close-shift-denom-row__count {
     font-size: 15px;
@@ -2212,9 +2212,8 @@ html, body, #root {
     gap: 8px;
   }
 
-  /* Cell here is wider than tall — drive the 15:7 box from the height. */
-  .close-shift-denom-photo--note,
-  .close-shift-denom-photo--coin {
+  /* Cell here is wider than tall — drive the note's 15:7 from the height. */
+  .close-shift-denom-photo--note {
     width: auto;
     height: 100%;
     max-width: 100%;
@@ -2238,10 +2237,7 @@ html, body, #root {
     min-width: 0;
   }
 
-  .close-shift-denom-photo--coin .close-shift-denom-photo__img {
-    width: 54px;
-    height: 54px;
-  }
+
 
   .close-shift-stepper-btn {
     max-width: 58px;
