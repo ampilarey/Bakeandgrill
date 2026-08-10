@@ -9,12 +9,6 @@
             "devices.manage",
             "devices.approve"
         ],
-        "roles_permissions.manage": [
-            "website.manage"
-        ],
-        "settings.manage": [
-            "website.manage"
-        ],
         "settings.update": [
             "settings.manage"
         ],
@@ -204,6 +198,13 @@
         ],
         "service_availability.manage_public": [
             "settings.update"
+        ],
+        "trade.view": [
+            "trade.manage_accounts",
+            "trade.manage_prices",
+            "trade.dispatch",
+            "trade.reconcile",
+            "trade.invoice"
         ]
     }
 }

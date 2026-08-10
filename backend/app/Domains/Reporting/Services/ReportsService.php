@@ -8,6 +8,7 @@ use App\Domains\Credit\Services\CreditEligibilityService;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
+use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\AuditLog;
 use App\Models\CashMovement;
 use App\Models\Customer;
@@ -148,6 +149,8 @@ class ReportsService
                 'shift_id' => $shiftId,
                 'device_id' => $deviceId,
             ])),
+            // Stage F — wholesale is a sibling channel; retail `totals` stay order-only.
+            'wholesale' => app(WholesaleChannelAggregator::class)->summary($from, $to),
         ];
     }
 
@@ -290,6 +293,8 @@ class ReportsService
             'items' => $items,
             'categories' => $categories,
             'employees' => $employees,
+            // Stage F — parallel rollup; retail `items` unchanged.
+            'wholesale_items' => app(WholesaleChannelAggregator::class)->topItems($from, $to, $limit),
         ];
     }
 

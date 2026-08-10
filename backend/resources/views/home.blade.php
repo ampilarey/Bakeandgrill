@@ -238,8 +238,24 @@
 .banner-btn:hover { background: rgba(255,255,255,0.22); }
 .banner-btn.prev { left: 1.5rem; }
 .banner-btn.next { right: 1.5rem; }
-/* Phones: hide chevrons — dots + swipe remain */
-@media (max-width: 768px) { .banner-btn { display: none; } }
+/* Expand hit area to 44px without growing the visible circle */
+.banner-btn::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+}
+/* Phones: keep chevrons visible — smaller circle, darker translucent bg */
+@media (max-width: 768px) {
+    .banner-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
+        background: rgba(20, 14, 8, 0.45);
+        border-color: rgba(255, 255, 255, 0.35);
+    }
+    .banner-btn.prev { left: 0.65rem; }
+    .banner-btn.next { right: 0.65rem; }
+}
 
 .banner-dots {
     position: absolute;

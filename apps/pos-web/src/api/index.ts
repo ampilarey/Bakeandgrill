@@ -15,3 +15,4 @@ export * from "./orders";
 export * from "./purchaseRequests";
 export * from "./settings";
 export * from "./shifts";
+export * from "./trade";

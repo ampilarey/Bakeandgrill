@@ -261,8 +261,26 @@ export async function pushExpenseToXero(id: number): Promise<{ message: string }
 
 export type PnLReport = {
   from: string; to: string;
-  revenue: { gross: number; tax: number; discounts: number; net: number; orders: number };
+  revenue: {
+    gross: number;
+    tax: number;
+    discounts?: number;
+    net: number;
+    orders: number;
+    wholesale?: number;
+    wholesale_tax?: number;
+    combined_net?: number;
+  };
   cogs: number;
+  wholesale_cogs?: number;
+  wholesale_waste_cost?: number;
+  wholesale?: {
+    invoices_count: number;
+    revenue_laar: number;
+    revenue: number;
+    cogs_laar: number;
+    cogs: number;
+  };
   gross_profit: number;
   gross_margin_pct: number;
   expenses: { total: number; by_category: { category: string; icon: string; total: number }[] };
@@ -277,7 +295,20 @@ export async function getProfitAndLoss(from: string, to: string): Promise<PnLRep
   return req(`/reports/finance/profit-and-loss?from=${from}&to=${to}`);
 }
 
-export async function getCashFlow(from: string, to: string): Promise<{ total_inflow: number; total_outflow: number; net_cash_flow: number; days: { date: string; inflow: number; outflow: number; net: number; running_balance: number }[] }> {
+export async function getCashFlow(from: string, to: string): Promise<{
+  total_inflow: number;
+  total_wholesale_inflow?: number;
+  total_outflow: number;
+  net_cash_flow: number;
+  days: {
+    date: string;
+    inflow: number;
+    wholesale_inflow?: number;
+    outflow: number;
+    net: number;
+    running_balance: number;
+  }[];
+}> {
   return req(`/reports/finance/cash-flow?from=${from}&to=${to}`);
 }
 
@@ -301,12 +332,16 @@ export async function getDailySummary(date: string): Promise<{
   expenses: number;
   purchases: number;
   waste_cost: number;
+  wholesale_revenue?: number;
+  wholesale_cogs?: number;
+  wholesale_waste_cost?: number;
   payment_processing_fees?: number;
   payment_commission?: PaymentCommissionSummary;
   net_profit: number;
   foreign_currency_held?: DailySummaryForeignCurrency[];
   by_type: { type: string; count: number; revenue: number }[];
   top_items: { name: string; qty: number; revenue: number }[];
+  wholesale_top_items?: { item_name: string; quantity: number; total: number; channel: string }[];
 }> {
   return req(`/reports/finance/daily-summary?date=${date}`);
 }
@@ -387,6 +422,9 @@ export type SalesSummary = {
   /** FIX 7 — total of house_account tenders (a receivable, not real cash). */
   on_credit_laar?: number;
   on_credit?: number;
+  /** Stage F — wholesale channel (sibling to retail; not merged into total_revenue). */
+  wholesale_revenue?: number;
+  wholesale_invoices?: number;
 };
 
 export async function fetchSalesSummary(params?: {
@@ -408,6 +446,7 @@ export async function fetchSalesSummary(params?: {
     totals: { orders_count: number; total: number; subtotal: number; service_charge_total?: number; delivery_fee_total?: number };
     payments: Record<string, number>;
     payment_commission?: PaymentCommissionSummary;
+    wholesale?: { revenue?: number; invoices_count?: number };
   }>(`/reports/sales-summary?${qs}`);
   const order_count = res.totals?.orders_count ?? 0;
   const total_revenue = res.totals?.total ?? 0;
@@ -420,6 +459,8 @@ export async function fetchSalesSummary(params?: {
     delivery_fee_total: res.totals?.delivery_fee_total ?? 0,
     payments: res.payments,
     payment_commission: res.payment_commission,
+    wholesale_revenue: res.wholesale?.revenue ?? 0,
+    wholesale_invoices: res.wholesale?.invoices_count ?? 0,
   };
 }
 
@@ -430,6 +471,7 @@ export interface SalesBreakdown {
   by_type: { type: string; revenue: number; orders: number }[];
   by_hour: { hour: number; revenue: number; orders: number }[];
   top_items: { id: number; name: string; qty: number; revenue: number }[];
+  wholesale_items?: { item_id: number | null; item_name: string; quantity: number; total: number; channel: string }[];
 }
 
 export async function getSalesBreakdown(params: { from: string; to: string }): Promise<SalesBreakdown> {

@@ -8,8 +8,10 @@
         "loyalty_points": "__VOLATILE__",
         "tier": "bronze",
         "preferred_language": "en",
-        "last_order_at": null
+        "last_order_at": null,
+        "has_trade_account": false
     },
+    "has_trade_account": false,
     "credit": null,
     "deposit": {
         "balance_mvr": 0,

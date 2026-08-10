@@ -154,6 +154,11 @@ class Customer extends Model implements AuthenticatableContract
         return $this->belongsTo(User::class, 'credit_approved_by');
     }
 
+    public function tradeAccount(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TradeAccount::class);
+    }
+
     public function creditLedger(): HasMany
     {
         return $this->hasMany(CustomerCreditLedger::class);

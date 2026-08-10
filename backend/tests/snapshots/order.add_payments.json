@@ -108,7 +108,8 @@
                 "commission_rate_bp": null,
                 "commission_channel": null,
                 "tendered_amount": null,
-                "change_given": null
+                "change_given": null,
+                "invoice_id": null
             }
         ]
     },

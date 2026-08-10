@@ -10,6 +10,8 @@ export type Customer = {
   tier?: string | null;
   preferred_language?: string | null;
   is_active?: boolean;
+  /** Stage E — wholesale shop login has an active trade account. */
+  has_trade_account?: boolean;
 };
 
 export type StaffUser = {

@@ -294,6 +294,224 @@ class StockManagementService
     }
 
     /**
+     * Wholesale consignment outbound — finished goods leave the shelf once at dispatch.
+     * Follows deductPreparedStock: inventory_item_id null, unique idempotency key.
+     * Non-stock-tracked items are a no-op (not an error).
+     *
+     * @throws \RuntimeException when stock is insufficient
+     */
+    public function deductConsignmentStock(
+        Item $item,
+        int $quantity,
+        string $idempotencyKey,
+        int $deliveryId,
+        ?int $userId = null,
+        ?int $unitCostLaar = null,
+    ): void {
+        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+            return;
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return;
+        }
+
+        $item->refresh();
+        if ((int) $item->stock_quantity < $quantity) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s". Available: %d, requested: %d.',
+                $item->name,
+                (int) $item->stock_quantity,
+                $quantity,
+            ));
+        }
+
+        $rows = DB::table('items')
+            ->where('id', $item->id)
+            ->where('stock_quantity', '>=', $quantity)
+            ->decrement('stock_quantity', $quantity);
+
+        if ($rows === 0) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s" — concurrent sale detected.',
+                $item->name,
+            ));
+        }
+
+        $item->refresh();
+        $unitCostMvr = $unitCostLaar !== null
+            ? $unitCostLaar / 100
+            : (float) ($item->cost ?? 0);
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'consignment_out',
+            'quantity' => -$quantity,
+            'balance_after' => $item->stock_quantity,
+            'unit_cost' => $unitCostMvr,
+            'reference_type' => 'trade_delivery',
+            'reference_id' => $deliveryId,
+            'notes' => "Trade delivery #{$deliveryId} — consignment out",
+        ]);
+
+        if ($item->stock_quantity <= ($item->low_stock_threshold ?? 0)) {
+            $this->triggerLowStockAlert($item);
+        }
+    }
+
+    /**
+     * Wholesale consignment return to shelf (accept_to_stock or cancel).
+     * Non-stock-tracked items are a no-op.
+     */
+    public function restoreConsignmentStock(
+        Item $item,
+        int $quantity,
+        string $idempotencyKey,
+        int $deliveryId,
+        ?int $userId = null,
+        ?int $unitCostLaar = null,
+    ): void {
+        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+            return;
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return;
+        }
+
+        $locked = Item::lockForUpdate()->find($item->id);
+        if (! $locked) {
+            return;
+        }
+
+        $locked->increment('stock_quantity', $quantity);
+        $locked->refresh();
+
+        $unitCostMvr = $unitCostLaar !== null
+            ? $unitCostLaar / 100
+            : (float) ($locked->cost ?? 0);
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'consignment_in',
+            'quantity' => $quantity,
+            'balance_after' => $locked->stock_quantity,
+            'unit_cost' => $unitCostMvr,
+            'reference_type' => 'trade_delivery',
+            'reference_id' => $deliveryId,
+            'notes' => "Trade delivery #{$deliveryId} — consignment in",
+        ]);
+    }
+
+    /**
+     * Variant consignment outbound — same rules as item deductConsignmentStock.
+     *
+     * @throws \RuntimeException when stock is insufficient
+     */
+    public function deductConsignmentVariantStock(
+        Variant $variant,
+        int $quantity,
+        string $idempotencyKey,
+        int $deliveryId,
+        ?int $userId = null,
+        ?int $unitCostLaar = null,
+    ): void {
+        if (! $variant->track_stock) {
+            return;
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return;
+        }
+
+        $variant->refresh();
+        if ((int) $variant->stock_qty < $quantity) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s". Available: %d, requested: %d.',
+                $variant->name,
+                (int) $variant->stock_qty,
+                $quantity,
+            ));
+        }
+
+        $rows = DB::table('variants')
+            ->where('id', $variant->id)
+            ->where('stock_qty', '>=', $quantity)
+            ->decrement('stock_qty', $quantity);
+
+        if ($rows === 0) {
+            throw new \RuntimeException(sprintf(
+                'Insufficient stock for "%s" — concurrent sale detected.',
+                $variant->name,
+            ));
+        }
+
+        $variant->refresh();
+        $unitCostMvr = $unitCostLaar !== null
+            ? $unitCostLaar / 100
+            : (float) ($variant->cost ?? 0);
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'consignment_out',
+            'quantity' => -$quantity,
+            'balance_after' => $variant->stock_qty,
+            'unit_cost' => $unitCostMvr,
+            'reference_type' => 'trade_delivery',
+            'reference_id' => $deliveryId,
+            'notes' => "Trade delivery #{$deliveryId} — variant consignment out",
+        ]);
+    }
+
+    public function restoreConsignmentVariantStock(
+        Variant $variant,
+        int $quantity,
+        string $idempotencyKey,
+        int $deliveryId,
+        ?int $userId = null,
+        ?int $unitCostLaar = null,
+    ): void {
+        if (! $variant->track_stock) {
+            return;
+        }
+
+        if (StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
+            return;
+        }
+
+        $locked = Variant::lockForUpdate()->find($variant->id);
+        if (! $locked) {
+            return;
+        }
+
+        $locked->increment('stock_qty', $quantity);
+        $locked->refresh();
+
+        $unitCostMvr = $unitCostLaar !== null
+            ? $unitCostLaar / 100
+            : (float) ($locked->cost ?? 0);
+
+        StockMovement::create([
+            'idempotency_key' => $idempotencyKey,
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'consignment_in',
+            'quantity' => $quantity,
+            'balance_after' => $locked->stock_qty,
+            'unit_cost' => $unitCostMvr,
+            'reference_type' => 'trade_delivery',
+            'reference_id' => $deliveryId,
+            'notes' => "Trade delivery #{$deliveryId} — variant consignment in",
+        ]);
+    }
+
+    /**
      * Trigger low stock alert
      */
     public function triggerLowStockAlert(Item $item): void

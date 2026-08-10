@@ -40,6 +40,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
       'Void, refund, or manage other cashiers’ completed receipts by default',
       'Finance (P&L, invoices, expenses), promotions/loyalty admin, staff management',
       'Device approve, webhooks, Xero, website settings',
+      'Wholesale trade accounts and shop price lists',
     ],
   },
   {
@@ -55,6 +56,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
     cannot: [
       'Approve/register devices, create/delete staff, webhooks, Xero',
       'Website CMS hub, roles & permissions matrix (use Staff → Permissions for overrides)',
+      'Wholesale trade accounts and shop price lists (owner-only unless granted)',
     ],
   },
   {
@@ -95,6 +97,12 @@ export const COMMON_PERMISSION_SLUGS: CommonSlugRow[] = [
   { slug: 'devices.approve', gates: 'Approve pending POS/KDS devices', typical: 'Owner' },
   { slug: 'settings.update', gates: 'Online ordering & delivery operational settings', typical: 'Manager' },
   { slug: 'events.manage', gates: 'Event quote editor, send quotes, event staff appointment', typical: 'Manager, appointed staff' },
-  { slug: 'website.manage', gates: 'Website CMS, system health, full settings hub', typical: 'Owner' },
+  { slug: 'website.manage', gates: 'Website CMS and system health', typical: 'Owner' },
   { slug: 'roles_permissions.manage', gates: 'Edit role defaults & user overrides', typical: 'Owner' },
+  { slug: 'trade.view', gates: 'View wholesale shops, prices and deliveries', typical: 'Owner' },
+  { slug: 'trade.manage_accounts', gates: 'Create and edit wholesale shop terms', typical: 'Owner' },
+  { slug: 'trade.manage_prices', gates: 'Edit per-shop wholesale prices', typical: 'Owner' },
+  { slug: 'trade.dispatch', gates: 'Dispatch consignment deliveries to shops', typical: 'Owner' },
+  { slug: 'trade.reconcile', gates: 'Reconcile what sold and what came back', typical: 'Owner' },
+  { slug: 'trade.invoice', gates: 'Raise wholesale tax invoices and resolve billing blocks', typical: 'Owner' },
 ];

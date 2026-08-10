@@ -8,8 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv,
-  Banknote,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, FileText, LineChart,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -41,7 +40,7 @@ export interface NavGroup {
 export const PINNED_NAV_ITEMS: NavItem[] = [];
 
 /** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
-export const NAV_EXACT_MATCH_PATHS = new Set(['/customers']);
+export const NAV_EXACT_MATCH_PATHS = new Set(['/customers', '/wholesale']);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
@@ -85,6 +84,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
+      { to: '/wholesale', icon: Store, label: 'Wholesale shops', permission: 'trade.view', description: 'Trade accounts & shop prices' },
+      { to: '/wholesale/deliveries', icon: Truck, label: 'Wholesale deliveries', permission: 'trade.view', description: 'Dispatch notes & reconciliation' },
+      { to: '/wholesale/invoicing', icon: FileText, label: 'Wholesale invoicing', permission: 'trade.view', description: 'Bill reconciled deliveries' },
     ],
   },
   {
@@ -117,6 +119,7 @@ export const NAV_GROUPS: NavGroup[] = [
     order: 4,
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
+      { to: '/wholesale/reports', icon: LineChart, label: 'Wholesale reports', permission: 'trade.view', description: 'Sell-through, waste, margin & ageing' },
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
@@ -279,8 +282,6 @@ export const BOTTOM_TABS: NavItem[] = [
 export const PERM_ALIASES: Record<string, string[]> = {
   'devices.approve': ['devices.manage'],
   'devices.view': ['devices.manage', 'devices.approve'],
-  'roles_permissions.manage': ['website.manage'],
-  'settings.manage': ['website.manage'],
   'settings.update': ['settings.manage'],
   'reports.basic': ['reports.view'],
   'finance.cash_manage': ['payments.cash_manage'],
@@ -341,6 +342,13 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'kds.manage_availability': ['menu.manage'],
   'service_availability.view': ['settings.update'],
   'service_availability.manage_public': ['settings.update'],
+  'trade.view': [
+    'trade.manage_accounts',
+    'trade.manage_prices',
+    'trade.dispatch',
+    'trade.reconcile',
+    'trade.invoice',
+  ],
 };
 
 export function can(user: StaffUser, permission?: string): boolean {

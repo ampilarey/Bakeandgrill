@@ -20,6 +20,12 @@ Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/orders/{orderId}/complete-zero-balance', [App\Http\Controllers\Api\PaymentController::class, 'completeZeroBalance']);
 });
 
+// Wholesale trade invoice BML pay (staff — customers.credit.repay)
+Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.credit.repay'])->group(function () {
+    Route::post('/invoices/{invoiceId}/pay/bml', [App\Http\Controllers\Api\PaymentController::class, 'initiateInvoiceOnline'])
+        ->whereNumber('invoiceId');
+});
+
 // Partial Online Payment (customer only)
 Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
     Route::post('/payments/online/initiate-partial', [App\Http\Controllers\Api\PaymentController::class, 'initiatePartial']);

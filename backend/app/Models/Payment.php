@@ -12,6 +12,7 @@ class Payment extends Model
     protected $fillable = [
         'idempotency_key',
         'order_id',
+        'invoice_id',
         'collected_by_user_id',
         'shift_id',
         'method',
@@ -34,6 +35,7 @@ class Payment extends Model
 
     protected $casts = [
         'order_id' => 'integer',
+        'invoice_id' => 'integer',
         'collected_by_user_id' => 'integer',
         'shift_id' => 'integer',
         'amount' => 'decimal:2',
@@ -49,6 +51,11 @@ class Payment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function collectedBy(): BelongsTo

@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) {
   const { t } = useLanguage();
   const [customer, setCustomer] = useState<AuthCustomer | null>(null);
+  const [hasTradeAccount, setHasTradeAccount] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: '', email: '', date_of_birth: '' });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -20,11 +21,13 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
     setLoadingProfile(true);
     getCustomerMe()
       .then((res) => {
-        setCustomer(res.customer as AuthCustomer);
+        const c = res.customer as AuthCustomer;
+        setCustomer(c);
+        setHasTradeAccount(Boolean(res.has_trade_account ?? c.has_trade_account));
         setProfileForm({
           name: res.customer.name ?? '',
-          email: (res.customer as AuthCustomer).email ?? '',
-          date_of_birth: (res.customer as AuthCustomer).date_of_birth ?? '',
+          email: c.email ?? '',
+          date_of_birth: c.date_of_birth ?? '',
         });
       })
       .catch((e: Error) => setProfileMsg({ type: 'error', text: e.message || t('account.profile_err_load') }))
@@ -80,6 +83,7 @@ export function useAccountProfile(isAuthenticated: boolean, authReady: boolean) 
 
   return {
     customer,
+    hasTradeAccount,
     loadingProfile,
     profileForm,
     setProfileForm,

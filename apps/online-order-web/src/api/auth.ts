@@ -113,7 +113,7 @@ export async function changeCustomerPassword(
   });
 }
 
-export async function getCustomerMe(): Promise<{ customer: AuthCustomer }> {
+export async function getCustomerMe(): Promise<{ customer: AuthCustomer; has_trade_account?: boolean }> {
   return request(ENDPOINTS.CUSTOMER_ME);
 }
 

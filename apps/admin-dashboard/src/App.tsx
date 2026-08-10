@@ -65,6 +65,12 @@ const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealth
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
+const WholesalePage           = lazyWithRetry(() => import('./pages/WholesalePage'));
+const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAccountPage'));
+const WholesaleDeliveriesPage = lazyWithRetry(() => import('./pages/WholesaleDeliveriesPage'));
+const WholesaleInvoicingPage  = lazyWithRetry(() => import('./pages/WholesaleInvoicingPage'));
+const WholesaleStatementPage  = lazyWithRetry(() => import('./pages/WholesaleStatementPage'));
+const WholesaleReportsPage    = lazyWithRetry(() => import('./pages/WholesaleReportsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -372,6 +378,46 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 {/* New feature pages */}
+                <Route path="wholesale" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesalePage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/deliveries" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleDeliveriesPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/deliveries/:id" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleDeliveriesPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/invoicing" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleInvoicingPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/reports" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleReportsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/:id/invoicing" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleInvoicingPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/:id/statement" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleStatementPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/:id" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleAccountPage />
+                  </PermissionGuard>
+                } />
                 <Route path="gift-cards" element={
                   <PermissionGuard user={user} permission="promotions.manage">
                     <GiftCardsPage />

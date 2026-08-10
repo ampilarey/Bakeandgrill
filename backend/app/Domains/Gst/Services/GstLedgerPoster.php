@@ -12,6 +12,7 @@ use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Purchase;
 use App\Models\Refund;
 use App\Models\TaxLedgerEntry;
@@ -38,6 +39,79 @@ class GstLedgerPoster
         $basis = $this->settings->accountingBasis();
 
         return $basis === GstAccountingBasis::Invoice || $basis === GstAccountingBasis::Hybrid;
+    }
+
+    /**
+     * Payment-basis GST for standalone trade invoices (no order) is implemented.
+     * TradeInvoiceService refuses to raise if this ever returns false.
+     */
+    public function canPostTradeInvoiceOnPayment(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Post output tax when a trade invoice payment is confirmed (payment / hybrid basis).
+     * Idempotent via upsert on source Invoice. No-ops when already posted as tax invoice
+     * (invoice / hybrid path at raise) or when basis does not require payment posting.
+     */
+    public function postTradeInvoiceOnPayment(Payment $payment, ?int $userId = null): ?TaxLedgerEntry
+    {
+        if (! $this->shouldPostOrderOnPayment()) {
+            return null;
+        }
+
+        if ($payment->invoice_id === null || $payment->order_id !== null) {
+            return null;
+        }
+
+        if (! in_array((string) $payment->status, ['confirmed', 'paid', 'completed'], true)) {
+            return null;
+        }
+
+        $invoice = $payment->relationLoaded('invoice')
+            ? $payment->invoice
+            : Invoice::find($payment->invoice_id);
+
+        if ($invoice === null || $invoice->type !== 'sale' || ! $invoice->is_tax_invoice) {
+            return null;
+        }
+
+        // Already posted as tax invoice (invoice / hybrid raise path) — do not double-post.
+        $existingTax = TaxLedgerEntry::query()
+            ->where('source_type', LedgerSourceType::Invoice->value)
+            ->where('source_id', $invoice->id)
+            ->where('direction', LedgerDirection::Output->value)
+            ->where('is_tax_invoice', true)
+            ->first();
+        if ($existingTax !== null) {
+            return $existingTax;
+        }
+
+        $paymentDate = Carbon::parse($payment->processed_at ?? now());
+
+        return $this->upsertEntry([
+            'period_key' => $this->resolvePeriodKey($paymentDate, LedgerSourceType::Invoice->value, $invoice->id),
+            'source_type' => LedgerSourceType::Invoice->value,
+            'source_id' => $invoice->id,
+            'direction' => LedgerDirection::Output->value,
+            'tax_code' => GstTaxCode::Standard8->value,
+            'taxable_activity_no' => $this->settings->get()->taxable_activity_no,
+            'customer_id' => $invoice->customer_id,
+            'customer_tin' => $invoice->customer_tin,
+            'document_no' => $invoice->invoice_number,
+            'document_date' => $paymentDate->toDateString(),
+            'taxable_value_laar' => max(0, (int) ($invoice->subtotal_laar ?? 0)
+                - (int) ($invoice->discount_laar ?? 0)),
+            'tax_laar' => (int) ($invoice->tax_laar ?? 0),
+            'total_laar' => (int) ($invoice->total_laar ?? 0),
+            'rate_bp' => (int) ($invoice->tax_rate_bp ?: $this->settings->defaultTaxRateBp()),
+            'payment_basis_date' => $paymentDate->toDateString(),
+            'invoice_basis_date' => $invoice->issue_date?->toDateString(),
+            'is_tax_invoice' => true,
+            'is_claimable' => false,
+            'created_by' => $userId,
+        ]);
     }
 
     public function postOrderOnPayment(Order $order, ?int $userId = null): ?TaxLedgerEntry

@@ -52,6 +52,9 @@ const PrivacyPage      = lazy(() => import('./pages/PrivacyPage').then((m) => ({
 const NotFoundPage     = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage })));
 const AccountPage      = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
+const TradeDeliveriesPage = lazy(() => import('./pages/TradeDeliveriesPage').then((m) => ({ default: m.TradeDeliveriesPage })));
+const TradeDeliveryDetailPage = lazy(() => import('./pages/TradeDeliveryDetailPage').then((m) => ({ default: m.TradeDeliveryDetailPage })));
+const TradeStatementPage = lazy(() => import('./pages/TradeStatementPage').then((m) => ({ default: m.TradeStatementPage })));
 const RewardsPage      = lazy(() => import('./pages/RewardsPage').then((m) => ({ default: m.RewardsPage })));
 const GiftCardsPage = lazy(() => import('./pages/GiftCardsPage').then((m) => ({ default: m.GiftCardsPage })));
 const BuyGiftCardPage = lazy(() => import('./pages/BuyGiftCardPage').then((m) => ({ default: m.BuyGiftCardPage })));
@@ -121,6 +124,9 @@ ReactDOM.createRoot(rootEl).render(
                     <Route path="gift-cards/success" element={<ErrorBoundary inline><GiftCardPurchaseSuccessPage /></ErrorBoundary>} />
                     <Route path="gift-cards/v/:token" element={<ErrorBoundary inline><GiftCardViewPage /></ErrorBoundary>} />
                     <Route path="account" element={<ErrorBoundary inline><AccountPage /></ErrorBoundary>} />
+                    <Route path="account/deliveries" element={<ErrorBoundary inline><TradeDeliveriesPage /></ErrorBoundary>} />
+                    <Route path="account/deliveries/:id" element={<ErrorBoundary inline><TradeDeliveryDetailPage /></ErrorBoundary>} />
+                    <Route path="account/statement" element={<ErrorBoundary inline><TradeStatementPage /></ErrorBoundary>} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>

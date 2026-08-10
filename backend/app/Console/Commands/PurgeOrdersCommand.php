@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Hard-delete every order and dependent rows. For staging resets only.
+ *
+ * Tables that are purely order-scoped are truncated. Tables that also hold
+ * non-order rows (Stage D trade invoice payments; gift-card ledger loads)
+ * are selectively deleted by order_id IS NOT NULL.
  */
 class PurgeOrdersCommand extends Command
 {
@@ -19,17 +23,33 @@ class PurgeOrdersCommand extends Command
 
     protected $description = 'Permanently delete all orders and related payment/kitchen/receipt data';
 
-    /** @var list<string> Tables truncated before orders (child → parent order). */
+    /**
+     * Tables truncated before orders (child → parent order).
+     * Every row in these tables belongs to an order.
+     *
+     * @var list<string>
+     */
     private const TRUNCATE_FIRST = [
         'order_item_modifiers',
         'order_items',
-        'payments',
+        // payments — NOT truncated: invoice_id rows are wholesale receivables
         'refunds',
         'receipts',
         'order_promotions',
         'promotion_redemptions',
         'loyalty_holds',
         'staff_notification_logs',
+        // gift_card_transactions — NOT truncated: load/top-up/void have null order_id
+    ];
+
+    /**
+     * Tables that mix order-scoped and non-order rows. Delete only where
+     * order_id is set; leave the rest (invoice payments, gift-card loads).
+     *
+     * @var list<string>
+     */
+    private const DELETE_ORDER_SCOPED = [
+        'payments',
         'gift_card_transactions',
     ];
 
@@ -47,15 +67,15 @@ class PurgeOrdersCommand extends Command
 
     public function handle(): int
     {
-        if ($this->isLiveProductionInstall() && !$this->option('allow-production')) {
+        if ($this->isLiveProductionInstall() && ! $this->option('allow-production')) {
             $this->error('Refusing to purge on the live site (public_html).');
-            $this->line('Install path: ' . base_path());
+            $this->line('Install path: '.base_path());
             $this->line('Pass --allow-production only if you intend to wipe the LIVE site.');
 
             return self::FAILURE;
         }
 
-        if (!$this->option('force') && !$this->confirm('Delete ALL orders permanently? This cannot be undone.')) {
+        if (! $this->option('force') && ! $this->confirm('Delete ALL orders permanently? This cannot be undone.')) {
             $this->info('Cancelled.');
 
             return self::SUCCESS;
@@ -78,6 +98,8 @@ class PurgeOrdersCommand extends Command
                 }
             }
 
+            $this->deleteOrderScopedMixedTables();
+
             $this->nullOrderReferences();
 
             if (Schema::hasTable('orders')) {
@@ -96,6 +118,32 @@ class PurgeOrdersCommand extends Command
         return self::SUCCESS;
     }
 
+    private function deleteOrderScopedMixedTables(): void
+    {
+        foreach (self::DELETE_ORDER_SCOPED as $table) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'order_id')) {
+                continue;
+            }
+
+            $deleted = (int) DB::table($table)->whereNotNull('order_id')->delete();
+            $kept = (int) DB::table($table)->count();
+
+            if ($table === 'payments') {
+                $keptInvoice = Schema::hasColumn($table, 'invoice_id')
+                    ? (int) DB::table($table)->whereNotNull('invoice_id')->whereNull('order_id')->count()
+                    : $kept;
+                $this->line("Payments: deleted {$deleted} order payment(s); kept {$keptInvoice} invoice payment(s).");
+            } else {
+                $this->line(sprintf(
+                    '%s: deleted %d order-linked row(s); kept %d non-order row(s).',
+                    $table,
+                    $deleted,
+                    $kept,
+                ));
+            }
+        }
+    }
+
     private function nullOrderReferences(): void
     {
         $nullable = [
@@ -108,7 +156,7 @@ class PurgeOrdersCommand extends Command
         ];
 
         foreach ($nullable as $table => $column) {
-            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column)) {
                 continue;
             }
 

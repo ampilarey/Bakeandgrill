@@ -135,6 +135,18 @@ Route::middleware(['auth:sanctum', 'customer.token'])->prefix('customer')->group
     // during a single planning session do not surface "Too Many Attempts".
     Route::post('/event-orders', [App\Http\Controllers\Api\EventOrderController::class, 'store'])
         ->middleware('throttle:30,1');
+
+    // Stage E — shop-facing wholesale (own trade account only)
+    Route::get('/trade/deliveries', [App\Http\Controllers\Api\CustomerTradeController::class, 'deliveries']);
+    Route::get('/trade/deliveries/{id}', [App\Http\Controllers\Api\CustomerTradeController::class, 'showDelivery'])
+        ->whereNumber('id');
+    Route::post('/trade/deliveries/{id}/report-sales', [App\Http\Controllers\Api\CustomerTradeController::class, 'reportSales'])
+        ->whereNumber('id');
+    Route::get('/trade/statement', [App\Http\Controllers\Api\CustomerTradeController::class, 'statement']);
+    Route::get('/trade/invoices/{id}/pdf', [App\Http\Controllers\Api\CustomerTradeController::class, 'invoicePdf'])
+        ->whereNumber('id');
+    Route::post('/trade/invoices/{id}/pay', [App\Http\Controllers\Api\CustomerTradeController::class, 'payInvoice'])
+        ->whereNumber('id');
 });
 
 // ─── Driver Auth (public — PIN login) ──────────────────────────────────────

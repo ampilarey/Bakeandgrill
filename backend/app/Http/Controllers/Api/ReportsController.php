@@ -77,6 +77,10 @@ class ReportsController extends Controller
             $rows[] = ['items', $item['item_id'] ?? '', $item['item_name'] ?? '', $item['quantity'] ?? 0, $item['total'] ?? 0];
         }
         $rows[] = [];
+        foreach ($data['wholesale_items'] ?? [] as $item) {
+            $rows[] = ['wholesale_items', $item['item_id'] ?? '', $item['item_name'] ?? '', $item['quantity'] ?? 0, $item['total'] ?? 0];
+        }
+        $rows[] = [];
         foreach ($data['categories'] ?? [] as $category) {
             $rows[] = ['categories', $category['category_id'] ?? '', $category['category_name'] ?? '', $category['quantity'] ?? 0, $category['total'] ?? 0];
         }

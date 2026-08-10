@@ -1079,6 +1079,31 @@ export function AccountPage() {
           {hubRow('🗓', t('account.link_reservations'), () => setPanel('reservations'), true)}
         </SectionCard>
 
+        {/* Wholesale shop — only when this customer has a trade account */}
+        {profile.hasTradeAccount && (
+          <SectionCard title="My shop">
+            <Link
+              to="/account/deliveries"
+              className="account-row"
+              data-testid="account-trade-deliveries-link"
+            >
+              <span className="account-row__icon">📦</span>
+              <span className="account-row__label">My deliveries</span>
+              <span className="account-row__chevron" aria-hidden="true">›</span>
+            </Link>
+            <Link
+              to="/account/statement"
+              className="account-row"
+              data-testid="account-trade-statement-link"
+              style={{ borderBottom: 'none' }}
+            >
+              <span className="account-row__icon">📄</span>
+              <span className="account-row__label">Statement &amp; pay</span>
+              <span className="account-row__chevron" aria-hidden="true">›</span>
+            </Link>
+          </SectionCard>
+        )}
+
         {/* Account extras */}
         <SectionCard title={t('account.extras')}>
           {hubLinkRow('⭐', t('account.link_rewards'), '/rewards')}

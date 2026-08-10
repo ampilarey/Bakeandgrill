@@ -376,6 +376,127 @@ final class CreditLedgerService
     }
 
     /**
+     * Wholesale trade invoice charge — no Order, no Payment row.
+     * Caller must already be inside a DB transaction with the customer locked.
+     */
+    public function recordTradeInvoiceCharge(
+        Customer $customer,
+        Invoice $invoice,
+        User $actor,
+        string $idempotencyKey,
+    ): CustomerCreditLedger {
+        $existing = CustomerCreditLedger::where('idempotency_key', $idempotencyKey)->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $byInvoice = CustomerCreditLedger::where('invoice_id', $invoice->id)
+            ->where('type', 'charge')
+            ->first();
+        if ($byInvoice !== null) {
+            return $byInvoice;
+        }
+
+        $locked = Customer::lockForUpdate()->findOrFail($customer->id);
+        $amountLaar = (int) $invoice->total_laar;
+        if ($amountLaar <= 0) {
+            abort(422, 'Invoice total must be greater than zero.');
+        }
+
+        // Do NOT call assertCanCharge here. Dispatch already gated exposure
+        // (balance + unbilled holding). Invoicing moves value from holding into
+        // balance — re-checking available credit would double-count and refuse
+        // legitimate invoices when headroom was tied up in consigned stock.
+        if (! $locked->credit_enabled || ($locked->credit_status ?? '') !== 'active') {
+            abort(422, 'Customer credit must be enabled and active to invoice on account.');
+        }
+
+        $newBalance = (int) $locked->credit_balance_laar + $amountLaar;
+        $locked->update(['credit_balance_laar' => $newBalance]);
+
+        $ledger = CustomerCreditLedger::create([
+            'customer_id' => $locked->id,
+            'type' => 'charge',
+            'amount_laar' => $amountLaar,
+            'balance_after_laar' => $newBalance,
+            'order_id' => null,
+            'invoice_id' => $invoice->id,
+            'payment_id' => null,
+            'method' => 'house_account',
+            'recorded_by' => $actor->id,
+            'notes' => 'Wholesale invoice '.$invoice->invoice_number,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
+        $this->audit->log(
+            'customer.credit.trade_charge',
+            'Customer',
+            $locked->id,
+            [],
+            [
+                'amount_laar' => $amountLaar,
+                'balance_after_laar' => $newBalance,
+                'invoice_id' => $invoice->id,
+            ],
+        );
+
+        return $ledger;
+    }
+
+    /**
+     * Reverse a trade invoice charge when a credit note is raised.
+     */
+    public function reverseTradeInvoiceCharge(
+        Invoice $parentInvoice,
+        Invoice $creditNote,
+        User $actor,
+    ): CustomerCreditLedger {
+        $key = 'trade:cn:reverse:'.$creditNote->id;
+        $existing = CustomerCreditLedger::where('idempotency_key', $key)->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $customer = Customer::lockForUpdate()->findOrFail($parentInvoice->customer_id);
+        $amountLaar = (int) $parentInvoice->total_laar;
+        $newBalance = max(0, (int) $customer->credit_balance_laar - $amountLaar);
+        $customer->update(['credit_balance_laar' => $newBalance]);
+
+        // Reduce amount_paid tracking / reopen voided parent is handled by caller.
+        $parentInvoice->update([
+            'amount_paid_laar' => 0,
+            'paid_at' => null,
+        ]);
+
+        $ledger = CustomerCreditLedger::create([
+            'customer_id' => $customer->id,
+            'type' => 'adjustment',
+            'amount_laar' => -$amountLaar,
+            'balance_after_laar' => $newBalance,
+            'invoice_id' => $creditNote->id,
+            'method' => 'credit_note',
+            'recorded_by' => $actor->id,
+            'notes' => 'Credit note '.$creditNote->invoice_number.' reversing '.$parentInvoice->invoice_number,
+            'idempotency_key' => $key,
+        ]);
+
+        $this->audit->log(
+            'customer.credit.trade_charge_reversed',
+            'Customer',
+            $customer->id,
+            [],
+            [
+                'amount_laar' => $amountLaar,
+                'balance_after_laar' => $newBalance,
+                'parent_invoice_id' => $parentInvoice->id,
+                'credit_note_id' => $creditNote->id,
+            ],
+        );
+
+        return $ledger;
+    }
+
+    /**
      * @param list<int>|null $invoiceIds
      */
     public function recordRepayment(
