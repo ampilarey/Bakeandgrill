@@ -4,8 +4,9 @@
  */
 
 export const NOTE_DENOMS_LAARI = [100_000, 50_000, 10_000, 5_000, 2_000, 1_000, 500] as const;
+/* The Maldives mints exactly 7 coins: MVR 2, MVR 1, 50, 25, 10, 5 and 1 laari. */
 export const COMMON_COIN_DENOMS_LAARI = [200, 100, 50, 25] as const;
-export const RARE_COIN_DENOMS_LAARI = [20, 10, 5, 2, 1] as const;
+export const RARE_COIN_DENOMS_LAARI = [10, 5, 1] as const;
 
 /**
  * Default drawer faces for the close-shift count. The MVR 1000 note is very
@@ -37,7 +38,6 @@ export function labelForLaari(laari: number): string {
   if (laari >= 100 && laari % 100 === 0) return `MVR ${laari / 100}`;
   if (laari === 50) return "50 laari";
   if (laari === 25) return "25 laari";
-  if (laari === 20) return "20 laari";
   if (laari === 10) return "10 laari";
   if (laari === 5) return "5 laari";
   if (laari === 1) return "1 laari";
@@ -60,10 +60,8 @@ export function currencyAssetForLaari(laari: number): { src: string; kind: "note
     : laari === 100 ? "coin-1.webp"
     : laari === 50 ? "coin-0.50.webp"
     : laari === 25 ? "coin-0.25.webp"
-    : laari === 20 ? "coin-0.20.webp"
     : laari === 10 ? "coin-0.10.webp"
     : laari === 5 ? "coin-0.05.webp"
-    : laari === 2 ? "coin-0.02.webp"
     : laari === 1 ? "coin-0.01.webp"
     : kind === "note" ? "note-5.webp" : "coin-1.webp";
   return { src: `${base}currency/${file}`, kind };

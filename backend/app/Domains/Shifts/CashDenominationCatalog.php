@@ -16,8 +16,8 @@ final class CashDenominationCatalog
     /** @var list<int> */
     public const COMMON_COINS_LAARI = [200, 100, 50, 25];
 
-    /** @var list<int> */
-    public const RARE_COINS_LAARI = [20, 10, 5, 2, 1];
+    /** The Maldives mints 7 coins: MVR 2, MVR 1, 50, 25, 10, 5 and 1 laari. @var list<int> */
+    public const RARE_COINS_LAARI = [10, 5, 1];
 
     public const METHOD_DENOMINATIONS = 'denominations';
 
@@ -95,10 +95,10 @@ final class CashDenominationCatalog
         return match ($laari) {
             50 => '50 laari',
             25 => '25 laari',
-            20 => '20 laari',
             10 => '10 laari',
             5 => '5 laari',
             1 => '1 laari',
+            // Historical breakdowns may hold retired faces (e.g. 20 / 2 laari).
             default => $laari.' laari',
         };
     }

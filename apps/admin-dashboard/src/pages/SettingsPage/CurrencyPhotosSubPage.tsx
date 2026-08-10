@@ -20,10 +20,8 @@ function bundledUrl(face: number): string {
     : face === 100 ? 'coin-1.webp'
     : face === 50 ? 'coin-0.50.webp'
     : face === 25 ? 'coin-0.25.webp'
-    : face === 20 ? 'coin-0.20.webp'
     : face === 10 ? 'coin-0.10.webp'
     : face === 5 ? 'coin-0.05.webp'
-    : face === 2 ? 'coin-0.02.webp'
     : 'coin-0.01.webp';
   return `/pos/currency/${file}`;
 }

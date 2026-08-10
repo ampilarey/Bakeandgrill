@@ -22,7 +22,7 @@ class CurrencyImageController extends Controller
     /** Allowed face values in laari (1 MVR = 100 laari). */
     public const FACES = [
         100_000, 50_000, 10_000, 5_000, 2_000, 1_000, 500, // notes 1000…5
-        200, 100, 50, 25, 20, 10, 5, 2, 1,                 // coins MVR 2…1 laari
+        200, 100, 50, 25, 10, 5, 1,                        // the 7 minted coins
     ];
 
     private const DIR = 'currency';

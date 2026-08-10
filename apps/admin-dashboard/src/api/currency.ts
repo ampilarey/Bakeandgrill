@@ -12,14 +12,13 @@ export const CURRENCY_FACES: { face: number; label: string; kind: 'note' | 'coin
   { face: 2_000, label: 'MVR 20', kind: 'note' },
   { face: 1_000, label: 'MVR 10', kind: 'note' },
   { face: 500, label: 'MVR 5', kind: 'note' },
+  // The Maldives mints exactly 7 coins.
   { face: 200, label: 'MVR 2', kind: 'coin' },
   { face: 100, label: 'MVR 1', kind: 'coin' },
   { face: 50, label: '50 laari', kind: 'coin' },
   { face: 25, label: '25 laari', kind: 'coin' },
-  { face: 20, label: '20 laari', kind: 'coin' },
   { face: 10, label: '10 laari', kind: 'coin' },
   { face: 5, label: '5 laari', kind: 'coin' },
-  { face: 2, label: '2 laari', kind: 'coin' },
   { face: 1, label: '1 laari', kind: 'coin' },
 ];
 
