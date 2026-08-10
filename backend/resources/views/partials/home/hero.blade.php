@@ -99,9 +99,14 @@
     <button class="banner-btn prev" aria-label="Previous slide">‹</button>
     <button class="banner-btn next" aria-label="Next slide">›</button>
 
-    <div class="banner-dots" id="bannerDots">
+    <div class="banner-dots" id="bannerDots" role="tablist" aria-label="Slides">
         @for($d = 0; $d < $slideCount; $d++)
-            <div class="banner-dot {{ $d === 0 ? 'active' : '' }}" data-slide="{{ $d }}"></div>
+            <button
+                type="button"
+                class="banner-dot {{ $d === 0 ? 'active' : '' }}"
+                data-slide="{{ $d }}"
+                aria-label="Go to slide {{ $d + 1 }}"
+            ></button>
         @endfor
     </div>
     @endif

@@ -244,17 +244,9 @@
     position: absolute;
     inset: -4px;
 }
-/* Phones: keep chevrons visible — smaller circle, darker translucent bg */
+/* Phones: swipe + dots only — hide chevrons */
 @media (max-width: 768px) {
-    .banner-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1.1rem;
-        background: rgba(20, 14, 8, 0.45);
-        border-color: rgba(255, 255, 255, 0.35);
-    }
-    .banner-btn.prev { left: 0.65rem; }
-    .banner-btn.next { right: 0.65rem; }
+    .banner-btn { display: none; }
 }
 
 .banner-dots {
@@ -269,6 +261,13 @@
     transition: all 0.3s; cursor: pointer;
     /* Expand tap target without changing visible size */
     position: relative;
+    /* Reset native button chrome — dots are <button> for a11y */
+    border: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    color: inherit;
 }
 .banner-dot::before {
     content: '';
