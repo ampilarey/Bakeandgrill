@@ -1388,7 +1388,7 @@ html, body, #root {
 }
 
 .close-shift-denom-row__count {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 800;
   color: #CBD5E1;
   font-variant-numeric: tabular-nums;
@@ -1402,7 +1402,7 @@ html, body, #root {
 .close-shift-stepper-btn {
   width: 100%;
   max-width: 60px;
-  height: 28px;
+  height: 24px;
   border-radius: 8px;
   border: none;
   background: #E2E8F0;
@@ -1830,13 +1830,13 @@ html, body, #root {
   }
 
   .close-shift-denom-row__count {
-    font-size: 16px;
+    font-size: 12px;
   }
 
   .close-shift-stepper-btn {
     max-width: 54px;
-    height: 26px;
-    font-size: 14px;
+    height: 22px;
+    font-size: 13px;
   }
 
   .close-shift-denom-row__line {
@@ -2063,13 +2063,13 @@ html, body, #root {
   }
 
   .close-shift-denom-row__count {
-    font-size: 24px;
+    font-size: 15px;
   }
 
   .close-shift-stepper-btn {
     max-width: 64px;
-    height: 32px;
-    font-size: 17px;
+    height: 28px;
+    font-size: 16px;
   }
 
   .close-shift-denom-row__line {
@@ -2209,12 +2209,12 @@ html, body, #root {
   }
 
   .close-shift-denom-row__count {
-    font-size: 20px;
+    font-size: 15px;
   }
 
   .close-shift-stepper-btn {
     max-width: 58px;
-    height: 28px;
+    height: 24px;
   }
 
   .close-shift-rail {
