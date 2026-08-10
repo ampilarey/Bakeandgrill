@@ -29,6 +29,7 @@ class CustomerCreditLedger extends Model
         'method',
         'recorded_by',
         'notes',
+        'idempotency_key',
     ];
 
     public function customer(): BelongsTo

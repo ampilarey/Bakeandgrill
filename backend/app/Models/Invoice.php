@@ -15,12 +15,12 @@ class Invoice extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'invoice_number', 'token', 'type', 'status', 'is_tax_invoice',
-        'order_id', 'purchase_id', 'customer_id', 'supplier_id', 'created_by',
+        'invoice_number', 'token', 'idempotency_key', 'type', 'status', 'is_tax_invoice',
+        'order_id', 'purchase_id', 'customer_id', 'trade_account_id', 'supplier_id', 'created_by',
         'recipient_name', 'recipient_phone', 'recipient_email', 'recipient_address', 'customer_tin',
         'subtotal_laar', 'tax_laar', 'discount_laar', 'total_laar', 'amount_paid_laar',
         'subtotal', 'tax_amount', 'discount_amount', 'total',
-        'tax_rate_bp', 'issue_date', 'due_date', 'paid_at',
+        'tax_rate_bp', 'issue_date', 'gst_period_key', 'gst_ledger_date', 'due_date', 'paid_at',
         'payment_method', 'payment_reference',
         'notes', 'terms', 'pdf_path', 'parent_invoice_id', 'credit_note_reason',
     ];
@@ -30,6 +30,7 @@ class Invoice extends Model
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
+        'gst_ledger_date' => 'date',
         'paid_at' => 'datetime',
         'is_tax_invoice' => 'boolean',
     ];
@@ -61,6 +62,32 @@ class Invoice extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function tradeAccount(): BelongsTo
+    {
+        return $this->belongsTo(TradeAccount::class);
+    }
+
+    public function tradeAllocations(): HasMany
+    {
+        return $this->hasMany(TradeInvoiceAllocation::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function gstPeriodDiffersFromIssue(): bool
+    {
+        if ($this->gst_period_key === null || $this->issue_date === null) {
+            return false;
+        }
+
+        $issueKey = $this->issue_date->format('Y-m');
+
+        return ! str_starts_with((string) $this->gst_period_key, $issueKey);
     }
 
     public function supplier(): BelongsTo

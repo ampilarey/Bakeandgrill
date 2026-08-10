@@ -165,6 +165,7 @@
             "suppliers.purchases",
             "suppliers.view",
             "trade.dispatch",
+            "trade.invoice",
             "trade.manage_accounts",
             "trade.manage_prices",
             "trade.reconcile",

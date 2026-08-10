@@ -750,6 +750,13 @@ class PaymentService
 
     private function confirmPaymentOnce(Payment $payment, array $payload): void
     {
+        // Wholesale trade invoice payment — no order, no shadow order.
+        if ($payment->invoice_id !== null && $payment->order_id === null) {
+            $this->confirmInvoicePaymentOnce($payment, $payload);
+
+            return;
+        }
+
         DB::transaction(function () use ($payment, $payload): void {
             $orderId = (int) $payment->order_id;
 
@@ -1032,5 +1039,166 @@ class PaymentService
         }
 
         return LaariConverter::toLaar($order->total);
+    }
+
+    /**
+     * Initiate BML payment against a trade invoice (no order / no shadow order).
+     *
+     * @return array{payment_url: string, payment_id: int, reused?: bool}
+     */
+    public function initiateBmlInvoicePayment(
+        \App\Models\Invoice $invoice,
+        ?int $amountLaar = null,
+        ?string $idempotencyKey = null,
+        ?string $returnUrl = null,
+    ): array {
+        if ($invoice->trade_account_id === null) {
+            throw new \InvalidArgumentException('Not a wholesale trade invoice.');
+        }
+
+        $due = $invoice->balanceDueLaar();
+        $amountLaar = $amountLaar ?? $due;
+        if ($amountLaar <= 0 || $amountLaar > $due) {
+            throw new \InvalidArgumentException('Invalid payment amount for this invoice.');
+        }
+
+        $idempotencyKey = $idempotencyKey ?? ('bml:inv:'.$invoice->id.':'.$amountLaar);
+        $localId = $this->bml->normalizeLocalId('BG-INV-'.$invoice->invoice_number.'-'.now()->format('His'));
+
+        $payment = DB::transaction(function () use ($invoice, $idempotencyKey, $localId, $amountLaar) {
+            \App\Models\Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            return $this->payments->firstOrCreate(
+                ['idempotency_key' => $idempotencyKey],
+                [
+                    'order_id' => null,
+                    'invoice_id' => $invoice->id,
+                    'method' => 'bml_connect',
+                    'gateway' => 'bml',
+                    'currency' => config('bml.default_currency', 'MVR'),
+                    'amount' => round($amountLaar / 100, 2),
+                    'amount_laar' => $amountLaar,
+                    'local_id' => $localId,
+                    'status' => 'created',
+                    'processed_at' => now(),
+                ],
+            );
+        });
+
+        if (in_array((string) $payment->status, ['confirmed', 'paid', 'completed'], true)) {
+            return [
+                'payment_url' => '',
+                'payment_id' => $payment->id,
+                'reused' => true,
+            ];
+        }
+
+        $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/').'?invoiceId='.$invoice->id);
+
+        try {
+            $result = $this->bml->createPayment(
+                (int) $payment->amount_laar,
+                (string) $payment->local_id,
+                returnUrl: $bmlReturnUrl,
+            );
+        } catch (\Throwable $e) {
+            $payment->update(['status' => 'failed', 'gateway_response' => ['error' => $e->getMessage()]]);
+            throw $e;
+        }
+
+        $payment->update([
+            'status' => 'initiated',
+            'provider_transaction_id' => $result['transactionId'] ?? $result['id'] ?? null,
+            'gateway_response' => $result,
+        ]);
+
+        return [
+            'payment_url' => (string) ($result['url'] ?? $result['paymentUrl'] ?? ''),
+            'payment_id' => $payment->id,
+            'reused' => false,
+        ];
+    }
+
+    public function confirmFromInvoiceReturnUrl(int $invoiceId, string $transactionId): void
+    {
+        $payment = $this->payments->findByProviderTransactionId($transactionId);
+        if (! $payment || (int) $payment->invoice_id !== $invoiceId || $payment->order_id !== null) {
+            Log::info('BML return: no matching invoice payment', [
+                'invoice_id' => $invoiceId,
+                'transaction_id' => $transactionId,
+            ]);
+
+            return;
+        }
+
+        if (in_array($payment->status, ['confirmed', 'paid', 'completed'], true)) {
+            return;
+        }
+
+        try {
+            $fetched = $this->bml->getTransactionStatus($transactionId);
+        } catch (\Throwable $e) {
+            Log::warning('BML return: invoice status API unavailable', [
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        $apiState = $fetched['state'] ?? $fetched['status'] ?? null;
+        if ($apiState !== 'CONFIRMED') {
+            return;
+        }
+
+        $this->confirmPayment($payment, array_merge($fetched, [
+            'transactionId' => $transactionId,
+            'source' => 'return_url_invoice',
+        ]));
+    }
+
+    private function confirmInvoicePaymentOnce(Payment $payment, array $payload): void
+    {
+        DB::transaction(function () use ($payment, $payload): void {
+            $invoice = \App\Models\Invoice::whereKey($payment->invoice_id)->lockForUpdate()->first();
+            if (! $invoice) {
+                Log::error('BML: Invoice not found during payment confirmation', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $payment->invoice_id,
+                ]);
+
+                return;
+            }
+
+            $locked = Payment::query()
+                ->where('id', $payment->id)
+                ->where('invoice_id', $invoice->id)
+                ->whereNull('order_id')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                return;
+            }
+
+            $sm = PaymentStateMachine::for($locked);
+            if ($sm->can('confirmed')) {
+                $sm->transition('confirmed', ['gateway_response' => $payload]);
+                $locked->refresh();
+            } elseif (! in_array((string) $locked->status, ['confirmed', 'paid', 'completed'], true)) {
+                return;
+            }
+
+            $actor = \App\Models\User::query()->find($invoice->created_by)
+                ?? \App\Models\User::query()->whereHas('role', fn ($q) => $q->where('slug', 'owner'))->first();
+            if ($actor === null) {
+                Log::error('BML: No actor to settle trade invoice payment', ['payment_id' => $locked->id]);
+
+                return;
+            }
+
+            app(\App\Domains\Trade\Services\TradeReceivablePaymentService::class)
+                ->settleConfirmedBmlPayment($locked->fresh(), $actor);
+        });
     }
 }

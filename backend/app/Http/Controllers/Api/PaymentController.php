@@ -80,6 +80,51 @@ class PaymentController extends Controller
     }
 
     /**
+     * Initiate a BML online payment for a wholesale trade invoice (no order).
+     * Staff-only — shops pay via statement link in a later stage.
+     */
+    public function initiateInvoiceOnline(Request $request, int $invoiceId): JsonResponse
+    {
+        app(ServiceAvailabilityService::class)->assertAvailable('online_payment');
+
+        $invoice = \App\Models\Invoice::findOrFail($invoiceId);
+        if ($invoice->trade_account_id === null) {
+            return response()->json(['message' => 'Not a wholesale trade invoice.'], 422);
+        }
+
+        $validated = $request->validate([
+            'amount_laar' => ['nullable', 'integer', 'min:1'],
+            'idempotency_key' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        try {
+            $result = $this->paymentService->initiateBmlInvoicePayment(
+                $invoice,
+                isset($validated['amount_laar']) ? (int) $validated['amount_laar'] : null,
+                $validated['idempotency_key'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\RuntimeException $e) {
+            Log::error('PaymentController: BML invoice payment initiation failed', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Payment gateway unavailable. Please try again in a moment.',
+                'code' => 'gateway_error',
+            ], 503);
+        }
+
+        return response()->json([
+            'payment_url' => $result['payment_url'],
+            'payment_id' => $result['payment_id'],
+            'reused' => $result['reused'] ?? false,
+        ]);
+    }
+
+    /**
      * POST /api/payments/online/initiate-partial
      *
      * Initiate a partial BML online payment.
@@ -160,8 +205,21 @@ class PaymentController extends Controller
     public function bmlReturn(Request $request): \Illuminate\Http\RedirectResponse
     {
         $orderId = $request->query('orderId');
+        $invoiceId = $request->query('invoiceId');
         $state = $request->query('state', 'UNKNOWN');
         $transactionId = $request->query('transactionId');
+
+        if ($state === 'CONFIRMED' && $invoiceId && $transactionId && ! $orderId) {
+            try {
+                $this->paymentService->confirmFromInvoiceReturnUrl((int) $invoiceId, (string) $transactionId);
+            } catch (\Throwable $e) {
+                Log::warning('BML return: invoice fallback confirmation failed', [
+                    'invoice_id' => $invoiceId,
+                    'transaction_id' => $transactionId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         if ($state === 'CONFIRMED' && $orderId && $transactionId) {
             try {

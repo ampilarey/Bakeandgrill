@@ -248,6 +248,7 @@ final class PermissionCatalog
             ['group' => 'Wholesale', 'slug' => 'trade.manage_prices', 'name' => 'Manage wholesale prices', 'description' => 'Edit per-shop wholesale price lists'],
             ['group' => 'Wholesale', 'slug' => 'trade.dispatch', 'name' => 'Dispatch wholesale deliveries', 'description' => 'Send consignment goods to shops'],
             ['group' => 'Wholesale', 'slug' => 'trade.reconcile', 'name' => 'Reconcile wholesale deliveries', 'description' => 'Record what sold and what came back'],
+            ['group' => 'Wholesale', 'slug' => 'trade.invoice', 'name' => 'Raise wholesale invoices', 'description' => 'Invoice shops, resolve mismatches, credit notes'],
 
             // Kitchen / KDS
             ['group' => 'Kitchen / KDS', 'slug' => 'kds.view', 'name' => 'View kitchen display', 'description' => 'View KDS queue and stream'],
@@ -327,6 +328,7 @@ final class PermissionCatalog
             'trade.manage_prices',
             'trade.dispatch',
             'trade.reconcile',
+            'trade.invoice',
         ];
 
         return array_values(array_diff(self::ownerSlugs(), $excluded));

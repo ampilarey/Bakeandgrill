@@ -176,6 +176,7 @@ backend/routes/domains/orders.php:92:customers.create
 backend/routes/domains/orders.php:94:customers.lookup
 backend/routes/domains/orders.php:96:customers.lookup
 backend/routes/domains/orders.php:98:customers.lookup
+backend/routes/domains/payments.php:24:customers.credit.repay
 backend/routes/domains/reporting.php:22:reports.view
 backend/routes/domains/reporting.php:62:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage
@@ -229,9 +230,13 @@ backend/routes/domains/staff.php:84:settings.update
 backend/routes/domains/staff.php:88:settings.update
 backend/routes/domains/staff.php:94:reports.financial
 backend/routes/domains/staff.php:96:settings.update
-backend/routes/domains/trade.php:18:trade.view
-backend/routes/domains/trade.php:27:trade.manage_accounts
-backend/routes/domains/trade.php:34:trade.manage_prices
-backend/routes/domains/trade.php:46:trade.view
-backend/routes/domains/trade.php:51:trade.dispatch
-backend/routes/domains/trade.php:56:trade.reconcile
+backend/routes/domains/trade.php:19:trade.view
+backend/routes/domains/trade.php:30:trade.manage_accounts
+backend/routes/domains/trade.php:37:trade.manage_prices
+backend/routes/domains/trade.php:47:trade.invoice
+backend/routes/domains/trade.php:52:customers.credit.repay
+backend/routes/domains/trade.php:58:trade.invoice
+backend/routes/domains/trade.php:64:trade.view
+backend/routes/domains/trade.php:69:trade.dispatch
+backend/routes/domains/trade.php:74:trade.reconcile
+backend/routes/domains/trade.php:78:trade.invoice

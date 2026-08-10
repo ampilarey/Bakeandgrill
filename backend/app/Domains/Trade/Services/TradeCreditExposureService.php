@@ -6,26 +6,27 @@ namespace App\Domains\Trade\Services;
 
 use App\Domains\Trade\DTOs\TradeCreditExposure;
 use App\Models\Customer;
+use App\Models\TradeAccount;
 use App\Models\TradeDelivery;
 use App\Models\TradeDeliveryLine;
+use App\Models\TradeInvoiceAllocation;
 
 /**
  * One function for dispatch checks and screens.
- * exposure = credit_balance_laar + stamped value of dispatched (not yet invoiced) lines.
- * Stage B+C has no invoices yet — every dispatched delivery counts as unbilled.
+ *
+ * exposure = credit_balance_laar
+ *          + stamped value of every delivery line NOT YET ALLOCATED TO AN INVOICE
+ *
+ * Holding quantity per line (before subtracting allocations):
+ *   - cancelled → 0
+ *   - dispatched (not yet reconciled) → qty_sent (goods out, unbilled)
+ *   - reconciled / invoiced → qty_sold + charged-missing (returned goods are back)
  */
 final class TradeCreditExposureService
 {
     public function forCustomer(Customer $customer): TradeCreditExposure
     {
-        $holding = (int) TradeDeliveryLine::query()
-            ->whereHas('delivery', function ($q) use ($customer) {
-                $q->where('status', TradeDelivery::STATUS_DISPATCHED)
-                    ->whereHas('tradeAccount', fn ($aq) => $aq->where('customer_id', $customer->id));
-            })
-            ->selectRaw('COALESCE(SUM(qty_sent * unit_price_laar), 0) as total')
-            ->value('total');
-
+        $holding = $this->unallocatedHoldingLaar($customer);
         $balance = (int) ($customer->credit_balance_laar ?? 0);
         $limit = (int) ($customer->credit_limit_laar ?? 0);
 
@@ -40,6 +41,9 @@ final class TradeCreditExposureService
     }
 
     /**
+     * Must be called with the customer row already locked for update when used
+     * as a dispatch gate (see TradeDispatchService).
+     *
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
     public function assertCanDispatch(
@@ -69,5 +73,98 @@ final class TradeCreditExposureService
         }
 
         return $exposure;
+    }
+
+    public function unallocatedHoldingLaar(Customer $customer): int
+    {
+        $lines = TradeDeliveryLine::query()
+            ->with(['delivery.tradeAccount'])
+            ->whereHas('delivery', function ($q) use ($customer) {
+                $q->where('status', '!=', TradeDelivery::STATUS_CANCELLED)
+                    ->whereHas('tradeAccount', fn ($aq) => $aq->where('customer_id', $customer->id));
+            })
+            ->get();
+
+        $allocatedByLine = TradeInvoiceAllocation::query()
+            ->whereIn('trade_delivery_line_id', $lines->pluck('id'))
+            ->selectRaw('trade_delivery_line_id, SUM(qty_invoiced) as qty')
+            ->groupBy('trade_delivery_line_id')
+            ->pluck('qty', 'trade_delivery_line_id');
+
+        $total = 0;
+        foreach ($lines as $line) {
+            $holdingQty = $this->holdingQty($line);
+            $allocated = (int) ($allocatedByLine[$line->id] ?? 0);
+            $unallocated = max(0, $holdingQty - $allocated);
+            $total += $unallocated * (int) $line->unit_price_laar;
+        }
+
+        return $total;
+    }
+
+    public function holdingQty(TradeDeliveryLine $line): int
+    {
+        $delivery = $line->delivery;
+        if ($delivery === null) {
+            return 0;
+        }
+
+        if ($delivery->status === TradeDelivery::STATUS_CANCELLED) {
+            return 0;
+        }
+
+        if ($delivery->status === TradeDelivery::STATUS_DISPATCHED) {
+            return (int) $line->qty_sent;
+        }
+
+        // reconciled / invoiced / settled — returned goods are not held
+        $sold = (int) $line->qty_sold;
+        $missing = $this->chargeableMissingQty($line, $delivery->tradeAccount);
+
+        return $sold + $missing;
+    }
+
+    public function chargeableMissingQty(TradeDeliveryLine $line, ?TradeAccount $account): int
+    {
+        $missing = (int) $line->qty_missing;
+        if ($missing <= 0) {
+            return 0;
+        }
+
+        $delivery = $line->delivery;
+        if ($delivery && $delivery->missing_charge_waived) {
+            return 0;
+        }
+
+        $policy = $account?->missing_policy ?? TradeAccount::MISSING_CHARGE;
+        if ($policy === TradeAccount::MISSING_WRITE_OFF) {
+            return 0;
+        }
+
+        // charge and dispute both count as holding until resolved/waived;
+        // dispute blocks invoicing but still counts against exposure.
+        return $missing;
+    }
+
+    public function invoiceableQty(TradeDeliveryLine $line, ?TradeAccount $account): int
+    {
+        $sold = (int) $line->qty_sold;
+        $missing = 0;
+        $policy = $account?->missing_policy ?? TradeAccount::MISSING_CHARGE;
+        $delivery = $line->delivery;
+
+        if ($policy === TradeAccount::MISSING_CHARGE
+            && (! $delivery || ! $delivery->missing_charge_waived)) {
+            $missing = (int) $line->qty_missing;
+        }
+
+        return $sold + $missing;
+    }
+
+    public function allocatedQty(int $deliveryLineId): int
+    {
+        return (int) TradeInvoiceAllocation::query()
+            ->where('trade_delivery_line_id', $deliveryLineId)
+            ->sum('qty_invoiced');
     }
 }

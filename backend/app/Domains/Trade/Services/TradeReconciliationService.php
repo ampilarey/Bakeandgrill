@@ -74,12 +74,6 @@ final class TradeReconciliationService
                     ]);
                 }
 
-                if ($countedReturn + $reportedSold + $qtyMissing !== $line->qty_sent
-                    && $countedReturn + $qtyMissing > $line->qty_sent) {
-                    // Allow reported_sold to disagree with physical split — physical must fit:
-                    // counted_return + missing + sold_physical = qty_sent where sold_physical = qty_sent - counted - missing
-                }
-
                 // Physical split: sold (physical) + returned + missing = sent
                 $qtySold = $line->qty_sent - $countedReturn - $qtyMissing;
                 if ($qtySold < 0) {

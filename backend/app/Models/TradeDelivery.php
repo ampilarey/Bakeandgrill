@@ -18,6 +18,10 @@ class TradeDelivery extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const STATUS_INVOICED = 'invoiced';
+
+    public const STATUS_SETTLED = 'settled';
+
     protected $fillable = [
         'trade_account_id',
         'delivery_number',
@@ -28,10 +32,17 @@ class TradeDelivery extends Model
         'expected_return_at',
         'reconciled_at',
         'reconciled_by',
+        'invoiced_at',
         'notes',
         'signature_media_id',
         'idempotency_key',
         'has_mismatch',
+        'mismatch_resolved_at',
+        'mismatch_resolved_by',
+        'mismatch_resolution_notes',
+        'missing_charge_waived',
+        'missing_waive_reason',
+        'missing_waived_by',
         'self_reconciled',
         'reported_by',
         'reported_at',
@@ -46,9 +57,17 @@ class TradeDelivery extends Model
             'expected_return_at' => 'datetime',
             'reconciled_at' => 'datetime',
             'reported_at' => 'datetime',
+            'invoiced_at' => 'datetime',
+            'mismatch_resolved_at' => 'datetime',
             'has_mismatch' => 'boolean',
             'self_reconciled' => 'boolean',
+            'missing_charge_waived' => 'boolean',
         ];
+    }
+
+    public function mismatchIsBlocking(): bool
+    {
+        return (bool) $this->has_mismatch && $this->mismatch_resolved_at === null;
     }
 
     public function tradeAccount(): BelongsTo
@@ -73,7 +92,12 @@ class TradeDelivery extends Model
 
     public function isImmutable(): bool
     {
-        return in_array($this->status, [self::STATUS_DISPATCHED, self::STATUS_RECONCILED], true);
+        return in_array($this->status, [
+            self::STATUS_DISPATCHED,
+            self::STATUS_RECONCILED,
+            self::STATUS_INVOICED,
+            self::STATUS_SETTLED,
+        ], true);
     }
 
     public function stampedValueLaar(): int

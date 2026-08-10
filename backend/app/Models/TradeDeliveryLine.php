@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TradeDeliveryLine extends Model
 {
@@ -59,6 +60,11 @@ class TradeDeliveryLine extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(Variant::class);
+    }
+
+    public function allocations(): HasMany
+    {
+        return $this->hasMany(TradeInvoiceAllocation::class, 'trade_delivery_line_id');
     }
 
     public function balances(): bool

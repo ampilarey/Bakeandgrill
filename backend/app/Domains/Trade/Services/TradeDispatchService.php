@@ -116,10 +116,9 @@ final class TradeDispatchService
             abort(403, 'Only the owner can override the credit limit.');
         }
 
-        $this->exposure->assertCanDispatch($customer, $deliveryValueLaar, $ownerOverride);
-
         $delivery = DB::transaction(function () use (
             $account,
+            $customer,
             $resolvedLines,
             $actor,
             $idempotencyKey,
@@ -135,6 +134,11 @@ final class TradeDispatchService
             if ($existing) {
                 return $existing;
             }
+
+            // Credit exposure gate WITH the customer row locked — prevents two
+            // simultaneous dispatches both passing the limit (TOCTOU).
+            $lockedCustomer = \App\Models\Customer::lockForUpdate()->findOrFail($customer->id);
+            $this->exposure->assertCanDispatch($lockedCustomer, $deliveryValueLaar, $ownerOverride);
 
             $delivery = TradeDelivery::create([
                 'trade_account_id' => $account->id,
@@ -207,6 +211,14 @@ final class TradeDispatchService
                     'reason' => $ownerOverride ? trim((string) $creditOverrideReason) : null,
                 ]),
             );
+
+            // Firm-sale: invoice qty_sent in the same transaction so a failure rolls stock back.
+            if ($account->settlement_mode === TradeAccount::SETTLEMENT_FIRM_SALE) {
+                app(TradeInvoiceService::class)->raiseForFirmSaleDispatch(
+                    $delivery->fresh(['lines', 'tradeAccount.customer']),
+                    $actor,
+                );
+            }
 
             return $delivery;
         });
