@@ -510,9 +510,7 @@ export function ChargeOverlay({
                     className={[
                       "pos-charge-tender-btn",
                       "pos-charge-credit-inline",
-                      method === "house_account"
-                        ? "pos-charge-tender-btn--active pos-charge-tender-btn--credit-active"
-                        : "pos-charge-tender-btn--credit",
+                      method === "house_account" ? "pos-charge-tender-btn--active" : "",
                       !creditEligible ? "is-muted" : "",
                     ].filter(Boolean).join(" ")}
                     onClick={() => {
@@ -522,6 +520,14 @@ export function ChargeOverlay({
                       // banner shows the live available balance, not
                       // a stale value from when the overlay opened.
                       onSelectCredit?.();
+                    }}
+                    style={{
+                      padding: "12px 6px", borderRadius: 10,
+                      background: method === "house_account" ? "#0F172A" : "#fff",
+                      color: method === "house_account" ? "#fff" : "#0F172A",
+                      border: `1px solid ${method === "house_account" ? "#0F172A" : "#CBD5E1"}`,
+                      fontWeight: 700, fontSize: 13, cursor: "pointer",
+                      minWidth: 0,
                     }}
                   >
                     Credit

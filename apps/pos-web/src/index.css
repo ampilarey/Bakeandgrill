@@ -353,19 +353,10 @@ html, body, #root {
 }
 
 /* Credit in the main tender row is phone-only; iPad keeps the
- * secondary "Credit Account" chip (see mobile block below). */
+ * secondary "Credit Account" chip (see mobile block below).
+ * Inline Credit uses the same white/dark chip styles as Cash/Card. */
 .pos-charge-credit-inline {
   display: none !important;
-}
-.pos-charge-tender-btn--credit {
-  background: #EFF6FF !important;
-  color: #1D4ED8 !important;
-  border: 1px solid #BFDBFE !important;
-}
-.pos-charge-tender-btn--credit-active {
-  background: #1D4ED8 !important;
-  color: #fff !important;
-  border: 1px solid #1D4ED8 !important;
 }
 .pos-charge-credit-inline.is-muted {
   opacity: 0.7;
@@ -679,9 +670,6 @@ html, body, #root {
   }
   .pos-charge-tender-btn--active {
     box-shadow: 0 0 0 2px rgba(212, 129, 58, 0.45);
-  }
-  .pos-charge-tender-btn--credit-active {
-    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.4);
   }
   .pos-charge-confirm-label {
     display: flex;
