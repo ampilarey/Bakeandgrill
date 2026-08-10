@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Gst\Services\GstReportService;
 use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Support\ReportMoneySql;
+use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -73,10 +74,19 @@ class FinanceReportController extends Controller
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
         $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
 
+        $wholesale = app(WholesaleChannelAggregator::class)->summary($from, $to);
+        $wholesaleWasteLaar = app(WholesaleChannelAggregator::class)->wasteCostLaar($from, $to);
+        $wholesaleRevenue = (float) $wholesale['revenue'];
+        $wholesaleCogs = (float) $wholesale['cogs'];
+        $wholesaleWaste = round($wholesaleWasteLaar / 100, 2);
+
         $grossRevenue = (float) ($revenue->total ?? 0);
         $netRevenue = round($grossRevenue - $refundsTotal, 2);
-        $grossProfit = round($netRevenue - (float) $cogs, 2);
+        // Retail keys stay order/purchase based; combined profit includes wholesale channel.
+        $combinedNet = round($netRevenue + $wholesaleRevenue, 2);
+        $grossProfit = round($combinedNet - (float) $cogs - $wholesaleCogs, 2);
         // Bank commissions are auto-recorded as approved expenses — included in $opexTotal.
+        // WasteLog already includes consignment waste — do not add wholesaleWaste again.
         $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
 
         return response()->json([
@@ -89,10 +99,15 @@ class FinanceReportController extends Controller
                 'discounts' => (float) ($revenue->discount ?? 0),
                 'net' => $netRevenue,
                 'orders' => (int) ($revenue->orders ?? 0),
+                'wholesale' => $wholesaleRevenue,
+                'wholesale_tax' => (float) $wholesale['tax'],
+                'combined_net' => $combinedNet,
             ],
             'cogs' => (float) $cogs,
+            'wholesale_cogs' => $wholesaleCogs,
+            'wholesale' => $wholesale,
             'gross_profit' => $grossProfit,
-            'gross_margin_pct' => $netRevenue > 0 ? round($grossProfit / $netRevenue * 100, 2) : 0,
+            'gross_margin_pct' => $combinedNet > 0 ? round($grossProfit / $combinedNet * 100, 2) : 0,
             'expenses' => [
                 'total' => (float) $opexTotal,
                 'by_category' => $opex->map(fn ($e) => [
@@ -102,10 +117,11 @@ class FinanceReportController extends Controller
                 ]),
             ],
             'waste_cost' => (float) $wasteCost,
+            'wholesale_waste_cost' => $wholesaleWaste,
             'payment_processing_fees' => $paymentProcessingFees,
             'payment_commission' => $commissionSummary,
             'operating_profit' => $operatingProfit,
-            'net_profit_margin_pct' => $netRevenue > 0 ? round($operatingProfit / $netRevenue * 100, 2) : 0,
+            'net_profit_margin_pct' => $combinedNet > 0 ? round($operatingProfit / $combinedNet * 100, 2) : 0,
         ]);
     }
 
@@ -169,15 +185,23 @@ class FinanceReportController extends Controller
             $current->addDay();
         }
 
+        $wholesaleByDay = app(WholesaleChannelAggregator::class)->revenueByDay($from, $to);
+        foreach ($days as &$day) {
+            $day['wholesale_inflow'] = (float) ($wholesaleByDay[$day['date']] ?? 0);
+        }
+        unset($day);
+
         $totalInflow = array_sum(array_column($days, 'inflow'));
+        $totalWholesaleInflow = array_sum(array_column($days, 'wholesale_inflow'));
         $totalOutflow = array_sum(array_column($days, 'outflow'));
 
         return response()->json([
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'total_inflow' => round($totalInflow, 2),
+            'total_wholesale_inflow' => round($totalWholesaleInflow, 2),
             'total_outflow' => round($totalOutflow, 2),
-            'net_cash_flow' => round($totalInflow - $totalOutflow, 2),
+            'net_cash_flow' => round($totalInflow + $totalWholesaleInflow - $totalOutflow, 2),
             'days' => $days,
         ]);
     }
@@ -256,7 +280,10 @@ class FinanceReportController extends Controller
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
         $paymentProcessingFees = (float) ($commissionSummary['totals']['commission_total'] ?? 0);
 
-        $profit = round($netRevenue - $expenses - $purchases - $wasteCost, 2);
+        $wholesale = app(WholesaleChannelAggregator::class)->summary($from, $to);
+        $wholesaleRevenue = (float) $wholesale['revenue'];
+        $wholesaleCogs = (float) $wholesale['cogs'];
+        $profit = round($netRevenue + $wholesaleRevenue - $expenses - $purchases - $wholesaleCogs - $wasteCost, 2);
 
         $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
 
@@ -268,7 +295,7 @@ class FinanceReportController extends Controller
             ->groupBy('type')
             ->get();
 
-        // Top items
+        // Top items (retail)
         $topItems = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('items', 'items.id', '=', 'order_items.item_id')
@@ -285,13 +312,17 @@ class FinanceReportController extends Controller
             'revenue' => $revenue,
             'refunds' => $refundsTotal,
             'net_revenue' => $netRevenue,
+            'wholesale_revenue' => $wholesaleRevenue,
+            'wholesale' => $wholesale,
             'tax' => $tax,
             'discounts' => $discounts,
             'orders' => $orderCount,
             'avg_order' => $avgOrder,
             'expenses' => $expenses,
             'purchases' => $purchases,
+            'wholesale_cogs' => $wholesaleCogs,
             'waste_cost' => $wasteCost,
+            'wholesale_waste_cost' => round(app(WholesaleChannelAggregator::class)->wasteCostLaar($from, $to) / 100, 2),
             'payment_processing_fees' => $paymentProcessingFees,
             'payment_commission' => $commissionSummary,
             'net_profit' => $profit,
@@ -306,6 +337,7 @@ class FinanceReportController extends Controller
                 'qty' => (float) $r->qty,
                 'revenue' => (float) $r->revenue,
             ]),
+            'wholesale_top_items' => app(WholesaleChannelAggregator::class)->topItems($from, $to, 10),
         ]);
     }
 

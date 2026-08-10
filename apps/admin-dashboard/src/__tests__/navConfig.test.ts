@@ -38,6 +38,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/wholesale', permission: 'trade.view' },
   { to: '/wholesale/deliveries', permission: 'trade.view' },
   { to: '/wholesale/invoicing', permission: 'trade.view' },
+  { to: '/wholesale/reports', permission: 'trade.view' },
   { to: '/customers', permission: 'customers.manage' },
   { to: '/customers/growth', permission: 'customers.manage' },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },

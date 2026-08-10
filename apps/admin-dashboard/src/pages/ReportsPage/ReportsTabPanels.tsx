@@ -63,6 +63,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
             <StatCard label="Completed Revenue" value={mvr(summary.total_revenue)} sub="Finished orders only" accent="var(--color-success)" />
+            <StatCard label="Wholesale Revenue" value={mvr(summary.wholesale_revenue ?? 0)} sub={`${summary.wholesale_invoices ?? 0} trade invoice(s)`} accent="var(--color-primary)" />
             <StatCard label="Completed Orders" value={summary.order_count.toLocaleString()} accent="var(--color-primary)" />
             <StatCard label="Avg Order Value"  value={mvr(summary.average_order_value ?? 0)} accent="#8b5cf6" />
             {(summary.service_charge_total ?? 0) > 0 && (
@@ -133,7 +134,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
 
           {/* Top Items */}
           <Card>
-            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Top Items</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Top Items (retail)</p>
                         <ResponsiveTable>
 <table style={S.table}>
               <thead><tr>
@@ -154,6 +155,34 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
+          </Card>
+
+          <Card>
+            <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', margin: '0 0 16px' }}>Top Items (wholesale)</p>
+            <ResponsiveTable>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Item</th>
+                  <th style={S.th}>Qty</th>
+                  <th style={{ ...S.th, minWidth: 160 }}>Revenue</th>
+                </tr></thead>
+                <tbody>
+                  {(breakdown.wholesale_items ?? []).length === 0 && (
+                    <tr><td colSpan={3} style={{ ...S.td, color: 'var(--color-text-muted)' }}>No wholesale volume in this period</td></tr>
+                  )}
+                  {(breakdown.wholesale_items ?? []).slice(0, 10).map((item) => {
+                    const max = (breakdown.wholesale_items ?? [])[0]?.total ?? 1;
+                    return (
+                      <tr key={`w-${item.item_id ?? item.item_name}`}>
+                        <td style={S.td}>{item.item_name}</td>
+                        <td style={{ ...S.td, color: 'var(--color-text-muted)' }}>{item.quantity}</td>
+                        <td style={S.td}><BarCell value={item.total} max={max} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </ResponsiveTable>
           </Card>
 

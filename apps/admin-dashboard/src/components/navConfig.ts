@@ -8,7 +8,7 @@ import {
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, FileText,
+  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, FileText, LineChart,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -119,6 +119,7 @@ export const NAV_GROUPS: NavGroup[] = [
     order: 4,
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
+      { to: '/wholesale/reports', icon: LineChart, label: 'Wholesale reports', permission: 'trade.view', description: 'Sell-through, waste, margin & ageing' },
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },

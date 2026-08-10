@@ -70,6 +70,7 @@ const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAcc
 const WholesaleDeliveriesPage = lazyWithRetry(() => import('./pages/WholesaleDeliveriesPage'));
 const WholesaleInvoicingPage  = lazyWithRetry(() => import('./pages/WholesaleInvoicingPage'));
 const WholesaleStatementPage  = lazyWithRetry(() => import('./pages/WholesaleStatementPage'));
+const WholesaleReportsPage    = lazyWithRetry(() => import('./pages/WholesaleReportsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -395,6 +396,11 @@ export default function App() {
                 <Route path="wholesale/invoicing" element={
                   <PermissionGuard user={user} permission="trade.view">
                     <WholesaleInvoicingPage />
+                  </PermissionGuard>
+                } />
+                <Route path="wholesale/reports" element={
+                  <PermissionGuard user={user} permission="trade.view">
+                    <WholesaleReportsPage />
                   </PermissionGuard>
                 } />
                 <Route path="wholesale/:id/invoicing" element={
