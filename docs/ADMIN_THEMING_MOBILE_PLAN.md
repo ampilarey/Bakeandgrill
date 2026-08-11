@@ -9,7 +9,7 @@ introduced a reusable sheet pattern that did not exist when this was written.
 |---|---|---|
 | Page chrome / structure | Uniform, leave alone | Unchanged. Still correct. |
 | Mobile tables | Handled by a catch-all; action: none | Confirmed. 55 pages carry tables, none need a wrapper. |
-| Shared modals on mobile | Not covered by the original audit | **Mostly handled** — `index.css:705` turns the SharedUI Modal into a bottom sheet with safe-area footer padding. 34 page files inherit it. 6 hand-rolled overlays do not — see §6.2. |
+| Shared modals on mobile | Not covered by the original audit | **Mostly handled** — `index.css:705` turns the SharedUI Modal into a bottom sheet with safe-area footer padding, and all 34 pages that render `<Modal>` inherit it. 6 hand-rolled overlays and 1 dead duplicate Modal do not — see §6.2. |
 | Dark mode migration | 3,188 hex literals vs 3 variable usages | **647 hex literals vs 3,110 variable usages — roughly 83% done.** |
 | Stage 1 (lint + baseline + CLAUDE.md) | Proposed | **Shipped.** |
 
@@ -486,9 +486,23 @@ Stage 3c, then migrate the twelve files above. Migrating before the walk means g
 
 ### 6.2 Six hand-rolled overlays skip the shared mobile treatment
 
-The bottom-sheet block at `index.css:705` is scoped to `.modal-backdrop` — the SharedUI Modal.
-34 page files render `<Modal>` and inherit it correctly. Eight page files instead build their own
-`position: 'fixed'` overlay in an inline style, and those inherit nothing.
+The bottom-sheet block at `index.css:705` is scoped to `.modal-backdrop .modal-container`.
+`components/SharedUI.tsx:405` is the only component that renders `modal-backdrop`, so it is the
+only one the rule reaches. All 34 page files that render `<Modal>` resolve to it — either
+directly, or through the deprecated `components/Layout.tsx` re-export — so they all inherit the
+treatment correctly.
+
+**Dead second Modal.** `components/ui/Modal.tsx` is a separate implementation, exported from
+`components/ui/index.ts` but imported by no page. Its root is Tailwind `fixed inset-0` with no
+`modal-backdrop` class, so the mobile rule cannot match it — yet the comment at line 46 states
+that `modal-container` "is the hook our global mobile @media rule targets so the dialog snaps to
+a full-width bottom sheet on phones." That is false for this component. It also hardcodes
+`bg-white`, relying on the `.bg-white` dark-mode hack §3a deliberately kept. Delete it, or fix
+the class and the comment. Leaving it is how someone imports it in six months and ships a modal
+that is broken on phones and in dark mode at the same time.
+
+Eight page files build their own `position: 'fixed'` overlay in an inline style, and those
+inherit nothing.
 
 Two of the eight are fine and should be left alone:
 
@@ -553,9 +567,10 @@ Both were found by reading CSS, not by a test — which is the point of §6.3.
 ### 6.5 Sequencing
 
 1. **Stage 3b visual walk** — still not done, and §6.1 is blocked behind it.
-2. **Lift `ContentEditorSheet`'s behaviour into the shared Modal** (scroll lock, focus
-   management, four-sided safe area). This improves 34 pages in one change.
-3. **Convert the six overlays in §6.2** to the shared Modal, one commit each.
+2. **Lift `ContentEditorSheet`'s behaviour into the SharedUI Modal** (scroll lock, focus
+   management, four-sided safe area). This improves all 34 pages in one change. Delete the dead
+   `components/ui/Modal.tsx` in the same commit so there is one Modal, not two.
+3. **Convert the six overlays in §6.2** to the SharedUI Modal, one commit each.
 4. **Real Playwright layout coverage** (§6.3), added alongside step 3 so each conversion ships
    with a test that can actually fail.
 5. **Stage 3c decision, then the twelve files in §6.1.**
