@@ -37,6 +37,54 @@ export async function cashierToken(request: APIRequestContext): Promise<string> 
   return data.token ?? '';
 }
 
+export async function cashierHeaders(request: APIRequestContext): Promise<Record<string, string>> {
+  const token = await cashierToken(request);
+  expect(token, 'cashier bearer required').not.toBe('');
+  return { Authorization: `Bearer ${token}`, Accept: 'application/json' };
+}
+
+/** Open shift for the cashier (refunds require THEIR open shift). */
+export async function ensureCashierOpenShift(request: APIRequestContext): Promise<number> {
+  const headers = await cashierHeaders(request);
+  const cur = await request.get('/api/shifts/current', { headers });
+  if (cur.ok()) {
+    const body = (await cur.json()) as { shift?: { id?: number } | null };
+    if (body.shift?.id) return body.shift.id;
+  }
+  const open = await request.post('/api/shifts/open', {
+    headers,
+    data: { opening_cash: 100 },
+  });
+  expect(open.ok(), `cashier open shift failed: ${await open.text()}`).toBeTruthy();
+  const data = (await open.json()) as { shift: { id: number } };
+  return data.shift.id;
+}
+
+/**
+ * Refund OTP bodies are redacted in sms_logs (`[otp redacted]`).
+ * Returns the latest log status for assertions that a send was attempted.
+ */
+export function lastRefundOtpSmsStatus(): string {
+  return artisanTinker(`
+$m = App\\Models\\SmsLog::where('type', 'customer_refund_otp')->latest('id')->first();
+echo $m ? ($m->status.'|'.$m->message) : 'NONE';
+`);
+}
+
+/**
+ * Kill switch aborts refund OTP and the request itself (422).
+ * Refund screen specs rely on SMS_LIVE=false (demo) instead — disable the switch.
+ */
+export async function disableSmsGlobalKillSwitch(request: APIRequestContext): Promise<void> {
+  const token = await obtainStaffToken(request);
+  expect(token).not.toBe('');
+  const res = await request.patch('/api/admin/sms/global-kill-switch', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { enabled: false },
+  });
+  expect(res.ok(), `disable kill switch: ${await res.text()}`).toBeTruthy();
+}
+
 /** Mint a customer Sanctum PAT via artisan (local DB only). */
 export function mintCustomerBearer(phone = '+9607972434'): string {
   const token = artisanTinker(`

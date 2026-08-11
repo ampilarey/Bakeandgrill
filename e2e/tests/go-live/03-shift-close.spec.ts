@@ -1,11 +1,12 @@
 /**
  * Part 3 — shift close (blind count UI + cashier API secrecy).
- * Checklist: 3.1, 3.2, 3.5, 3.6
+ * Checklist: 3.1–3.6
  */
 import { test, expect, type Page } from '@playwright/test';
 
 import { obtainStaffToken } from '../../fixtures/auth';
-import { cashierToken, ensureOpenShift } from '../../helpers/goLiveApi';
+import { artisanTinker, cashierToken, ensureOpenShift, staffHeaders } from '../../helpers/goLiveApi';
+import { freshOwnerShift } from '../../helpers/freshShift';
 import { assertLocalOnlyBaseUrl, enableSmsGlobalKillSwitch } from '../../helpers/localOnly';
 
 async function injectPosOwner(page: Page): Promise<void> {
@@ -35,41 +36,49 @@ async function injectPosOwner(page: Page): Promise<void> {
   await page.waitForTimeout(800);
 }
 
+/** Bump counted cash so Review can run (photo-tap or keypad). */
+async function bumpCloseShiftCount(page: Page): Promise<void> {
+  const row = page.locator('[data-testid^="denom-row-"]').first();
+  if (await row.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await row.click();
+    return;
+  }
+  await page.getByTestId('close-shift-count-pad').getByRole('button', { name: 'Digit 1' }).click();
+}
+
 async function openCloseShiftSheet(page: Page): Promise<void> {
   // Wait until POS shell accepted the token (not stuck on login).
   await expect
     .poll(async () => (await page.textContent('body')) ?? '', { timeout: 20_000 })
     .toMatch(/category|sales|shift|close shift|open shift|menu/i);
 
-  // Drawer shortcut: label "Close shift" (usePosApp drawerItems).
+  // Dismiss stray panes (Events etc.) so Close Shift is reachable.
+  await page.keyboard.press('Escape').catch(() => {});
+  const closePanel = page.getByRole('button', { name: /close panel/i });
+  if (await closePanel.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await closePanel.click();
+  }
+
   const menuBtn = page.getByRole('button', { name: /open menu/i }).first();
-  if (await menuBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await menuBtn.click();
-  }
+  await expect(menuBtn).toBeVisible({ timeout: 10_000 });
+  await menuBtn.click();
 
-  const candidates = [
-    page.getByRole('button', { name: /^close shift$/i }),
-    page.getByRole('button', { name: /close shift/i }),
-    page.locator('button', { hasText: /^CLOSE SHIFT$/ }),
-    page.locator('[data-drawer-id="close_shift"], [data-id="close_shift"]'),
-  ];
-
-  let clicked = false;
-  for (const loc of candidates) {
-    if (await loc.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await loc.first().click();
-      clicked = true;
-      break;
-    }
-  }
-
-  if (!clicked) {
-    // Shift pane → CLOSE SHIFT
-    const shiftNav = page.getByRole('button', { name: /^shift$/i }).first();
+  const drawerClose = page
+    .getByRole('dialog', { name: /main menu/i })
+    .getByRole('button', { name: /close shift/i })
+    .first();
+  if (await drawerClose.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await drawerClose.click();
+  } else {
+    // Current Shift pane → CLOSE SHIFT
+    const shiftNav = page
+      .getByRole('dialog', { name: /main menu/i })
+      .getByRole('button', { name: /current shift/i })
+      .first();
     if (await shiftNav.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await shiftNav.click();
     }
-    await page.locator('button', { hasText: /close shift/i }).first().click({ timeout: 10_000 });
+    await page.getByRole('button', { name: /close shift/i }).first().click({ timeout: 10_000 });
   }
 
   await expect(page.getByTestId('close-shift-sheet')).toBeVisible({ timeout: 15_000 });
@@ -141,6 +150,129 @@ test.describe('Part 3 — shift close', () => {
     expect(reviewText).toMatch(/Balanced|does not match/i);
   });
 
+  test('3.3 count wrong then Count again — both attempts recorded @checklist-3.3', async ({
+    request,
+    page,
+  }) => {
+    const shiftId = await freshOwnerShift(request);
+    const headers = await staffHeaders(request);
+
+    // First deliberate wrong count (empty denoms → short vs opening float).
+    const wrong = await request.post(`/api/shifts/${shiftId}/count-attempt`, {
+      headers,
+      data: { cash_count_method: 'denominations', denominations: {} },
+    });
+    expect(wrong.ok(), `3.3 first attempt: ${await wrong.text()}`).toBeTruthy();
+    const wrongBody = (await wrong.json()) as { attempt_number?: number; matches?: boolean };
+    expect(wrongBody.attempt_number).toBe(1);
+    expect(wrongBody.matches).toBe(false);
+
+    // UI: Count again on a mismatch review (sheet open path shared with 3.2).
+    await injectPosOwner(page);
+    await openCloseShiftSheet(page);
+    await bumpCloseShiftCount(page);
+    await page.getByTestId('close-shift-review-btn').click();
+    await expect(page.getByTestId('close-shift-review')).toBeVisible({ timeout: 20_000 });
+    if (await page.getByTestId('close-shift-review-balanced').isVisible().catch(() => false)) {
+      // POS float not synced — leave review via Back, bump again.
+      await page.getByTestId('close-shift-count-again').click();
+      await bumpCloseShiftCount(page);
+      await bumpCloseShiftCount(page);
+      await page.getByTestId('close-shift-review-btn').click();
+    }
+    await expect(page.getByTestId('close-shift-review-mismatch')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId('close-shift-count-again')).toHaveText(/Count again/i);
+    await page.getByTestId('close-shift-count-again').click();
+    await expect(page.getByTestId('close-shift-sheet')).toBeVisible();
+    await expect(page.getByTestId('close-shift-review')).toHaveCount(0);
+
+    // Close records the accepted second attempt (BlindCashCountTest shape).
+    const close = await request.post(`/api/shifts/${shiftId}/close`, {
+      headers,
+      data: {
+        cash_count_method: 'plain_total',
+        closing_cash: 0,
+        notes: 'E2E 3.3 recount close',
+      },
+    });
+    expect(close.ok(), `3.3 close after recount: ${await close.text()}`).toBeTruthy();
+
+    const attemptsJson = artisanTinker(`
+$rows = App\\Models\\ShiftCashCountAttempt::where('shift_id', ${shiftId})
+  ->orderBy('attempt_number')->get(['attempt_number','is_accepted']);
+echo $rows->count().'|'. $rows->pluck('attempt_number')->join(',').'|'. $rows->pluck('is_accepted')->map(fn($v)=>(int)$v)->join(',');
+`);
+    const [count, nums, accepted] = attemptsJson.split('|');
+    expect(Number(count), `3.3 attempts: ${attemptsJson}`).toBeGreaterThanOrEqual(2);
+    expect(nums).toMatch(/^1,/);
+    expect(accepted.split(',')[0]).toBe('0');
+    expect(accepted.split(',').slice(-1)[0]).toBe('1');
+
+    const hist = await request.get('/api/shifts/history', { headers });
+    expect(hist.ok(), await hist.text()).toBeTruthy();
+    const histBody = (await hist.json()) as {
+      shifts?: { id: number; cash_count_attempts?: { attempt_number: number }[] }[];
+    };
+    const row = (histBody.shifts ?? []).find((s) => s.id === shiftId);
+    expect(row?.cash_count_attempts?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
+  test('3.4 close with a difference requires a reason then closes @checklist-3.4', async ({
+    request,
+    page,
+  }) => {
+    const shiftId = await freshOwnerShift(request);
+    const headers = await staffHeaders(request);
+
+    const attempt = await request.post(`/api/shifts/${shiftId}/count-attempt`, {
+      headers,
+      data: { cash_count_method: 'plain_total', closing_cash: 1 },
+    });
+    expect(attempt.ok(), await attempt.text()).toBeTruthy();
+    expect((await attempt.json() as { matches?: boolean }).matches).toBe(false);
+
+    const noNotes = await request.post(`/api/shifts/${shiftId}/close`, {
+      headers,
+      data: { cash_count_method: 'plain_total', closing_cash: 1 },
+    });
+    expect(noNotes.status()).toBe(422);
+    expect(await noNotes.text()).toMatch(/notes are required/i);
+    expect(
+      Number(artisanTinker(`echo App\\Models\\Shift::find(${shiftId})?->closed_at ? 1 : 0;`)),
+    ).toBe(0);
+
+    // UI: mismatch review exposes the required reason field.
+    await injectPosOwner(page);
+    await openCloseShiftSheet(page);
+    await bumpCloseShiftCount(page);
+    await page.getByTestId('close-shift-review-btn').click();
+    await expect(page.getByTestId('close-shift-review')).toBeVisible({ timeout: 20_000 });
+    if (await page.getByTestId('close-shift-review-balanced').isVisible().catch(() => false)) {
+      await page.getByTestId('close-shift-count-again').click();
+      await bumpCloseShiftCount(page);
+      await bumpCloseShiftCount(page);
+      await page.getByTestId('close-shift-review-btn').click();
+    }
+    await expect(page.getByTestId('close-shift-review-mismatch')).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator('#close-shift-reason')).toBeVisible();
+
+    const close = await request.post(`/api/shifts/${shiftId}/close`, {
+      headers,
+      data: {
+        cash_count_method: 'plain_total',
+        closing_cash: 1,
+        notes: 'E2E checklist 3.4 variance reason',
+      },
+    });
+    expect(close.ok(), `3.4 close with reason: ${await close.text()}`).toBeTruthy();
+    expect(
+      Number(artisanTinker(`echo App\\Models\\Shift::find(${shiftId})?->closed_at ? 1 : 0;`)),
+    ).toBe(1);
+  });
   test('3.5 MVR 1000 lives under More @checklist-3.5', async ({ request, page }) => {
     await ensureOpenShift(request);
     await injectPosOwner(page);
