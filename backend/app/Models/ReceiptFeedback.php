@@ -26,4 +26,27 @@ class ReceiptFeedback extends Model
     {
         return $this->belongsTo(Receipt::class);
     }
+
+    /**
+     * One rating per receipt: create or update the existing row.
+     */
+    public static function upsertForReceipt(Receipt $receipt, int $rating, ?string $comments = null): self
+    {
+        $existing = self::query()->where('receipt_id', $receipt->id)->first();
+        if ($existing) {
+            $existing->rating = $rating;
+            $existing->comments = $comments;
+            $existing->submitted_at = now();
+            $existing->save();
+
+            return $existing;
+        }
+
+        return self::create([
+            'receipt_id' => $receipt->id,
+            'rating' => $rating,
+            'comments' => $comments,
+            'submitted_at' => now(),
+        ]);
+    }
 }

@@ -42,6 +42,11 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'not_actionable', label: 'Not actionable' },
 ];
 
+function categoryLabels(categories: string[] | undefined): string {
+  if (!categories?.length) return '—';
+  return categories.map((c) => CATEGORY_LABEL[c] ?? c).join(', ');
+}
+
 function ageLabel(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (mins < 60) return `${mins}m`;
@@ -66,7 +71,7 @@ export default function ComplaintsPage() {
   const [detail, setDetail] = useState<AdminComplaint | null>(null);
   const [nextStatus, setNextStatus] = useState<ComplaintStatus>('in_progress');
   const [internalNote, setInternalNote] = useState('');
-  const [resolutionNote, setResolutionNote] = useState('');
+  const [customerReply, setCustomerReply] = useState('');
   const [contactChannel, setContactChannel] = useState<'phone' | 'whatsapp' | 'in_person'>('phone');
   const [contactNote, setContactNote] = useState('');
   const [refundIdInput, setRefundIdInput] = useState('');
@@ -99,8 +104,8 @@ export default function ComplaintsPage() {
       setNextStatus(
         res.complaint.status === 'new' ? 'in_progress' : res.complaint.status,
       );
-      setInternalNote('');
-      setResolutionNote('');
+      setInternalNote(res.complaint.internal_note ?? '');
+      setCustomerReply(res.complaint.customer_reply ?? '');
       setRefundIdInput(res.complaint.refund_id ? String(res.complaint.refund_id) : '');
     } catch (e) {
       toast.error((e as Error).message);
@@ -134,7 +139,7 @@ export default function ComplaintsPage() {
       const res = await updateComplaintStatus(detail.id, {
         status: nextStatus,
         internal_note: internalNote.trim() || undefined,
-        resolution_note: resolutionNote.trim() || undefined,
+        customer_reply: customerReply.trim() || undefined,
       });
       setDetail(res.complaint);
       toast.success('Status updated');
@@ -163,6 +168,8 @@ export default function ComplaintsPage() {
       setBusy(false);
     }
   };
+
+  const closing = nextStatus === 'resolved' || nextStatus === 'not_actionable';
 
   const oldestLabel = meta.oldest_open_age_minutes == null
     ? '—'
@@ -198,7 +205,7 @@ export default function ComplaintsPage() {
           <table>
             <thead>
               <tr>
-                {['Ref', 'Category', 'Order', 'Customer', 'Amount', 'Age', ''].map((h) => (
+                {['Ref', 'Categories', 'Order', 'Customer', 'Amount', 'Age', ''].map((h) => (
                   <th key={h || 'actions'} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -213,7 +220,7 @@ export default function ComplaintsPage() {
                     {c.is_food_safety && <Badge color="red">Food safety</Badge>}{' '}
                     {c.needs_refund_review && <Badge color="yellow">Refund review</Badge>}
                   </td>
-                  <td style={TD}>{CATEGORY_LABEL[c.category] ?? c.category}</td>
+                  <td style={TD}>{categoryLabels(c.categories)}</td>
                   <td style={TD}>{c.order?.order_number ?? '—'}</td>
                   <td style={TD}>{c.customer?.name || c.customer?.phone || '—'}</td>
                   <td style={TD}>{c.order ? `MVR ${Number(c.order.total).toFixed(2)}` : '—'}</td>
@@ -234,7 +241,7 @@ export default function ComplaintsPage() {
         <Modal title={detail.reference_number} onClose={() => setDetail(null)} maxWidth={720}>
           <div style={{ display: 'grid', gap: 12 }}>
             <div>
-              <strong>{CATEGORY_LABEL[detail.category] ?? detail.category}</strong>
+              <strong>{categoryLabels(detail.categories)}</strong>
               {' · '}
               {detail.status}
               {detail.comment ? <p style={{ marginTop: 8 }}>{detail.comment}</p> : null}
@@ -278,14 +285,28 @@ export default function ComplaintsPage() {
                 </label>
                 <label>
                   Internal note
+                  <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 6px' }}>
+                    Staff only. Never shown on the receipt and never sent by SMS.
+                  </span>
                   <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} rows={2} style={{ width: '100%' }} />
                 </label>
-                {(nextStatus === 'resolved' || nextStatus === 'not_actionable') && (
-                  <label>
-                    Resolution note (required to close)
-                    <textarea value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} rows={3} style={{ width: '100%' }} />
-                  </label>
-                )}
+                <label>
+                  Customer reply {closing ? '(required to close)' : ''}
+                  <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 6px' }}>
+                    The customer will see this on their receipt and in the resolution SMS.
+                  </span>
+                  <textarea
+                    value={customerReply}
+                    onChange={(e) => setCustomerReply(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      border: closing ? '2px solid var(--color-primary)' : undefined,
+                      background: closing ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : undefined,
+                    }}
+                    placeholder="What should the customer see?"
+                  />
+                </label>
                 <Btn onClick={() => void saveStatus()} disabled={busy}>Save status</Btn>
 
                 {(detail.needs_refund_review || detail.refund_id || detail.refund) && (
@@ -329,6 +350,9 @@ export default function ComplaintsPage() {
 
                 <hr />
                 <strong>Contact log</strong>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                  Internal only — records what staff did, not a message to the customer.
+                </p>
                 <select
                   value={contactChannel}
                   onChange={(e) => setContactChannel(e.target.value as typeof contactChannel)}
@@ -349,8 +373,8 @@ export default function ComplaintsPage() {
                 {(detail.status_histories ?? []).map((h) => (
                   <li key={h.id}>
                     {h.from_status ?? '—'} → {h.to_status}
-                    {h.internal_note ? ` — ${h.internal_note}` : ''}
-                    {h.resolution_note ? ` (resolution: ${h.resolution_note})` : ''}
+                    {h.internal_note ? ` — internal: ${h.internal_note}` : ''}
+                    {h.customer_reply ? ` — customer reply: ${h.customer_reply}` : ''}
                   </li>
                 ))}
               </ul>

@@ -245,6 +245,9 @@
                 'complaintCategories' => $complaintForm['categories'],
                 'complaintItems' => $complaintForm['items'],
                 'complaintWindowClosed' => $complaintForm['window_closed'],
+                'existingComplaints' => $complaintForm['existing_complaints'],
+                'atOpenCap' => $complaintForm['at_open_cap'],
+                'canSubmitAnother' => $complaintForm['can_submit_another'],
             ])
         @endif
 

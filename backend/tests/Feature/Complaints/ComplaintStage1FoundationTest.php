@@ -60,14 +60,11 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_FOOD_QUALITY,
+            'categories' => [Complaint::CATEGORY_FOOD_QUALITY],
         ]);
 
-        $this->assertDatabaseHas('complaints', [
-            'id' => $complaint->id,
-            'category' => Complaint::CATEGORY_FOOD_QUALITY,
-            'status' => Complaint::STATUS_NEW,
-        ]);
+        $this->assertSame([Complaint::CATEGORY_FOOD_QUALITY], $complaint->categoryList());
+        $this->assertSame(Complaint::STATUS_NEW, $complaint->status);
         $this->assertSame('C-'.$complaint->id, $complaint->reference_number);
         $this->assertTrue($complaint->items()->count() === 0);
     }
@@ -84,7 +81,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
         ]);
 
         $this->assertNotNull(Complaint::find($complaint->id));
@@ -101,7 +98,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_TOO_LONG,
+            'categories' => [Complaint::CATEGORY_TOO_LONG],
         ]);
 
         $this->assertTrue(
@@ -122,14 +119,14 @@ class ComplaintStage1FoundationTest extends TestCase
         );
     }
 
-    public function test_closing_without_resolution_note_is_refused(): void
+    public function test_closing_without_customer_reply_is_refused(): void
     {
         $receipt = $this->paidReceipt();
         $owner = $this->makeOwner(['phone' => '+9607773333']);
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+            'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
         ]);
 
         Sanctum::actingAs($owner, ['staff']);
@@ -137,7 +134,7 @@ class ComplaintStage1FoundationTest extends TestCase
                 'status' => Complaint::STATUS_RESOLVED,
             ])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['resolution_note']);
+            ->assertJsonValidationErrors(['customer_reply']);
     }
 
     public function test_status_history_records_every_change(): void
@@ -147,7 +144,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_MISSING_ITEM,
+            'categories' => [Complaint::CATEGORY_MISSING_ITEM],
         ]);
 
         app(ComplaintService::class)->changeStatus(
@@ -169,7 +166,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $this->assertSame(Complaint::STATUS_NEW, $history[0]->to_status);
         $this->assertSame(Complaint::STATUS_IN_PROGRESS, $history[1]->to_status);
         $this->assertSame(Complaint::STATUS_RESOLVED, $history[2]->to_status);
-        $this->assertSame('Replaced item and apologised', $history[2]->resolution_note);
+        $this->assertSame('Replaced item and apologised', $history[2]->customer_reply);
     }
 
     public function test_complaints_permissions_are_owner_only(): void
@@ -179,7 +176,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
         ]);
 
         $manager = $this->makeManager();
@@ -207,7 +204,7 @@ class ComplaintStage1FoundationTest extends TestCase
         $complaint = app(ComplaintService::class)->create([
             'receipt' => $receipt,
             'order' => $receipt->order,
-            'category' => Complaint::CATEGORY_FOOD_SAFETY,
+            'categories' => [Complaint::CATEGORY_FOOD_SAFETY],
         ]);
 
         $this->assertTrue($complaint->is_food_safety);
@@ -233,21 +230,21 @@ class ComplaintStage1FoundationTest extends TestCase
         $old = app(ComplaintService::class)->create([
             'receipt' => $r1,
             'order' => $r1->order,
-            'category' => Complaint::CATEGORY_TOO_LONG,
+            'categories' => [Complaint::CATEGORY_TOO_LONG],
         ]);
         $old->forceFill(['created_at' => now()->subHours(5)])->save();
 
         $newer = app(ComplaintService::class)->create([
             'receipt' => $r2,
             'order' => $r2->order,
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
         ]);
         $newer->forceFill(['created_at' => now()->subHour()])->save();
 
         $safety = app(ComplaintService::class)->create([
             'receipt' => $r3,
             'order' => $r3->order,
-            'category' => Complaint::CATEGORY_FOOD_SAFETY,
+            'categories' => [Complaint::CATEGORY_FOOD_SAFETY],
         ]);
         $safety->forceFill(['created_at' => now()])->save();
 

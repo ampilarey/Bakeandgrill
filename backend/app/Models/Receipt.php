@@ -51,6 +51,11 @@ class Receipt extends Model
         return $this->hasMany(ReceiptFeedback::class);
     }
 
+    public function latestFeedback(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ReceiptFeedback::class)->latestOfMany();
+    }
+
     /**
      * Phone or email to deliver / resend this receipt.
      * Falls back to the linked customer when the row was created

@@ -56,10 +56,10 @@ class ComplaintStage2FormTest extends TestCase
     {
         $receipt = $this->paidReceipt();
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_FOOD_QUALITY,
+            'categories' => [Complaint::CATEGORY_FOOD_QUALITY],
             'idempotency_key' => 'k1',
         ])->assertCreated()
-            ->assertJsonPath('complaint.category', Complaint::CATEGORY_FOOD_QUALITY);
+            ->assertJsonPath('complaint.categories.0', Complaint::CATEGORY_FOOD_QUALITY);
 
         $this->assertSame(1, Complaint::query()->count());
     }
@@ -85,18 +85,18 @@ class ComplaintStage2FormTest extends TestCase
         $this->withHeader('Origin', config('app.url'))
             ->withHeader('Referer', rtrim((string) config('app.url'), '/').'/receipts/'.$receipt->token)
             ->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-                'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+                'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
                 'idempotency_key' => 'no-csrf',
             ])
             ->assertCreated()
-            ->assertJsonPath('complaint.category', Complaint::CATEGORY_SOMETHING_ELSE);
+            ->assertJsonPath('complaint.categories.0', Complaint::CATEGORY_SOMETHING_ELSE);
     }
 
     public function test_double_submit_idempotency_creates_one_complaint(): void
     {
         $receipt = $this->paidReceipt();
         $payload = [
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
             'idempotency_key' => 'same-key',
         ];
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', $payload)->assertCreated();
@@ -110,13 +110,13 @@ class ComplaintStage2FormTest extends TestCase
         $b = $this->paidReceipt();
 
         $this->postJson('/api/receipts/not-a-real-token/complaints', [
-            'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+            'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
         ])->assertNotFound();
 
         // Cannot attach items from another order via this token.
         $foreignItem = OrderItem::query()->where('order_id', $b->order_id)->first();
         $this->postJson('/api/receipts/'.$a->token.'/complaints', [
-            'category' => Complaint::CATEGORY_MISSING_ITEM,
+            'categories' => [Complaint::CATEGORY_MISSING_ITEM],
             'order_item_ids' => [$foreignItem->id],
             'idempotency_key' => 'foreign',
         ])->assertCreated();
@@ -131,7 +131,7 @@ class ComplaintStage2FormTest extends TestCase
         $item = OrderItem::query()->where('order_id', $receipt->order_id)->first();
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
             'order_item_ids' => [$item->id],
             'idempotency_key' => 'snap',
         ])->assertCreated();
@@ -157,7 +157,7 @@ class ComplaintStage2FormTest extends TestCase
         ])->save();
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_FOOD_QUALITY,
+            'categories' => [Complaint::CATEGORY_FOOD_QUALITY],
         ])->assertStatus(422)
             ->assertJsonPath('window_closed', true);
     }
@@ -170,11 +170,11 @@ class ComplaintStage2FormTest extends TestCase
         );
         $receipt = $this->paidReceipt();
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_TOO_LONG,
+            'categories' => [Complaint::CATEGORY_TOO_LONG],
             'idempotency_key' => 'a',
         ])->assertCreated();
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+            'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
             'idempotency_key' => 'b',
         ])->assertStatus(422);
     }

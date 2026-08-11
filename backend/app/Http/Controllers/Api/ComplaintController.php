@@ -97,7 +97,7 @@ class ComplaintController extends Controller
         $validated = $request->validate([
             'status' => ['required', 'string', 'in:'.implode(',', Complaint::STATUSES)],
             'internal_note' => ['nullable', 'string', 'max:2000'],
-            'resolution_note' => ['nullable', 'string', 'max:2000'],
+            'customer_reply' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $complaint = Complaint::query()->findOrFail($id);
@@ -106,7 +106,7 @@ class ComplaintController extends Controller
             $validated['status'],
             $request->user(),
             $validated['internal_note'] ?? null,
-            $validated['resolution_note'] ?? null,
+            $validated['customer_reply'] ?? null,
         );
 
         return response()->json(['complaint' => $updated]);

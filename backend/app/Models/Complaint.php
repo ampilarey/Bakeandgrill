@@ -73,6 +73,21 @@ class Complaint extends Model
         self::CATEGORY_SOMETHING_ELSE,
     ];
 
+    public const BILLING_CATEGORIES = [
+        self::CATEGORY_WRONG_AMOUNT,
+        self::CATEGORY_BILL_WRONG_AMOUNT,
+        self::CATEGORY_BILL_WRONG_ITEMS,
+        self::CATEGORY_BILL_ALREADY_PAID,
+    ];
+
+    /** Categories that set needs_refund_review when any is selected. */
+    public const REFUND_REVIEW_CATEGORIES = [
+        self::CATEGORY_WRONG_AMOUNT,
+        self::CATEGORY_BILL_WRONG_AMOUNT,
+    ];
+
+    public const MAX_CATEGORIES = 4;
+
     public const OWNER_ALERT_PENDING = 'pending';
 
     public const OWNER_ALERT_SENT = 'sent';
@@ -91,7 +106,7 @@ class Complaint extends Model
         'customer_id',
         'receipt_feedback_id',
         'source',
-        'category',
+        'categories',
         'comment',
         'photo_disk',
         'photo_path',
@@ -103,13 +118,15 @@ class Complaint extends Model
         'cashier_user_id',
         'owner_alert_status',
         'owner_alert_detail',
-        'resolution_note',
+        'internal_note',
+        'customer_reply',
         'resolved_at',
         'resolved_by',
         'idempotency_key',
     ];
 
     protected $casts = [
+        'categories' => 'array',
         'needs_refund_review' => 'boolean',
         'is_food_safety' => 'boolean',
         'resolved_at' => 'datetime',
@@ -180,6 +197,45 @@ class Complaint extends Model
         return in_array($this->status, self::CLOSED_STATUSES, true);
     }
 
+    /** @return list<string> */
+    public function categoryList(): array
+    {
+        $cats = $this->categories;
+        if (! is_array($cats)) {
+            return [];
+        }
+
+        return array_values(array_filter($cats, fn ($c) => is_string($c) && $c !== ''));
+    }
+
+    public static function isBillingCategory(string $category): bool
+    {
+        return in_array($category, self::BILLING_CATEGORIES, true);
+    }
+
+    public static function isRefundReviewCategory(string $category): bool
+    {
+        return in_array($category, self::REFUND_REVIEW_CATEGORIES, true);
+    }
+
+    /** @param  list<string>  $categories */
+    public static function categoriesIncludeBilling(array $categories): bool
+    {
+        foreach ($categories as $c) {
+            if (self::isRefundReviewCategory($c)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param  list<string>  $categories */
+    public static function categoriesIncludeFoodSafety(array $categories): bool
+    {
+        return in_array(self::CATEGORY_FOOD_SAFETY, $categories, true);
+    }
+
     public static function categoryLabel(string $category): string
     {
         return match ($category) {
@@ -195,5 +251,58 @@ class Complaint extends Model
             self::CATEGORY_BILL_ALREADY_PAID => 'Already paid',
             default => 'Something else',
         };
+    }
+
+    /** @param  list<string>  $categories */
+    public static function categoriesLabel(array $categories): string
+    {
+        $labels = array_map(fn (string $c) => self::categoryLabel($c), $categories);
+
+        return implode(', ', $labels);
+    }
+
+    /**
+     * Plain-word status for customer-facing surfaces. Never expose raw keys.
+     */
+    public static function plainStatusLabel(string $status): string
+    {
+        return match ($status) {
+            self::STATUS_NEW => 'Nothing done yet',
+            self::STATUS_IN_PROGRESS => 'Someone is looking at it',
+            self::STATUS_AWAITING_CUSTOMER => 'We have replied',
+            self::STATUS_RESOLVED => 'Sorted',
+            self::STATUS_NOT_ACTIONABLE => 'We could not act on this',
+            default => 'Nothing done yet',
+        };
+    }
+
+    /**
+     * Public summary for receipt/invoice pages — never includes internal notes or contact logs.
+     *
+     * @return array{
+     *   reference_number: string,
+     *   categories: list<string>,
+     *   category_labels: list<string>,
+     *   status: string,
+     *   status_label: string,
+     *   created_at: string,
+     *   customer_reply: ?string
+     * }
+     */
+    public function toPublicSummary(): array
+    {
+        $cats = $this->categoryList();
+
+        return [
+            'reference_number' => (string) $this->reference_number,
+            'categories' => $cats,
+            'category_labels' => array_map(fn (string $c) => self::categoryLabel($c), $cats),
+            // Plain words only — never raw status keys on public surfaces.
+            'status' => self::plainStatusLabel((string) $this->status),
+            'created_at' => optional($this->created_at)?->toIso8601String() ?? '',
+            'customer_reply' => is_string($this->customer_reply) && trim($this->customer_reply) !== ''
+                ? trim($this->customer_reply)
+                : null,
+        ];
     }
 }

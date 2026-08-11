@@ -406,9 +406,18 @@
             cursor: pointer;
         }
         .doc-complaint-cat.is-selected {
-            border-color: var(--amber);
+            border: 2px solid var(--amber);
+            background: var(--amber-light, #fff7ed);
             box-shadow: inset 0 0 0 1px var(--amber);
-            font-weight: 700;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .doc-complaint-lead__hint {
+            display: block;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 0.2rem;
         }
         .doc-complaint-send { width: 100%; margin-top: 0.5rem; min-height: 48px; font-size: 1.05rem; }
         .doc-complaint-optional { margin: 0.55rem 0; }
@@ -428,8 +437,51 @@
         .doc-complaint-done { margin-top: 0.85rem; }
         .doc-complaint-confirm { font-weight: 600; margin: 0 0 0.35rem; }
         .doc-complaint-ref { color: var(--muted); margin: 0 0 0.75rem; font-size: 0.9rem; }
-        .doc-complaint-window { color: var(--muted); margin: 0.5rem 0 0; }
+        .doc-complaint-window { color: var(--muted); margin: 0.5rem 0 0.75rem; }
         .doc-complaint-hint { font-size: 0.8rem; color: var(--muted); margin: 0.35rem 0 0; }
+        .doc-complaint-list { margin: 0 0 1rem; text-align: left; }
+        .doc-complaint-list__title { margin: 0 0 0.5rem; font-weight: 700; font-size: 0.95rem; }
+        .doc-complaint-list__items { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.65rem; }
+        .doc-complaint-list__item {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+            background: var(--surface);
+        }
+        .doc-complaint-list__ref { font-weight: 700; }
+        .doc-complaint-list__cats { font-size: 0.9rem; margin-top: 0.15rem; }
+        .doc-complaint-list__meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+        .doc-complaint-list__reply {
+            margin: 0.45rem 0 0;
+            font-size: 0.9rem;
+            padding: 0.45rem 0.55rem;
+            border-left: 3px solid var(--amber);
+            background: var(--amber-light, #fff7ed);
+        }
+        .doc-complaint-another {
+            display: block;
+            width: 100%;
+            margin-top: 0.75rem;
+            min-height: 44px;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .doc-feedback-current { margin-bottom: 0.75rem; }
+        .doc-feedback-current__stars { font-size: 1.4rem; color: var(--amber); letter-spacing: 0.05em; }
+        .doc-feedback-change {
+            margin-top: 0.35rem;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.85rem;
+            min-height: 44px;
+        }
         @media (max-width: 420px) {
             .doc-complaint-cats { grid-template-columns: 1fr; }
         }

@@ -11,6 +11,7 @@ use App\Models\Complaint;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use App\Models\SiteSetting;
+use App\Support\ComplaintFormPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -55,23 +56,24 @@ class PublicComplaintController extends Controller
             if (! $invoice) {
                 return response()->json(['message' => 'Not found.'], 404);
             }
-            $categories = Complaint::INVOICE_CATEGORIES;
+            $allowed = Complaint::INVOICE_CATEGORIES;
         } else {
             $receipt = Receipt::query()->with('order.items')->where('token', $receiptToken)->first();
             if (! $receipt || ! $receipt->order) {
                 return response()->json(['message' => 'Not found.'], 404);
             }
-            $categories = Complaint::RECEIPT_CATEGORIES;
+            $allowed = Complaint::RECEIPT_CATEGORIES;
             if (($receipt->order->type ?? '') !== 'delivery') {
-                $categories = array_values(array_filter(
-                    $categories,
+                $allowed = array_values(array_filter(
+                    $allowed,
                     fn ($c) => $c !== Complaint::CATEGORY_DELIVERY,
                 ));
             }
         }
 
         $validated = $request->validate([
-            'category' => ['required', 'string', Rule::in($categories)],
+            'categories' => ['required', 'array', 'min:1', 'max:'.Complaint::MAX_CATEGORIES],
+            'categories.*' => ['string', Rule::in($allowed)],
             'comment' => ['nullable', 'string', 'max:2000'],
             'order_item_ids' => ['nullable', 'array', 'max:30'],
             'order_item_ids.*' => ['integer'],
@@ -79,23 +81,39 @@ class PublicComplaintController extends Controller
             'photo_upload_id' => ['nullable', 'string', 'max:64'],
         ]);
 
+        /** @var list<string> $categories */
+        $categories = array_values(array_unique($validated['categories']));
+
         $order = $forInvoice ? $invoice?->order : $receipt?->order;
-        $window = $this->windowClosedMessage($validated['category'], $order?->paid_at ?? $order?->created_at ?? now());
+        $window = $this->windowClosedForCategories(
+            $categories,
+            $order?->paid_at ?? $order?->created_at ?? ($invoice?->issue_date ?? now()),
+        );
         if ($window !== null) {
             return response()->json(['message' => $window, 'window_closed' => true], 422);
         }
 
         $openCap = max(1, (int) SiteSetting::get('complaint_open_cap_per_receipt', 3));
+        $existing = [];
         if ($receipt) {
             $openCount = Complaint::query()
                 ->where('receipt_id', $receipt->id)
                 ->whereNotIn('status', Complaint::CLOSED_STATUSES)
                 ->count();
+            $existing = ComplaintFormPresenter::existingForReceipt($receipt);
             if ($openCount >= $openCap) {
+                $waBase = (string) SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
+                $waHref = $waBase.(str_contains($waBase, '?') ? '&' : '?').'text='.rawurlencode('Complaint about my order');
+
                 return response()->json([
                     'message' => 'This receipt already has open complaints. Please wait for us to respond, or continue on WhatsApp.',
+                    'at_open_cap' => true,
+                    'existing_complaints' => $existing,
+                    'whatsapp_href' => $waHref,
                 ], 422);
             }
+        } elseif ($invoice) {
+            $existing = ComplaintFormPresenter::existingForInvoice($invoice);
         }
 
         RateLimiter::hit('complaint-ip:'.$ip, 3600);
@@ -119,7 +137,7 @@ class PublicComplaintController extends Controller
             'invoice' => $invoice,
             'order' => $order,
             'source' => $forInvoice ? 'invoice' : 'receipt',
-            'category' => $validated['category'],
+            'categories' => $categories,
             'comment' => $validated['comment'] ?? null,
             'items' => $items,
             'photo_upload_id' => $validated['photo_upload_id'] ?? null,
@@ -138,21 +156,40 @@ class PublicComplaintController extends Controller
         $waText = "Complaint {$complaint->reference_number}";
         $waHref = $waBase.(str_contains($waBase, '?') ? '&' : '?').'text='.rawurlencode($waText);
 
+        if ($receipt) {
+            $existing = ComplaintFormPresenter::existingForReceipt($receipt);
+            $openCount = Complaint::query()
+                ->where('receipt_id', $receipt->id)
+                ->whereNotIn('status', Complaint::CLOSED_STATUSES)
+                ->count();
+            $canAnother = $openCount < $openCap;
+        } else {
+            $existing = $invoice ? ComplaintFormPresenter::existingForInvoice($invoice) : [];
+            $canAnother = true;
+        }
+
         return response()->json([
             'complaint' => [
                 'reference_number' => $complaint->reference_number,
-                'category' => $complaint->category,
-                'status' => $complaint->status,
+                'categories' => $complaint->categoryList(),
+                'status' => Complaint::plainStatusLabel((string) $complaint->status),
             ],
             'confirmation' => $confirmation,
             'will_call' => $canCall,
             'whatsapp_href' => $waHref,
+            'existing_complaints' => $existing,
+            'can_submit_another' => $canAnother,
         ], 201);
     }
 
-    private function windowClosedMessage(string $category, mixed $anchor): ?string
+    /**
+     * Use the LONGEST window among selected categories.
+     *
+     * @param  list<string>  $categories
+     */
+    private function windowClosedForCategories(array $categories, mixed $anchor): ?string
     {
-        $hours = $this->windowHoursForCategory($category);
+        $hours = ComplaintFormPresenter::longestWindowHours($categories);
         if ($hours <= 0) {
             return null;
         }
@@ -161,31 +198,17 @@ class PublicComplaintController extends Controller
             return null;
         }
 
-        if (in_array($category, [
-            Complaint::CATEGORY_WRONG_AMOUNT,
-            Complaint::CATEGORY_BILL_WRONG_AMOUNT,
-            Complaint::CATEGORY_BILL_WRONG_ITEMS,
-            Complaint::CATEGORY_BILL_ALREADY_PAID,
-        ], true)) {
-            return 'The billing complaint window for this document has closed.';
+        $anyBilling = false;
+        foreach ($categories as $c) {
+            if (Complaint::isBillingCategory($c)) {
+                $anyBilling = true;
+                break;
+            }
         }
 
-        return 'The complaint window for food and service issues has closed for this order.';
-    }
-
-    private function windowHoursForCategory(string $category): int
-    {
-        $billing = in_array($category, [
-            Complaint::CATEGORY_WRONG_AMOUNT,
-            Complaint::CATEGORY_BILL_WRONG_AMOUNT,
-            Complaint::CATEGORY_BILL_WRONG_ITEMS,
-            Complaint::CATEGORY_BILL_ALREADY_PAID,
-        ], true);
-
-        return max(0, (int) SiteSetting::get(
-            $billing ? 'complaint_window_billing_hours' : 'complaint_window_food_hours',
-            $billing ? 720 : 48,
-        ));
+        return $anyBilling
+            ? 'The billing complaint window for this document has closed.'
+            : 'The complaint window for food and service issues has closed for this order.';
     }
 
     private function maskPhone(string $phone): string

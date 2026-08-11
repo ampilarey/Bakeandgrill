@@ -131,12 +131,11 @@ class ReceiptController extends Controller
 
         $validated = $request->validated();
 
-        $feedback = ReceiptFeedback::create([
-            'receipt_id' => $receipt->id,
-            'rating' => $validated['rating'],
-            'comments' => $validated['comments'] ?? null,
-            'submitted_at' => now(),
-        ]);
+        $feedback = ReceiptFeedback::upsertForReceipt(
+            $receipt,
+            (int) $validated['rating'],
+            $validated['comments'] ?? null,
+        );
 
         app(ComplaintService::class)->fromReceiptFeedback($receipt, $feedback);
 
