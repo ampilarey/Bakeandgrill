@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { safePublicUrl } from '../../../utils/safePublicUrl';
 
 /** Types the layout builder calls "generic" — free-form content blocks. */
 export const GENERIC_BLOCK_TYPES = [
@@ -63,11 +64,9 @@ export function absoluteUrl(src: string | null | undefined, apiOrigin: string): 
   return `${apiOrigin}${src.startsWith('/') ? '' : '/'}${src}`;
 }
 
-/** Only http(s), mailto, and same-site links survive. */
+/** Only safe public URLs survive. */
 export function safeUrl(url: string): string {
-  const trimmed = url.trim();
-  if (trimmed === '') return '';
-  return /^(https?:\/\/|mailto:|\/|#)/i.test(trimmed) ? trimmed : '';
+  return safePublicUrl(url) ?? '';
 }
 
 /** True when a block would render an empty shell, so callers can skip it. */

@@ -15,7 +15,7 @@
                 return '/order' . $link;
             }
 
-            return $link;
+            return safe_public_url($link) ?? '#';
         }
     }
 @endphp
@@ -981,9 +981,11 @@
 
     $phone             = content('business_phone',    '+960 912 0011');
     $phoneTel          = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $waLink            = content('business_whatsapp', 'https://wa.me/9609120011');
-    $viberLink         = content('business_viber',    'viber://chat?number=9609120011');
-    $mapsUrl           = content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $waLink            = safe_public_url((string) content('business_whatsapp', 'https://wa.me/9609120011'))
+        ?? 'https://wa.me/9609120011';
+    $viberLink         = safe_public_url((string) content('business_viber', '')) ?? '';
+    $mapsUrl           = safe_public_url((string) content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives'))
+        ?? 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives';
     $address           = content('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
     $landmark          = content('business_landmark', 'Near H. Sahara');
     $deliveryTime      = content('delivery_time',      '30–45 min');

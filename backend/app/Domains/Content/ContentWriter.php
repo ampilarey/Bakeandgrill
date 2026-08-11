@@ -19,6 +19,7 @@ final class ContentWriter
 {
     public function __construct(
         private readonly AuditLogService $audit,
+        private readonly ContentValidationService $validator,
     ) {}
 
     public function write(
@@ -31,6 +32,7 @@ final class ContentWriter
         array $extraMeta = [],
         bool $clearSharedOverrides = true,
     ): void {
+        $value = $this->validator->normalizeForWrite($key, $scope, $value);
         $value = self::prepareValue($key, $value);
 
         $old = SiteSetting::getScoped($key, $scope, $locale);

@@ -33,7 +33,7 @@ function BandButton({
     border: primary ? 'none' : '1px solid var(--color-border)',
   };
 
-  if (/^(https?:|mailto:)/i.test(href)) {
+  if (/^(https?:|mailto:|tel:)/i.test(href)) {
     return (
       <a href={href} style={style} rel="noopener noreferrer">
         {label}

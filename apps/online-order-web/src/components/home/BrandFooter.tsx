@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { isExternalHref, shouldLeaveOrderApp, toOrderSpaPath } from '../../utils/footerNav';
+import { safePublicUrl } from '../../utils/safePublicUrl';
 
 type Props = {
   whatsappLink: string;
@@ -34,6 +35,8 @@ export function BrandFooter({
   const blurbLine = (blurb ?? '').trim();
   const chat = (chatLabel ?? '').trim();
   const year = new Date().getFullYear();
+  const safeWhatsappLink = safePublicUrl(whatsappLink) ?? 'https://wa.me/9609120011';
+  const safeViberLink = safePublicUrl(viberLink);
 
   const legal = footerLinks.length > 0
     ? footerLinks
@@ -67,7 +70,7 @@ export function BrandFooter({
             <p className="brand-footer__chat-label">{chat}</p>
           )}
           <a
-            href={whatsappLink}
+            href={safeWhatsappLink}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('home.footer_whatsapp')}
@@ -76,22 +79,31 @@ export function BrandFooter({
             <WhatsAppIcon />
             {t('home.footer_whatsapp')}
           </a>
-          <a
-            href={viberLink}
-            aria-label={t('home.footer_viber')}
-            className="brand-footer__viber"
-          >
-            <ViberIcon />
-            {t('home.footer_viber')}
-          </a>
+          {safeViberLink && (
+            <a
+              href={safeViberLink}
+              aria-label={t('home.footer_viber')}
+              className="brand-footer__viber"
+            >
+              <ViberIcon />
+              {t('home.footer_viber')}
+            </a>
+          )}
         </div>
 
         <nav className="brand-footer__legal" aria-label="Legal">
           {legal.map((item, i) => {
-            const url = (item.url ?? '#').trim() || '#';
+            const url = safePublicUrl(item.url) ?? '#';
             const label = (item.label ?? '').trim() || url;
             const key = `${url}-${i}`;
 
+            if (url === '#') {
+              return (
+                <a key={key} href="#" className="brand-footer__legal-link">
+                  {label}
+                </a>
+              );
+            }
             if (isExternalHref(url)) {
               return (
                 <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="brand-footer__legal-link">

@@ -75,3 +75,13 @@ if (!function_exists('content')) {
         return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
     }
 }
+
+if (!function_exists('safe_public_url')) {
+    /**
+     * Return a safe public href/src URL, or null for executable/ambiguous input.
+     */
+    function safe_public_url(?string $url): ?string
+    {
+        return App\Domains\Content\ContentValidationService::safePublicUrl($url);
+    }
+}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Content;
 
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\ContentSchedule;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -82,13 +83,13 @@ class ContentAdminTest extends TestCase
             'changes' => [
                 [
                     'key' => 'cta_band_headline',
-                    'scope' => 'shared',
+                    'scope' => 'website',
                     'value' => 'Hi <script>x</script><em>there</em>',
                 ],
             ],
         ])->assertOk();
 
-        $val = SiteSetting::get('cta_band_headline');
+        $val = SiteSetting::getScoped('cta_band_headline', 'website');
         $this->assertStringNotContainsString('<script', (string) $val);
         $this->assertStringContainsString('<em>there</em>', (string) $val);
     }
@@ -141,6 +142,115 @@ class ContentAdminTest extends TestCase
         $this->assertNotNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
         $this->assertStringContainsString('Shared Hero', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
         $this->assertStringNotContainsString('STALE', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
+    }
+
+    public function test_content_validation_normalizes_primary_color_and_rejects_bad_public_url(): void
+    {
+        $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'primary_color', 'scope' => 'shared', 'value' => '#d8a'],
+            ],
+        ])->assertOk();
+
+        $this->assertSame('#DD88AA', SiteSetting::getScoped('primary_color', 'shared'));
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => 'javascript:alert(1)'],
+            ],
+        ])->assertUnprocessable();
+
+        $this->assertNotSame('javascript:alert(1)', SiteSetting::getScoped('announcement_url', 'shared'));
+    }
+
+    public function test_content_validation_rejects_invalid_hero_json_and_bad_hero_urls(): void
+    {
+        $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'hero_slides', 'scope' => 'shared', 'value' => ['title' => 'Not a list']],
+            ],
+        ])->assertUnprocessable();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                [
+                    'key' => 'hero_slides',
+                    'scope' => 'shared',
+                    'value' => [[
+                        'title' => 'Unsafe',
+                        'cta_text' => 'Tap',
+                        'cta_url' => 'javascript:alert(1)',
+                    ]],
+                ],
+            ],
+        ])->assertUnprocessable();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                [
+                    'key' => 'hero_slides',
+                    'scope' => 'shared',
+                    'value' => [[
+                        'title' => 'Safe',
+                        'showing' => false,
+                        'cta_text' => 'Email',
+                        'cta_url' => 'mailto:hello@example.test',
+                    ]],
+                ],
+            ],
+        ])->assertOk();
+
+        $slides = json_decode((string) SiteSetting::getScoped('hero_slides', 'shared'), true);
+        $this->assertFalse($slides[0]['showing']);
+        $this->assertSame('mailto:hello@example.test', $slides[0]['cta_url']);
+    }
+
+    public function test_content_validation_rejects_invalid_app_scope_overrides(): void
+    {
+        $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'menu_page_title', 'scope' => 'website', 'value' => 'Wrong app'],
+            ],
+        ])->assertUnprocessable();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'meta_title', 'scope' => 'shared', 'value' => 'Website only cannot be shared'],
+            ],
+        ])->assertUnprocessable();
+    }
+
+    public function test_schedule_and_import_use_content_validator(): void
+    {
+        $this->actingAsOwner();
+
+        $this->postJson('/api/admin/content/schedule', [
+            'publish_at' => now()->addHour()->toIso8601String(),
+            'changes' => [
+                ['key' => 'primary_color', 'scope' => 'shared', 'value' => '#abc'],
+            ],
+        ])->assertCreated();
+
+        $this->assertSame('#AABBCC', ContentSchedule::query()->latest('id')->value('value'));
+
+        $this->postJson('/api/admin/content/schedule', [
+            'publish_at' => now()->addHour()->toIso8601String(),
+            'changes' => [
+                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => '//evil.example'],
+            ],
+        ])->assertUnprocessable();
+
+        $this->postJson('/api/admin/content/import', [
+            'entries' => [
+                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => 'data:text/html,<svg>'],
+            ],
+        ])->assertUnprocessable();
     }
 
     public function test_permission_enforced(): void

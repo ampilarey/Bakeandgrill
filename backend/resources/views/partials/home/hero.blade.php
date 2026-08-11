@@ -52,6 +52,10 @@
                         $subtitle = trim((string) ($slide['subtitle'] ?? ''));
                         $cta1Text = trim((string) ($slide['cta_text'] ?? ''));
                         $cta2Text = trim((string) ($slide['cta2_text'] ?? ''));
+                        $cta1Raw = trim((string) ($slide['cta_url'] ?? ''));
+                        $cta2Raw = trim((string) ($slide['cta2_url'] ?? ''));
+                        $cta1Href = safe_public_url($cta1Raw !== '' ? $cta1Raw : '/order/') ?? '#';
+                        $cta2Href = safe_public_url($cta2Raw !== '' ? normalize_public_menu_link($cta2Raw) : '/order/menu') ?? '#';
                     @endphp
                     @if($eyebrow !== '')
                         <span class="banner-eyebrow">{{ $eyebrow }}</span>
@@ -65,10 +69,10 @@
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">
                         @if($cta1Text !== '')
-                            <a href="{{ $slide['cta_url'] ?: '/order/' }}" class="banner-cta-primary">{{ $cta1Text }}</a>
+                            <a href="{{ $cta1Href }}" class="banner-cta-primary">{{ $cta1Text }}</a>
                         @endif
                         @if($cta2Text !== '')
-                            <a href="{{ normalize_public_menu_link($slide['cta2_url'] ?: '/order/menu') }}" class="banner-cta-secondary">{{ $cta2Text }}</a>
+                            <a href="{{ $cta2Href }}" class="banner-cta-secondary">{{ $cta2Text }}</a>
                         @endif
                     </div>
                     @endif

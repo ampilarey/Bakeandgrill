@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domains\Content\ContentValidationService;
 use App\Domains\Content\ContentRegistry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UpdateContentRequest extends FormRequest
 {
@@ -45,15 +47,19 @@ class UpdateContentRequest extends FormRequest
                 if (!ContentRegistry::has($key)) {
                     continue;
                 }
-                $rule = ContentRegistry::validateRule($key);
+                $scope = (string) ($change['scope'] ?? '');
                 $value = $change['value'] ?? null;
-                if (is_array($value) || is_object($value)) {
-                    $value = json_encode($value, JSON_UNESCAPED_UNICODE);
-                }
-                $v = validator(['value' => $value], ['value' => $rule]);
-                if ($v->fails()) {
-                    foreach ($v->errors()->all() as $msg) {
-                        $validator->errors()->add("changes.{$i}.value", $msg);
+
+                try {
+                    app(ContentValidationService::class)->normalizeForWrite($key, $scope, $value);
+                } catch (ValidationException $e) {
+                    foreach ($e->errors() as $field => $messages) {
+                        $target = in_array($field, ['key', 'scope', 'value'], true)
+                            ? "changes.{$i}.{$field}"
+                            : "changes.{$i}.value";
+                        foreach ($messages as $msg) {
+                            $validator->errors()->add($target, $msg);
+                        }
                     }
                 }
             }
