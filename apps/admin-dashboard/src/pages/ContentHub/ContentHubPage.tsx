@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  AlertCircle, CheckCircle2, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
+  AlertCircle, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -36,6 +36,7 @@ import {
   CategoriesEditor,
   FooterLinksEditor,
   HeroSlidesEditor,
+  isHeroSlideShowing,
   PreorderStepsEditor,
   ProofDetailsEditor,
   RevisionDiff,
@@ -46,6 +47,9 @@ import {
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
+import { ContentEditorSheet } from '../../components/ContentEditorSheet';
+import { DraftPublishStatus } from '../../components/DraftPublishStatus';
+import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
@@ -327,11 +331,16 @@ export function ContentHubPage() {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  /** Mobile: which visual block is open in a nested editor sheet. */
+  const [mobileBlockEditorKey, setMobileBlockEditorKey] = useState<string | null>(null);
+  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
   const uploadCtx = useRef<{
     blockKey: string;
     scope: ContentScope;
@@ -574,6 +583,7 @@ export function ContentHubPage() {
   };
 
   const handleMobileBack = () => {
+    setMobileBlockEditorKey(null);
     setMobileEditorOpen(false);
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
@@ -942,7 +952,21 @@ export function ContentHubPage() {
     );
   };
 
-  const renderVisualEditor = (block: ContentBlock, scope: ContentScope, val: string) => {
+  const draftStatusNode = (
+    <DraftPublishStatus
+      dirtyCount={dirtyCount}
+      autosaving={autosaving}
+      lastSavedAt={lastSavedAt}
+      compact={isMobile}
+    />
+  );
+
+  const renderVisualEditor = (
+    block: ContentBlock,
+    scope: ContentScope,
+    val: string,
+    opts?: { mobileMode?: boolean },
+  ) => {
     const onChange = (next: string) => setDraft(scope, block.key, next);
     const triggerUpload = makeTriggerUpload(block, scope);
     const common = { label: block.label, description: block.description || undefined, value: val, onChange };
@@ -955,6 +979,8 @@ export function ContentHubPage() {
             triggerUpload={triggerUpload}
             uploadImage={(cropped, original) => uploadContentImage(block.key, uploadAppFor(scope), cropped, original, locale)}
             uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, locale, posterUrl)}
+            mobileMode={Boolean(opts?.mobileMode)}
+            draftStatus={draftStatusNode}
           />
         );
       case 'categories':
@@ -1285,6 +1311,30 @@ export function ContentHubPage() {
       </>
     );
 
+    // Mobile: complex visual editors open in a sheet — keep the card as an overview.
+    const useCompact = isMobile && Boolean(block.editor) && !isBoolean;
+    let compactSummary: ReactNode = null;
+    if (useCompact && block.editor === 'hero') {
+      let slides: Array<{ image?: string; title?: string; showing?: boolean }> = [];
+      try {
+        const parsed = JSON.parse(activeValue || '[]');
+        slides = Array.isArray(parsed) ? parsed : [];
+      } catch { /* empty */ }
+      const showingCount = slides.filter((s) => isHeroSlideShowing(s)).length;
+      const hiddenCount = slides.length - showingCount;
+      const thumb = slides.find((s) => s.image)?.image;
+      compactSummary = (
+        <div className="hub-block-hero-summary">
+          {thumb ? <img src={thumb} alt="" className="hub-block-hero-summary-thumb" /> : null}
+          <span>
+            {slides.length} slide{slides.length === 1 ? '' : 's'}
+            {hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
+            {showingCount === 0 && slides.length > 0 ? ' · none showing' : ''}
+          </span>
+        </div>
+      );
+    }
+
     return (
       <BlockCard
         key={`${block.key}-${locale}`}
@@ -1301,6 +1351,9 @@ export function ContentHubPage() {
         onCopyFromOtherScope={() => void copyFromOtherApp(block, copyFromScope, activeScope)}
         technicalScopesLabel={scopesLabelFor(scopes)}
         rawValuePreview={activeValue.slice(0, 80)}
+        compact={useCompact}
+        onEdit={useCompact ? () => setMobileBlockEditorKey(block.key) : undefined}
+        compactSummary={compactSummary}
       />
     );
   };
@@ -1387,50 +1440,116 @@ export function ContentHubPage() {
 
   // ── Header actions ─────────────────────────────────────────────────────────
 
-  const headerActions = (
-    <div className="hub-header-actions">
-      {/* Search */}
-      <div className="hub-search-wrap" ref={searchRef}>
-        <div className="hub-search-input-row">
-          <Search size={14} className="hub-search-icon" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by label…"
-            className="hub-search-input"
-            aria-label="Search content by label"
-          />
-          {q ? (
-            <button
-              type="button"
-              onClick={() => setQ('')}
-              className="hub-search-clear"
-              aria-label="Clear search"
-            >
-              <X size={12} />
-            </button>
-          ) : null}
-        </div>
-        {q.trim() && searchResults.length > 0 ? (
-          <div className="hub-search-dropdown" role="listbox" aria-label="Search results">
-            {searchResults.map(({ block, sectionName }) => (
-              <button
-                key={block.key}
-                type="button"
-                role="option"
-                aria-selected="false"
-                className="hub-search-result"
-                onClick={() => handleSearchSelect(block)}
-              >
-                <span className="hub-search-result-section">{sectionName}</span>
-                <span className="hub-search-result-label">{block.label}</span>
-              </button>
-            ))}
-          </div>
+  const searchField = (
+    <div className="hub-search-wrap" ref={searchRef}>
+      <div className="hub-search-input-row">
+        <Search size={14} className="hub-search-icon" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search by label…"
+          data-testid="hub-search-input"
+          className="hub-search-input"
+          aria-label="Search content by label"
+        />
+        {q ? (
+          <button
+            type="button"
+            onClick={() => setQ('')}
+            className="hub-search-clear"
+            aria-label="Clear search"
+          >
+            <X size={12} />
+          </button>
         ) : null}
       </div>
+      {q.trim() && searchResults.length > 0 ? (
+        <div className="hub-search-dropdown" role="listbox" aria-label="Search results">
+          {searchResults.map(({ block, sectionName }) => (
+            <button
+              key={block.key}
+              type="button"
+              role="option"
+              aria-selected="false"
+              className="hub-search-result"
+              onClick={() => {
+                handleSearchSelect(block);
+                setSearchOverlayOpen(false);
+              }}
+            >
+              <span className="hub-search-result-section">{sectionName}</span>
+              <span className="hub-search-result-label">{block.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 
-      {/* Locale */}
+  const moreMenuItems = (
+    <>
+      <button
+        type="button"
+        role="menuitem"
+        className="hub-more-item"
+        onClick={() => { void doExport(); setMoreMenuOpen(false); }}
+      >
+        <Download size={14} /> Export
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="hub-more-item"
+        onClick={() => { importInputRef.current?.click(); setMoreMenuOpen(false); }}
+      >
+        <UploadIcon size={14} /> Import
+      </button>
+      <div className="hub-more-schedule">
+        <div className="hub-more-schedule-label">Schedule publish</div>
+        <input
+          type="datetime-local"
+          value={scheduleAt}
+          onChange={(e) => setScheduleAt(e.target.value)}
+          className="hub-more-schedule-input"
+        />
+        <button
+          type="button"
+          onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
+          disabled={saving || dirtyCount === 0 || !scheduleAt}
+          className="hub-more-schedule-btn"
+        >
+          Schedule
+        </button>
+      </div>
+      <button
+        type="button"
+        role="menuitem"
+        className="hub-more-item"
+        onClick={() => { setMediaOpen(true); setMoreMenuOpen(false); }}
+      >
+        Media library
+      </button>
+    </>
+  );
+
+  const headerActions = (
+    <div className="hub-header-actions">
+      {isMobile ? (
+        <button
+          ref={searchToggleRef}
+          type="button"
+          className="hub-search-toggle"
+          data-testid="hub-search-toggle"
+          aria-label="Search content"
+          aria-expanded={searchOverlayOpen}
+          onClick={() => setSearchOverlayOpen(true)}
+        >
+          <Search size={16} />
+        </button>
+      ) : (
+        searchField
+      )}
+
       <div className="hub-locale-seg" role="group" aria-label="Language">
         {(['en', 'dv'] as const).map((loc) => (
           <button
@@ -1445,40 +1564,8 @@ export function ContentHubPage() {
         ))}
       </div>
 
-      {/* Publish status — unpublished must not read as “done” */}
-      <span
-        data-testid="draft-save-status"
-        className={`hub-draft-status${dirtyCount > 0 ? ' hub-draft-status--unpublished' : ' hub-draft-status--live'}`}
-        role="status"
-      >
-        {dirtyCount > 0 ? (
-          <>
-            <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
-            <span className="hub-draft-status-text">
-              <span className="hub-draft-status-primary">
-                {dirtyCount} change{dirtyCount === 1 ? '' : 's'} not yet live
-              </span>
-              <span className="hub-draft-status-secondary">
-                {autosaving
-                  ? 'Saving… customers still see the old version'
-                  : lastSavedAt
-                    ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString()} — not live yet`
-                    : 'Not live yet — customers still see the old version'}
-              </span>
-            </span>
-          </>
-        ) : (
-          <>
-            <CheckCircle2 size={14} aria-hidden className="hub-draft-status-icon" />
-            <span className="hub-draft-status-text">
-              <span className="hub-draft-status-primary">All published</span>
-              <span className="hub-draft-status-secondary">Customers see the live version</span>
-            </span>
-          </>
-        )}
-      </span>
+      {draftStatusNode}
 
-      {/* Desktop preview dock toggle — mobile keeps the sheet button */}
       {!isMobile ? (
         <button
           type="button"
@@ -1491,7 +1578,6 @@ export function ContentHubPage() {
         </button>
       ) : null}
 
-      {/* Publish — next step when there are unpublished changes */}
       <Btn
         onClick={() => void publish()}
         disabled={saving || dirtyCount === 0}
@@ -1506,57 +1592,34 @@ export function ContentHubPage() {
             : 'Publish'}
       </Btn>
 
-      {/* ⋯ More */}
       <div className="hub-more-wrap" ref={moreMenuRef}>
-        <Btn variant="secondary" onClick={() => setMoreMenuOpen((o) => !o)} aria-expanded={moreMenuOpen}>
-          <MoreHorizontal size={16} /> ⋯ More
-        </Btn>
-        {moreMenuOpen ? (
+        <button
+          ref={moreBtnRef}
+          type="button"
+          className="hub-more-trigger"
+          onClick={() => setMoreMenuOpen((o) => !o)}
+          aria-expanded={moreMenuOpen}
+          aria-label="More actions"
+        >
+          <MoreHorizontal size={16} /> {isMobile ? null : <span>⋯ More</span>}
+        </button>
+        {moreMenuOpen && !isMobile ? (
           <div className="hub-more-menu" role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              className="hub-more-item"
-              onClick={() => { void doExport(); setMoreMenuOpen(false); }}
-            >
-              <Download size={14} /> Export
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="hub-more-item"
-              onClick={() => { importInputRef.current?.click(); setMoreMenuOpen(false); }}
-            >
-              <UploadIcon size={14} /> Import
-            </button>
-            <div className="hub-more-schedule">
-              <div className="hub-more-schedule-label">Schedule publish</div>
-              <input
-                type="datetime-local"
-                value={scheduleAt}
-                onChange={(e) => setScheduleAt(e.target.value)}
-                className="hub-more-schedule-input"
-              />
-              <button
-                type="button"
-                onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
-                disabled={saving || dirtyCount === 0 || !scheduleAt}
-                className="hub-more-schedule-btn"
-              >
-                Schedule
-              </button>
-            </div>
-            <button
-              type="button"
-              role="menuitem"
-              className="hub-more-item"
-              onClick={() => { setMediaOpen(true); setMoreMenuOpen(false); }}
-            >
-              Media library
-            </button>
+            {moreMenuItems}
           </div>
         ) : null}
       </div>
+      {isMobile ? (
+        <MobileActionSheet
+          open={moreMenuOpen}
+          title="More"
+          onClose={() => setMoreMenuOpen(false)}
+          testId="hub-more-menu-mobile"
+          returnFocusTo={moreBtnRef.current}
+        >
+          {moreMenuItems}
+        </MobileActionSheet>
+      ) : null}
     </div>
   );
 
@@ -1613,8 +1676,7 @@ export function ContentHubPage() {
         {isMobile ? (
           /* ── Mobile layout ──────────────────────────────────────────────── */
           <div className="hub-mobile-shell">
-            {/* SectionRail grid: always in DOM; hidden via CSS when editor open */}
-            <div className={`hub-mobile-overview${mobileEditorOpen ? ' hub-mobile-hidden' : ''}`}>
+            <div className="hub-mobile-overview">
               {loading ? skeleton : (
                 <SectionRail
                   variant="grid"
@@ -1625,12 +1687,69 @@ export function ContentHubPage() {
               )}
             </div>
 
-            {/* SectionEditor */}
-            {!loading && mobileEditorOpen && activeGroup
-              ? buildSectionContent(activeGroup, true)
-              : null}
+            {/* Section editor — full-screen sheet (not an inline push) */}
+            <ContentEditorSheet
+              open={!loading && mobileEditorOpen && Boolean(activeGroup)}
+              title={activeGroup || 'Section'}
+              onClose={handleMobileBack}
+              status={draftStatusNode}
+              layer={0}
+              testId="content-editor-sheet"
+              footer={dirtyCount > 0 ? (
+                <Btn
+                  onClick={() => void publish()}
+                  disabled={saving}
+                  style={{ width: '100%' }}
+                  data-testid="publish-live-btn-sheet"
+                  className="content-studio-publish-sticky"
+                >
+                  <Save size={16} /> {saving ? 'Publishing…' : `Publish to make live (${dirtyCount})`}
+                </Btn>
+              ) : undefined}
+            >
+              {activeGroup ? buildSectionContent(activeGroup, false) : null}
+            </ContentEditorSheet>
 
-            {/* Floating preview button */}
+            {/* Nested visual-block editor sheet (Hero, etc.) */}
+            {(() => {
+              const editBlock = mobileBlockEditorKey
+                ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
+                : null;
+              if (!editBlock) return null;
+              const scopes = editorScopesForBlock(editBlock);
+              const activeScope = preferredScopeTab(scopes, blockScopeTab[editBlock.key]);
+              const val = valueForScope(editBlock, activeScope, drafts);
+              const isHero = editBlock.editor === 'hero';
+              return (
+                <ContentEditorSheet
+                  open
+                  title={editBlock.label}
+                  onClose={() => setMobileBlockEditorKey(null)}
+                  status={draftStatusNode}
+                  layer={1}
+                  testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
+                >
+                  <>
+                    {renderContentModeControl(editBlock)}
+                    {scopes.length > 1
+                      ? renderScopeTabs(
+                        editBlock.key,
+                        scopes,
+                        activeScope,
+                        isHero
+                          ? renderVisualEditor(editBlock, activeScope, val, { mobileMode: true })
+                          : renderEditorForScope(editBlock, activeScope),
+                      )
+                      : (
+                        isHero
+                          ? renderVisualEditor(editBlock, activeScope, val, { mobileMode: true })
+                          : renderEditorForScope(editBlock, activeScope)
+                      )}
+                  </>
+                </ContentEditorSheet>
+              );
+            })()}
+
             {mobileEditorOpen ? (
               <button
                 type="button"
@@ -1642,7 +1761,6 @@ export function ContentHubPage() {
               </button>
             ) : null}
 
-            {/* Preview sheet */}
             <PreviewPane
               variant="sheet"
               websiteUrl={previewState.website}
@@ -1650,7 +1768,19 @@ export function ContentHubPage() {
               loading={previewLoading}
               open={previewSheetOpen}
               onClose={() => setPreviewSheetOpen(false)}
+              draftStatus={draftStatusNode}
             />
+
+            <ContentEditorSheet
+              open={searchOverlayOpen}
+              title="Search"
+              onClose={() => setSearchOverlayOpen(false)}
+              layer={4}
+              testId="hub-search-overlay"
+              returnFocusTo={searchToggleRef.current}
+            >
+              {searchField}
+            </ContentEditorSheet>
           </div>
         ) : (
           /* ── Desktop layout ─────────────────────────────────────────────── */

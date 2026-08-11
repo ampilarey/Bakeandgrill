@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Monitor, Smartphone, X } from 'lucide-react';
 import { LivePreviewFrame } from './LivePreviewFrame';
 
@@ -12,6 +12,8 @@ type Props = {
   variant: 'column' | 'sheet';
   open?: boolean;
   onClose?: () => void;
+  /** Publish-state banner — must stay truthful inside the preview sheet. */
+  draftStatus?: ReactNode;
 };
 
 /**
@@ -25,6 +27,7 @@ export function PreviewPane({
   variant,
   open = true,
   onClose,
+  draftStatus,
 }: Props) {
   const [app, setApp] = useState<PreviewApp>('website');
 
@@ -66,6 +69,11 @@ export function PreviewPane({
           </button>
         ) : null}
       </div>
+      {draftStatus ? (
+        <div className="hub-preview-draft-status" data-testid="preview-draft-status">
+          {draftStatus}
+        </div>
+      ) : null}
       <div className="hub-preview-pane-frame">
         <LivePreviewFrame url={url} loading={loading} />
       </div>

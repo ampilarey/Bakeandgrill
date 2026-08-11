@@ -123,7 +123,8 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
       data-testid="media-picker-modal"
       className="media-picker-backdrop"
       style={{
-        position: 'fixed', inset: 0, zIndex: 'var(--z-modal, 50)' as unknown as number,
+        /* Above ContentEditorSheet layers (50+) so library/crop stay usable inside sheets */
+        position: 'fixed', inset: 0, zIndex: 70,
         background: 'rgba(28,20,8,0.45)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', padding: 16,
       }}

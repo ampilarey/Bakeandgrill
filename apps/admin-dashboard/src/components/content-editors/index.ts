@@ -3,7 +3,7 @@ export { BusinessHoursEditor } from './BusinessHoursEditor';
 export { CategoriesEditor } from './CategoriesEditor';
 export { FooterLinksEditor } from './FooterLinksEditor';
 export { HeroSlideEditor } from './HeroSlideEditor';
-export { HeroSlidesEditor } from './HeroSlidesEditor';
+export { HeroSlidesEditor, isHeroSlideShowing } from './HeroSlidesEditor';
 export { PreorderStepsEditor } from './PreorderStepsEditor';
 export { ProofDetailsEditor } from './ProofDetailsEditor';
 export { TrustItemsEditor } from './TrustItemsEditor';
