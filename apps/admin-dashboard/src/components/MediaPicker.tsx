@@ -111,12 +111,17 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
     }
   };
 
+  const selectedLabel = highlighted
+    ? (highlighted.title || highlighted.url.split('/').pop() || `#${highlighted.id}`)
+    : '';
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
       data-testid="media-picker-modal"
+      className="media-picker-backdrop"
       style={{
         position: 'fixed', inset: 0, zIndex: 'var(--z-modal, 50)' as unknown as number,
         background: 'rgba(28,20,8,0.45)', display: 'flex', alignItems: 'center',
@@ -125,10 +130,12 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
       onClick={onClose}
     >
       <div
+        className="media-picker-shell"
         style={{
           width: 'min(860px, 100%)', maxHeight: '90vh', overflow: 'hidden',
           background: 'var(--color-surface)', borderRadius: 16, border: '1px solid var(--color-border)',
           display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(28,20,8,0.18)',
+          minWidth: 0,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -179,7 +186,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
 
           {/* Collections sidebar */}
           {collections.length > 0 && (
-            <aside style={{ width: 160, flexShrink: 0, borderRight: '1px solid #F0EBE4', padding: '10px 8px', overflowY: 'auto' }}>
+            <aside className="media-picker-sidebar" style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--color-border-light)', padding: '10px 8px', overflowY: 'auto' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Folder size={12} /> Collections
               </div>
@@ -234,16 +241,30 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--color-border)', flexShrink: 0, gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Footer — stacks on mobile so Cancel / Use this file stay on-screen */}
+        <div
+          className="media-picker-footer"
+          data-testid="media-picker-footer"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 20px',
+            borderTop: '1px solid var(--color-border)',
+            flexShrink: 0,
+            gap: 10,
+            minWidth: 0,
+          }}
+        >
+          <div className="media-picker-footer-pager" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {meta.last_page > 1 && (
               <>
                 <button type="button" onClick={() => setPage((p) => p - 1)} disabled={page <= 1}
                   style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page <= 1 ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
                   <ChevronLeft size={14} /> Prev
                 </button>
-                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{meta.current_page} / {meta.last_page}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{meta.current_page} / {meta.last_page}</span>
                 <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= meta.last_page}
                   style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: page >= meta.last_page ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 12, opacity: page >= meta.last_page ? 0.5 : 1, display: 'inline-flex', alignItems: 'center' }}>
                   Next <ChevronRight size={14} />
@@ -252,14 +273,27 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {highlighted && (
-              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                Selected: {highlighted.title || highlighted.url.split('/').pop()}
-              </span>
-            )}
+          {highlighted && (
+            <span
+              className="media-picker-footer-selected"
+              title={selectedLabel}
+              style={{
+                fontSize: 12,
+                color: 'var(--color-text-secondary)',
+                minWidth: 0,
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Selected: {selectedLabel}
+            </span>
+          )}
+
+          <div className="media-picker-footer-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
             <button type="button" onClick={onClose}
-              style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              style={{ height: 44, minHeight: 44, padding: '0 16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
               Cancel
             </button>
             <button
@@ -267,7 +301,20 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
               onClick={handlePick}
               disabled={!highlighted}
               data-testid="media-picker-confirm"
-              style={{ height: 38, padding: '0 20px', borderRadius: 10, background: highlighted ? 'var(--color-primary)' : 'var(--color-border)', color: highlighted ? '#fff' : 'var(--color-text-muted)', border: 'none', cursor: highlighted ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
+              style={{
+                height: 44,
+                minHeight: 44,
+                padding: '0 16px',
+                borderRadius: 10,
+                background: highlighted ? 'var(--color-primary)' : 'var(--color-border)',
+                color: highlighted ? '#fff' : 'var(--color-text-muted)',
+                border: 'none',
+                cursor: highlighted ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+              }}
             >
               Use this file
             </button>

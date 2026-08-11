@@ -144,6 +144,27 @@ describe('MediaPicker', () => {
     expect(onPick).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('keeps Use this file and Cancel in the footer when an asset is selected with pagination', async () => {
+    vi.mocked(api.getMedia).mockResolvedValue({
+      data: [makeAsset(10, { title: 'b2a9f2-b7a0-very-long-hero-banner-filename.jpg' })],
+      meta: { current_page: 1, last_page: 2, per_page: 24, total: 30 },
+    });
+
+    render(
+      <MediaPicker open onClose={() => {}} onPick={() => {}} />,
+    );
+
+    fireEvent.click(await screen.findByTestId('picker-asset-10'));
+
+    const footer = screen.getByTestId('media-picker-footer');
+    expect(footer.querySelector('.media-picker-footer-actions')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeTruthy();
+    expect(screen.getByTestId('media-picker-confirm')).not.toBeDisabled();
+    expect(screen.getByText(/Selected:/i).textContent).toMatch(/b2a9f2-b7a0/i);
+    expect(screen.getByRole('button', { name: /prev/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /next/i })).toBeTruthy();
+  });
 });
 
 // ─── "Pick from Library" integration with ImageUploadField ───────────────────
