@@ -426,12 +426,11 @@ export function MenuPage() {
       )}
 
       {m.recipeItem && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 28, maxWidth: 480, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '80vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Recipe — {m.recipeItem.name}</h3>
-              <button onClick={() => m.setRecipeItem(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
-            </div>
+        <Modal
+          title={`Recipe — ${m.recipeItem.name}`}
+          onClose={() => m.setRecipeItem(null)}
+          maxWidth={480}
+        >
             {!m.recipeItem.recipe ? (
               <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
             ) : (m.recipeItem.recipe.recipe_items ?? []).length === 0 ? (
@@ -458,8 +457,7 @@ export function MenuPage() {
                 </tbody>
               </table>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
 
       {m.barcodeLabel && (
