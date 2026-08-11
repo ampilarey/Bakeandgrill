@@ -173,9 +173,11 @@ test.describe('Part 8 — content', () => {
   test('8.5 hero slides update both apps @checklist-8.5', async ({ request, page }) => {
     const headers = await staffHeaders(request);
     const marker = `E2E-HERO-${Date.now()}`;
+    // Use a real public asset — `/images/hero-1.jpg` 404s and leaves the live
+    // hero as a dark blank after the checklist run.
     const slides = [
       {
-        image: '/images/hero-1.jpg',
+        image: '/images/cafe/Bajiya.png',
         eyebrow: marker,
         title: 'Go live hero',
         subtitle: 'Automated 8.5',
@@ -184,13 +186,13 @@ test.describe('Part 8 — content', () => {
       },
     ];
 
-    // Publish live (drafts alone do not touch SiteSetting / public content).
+    // Publish live to shared so both apps pick it up and stale per-app
+    // overrides cannot hide the new photo (resolver prefers app scope).
     const publish = await request.put('/api/admin/content', {
       headers,
       data: {
         changes: [
-          { key: 'hero_slides', scope: 'website', value: slides },
-          { key: 'hero_slides', scope: 'order_app', value: slides },
+          { key: 'hero_slides', scope: 'shared', value: slides },
         ],
       },
     });

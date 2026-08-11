@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Images, Upload } from 'lucide-react';
 import { Button } from '../ui';
 import { MediaPicker } from '../MediaPicker';
@@ -48,6 +48,11 @@ export function ContentImageField({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [imgBroken, setImgBroken] = useState(false);
+
+  useEffect(() => {
+    setImgBroken(false);
+  }, [imageUrl]);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,8 +86,16 @@ export function ContentImageField({
   };
 
   const pickFromLibrary = (asset: MediaAsset) => {
+    const url = (asset.url || asset.thumb_url || '').trim();
+    if (!url) {
+      setError('That library file has no usable URL.');
+      setLibraryOpen(false);
+      return;
+    }
+    setImgBroken(false);
+    setError('');
     onChange({
-      image: asset.url,
+      image: url,
       image_master: asset.original_url || undefined,
       image_focal_x: Number(focalX) || 50,
       image_focal_y: Number(focalY) || 50,
@@ -94,17 +107,28 @@ export function ContentImageField({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {imageUrl ? (
+        {imageUrl && !imgBroken ? (
           <img
+            key={imageUrl}
             src={imageUrl}
             alt={imageAlt || ''}
+            onLoad={() => setImgBroken(false)}
+            onError={() => setImgBroken(true)}
             style={{
               height: 54, width: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--color-border)', flexShrink: 0,
               objectPosition: `${focalX}% ${focalY}%`,
             }}
           />
         ) : (
-          <div style={{ height: 54, width: 90, borderRadius: 8, border: '1.5px dashed var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 11, flexShrink: 0 }}>No image</div>
+          <div style={{
+            height: 54, width: 90, borderRadius: 8,
+            border: `1.5px dashed ${imgBroken ? 'var(--color-danger)' : 'var(--color-border)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: imgBroken ? 'var(--color-danger)' : 'var(--color-text-muted)',
+            fontSize: 11, flexShrink: 0, textAlign: 'center', padding: 4, boxSizing: 'border-box',
+          }}>
+            {imgBroken ? 'Broken URL' : 'No image'}
+          </div>
         )}
         <Button variant="secondary" size="sm" icon={<Upload size={13} />} onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? 'Uploading…' : 'Crop & upload'}
@@ -138,6 +162,11 @@ export function ContentImageField({
           style={{ width: 64, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
         />
       </div>
+      {imgBroken && imageUrl ? (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-strong)' }}>
+          Image failed to load ({imageUrl}). Re-pick from Library or re-upload — the public hero will also stay blank until this URL works.
+        </p>
+      ) : null}
       {error ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-danger-strong)' }}>{error}</p> : null}
       {cropSrc ? (
         <ImageCropModal
