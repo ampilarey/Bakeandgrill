@@ -93,6 +93,56 @@ class ContentAdminTest extends TestCase
         $this->assertStringContainsString('<em>there</em>', (string) $val);
     }
 
+    public function test_share_then_split_clears_stale_cache_so_different_per_app_works(): void
+    {
+        $this->actingAsOwner();
+
+        $slides = json_encode([[
+            'image' => '/images/shared.jpg',
+            'title' => 'Shared Hero',
+            'eyebrow' => '',
+            'subtitle' => '',
+            'cta_text' => 'Order',
+            'cta_url' => '/order/',
+        ]], JSON_UNESCAPED_SLASHES);
+
+        SiteSetting::set('hero_slides', $slides, 'shared');
+        SiteSetting::set('hero_slides', json_encode([[
+            'image' => '/images/web.jpg',
+            'title' => 'Web Only',
+        ]], JSON_UNESCAPED_SLASHES), 'website');
+        SiteSetting::set('hero_slides', json_encode([[
+            'image' => '/images/order.jpg',
+            'title' => 'Order Only',
+        ]], JSON_UNESCAPED_SLASHES), 'order_app');
+
+        // Collapse to Same in both — must kill scoped forever-cache entries.
+        $this->postJson('/api/admin/content/hero_slides/share', ['locale' => 'en'])->assertOk();
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
+        $this->assertSame('same', \App\Domains\Content\ContentRegistry::linkState('hero_slides', 'en'));
+
+        // Plant the historical bug: stale non-null forever cache with no DB row.
+        \App\Support\ResilientCache::forever(
+            'site_setting.hero_slides.website.en',
+            json_encode([['title' => 'STALE WEB']], JSON_UNESCAPED_SLASHES),
+        );
+        \App\Support\ResilientCache::forever(
+            'site_setting.hero_slides.order_app.en',
+            json_encode([['title' => 'STALE ORDER']], JSON_UNESCAPED_SLASHES),
+        );
+
+        // Different per app must still create real override rows (not no-op on stale cache).
+        $res = $this->postJson('/api/admin/content/hero_slides/split', ['locale' => 'en'])->assertOk();
+        $hero = collect($res->json('blocks'))->firstWhere('key', 'hero_slides');
+        $this->assertNotNull($hero);
+        $this->assertSame('different', $hero['link_state']);
+        $this->assertNotNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertNotNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
+        $this->assertStringContainsString('Shared Hero', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertStringNotContainsString('STALE', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
+    }
+
     public function test_permission_enforced(): void
     {
         $role = Role::firstOrCreate(

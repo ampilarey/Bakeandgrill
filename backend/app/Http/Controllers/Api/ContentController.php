@@ -466,22 +466,21 @@ class ContentController extends Controller
         $locale = (string) $request->input('locale', 'en');
 
         foreach (['website', 'order_app'] as $scope) {
-            $query = SiteSetting::query()->where('key', $key)->where('scope', $scope);
-            if (SiteSetting::hasLocaleColumn() && $request->filled('locale')) {
-                $query->where('locale', $locale);
-            }
-            foreach ($query->get() as $row) {
-                $old = $row->value;
-                // Do not delete files here — collapsing to "Same" is a content
-                // operation; Media Library owns asset lifecycle (B7).
-                $row->delete();
+            // Read DB existence first — getScoped() can return a stale forever-cache
+            // value after a prior delete that forgot to bust the key.
+            $hadValue = SiteSetting::hasScopedValue($key, $scope, $locale);
+            $old = $hadValue ? SiteSetting::getScoped($key, $scope, $locale) : null;
+            // Always clearScoped: drops empty rows and kills stale cache entries.
+            // Do not delete files — Media Library owns asset lifecycle (B7).
+            SiteSetting::clearScoped($key, $scope, $locale);
+            if ($hadValue) {
                 $this->audit->log(
                     action: 'content.shared',
                     modelType: SiteSetting::class,
                     modelId: null,
                     oldValues: ['value' => $old, 'scope' => $scope],
                     newValues: [],
-                    meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $row->locale ?? 'en'],
+                    meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale],
                     request: $request,
                 );
             }
@@ -508,10 +507,14 @@ class ContentController extends Controller
         }
 
         foreach (ContentRegistry::appsFor($key) as $app) {
-            $existing = SiteSetting::getScoped($key, $app, $locale);
-            if ($existing !== null && $existing !== '') {
+            // Use DB existence, not getScoped() — a stale forever-cache after
+            // share/clearAppOverrides used to make this loop a no-op while the
+            // hub still showed "Same in both".
+            if (SiteSetting::hasScopedValue($key, $app, $locale)) {
                 continue;
             }
+            // Drop empty/stale rows so write creates a clean override.
+            SiteSetting::clearScoped($key, $app, $locale);
             $this->ensureRow($key, $app, $locale);
             $this->writer->write($key, $app, $shared, $locale, $request, 'content.split');
         }

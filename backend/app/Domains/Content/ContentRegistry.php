@@ -101,15 +101,7 @@ final class ContentRegistry
         }
 
         foreach (['website', 'order_app'] as $scope) {
-            $query = SiteSetting::query()
-                ->where('key', $key)
-                ->where('scope', $scope)
-                ->whereNotNull('value')
-                ->where('value', '!=', '');
-            if (SiteSetting::hasLocaleColumn()) {
-                $query->where('locale', $locale);
-            }
-            if ($query->exists()) {
+            if (SiteSetting::hasScopedValue($key, $scope, $locale)) {
                 return 'different';
             }
         }

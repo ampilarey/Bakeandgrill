@@ -86,7 +86,53 @@ class SiteSetting extends Model
 
         $row->save();
 
+        self::forgetScoped($key, $scope, $locale);
+    }
+
+    /**
+     * Drop a scoped row and its cache entry.
+     *
+     * Must be used instead of bare query()->delete() — forever-cached getScoped()
+     * values otherwise linger and make share→split look like a no-op in Content Hub
+     * ("Different per app" stays stuck on "Same in both").
+     */
+    public static function clearScoped(string $key, string $scope, string $locale = 'en'): void
+    {
+        $query = static::query()->where('key', $key);
+        if (self::hasScopeColumn()) {
+            $query->where('scope', $scope);
+        }
+        if (self::hasLocaleColumn()) {
+            $query->where('locale', $locale);
+        }
+        $query->delete();
+        self::forgetScoped($key, $scope, $locale);
+    }
+
+    /**
+     * Whether a scoped row exists with a non-empty value (DB, not cache).
+     * Prefer this over getScoped() when deciding share/split link state.
+     */
+    public static function hasScopedValue(string $key, string $scope, string $locale = 'en'): bool
+    {
+        $query = static::query()
+            ->where('key', $key)
+            ->whereNotNull('value')
+            ->where('value', '!=', '');
+        if (self::hasScopeColumn()) {
+            $query->where('scope', $scope);
+        }
+        if (self::hasLocaleColumn()) {
+            $query->where('locale', $locale);
+        }
+
+        return $query->exists();
+    }
+
+    public static function forgetScoped(string $key, string $scope = 'shared', string $locale = 'en'): void
+    {
         ResilientCache::forget(self::cacheKeyFor($key, $scope, $locale));
+        // Legacy shared/en key used by older callers.
         ResilientCache::forget("site_setting.{$key}");
         ResilientCache::forget('site_settings.public');
         ResilientCache::forget('site_settings.all');
