@@ -15,6 +15,13 @@ function fmtTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString('en-MV', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+function fmtDeployWhen(iso: string | null | undefined): string {
+  if (!iso || iso === 'unknown') return 'unknown';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('en-MV', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 function printProxyLabel(status: string, ok: boolean | null): string {
   if (status === 'not_configured') return 'Not configured';
   if (ok === true) return 'Reachable';
@@ -121,6 +128,12 @@ export function SystemHealthPage() {
               </p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 Last checked {fmtTime(data.checked_at)}
+              </p>
+              <p
+                data-testid="deploy-stamp"
+                style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--color-text)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+              >
+                Running {data.deploy?.commit_short || 'unknown'} on {data.deploy?.branch || 'unknown'}, deployed {fmtDeployWhen(data.deploy?.deployed_at)}
               </p>
             </div>
           </div>

@@ -158,12 +158,42 @@ return new class extends Migration
             }
 
             if (in_array($driver, ['mysql', 'mariadb'], true)) {
-                try {
-                    DB::statement('ALTER TABLE payments ADD CONSTRAINT payments_order_xor_invoice_chk CHECK (
-                        (order_id IS NOT NULL AND invoice_id IS NULL) OR (order_id IS NULL AND invoice_id IS NOT NULL)
-                    )');
-                } catch (\Throwable) {
-                    // constraint already exists
+                $xorName = 'payments_order_xor_invoice_chk';
+                $xorExists = function () use ($xorName): bool {
+                    $row = DB::selectOne(
+                        'SELECT CONSTRAINT_NAME AS name FROM information_schema.TABLE_CONSTRAINTS
+                         WHERE TABLE_SCHEMA = DATABASE()
+                           AND TABLE_NAME = ?
+                           AND CONSTRAINT_NAME = ?
+                           AND CONSTRAINT_TYPE = ?',
+                        ['payments', $xorName, 'CHECK'],
+                    );
+
+                    return $row !== null;
+                };
+
+                if (! $xorExists()) {
+                    try {
+                        DB::statement("ALTER TABLE payments ADD CONSTRAINT {$xorName} CHECK (
+                            (order_id IS NOT NULL AND invoice_id IS NULL) OR (order_id IS NULL AND invoice_id IS NOT NULL)
+                        )");
+                    } catch (\Throwable $e) {
+                        if (! $xorExists()) {
+                            throw new \RuntimeException(
+                                "Failed to add {$xorName} on payments. "
+                                .'XOR (exactly one of order_id / invoice_id) is not enforced. '
+                                .'Underlying error: '.$e->getMessage(),
+                                0,
+                                $e,
+                            );
+                        }
+                    }
+                }
+
+                if (! $xorExists()) {
+                    throw new \RuntimeException(
+                        "CHECK constraint {$xorName} missing on payments after migrate attempted to add it.",
+                    );
                 }
             }
         }

@@ -58,8 +58,22 @@ fi
 
 LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse FETCH_HEAD)
+STAMP_SCRIPT="$ROOT/scripts/write-deploy-stamp.sh"
+
+write_stamp() {
+  if [[ -x "$STAMP_SCRIPT" ]]; then
+    "$STAMP_SCRIPT" "$ROOT" || echo "$(date '+%F %T') WARN: deploy stamp write failed"
+  elif [[ -f "$STAMP_SCRIPT" ]]; then
+    bash "$STAMP_SCRIPT" "$ROOT" || echo "$(date '+%F %T') WARN: deploy stamp write failed"
+  else
+    echo "$(date '+%F %T') WARN: write-deploy-stamp.sh missing — app will report unknown commit"
+  fi
+}
+
 if [[ "$LOCAL" == "$REMOTE" ]]; then
-  echo "$(date '+%F %T') already on ${LOCAL:0:8} — nothing to deploy"
+  echo "$(date '+%F %T') already on ${LOCAL:0:8} — nothing to pull"
+  # Still refresh the stamp so System Health /api/health show what is running.
+  write_stamp
   exit 0
 fi
 
@@ -89,4 +103,5 @@ if ! pgrep -f "queue:work.*test.bakeandgrill" >/dev/null 2>&1; then
   echo "$(date '+%F %T') started test queue worker"
 fi
 
+write_stamp
 echo "$(date '+%F %T') deploy complete: ${REMOTE:0:8}"

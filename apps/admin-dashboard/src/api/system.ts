@@ -1,7 +1,15 @@
 import { req } from './client';
 
+export type DeployStampInfo = {
+  commit: string;
+  commit_short: string;
+  branch: string;
+  deployed_at: string;
+};
+
 export interface SystemHealthDetailed {
   status: 'ok' | 'degraded';
+  deploy?: DeployStampInfo;
   failed_jobs_24h: number;
   webhook_failures_24h: number;
   payment_pending_stuck: number;

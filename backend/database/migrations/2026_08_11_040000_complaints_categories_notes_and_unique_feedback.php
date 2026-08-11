@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Schema\ReceiptFeedbackUnique;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -125,21 +126,17 @@ return new class extends Migration
             }
             echo "Removed {$duplicatesRemoved} duplicate receipt_feedback row(s) (kept most recent per receipt).\n";
 
+            // Dropping a non-unique index that is already gone (or named differently) is harmless.
             try {
                 Schema::table('receipt_feedback', function (Blueprint $table) {
                     $table->dropIndex(['receipt_id']);
                 });
             } catch (\Throwable) {
-                // Index name may differ across drivers; unique below still applies.
+                // Harmless: no matching non-unique index to drop (already gone / different name).
             }
 
-            try {
-                Schema::table('receipt_feedback', function (Blueprint $table) {
-                    $table->unique('receipt_id', 'receipt_feedback_receipt_id_unique');
-                });
-            } catch (\Throwable) {
-                // Already unique (re-run / partial apply).
-            }
+            // Load-bearing: one rating per receipt. Never swallow failure — verify the unique exists.
+            ReceiptFeedbackUnique::ensure();
         }
 
         if (Schema::hasTable('sms_templates')) {

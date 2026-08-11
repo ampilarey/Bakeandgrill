@@ -1,9 +1,29 @@
 # Receipt Complaints, Feedback and the Invoice Page — Plan
 
-Status: proposed, not yet built. **Revision 2** — revised after an external review by Terra.
-Every factual claim in that review was checked against the code and confirmed. Two of
-revision 1's recommendations were unsafe as written; both are corrected here. Changes are
-listed in §13.
+Status: **Stages 1–5 built**, plus the multi-select / customer-reply / one-rating follow-up.
+**Revision 2** (external review by Terra + codebase pass) is the design this implementation
+followed. The body below still describes the original build; treat “proposed / not yet built”
+framing in later sections as obsolete for stages 1–5 and the follow-up listed here.
+
+| Stage / follow-up | State |
+|---|---|
+| 1 — foundation (model, SMS, queue, permissions) | Built |
+| 2 — two-tap public form, windows, open cap, idempotency | Built |
+| 3 — private photos, star rating, review invite | Built |
+| 4 — billing triage (`needs_refund_review`), manager-led refund link | Built |
+| 5 — invoice page Pay/history/credit/overdue/deliveries + bill complaints (§8) | Built |
+| Multi-select categories (list, max 4; ANY/longest rules) | Built |
+| Internal note vs customer reply; reply on receipt + resolution SMS | Built |
+| Customer-visible case list on receipt/invoice | Built |
+| One rating per receipt (unique + upsert) | Built |
+
+**Still open (genuine remaining work, not stage backlog):**
+
+1. **End-to-end rehearsal on the test install** — raise a multi-category complaint, close it with
+   a customer reply, confirm the reply appears on the receipt and in SMS, and confirm a second
+   star rating updates rather than duplicating.
+2. Optional later: POS open-complaint badge; performance scoring from categories (§9 decision
+   stays: investigate, do not score cashiers on star ratings).
 
 Owner's ask, in their words: *"I want to add a complain option to the receipt… if there is a
 mistake in the receipt there should be easy way to inform… all the mistakes and complaints must

@@ -50,13 +50,15 @@ class AdminHealthEndpointTest extends TestCase
         app(SchedulerRunTracker::class)->recordLastRun('scheduler:heartbeat');
     }
 
-    public function test_public_health_still_exposes_only_status(): void
+    public function test_public_health_still_exposes_only_status_and_short_commit(): void
     {
         $response = $this->getJson('/api/health')->assertOk();
         $data = $response->json();
 
-        $this->assertSame(['status' => 'ok'], $data);
-        foreach (['redis', 'queue', 'scheduler', 'storage', 'database', 'environment'] as $key) {
+        $this->assertSame(['status', 'commit'], array_keys($data));
+        $this->assertSame('ok', $data['status']);
+        $this->assertIsString($data['commit']);
+        foreach (['redis', 'queue', 'scheduler', 'storage', 'database', 'environment', 'branch', 'deployed_at', 'commit_short'] as $key) {
             $this->assertArrayNotHasKey($key, $data);
         }
     }

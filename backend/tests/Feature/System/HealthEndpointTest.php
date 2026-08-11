@@ -26,13 +26,15 @@ class HealthEndpointTest extends TestCase
         $this->getJson('/api/health')->assertOk();
     }
 
-    public function test_public_health_contains_only_status(): void
+    public function test_public_health_contains_only_status_and_short_commit(): void
     {
         $response = $this->getJson('/api/health')->assertOk();
 
         $data = $response->json();
-        $this->assertArrayHasKey('status', $data);
+        $this->assertSame(['status', 'commit'], array_keys($data));
         $this->assertSame('ok', $data['status']);
+        $this->assertArrayHasKey('commit', $data);
+        $this->assertIsString($data['commit']);
     }
 
     public function test_public_health_does_not_leak_version(): void
