@@ -65,14 +65,12 @@ final class ContentValidationService
             $this->fail('scope', 'Invalid content scope.');
         }
 
-        if ($scope === 'shared') {
-            $apps = ContentRegistry::appsFor($key);
-            $dualApp = count(array_intersect(ContentRegistry::APPS, $apps)) === count(ContentRegistry::APPS);
-            if (ContentRegistry::isShareable($key) && $dualApp) {
-                return;
-            }
-
-            $this->fail('scope', ContentRegistry::label($key).' cannot be written to the shared scope.');
+        // Shared is the seed/default layer for every registry key (ContentResolver
+        // falls through to shared). App scopes are the overrides and must target
+        // an app the key is registered for. Brand-synced keys may be written to
+        // any scope because ContentWriter mirrors them across website/order/shared.
+        if ($scope === 'shared' || ContentRegistry::isSyncedAcrossApps($key)) {
+            return;
         }
 
         if (! ContentRegistry::targetsApp($key, $scope)) {
@@ -99,7 +97,8 @@ final class ContentValidationService
             return $url;
         }
 
-        if (preg_match('~^(mailto|tel):[^\s]+$~i', $url) === 1) {
+        // Chat / contact deep links used by Contact + footer CMS fields.
+        if (preg_match('~^(mailto|tel|viber|sms):[^\s]+$~i', $url) === 1) {
             return $url;
         }
 

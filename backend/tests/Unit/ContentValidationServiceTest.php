@@ -17,6 +17,10 @@ class ContentValidationServiceTest extends TestCase
         $this->assertSame('http://example.test/path', ContentValidationService::safePublicUrl('http://example.test/path'));
         $this->assertSame('mailto:hello@example.test', ContentValidationService::safePublicUrl('mailto:hello@example.test'));
         $this->assertSame('tel:+9609120011', ContentValidationService::safePublicUrl('tel:+9609120011'));
+        $this->assertSame(
+            'viber://chat?number=9609120011',
+            ContentValidationService::safePublicUrl('viber://chat?number=9609120011'),
+        );
 
         $this->assertNull(ContentValidationService::safePublicUrl('//evil.example/path'));
         $this->assertNull(ContentValidationService::safePublicUrl('javascript:alert(1)'));
