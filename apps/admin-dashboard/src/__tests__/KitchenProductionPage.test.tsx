@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import KitchenProductionPage from "../pages/KitchenProductionPage";
 
 vi.mock("../hooks/usePermissions", () => ({
@@ -18,12 +19,21 @@ vi.mock("../api/kitchen-production", () => ({
   fetchKitchenHandoverSettings: vi.fn().mockResolvedValue({ settings: { kitchen_require_pos_receiving_before_ready: true } }),
   updateKitchenHandoverSettings: vi.fn(),
   reviewKitchenVariance: vi.fn(),
+  receiveKitchenBatchAll: vi.fn(),
+  submitKitchenProductionBatch: vi.fn(),
+  cancelKitchenProductionBatch: vi.fn(),
 }));
 
 describe("KitchenProductionPage", () => {
-  it("renders page title and tabs", async () => {
-    render(<KitchenProductionPage />);
+  it("renders page title, tabs, and summary labels", async () => {
+    render(
+      <MemoryRouter>
+        <KitchenProductionPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole('heading', { name: /Kitchen Handover/i })).toBeTruthy();
-    expect(await screen.findByText(/pending receive/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Live Handover/i })).toBeTruthy();
+    expect(await screen.findByText(/Pending receive/i)).toBeTruthy();
+    expect(screen.getByText(/Recent handovers/i)).toBeTruthy();
   });
 });
