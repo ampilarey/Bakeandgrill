@@ -37,9 +37,22 @@ async function waitForAdminAuth(page: Page): Promise<boolean> {
 export async function gotoAdminAuthenticated(page: Page, path = '/admin/dashboard'): Promise<void> {
   let ok = false;
 
+  // Sanctum stateful session auth only starts a session when Origin/Referer
+  // match SANCTUM_STATEFUL_DOMAINS. Playwright's APIRequestContext omits them
+  // unless we set them explicitly.
+  const base = page.context().baseURL ?? 'http://127.0.0.1:8000';
+  const statefulHeaders = {
+    'X-Requested-With': 'XMLHttpRequest',
+    Origin: base.replace(/\/$/, ''),
+    Referer: `${base.replace(/\/$/, '')}/admin/`,
+  };
+
+  await page.request.get('/sanctum/csrf-cookie').catch(() => null);
+
   if (ADMIN_PHONE && ADMIN_PASSWORD) {
     const res = await page.request.post('/api/auth/staff/login', {
       data: { phone: ADMIN_PHONE, password: ADMIN_PASSWORD },
+      headers: statefulHeaders,
     });
     ok = res.ok();
   }
@@ -47,6 +60,7 @@ export async function gotoAdminAuthenticated(page: Page, path = '/admin/dashboar
   if (!ok) {
     const res = await page.request.post('/api/auth/staff/pin-login', {
       data: { ...staffPinLoginBody(), intent: 'admin' },
+      headers: statefulHeaders,
     });
     ok = res.ok();
     if (!ok) {

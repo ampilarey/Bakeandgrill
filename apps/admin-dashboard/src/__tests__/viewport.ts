@@ -42,8 +42,10 @@ export function setViewportWidth(width: number): void {
 }
 
 /**
- * jsdom does not apply stylesheet @media blocks. Inject the same mobile
- * stacking rules Signage uses so layout assertions can run.
+ * jsdom does not apply stylesheet @media blocks. This helper only mounts the
+ * mobile Signage chrome needed for *interaction* tests (sticky actions, layer
+ * list). Do NOT assert scrollWidth / getBoundingClientRect layout against it —
+ * that is self-fulfilling. Real overflow checks belong in Playwright.
  */
 export function injectSignageMobileCss(): HTMLStyleElement {
   const style = document.createElement('style');
