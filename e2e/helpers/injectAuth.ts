@@ -106,8 +106,10 @@ export async function adminLoginViaUI(page: Page, pin?: string): Promise<void> {
 // ── Customer auth ──────────────────────────────────────────────────────────
 
 /**
- * Obtain a customer Sanctum token via the password login endpoint and inject
- * it into the page's localStorage under the `online_token` key.
+ * Establish a customer session via password login (Sanctum session cookie)
+ * and open the order app. Returns a Bearer token when the API still issues
+ * one (legacy); otherwise returns an empty string — cookies on `page.request`
+ * / the page context are enough for current builds.
  */
 export async function injectCustomerToken(
   page: Page,
@@ -116,30 +118,63 @@ export async function injectCustomerToken(
 ): Promise<string> {
   const usedPhone    = phone    ?? `+960${TEST_PHONE}`;
   const usedPassword = password ?? TEST_PASSWORD;
+  const localPhone   = usedPhone.replace(/^\+960/, '');
+
+  if (!usedPassword) {
+    return '';
+  }
+
+  // Prime CSRF for stateful SPA login
+  await page.request.get('/sanctum/csrf-cookie').catch(() => null);
 
   const response = await page.request.post('/api/auth/customer/login', {
     data: { phone: usedPhone, password: usedPassword },
   });
-  const data = await response.json().catch(() => ({}));
+  if (!response.ok()) {
+    return '';
+  }
+  const data = (await response.json().catch(() => ({}))) as { token?: string };
   const token: string = data.token ?? '';
 
-  if (!token) {
-    return ''; // Caller may choose to skip instead of throw
-  }
-
   await page.goto('/order/', { waitUntil: 'domcontentloaded' });
-  await page.evaluate(
-    ({ t, ph }: { t: string; ph: string }) => {
-      localStorage.setItem('online_token', t);
-      localStorage.setItem('online_customer_name', ph);
-      window.dispatchEvent(new Event('auth_change'));
-    },
-    { t: token, ph: usedPhone.replace(/^\+960/, '') },
-  );
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForCustomerSession(page, usedPhone.replace(/^\+960/, ''));
+  if (token) {
+    await page.evaluate(
+      ({ t, ph }: { t: string; ph: string }) => {
+        localStorage.setItem('online_token', t);
+        localStorage.setItem('online_customer_name', ph);
+        window.dispatchEvent(new Event('auth_change'));
+      },
+      { t: token, ph: localPhone },
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+  await waitForCustomerSession(page, localPhone);
 
   return token;
+}
+
+/**
+ * Mint a customer Bearer PAT for concurrent API races (session cookies cannot
+ * be shared across two simultaneous request contexts cleanly). Uses the
+ * password login session when a token is returned; otherwise falls back to
+ * creating a PAT via the staff-owned test bootstrap endpoint is not available
+ * — callers should pass `CUSTOMER_BEARER` from env when needed.
+ */
+export async function obtainCustomerBearer(
+  request: import('@playwright/test').APIRequestContext,
+  phone?: string,
+  password?: string,
+): Promise<string> {
+  if (process.env.CUSTOMER_BEARER) return process.env.CUSTOMER_BEARER;
+  const usedPhone = phone ?? `+960${TEST_PHONE}`;
+  const usedPassword = password ?? TEST_PASSWORD;
+  await request.get('/sanctum/csrf-cookie').catch(() => null);
+  const response = await request.post('/api/auth/customer/login', {
+    data: { phone: usedPhone, password: usedPassword },
+  });
+  if (!response.ok()) return '';
+  const data = (await response.json().catch(() => ({}))) as { token?: string };
+  return data.token ?? '';
 }
 
 /**
