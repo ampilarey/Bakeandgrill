@@ -2243,9 +2243,15 @@ a { text-decoration: none; color: inherit; }
 
   .content-studio-page .content-studio-sticky-bar-label {
     font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    flex-shrink: 0;
+    font-weight: 700;
+    white-space: normal;
+    flex-shrink: 1;
+    max-width: 42%;
+    line-height: 1.25;
+    color: var(--color-warning);
+  }
+  .content-studio-page .content-studio-publish-sticky {
+    font-weight: 700;
   }
 
   .content-studio-page .content-editor-row {
@@ -2809,6 +2815,25 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
   color: var(--color-text-secondary);
 }
+.hub-content-mode-hint {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+  max-width: 260px;
+}
+.hub-content-mode--hero {
+  min-width: 260px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-warning-bg);
+}
+.hub-content-mode--hero .hub-content-mode-label {
+  color: var(--color-text);
+  font-size: 13px;
+}
 .hub-content-mode-options {
   display: flex;
   gap: 6px;
@@ -2832,6 +2857,9 @@ a { text-decoration: none; color: inherit; }
   border: 1.5px solid var(--color-primary);
   background: var(--color-warning-bg);
   font-weight: 700;
+}
+.hub-content-mode--hero .hub-content-mode-option--active {
+  background: var(--color-surface);
 }
 
 /* Section-enable chrome card */
@@ -3008,10 +3036,65 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
 }
 .hub-draft-status {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
   font-size: 12px;
   color: var(--color-text-muted);
+  min-width: 140px;
+  max-width: 280px;
+  line-height: 1.25;
+}
+.hub-draft-status-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.hub-draft-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.hub-draft-status-primary {
+  font-weight: 700;
   white-space: nowrap;
-  min-width: 100px;
+}
+.hub-draft-status-secondary {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: normal;
+}
+.hub-draft-status--unpublished {
+  color: var(--color-warning-strong);
+}
+.hub-draft-status--unpublished .hub-draft-status-icon {
+  color: var(--color-warning);
+}
+.hub-draft-status--live {
+  color: var(--color-success-strong);
+}
+.hub-draft-status--live .hub-draft-status-icon {
+  color: var(--color-success);
+}
+.content-studio-publish-desktop--needed {
+  box-shadow: 0 0 0 2px var(--color-warning);
+  font-weight: 700;
+}
+.hub-empty-array-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-warning);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-strong);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.hub-empty-array-warning strong {
+  font-weight: 700;
 }
 
 /* ── Locale segmented control ─────────────────────────────────── */
