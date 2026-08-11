@@ -1036,7 +1036,28 @@
     $defaultItemImage = content('default_item_image');
     $stripe = 0;
     try {
-        $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+        $draftPageBlocks = null;
+        if (app()->bound('content.draft_overrides')) {
+            $draftOverrides = app('content.draft_overrides');
+            $draftPageBlocks = is_array($draftOverrides)
+                ? ($draftOverrides['page_blocks']['website']['home'] ?? null)
+                : null;
+        }
+        if (is_array($draftPageBlocks)) {
+            $homeBlocks = collect($draftPageBlocks)->map(function ($row) {
+                $row = is_array($row) ? $row : [];
+                $block = new \App\Models\PageBlock();
+                // Preview rows already contain resolved draft settings. Do not
+                // let shared_content_id pull the old live shared row.
+                $row['shared_content_id'] = null;
+                $block->forceFill($row);
+                $block->exists = false;
+
+                return $block;
+            });
+        } else {
+            $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+        }
     } catch (\Throwable $e) {
         $homeBlocks = collect();
     }
@@ -1084,7 +1105,7 @@
             @php
                 $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
                     $sectionId,
-                    is_array($homeBlock->settings) ? $homeBlock->settings : [],
+                    $homeBlock->resolvedSettings(),
                 );
                 $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
                 $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);

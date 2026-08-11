@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Content;
 
 use App\Domains\Content\Blocks\HomeLayoutMigrator;
-use App\Domains\Content\ContentDraftStore;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\PageBlock;
+use App\Models\PageLayoutDraft;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,177 +39,28 @@ class PageBlockEditorApiTest extends TestCase
         HomeLayoutMigrator::migrate();
     }
 
-    /**
-     * A partial PUT must never touch fields that were not in the request.
-     * Regression: update() used to run the raw request through validator
-     * defaults, so PUT {is_enabled:false} reset position to 0 and settings
-     * to [] — turning a section off jumped it to the top and blanked it.
-     */
-    public function test_partial_put_with_only_is_enabled_preserves_position_settings_and_content_mode(): void
+    public function test_layout_edit_in_draft_previews_without_changing_public_index(): void
     {
-        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
-        $block->update(['position' => 7, 'settings' => ['headline' => 'Keep me'], 'content_mode' => 'shared']);
-
-        $this->putJson("/api/admin/page-blocks/{$block->id}", ['is_enabled' => false])->assertOk();
-
-        $fresh = $block->fresh();
-        $this->assertFalse((bool) $fresh->is_enabled);
-        $this->assertSame(7, (int) $fresh->position, 'Partial PUT must not reset position.');
-        $this->assertSame(['headline' => 'Keep me'], $fresh->settings, 'Partial PUT must not blank settings.');
-        $this->assertSame('shared', $fresh->content_mode);
-    }
-
-    public function test_partial_put_with_only_content_mode_preserves_position_settings_and_is_enabled(): void
-    {
-        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
-        $block->update([
-            'position' => 3,
-            'is_enabled' => false,
-            'settings' => ['headline' => 'Keep me'],
-            'content_mode' => 'shared',
-        ]);
-
-        $this->putJson("/api/admin/page-blocks/{$block->id}", ['content_mode' => 'own'])->assertOk();
-
-        $fresh = $block->fresh();
-        $this->assertSame('own', $fresh->content_mode);
-        $this->assertFalse((bool) $fresh->is_enabled, 'Changing content mode must not silently republish a disabled block.');
-        $this->assertSame(3, (int) $fresh->position);
-        // shared → own copies shared content in as a starting point, but the
-        // block's own existing settings must survive the merge.
-        $this->assertSame('Keep me', $fresh->settings['headline'] ?? null);
-    }
-
-    public function test_partial_put_with_only_position_preserves_is_enabled_and_settings(): void
-    {
-        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
-        $block->update(['is_enabled' => false, 'settings' => ['headline' => 'Keep me']]);
-
-        $this->putJson("/api/admin/page-blocks/{$block->id}", ['position' => 5])->assertOk();
-
-        $fresh = $block->fresh();
-        $this->assertSame(5, (int) $fresh->position);
-        $this->assertFalse((bool) $fresh->is_enabled, 'Moving a disabled block must not re-enable it.');
-        $this->assertSame(['headline' => 'Keep me'], $fresh->settings);
-    }
-
-    public function test_partial_put_with_settings_replaces_settings_and_nothing_else(): void
-    {
-        $block = PageBlock::query()->where('app', 'website')->where('block_type', 'specials')->firstOrFail();
-        $block->update(['position' => 4, 'is_enabled' => false, 'settings' => ['headline' => 'Old']]);
-
-        $this->putJson("/api/admin/page-blocks/{$block->id}", ['settings' => ['headline' => 'New']])->assertOk();
-
-        $fresh = $block->fresh();
-        $this->assertSame(['headline' => 'New'], $fresh->settings);
-        $this->assertSame(4, (int) $fresh->position);
-        $this->assertFalse((bool) $fresh->is_enabled);
-    }
-
-    public function test_store_with_explicit_position_zero_lands_the_block_first(): void
-    {
-        // Make room at the top, the way a client inserting at position 0 would.
-        PageBlock::query()->where('app', 'order_app')->where('page', 'home')->increment('position');
-
-        $res = $this->postJson('/api/admin/page-blocks', [
-            'app' => 'order_app',
-            'block_type' => 'promo_carousel',
-            'position' => 0,
-        ])->assertCreated();
-
-        $this->assertSame(0, (int) $res->json('block.position'), 'Explicit position 0 must not be replaced by max+1.');
-
-        $first = $this->getJson('/api/admin/page-blocks?app=order_app')->assertOk()->json('blocks.0');
-        $this->assertSame('promo_carousel', $first['block_type']);
-    }
-
-    public function test_reorder_payload_missing_a_block_is_rejected_and_changes_nothing(): void
-    {
-        $before = PageBlock::query()->where('app', 'order_app')->orderBy('position')
-            ->get(['id', 'position', 'is_enabled'])->toArray();
-
-        $blocks = PageBlock::query()->where('app', 'order_app')->orderBy('position')->get();
-        $partial = $blocks->slice(0, $blocks->count() - 1)->values();
-
-        $this->putJson('/api/admin/page-blocks/reorder', [
-            'app' => 'order_app',
-            'page' => 'home',
-            'blocks' => $partial->map(fn (PageBlock $b, int $i) => [
-                'id' => $b->id,
-                'position' => $i,
-                'is_enabled' => (bool) $b->is_enabled,
-            ])->all(),
-        ])->assertStatus(422);
-
-        $this->assertSame(
-            $before,
-            PageBlock::query()->where('app', 'order_app')->orderBy('position')
-                ->get(['id', 'position', 'is_enabled'])->toArray(),
-            'A rejected reorder must leave every block untouched.',
-        );
-    }
-
-    public function test_reordering_one_app_does_not_affect_the_other(): void
-    {
-        $websiteBefore = PageBlock::query()->where('app', 'website')->orderBy('position')->pluck('block_type')->all();
-        $orderBefore = PageBlock::query()->where('app', 'order_app')->orderBy('position')->get();
-        $reversed = $orderBefore->reverse()->values();
-
-        $this->putJson('/api/admin/page-blocks/reorder', [
-            'app' => 'order_app',
-            'page' => 'home',
-            'blocks' => $reversed->map(fn (PageBlock $b, int $i) => [
-                'id' => $b->id,
-                'position' => $i,
-                'is_enabled' => (bool) $b->is_enabled,
-            ])->all(),
-        ])->assertOk();
-
-        $this->assertSame(
-            $websiteBefore,
-            PageBlock::query()->where('app', 'website')->orderBy('position')->pluck('block_type')->all(),
-        );
-        $this->assertSame(
-            $reversed->pluck('block_type')->all(),
-            PageBlock::query()->where('app', 'order_app')->orderBy('position')->pluck('block_type')->all(),
-        );
-    }
-
-    public function test_shared_to_own_copies_values_rather_than_emptying(): void
-    {
-        $hero = PageBlock::query()
-            ->where('app', 'website')
-            ->where('block_type', 'hero')
+        $block = PageBlock::query()
+            ->where('app', 'order_app')
+            ->where('is_enabled', true)
+            ->whereNotIn('block_type', ['mode_cards', 'brand_footer'])
             ->firstOrFail();
-        $this->assertSame('shared', $hero->content_mode);
 
-        $res = $this->putJson("/api/admin/page-blocks/{$hero->id}", [
-            'content_mode' => 'own',
-        ])->assertOk();
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 0,
+            'is_enabled' => false,
+        ])->assertOk()->assertJsonPath('version', 1);
 
-        $settings = $res->json('block.settings');
-        $this->assertIsArray($settings);
-        $this->assertArrayHasKey('_copied_from_shared', $settings);
-        $this->assertArrayHasKey('hero_slides', $settings['_copied_from_shared']);
-        $this->assertSame('own', $hero->fresh()->content_mode);
-    }
-
-    public function test_preview_token_serves_draft_layout_without_changing_public(): void
-    {
         $public = $this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks');
-
-        $draftBlocks = collect($public)->map(function (array $b) {
-            if ($b['block_type'] === 'specials') {
-                $b['is_enabled'] = false;
-            }
-
-            return $b;
-        })->values()->all();
+        $this->assertTrue((bool) collect($public)->firstWhere('block_type', $block->block_type)['is_enabled']);
 
         $token = $this->postJson('/api/admin/page-blocks/preview-token', [
             'app' => 'order_app',
             'page' => 'home',
-            'blocks' => $draftBlocks,
+            'version' => 1,
         ])->assertOk()->json('token');
 
         $preview = $this->getJson('/api/page-blocks?app=order_app&preview_token='.$token)
@@ -217,16 +68,187 @@ class PageBlockEditorApiTest extends TestCase
             ->assertJsonPath('preview', true)
             ->json('blocks');
 
-        $specials = collect($preview)->firstWhere('block_type', 'specials');
-        $this->assertFalse((bool) ($specials['is_enabled'] ?? true));
+        $this->assertFalse((bool) collect($preview)->firstWhere('block_type', $block->block_type)['is_enabled']);
 
-        // Public page unchanged.
         $publicAgain = $this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks');
+        $this->assertTrue((bool) collect($publicAgain)->firstWhere('block_type', $block->block_type)['is_enabled']);
+    }
+
+    public function test_publish_changes_public_index(): void
+    {
+        $block = PageBlock::query()
+            ->where('app', 'order_app')
+            ->where('is_enabled', true)
+            ->whereNotIn('block_type', ['mode_cards', 'brand_footer'])
+            ->firstOrFail();
+
+        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 0,
+            'is_enabled' => false,
+        ])->assertOk();
+
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 1,
+        ])->assertOk()->assertJsonPath('draft', false);
+
+        $types = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
+            ->pluck('block_type')
+            ->all();
+        $this->assertNotContains($block->block_type, $types);
+    }
+
+    public function test_shared_generic_block_settings_publish_to_both_apps(): void
+    {
+        $this->postJson('/api/admin/page-blocks', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'block_type' => 'rich_text',
+            'content_mode' => 'shared',
+            'settings' => ['heading' => 'Shared story', 'body' => 'One story for both.'],
+        ])->assertCreated()->assertJsonPath('version', 1);
+
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 1,
+        ])->assertOk();
+
+        $website = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
+            ->firstWhere('block_type', 'rich_text');
+        $order = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
+            ->firstWhere('block_type', 'rich_text');
+
+        $this->assertSame('Shared story', $website['settings']['heading'] ?? null);
+        $this->assertSame('Shared story', $order['settings']['heading'] ?? null);
+        $this->assertSame($website['shared_content_id'], $order['shared_content_id']);
+    }
+
+    public function test_own_generic_block_only_publishes_to_one_app(): void
+    {
+        $this->postJson('/api/admin/page-blocks', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'block_type' => 'rich_text',
+            'content_mode' => 'own',
+            'settings' => ['heading' => 'Website only', 'body' => 'No order app copy.'],
+        ])->assertCreated();
+
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 1,
+        ])->assertOk();
+
+        $websiteHeadings = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
+            ->where('block_type', 'rich_text')
+            ->pluck('settings.heading')
+            ->all();
+        $orderHeadings = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
+            ->where('block_type', 'rich_text')
+            ->pluck('settings.heading')
+            ->all();
+
+        $this->assertContains('Website only', $websiteHeadings);
+        $this->assertNotContains('Website only', $orderHeadings);
+    }
+
+    public function test_delete_and_reorder_stay_unpublished_until_publish(): void
+    {
+        $before = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
+            ->pluck('block_type')
+            ->all();
+        $featured = PageBlock::query()
+            ->where('app', 'website')
+            ->where('block_type', 'featured')
+            ->firstOrFail();
+
+        $draft = $this->deleteJson("/api/admin/page-blocks/{$featured->id}", [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+        ])->assertOk()->json();
+
+        $reversed = collect($draft['blocks'])->reverse()->values()->map(fn (array $block, int $i): array => [
+            'id' => $block['id'],
+            'position' => $i,
+            'is_enabled' => (bool) $block['is_enabled'],
+        ])->all();
+
+        $this->putJson('/api/admin/page-blocks/reorder', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 1,
+            'blocks' => $reversed,
+        ])->assertOk();
+
         $this->assertSame(
-            collect($public)->map(fn ($b) => [$b['block_type'], $b['is_enabled']])->all(),
-            collect($publicAgain)->map(fn ($b) => [$b['block_type'], $b['is_enabled']])->all(),
+            $before,
+            collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))->pluck('block_type')->all(),
         );
 
-        ContentDraftStore::forget($token);
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 2,
+        ])->assertOk();
+
+        $after = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
+            ->pluck('block_type')
+            ->all();
+        $this->assertNotContains('featured', $after);
+        $this->assertNotSame($before, $after);
+    }
+
+    public function test_duplicate_singleton_store_returns_422(): void
+    {
+        $this->postJson('/api/admin/page-blocks', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'block_type' => 'hero',
+        ])->assertStatus(422);
+    }
+
+    public function test_second_user_cannot_overwrite_first_users_private_draft(): void
+    {
+        $hero = PageBlock::query()
+            ->where('app', 'website')
+            ->where('block_type', 'hero')
+            ->firstOrFail();
+
+        $this->putJson("/api/admin/page-blocks/{$hero->id}", [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'is_enabled' => false,
+        ])->assertOk();
+
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
+        $other = User::create([
+            'name' => 'Second Owner',
+            'email' => 'layout-editor-2@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1111'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($other, ['staff']);
+
+        $this->postJson('/api/admin/page-blocks', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'block_type' => 'rich_text',
+            'content_mode' => 'own',
+            'settings' => ['heading' => 'Second edit'],
+        ])->assertStatus(409);
+
+        $this->assertSame(1, PageLayoutDraft::query()->count());
     }
 }

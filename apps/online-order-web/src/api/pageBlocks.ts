@@ -25,6 +25,8 @@ export type PageBlockRow = {
   position: number;
   is_enabled: boolean;
   content_mode: 'shared' | 'own';
+  shared_content_id?: number | null;
+  shared_content_uuid?: string | null;
   settings: Record<string, unknown>;
   /** Media resolved server-side for image/video blocks. */
   media?: PageBlockMedia;

@@ -3,7 +3,9 @@ import {
   createPageBlock,
   createPageBlockPreviewToken,
   deletePageBlock,
+  discardPageBlockDraft,
   fetchAdminPageBlocks,
+  publishPageBlocks,
   reorderPageBlocks,
   updatePageBlock,
   type PageBlockApp,
@@ -37,6 +39,9 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   const [addType, setAddType] = useState('');
   const [previewMsg, setPreviewMsg] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [draftVersion, setDraftVersion] = useState(0);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +52,9 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
       setBlocks(res.blocks ?? []);
       setTypes(res.available_types ?? []);
       setUnknown(res.unknown_types ?? []);
+      setDraftVersion(res.version ?? 0);
+      setHasDraft(Boolean(res.draft));
+      setSavedAt(res.saved_at ?? null);
     } catch (e) {
       setError((e as Error).message || 'Could not load home layout.');
     } finally {
@@ -71,11 +79,15 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     try {
       await reorderPageBlocks({
         app,
+        version: draftVersion,
         blocks: next.map((b, i) => ({
           id: b.id,
           position: i,
           is_enabled: b.is_enabled,
         })),
+      }).then((res) => {
+        setDraftVersion(res.version);
+        setHasDraft(true);
       });
       setBlocks(next.map((b, i) => ({ ...b, position: i })));
     } catch (e) {
@@ -104,8 +116,15 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     setBusy(true);
     setError('');
     try {
-      const res = await updatePageBlock(block.id, { is_enabled: !block.is_enabled });
+      const res = await updatePageBlock(block.id, {
+        app,
+        page: 'home',
+        version: draftVersion,
+        is_enabled: !block.is_enabled,
+      });
       setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)));
+      setDraftVersion(res.version);
+      setHasDraft(true);
     } catch (e) {
       setError((e as Error).message || 'Could not update block.');
     } finally {
@@ -122,8 +141,10 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     setBusy(true);
     setError('');
     try {
-      await deletePageBlock(block.id);
-      setBlocks((prev) => prev.filter((b) => b.id !== block.id));
+      const res = await deletePageBlock({ id: block.id, app, version: draftVersion });
+      setBlocks(res.blocks ?? []);
+      setDraftVersion(res.version);
+      setHasDraft(true);
     } catch (e) {
       setError((e as Error).message || 'Could not remove block.');
     } finally {
@@ -132,18 +153,30 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   };
 
   const setMode = async (block: PageBlockRow, mode: 'shared' | 'own') => {
+    let shareSource: 'website' | 'order_app' | 'shared' | undefined;
     if (mode === 'shared' && block.content_mode === 'own') {
-      if (!window.confirm(
-        `Switch “${block.label}” back to shared content?\n\nThis block’s own values will be replaced by the shared content used on both apps.`,
-      )) {
+      const choice = window.prompt(
+        `Share “${block.label}” across both apps.\n\nUse content from: website, order_app, or shared?`,
+        app,
+      );
+      if (choice !== 'website' && choice !== 'order_app' && choice !== 'shared') {
         return;
       }
+      shareSource = choice;
     }
     setBusy(true);
     setError('');
     try {
-      const res = await updatePageBlock(block.id, { content_mode: mode });
+      const res = await updatePageBlock(block.id, {
+        app,
+        page: 'home',
+        version: draftVersion,
+        content_mode: mode,
+        ...(shareSource ? { share_source: shareSource } : {}),
+      });
       setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)));
+      setDraftVersion(res.version);
+      setHasDraft(true);
       if (mode === 'own' && block.content_mode === 'shared') {
         setPreviewMsg(`Copied shared content into “${block.label}” as a starting point.`);
       }
@@ -158,8 +191,15 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     setBusy(true);
     setError('');
     try {
-      const res = await updatePageBlock(block.id, { settings });
+      const res = await updatePageBlock(block.id, {
+        app,
+        page: 'home',
+        version: draftVersion,
+        settings,
+      });
       setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)));
+      setDraftVersion(res.version);
+      setHasDraft(true);
     } catch (e) {
       setError((e as Error).message || 'Could not save this section’s content.');
       throw e;
@@ -176,9 +216,12 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
       const def = types.find((t) => t.type === addType);
       const created = await createPageBlock({
         app,
+        version: draftVersion,
         block_type: addType,
         content_mode: def?.supports_shared_content ? 'shared' : 'own',
       });
+      setDraftVersion(created.version);
+      setHasDraft(true);
       setAddType('');
       await load();
       // A fresh generic block is empty — open its form so the owner can type
@@ -196,26 +239,54 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     setPreviewMsg('');
     setError('');
     try {
-      const { token } = await createPageBlockPreviewToken({
+      const { token, website_url, order_app_url } = await createPageBlockPreviewToken({
         app,
-        blocks: blocks.map((b) => ({
-          id: b.id,
-          block_type: b.block_type,
-          position: b.position,
-          is_enabled: b.is_enabled,
-          content_mode: b.content_mode,
-          settings: b.settings,
-          media: b.media,
-          label: b.label,
-        })),
+        version: draftVersion,
       });
       const path = app === 'website'
-        ? `/admin/preview/website/home?token=${encodeURIComponent(token)}`
-        : `/order/?previewToken=${encodeURIComponent(token)}`;
+        ? (website_url ?? `/admin/preview/website/home?token=${encodeURIComponent(token)}`)
+        : (order_app_url ?? `/order/?previewToken=${encodeURIComponent(token)}`);
       window.open(path, '_blank', 'noopener,noreferrer');
-      setPreviewMsg('Preview opened in a new tab. It expires in 15 minutes and does not change the live page.');
+      setPreviewMsg('Draft preview opened in a new tab. It expires in 15 minutes and does not change the live page.');
     } catch (e) {
       setError((e as Error).message || 'Could not create preview.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const publish = async () => {
+    setBusy(true);
+    setError('');
+    setPreviewMsg('');
+    try {
+      const res = await publishPageBlocks({ app, version: draftVersion });
+      setBlocks(res.blocks ?? []);
+      setDraftVersion(res.version ?? 0);
+      setHasDraft(Boolean(res.draft));
+      setSavedAt(null);
+      setPreviewMsg('Published. The live home page now uses these layout changes.');
+    } catch (e) {
+      setError((e as Error).message || 'Could not publish layout.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const discard = async () => {
+    if (!window.confirm('Discard this unpublished layout draft?')) return;
+    setBusy(true);
+    setError('');
+    setPreviewMsg('');
+    try {
+      const res = await discardPageBlockDraft({ app });
+      setBlocks(res.blocks ?? []);
+      setDraftVersion(res.version ?? 0);
+      setHasDraft(Boolean(res.draft));
+      setSavedAt(null);
+      setPreviewMsg('Draft discarded. You are viewing the live layout again.');
+    } catch (e) {
+      setError((e as Error).message || 'Could not discard draft.');
     } finally {
       setBusy(false);
     }
@@ -241,14 +312,42 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
             named sections (hero, specials, categories …) are still edited in the cards below.
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void preview()}
-          disabled={busy || loading}
-          style={btnSecondary}
-        >
-          Preview before publishing
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span
+            style={{
+              alignSelf: 'center',
+              fontSize: 12,
+              fontWeight: 700,
+              color: hasDraft ? 'var(--color-warning-strong)' : 'var(--color-success)',
+            }}
+          >
+            {hasDraft ? `Draft v${draftVersion}${savedAt ? ' saved' : ''}` : 'Saved live'}
+          </span>
+          <button
+            type="button"
+            onClick={() => void preview()}
+            disabled={busy || loading}
+            style={btnSecondary}
+          >
+            Draft preview
+          </button>
+          <button
+            type="button"
+            onClick={() => void publish()}
+            disabled={busy || loading || !hasDraft}
+            style={btnPrimary}
+          >
+            Publish
+          </button>
+          <button
+            type="button"
+            onClick={() => void discard()}
+            disabled={busy || loading || !hasDraft}
+            style={btnSecondary}
+          >
+            Discard
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>

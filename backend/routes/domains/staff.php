@@ -238,6 +238,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/admin/page-blocks', [App\Http\Controllers\Api\PageBlockController::class, 'store']);
         Route::put('/admin/page-blocks/reorder', [App\Http\Controllers\Api\PageBlockController::class, 'reorder']);
         Route::post('/admin/page-blocks/preview-token', [App\Http\Controllers\Api\PageBlockController::class, 'previewToken']);
+        Route::post('/admin/page-blocks/publish', [App\Http\Controllers\Api\PageBlockController::class, 'publish']);
+        Route::post('/admin/page-blocks/discard', [App\Http\Controllers\Api\PageBlockController::class, 'discard']);
         Route::put('/admin/page-blocks/{id}', [App\Http\Controllers\Api\PageBlockController::class, 'update']);
         Route::delete('/admin/page-blocks/{id}', [App\Http\Controllers\Api\PageBlockController::class, 'destroy']);
     });

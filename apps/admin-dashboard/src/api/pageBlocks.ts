@@ -27,6 +27,8 @@ export type PageBlockRow = {
   position: number;
   is_enabled: boolean;
   content_mode: 'shared' | 'own';
+  shared_content_id?: number | null;
+  shared_content_uuid?: string | null;
   settings: Record<string, unknown>;
   /** Media resolved server-side for image/video blocks. */
   media?: PageBlockMedia;
@@ -60,6 +62,9 @@ export async function fetchAdminPageBlocks(app: PageBlockApp, page = 'home'): Pr
   blocks: PageBlockRow[];
   available_types: PageBlockType[];
   unknown_types: string[];
+  draft: boolean;
+  version: number;
+  saved_at?: string | null;
 }> {
   const qs = new URLSearchParams({ app, page });
   return req(`/admin/page-blocks?${qs}`);
@@ -68,10 +73,11 @@ export async function fetchAdminPageBlocks(app: PageBlockApp, page = 'home'): Pr
 export async function createPageBlock(payload: {
   app: PageBlockApp;
   page?: string;
+  version: number;
   block_type: string;
   content_mode?: 'shared' | 'own';
   settings?: Record<string, unknown>;
-}): Promise<{ block: PageBlockRow }> {
+}): Promise<{ block: PageBlockRow; version: number; draft: boolean }> {
   return req('/admin/page-blocks', {
     method: 'POST',
     body: JSON.stringify({ page: 'home', ...payload }),
@@ -85,23 +91,36 @@ export async function updatePageBlock(
     is_enabled: boolean;
     content_mode: 'shared' | 'own';
     settings: Record<string, unknown>;
+    share_source: 'website' | 'order_app' | 'shared';
+    app: PageBlockApp;
+    page: string;
+    version: number;
   }>,
-): Promise<{ block: PageBlockRow }> {
+): Promise<{ block: PageBlockRow; version: number; draft: boolean }> {
   return req(`/admin/page-blocks/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   });
 }
 
-export async function deletePageBlock(id: number): Promise<{ message: string }> {
-  return req(`/admin/page-blocks/${id}`, { method: 'DELETE' });
+export async function deletePageBlock(payload: {
+  id: number;
+  app: PageBlockApp;
+  page?: string;
+  version: number;
+}): Promise<{ message: string; blocks: PageBlockRow[]; version: number; draft: boolean }> {
+  return req(`/admin/page-blocks/${payload.id}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ app: payload.app, page: payload.page ?? 'home', version: payload.version }),
+  });
 }
 
 export async function reorderPageBlocks(payload: {
   app: PageBlockApp;
   page?: string;
+  version: number;
   blocks: Array<{ id: number; position: number; is_enabled: boolean }>;
-}): Promise<{ blocks: PageBlockRow[] }> {
+}): Promise<{ blocks: PageBlockRow[]; version: number; draft: boolean }> {
   return req('/admin/page-blocks/reorder', {
     method: 'PUT',
     body: JSON.stringify({ page: 'home', ...payload }),
@@ -111,9 +130,30 @@ export async function reorderPageBlocks(payload: {
 export async function createPageBlockPreviewToken(payload: {
   app: PageBlockApp;
   page?: string;
-  blocks: unknown[];
-}): Promise<{ token: string; expires_in: number }> {
+  version?: number;
+}): Promise<{ token: string; expires_in: number; draft: boolean; website_url?: string; order_app_url?: string }> {
   return req('/admin/page-blocks/preview-token', {
+    method: 'POST',
+    body: JSON.stringify({ page: 'home', ...payload }),
+  });
+}
+
+export async function publishPageBlocks(payload: {
+  app: PageBlockApp;
+  page?: string;
+  version: number;
+}): Promise<{ message: string; blocks: PageBlockRow[]; version: number; draft: boolean }> {
+  return req('/admin/page-blocks/publish', {
+    method: 'POST',
+    body: JSON.stringify({ page: 'home', ...payload }),
+  });
+}
+
+export async function discardPageBlockDraft(payload: {
+  app: PageBlockApp;
+  page?: string;
+}): Promise<{ message: string; blocks: PageBlockRow[]; version: number; draft: boolean }> {
+  return req('/admin/page-blocks/discard', {
     method: 'POST',
     body: JSON.stringify({ page: 'home', ...payload }),
   });

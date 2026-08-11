@@ -120,6 +120,7 @@ class GenericBlockTypesTest extends TestCase
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'order_app',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'faq_list',
             'settings' => ['items' => [['question' => 'Q', 'answer' => 'A']]],
         ])->assertStatus(422)->assertJsonValidationErrors('block_type');
@@ -173,6 +174,7 @@ class GenericBlockTypesTest extends TestCase
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => 0,
             'block_type' => $type,
             'settings' => $settings,
         ])->assertStatus(422)->assertJsonValidationErrors($errorKey);
@@ -180,17 +182,20 @@ class GenericBlockTypesTest extends TestCase
 
     public function test_required_settings_get_their_default_when_a_block_is_created_empty(): void
     {
-        $divider = $this->postJson('/api/admin/page-blocks', [
+        $dividerRes = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'divider',
-        ])->assertCreated()->json('block.settings');
+        ])->assertCreated();
+        $divider = $dividerRes->json('block.settings');
         $this->assertSame('spacer', $divider['style']);
         $this->assertSame('md', $divider['size']);
 
         $imageText = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => $dividerRes->json('version'),
             'block_type' => 'image_text',
         ])->assertCreated()->json('block.settings');
         $this->assertSame('left', $imageText['side']);
@@ -215,14 +220,12 @@ class GenericBlockTypesTest extends TestCase
     {
         $payload = '<p>Hello</p><script>alert(1)</script><img src=x onerror="alert(2)">';
 
-        $block = $this->postJson('/api/admin/page-blocks', [
-            'app' => 'website',
-            'page' => 'home',
-            'block_type' => 'rich_text',
-            'settings' => ['heading' => 'Safe <script>alert(3)</script>', 'body' => $payload],
-        ])->assertCreated()->json('block');
+        $block = $this->addBlock('website', 'rich_text', [
+            'heading' => 'Safe <script>alert(3)</script>',
+            'body' => $payload,
+        ]);
 
-        $stored = PageBlock::query()->findOrFail($block['id'])->settings;
+        $stored = $block->settings;
         $this->assertStringNotContainsString('<script', $stored['body']);
         $this->assertStringNotContainsString('onerror', $stored['body']);
         $this->assertStringNotContainsString('<script', $stored['heading']);
@@ -241,9 +244,16 @@ class GenericBlockTypesTest extends TestCase
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'order_app',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'rich_text',
+            'content_mode' => 'own',
             'settings' => ['body' => 'Hi<script>alert(1)</script>'],
         ])->assertCreated();
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 1,
+        ])->assertOk();
 
         $block = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
             ->firstWhere('block_type', 'rich_text');
@@ -253,9 +263,10 @@ class GenericBlockTypesTest extends TestCase
 
     public function test_faq_answers_and_button_links_are_sanitised(): void
     {
-        $faq = $this->postJson('/api/admin/page-blocks', [
+        $faqRes = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'faq_list',
             'settings' => [
                 'items' => [[
@@ -263,7 +274,8 @@ class GenericBlockTypesTest extends TestCase
                     'answer' => '<p>Yes</p><script>alert(2)</script>',
                 ]],
             ],
-        ])->assertCreated()->json('block.settings');
+        ])->assertCreated();
+        $faq = $faqRes->json('block.settings');
 
         $this->assertStringNotContainsString('<script', $faq['items'][0]['question']);
         $this->assertStringNotContainsString('<script', $faq['items'][0]['answer']);
@@ -271,6 +283,7 @@ class GenericBlockTypesTest extends TestCase
         $band = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => $faqRes->json('version'),
             'block_type' => 'button_band',
             'settings' => [
                 'text' => 'Tap <script>alert(1)</script>below',
@@ -347,17 +360,30 @@ class GenericBlockTypesTest extends TestCase
     /** @param array<string, mixed> $settings */
     private function addBlock(string $app, string $type, array $settings = []): PageBlock
     {
-        $id = $this->postJson('/api/admin/page-blocks', [
+        $this->postJson('/api/admin/page-blocks', [
             'app' => $app,
             'page' => 'home',
+            'version' => 0,
             'block_type' => $type,
+            'content_mode' => 'own',
             'settings' => $settings,
-        ])->assertCreated()->json('block.id');
+        ])->assertCreated();
+
+        $this->postJson('/api/admin/page-blocks/publish', [
+            'app' => $app,
+            'page' => 'home',
+            'version' => 1,
+        ])->assertOk();
 
         PageBlockRepository::bustAll();
         Cache::flush();
 
-        return PageBlock::query()->findOrFail($id);
+        return PageBlock::query()
+            ->where('app', $app)
+            ->where('page', 'home')
+            ->where('block_type', $type)
+            ->orderByDesc('id')
+            ->firstOrFail();
     }
 
     private function makeMedia(string $type): Media
