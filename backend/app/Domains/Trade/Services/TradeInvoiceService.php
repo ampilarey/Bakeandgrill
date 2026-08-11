@@ -490,6 +490,10 @@ final class TradeInvoiceService
 
         foreach ($deliveries as $delivery) {
             foreach ($delivery->lines as $line) {
+                // Caller already holds $delivery — associate instead of lazy-loading
+                // (or with('delivery'), which would re-query the parent).
+                $line->setRelation('delivery', $delivery);
+
                 $allocated = $this->exposure->allocatedQty($line->id);
                 $soldUnalloc = max(0, (int) $line->qty_sold - $this->allocatedKindQty($line->id, TradeInvoiceAllocation::KIND_SOLD));
                 $missingChargeable = 0;
@@ -620,6 +624,7 @@ final class TradeInvoiceService
     private function deliveryFullyAllocated(TradeDelivery $delivery, TradeAccount $account): bool
     {
         foreach ($delivery->lines as $line) {
+            $line->setRelation('delivery', $delivery);
             $cap = $this->exposure->invoiceableQty($line, $account);
             if ($cap <= 0) {
                 continue;

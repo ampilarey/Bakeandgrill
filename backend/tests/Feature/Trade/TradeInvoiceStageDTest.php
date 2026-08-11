@@ -630,4 +630,83 @@ class TradeInvoiceStageDTest extends TestCase
             'idempotency_key' => 'cap-'.uniqid(),
         ])->assertStatus(422);
     }
+
+    /**
+     * Why Stage D missed LazyLoadingViolationException on TradeDeliveryLine::$delivery:
+     * Illuminate\Database\Eloquent\Builder::hydrate() only copies the global
+     * preventLazyLoading flag onto instances when count($items) > 1. Single-delivery
+     * / single-line fixtures hydrate one row, so $line->delivery silently N+1'd.
+     * Invoicing two deliveries eager-loads 2+ lines → flag is on → exception.
+     */
+    #[Test]
+    public function invoiceable_qty_throws_when_delivery_relation_missing_on_multi_hydrate(): void
+    {
+        $d1 = $this->dispatchAndReconcile(5, 4, 1, 0);
+        $d2 = $this->dispatchAndReconcile(5, 4, 1, 0);
+
+        $lines = \App\Models\TradeDeliveryLine::query()
+            ->whereIn('id', [
+                (int) $d1->lines->first()->id,
+                (int) $d2->lines->first()->id,
+            ])
+            ->get();
+
+        $this->assertGreaterThanOrEqual(2, $lines->count());
+        $line = $lines->first();
+        $this->assertTrue($line->preventsLazyLoading, 'multi-hydrate must enable instance lazy-load prevention');
+        $this->assertFalse($line->relationLoaded('delivery'));
+
+        $this->expectException(\Illuminate\Database\LazyLoadingViolationException::class);
+        app(TradeCreditExposureService::class)->invoiceableQty($line, $this->account);
+    }
+
+    #[Test]
+    public function raising_one_invoice_for_two_deliveries_does_not_n_plus_one_delivery(): void
+    {
+        $d1 = $this->dispatchAndReconcile(5, 4, 1, 0);
+        $d2 = $this->dispatchAndReconcile(5, 3, 2, 0);
+
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        $byPkDeliverySelects = 0;
+        DB::listen(function ($q) use (&$byPkDeliverySelects) {
+            $sql = strtolower($q->sql);
+            // Per-line lazy load / with('delivery') lookup — not the initial whereIn load.
+            if (str_contains($sql, 'from "trade_deliveries"')
+                && str_contains($sql, 'where "trade_deliveries"."id"')
+                && ! str_contains($sql, 'where in')) {
+                $byPkDeliverySelects++;
+            }
+        });
+
+        $res = $this->postJson("/api/admin/trade-accounts/{$this->account->id}/invoices", [
+            'delivery_ids' => [$d1->id, $d2->id],
+            'idempotency_key' => 'inv-multi-'.uniqid(),
+        ])->assertCreated();
+
+        // 4 sold + 3 sold @ 5000 = 35000
+        $this->assertSame(35000, (int) $res->json('invoice.total_laar'));
+
+        // Aggregation associates the in-hand delivery (0 queries). Remaining PK
+        // selects come only from assertAllocationWithinCap's with('delivery') —
+        // one per allocation row (2 sold lines → 2), not one per aggregation touch.
+        // Pre-fix with lazy allowed: 2 (aggregation) + 2 (cap) = 4.
+        $this->assertLessThanOrEqual(
+            2,
+            $byPkDeliverySelects,
+            "expected ≤2 trade_deliveries PK selects after associating parent; got {$byPkDeliverySelects}",
+        );
+    }
+
+    #[Test]
+    public function ready_to_invoice_with_two_deliveries_does_not_lazy_load_delivery(): void
+    {
+        $this->dispatchAndReconcile(5, 4, 1, 0);
+        $this->dispatchAndReconcile(5, 3, 2, 0);
+
+        Sanctum::actingAs($this->owner, ['staff']);
+        $this->getJson("/api/admin/trade-accounts/{$this->account->id}/ready-to-invoice")
+            ->assertOk()
+            ->assertJsonPath('data.0.invoiceable_laar', fn ($v) => (int) $v > 0);
+    }
 }

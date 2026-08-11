@@ -19,8 +19,13 @@ test.describe('Part 7 — wholesale rehearsal (ordered scenario)', () => {
     assertLocalOnlyBaseUrl(baseURL);
     await enableSmsGlobalKillSwitch(request);
     // GST seller identity required before trade invoices post tax ledger rows.
+    // Do not reset sequences to 1 — prior local runs leave TI-2026-00001 etc.
     tinker(`
-\\App\\Models\\GstSetting::query()->updateOrCreate(['id' => 1], [
+$maxInv = (int) App\\Models\\Invoice::query()->count() + 50;
+$existing = (int) (App\\Models\\GstSetting::query()->value('next_invoice_sequence') ?? 1);
+$nextInv = max($existing, $maxInv, 1);
+$maxCn = max(1, (int) (App\\Models\\GstSetting::query()->value('next_credit_note_sequence') ?? 1));
+App\\Models\\GstSetting::query()->updateOrCreate(['id' => 1], [
   'seller_tin' => 'TIN-E2E',
   'taxable_activity_no' => 'TA-E2E',
   'seller_name' => 'Bake & Grill',
@@ -29,10 +34,10 @@ test.describe('Part 7 — wholesale rehearsal (ordered scenario)', () => {
   'accounting_basis' => 'invoice',
   'invoice_prefix' => 'TI',
   'credit_note_prefix' => 'CN',
-  'next_invoice_sequence' => 1,
-  'next_credit_note_sequence' => 1,
+  'next_invoice_sequence' => $nextInv,
+  'next_credit_note_sequence' => $maxCn,
 ]);
-echo 'gst-ok';
+echo 'gst-ok-'.$nextInv;
 `);
   });
 
@@ -51,7 +56,7 @@ $c->billing_address = 'Male';
 $c->is_active = true;
 $c->credit_enabled = true;
 $c->credit_status = 'active';
-$c->credit_limit_laar = 5_000_000;
+$c->credit_limit_laar = 5_000_000; // restore — 7.9 may have left limit=1
 $c->credit_balance_laar = 0;
 $c->credit_payment_terms_days = 30;
 $c->save();

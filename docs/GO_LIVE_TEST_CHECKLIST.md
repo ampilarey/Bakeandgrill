@@ -139,9 +139,9 @@ Only needed before you supply a real shop. **Automation is LOCAL ONLY** (stock /
 | 7.3 | Check the online menu after dispatch | Cannot sell the stock that went out | **AUTOMATED** | same |
 | 7.4 | Reconcile: some sold, some returned good, some spoiled | Good stock returns; spoiled logged as waste at cost | **AUTOMATED** | same |
 | 7.5 | **Deliberately report a wrong sold number** vs the count | Flagged as a mismatch. Cannot invoice until resolved | **AUTOMATED** | same |
-| 7.6 | Resolve the mismatch and invoice | One invoice, correct amount, shop's balance rises once | **AUTOMATED** — **FINDING:** invoice raise 500 `LazyLoadingViolationException` on `TradeDeliveryLine::$delivery` | same |
-| 7.7 | Take a **part** payment in cash | Balance right; appears in the shift close as a credit repayment | **AUTOMATED** (blocked by 7.6 FINDING) | same |
-| 7.8 | Check the P&L for the period | Wholesale revenue appears, separate from retail | **AUTOMATED** (blocked by 7.6 FINDING) | same |
+| 7.6 | Resolve the mismatch and invoice | One invoice, correct amount, shop's balance rises once | **AUTOMATED** | same |
+| 7.7 | Take a **part** payment in cash | Balance right; appears in the shift close as a credit repayment | **AUTOMATED** | same |
+| 7.8 | Check the P&L for the period | Wholesale revenue appears, separate from retail | **AUTOMATED** | same |
 | 7.9 | Try to dispatch beyond the credit limit | Refused, naming what is owed and what is held | **AUTOMATED** | same |
 
 ---
@@ -205,6 +205,5 @@ Local automation enables `sms_global_kill_switch` and expects `SMS_LIVE=false`. 
 
 - Destructive specs use Playwright `--project=local` + `LOCAL_BASE_URL=http://127.0.0.1:8000`.
 - SMS: `SMS_LIVE=false` and specs enable `sms_global_kill_switch` before mutating runs.
-- **FINDING (7.6/7.7):** `POST …/invoices` → 500 `LazyLoadingViolationException` (`TradeDeliveryLine` → `delivery`) in `TradeCreditExposureService::invoiceableQty`. Spec fails on purpose.
 - **FINDING (ops):** MariaDB rejects migration `2026_08_10_140000_stage_d_trade_invoicing` CHECK `payments_order_xor_invoice_chk` (error 1901). Local E2E used SQLite to boot; production/test MySQL path needs a migration fix separately.
 - **1.2:** skipped when BML returns 401 Unauthorized (no sandbox credentials) — no HTTP mock available.
