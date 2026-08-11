@@ -9,7 +9,7 @@ introduced a reusable sheet pattern that did not exist when this was written.
 |---|---|---|
 | Page chrome / structure | Uniform, leave alone | Unchanged. Still correct. |
 | Mobile tables | Handled by a catch-all; action: none | Confirmed. 55 pages carry tables, none need a wrapper. |
-| Shared modals on mobile | Not covered by the original audit | **Mostly handled** — `index.css:705` turns the SharedUI Modal into a bottom sheet with safe-area footer padding, and all 34 pages that render `<Modal>` inherit it. 6 hand-rolled overlays and 1 dead duplicate Modal do not — see §6.2. |
+| Shared modals on mobile | Not covered by the original audit | **Shipped for SharedUI Modal + the six page overlays** — bottom sheet, body-scroll lock, focus return, four-sided safe area, portal to `document.body`. `components/ui/Modal.tsx` still exists (used by `VideoStudioModal`) — see §6.2. |
 | Dark mode migration | 3,188 hex literals vs 3 variable usages | **647 hex literals vs 3,110 variable usages — roughly 83% done.** |
 | Stage 1 (lint + baseline + CLAUDE.md) | Proposed | **Shipped.** |
 
@@ -484,56 +484,38 @@ mode, which §5 identifies as the actual regression risk.
 Recommended order: do the Stage 3b visual walk first (it has still not been done), then decide
 Stage 3c, then migrate the twelve files above. Migrating before the walk means guessing.
 
-### 6.2 Six hand-rolled overlays skip the shared mobile treatment
+### 6.2 SharedUI Modal mobile treatment — shipped; `ui/Modal` still live
 
 The bottom-sheet block at `index.css:705` is scoped to `.modal-backdrop .modal-container`.
-`components/SharedUI.tsx:405` is the only component that renders `modal-backdrop`, so it is the
-only one the rule reaches. All 34 page files that render `<Modal>` resolve to it — either
-directly, or through the deprecated `components/Layout.tsx` re-export — so they all inherit the
-treatment correctly.
+`components/SharedUI.tsx` is still the only component that renders `modal-backdrop`.
 
-**Dead second Modal.** `components/ui/Modal.tsx` is a separate implementation, exported from
-`components/ui/index.ts` but imported by no page. Its root is Tailwind `fixed inset-0` with no
-`modal-backdrop` class, so the mobile rule cannot match it — yet the comment at line 46 states
-that `modal-container` "is the hook our global mobile @media rule targets so the dialog snaps to
-a full-width bottom sheet on phones." That is false for this component. It also hardcodes
-`bg-white`, relying on the `.bg-white` dark-mode hack §3a deliberately kept. Delete it, or fix
-the class and the comment. Leaving it is how someone imports it in six months and ships a modal
-that is broken on phones and in dark mode at the same time.
+**What shipped**
 
-Eight page files build their own `position: 'fixed'` overlay in an inline style, and those
-inherit nothing.
+1. **SharedUI Modal** now follows the `ContentEditorSheet` pattern: portals to `document.body`,
+   saves/restores `document.body.style.overflow` (so nested modals do not leave the page
+   permanently locked), focuses the close control on open and returns focus on close, and pads
+   safe-area insets on top/left/right on mobile (footer still owns `safe-area-inset-bottom`).
+   Desktop look (sizes, colours, borders, radii) is unchanged.
+2. **Six hand-rolled overlays converted** to SharedUI Modal (one commit each):
+   `OrdersPage`, `CustomersPage`, `WebhooksPage` (logs panel), `DeliveryPage` (order detail),
+   `MenuPage` recipe, `MenuPage` barcode label. Left alone as planned:
+   `ServiceAvailabilityPage` (toast), `MediaLibraryPage` (already full-screen via `useIsMobile`),
+   `MenuPage/ImageCropModal` (already `role="dialog"` full-screen).
+3. **Playwright coverage** — `e2e/tests/go-live/10-admin-shared-modal-overlays.spec.ts`
+   (`--project=local`) at 320 / 375 / 390. Asserts real layout only (no injected CSS): no
+   horizontal document overflow, close control inside the viewport, modal-container fits, body
+   scroll locked while open. Proven to go red when scroll-lock is removed and when the mobile
+   sheet is forced to `min-width: 3000px`.
 
-Two of the eight are fine and should be left alone:
+**Not deleted — plan was wrong about "imported by no page".**
+`components/ui/Modal.tsx` is still exported from `components/ui/index.ts` and **is imported by
+`components/VideoStudioModal.tsx`** (Tailwind `fixed inset-0`, no `modal-backdrop`, so the
+mobile sheet CSS never reaches it). Deleting it was blocked until VideoStudio is migrated to
+SharedUI Modal. Do not leave that migration half-done: either migrate + delete, or add
+`modal-backdrop` / drop the misleading comment.
 
-- `ServiceAvailabilityPage.tsx` — the fixed element is a toast, not a modal.
-- `MediaLibraryPage.tsx` — already branches on `useIsMobile` and goes full-screen with
-  `paddingBottom: 96`. This is the pattern the others should copy.
-- `MenuPage/ImageCropModal.tsx` — already full-screen with `role="dialog"` and `aria-modal`.
-
-The remaining six have a real mobile problem:
-
-| File | Overlay | Behaviour on a 320–390px phone |
-|---|---|---|
-| `OrdersPage.tsx` | right drawer, `width: min(420px, 100vw)` | Full width, but `padding: 24` on all sides and no safe-area inset — content runs under the home indicator. |
-| `CustomersPage.tsx` | right drawer, `width: min(480px, 100vw)` | Same. Also `zIndex: 40/50` as raw numbers rather than the `--z-*` scale. |
-| `WebhooksPage.tsx` | right panel, `maxWidth: 480`, `height: 100%` | Full width; no safe-area inset; raw `zIndex: 40`. |
-| `DeliveryPage.tsx` | centred card, `maxWidth: 480`, backdrop `padding: 24` | 48px of the 320px viewport is spent on backdrop padding. |
-| `MenuPage.tsx` (recipe) | centred card, `width: 90%`, `maxHeight: 80vh` | Cramped; `80vh` not `80dvh`, so the mobile browser chrome eats the bottom. |
-| `MenuPage.tsx` (barcode) | centred card, `width: 90%`, `maxWidth: 360` | Same. |
-
-Two defects are shared by **all six, and by the shared Modal as well**:
-
-1. **No body scroll lock.** Nothing in `src/pages` sets `document.body.style.overflow`. On a
-   phone, scrolling inside an open drawer scrolls the page behind it.
-2. **No safe-area insets except the shared Modal's footer.** No page-level overlay references
-   `env(safe-area-inset-*)` at all.
-
-`ContentEditorSheet.tsx`, built during the Content Hub mobile work, already solves both — it
-portals, locks body scroll and restores the previous value, moves focus to the close button and
-returns it to the trigger on close, and pads all four safe-area insets. **That component is the
-reference implementation.** The right fix is to lift its behaviour into the shared Modal and then
-convert the six, not to reimplement it six more times.
+**FINDING (app, not fixed here):** at **320px** the SharedUI Modal overlay specs fail
+`documentElement.scrollWidth` (~4px over). 375 / 390 are green.
 
 ### 6.3 There is no real layout test coverage — and one suite faked it
 
@@ -549,11 +531,13 @@ put in. **Overflow assertions belong in Playwright against a real browser at a r
 they belong nowhere.** A vitest suite may assert structure (the sheet mounted, focus moved, the
 draft label reads correctly); it may not assert pixels.
 
-Outstanding:
+Outstanding / shipped:
 
-- Replace the faked assertions with Playwright checks at 320 / 375 / 390px (in progress).
-- Sweep the other suites for the same pattern — any test that both writes CSS and measures it.
-- Once §6.2 lands, add one Playwright spec per converted overlay rather than per page.
+- ~~Replace the faked assertions with Playwright checks at 320 / 375 / 390px~~ **Done**
+  (`09-content-hub-mobile-layout.spec.ts`, `10-admin-shared-modal-overlays.spec.ts`).
+- Sweep the other suites for the same pattern — any test that both writes CSS and measures it
+  (Signage / ContentHub polish self-fulfilling asserts stripped earlier on this branch).
+- ~~Once §6.2 lands, add one Playwright spec per converted overlay~~ **Done**.
 
 ### 6.4 Two confirmed CSS defects, already fixed — noted so they are not reintroduced
 
@@ -567,13 +551,13 @@ Both were found by reading CSS, not by a test — which is the point of §6.3.
 ### 6.5 Sequencing
 
 1. **Stage 3b visual walk** — still not done, and §6.1 is blocked behind it.
-2. **Lift `ContentEditorSheet`'s behaviour into the SharedUI Modal** (scroll lock, focus
-   management, four-sided safe area). This improves all 34 pages in one change. Delete the dead
-   `components/ui/Modal.tsx` in the same commit so there is one Modal, not two.
-3. **Convert the six overlays in §6.2** to the SharedUI Modal, one commit each.
-4. **Real Playwright layout coverage** (§6.3), added alongside step 3 so each conversion ships
-   with a test that can actually fail.
+2. ~~**Lift `ContentEditorSheet`'s behaviour into the SharedUI Modal**~~ **Done** (scroll lock,
+   focus, four-sided safe area, portal). ~~Delete `components/ui/Modal.tsx`~~ **Blocked** —
+   `VideoStudioModal` still imports it; migrate that first, then delete.
+3. ~~**Convert the six overlays in §6.2**~~ **Done** (one commit per file / overlay).
+4. ~~**Real Playwright layout coverage**~~ **Done** for the six overlays
+   (`10-admin-shared-modal-overlays.spec.ts`). Content Hub coverage is in
+   `09-content-hub-mobile-layout.spec.ts`.
 5. **Stage 3c decision, then the twelve files in §6.1.**
-
-Steps 2 and 3 are worth more to a phone user than the whole of step 5. Dark mode is 83% done and
-mostly invisible in daylight; a drawer that scrolls the page behind it is felt every day.
+6. **Follow-ups from this pass:** migrate `VideoStudioModal` → SharedUI Modal and delete
+   `ui/Modal`; fix the real **320px** `scrollWidth` overflow (FINDING in §6.2 / §6.3).
