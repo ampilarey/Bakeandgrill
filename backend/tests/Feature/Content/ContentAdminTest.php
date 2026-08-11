@@ -213,17 +213,27 @@ class ContentAdminTest extends TestCase
     {
         $this->actingAsOwner();
 
+        // Order-app-only key cannot take a website override.
         $this->putJson('/api/admin/content', [
             'changes' => [
                 ['key' => 'menu_page_title', 'scope' => 'website', 'value' => 'Wrong app'],
             ],
         ])->assertUnprocessable();
 
+        // Website-only key cannot take an order_app override.
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'meta_title', 'scope' => 'shared', 'value' => 'Website only cannot be shared'],
+                ['key' => 'meta_title', 'scope' => 'order_app', 'value' => 'Wrong app'],
             ],
         ])->assertUnprocessable();
+
+        // Shared remains the seed/default layer even for website-targeted keys.
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'meta_title', 'scope' => 'shared', 'value' => 'Shared seed title'],
+            ],
+        ])->assertOk();
+        $this->assertSame('Shared seed title', SiteSetting::getScoped('meta_title', 'shared'));
     }
 
     public function test_schedule_and_import_use_content_validator(): void
