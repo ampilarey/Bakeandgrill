@@ -172,6 +172,7 @@
 
         @php
             $complaintForm = \App\Support\ComplaintFormPresenter::forReceipt($receipt);
+            $existingFeedback = $existingFeedback ?? $receipt->latestFeedback;
         @endphp
         @include('partials.document-mistake-cta', [
             'waHref' => $waLink.'?text='.rawurlencode($mistakeMsg),
@@ -180,34 +181,50 @@
             'complaintCategories' => $complaintForm['categories'],
             'complaintItems' => $complaintForm['items'],
             'complaintWindowClosed' => $complaintForm['window_closed'],
+            'existingComplaints' => $complaintForm['existing_complaints'],
+            'atOpenCap' => $complaintForm['at_open_cap'],
+            'canSubmitAnother' => $complaintForm['can_submit_another'],
         ])
 
         @if ($doc['show_feedback'])
-            <div class="doc-feedback" data-receipt-rating-root data-order-id="{{ $receipt->order_id }}">
+            <div class="doc-feedback" data-receipt-rating-root data-order-id="{{ $receipt->order_id }}" data-existing-rating="{{ $existingFeedback?->rating ?? '' }}">
                 <h3>Share feedback</h3>
-                <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/feedback') }}" data-rating-form>
+                @if ($existingFeedback)
+                    <div class="doc-feedback-current" data-rating-current>
+                        <p class="doc-feedback-label">Your rating</p>
+                        <div class="doc-feedback-current__stars" aria-label="{{ (int) $existingFeedback->rating }} out of 5">
+                            @for ($star = 1; $star <= 5; $star++)
+                                <span>{{ $star <= (int) $existingFeedback->rating ? '★' : '☆' }}</span>
+                            @endfor
+                        </div>
+                        <button type="button" class="doc-feedback-change" data-rating-change>Change rating</button>
+                    </div>
+                @endif
+                <form method="POST" action="{{ url('/receipts/' . $receipt->token . '/feedback') }}" data-rating-form @if ($existingFeedback) hidden @endif>
                     @csrf
                     <p class="doc-feedback-label">Tap a star</p>
                     <div class="doc-star-row" role="radiogroup" aria-label="Rating">
                         @for ($star = 1; $star <= 5; $star++)
                             <button
                                 type="button"
-                                class="doc-star"
+                                class="doc-star{{ $existingFeedback && (int) $existingFeedback->rating >= $star ? ' is-on' : '' }}"
                                 data-star="{{ $star }}"
                                 aria-label="{{ $star }} star{{ $star === 1 ? '' : 's' }}"
-                                aria-checked="false"
+                                aria-checked="{{ $existingFeedback && (int) $existingFeedback->rating === $star ? 'true' : 'false' }}"
                                 role="radio"
                             >★</button>
                         @endfor
                     </div>
-                    <input type="hidden" name="rating" id="rating" value="" required data-rating-input>
+                    <input type="hidden" name="rating" id="rating" value="{{ $existingFeedback?->rating ?? '' }}" required data-rating-input>
                     <label for="comments">Comments (optional)</label>
-                    <textarea name="comments" id="comments" rows="3" placeholder="Tell us how we did"></textarea>
+                    <textarea name="comments" id="comments" rows="3" placeholder="Tell us how we did">{{ $existingFeedback?->comments }}</textarea>
                     <div class="doc-actions" style="margin-top: 12px;">
-                        <button class="doc-btn doc-btn-primary" type="submit" data-rating-submit disabled>Submit feedback</button>
+                        <button class="doc-btn doc-btn-primary" type="submit" data-rating-submit @if (! $existingFeedback) disabled @endif>
+                            {{ $existingFeedback ? 'Update rating' : 'Submit feedback' }}
+                        </button>
                     </div>
                 </form>
-                <div class="doc-review-invite" data-review-invite hidden>
+                <div class="doc-review-invite" data-review-invite @if (! $existingFeedback || (int) $existingFeedback->rating < 4) hidden @endif>
                     <p>Glad you enjoyed it. Want to leave a <strong>public</strong> review? You’ll need to sign in — it’s optional.</p>
                     <a class="doc-btn doc-btn-primary" href="{{ url('/order/account') }}">Leave a public review</a>
                 </div>
@@ -231,6 +248,9 @@
             var input = root.querySelector('[data-rating-input]');
             var submit = root.querySelector('[data-rating-submit]');
             var invite = root.querySelector('[data-review-invite]');
+            var form = root.querySelector('[data-rating-form]');
+            var current = root.querySelector('[data-rating-current]');
+            var changeBtn = root.querySelector('[data-rating-change]');
             var stars = root.querySelectorAll('[data-star]');
 
             function paint(n) {
@@ -239,6 +259,15 @@
                     var on = v <= n;
                     btn.classList.toggle('is-on', on);
                     btn.setAttribute('aria-checked', v === n ? 'true' : 'false');
+                });
+            }
+
+            if (changeBtn && form && current) {
+                changeBtn.addEventListener('click', function () {
+                    current.hidden = true;
+                    form.hidden = false;
+                    var existing = parseInt(root.getAttribute('data-existing-rating') || '0', 10);
+                    if (existing) paint(existing);
                 });
             }
 

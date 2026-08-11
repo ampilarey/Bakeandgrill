@@ -134,7 +134,7 @@ class ComplaintStage3PhotosRatingsTest extends TestCase
         ], ['Accept' => 'application/json'])->assertCreated();
 
         $complaint = $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_FOOD_QUALITY,
+            'categories' => [Complaint::CATEGORY_FOOD_QUALITY],
             'photo_upload_id' => $upload->json('upload_id'),
             'idempotency_key' => 'photo-1',
         ])->assertCreated();
@@ -155,7 +155,7 @@ class ComplaintStage3PhotosRatingsTest extends TestCase
         ], ['Accept' => 'application/json'])->assertCreated();
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_WRONG_ITEM,
+            'categories' => [Complaint::CATEGORY_WRONG_ITEM],
             'photo_upload_id' => $upload->json('upload_id'),
             'idempotency_key' => 'photo-2',
         ])->assertCreated();
@@ -174,14 +174,14 @@ class ComplaintStage3PhotosRatingsTest extends TestCase
         $receipt = $this->paidReceipt();
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_MISSING_ITEM,
+            'categories' => [Complaint::CATEGORY_MISSING_ITEM],
             'photo_upload_id' => '00000000-0000-0000-0000-000000000099',
             'idempotency_key' => 'bad-photo',
         ])->assertCreated();
 
         $complaint = Complaint::query()->firstOrFail();
         $this->assertNull($complaint->photo_path);
-        $this->assertSame(Complaint::CATEGORY_MISSING_ITEM, $complaint->category);
+        $this->assertSame(Complaint::CATEGORY_MISSING_ITEM, $complaint->categoryList()[0]);
     }
 
     public function test_receipt_uses_stars_not_select_and_review_invite_is_optional(): void

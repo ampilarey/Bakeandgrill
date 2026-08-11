@@ -56,15 +56,19 @@ Two things we already know and must never ask for:
 Replace the WhatsApp-only CTA. The button keeps its place and its plain wording — "Something
 wrong with this receipt?" — but opens a short in-page form instead of WhatsApp.
 
-### 3.2 The form: tap a category, tap Send
+### 3.2 The form: tap categories, tap Send
 
-Revision 1 said tapping a category was enough to submit, then described choosing an item
-afterwards. That was contradictory, and a one-tap submit invites accidental complaints. The flow is:
+A customer can have two problems at once — a missing item **and** poor quality. The form stores
+a **list of categories** (`categories` JSON), not a single `category` column. There is no singular
+field kept alongside the list — one source of truth only.
 
-1. Tap a category.
+The flow is:
+
+1. Tap one or more categories (minimum 1, maximum 4 — more than that is noise).
 2. Tap a large **Send** button.
 
-Everything else is optional. Two taps, no typing, no accidents.
+Selected state must be obvious at a glance on a phone. Everything else is optional. No typing
+required. Accidental one-tap submits are still blocked by the separate Send step.
 
 **Categories:**
 
@@ -77,12 +81,29 @@ Everything else is optional. Two taps, no typing, no accidents.
 - Delivery problem — shown only on delivery orders
 - Something else
 
-**Optional, after the category (never required):**
+**Category-dependent rules use ANY / LONGEST, never “sole choice”:**
+
+- `needs_refund_review` if **any** selected category is billing-related (refund-review set).
+- Urgent food-safety alert if **any** selected category is food safety / allergy.
+- Complaint windows use the **longest** window among the selected categories, so billing on day
+  five is not blocked by a short food window bundled in the same report.
+
+One complaint still has **one** status, **one** internal note and **one** customer reply even
+with several categories. Do not build per-category resolution tracking.
+
+**Optional, after the categories (never required):**
 - **Which item(s)** — the receipt already lists them; show them as tap targets. Multiple
   selection allowed. Store both the order-item reference **and an immutable snapshot** of item
   name, quantity and price, so a later order edit cannot make the complaint unreadable.
 - **A photo** — one tap, opens the camera. Handled per §7.
 - **A comment** — collapsed by default, visibly secondary.
+
+**Closing the loop on the receipt.** The receipt and invoice pages always list that document’s
+own open and recently-resolved complaints (reference, categories, plain-word status, customer
+reply). At the open-complaint cap the list replaces a flat refusal, alongside WhatsApp. A token
+must never reveal another document’s complaints. After submit, confirmation shows the new
+reference, the same list, and a quiet “Report something else with this order” link when under
+the cap.
 
 ### 3.3 The confirmation must not over-promise
 
@@ -117,11 +138,16 @@ window (a day or two — the food is gone); billing errors deserve a long one (t
 Set both as settings, state them on the form when a window has closed, and let the owner change
 them without a deploy.
 
-### 3.7 Ratings stay, separately
+### 3.7 Ratings stay, separately — one per receipt, changeable
 
 The rating is the passive path and should not be tangled with complaints. Replace the `<select>`
 with five tappable stars. A 1 or 2 star rating opens the complaint form with "Something else"
 preselected. A 4 or 5 star rating leads to the review invitation described in §5.
+
+**One feedback row per receipt.** A second submission updates the existing row (unique constraint
+on `receipt_id` plus upsert in both `ReceiptPageController::feedback` and
+`Api\ReceiptController::feedback`). After rating, the page shows what they rated, with an option
+to change it. Complaints remain the opposite: separate events, separate records, up to the cap.
 
 ---
 
@@ -271,7 +297,7 @@ that should be a separate, deliberate decision.
 
 ---
 
-## 10. Status, history and permissions
+## 10. Status, history, notes and permissions
 
 **Statuses:** `new` → `in_progress` → `awaiting_customer` → `resolved`, plus `not_actionable`.
 
@@ -279,9 +305,24 @@ Terra proposed eight states including duplicate and spam. For a shop where the o
 complaints department, eight is a form to fill in rather than a tool. Five covers the real cases;
 add duplicate and spam only if volume ever justifies them.
 
-**Every status change records** who, when, an internal note, and a resolution note where
-applicable. Closing requires a resolution note — "resolved" with no explanation is how a
-complaint system rots. Full audit history is kept, plus the contact log from §3.4.
+**Two distinct note fields on a complaint:**
+
+| Field | Audience | Closing |
+|---|---|---|
+| `internal_note` | Staff only — never on any public page, never in any SMS | Optional |
+| `customer_reply` | Customer — shown on the receipt/invoice list and used as the resolution SMS body | **Required to close** |
+
+Existing `resolution_note` values migrate into `internal_note` (they were written as private). Do
+not publish them retroactively as customer replies. The contact log stays entirely internal — it
+records what staff did, not a message to anyone. The admin screen must label which field the
+customer will see.
+
+**Every status change records** who, when, the internal note, and the customer reply where
+applicable. Full audit history is kept, plus the contact log from §3.4.
+
+**Resolution SMS** uses the owner's `customer_reply` in place of generic wording. This replaces
+the existing resolution message; it does not add a third customer complaint SMS (still two
+complaint messages maximum).
 
 **Permissions.** Revision 1 said complaints should be visible in POS and admin. That needs
 control, because complaints carry customer contact details, photos and internal notes.

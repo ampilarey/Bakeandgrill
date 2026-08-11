@@ -10,7 +10,7 @@ export type ComplaintStatus =
 export type AdminComplaint = {
   id: number;
   reference_number: string;
-  category: string;
+  categories: string[];
   status: ComplaintStatus;
   comment?: string | null;
   has_photo?: boolean;
@@ -18,7 +18,8 @@ export type AdminComplaint = {
   refund_id?: number | null;
   is_food_safety: boolean;
   owner_alert_status: string;
-  resolution_note?: string | null;
+  internal_note?: string | null;
+  customer_reply?: string | null;
   created_at: string;
   order?: { id: number; order_number: string; total: number } | null;
   refund?: {
@@ -43,7 +44,7 @@ export type AdminComplaint = {
     from_status: string | null;
     to_status: string;
     internal_note?: string | null;
-    resolution_note?: string | null;
+    customer_reply?: string | null;
     created_at: string;
     changed_by?: { id: number; name?: string | null } | null;
   }>;
@@ -86,7 +87,7 @@ export async function getComplaint(id: number) {
 
 export async function updateComplaintStatus(
   id: number,
-  body: { status: ComplaintStatus; internal_note?: string; resolution_note?: string },
+  body: { status: ComplaintStatus; internal_note?: string; customer_reply?: string },
 ) {
   return req<{ complaint: AdminComplaint }>(`/complaints/${id}/status`, {
     method: 'PATCH',

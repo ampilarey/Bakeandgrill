@@ -19,13 +19,14 @@ class ReceiptPageController extends Controller
 
     public function show($token)
     {
-        $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds'])
+        $receipt = Receipt::with(['order.items.modifiers', 'order.payments', 'order.refunds', 'latestFeedback'])
             ->where('token', $token)
             ->firstOrFail();
 
         return view('receipt', [
             'receipt' => $receipt,
             'order' => $receipt->order,
+            'existingFeedback' => $receipt->latestFeedback,
         ]);
     }
 
@@ -55,12 +56,12 @@ class ReceiptPageController extends Controller
             return redirect()->back()->with('error', 'Feedback is available after payment.');
         }
 
-        $feedback = ReceiptFeedback::create([
-            'receipt_id' => $receipt->id,
-            'rating' => $request->validated()['rating'],
-            'comments' => $request->validated()['comments'] ?? null,
-            'submitted_at' => now(),
-        ]);
+        $validated = $request->validated();
+        $feedback = ReceiptFeedback::upsertForReceipt(
+            $receipt,
+            (int) $validated['rating'],
+            $validated['comments'] ?? null,
+        );
 
         // Bridge the previously dead form into the complaint notification path.
         $this->complaints->fromReceiptFeedback($receipt, $feedback);

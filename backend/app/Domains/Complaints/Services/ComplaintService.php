@@ -25,13 +25,13 @@ class ComplaintService
     ) {}
 
     /**
-     * @param  list<array{order_item_id?: int|null, item_name: string, quantity?: float|int, unit_price_laar?: int, line_total_laar?: int}>  $items
      * @param  array{
      *   receipt?: ?Receipt,
      *   invoice?: ?Invoice,
      *   order?: ?Order,
      *   source?: string,
-     *   category: string,
+     *   categories?: list<string>,
+     *   category?: string,
      *   comment?: ?string,
      *   photo_disk?: ?string,
      *   photo_path?: ?string,
@@ -57,16 +57,13 @@ class ComplaintService
             $order->loadMissing('customer');
         }
 
-        $category = (string) $data['category'];
-        $isFoodSafety = $category === Complaint::CATEGORY_FOOD_SAFETY;
-        $needsRefund = in_array($category, [
-            Complaint::CATEGORY_WRONG_AMOUNT,
-            Complaint::CATEGORY_BILL_WRONG_AMOUNT,
-        ], true);
+        $categories = $this->normalizeCategories($data);
+        $isFoodSafety = Complaint::categoriesIncludeFoodSafety($categories);
+        $needsRefund = Complaint::categoriesIncludeBilling($categories);
 
         [$photoDisk, $photoPath] = $this->resolvePhoto($data);
 
-        $complaint = DB::transaction(function () use ($data, $receipt, $invoice, $order, $category, $isFoodSafety, $needsRefund, $photoDisk, $photoPath) {
+        $complaint = DB::transaction(function () use ($data, $receipt, $invoice, $order, $categories, $isFoodSafety, $needsRefund, $photoDisk, $photoPath) {
             $complaint = Complaint::create([
                 'reference_number' => 'PENDING',
                 'receipt_id' => $receipt?->id,
@@ -75,7 +72,7 @@ class ComplaintService
                 'customer_id' => $order?->customer_id,
                 'receipt_feedback_id' => $data['receipt_feedback_id'] ?? null,
                 'source' => $data['source'] ?? ($invoice ? 'invoice' : 'receipt'),
-                'category' => $category,
+                'categories' => $categories,
                 'comment' => $data['comment'] ?? null,
                 'photo_disk' => $photoDisk,
                 'photo_path' => $photoPath,
@@ -128,6 +125,48 @@ class ComplaintService
 
     /**
      * @param  array<string, mixed>  $data
+     * @return list<string>
+     */
+    private function normalizeCategories(array $data): array
+    {
+        $raw = $data['categories'] ?? null;
+        if ($raw === null && isset($data['category'])) {
+            $raw = [$data['category']];
+        }
+        if (! is_array($raw)) {
+            throw ValidationException::withMessages([
+                'categories' => 'Select at least one category.',
+            ]);
+        }
+
+        $categories = [];
+        foreach ($raw as $c) {
+            if (! is_string($c)) {
+                continue;
+            }
+            $c = trim($c);
+            if ($c === '' || in_array($c, $categories, true)) {
+                continue;
+            }
+            $categories[] = $c;
+        }
+
+        if ($categories === []) {
+            throw ValidationException::withMessages([
+                'categories' => 'Select at least one category.',
+            ]);
+        }
+        if (count($categories) > Complaint::MAX_CATEGORIES) {
+            throw ValidationException::withMessages([
+                'categories' => 'Choose at most '.Complaint::MAX_CATEGORIES.' categories.',
+            ]);
+        }
+
+        return $categories;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
      * @return array{0: ?string, 1: ?string}  [disk, path]
      */
     private function resolvePhoto(array $data): array
@@ -176,7 +215,7 @@ class ComplaintService
             'receipt' => $receipt,
             'order' => $receipt->order,
             'source' => 'receipt_feedback',
-            'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+            'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
             'comment' => $comments !== ''
                 ? $comments
                 : "Receipt rating: {$rating}/5",
@@ -225,28 +264,33 @@ class ComplaintService
         string $toStatus,
         User $actor,
         ?string $internalNote = null,
-        ?string $resolutionNote = null,
+        ?string $customerReply = null,
     ): Complaint {
         if (! in_array($toStatus, Complaint::STATUSES, true)) {
             throw ValidationException::withMessages(['status' => 'Invalid status.']);
         }
 
         $closing = in_array($toStatus, Complaint::CLOSED_STATUSES, true);
-        if ($closing && (trim((string) $resolutionNote) === '')) {
+        $reply = is_string($customerReply) ? trim($customerReply) : '';
+        if ($closing && $reply === '') {
             throw ValidationException::withMessages([
-                'resolution_note' => 'A resolution note is required to close a complaint.',
+                'customer_reply' => 'A customer reply is required to close a complaint.',
             ]);
         }
 
         $from = $complaint->status;
+        $note = is_string($internalNote) ? trim($internalNote) : '';
 
-        DB::transaction(function () use ($complaint, $from, $toStatus, $actor, $internalNote, $resolutionNote, $closing) {
-            $complaint->status = $toStatus;
+        DB::transaction(function () use ($complaint, $from, $toStatus, $actor, $note, $reply, $closing) {
+            if ($note !== '') {
+                $complaint->internal_note = $note;
+            }
             if ($closing) {
-                $complaint->resolution_note = trim((string) $resolutionNote);
+                $complaint->customer_reply = $reply;
                 $complaint->resolved_at = now();
                 $complaint->resolved_by = $actor->id;
             }
+            $complaint->status = $toStatus;
             $complaint->save();
 
             ComplaintStatusHistory::create([
@@ -254,8 +298,8 @@ class ComplaintService
                 'from_status' => $from,
                 'to_status' => $toStatus,
                 'changed_by_user_id' => $actor->id,
-                'internal_note' => $internalNote,
-                'resolution_note' => $closing ? trim((string) $resolutionNote) : null,
+                'internal_note' => $note !== '' ? $note : null,
+                'customer_reply' => $closing ? $reply : null,
             ]);
         });
 

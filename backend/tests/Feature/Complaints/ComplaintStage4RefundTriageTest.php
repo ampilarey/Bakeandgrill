@@ -67,7 +67,7 @@ class ComplaintStage4RefundTriageTest extends TestCase
         $this->assertStringNotContainsString('RefundWorkflowService', (string) $serviceSrc);
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_WRONG_AMOUNT,
+            'categories' => [Complaint::CATEGORY_WRONG_AMOUNT],
             'idempotency_key' => 'billing-1',
         ])->assertCreated();
 
@@ -88,7 +88,7 @@ class ComplaintStage4RefundTriageTest extends TestCase
         $owner = $this->makeOwner(['phone' => '+9607700333']);
 
         $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
-            'category' => Complaint::CATEGORY_WRONG_AMOUNT,
+            'categories' => [Complaint::CATEGORY_WRONG_AMOUNT],
             'idempotency_key' => 'billing-2',
         ])->assertCreated();
 
@@ -122,7 +122,7 @@ class ComplaintStage4RefundTriageTest extends TestCase
         $owner = $this->makeOwner(['phone' => '+9607700444']);
 
         $this->postJson('/api/receipts/'.$a->token.'/complaints', [
-            'category' => Complaint::CATEGORY_WRONG_AMOUNT,
+            'categories' => [Complaint::CATEGORY_WRONG_AMOUNT],
             'idempotency_key' => 'billing-3',
         ])->assertCreated();
         $complaint = Complaint::query()->firstOrFail();

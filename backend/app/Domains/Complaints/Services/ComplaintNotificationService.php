@@ -8,7 +8,6 @@ use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
 use App\Models\Complaint;
 use App\Models\Customer;
-use App\Models\SmsLog;
 use App\Models\SmsTemplate;
 use App\Models\User;
 use App\Rules\MaldivesPhone;
@@ -55,7 +54,7 @@ class ComplaintNotificationService
         }
 
         $orderNumber = $complaint->order?->order_number ?? (string) ($complaint->order_id ?? 'n/a');
-        $categoryLabel = Complaint::categoryLabel($complaint->category);
+        $categoryLabel = Complaint::categoriesLabel($complaint->categoryList());
         $urgent = (bool) $complaint->is_food_safety;
         $slug = $urgent ? 'owner_complaint_received_urgent' : 'owner_complaint_received';
         $default = $urgent
@@ -137,26 +136,39 @@ class ComplaintNotificationService
             'customer_complaint_acknowledged',
             "Bake & Grill: we received your concern ({$complaint->reference_number}). We will look into it.",
             'complaint-ack:'.$complaint->id,
+            ['reference' => $complaint->reference_number],
         );
     }
 
     public function notifyCustomerResolved(Complaint $complaint): void
     {
+        $reply = is_string($complaint->customer_reply) ? trim($complaint->customer_reply) : '';
+        $default = $reply !== ''
+            ? "Bake & Grill ({$complaint->reference_number}): {$reply}"
+            : "Bake & Grill: your concern {$complaint->reference_number} has been resolved. Thank you for telling us.";
+
         $this->sendCustomerMessage(
             $complaint,
             'customer_complaint_resolved',
             'customer_complaint_resolved',
-            "Bake & Grill: your concern {$complaint->reference_number} has been resolved. Thank you for telling us.",
+            $default,
             'complaint-resolved:'.$complaint->id,
+            [
+                'reference' => $complaint->reference_number,
+                'customer_reply' => $reply,
+                'reply' => $reply,
+            ],
         );
     }
 
+    /** @param  array<string, string>  $vars */
     private function sendCustomerMessage(
         Complaint $complaint,
         string $templateSlug,
         string $type,
         string $defaultBody,
         string $idempotencyKey,
+        array $vars = [],
     ): void {
         $customer = $complaint->customer ?? $complaint->order?->customer;
         if ($customer instanceof Customer && $customer->sms_opt_out) {
@@ -168,9 +180,9 @@ class ComplaintNotificationService
             return;
         }
 
-        $body = $this->renderTemplate($templateSlug, [
+        $body = $this->renderTemplate($templateSlug, $vars === [] ? [
             'reference' => $complaint->reference_number,
-        ], $defaultBody);
+        ] : $vars, $defaultBody);
 
         try {
             $this->sms->send(new SmsMessage(

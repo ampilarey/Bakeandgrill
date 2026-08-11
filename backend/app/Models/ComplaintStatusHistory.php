@@ -15,7 +15,7 @@ class ComplaintStatusHistory extends Model
         'to_status',
         'changed_by_user_id',
         'internal_note',
-        'resolution_note',
+        'customer_reply',
     ];
 
     public function complaint(): BelongsTo
