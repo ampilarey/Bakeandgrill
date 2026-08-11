@@ -40,6 +40,8 @@ class TradeInvoiceController extends Controller
             $invoiceableLaar = 0;
             $missingQty = 0;
             foreach ($d->lines as $line) {
+                // Parent delivery is already in hand — avoid lazy-load / N+1.
+                $line->setRelation('delivery', $d);
                 $cap = $this->exposure->invoiceableQty($line, $account);
                 $left = max(0, $cap - $this->exposure->allocatedQty($line->id));
                 $invoiceableLaar += $left * (int) $line->unit_price_laar;

@@ -3,15 +3,18 @@
  */
 import { expect, type Page } from '@playwright/test';
 
-/** Customer token is set and header shows the expected local phone digits. */
+/**
+ * Customer session is live — header shows the expected local phone digits.
+ * Order app uses Sanctum session cookies (not localStorage bearer tokens).
+ */
 export async function waitForCustomerSession(page: Page, phone: string, timeout = 20_000): Promise<void> {
+  const local = phone.replace(/^\+?960/, '');
   await page.waitForFunction(
     (expectedPhone) => {
-      if (!localStorage.getItem('online_token')) return false;
       const header = document.querySelector('header');
       return header?.textContent?.includes(expectedPhone) ?? false;
     },
-    phone,
+    local,
     { timeout },
   );
 }
@@ -38,21 +41,29 @@ export async function waitForCheckoutReady(page: Page, timeout = 20_000): Promis
   ).toBeVisible({ timeout });
 }
 
-/** Inject token, reload, and wait until the customer session is live in the UI. */
+/**
+ * Establish a customer UI session.
+ * Prefer session cookies from a prior `page.request` password login.
+ * Legacy Bearer `token` is still injected into localStorage when provided
+ * (older staging builds); current builds rely on the cookie jar.
+ */
 export async function injectCustomerTokenAndWait(
   page: Page,
   token: string,
   phone: string,
 ): Promise<void> {
+  const local = phone.replace(/^\+?960/, '');
   await page.goto('/order/', { waitUntil: 'domcontentloaded' });
-  await page.evaluate(
-    ({ t, ph }: { t: string; ph: string }) => {
-      localStorage.setItem('online_token', t);
-      localStorage.setItem('online_customer_name', ph);
-      window.dispatchEvent(new Event('auth_change'));
-    },
-    { t: token, ph: phone },
-  );
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForCustomerSession(page, phone);
+  if (token) {
+    await page.evaluate(
+      ({ t, ph }: { t: string; ph: string }) => {
+        localStorage.setItem('online_token', t);
+        localStorage.setItem('online_customer_name', ph);
+        window.dispatchEvent(new Event('auth_change'));
+      },
+      { t: token, ph: local },
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+  await waitForCustomerSession(page, local);
 }
