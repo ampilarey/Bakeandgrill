@@ -163,47 +163,25 @@ function LogsDrawer({
   }, [subscription.id]);
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-      zIndex: 40, display: 'flex', justifyContent: 'flex-end',
-    }}>
-      <div style={{
-        background: 'var(--color-surface)', width: '100%', maxWidth: 480,
-        height: '100%', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px', borderBottom: '1px solid var(--color-border)',
-        }}>
-          <h2 style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
-            Logs — {subscription.name}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}
-          >
-            &times;
-          </button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {logsError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{logsError}</p>}
-          {loading ? <Spinner /> : logs.length === 0 ? (
-            <EmptyState message="No delivery attempts yet." />
-          ) : logs.map((log) => (
-            <div key={log.id} style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <StatusBadge status={log.status} />
-                <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--color-text-secondary)' }}>{log.event}</span>
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-muted)' }}>{log.response_code ?? '—'}</span>
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                {new Date(log.created_at).toLocaleString()}
-              </div>
+    <Modal title={`Logs — ${subscription.name}`} onClose={onClose} maxWidth={480}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {logsError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13 }}>{logsError}</p>}
+        {loading ? <Spinner /> : logs.length === 0 ? (
+          <EmptyState message="No delivery attempts yet." />
+        ) : logs.map((log) => (
+          <div key={log.id} style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <StatusBadge status={log.status} />
+              <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--color-text-secondary)' }}>{log.event}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--color-text-muted)' }}>{log.response_code ?? '—'}</span>
             </div>
-          ))}
-        </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+              {new Date(log.created_at).toLocaleString()}
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }
 
