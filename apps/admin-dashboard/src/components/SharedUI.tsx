@@ -5,6 +5,7 @@ import {
   Children, isValidElement, useEffect, useId, useRef, useState,
   type ButtonHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -409,7 +410,11 @@ export function Modal({
     };
   }, []);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  // Portal to body so position:fixed is not trapped by transformed ancestors
+  // (same approach as ContentEditorSheet). Desktop look is unchanged.
+  return createPortal(
     <div
       className="modal-backdrop"
       role="dialog"
@@ -454,7 +459,8 @@ export function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
