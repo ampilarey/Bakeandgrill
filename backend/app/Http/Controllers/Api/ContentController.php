@@ -6,17 +6,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
-use App\Domains\Content\ContentValidationService;
 use App\Domains\Content\ContentWriter;
 use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateContentRequest;
 use App\Http\Resources\ContentBlockResource;
+use App\Models\ContentDraft;
 use App\Models\ContentRevision;
-use App\Models\ContentSchedule;
 use App\Models\Media;
+use App\Models\ContentSchedule;
 use App\Models\SiteSetting;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
 use Illuminate\Http\JsonResponse;
@@ -34,7 +35,6 @@ class ContentController extends Controller
         private readonly ContentWriter $writer,
         private readonly VideoProcessor $videos,
         private readonly MediaLibraryService $library,
-        private readonly ContentValidationService $contentValidator,
     ) {}
 
     /**
@@ -121,23 +121,24 @@ class ContentController extends Controller
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
         ]);
         $locale = $data['locale'] ?? 'en';
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
 
-        $rows = ContentRevision::query()
-            ->where('is_draft', true)
+        $rows = ContentDraft::query()
+            ->where('user_id', $user->id)
             ->where('scope', $data['scope'])
             ->where('locale', $locale)
-            ->orderByDesc('id')
-            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'created_at']);
+            ->orderByDesc('updated_at')
+            ->get(['id', 'key', 'scope', 'locale', 'value', 'user_id', 'updated_at']);
 
         $draftMap = [];
         foreach ($rows as $row) {
-            // Newest draft wins per key.
-            if (!array_key_exists($row->key, $draftMap)) {
-                $draftMap[$row->key] = (string) ($row->value ?? '');
-            }
+            $draftMap[$row->key] = (string) ($row->value ?? '');
         }
 
-        $savedAt = $rows->first()?->created_at?->toIso8601String();
+        $savedAt = $rows->first()?->updated_at?->toIso8601String();
 
         return response()->json([
             'scope' => $data['scope'],
@@ -162,7 +163,11 @@ class ContentController extends Controller
         ]);
 
         $locale = $data['locale'] ?? 'en';
-        $userId = $request->user() instanceof \App\Models\User ? $request->user()->id : null;
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+        $userId = $user->id;
         $saved = [];
 
         DB::transaction(function () use ($data, $locale, $userId, &$saved): void {
@@ -178,28 +183,26 @@ class ContentController extends Controller
 
                 $value = ContentWriter::prepareValue($key, $value);
 
-                $draft = ContentRevision::query()
+                $draft = ContentDraft::query()
+                    ->where('user_id', $userId)
                     ->where('key', $key)
                     ->where('scope', $scope)
                     ->where('locale', $changeLocale)
-                    ->where('is_draft', true)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($draft) {
                     $draft->value = $value;
-                    $draft->user_id = $userId;
-                    $draft->created_at = now();
+                    $draft->version = ((int) $draft->version) + 1;
                     $draft->save();
                 } else {
-                    $draft = ContentRevision::query()->create([
+                    $draft = ContentDraft::query()->create([
+                        'user_id' => $userId,
                         'key' => $key,
                         'scope' => $scope,
                         'locale' => $changeLocale,
                         'value' => $value,
-                        'is_draft' => true,
-                        'published_at' => null,
-                        'user_id' => $userId,
-                        'created_at' => now(),
+                        'version' => 1,
                     ]);
                 }
 
@@ -209,7 +212,7 @@ class ContentController extends Controller
 
         $this->audit->log(
             action: 'content.draft_saved',
-            modelType: ContentRevision::class,
+            modelType: ContentDraft::class,
             modelId: null,
             oldValues: [],
             newValues: ['keys' => array_keys($saved)],
@@ -310,15 +313,11 @@ class ContentController extends Controller
             if (is_array($value) || is_object($value)) {
                 $value = json_encode($value, JSON_UNESCAPED_UNICODE);
             }
-            $key = (string) $change['key'];
-            $scope = (string) $change['scope'];
-            $changeLocale = (string) ($change['locale'] ?? $locale);
-            $value = $this->contentValidator->normalizeForWrite($key, $scope, $value);
             $row = ContentSchedule::query()->create([
-                'key' => $key,
-                'scope' => $scope,
-                'locale' => $changeLocale,
-                'value' => $value,
+                'key' => $change['key'],
+                'scope' => $change['scope'],
+                'locale' => $change['locale'] ?? $locale,
+                'value' => (string) $value,
                 'publish_at' => $publishAt,
                 'status' => ContentSchedule::STATUS_PENDING,
                 'user_id' => $request->user()?->id,
@@ -444,14 +443,11 @@ class ContentController extends Controller
                 if (is_array($value) || is_object($value)) {
                     $value = json_encode($value, JSON_UNESCAPED_UNICODE);
                 }
-                $key = (string) $entry['key'];
-                $scope = (string) $entry['scope'];
-                $value = $this->contentValidator->normalizeForWrite($key, $scope, $value);
-                $this->ensureRow($key, $scope, $locale);
+                $this->ensureRow($entry['key'], $entry['scope'], $locale);
                 $this->writer->write(
-                    $key,
-                    $scope,
-                    $value,
+                    $entry['key'],
+                    $entry['scope'],
+                    (string) $value,
                     $locale,
                     $request,
                     'content.imported',
@@ -474,35 +470,57 @@ class ContentController extends Controller
         if (!ContentRegistry::has($key) || !ContentRegistry::isShareable($key)) {
             return response()->json(['message' => 'Block cannot be shared.'], 422);
         }
-        $this->contentValidator->assertScopeAllowed($key, 'shared');
 
-        $locale = (string) $request->input('locale', 'en');
+        $data = $request->validate([
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'source' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'draft_action' => ['sometimes', 'nullable', 'string', Rule::in(['publish', 'discard', 'migrate'])],
+        ]);
 
-        foreach (['website', 'order_app'] as $scope) {
-            // Read DB existence first — getScoped() can return a stale forever-cache
-            // value after a prior delete that forgot to bust the key.
-            $hadValue = SiteSetting::hasScopedValue($key, $scope, $locale);
-            $old = $hadValue ? SiteSetting::getScoped($key, $scope, $locale) : null;
-            // Always clearScoped: drops empty rows and kills stale cache entries.
-            // Do not delete files — Media Library owns asset lifecycle (B7).
-            SiteSetting::clearScoped($key, $scope, $locale);
-            if ($hadValue) {
-                $this->audit->log(
-                    action: 'content.shared',
-                    modelType: SiteSetting::class,
-                    modelId: null,
-                    oldValues: ['value' => $old, 'scope' => $scope],
-                    newValues: [],
-                    meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale],
-                    request: $request,
-                );
-            }
+        $locale = $data['locale'] ?? 'en';
+        $source = $data['source'];
+        if (in_array($source, ContentRegistry::APPS, true) && ! ContentRegistry::targetsApp($key, $source)) {
+            return response()->json(['message' => 'Selected source is not available for this block.'], 422);
         }
+
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $draftAction = $data['draft_action'] ?? null;
+        if ($draftAction === null && $this->hasUserDrafts($user->id, $key, $locale)) {
+            return $this->draftConflictResponse();
+        }
+
+        DB::transaction(function () use ($key, $locale, $source, $request, $user, $draftAction): void {
+            $migratedDrafts = $draftAction === 'migrate'
+                ? $this->collectDraftMigration($user->id, $key, $locale, 'same', $source)
+                : [];
+            $this->applyDraftAction($draftAction, $user->id, $key, $locale, $request);
+
+            $value = $this->resolvedValueForSource($key, $source, $locale);
+            $this->ensureRow($key, 'shared', $locale);
+            $this->writer->write($key, 'shared', $value, $locale, $request, 'content.shared', [
+                'source' => $source,
+            ], false);
+
+            foreach (ContentRegistry::APPS as $scope) {
+                // Do not delete files — Media Library owns asset lifecycle (B7).
+                if (SiteSetting::hasScopedValue($key, $scope, $locale)) {
+                    $old = SiteSetting::getScoped($key, $scope, $locale);
+                    $this->snapshotRevision($key, $scope, $locale, (string) $old, $request);
+                }
+                SiteSetting::clearScoped($key, $scope, $locale);
+            }
+
+            $this->restoreMigratedDrafts($user->id, $key, $locale, $migratedDrafts);
+        });
 
         SiteSetting::bust();
 
         return response()->json([
-            'message' => 'Overrides removed; block is shared.',
+            'message' => 'Source copied; block is shared.',
             'blocks' => ContentBlockResource::collectionFromRegistry($locale),
         ]);
     }
@@ -512,26 +530,51 @@ class ContentController extends Controller
         if (!ContentRegistry::has($key) || !ContentRegistry::isShareable($key)) {
             return response()->json(['message' => 'Block cannot be split.'], 422);
         }
-        $this->contentValidator->assertScopeAllowed($key, 'shared');
 
-        $locale = (string) $request->input('locale', 'en');
-        $shared = SiteSetting::getScoped($key, 'shared', $locale);
-        if ($shared === null || $shared === '') {
-            $shared = (string) (ContentRegistry::default($key) ?? '');
+        $data = $request->validate([
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'draft_action' => ['sometimes', 'nullable', 'string', Rule::in(['publish', 'discard', 'migrate'])],
+        ]);
+
+        $locale = $data['locale'] ?? 'en';
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        foreach (ContentRegistry::appsFor($key) as $app) {
-            // Use DB existence, not getScoped() — a stale forever-cache after
-            // share/clearAppOverrides used to make this loop a no-op while the
-            // hub still showed "Same in both".
-            if (SiteSetting::hasScopedValue($key, $app, $locale)) {
-                continue;
+        $draftAction = $data['draft_action'] ?? null;
+        if ($draftAction === null && $this->hasUserDrafts($user->id, $key, $locale)) {
+            return $this->draftConflictResponse();
+        }
+
+        DB::transaction(function () use ($key, $locale, $request, $user, $draftAction): void {
+            $migratedDrafts = $draftAction === 'migrate'
+                ? $this->collectDraftMigration($user->id, $key, $locale, 'different')
+                : [];
+            $this->applyDraftAction($draftAction, $user->id, $key, $locale, $request);
+
+            foreach (ContentRegistry::appsFor($key) as $app) {
+                // Use DB existence, not getScoped() — a stale forever-cache after
+                // share/clearAppOverrides used to make this loop a no-op while the
+                // hub still showed "Same in both".
+                if (SiteSetting::hasScopedValue($key, $app, $locale)) {
+                    continue;
+                }
+                // Drop empty/stale rows and cache before resolving, otherwise a
+                // stale app-scope forever cache can beat the shared value.
+                SiteSetting::clearScoped($key, $app, $locale);
+                // Copy each app's resolved value for the active locale. In DV this
+                // preserves resolver fallback (app DV → shared DV → app EN → shared EN).
+                $resolved = ContentResolver::for($app, $locale)->get($key);
+                $value = ($resolved !== null && $resolved !== '')
+                    ? (string) $resolved
+                    : (string) (ContentRegistry::default($key) ?? '');
+                $this->ensureRow($key, $app, $locale);
+                $this->writer->write($key, $app, $value, $locale, $request, 'content.split');
             }
-            // Drop empty/stale rows so write creates a clean override.
-            SiteSetting::clearScoped($key, $app, $locale);
-            $this->ensureRow($key, $app, $locale);
-            $this->writer->write($key, $app, $shared, $locale, $request, 'content.split');
-        }
+
+            $this->restoreMigratedDrafts($user->id, $key, $locale, $migratedDrafts);
+        });
 
         SiteSetting::bust();
 
@@ -811,6 +854,159 @@ class ContentController extends Controller
             // Catalog registration is required when available, but uploads must not fail
             // if an older install is mid-migration or the media table is temporarily unavailable.
             return null;
+        }
+    }
+
+    private function hasUserDrafts(int $userId, string $key, string $locale): bool
+    {
+        return ContentDraft::query()
+            ->where('user_id', $userId)
+            ->where('key', $key)
+            ->where('locale', $locale)
+            ->exists();
+    }
+
+    private function draftConflictResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Unpublished drafts exist for this block. Publish or discard them before changing Same/Different mode.',
+        ], 409);
+    }
+
+    private function resolvedValueForSource(string $key, string $source, string $locale): string
+    {
+        if (in_array($source, ContentRegistry::APPS, true)) {
+            $value = ContentResolver::for($source, $locale)->get($key);
+        } else {
+            $value = SiteSetting::getScoped($key, 'shared', $locale);
+        }
+
+        return ($value !== null && $value !== '')
+            ? (string) $value
+            : (string) (ContentRegistry::default($key) ?? '');
+    }
+
+    private function snapshotRevision(string $key, string $scope, string $locale, string $value, Request $request): void
+    {
+        ContentRevision::query()->create([
+            'key' => $key,
+            'scope' => $scope,
+            'locale' => $locale,
+            'value' => $value,
+            'is_draft' => false,
+            'published_at' => now(),
+            'user_id' => $request->user() instanceof User ? $request->user()->id : null,
+            'created_at' => now(),
+        ]);
+    }
+
+    private function applyDraftAction(?string $action, int $userId, string $key, string $locale, Request $request): void
+    {
+        if ($action === null || $action === 'migrate') {
+            return;
+        }
+
+        $drafts = ContentDraft::query()
+            ->where('user_id', $userId)
+            ->where('key', $key)
+            ->where('locale', $locale)
+            ->lockForUpdate()
+            ->get();
+
+        if ($action === 'discard') {
+            foreach ($drafts as $draft) {
+                $draft->delete();
+            }
+
+            return;
+        }
+
+        foreach ($drafts as $draft) {
+            $this->ensureRow($key, (string) $draft->scope, $locale);
+            $this->writer->write(
+                $key,
+                (string) $draft->scope,
+                (string) ($draft->value ?? ''),
+                $locale,
+                $request,
+                'content.draft_published',
+                ['mode_change' => true],
+                false,
+            );
+        }
+
+        ContentDraft::query()
+            ->where('user_id', $userId)
+            ->where('key', $key)
+            ->where('locale', $locale)
+            ->delete();
+    }
+
+    /**
+     * @return list<array{scope: string, value: string}>
+     */
+    private function collectDraftMigration(
+        int $userId,
+        string $key,
+        string $locale,
+        string $mode,
+        ?string $source = null,
+    ): array {
+        $drafts = ContentDraft::query()
+            ->where('user_id', $userId)
+            ->where('key', $key)
+            ->where('locale', $locale)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('scope');
+
+        if ($drafts->isEmpty()) {
+            return [];
+        }
+
+        if ($mode === 'same') {
+            $sourceDraft = $source ? $drafts->get($source) : null;
+            $draft = $sourceDraft ?? $drafts->get('shared') ?? $drafts->get('website') ?? $drafts->get('order_app');
+
+            return $draft ? [['scope' => 'shared', 'value' => (string) ($draft->value ?? '')]] : [];
+        }
+
+        $rows = [];
+        $sharedDraft = $drafts->get('shared');
+        foreach (ContentRegistry::appsFor($key) as $app) {
+            $draft = $drafts->get($app) ?? $sharedDraft;
+            if ($draft) {
+                $rows[] = ['scope' => $app, 'value' => (string) ($draft->value ?? '')];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param list<array{scope: string, value: string}> $drafts
+     */
+    private function restoreMigratedDrafts(int $userId, string $key, string $locale, array $drafts): void
+    {
+        if ($drafts === []) {
+            return;
+        }
+
+        ContentDraft::query()
+            ->where('user_id', $userId)
+            ->where('key', $key)
+            ->where('locale', $locale)
+            ->delete();
+
+        foreach ($drafts as $draft) {
+            ContentDraft::query()->create([
+                'user_id' => $userId,
+                'key' => $key,
+                'scope' => $draft['scope'],
+                'locale' => $locale,
+                'value' => ContentWriter::prepareValue($key, $draft['value']),
+                'version' => 1,
+            ]);
         }
     }
 
