@@ -153,11 +153,9 @@ final class ContentWriter
     private function clearAppOverrides(string $key, string $locale): void
     {
         foreach (ContentRegistry::APPS as $appScope) {
-            $query = SiteSetting::query()->where('key', $key)->where('scope', $appScope);
-            if (SiteSetting::hasLocaleColumn()) {
-                $query->where('locale', $locale);
-            }
-            $query->delete();
+            // clearScoped forgets the forever cache — bare delete left stale
+            // getScoped() values that blocked Content Hub "Different per app".
+            SiteSetting::clearScoped($key, $appScope, $locale);
         }
     }
 }

@@ -575,10 +575,26 @@ export function ContentHubPage() {
       const { blocks: nextBlocks } = next === 'same'
         ? await shareContentBlock(block.key, locale)
         : await splitContentBlock(block.key, locale);
+      if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
+        error('Could not update content mode — empty response');
+        return;
+      }
       setBlocks(nextBlocks);
-      success('Content mode updated');
-    } catch {
-      error('Could not update content mode');
+      const updated = nextBlocks.find((b) => b.key === block.key);
+      const nextState = updated ? linkState(updated) : null;
+      if (nextState !== next) {
+        error(
+          next === 'different'
+            ? 'Could not switch to different per app. Try again, or contact support if it keeps failing.'
+            : 'Could not switch to same in both. Try again.',
+        );
+        return;
+      }
+      success(next === 'different'
+        ? 'Website and order app can now differ — use the tabs below'
+        : 'Same content on website and order app');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Could not update content mode');
     } finally {
       setLinkingKey(null);
     }
@@ -754,19 +770,20 @@ export function ContentHubPage() {
         ) : null}
         <div className="hub-content-mode-options" role="radiogroup" aria-label="Content mode">
           {(['same', 'different'] as const).map((mode) => (
-            <label
+            <button
               key={mode}
+              type="button"
+              role="radio"
+              aria-checked={state === mode}
+              aria-label={mode === 'same' ? 'Same in both' : 'Different per app'}
+              disabled={busy}
               className={`hub-content-mode-option${state === mode ? ' hub-content-mode-option--active' : ''}`}
+              data-testid={`content-mode-${block.key}-${mode}`}
+              onClick={() => void changeContentMode(block, mode)}
             >
-              <input
-                type="radio"
-                name={`content-mode-${block.key}`}
-                checked={state === mode}
-                disabled={busy}
-                onChange={() => void changeContentMode(block, mode)}
-              />
+              <span className="hub-content-mode-dot" aria-hidden />
               {mode === 'same' ? 'Same in both' : 'Different per app'}
-            </label>
+            </button>
           ))}
         </div>
       </div>
