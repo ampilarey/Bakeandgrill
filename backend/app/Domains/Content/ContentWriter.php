@@ -60,6 +60,14 @@ final class ContentWriter
             }
         }
 
+        // Publishing to "shared" while website/order_app overrides linger makes the
+        // new value invisible on the public site (resolver prefers app scope).
+        // Clear those overrides so "Same in both" edits actually show — same as
+        // ContentController::share(), but applied on every shared write.
+        if ($scope === 'shared' && ContentRegistry::isShareable($key) && ! ContentRegistry::isSyncedAcrossApps($key)) {
+            $this->clearAppOverrides($key, $locale);
+        }
+
         // hero_slides is the sole source of truth — blank legacy slots so an
         // empty array cannot resurrect old hero_slide_1/2/3 on the public site.
         if ($key === 'hero_slides') {
@@ -139,6 +147,17 @@ final class ContentWriter
             foreach (['hero_slide_1', 'hero_slide_2', 'hero_slide_3'] as $legacyKey) {
                 SiteSetting::set($legacyKey, '{}', $clearScope, $locale);
             }
+        }
+    }
+
+    private function clearAppOverrides(string $key, string $locale): void
+    {
+        foreach (ContentRegistry::APPS as $appScope) {
+            $query = SiteSetting::query()->where('key', $key)->where('scope', $appScope);
+            if (SiteSetting::hasLocaleColumn()) {
+                $query->where('locale', $locale);
+            }
+            $query->delete();
         }
     }
 }

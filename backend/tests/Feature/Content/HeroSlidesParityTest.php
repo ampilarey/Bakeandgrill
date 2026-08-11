@@ -202,4 +202,55 @@ class HeroSlidesParityTest extends TestCase
         $this->assertStringContainsString('Fresh Slide', $html);
         $this->assertStringNotContainsString('Legacy Ghost', $html);
     }
+
+    public function test_publishing_hero_slides_to_shared_clears_stale_app_overrides(): void
+    {
+        $this->actingAsOwner();
+
+        // Stale per-app rows (e.g. from E2E or a prior "Different per app" mode)
+        // previously won over shared, so a new shared photo never appeared.
+        SiteSetting::set('hero_slides', json_encode([[
+            'image' => '/images/old-override.jpg',
+            'title' => 'Stale Override',
+            'eyebrow' => '',
+            'subtitle' => '',
+            'cta_text' => 'Order',
+            'cta_url' => '/order/',
+        ]]), 'website');
+        SiteSetting::set('hero_slides', json_encode([[
+            'image' => '/images/old-override.jpg',
+            'title' => 'Stale Override',
+            'eyebrow' => '',
+            'subtitle' => '',
+            'cta_text' => 'Order',
+            'cta_url' => '/order/',
+        ]]), 'order_app');
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [[
+                'key' => 'hero_slides',
+                'scope' => 'shared',
+                'value' => json_encode([[
+                    'image' => '/images/cafe/Bajiya.png',
+                    'title' => 'Shared Fresh Photo',
+                    'eyebrow' => '',
+                    'subtitle' => '',
+                    'cta_text' => 'Order',
+                    'cta_url' => '/order/',
+                    'cta2_text' => 'Menu',
+                    'cta2_url' => '/menu',
+                ]]),
+            ]],
+        ])->assertOk();
+
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringContainsString('Shared Fresh Photo', $html);
+        $this->assertStringContainsString('/images/cafe/Bajiya.png', $html);
+        $this->assertStringNotContainsString('Stale Override', $html);
+        $this->assertStringNotContainsString('old-override.jpg', $html);
+    }
 }
