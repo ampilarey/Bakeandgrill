@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Content;
 
+use App\Models\ContentDraft;
 use App\Models\ContentRevision;
 use App\Models\SiteSetting;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Support\ContentSanitizer;
 use Illuminate\Http\Request;
@@ -17,7 +19,6 @@ final class ContentWriter
 {
     public function __construct(
         private readonly AuditLogService $audit,
-        private readonly ContentValidationService $validator,
     ) {}
 
     public function write(
@@ -28,8 +29,8 @@ final class ContentWriter
         ?Request $request = null,
         string $auditAction = 'content.updated',
         array $extraMeta = [],
+        bool $clearSharedOverrides = true,
     ): void {
-        $value = $this->validator->normalizeForWrite($key, $scope, $value);
         $value = self::prepareValue($key, $value);
 
         $old = SiteSetting::getScoped($key, $scope, $locale);
@@ -42,7 +43,7 @@ final class ContentWriter
                 'value' => $old,
                 'is_draft' => false,
                 'published_at' => now(),
-                'user_id' => $request?->user() instanceof \App\Models\User
+                'user_id' => $request?->user() instanceof User
                     ? $request->user()->id
                     : null,
                 'created_at' => now(),
@@ -66,7 +67,7 @@ final class ContentWriter
         // new value invisible on the public site (resolver prefers app scope).
         // Clear those overrides so "Same in both" edits actually show — same as
         // ContentController::share(), but applied on every shared write.
-        if ($scope === 'shared' && ContentRegistry::isShareable($key) && ! ContentRegistry::isSyncedAcrossApps($key)) {
+        if ($clearSharedOverrides && $scope === 'shared' && ContentRegistry::isShareable($key) && ! ContentRegistry::isSyncedAcrossApps($key)) {
             $this->clearAppOverrides($key, $locale);
         }
 
@@ -77,12 +78,25 @@ final class ContentWriter
         }
 
         // Promote / clear any autosaved draft for this key.
-        ContentRevision::query()
-            ->where('key', $key)
-            ->where('scope', $scope)
-            ->where('locale', $locale)
-            ->where('is_draft', true)
-            ->delete();
+        $userId = $request?->user() instanceof User ? $request->user()->id : null;
+        if ($userId !== null) {
+            ContentDraft::query()
+                ->where('user_id', $userId)
+                ->where('key', $key)
+                ->where('scope', $scope)
+                ->where('locale', $locale)
+                ->delete();
+        }
+
+        if ($userId !== null) {
+            ContentRevision::query()
+                ->where('user_id', $userId)
+                ->where('key', $key)
+                ->where('scope', $scope)
+                ->where('locale', $locale)
+                ->where('is_draft', true)
+                ->delete();
+        }
 
         $this->audit->log(
             action: $auditAction,
