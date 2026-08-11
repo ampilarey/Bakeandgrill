@@ -55,7 +55,9 @@ export function LivePreviewFrame({ url, loading }: Props) {
       }}>
         {loading || !url ? (
           <p style={{ color: 'var(--color-text-muted)', fontSize: 13, alignSelf: 'center' }}>
-            {loading ? 'Refreshing preview…' : 'Publish or save a draft to preview.'}
+            {loading
+              ? 'Refreshing preview…'
+              : 'Preview updates as you edit. Publish to make live for customers.'}
           </p>
         ) : (
           <iframe

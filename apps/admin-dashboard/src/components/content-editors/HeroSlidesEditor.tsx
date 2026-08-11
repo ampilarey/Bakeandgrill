@@ -1,12 +1,12 @@
 import { useRef, useState, type CSSProperties } from 'react';
-import { Clapperboard, Film, Images } from 'lucide-react';
+import { Clapperboard, EyeOff, Film, Images } from 'lucide-react';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { ContentImageField, type ContentImageUploadResult } from './ContentImageField';
 import { MediaPicker } from '../MediaPicker';
 import { VideoStudioModal } from '../VideoStudioModal';
 import type { MediaAsset } from '../../api';
-import { Button } from '../ui';
+import { Button, Toggle } from '../ui';
 
 export type HeroSlideRow = {
   image: string;
@@ -16,6 +16,11 @@ export type HeroSlideRow = {
   image_alt?: string;
   /** Overlay darkness 0–100 (100 = current default wash). */
   dim?: number | string;
+  /**
+   * Customer visibility. Absent or true = Showing (legacy slides stay live).
+   * Explicit false = Hidden — kept in admin, skipped by website + order app.
+   */
+  showing?: boolean;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -26,6 +31,11 @@ export type HeroSlideRow = {
   video?: string;
   video_poster?: string;
 };
+
+/** Absent flag means visible — matches HeroSlides::isSlideShowing / order app. */
+export function isHeroSlideShowing(slide: { showing?: boolean }): boolean {
+  return slide.showing !== false;
+}
 
 export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
   uploadImage?: (cropped: File, original: File) => Promise<ContentImageUploadResult>;
@@ -39,6 +49,7 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
 
 const emptySlide = (): HeroSlideRow => ({
   image: '',
+  showing: true,
   eyebrow: '',
   title: '',
   subtitle: '',
@@ -201,8 +212,54 @@ export function HeroSlidesEditor({
         itemLabel="slide"
         renderItem={(slide, idx, update) => {
           const dim = Math.max(0, Math.min(100, Number(slide.dim ?? 100)));
+          const showing = isHeroSlideShowing(slide);
           return (
-            <>
+            <div
+              data-testid={`hero-slide-${idx}`}
+              data-showing={showing ? 'true' : 'false'}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                opacity: showing ? 1 : 0.72,
+              }}
+            >
+              <div
+                data-testid={`hero-slide-visibility-${idx}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  border: showing
+                    ? '1px solid var(--color-border)'
+                    : '1px solid var(--color-warning)',
+                  background: showing ? 'var(--color-bg)' : 'var(--color-warning-bg)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  {!showing ? <EyeOff size={14} color="var(--color-warning-strong)" aria-hidden /> : null}
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+                      {showing ? 'Showing' : 'Hidden'}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                      {showing
+                        ? 'Customers can see this slide.'
+                        : 'Kept here for editing — customers will not see it.'}
+                    </p>
+                  </div>
+                </div>
+                <Toggle
+                  checked={showing}
+                  onChange={(next) => update({ showing: next })}
+                  size="sm"
+                />
+              </div>
+
               {uploadImage ? (
                 <ContentImageField
                   imageUrl={slide.image || ''}
@@ -406,7 +463,7 @@ export function HeroSlidesEditor({
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           );
         }}
       />

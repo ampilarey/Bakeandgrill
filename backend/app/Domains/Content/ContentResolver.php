@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Resolves content per app (+locale):
  * app+locale → shared+locale → app+en → shared+en → registry default.
+ *
+ * Empty-value rule (all keys, including json-type):
+ * - `null` or `''` means absent → fall through to the next scope in the chain.
+ * - Any other stored string is present and wins — including JSON empty arrays
+ *   (`"[]"`). An app-scoped empty array is a deliberate “show nothing here”
+ *   override of shared content, not a missing value. Admin Content Hub warns
+ *   when an app holds `[]` while shared still has items.
  */
 final class ContentResolver
 {
@@ -64,7 +71,8 @@ final class ContentResolver
 
         foreach ($this->lookupChain($key) as [$scope, $locale]) {
             $val = SiteSetting::getScoped($key, $scope, $locale);
-            if ($val !== null && $val !== '') {
+            // Present = not null and not ''. "[]" and other JSON empties win.
+            if ($this->isPresentScopedValue($val)) {
                 return $val;
             }
         }
@@ -75,6 +83,17 @@ final class ContentResolver
         }
 
         return $default;
+    }
+
+    /**
+     * Whether a scoped row should stop the lookup chain.
+     *
+     * Only null / empty string fall through. Empty JSON arrays ("[]") are
+     * intentional overrides for json-type keys and must not fall through.
+     */
+    private function isPresentScopedValue(mixed $val): bool
+    {
+        return $val !== null && $val !== '';
     }
 
     /**

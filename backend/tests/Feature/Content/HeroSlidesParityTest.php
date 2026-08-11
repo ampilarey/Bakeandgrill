@@ -170,6 +170,95 @@ class HeroSlidesParityTest extends TestCase
         $this->assertStringContainsString('Title B', $html);
     }
 
+    public function test_hidden_slide_is_skipped_but_absent_flag_stays_visible(): void
+    {
+        $slides = $this->sampleSlides();
+        $slides[0]['showing'] = false;
+        // slide 1 has no showing key — must still render
+        SiteSetting::set('hero_slides', json_encode($slides), 'shared');
+
+        $resolved = HeroSlides::resolve(static function (string $key, mixed $default) {
+            return SiteSetting::getScoped($key, 'shared', 'en') ?? $default;
+        });
+        $this->assertSame(['Title B'], array_column($resolved, 'title'));
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringNotContainsString('Title A', $html);
+        $this->assertStringContainsString('Title B', $html);
+    }
+
+    public function test_hiding_all_slides_matches_empty_hero_fallback(): void
+    {
+        $slides = $this->sampleSlides();
+        $slides[0]['showing'] = false;
+        $slides[1]['showing'] = false;
+        SiteSetting::set('hero_slides', json_encode($slides), 'shared');
+
+        $resolved = HeroSlides::resolve(static function (string $key, mixed $default) {
+            return SiteSetting::getScoped($key, 'shared', 'en') ?? $default;
+        });
+        $this->assertSame([], $resolved);
+
+        $emptyResolved = HeroSlides::resolve(static function (string $key, mixed $default) {
+            if ($key === 'hero_slides') {
+                return '[]';
+            }
+
+            return $default;
+        });
+        $this->assertSame($emptyResolved, $resolved);
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringNotContainsString('Title A', $html);
+        $this->assertStringNotContainsString('Title B', $html);
+    }
+
+    public function test_hidden_slide_survives_publish_round_trip(): void
+    {
+        $this->actingAsOwner();
+
+        $payload = [[
+            'image' => '/storage/keep-me.jpg',
+            'title' => 'Parked Slide',
+            'eyebrow' => 'Keep',
+            'subtitle' => 'Still editable',
+            'cta_text' => 'Order',
+            'cta_url' => '/order/',
+            'cta2_text' => 'Menu',
+            'cta2_url' => '/menu',
+            'showing' => false,
+        ], [
+            'image' => '/storage/live.jpg',
+            'title' => 'Live Slide',
+            'eyebrow' => '',
+            'subtitle' => '',
+            'cta_text' => 'Order',
+            'cta_url' => '/order/',
+            'cta2_text' => 'Menu',
+            'cta2_url' => '/menu',
+        ]];
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [[
+                'key' => 'hero_slides',
+                'scope' => 'shared',
+                'value' => json_encode($payload),
+            ]],
+        ])->assertOk();
+
+        $stored = json_decode((string) SiteSetting::getScoped('hero_slides', 'shared', 'en'), true);
+        $this->assertIsArray($stored);
+        $this->assertFalse($stored[0]['showing']);
+        $this->assertSame('/storage/keep-me.jpg', $stored[0]['image']);
+        $this->assertSame('Parked Slide', $stored[0]['title']);
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $this->assertStringNotContainsString('Parked Slide', $html);
+        $this->assertStringContainsString('Live Slide', $html);
+        $this->assertStringContainsString('/storage/live.jpg', $html);
+    }
+
     public function test_publishing_hero_slides_clears_legacy_slots(): void
     {
         $this->actingAsOwner();

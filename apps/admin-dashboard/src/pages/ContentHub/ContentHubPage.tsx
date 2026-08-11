@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
+  AlertCircle, CheckCircle2, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -210,6 +210,60 @@ function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): Co
 
 function scopeHasDraft(scope: ContentScope, key: string, drafts: DraftMap): boolean {
   return drafts[draftKey(scope, key)] !== undefined;
+}
+
+/** Stored/draft value for a scope only — does not fall through to shared. */
+function storedValueForScope(
+  block: ContentBlock,
+  scope: ContentScope,
+  drafts: DraftMap,
+): string | null {
+  const key = draftKey(scope, block.key);
+  if (drafts[key] !== undefined) return drafts[key];
+  if (scope === 'website') return block.website;
+  if (scope === 'order_app') return block.order_app;
+  return block.shared;
+}
+
+function isEmptyJsonArrayValue(value: string | null | undefined): boolean {
+  if (value === null || value === undefined) return false;
+  const trimmed = value.trim();
+  if (trimmed === '') return false;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    return Array.isArray(parsed) && parsed.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+function isNonEmptyJsonArrayValue(value: string | null | undefined): boolean {
+  if (value === null || value === undefined) return false;
+  try {
+    const parsed = JSON.parse(value.trim()) as unknown;
+    return Array.isArray(parsed) && parsed.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * App-scoped empty JSON arrays are deliberate "show nothing" overrides (see
+ * ContentResolver). Warn when that hides a non-empty shared value.
+ */
+function emptyArrayMasksShared(
+  block: ContentBlock,
+  scope: ContentScope,
+  drafts: DraftMap,
+): boolean {
+  if (block.type !== 'json') return false;
+  if (scope !== 'website' && scope !== 'order_app') return false;
+  const scoped = storedValueForScope(block, scope, drafts);
+  if (!isEmptyJsonArrayValue(scoped)) return false;
+  const shared = storedValueForScope(block, 'shared', drafts)
+    ?? block.shared
+    ?? null;
+  return isNonEmptyJsonArrayValue(shared);
 }
 
 function isDeprecatedBlock(block: ContentBlock): boolean {
@@ -684,9 +738,20 @@ export function ContentHubPage() {
     if (!canChooseContentMode(block)) return null;
     const state = linkState(block);
     const busy = linkingKey === block.key;
+    const isHero = block.key === 'hero_slides';
     return (
-      <div className="hub-content-mode" data-testid={`content-mode-${block.key}`}>
-        <div className="hub-content-mode-label">Content</div>
+      <div
+        className={`hub-content-mode${isHero ? ' hub-content-mode--hero' : ''}`}
+        data-testid={`content-mode-${block.key}`}
+      >
+        <div className="hub-content-mode-label">
+          {isHero ? 'Website & order app' : 'Content'}
+        </div>
+        {isHero ? (
+          <p className="hub-content-mode-hint">
+            Same banners everywhere, or different slides on the website vs the order app.
+          </p>
+        ) : null}
         <div className="hub-content-mode-options" role="radiogroup" aria-label="Content mode">
           {(['same', 'different'] as const).map((mode) => (
             <label
@@ -1054,13 +1119,44 @@ export function ContentHubPage() {
     const showCopyFromOtherApp = canChooseContentMode(block) && linkState(block) === 'different';
     const copyFromScope = otherAppScope(activeScope);
 
+    const emptyOverrideScopes = (['website', 'order_app'] as const).filter((scope) =>
+      emptyArrayMasksShared(block, scope, drafts),
+    );
+    const emptyArrayBanner = emptyOverrideScopes.length > 0 ? (
+      <div
+        className="hub-empty-array-warning"
+        data-testid={`empty-array-override-${block.key}`}
+        role="status"
+      >
+        <AlertCircle size={16} aria-hidden />
+        <div>
+          <strong>This app is set to show nothing</strong>
+          {' — '}
+          {emptyOverrideScopes.map((s) => labelForScope(s)).join(' & ')}
+          {' '}
+          has an empty list, so customers on
+          {emptyOverrideScopes.length === 1 ? ' that app' : ' those apps'}
+          {' '}
+          will not see the shared content. That is intentional. Clear the empty list
+          or switch to “Same in both” if you meant to use the shared version.
+        </div>
+      </div>
+    ) : null;
+
+    const wrappedEditor = (
+      <>
+        {emptyArrayBanner}
+        {editorContent}
+      </>
+    );
+
     return (
       <BlockCard
         key={`${block.key}-${locale}`}
         block={block}
         locale={locale}
         modeControl={modeControl}
-        editor={editorContent}
+        editor={wrappedEditor}
         booleanControl={booleanControl}
         onOpenHistory={() => void openHistory(block, activeScope)}
         historyOpen={historyOpen}
@@ -1214,15 +1310,37 @@ export function ContentHubPage() {
         ))}
       </div>
 
-      {/* Draft status */}
-      <span data-testid="draft-save-status" className="hub-draft-status">
-        {autosaving
-          ? 'Saving draft…'
-          : lastSavedAt
-            ? `Draft saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-            : dirtyCount > 0
-              ? 'Unsaved draft'
-              : 'All published'}
+      {/* Publish status — unpublished must not read as “done” */}
+      <span
+        data-testid="draft-save-status"
+        className={`hub-draft-status${dirtyCount > 0 ? ' hub-draft-status--unpublished' : ' hub-draft-status--live'}`}
+        role="status"
+      >
+        {dirtyCount > 0 ? (
+          <>
+            <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
+            <span className="hub-draft-status-text">
+              <span className="hub-draft-status-primary">
+                {dirtyCount} change{dirtyCount === 1 ? '' : 's'} not yet live
+              </span>
+              <span className="hub-draft-status-secondary">
+                {autosaving
+                  ? 'Saving… customers still see the old version'
+                  : lastSavedAt
+                    ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString()} — not live yet`
+                    : 'Not live yet — customers still see the old version'}
+              </span>
+            </span>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 size={14} aria-hidden className="hub-draft-status-icon" />
+            <span className="hub-draft-status-text">
+              <span className="hub-draft-status-primary">All published</span>
+              <span className="hub-draft-status-secondary">Customers see the live version</span>
+            </span>
+          </>
+        )}
       </span>
 
       {/* Desktop preview dock toggle — mobile keeps the sheet button */}
@@ -1238,9 +1356,19 @@ export function ContentHubPage() {
         </button>
       ) : null}
 
-      {/* Publish */}
-      <Btn onClick={() => void publish()} disabled={saving || dirtyCount === 0} className="content-studio-publish-desktop">
-        <Save size={16} /> {saving ? 'Publishing…' : `Publish${dirtyCount ? ` (${dirtyCount})` : ''}`}
+      {/* Publish — next step when there are unpublished changes */}
+      <Btn
+        onClick={() => void publish()}
+        disabled={saving || dirtyCount === 0}
+        className={`content-studio-publish-desktop${dirtyCount > 0 ? ' content-studio-publish-desktop--needed' : ''}`}
+        data-testid="publish-live-btn"
+      >
+        <Save size={16} />
+        {saving
+          ? 'Publishing…'
+          : dirtyCount > 0
+            ? `Publish to make live (${dirtyCount})`
+            : 'Publish'}
       </Btn>
 
       {/* ⋯ More */}
@@ -1425,12 +1553,20 @@ export function ContentHubPage() {
           </div>
         )}
 
-        {/* Sticky mobile publish bar */}
+        {/* Sticky mobile publish bar — same “not live yet” wording as header */}
         {dirtyCount > 0 ? (
-          <div className="content-studio-sticky-bar" role="region" aria-label="Unsaved changes">
-            <span className="content-studio-sticky-bar-label">{dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}</span>
-            <Btn onClick={() => void publish()} disabled={saving} style={{ flex: 1 }}>
-              <Save size={16} /> {saving ? 'Publishing…' : `Publish (${dirtyCount})`}
+          <div className="content-studio-sticky-bar" role="region" aria-label="Changes not yet live">
+            <span className="content-studio-sticky-bar-label">
+              {dirtyCount} change{dirtyCount === 1 ? '' : 's'} not yet live
+            </span>
+            <Btn
+              onClick={() => void publish()}
+              disabled={saving}
+              style={{ flex: 1 }}
+              data-testid="publish-live-btn-mobile"
+              className="content-studio-publish-sticky"
+            >
+              <Save size={16} /> {saving ? 'Publishing…' : `Publish to make live (${dirtyCount})`}
             </Btn>
           </div>
         ) : null}

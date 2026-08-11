@@ -122,6 +122,11 @@ export interface HeroSlideRow {
   image_alt?: string;
   /** Overlay darkness 0–100 (100 = default wash). */
   dim?: number | string;
+  /**
+   * Customer visibility. Absent or true = Showing.
+   * Explicit false = Hidden (admin keeps the slide; carousels skip it).
+   */
+  showing?: boolean;
   eyebrow?: string;
   title?: string;
   subtitle?: string;
@@ -203,16 +208,22 @@ function parseTrustItems(raw: string | undefined | null): TrustItemRow[] {
   return parseJsonArray(raw, DEFAULT_TRUST_ITEMS);
 }
 
-function isRenderableHeroSlide(slide: unknown): slide is HeroSlideRow {
+/** Absent `showing` means visible — parity with HeroSlides::isSlideShowing. */
+export function isHeroSlideShowing(slide: { showing?: boolean }): boolean {
+  return slide.showing !== false;
+}
+
+export function isRenderableHeroSlide(slide: unknown): slide is HeroSlideRow {
   if (!slide || typeof slide !== 'object') return false;
   const row = slide as HeroSlideRow;
+  if (!isHeroSlideShowing(row)) return false;
   const title = String(row.title ?? '').trim();
   const image = String(row.image ?? '').trim();
   const video = String((row as HeroSlideRow & { video?: string }).video ?? '').trim();
   return title !== '' || image !== '' || video !== '';
 }
 
-function parseHeroSlides(rawMap: Record<string, string | undefined>): HeroSlideRow[] {
+export function parseHeroSlides(rawMap: Record<string, string | undefined>): HeroSlideRow[] {
   const arrayRaw = rawMap.hero_slides;
   // A JSON array (including []) is authoritative — do not resurrect legacy keys.
   if (arrayRaw !== undefined && arrayRaw !== null && String(arrayRaw).trim() !== '') {

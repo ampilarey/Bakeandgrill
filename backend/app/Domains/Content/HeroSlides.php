@@ -60,10 +60,29 @@ final class HeroSlides
         return json_encode(array_values($slides), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
     }
 
+    /**
+     * Per-slide visibility. Absent `showing` means visible so legacy slides stay live.
+     *
+     * @param  mixed  $slide
+     */
+    public static function isSlideShowing(mixed $slide): bool
+    {
+        if (! is_array($slide)) {
+            return false;
+        }
+
+        // Explicit false only — null/missing/true all mean Showing.
+        return ! array_key_exists('showing', $slide) || $slide['showing'] !== false;
+    }
+
     /** @param mixed $slide */
     public static function isRenderableSlide(mixed $slide): bool
     {
         if (! is_array($slide)) {
+            return false;
+        }
+
+        if (! self::isSlideShowing($slide)) {
             return false;
         }
 

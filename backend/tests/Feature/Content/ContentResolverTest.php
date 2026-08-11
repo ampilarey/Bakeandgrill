@@ -66,4 +66,47 @@ class ContentResolverTest extends TestCase
             $this->assertTrue(ContentRegistry::isPublic((string) $key), "non-public key leaked: {$key}");
         }
     }
+
+    /**
+     * Pin: empty JSON arrays at app scope are deliberate "show nothing" overrides.
+     * They must win over shared content for every json-type key (not only hero_slides).
+     */
+    public function test_empty_json_array_at_app_scope_overrides_shared(): void
+    {
+        $sharedHero = json_encode([[
+            'title' => 'Shared slide',
+            'image' => '/shared.jpg',
+        ]], JSON_UNESCAPED_SLASHES);
+        $sharedTrust = json_encode([[
+            'icon' => '★',
+            'heading' => 'Shared trust',
+            'subtext' => 'Keep me',
+        ]], JSON_UNESCAPED_UNICODE);
+
+        SiteSetting::set('hero_slides', $sharedHero, 'shared');
+        SiteSetting::set('hero_slides', '[]', 'website');
+        SiteSetting::set('trust_items', $sharedTrust, 'shared');
+        SiteSetting::set('trust_items', '[]', 'order_app');
+
+        $this->assertSame('[]', ContentResolver::for('website')->get('hero_slides'));
+        $this->assertSame($sharedHero, ContentResolver::for('order_app')->get('hero_slides'));
+
+        $this->assertSame('[]', ContentResolver::for('order_app')->get('trust_items'));
+        $this->assertSame($sharedTrust, ContentResolver::for('website')->get('trust_items'));
+
+        // Decoded empty array — still "show nothing", never fall through to shared.
+        $this->assertSame([], ContentResolver::for('website')->json('hero_slides', ['fallback']));
+        $this->assertSame([], ContentResolver::for('order_app')->json('trust_items', ['fallback']));
+    }
+
+    public function test_null_app_scope_still_falls_through_to_shared(): void
+    {
+        $sharedHero = json_encode([['title' => 'Only shared', 'image' => '/a.jpg']], JSON_UNESCAPED_SLASHES);
+        SiteSetting::set('hero_slides', $sharedHero, 'shared');
+        // No website row at all.
+        SiteSetting::query()->where('key', 'hero_slides')->where('scope', 'website')->delete();
+        SiteSetting::bust();
+
+        $this->assertSame($sharedHero, ContentResolver::for('website')->get('hero_slides'));
+    }
 }

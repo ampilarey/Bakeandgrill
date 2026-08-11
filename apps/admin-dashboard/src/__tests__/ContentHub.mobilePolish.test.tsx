@@ -265,9 +265,10 @@ describe('ContentHub mobile polish — systemic', () => {
     openSection('Hero');
     await screen.findByTestId('section-editor');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/^Content/);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Website & order app/);
     expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Same in both/);
     expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Different per app/);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/different slides/i);
 
     fireEvent.click(screen.getByTestId('section-rail-Homepage'));
     await waitFor(() => {

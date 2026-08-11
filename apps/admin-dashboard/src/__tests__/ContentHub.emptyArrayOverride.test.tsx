@@ -1,0 +1,88 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
+import type { ContentBlock } from '../api/content';
+import * as contentApi from '../api/content';
+
+vi.mock('../api/content', () => ({
+  getContentBlocks: vi.fn(),
+  getContentSchedules: vi.fn(async () => ({ schedules: [] })),
+  getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
+  saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
+  updateContent: vi.fn(async () => ({ blocks: [] })),
+  shareContentBlock: vi.fn(),
+  splitContentBlock: vi.fn(),
+  copyContentBlock: vi.fn(),
+  copyContentSection: vi.fn(),
+  uploadContentImage: vi.fn(),
+  exportContent: vi.fn(),
+  importContent: vi.fn(),
+  getContentRevisions: vi.fn(async () => ({ revisions: [] })),
+  restoreContentRevision: vi.fn(),
+  scheduleContent: vi.fn(),
+  cancelContentSchedule: vi.fn(),
+  createContentPreviewToken: vi.fn(async () => ({
+    token: 't', website_url: '/p', order_app_url: '/o', expires_in: 900,
+  })),
+  uploadContentVideo: vi.fn(),
+}));
+
+vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('../components/ui', async () => {
+  const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
+  return {
+    ...actual,
+    useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+  };
+});
+vi.mock('../components/MediaPicker', () => ({
+  MediaPicker: () => null,
+}));
+
+const heroBlock: ContentBlock = {
+  key: 'hero_slides',
+  label: 'Hero slides',
+  group: 'Hero',
+  type: 'json',
+  editor: 'hero',
+  apps: ['website', 'order_app'],
+  shareable: true,
+  public: true,
+  shared: JSON.stringify([{ title: 'Shared', image: '/shared.jpg' }]),
+  website: '[]',
+  order_app: null,
+  resolved_website: '[]',
+  resolved_order_app: JSON.stringify([{ title: 'Shared', image: '/shared.jpg' }]),
+  state: 'split',
+  link_state: 'different',
+};
+
+describe('Content Hub empty JSON array override warning', () => {
+  beforeEach(() => {
+    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
+      locale: 'en',
+      locales: ['en', 'dv'],
+      blocks: [heroBlock],
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('warns when website holds [] while shared still has slides', async () => {
+    render(
+      <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('block-card-hero_slides')).toBeTruthy());
+    const banner = screen.getByTestId('empty-array-override-hero_slides');
+    expect(banner.textContent).toMatch(/show nothing/i);
+    expect(banner.textContent).toMatch(/Website/);
+    expect(banner.textContent).toMatch(/shared/i);
+  });
+});
