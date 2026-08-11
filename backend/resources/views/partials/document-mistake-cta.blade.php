@@ -152,13 +152,28 @@
 
         if (!sendBtn || !endpoint) return;
 
+        function readCookie(name) {
+            var parts = (';' + document.cookie).split('; ' + name + '=');
+            if (parts.length < 2) return null;
+            return parts.pop().split(';').shift() || null;
+        }
+
         function csrfHeaders(extra) {
             var csrf = document.querySelector('meta[name="csrf-token"]');
             var headers = Object.assign({
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
             }, extra || {});
-            if (csrf) headers['X-CSRF-TOKEN'] = csrf.getAttribute('content');
+            if (csrf && csrf.getAttribute('content')) {
+                headers['X-CSRF-TOKEN'] = csrf.getAttribute('content');
+            }
+            // Sanctum/Laravel also accept the encrypted XSRF-TOKEN cookie value.
+            var xsrf = readCookie('XSRF-TOKEN');
+            if (xsrf) {
+                try { headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrf); } catch (e) {
+                    headers['X-XSRF-TOKEN'] = xsrf;
+                }
+            }
             return headers;
         }
 

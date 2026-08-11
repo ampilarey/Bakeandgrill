@@ -71,8 +71,25 @@ class ComplaintStage2FormTest extends TestCase
         $this->assertStringContainsString('data-complaint-send', $html);
         $this->assertStringContainsString('data-complaint-cat', $html);
         $this->assertStringContainsString('Something wrong with this receipt?', $html);
+        $this->assertStringContainsString('name="csrf-token"', $html);
         // Category buttons are type=button; Send starts disabled until a category is chosen.
         $this->assertMatchesRegularExpression('/data-complaint-send[^>]*disabled/', $html);
+    }
+
+    public function test_public_complaint_submit_does_not_require_csrf_token(): void
+    {
+        $receipt = $this->paidReceipt();
+
+        // Simulate a browser same-origin fetch from the receipt page with no CSRF header.
+        // Sanctum statefulApi() would 419 this without the bootstrap except list.
+        $this->withHeader('Origin', config('app.url'))
+            ->withHeader('Referer', rtrim((string) config('app.url'), '/').'/receipts/'.$receipt->token)
+            ->postJson('/api/receipts/'.$receipt->token.'/complaints', [
+                'category' => Complaint::CATEGORY_SOMETHING_ELSE,
+                'idempotency_key' => 'no-csrf',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('complaint.category', Complaint::CATEGORY_SOMETHING_ELSE);
     }
 
     public function test_double_submit_idempotency_creates_one_complaint(): void

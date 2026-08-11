@@ -56,6 +56,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/auth/staff/*',
             'api/deploy/test-pull',
+            // Public receipt/invoice complaint form — auth is the document token,
+            // not a session. Sanctum statefulApi() would otherwise 419 same-origin
+            // fetch from /receipts|/invoices pages that have no CSRF meta/cookie dance.
+            'api/receipts/*/complaints',
+            'api/receipts/*/complaint-photos',
+            'api/invoices/*/complaints',
+            'api/invoices/*/complaint-photos',
         ]);
 
         $middleware->alias([
