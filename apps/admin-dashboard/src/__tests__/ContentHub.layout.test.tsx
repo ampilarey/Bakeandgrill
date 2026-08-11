@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -247,7 +247,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 
-  it('tapping a section card opens editor; back button returns to overview', async () => {
+  it('tapping a section card opens editor sheet; close returns to overview', async () => {
     render(
       <MemoryRouter>
         <ContentHubPage />
@@ -259,20 +259,23 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
 
     // SectionEditor not visible yet
     expect(screen.queryByTestId('section-editor')).toBeNull();
+    expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
 
     // Click Contact card
     const contactCard = screen.getByTestId('section-card-Contact');
     fireEvent.click(contactCard);
 
-    // Editor appears
-    await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Contact');
+    // Full-screen sheet with section editor
+    const sheet = await screen.findByTestId('content-editor-sheet');
+    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Contact');
+    expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
 
-    // Press back
-    fireEvent.click(screen.getByTestId('section-editor-back'));
+    // Close sheet
+    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     // Editor disappears
     await waitFor(() => {
+      expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
       expect(screen.queryByTestId('section-editor')).toBeNull();
     });
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -92,8 +92,13 @@ describe('Content Hub content-mode buttons (mobile)', () => {
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('hero_slides', 'en');
     });
+
+    // Compact mobile overview keeps Same/Different on the card; scope tabs
+    // appear inside the hero editor sheet after Edit.
+    fireEvent.click(screen.getByTestId('edit-hero_slides'));
+    const heroSheet = await screen.findByTestId('hero-editor-sheet');
     await waitFor(() => {
-      expect(screen.getByTestId('scope-tabs-hero_slides')).toBeTruthy();
+      expect(within(heroSheet).getByTestId('scope-tabs-hero_slides')).toBeTruthy();
     });
   });
 });
