@@ -156,7 +156,16 @@ export async function uploadContentImage(
   file: File,
   original?: File,
   locale: ContentLocale = 'en',
-): Promise<{ url: string; thumb_url?: string; original_url?: string | null }> {
+): Promise<{
+  url: string;
+  thumb_url?: string;
+  original_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
+  media_id?: number | null;
+  id?: number | null;
+  embed?: boolean;
+}> {
   const { prepareImageForUpload } = await import('../utils/prepareUpload');
   const prepared = await prepareImageForUpload(file);
   const preparedOriginal = original ? await prepareImageForUpload(original) : undefined;
@@ -177,7 +186,17 @@ export async function uploadContentVideo(
   poster?: File | null,
   locale: ContentLocale = 'en',
   posterUrl?: string,
-): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
+): Promise<{
+  url: string;
+  poster_url: string;
+  thumb_url?: string;
+  original_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
+  media_id?: number | null;
+  id?: number | null;
+  embed?: boolean;
+}> {
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);

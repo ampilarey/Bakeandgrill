@@ -7,19 +7,21 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentWriter;
+use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateContentRequest;
 use App\Http\Resources\ContentBlockResource;
 use App\Models\ContentRevision;
 use App\Models\ContentSchedule;
+use App\Models\Media;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
-use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -30,6 +32,7 @@ class ContentController extends Controller
         private readonly MenuImageProcessor $processor,
         private readonly ContentWriter $writer,
         private readonly VideoProcessor $videos,
+        private readonly MediaLibraryService $library,
     ) {}
 
     /**
@@ -625,33 +628,25 @@ class ContentController extends Controller
             ? '/storage/' . ltrim($thumb['webp_path'], '/')
             : null;
 
-        if ($isDirectImage) {
-            $old = SiteSetting::getScoped($key, $scope, $locale);
-            $this->ensureRow($key, $scope, $locale);
-            $this->writer->write($key, $scope, $url, $locale, $request, 'content.uploaded');
+        $media = $this->registerContentAsset(
+            path: $processed['path'],
+            request: $request,
+            title: ContentRegistry::label($key),
+            thumbUrl: $thumbUrl,
+            originalUrl: $originalUrl,
+            imageWebpUrl: $imageWebpUrl,
+            thumbWebpUrl: $thumbWebpUrl,
+        );
 
-            if ($old && $old !== $url) {
-                MediaFileCleaner::deleteIfOwnedAndUnreferenced($old, keepUrls: array_values(array_filter([
-                    $url,
-                    $thumbUrl,
-                    (string) $originalUrl,
-                    $imageWebpUrl,
-                    $thumbWebpUrl,
-                ])));
-            }
-
-            SiteSetting::bust();
-        } else {
-            $this->audit->log(
-                action: 'content.uploaded',
-                modelType: SiteSetting::class,
-                modelId: null,
-                oldValues: [],
-                newValues: ['url' => $url],
-                meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale, 'embed' => true],
-                request: $request,
-            );
-        }
+        $this->audit->log(
+            action: 'content.uploaded',
+            modelType: Media::class,
+            modelId: $media?->id,
+            oldValues: [],
+            newValues: ['url' => $url, 'media_id' => $media?->id],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale, 'embed' => true],
+            request: $request,
+        );
 
         return response()->json([
             'url' => $url,
@@ -659,10 +654,12 @@ class ContentController extends Controller
             'image_webp_url' => $imageWebpUrl,
             'thumb_webp_url' => $thumbWebpUrl,
             'original_url' => $originalUrl,
+            'media_id' => $media?->id,
+            'id' => $media?->id,
             'key' => $key,
             'scope' => $scope,
             'locale' => $locale,
-            'embed' => $isEmbedUpload,
+            'embed' => true,
         ], 201);
     }
 
@@ -723,28 +720,20 @@ class ContentController extends Controller
 
         $url = '/storage/' . ltrim($videoRel, '/');
 
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('media_assets')) {
-                app(\App\Domains\Media\Services\MediaLibraryService::class)->registerPath(
-                    $videoRel,
-                    'content',
-                    $request->user(),
-                    null,
-                    $thumbUrl,
-                    null,
-                );
-            }
-        } catch (\Throwable) {
-            // best-effort catalog
-        }
+        $media = $this->registerContentAsset(
+            path: $videoRel,
+            request: $request,
+            title: ContentRegistry::label($key),
+            thumbUrl: $thumbUrl,
+        );
 
         $this->audit->log(
             action: 'content.video_uploaded',
-            modelType: SiteSetting::class,
-            modelId: null,
+            modelType: Media::class,
+            modelId: $media?->id,
             oldValues: [],
-            newValues: ['url' => $url, 'poster_url' => $posterUrl],
-            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale],
+            newValues: ['url' => $url, 'poster_url' => $posterUrl, 'media_id' => $media?->id],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale, 'embed' => true],
             request: $request,
         );
 
@@ -752,9 +741,15 @@ class ContentController extends Controller
             'url' => $url,
             'poster_url' => $posterUrl,
             'thumb_url' => $thumbUrl,
+            'original_url' => null,
+            'image_webp_url' => null,
+            'thumb_webp_url' => null,
+            'media_id' => $media?->id,
+            'id' => $media?->id,
             'key' => $key,
             'scope' => $scope,
             'locale' => $locale,
+            'embed' => true,
         ], 201);
     }
 
@@ -775,6 +770,37 @@ class ContentController extends Controller
         }
 
         throw new \InvalidArgumentException('poster_url must be a /storage/… path or http(s) URL.');
+    }
+
+    private function registerContentAsset(
+        string $path,
+        Request $request,
+        ?string $title = null,
+        ?string $thumbUrl = null,
+        ?string $originalUrl = null,
+        ?string $imageWebpUrl = null,
+        ?string $thumbWebpUrl = null,
+    ): ?Media {
+        try {
+            if (! Schema::hasTable('media_assets')) {
+                return null;
+            }
+
+            return $this->library->registerPath(
+                $path,
+                'content',
+                $request->user() instanceof \App\Models\User ? $request->user() : null,
+                $title,
+                $thumbUrl,
+                $originalUrl,
+                $imageWebpUrl,
+                $thumbWebpUrl,
+            );
+        } catch (\Throwable) {
+            // Catalog registration is required when available, but uploads must not fail
+            // if an older install is mid-migration or the media table is temporarily unavailable.
+            return null;
+        }
     }
 
     private function ensureRow(string $key, string $scope, string $locale = 'en'): void

@@ -56,10 +56,11 @@ class DefaultItemImageTest extends TestCase
         ]);
     }
 
-    public function test_content_upload_persists_and_appears_in_public_settings(): void
+    public function test_content_upload_stages_default_item_image_until_publish(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);
         $file = UploadedFile::fake()->image('default-item.jpg', 400, 400);
+        SiteSetting::set('default_item_image', '/storage/site/live-default-item.jpg', 'shared', 'en');
 
         // Legacy PUT/POST /api/site-settings* write/upload doors are retired —
         // brand uploads go through Content Studio / Media Library.
@@ -71,11 +72,21 @@ class DefaultItemImageTest extends TestCase
 
         $url = $res->json('url');
         $this->assertNotEmpty($url);
-        $this->assertSame($url, SiteSetting::get('default_item_image'));
+        $this->assertNotEmpty($res->json('media_id'));
+        $this->assertSame('/storage/site/live-default-item.jpg', SiteSetting::get('default_item_image'));
 
         $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
         $this->assertArrayHasKey('default_item_image', $public);
-        $this->assertSame($url, $public['default_item_image']);
+        $this->assertSame('/storage/site/live-default-item.jpg', $public['default_item_image']);
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'default_item_image', 'scope' => 'shared', 'value' => $url],
+            ],
+        ])->assertOk();
+
+        $this->assertSame($url, SiteSetting::get('default_item_image'));
     }
 
     public function test_use_as_sets_default_and_brand_key_permission_gated_and_audited(): void

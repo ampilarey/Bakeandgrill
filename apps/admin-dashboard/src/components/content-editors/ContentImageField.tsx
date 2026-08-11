@@ -10,6 +10,11 @@ export type ContentImageUploadResult = {
   url: string;
   original_url?: string | null;
   thumb_url?: string;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
+  media_id?: number | null;
+  id?: number | null;
+  embed?: boolean;
 };
 
 type Props = {
