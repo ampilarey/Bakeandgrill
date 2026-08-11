@@ -68,9 +68,10 @@ if (!function_exists('content')) {
         }
 
         $app = app()->bound('content.draft_app') ? (string) app('content.draft_app') : 'website';
-        $locale = app()->bound('content.locale')
-            ? (string) app('content.locale')
-            : (app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en');
+        // Staff draft preview locale wins over the public EN/DV cookie locale.
+        $locale = app()->bound('content.draft_locale')
+            ? (string) app('content.draft_locale')
+            : (app()->bound('content.locale') ? (string) app('content.locale') : 'en');
 
         return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
     }
