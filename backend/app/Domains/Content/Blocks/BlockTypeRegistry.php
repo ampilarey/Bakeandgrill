@@ -38,6 +38,11 @@ final class BlockTypeRegistry
         return isset(self::all()[$type]);
     }
 
+    public static function allowsMultiple(string $type): bool
+    {
+        return self::get($type)?->allowsMultiple ?? false;
+    }
+
     public static function isRemovable(string $type): bool
     {
         $def = self::get($type);
@@ -190,6 +195,118 @@ final class BlockTypeRegistry
                 removable: false,
                 supportsSharedContent: true,
                 nonRemovableReason: 'The footer carries contact and legal information and must stay on the page.',
+            ),
+
+            // ── Generic content blocks ───────────────────────────────────────
+            // Free-form blocks the owner can add as many times as they like.
+            // They live on both home pages because the same words, picture, or
+            // button are just as useful above the order flow as on the
+            // marketing site — except the FAQ list, which answers website
+            // visitor questions (delivery areas, allergens) and would only get
+            // in the way of someone mid-order. The divider is the one type with
+            // no shareable content: it carries spacing, not words, so there is
+            // nothing for two apps to share.
+            new BlockTypeDefinition(
+                type: 'rich_text',
+                label: 'Text block',
+                description: 'A heading and a paragraph or two — for announcements, stories, or notes.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: true,
+                settingsSchema: [
+                    'heading' => 'nullable|string|max:200',
+                    'body' => 'nullable|string|max:10000',
+                ],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'image',
+                label: 'Image',
+                description: 'One picture from the media library, with an optional caption.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: true,
+                settingsSchema: [
+                    'media_id' => 'nullable|integer|exists:media_assets,id',
+                    'caption' => 'nullable|string|max:500',
+                    'alt' => 'nullable|string|max:200',
+                ],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'image_text',
+                label: 'Image with text',
+                description: 'A picture beside a heading and paragraph — choose which side the picture sits on.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: true,
+                settingsSchema: [
+                    'media_id' => 'nullable|integer|exists:media_assets,id',
+                    'caption' => 'nullable|string|max:500',
+                    'alt' => 'nullable|string|max:200',
+                    'heading' => 'nullable|string|max:200',
+                    'body' => 'nullable|string|max:10000',
+                    'side' => 'required|in:left,right',
+                ],
+                settingsDefaults: ['side' => 'left'],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'button_band',
+                label: 'Button band',
+                description: 'A short line of text with up to two buttons.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: true,
+                settingsSchema: [
+                    'text' => 'nullable|string|max:300',
+                    'button1_label' => 'nullable|string|max:80',
+                    'button1_url' => 'nullable|string|max:500',
+                    'button2_label' => 'nullable|string|max:80',
+                    'button2_url' => 'nullable|string|max:500',
+                ],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'divider',
+                label: 'Divider',
+                description: 'Breathing room between sections — blank space or a thin line.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: false,
+                settingsSchema: [
+                    'style' => 'required|in:spacer,rule',
+                    'size' => 'required|in:sm,md,lg',
+                ],
+                settingsDefaults: ['style' => 'spacer', 'size' => 'md'],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'video',
+                label: 'Video',
+                description: 'A silent looping video from the media library, with an optional caption.',
+                apps: ['website', 'order_app'],
+                removable: true,
+                supportsSharedContent: true,
+                settingsSchema: [
+                    'media_id' => 'nullable|integer|exists:media_assets,id',
+                    'caption' => 'nullable|string|max:500',
+                ],
+                allowsMultiple: true,
+            ),
+            new BlockTypeDefinition(
+                type: 'faq_list',
+                label: 'FAQ list',
+                description: 'Questions and answers for website visitors — delivery areas, allergens, and the like.',
+                apps: ['website'],
+                removable: true,
+                supportsSharedContent: false,
+                settingsSchema: [
+                    'items' => 'nullable|array|max:40',
+                    'items.*.question' => 'required|string|max:300',
+                    'items.*.answer' => 'required|string|max:2000',
+                ],
+                allowsMultiple: true,
             ),
         ];
 

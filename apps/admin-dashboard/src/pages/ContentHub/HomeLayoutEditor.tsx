@@ -10,6 +10,7 @@ import {
   type PageBlockRow,
   type PageBlockType,
 } from '../../api/pageBlocks';
+import { GenericBlockSettingsForm, isGenericBlockType, type BlockSettings } from './GenericBlockSettingsForm';
 
 type Props = {
   /** Optional: bump to force reload after publish. */
@@ -35,10 +36,12 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   const [busy, setBusy] = useState(false);
   const [addType, setAddType] = useState('');
   const [previewMsg, setPreviewMsg] = useState('');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setExpandedId(null);
     try {
       const res = await fetchAdminPageBlocks(app);
       setBlocks(res.blocks ?? []);
@@ -56,7 +59,11 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   }, [load, reloadKey]);
 
   const usedTypes = new Set(blocks.map((b) => b.block_type));
-  const addable = types.filter((t) => !usedTypes.has(t.type) || t.type === 'promo_carousel');
+  // Named sections exist once per page; generic content blocks (text, image,
+  // divider, …) can be stacked as many times as the owner wants.
+  const addable = types.filter(
+    (t) => !usedTypes.has(t.type) || t.allows_multiple || t.type === 'promo_carousel',
+  );
 
   const persistOrder = async (next: PageBlockRow[]) => {
     setBusy(true);
@@ -147,19 +154,36 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     }
   };
 
+  const saveSettings = async (block: PageBlockRow, settings: BlockSettings) => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await updatePageBlock(block.id, { settings });
+      setBlocks((prev) => prev.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)));
+    } catch (e) {
+      setError((e as Error).message || 'Could not save this section’s content.');
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const addBlock = async () => {
     if (!addType) return;
     setBusy(true);
     setError('');
     try {
       const def = types.find((t) => t.type === addType);
-      await createPageBlock({
+      const created = await createPageBlock({
         app,
         block_type: addType,
         content_mode: def?.supports_shared_content ? 'shared' : 'own',
       });
       setAddType('');
       await load();
+      // A fresh generic block is empty — open its form so the owner can type
+      // something into it right away.
+      if (isGenericBlockType(addType)) setExpandedId(created.block.id);
     } catch (e) {
       setError((e as Error).message || 'Could not add block.');
     } finally {
@@ -181,6 +205,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
           is_enabled: b.is_enabled,
           content_mode: b.content_mode,
           settings: b.settings,
+          media: b.media,
           label: b.label,
         })),
       });
@@ -211,8 +236,9 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
         <div>
           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Home page layout</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 480 }}>
-            Add, turn on/off, and rearrange sections for each home page. Content for each section
-            is still edited in the cards below.
+            Add, turn on/off, and rearrange sections for each home page. Text blocks, pictures,
+            videos, buttons, dividers, and FAQs are written right here with “Edit content”. The
+            named sections (hero, specials, categories …) are still edited in the cards below.
           </div>
         </div>
         <button
@@ -248,10 +274,28 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading layout…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {blocks.length === 0 && !error && (
+            <div
+              role="alert"
+              data-testid="home-layout-empty-warning"
+              style={{
+                border: '2px solid var(--color-danger)',
+                background: 'var(--color-danger-bg)',
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--color-danger-strong)',
+              }}
+            >
+              This home page has no sections — customers will only see required chrome. Add sections below.
+            </div>
+          )}
           {blocks.map((block, index) => (
             <div
               key={block.id}
               data-testid={`home-layout-block-${block.block_type}`}
+              data-block-id={block.id}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr auto',
@@ -314,6 +358,25 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
                       This app only
                     </button>
                   </div>
+                )}
+                {isGenericBlockType(block.block_type) && (
+                  <>
+                    <button
+                      type="button"
+                      data-testid={`home-layout-edit-${block.id}`}
+                      onClick={() => setExpandedId(expandedId === block.id ? null : block.id)}
+                      style={{ ...chipBtn, marginTop: 8 }}
+                    >
+                      {expandedId === block.id ? 'Hide content' : 'Edit content'}
+                    </button>
+                    {expandedId === block.id && (
+                      <GenericBlockSettingsForm
+                        block={block}
+                        busy={busy}
+                        onSave={(settings) => saveSettings(block, settings)}
+                      />
+                    )}
+                  </>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>

@@ -128,6 +128,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
       { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
+      { to: '/complaints',  icon: AlertTriangle, label: 'Complaints', permission: 'complaints.view',    description: 'Customer receipt & invoice concerns' },
     ],
   },
   {

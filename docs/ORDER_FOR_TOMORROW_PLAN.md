@@ -1,7 +1,25 @@
 # Order for Tomorrow — Plan
 
-Status: proposed, not yet built.
-Owner decision on payment: **pay now at checkout.**
+Status: **Built.** Owner decision on payment: **pay now at checkout.**
+
+Migrations that prove it landed:
+
+| Migration | Role |
+|---|---|
+| `add_fulfil_date_to_orders_table` | Collection/fulfil date on ordinary orders |
+| `add_order_for_tomorrow_cutoff_site_setting` | Cutoff time site setting |
+| `add_tomorrow_daily_capacity_to_items_table` | Per-item daily capacity cap (added after this plan was written) |
+
+**Added after the plan:** a per-item tomorrow daily capacity cap
+(`tomorrow_daily_capacity` / `TomorrowDailyCapacityService`).
+
+**Wider bugs found while building this** (not tomorrow-only):
+
+- Paid-but-unstarted orders could not be refunded at all — affected every online order.
+- The closed-shop guard blocked checkout entirely (including paths that should still work for
+  tomorrow).
+
+Treat “proposed, not yet built” framing in the body below as obsolete.
 
 ---
 

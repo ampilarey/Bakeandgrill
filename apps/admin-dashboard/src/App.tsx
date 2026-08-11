@@ -44,6 +44,7 @@ const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCard
 const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
+const ComplaintsPage          = lazyWithRetry(() => import('./pages/ComplaintsPage'));
 const WasteLogsPage           = lazyWithRetry(() => import('./pages/WasteLogsPage'));
 const CustomersPage           = lazyWithRetry(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 const CustomerGrowthPage      = lazyWithRetry(() => import('./pages/CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
@@ -441,6 +442,11 @@ export default function App() {
                 <Route path="refunds" element={
                   <PermissionGuard user={user} permission="orders.refund">
                     <RefundsPage />
+                  </PermissionGuard>
+                } />
+                <Route path="complaints" element={
+                  <PermissionGuard user={user} permission="complaints.view">
+                    <ComplaintsPage />
                   </PermissionGuard>
                 } />
                 <Route path="waste-logs" element={

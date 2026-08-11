@@ -113,25 +113,6 @@ const heroSlides = {
   description: 'Carousel slides for the top of the homepage with image title and CTAs.',
 };
 
-const homeOrder = {
-  key: 'home_section_order',
-  label: 'Home section order',
-  group: 'Homepage',
-  type: 'json' as const,
-  apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
-  shareable: true,
-  public: true,
-  section_order: true,
-  shared: '["specials","featured","categories","proof","cta","location"]',
-  website: null,
-  order_app: null,
-  resolved_website: '["specials","featured","categories","proof","cta","location"]',
-  resolved_order_app: '["specials","featured","categories","proof","cta","location"]',
-  state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
-};
-
 const homeEnable = {
   key: 'section_proof_enabled',
   label: 'Show Social Proof',
@@ -248,7 +229,6 @@ const phoneBlock = {
 const allBlocks = [
   heroEnable,
   heroSlides,
-  homeOrder,
   homeEnable,
   proofStat,
   footerEnable,
@@ -296,7 +276,6 @@ describe('ContentHub mobile polish — systemic', () => {
     expect(document.body.textContent).not.toMatch(/[◉○]/);
     // Homepage chrome is the page_blocks layout editor (legacy order card hidden).
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
-    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
 
     fireEvent.click(screen.getByTestId('section-rail-Footer'));
     await waitFor(() => {
@@ -356,11 +335,10 @@ describe('ContentHub mobile polish — systemic', () => {
     await waitFor(() => {
       expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Homepage');
     });
-    // Layout editor chrome + proof_stat content card (legacy order/enable hidden).
+    // Layout editor chrome + proof_stat content card (legacy enable card hidden).
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
     expect(screen.getByTestId('section-editor-count').textContent).toMatch(/^1 blocks?$/);
     expect(screen.getByTestId('block-card-proof_stat')).toBeTruthy();
-    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
     expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
   });
 
@@ -435,7 +413,6 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     document.head.appendChild(style);
 
     // Legacy order/enable chrome is replaced by the layout editor on Homepage.
-    expect(screen.queryByTestId('section-order-home_section_order')).toBeNull();
     expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
 
     const blockCard = screen.getByTestId('block-card-proof_stat');

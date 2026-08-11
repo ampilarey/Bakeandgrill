@@ -4,39 +4,35 @@ declare(strict_types=1);
 
 namespace App\Domains\Content\Blocks;
 
-use App\Domains\Content\ContentResolver;
-use App\Domains\Content\HomeSectionOrder;
 use App\Models\PageBlock;
 
 /**
  * Captures the rendered section order + enabled set for each home page.
  * Used as the Stage B gate: before migration (legacy) must equal after (page_blocks).
  *
+ * The legacy side is reconstructed from LegacyHomeLayout — a frozen fixture of
+ * the pre-builder layout plus the stored site_settings that customised it.
+ * No render path reads it.
+ *
  * @phpstan-type SectionRow array{type: string, enabled: bool}
  */
 final class HomeLayoutSnapshot
 {
     /**
-     * Legacy website layout: hero (gated) + HomeSectionOrder + section_*_enabled.
+     * Legacy website layout: gated hero + stored section order + enable keys.
      *
      * @return list<SectionRow>
      */
     public static function legacyWebsite(): array
     {
-        $resolver = ContentResolver::for('website');
-        $rows = [];
-
-        $rows[] = [
+        $app = PageBlock::APP_WEBSITE;
+        $rows = [[
             'type' => 'hero',
-            'enabled' => self::sectionEnabled($resolver->get('section_hero_enabled', 'true')),
-        ];
+            'enabled' => LegacyHomeLayout::sectionEnabled($app, 'hero'),
+        ]];
 
-        foreach (HomeSectionOrder::resolve($resolver->get('home_section_order', '[]')) as $id) {
-            $enableKey = HomeSectionOrder::enableKeyFor($id);
-            $enabled = $enableKey
-                ? self::sectionEnabled($resolver->get($enableKey, 'true'))
-                : true;
-            $rows[] = ['type' => $id, 'enabled' => $enabled];
+        foreach (LegacyHomeLayout::storedOrder($app) as $id) {
+            $rows[] = ['type' => $id, 'enabled' => LegacyHomeLayout::sectionEnabled($app, $id)];
         }
 
         return $rows;
@@ -53,26 +49,24 @@ final class HomeLayoutSnapshot
      */
     public static function legacyOrderApp(): array
     {
-        $resolver = ContentResolver::for('order_app');
-        $heroOn = self::sectionEnabled($resolver->get('section_hero_enabled', 'true'));
-        $specialsOn = self::sectionEnabled($resolver->get('section_specials_enabled', 'true'));
-        $categoriesOn = self::sectionEnabled($resolver->get('section_categories_enabled', 'true'));
-        $reviewsOn = self::sectionEnabled($resolver->get('section_reviews_enabled', 'true'));
+        $app = PageBlock::APP_ORDER;
+        $specialsOn = LegacyHomeLayout::sectionEnabled($app, 'specials');
+        $categoriesOn = LegacyHomeLayout::sectionEnabled($app, 'categories');
+        $reviewsOn = LegacyHomeLayout::sectionEnabled($app, 'reviews');
 
         $rows = [
             ['type' => 'greeting', 'enabled' => true],
             ['type' => 'prayer_bar', 'enabled' => true],
-            ['type' => 'hero', 'enabled' => $heroOn],
+            ['type' => 'hero', 'enabled' => LegacyHomeLayout::sectionEnabled($app, 'hero')],
             // Opening status is shown inside the hero statusSlot today.
             ['type' => 'opening_status', 'enabled' => true],
             ['type' => 'mode_cards', 'enabled' => true],
         ];
 
-        $order = HomeSectionOrder::resolve($resolver->get('home_section_order', '[]'));
         $reviewsInserted = false;
         $reviewAfterSpecials = $specialsOn;
 
-        foreach ($order as $id) {
+        foreach (LegacyHomeLayout::storedOrder($app) as $id) {
             if ($id === 'specials') {
                 $rows[] = ['type' => 'specials', 'enabled' => $specialsOn];
                 if ($reviewAfterSpecials && ! $reviewsInserted) {
@@ -122,15 +116,5 @@ final class HomeLayoutSnapshot
             ])
             ->values()
             ->all();
-    }
-
-    private static function sectionEnabled(mixed $raw): bool
-    {
-        if (is_bool($raw)) {
-            return $raw;
-        }
-        $normalized = strtolower(trim((string) $raw));
-
-        return ! in_array($normalized, ['false', '0', 'no', 'off'], true);
     }
 }

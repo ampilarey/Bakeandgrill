@@ -1,7 +1,16 @@
 # Media System Upgrade — Plan
 
-Status: proposed, not yet built. Revised after a code audit — the first draft's core
-finding was wrong, and the stages have been re-ordered by real value.
+Status: **Stages 1–3 built. Stage 4 not built.** Revised after a code audit — the first
+draft's core finding was wrong, and the stages have been re-ordered by real value.
+
+| Stage | State |
+|---|---|
+| 1 — serve WebP | Built. `image_webp_url` / `thumb_webp_url` columns, `media:generate-menu-webp` backfill, `<picture>` rendering via `PictureImg`. |
+| 2 — client-side downscale before upload | Built. `MASTER_MAX_EDGE = 3200`, `downscaleImageForUpload()` in `prepareUpload.ts`, HEIC conversion preserved. |
+| 3 — `srcset` | Built. `PictureImg` accepts `srcSet` / `sizes`; consumers pass the thumb and crop renditions. |
+| 4 — object storage + CDN | **Not built.** Still `FILESYSTEM_DISK=local`; the local-disk assumptions listed in §3 Stage 4 remain. |
+
+Stage 4 is a storage-layer refactor, not a config flip — read §3 Stage 4 before attempting it.
 
 Goal in plain language: make photos load faster on a phone and cost the server less
 bandwidth, without anyone noticing a drop in quality.

@@ -34,75 +34,19 @@ import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
+import { renderGenericBlock } from '../components/home/blocks';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
-/** True unless the setting is explicitly off (`0` / `false`). */
-function sectionEnabled(value: string | undefined, defaultOn = true): boolean {
-  if (value === undefined || value === null || value === '') return defaultOn;
-  return value !== '0' && value !== 'false';
-}
-
 /**
- * Legacy fallback when page_blocks is empty or failed to load.
- * Still honours section_*_enabled keys so degrade matches the pre-builder home
- * (and ContentRegistry consumers stay wired until Stage F retires those keys).
+ * page_blocks is the only source of the home layout. When it is empty or the
+ * request fails we render the blocks the owner is not allowed to remove — the
+ * mode cards and the brand footer — so the page is never blank. The admin home
+ * layout editor reports an empty layout loudly.
  */
-function legacyOrderAppBlocks(settings: {
-  section_hero_enabled?: string;
-  section_specials_enabled?: string;
-  section_categories_enabled?: string;
-  section_reviews_enabled?: string;
-}): PageBlockRow[] {
-  const blocks: PageBlockRow[] = [
-    { id: 0, app: 'order_app', page: 'home', block_type: 'greeting', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
-    { id: 0, app: 'order_app', page: 'home', block_type: 'prayer_bar', position: 1, is_enabled: true, content_mode: 'own', settings: {} },
-    {
-      id: 0,
-      app: 'order_app',
-      page: 'home',
-      block_type: 'hero',
-      position: 2,
-      is_enabled: sectionEnabled(settings.section_hero_enabled),
-      content_mode: 'shared',
-      settings: {},
-    },
-    { id: 0, app: 'order_app', page: 'home', block_type: 'opening_status', position: 3, is_enabled: true, content_mode: 'own', settings: {} },
-    { id: 0, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 4, is_enabled: true, content_mode: 'own', settings: {} },
-    {
-      id: 0,
-      app: 'order_app',
-      page: 'home',
-      block_type: 'specials',
-      position: 5,
-      is_enabled: sectionEnabled(settings.section_specials_enabled),
-      content_mode: 'shared',
-      settings: {},
-    },
-    {
-      id: 0,
-      app: 'order_app',
-      page: 'home',
-      block_type: 'reviews',
-      position: 6,
-      is_enabled: sectionEnabled(settings.section_reviews_enabled),
-      content_mode: 'own',
-      settings: {},
-    },
-    {
-      id: 0,
-      app: 'order_app',
-      page: 'home',
-      block_type: 'categories',
-      position: 7,
-      is_enabled: sectionEnabled(settings.section_categories_enabled),
-      content_mode: 'shared',
-      settings: {},
-    },
-    { id: 0, app: 'order_app', page: 'home', block_type: 'reorder_strip', position: 8, is_enabled: true, content_mode: 'own', settings: {} },
-    { id: 0, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 9, is_enabled: true, content_mode: 'shared', settings: {} },
-  ];
-  return blocks.filter((b) => b.is_enabled);
-}
+const REQUIRED_BLOCKS: PageBlockRow[] = [
+  { id: -1, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: {} },
+];
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -153,23 +97,16 @@ export function HomePage() {
 
   usePageTitle(null);
 
-  // ── Home layout from page_blocks (authoritative). Degrade if empty/failed. ─
+  // ── Home layout from page_blocks (the only source) ─────────────────────────
   useEffect(() => {
     const previewToken = new URLSearchParams(window.location.search).get('previewToken');
-    const legacy = legacyOrderAppBlocks(s);
     fetchPageBlocks({ app: 'order_app', previewToken })
       .then((res) => {
         const rows = (res.blocks ?? []).filter((b) => b.is_enabled);
-        setPageBlocks(rows.length > 0 ? rows : legacy);
+        setPageBlocks(rows.length > 0 ? rows : REQUIRED_BLOCKS);
       })
-      .catch(() => setPageBlocks(legacy));
-    // Re-resolve legacy enablement when section_*_enabled settings arrive/change.
-  }, [
-    s.section_hero_enabled,
-    s.section_specials_enabled,
-    s.section_categories_enabled,
-    s.section_reviews_enabled,
-  ]);
+      .catch(() => setPageBlocks(REQUIRED_BLOCKS));
+  }, []);
 
   // ── Tomorrow-ordering gate (separate from today’s online ordering badge) ───
   // Open only when the owner gate is on AND at least one item allows pre-order.
@@ -305,7 +242,7 @@ export function HomePage() {
     loyaltyPoints,
   };
 
-  const blocks = pageBlocks ?? legacyOrderAppBlocks(s);
+  const blocks = pageBlocks ?? REQUIRED_BLOCKS;
   const openingStatusEnabled = blocks.some((b) => b.block_type === 'opening_status' && b.is_enabled);
   const heroEnabled = blocks.some(
     (b) => b.is_enabled && (b.block_type === 'hero' || b.block_type === 'promo_carousel'),
@@ -537,9 +474,21 @@ export function HomePage() {
           />,
         );
         break;
-      default:
-        // Unknown block types render nothing — never white-screen the home page.
+      default: {
+        // Generic content blocks (text, image, video, …). `faq_list` is
+        // website-only and is deliberately not handled here, so a row saved
+        // for the wrong app renders nothing. Anything else is an unknown type
+        // and also renders nothing — never white-screen the home page.
+        const generic = renderGenericBlock(
+          block.block_type,
+          key,
+          block.settings ?? {},
+          block.media ?? null,
+          API_ORIGIN,
+        );
+        if (generic) nodes.push(generic);
         break;
+      }
     }
   }
 

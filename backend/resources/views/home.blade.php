@@ -1077,6 +1077,30 @@
             @continue
         @endif
 
+        {{-- Generic content blocks: settings-driven, may appear many times. --}}
+        @if(\App\Domains\Content\Blocks\GenericBlockPresenter::isGeneric($sectionId))
+            @php
+                $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
+                    $sectionId,
+                    is_array($homeBlock->settings) ? $homeBlock->settings : [],
+                );
+                $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
+                $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);
+            @endphp
+            @unless($blockIsEmpty)
+                @php
+                    $stripeIndex = $stripe;
+                    // A divider has no background of its own, so it must not
+                    // shift the alternating stripe of the sections after it.
+                    if ($sectionId !== 'divider') {
+                        $stripe++;
+                    }
+                @endphp
+                @include($genericPartial, ['blockSettings' => $blockSettings, 'stripeIndex' => $stripeIndex])
+            @endunless
+            @continue
+        @endif
+
         @if(!in_array($sectionId, ['specials', 'featured', 'categories', 'proof', 'cta', 'location'], true))
             @continue
         @endif
@@ -1092,24 +1116,11 @@
         @include('partials.home.'.$sectionId, ['stripeIndex' => $stripeIndex])
     @endforeach
 @else
-    {{-- Degrade: empty/failed page_blocks → previous HomeSectionOrder path. --}}
-    @if(content_section_enabled('section_hero_enabled'))
-        @include('partials.home.hero')
-    @endif
+    {{-- No blocks for this page: render the required chrome only, never a
+         blank page. The brand footer lives in layout.blade.php; the trust
+         strip keeps its historical hero-slot placement. The admin home layout
+         editor reports the empty layout loudly. --}}
     @include('partials.home.trust-strip')
-    @php
-        $order = \App\Domains\Content\HomeSectionOrder::resolve(content('home_section_order', '[]'));
-    @endphp
-    @foreach($order as $sectionId)
-        @php
-            $enableKey = \App\Domains\Content\HomeSectionOrder::enableKeyFor($sectionId);
-            if ($enableKey && !content_section_enabled($enableKey)) continue;
-            if ($sectionId === 'specials' && $homeOffers->count() === 0 && $todaysSpecials->count() === 0) continue;
-            $stripeIndex = $stripe;
-            $stripe++;
-        @endphp
-        @include('partials.home.'.$sectionId, ['stripeIndex' => $stripeIndex])
-    @endforeach
 @endif
 
 

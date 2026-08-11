@@ -87,11 +87,6 @@ export const HUB_SECTIONS: HubSectionMeta[] = [
         label: 'Delivery cards',
         match: (key) => /delivery|open_badge|closed_badge|hero_fallback/i.test(key),
       },
-      {
-        id: 'order',
-        label: 'Section order',
-        match: (key) => key === 'home_section_order',
-      },
     ],
   },
   { name: 'Announcements', cluster: 'home', icon: Bell },

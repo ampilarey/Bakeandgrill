@@ -6,6 +6,7 @@ namespace Tests\Feature\Content;
 
 use App\Domains\Content\Blocks\HomeLayoutMigrator;
 use App\Domains\Content\Blocks\HomeLayoutSnapshot;
+use App\Domains\Content\Blocks\LegacyHomeLayout;
 use App\Models\PageBlock;
 use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,11 +116,13 @@ class HomeLayoutMigrationGateTest extends TestCase
      * End-to-end gate: the snapshot-based tests above compare the migrator
      * against HomeLayoutSnapshot, but the migrator is FED by that snapshot,
      * so they cannot catch the snapshot mis-describing the old layout.
-     * This renders the real website home twice — legacy path (empty
-     * page_blocks) vs blocks path (after migrate) — and asserts the same
-     * sections appear in the same order in the actual HTML.
+     *
+     * Stage F removed the legacy render path, so there is no second rendering
+     * to diff against. Instead the real HTML is compared to the FROZEN legacy
+     * fixture: the sections must appear in the document in exactly the order
+     * the pre-builder home used, with the trust strip in its hero slot.
      */
-    public function test_rendered_website_home_matches_between_legacy_and_blocks_paths(): void
+    public function test_rendered_website_home_matches_frozen_legacy_order(): void
     {
         // class="…" needles so the <style> block (.hero-banner { … }) never matches.
         $markers = [
@@ -133,26 +136,48 @@ class HomeLayoutMigrationGateTest extends TestCase
             'location' => 'class="loc-ctas"',
         ];
 
-        // The schema migration seeds page_blocks; reverse to reach the true legacy path.
-        HomeLayoutMigrator::reverse();
-        Cache::flush();
-        $this->assertSame(0, PageBlock::query()->count(), 'Expected empty page_blocks before migration.');
-        $legacyHtml = $this->get('/')->assertOk()->getContent();
-        $legacyOrder = $this->orderedMarkers($legacyHtml, $markers);
-
-        $this->assertNotEmpty($legacyOrder, 'Legacy home rendered no known sections — markers are stale.');
-        $this->assertContains('trust_strip', $legacyOrder);
+        // The trust strip is fixed chrome that renders in the hero slot.
+        $frozen = [];
+        foreach (LegacyHomeLayout::WEBSITE_DEFAULT as $row) {
+            $frozen[] = $row['type'];
+            if ($row['type'] === 'hero') {
+                $frozen[] = 'trust_strip';
+            }
+        }
 
         HomeLayoutMigrator::migrate();
         Cache::flush();
 
-        $blocksHtml = $this->get('/')->assertOk()->getContent();
+        $rendered = $this->orderedMarkers($this->get('/')->assertOk()->getContent(), $markers);
 
-        $this->assertSame(
-            $legacyOrder,
-            $this->orderedMarkers($blocksHtml, $markers),
-            'Rendered website home sections differ between the legacy path and the page_blocks path.',
+        $this->assertContains('trust_strip', $rendered);
+        $this->assertContains('hero', $rendered);
+        $this->assertGreaterThanOrEqual(
+            5,
+            count($rendered),
+            'Website home rendered almost nothing — markers are stale or the walker is broken.',
         );
+        $this->assertSame(
+            array_values(array_intersect($frozen, $rendered)),
+            $rendered,
+            'Rendered website home sections are no longer in the frozen legacy order.',
+        );
+    }
+
+    /**
+     * Empty page_blocks must never blank the home page: required chrome
+     * (trust strip + the layout brand footer) still renders.
+     */
+    public function test_empty_page_blocks_still_renders_required_chrome(): void
+    {
+        HomeLayoutMigrator::reverse();
+        Cache::flush();
+        $this->assertSame(0, PageBlock::query()->count(), 'Expected empty page_blocks after reverse.');
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertNotSame('', trim(strip_tags($html)));
+        $this->assertStringContainsString('class="trust-strip"', $html);
     }
 
     /**
@@ -171,6 +196,24 @@ class HomeLayoutMigrationGateTest extends TestCase
         asort($found);
 
         return array_keys($found);
+    }
+
+    /**
+     * The frozen fixture is the contract. If the reconstructed legacy snapshot
+     * ever drifts from it under default settings, the gate has moved.
+     */
+    public function test_default_snapshots_match_the_frozen_legacy_fixture(): void
+    {
+        $this->assertSame(
+            LegacyHomeLayout::WEBSITE_DEFAULT,
+            HomeLayoutSnapshot::legacyWebsite(),
+            'Website legacy snapshot drifted from the frozen Stage F fixture.',
+        );
+        $this->assertSame(
+            LegacyHomeLayout::ORDER_APP_DEFAULT,
+            HomeLayoutSnapshot::legacyOrderApp(),
+            'Order-app legacy snapshot drifted from the frozen Stage F fixture.',
+        );
     }
 
     public function test_default_website_snapshot_is_hero_plus_home_section_order_defaults(): void

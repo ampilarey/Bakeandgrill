@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  ArrowDown, ArrowUp, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
+  Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -112,17 +112,6 @@ function defaultRailCollapsed(): boolean {
   return readStoredBool(LS_RAIL_COLLAPSED) === true;
 }
 
-const HOME_SECTION_DEFAULT = ['specials', 'featured', 'categories', 'proof', 'cta', 'location'] as const;
-
-const HOME_SECTION_LABELS: Record<(typeof HOME_SECTION_DEFAULT)[number], string> = {
-  specials: 'Specials/Offers',
-  featured: 'Featured',
-  categories: 'Categories',
-  proof: 'Social proof',
-  cta: 'CTA band',
-  location: 'Location',
-};
-
 function seoDescriptionKey(titleKey: string): string | null {
   if (titleKey === 'meta_title') return 'meta_description';
   if (titleKey.endsWith('_meta_title')) return titleKey.replace(/_meta_title$/, '_meta_description');
@@ -185,38 +174,6 @@ function labelForScope(scope: ContentScope): string {
 
 function otherAppScope(scope: ContentScope): ContentScope {
   return scope === 'website' ? 'order_app' : 'website';
-}
-
-function resolveHomeSectionOrder(raw: string | null | undefined): string[] {
-  let decoded: unknown = [];
-  try {
-    decoded = raw ? JSON.parse(raw) : [];
-  } catch {
-    decoded = [];
-  }
-
-  const allowed = new Set<string>(HOME_SECTION_DEFAULT);
-  const seen = new Set<string>();
-  const out: string[] = [];
-  if (Array.isArray(decoded)) {
-    for (const id of decoded) {
-      if (typeof id !== 'string' || !allowed.has(id) || seen.has(id)) continue;
-      seen.add(id);
-      out.push(id);
-    }
-  }
-  for (const id of HOME_SECTION_DEFAULT) {
-    if (!seen.has(id)) out.push(id);
-  }
-  return out;
-}
-
-function moveHomeSection(order: string[], from: number, direction: -1 | 1): string[] {
-  const to = from + direction;
-  if (to < 0 || to >= order.length) return order;
-  const next = [...order];
-  [next[from], next[to]] = [next[to], next[from]];
-  return next;
 }
 
 function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
@@ -988,58 +945,6 @@ export function ContentHubPage() {
     );
   };
 
-  const renderSectionOrderScope = (block: ContentBlock, scope: ContentScope) => {
-    const order = resolveHomeSectionOrder(valueForScope(block, scope, drafts));
-    const persist = (next: string[]) => setDraft(scope, block.key, JSON.stringify(next));
-
-    return (
-      <div
-        key={`${scope}-${block.key}`}
-        style={{ border: '1px solid #F0EBE4', borderRadius: 12, padding: 12, background: '#FFFDFC', minWidth: 0 }}
-      >
-        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
-          {labelForScope(scope)}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {order.map((id, idx) => (
-            <div
-              key={id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, minHeight: 42, padding: '0 10px',
-                borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-              }}
-            >
-              <span style={{ width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, background: 'var(--color-bg)', color: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 800 }}>
-                {idx + 1}
-              </span>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
-                {HOME_SECTION_LABELS[id as keyof typeof HOME_SECTION_LABELS] ?? id}
-              </span>
-              <button
-                type="button"
-                aria-label={`Move ${id} up`}
-                disabled={idx === 0}
-                onClick={() => persist(moveHomeSection(order, idx, -1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
-                type="button"
-                aria-label={`Move ${id} down`}
-                disabled={idx === order.length - 1}
-                onClick={() => persist(moveHomeSection(order, idx, 1))}
-                style={{ width: 32, height: 32, borderRadius: 9, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: idx === order.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === order.length - 1 ? 0.45 : 1 }}
-              >
-                <ArrowDown size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   const renderScopeTabs = (
     blockKey: string,
     scopes: ContentScope[],
@@ -1083,38 +988,6 @@ export function ContentHubPage() {
       </div>
     </div>
   );
-
-  const renderSectionOrder = (block: ContentBlock) => {
-    const scopes = editorScopesForBlock(block);
-    const multi = scopes.length > 1;
-    const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
-    return (
-      <div
-        key={block.key}
-        className="hub-section-order"
-        data-testid={`section-order-${block.key}`}
-        data-block-key={block.key}
-      >
-        <div className="hub-section-order-top">
-          <div className="hub-section-order-titles">
-            <div className="hub-section-order-label">Home section order</div>
-            <div className="hub-section-order-helper">
-              Arrange movable homepage sections. Hero and trust strip stay pinned above this order.
-            </div>
-          </div>
-          {renderContentModeControl(block)}
-        </div>
-        {multi
-          ? renderScopeTabs(
-            block.key,
-            scopes,
-            activeScope,
-            renderSectionOrderScope(block, activeScope),
-          )
-          : renderSectionOrderScope(block, scopes[0])}
-      </div>
-    );
-  };
 
   const renderBlock = (block: ContentBlock): ReactNode => {
     if (isSeoDescriptionKey(block.key)) {
@@ -1205,11 +1078,8 @@ export function ContentHubPage() {
 
   const buildSectionContent = (sectionName: string, withBack: boolean) => {
     const sectionBlocks = contentBlocks.filter((b) => b.group === sectionName);
-    const sectionOrderBlock = sectionBlocks.find((b) => b.section_order || b.key === 'home_section_order');
     const sectionEnableBlocks = sectionBlocks.filter((b) => b.section_enable);
-    const regularBlocks = sectionBlocks.filter(
-      (b) => !b.section_enable && b.key !== sectionOrderBlock?.key,
-    );
+    const regularBlocks = sectionBlocks.filter((b) => !b.section_enable);
     const isBrandKit = sectionName === 'Branding';
 
     const brandBlocksByKey = new Map(
@@ -1224,21 +1094,16 @@ export function ContentHubPage() {
       ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
       : 'Bake & Grill';
 
-    // Homepage: page_blocks layout editor is authoritative (Stage D). Legacy
-    // home_section_order / section_*_enabled chrome is hidden so owners aren't
-    // offered two disagreeing controls — those keys remain until Stage F.
+    // Homepage: the page_blocks layout editor is the only arrangement control.
+    // The legacy home_section_order / section_*_enabled keys were retired in
+    // Stage F, so there is nothing left to disagree with it.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
         <HomeLayoutEditor />
-      ) : sectionOrderBlock || sectionEnableBlocks.length > 0 ? (
-        <>
-          {sectionOrderBlock ? renderSectionOrder(sectionOrderBlock) : null}
-          {sectionEnableBlocks.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {sectionEnableBlocks.map(renderSectionEnable)}
-            </div>
-          ) : null}
-        </>
+      ) : sectionEnableBlocks.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sectionEnableBlocks.map(renderSectionEnable)}
+        </div>
       ) : null;
 
     const brandKit: ReactNode =
@@ -1269,12 +1134,11 @@ export function ContentHubPage() {
       return !contentBlocks.some((c) => c.key === titleKey);
     }).length;
     const brandCardCount = isBrandKit ? brandBlocksByKey.size : 0;
-    // Homepage layout chrome replaces legacy section-order/enable cards (Stage D).
+    // The Homepage layout editor replaces per-section enable cards.
     const isHomeLayout = sectionName === 'Homepage';
     const cardCount = brandCardCount
       + visibleRegularCount
-      + (isHomeLayout ? 0 : sectionEnableBlocks.length)
-      + (isHomeLayout ? 0 : (sectionOrderBlock ? 1 : 0));
+      + (isHomeLayout ? 0 : sectionEnableBlocks.length);
 
     return (
       <SectionEditor

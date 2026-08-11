@@ -1,5 +1,22 @@
 import { request } from './client';
 
+export type PageBlockMedia = {
+  image?: {
+    url: string;
+    webp?: string | null;
+    thumb?: string | null;
+    thumb_webp?: string | null;
+    alt?: string | null;
+    width?: number | null;
+    height?: number | null;
+  } | null;
+  video?: {
+    url: string;
+    poster_url?: string | null;
+    alt?: string | null;
+  } | null;
+} | null;
+
 export type PageBlockRow = {
   id: number;
   app: string;
@@ -9,6 +26,8 @@ export type PageBlockRow = {
   is_enabled: boolean;
   content_mode: 'shared' | 'own';
   settings: Record<string, unknown>;
+  /** Media resolved server-side for image/video blocks. */
+  media?: PageBlockMedia;
   label?: string;
   unknown?: boolean;
 };

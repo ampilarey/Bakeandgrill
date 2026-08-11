@@ -16,6 +16,46 @@ use Tests\TestCase;
  */
 class ContentAppScopeHygieneTest extends TestCase
 {
+    /**
+     * Keys the order app reads through a derived context value rather than by
+     * name. The derived symbol must still be rendered somewhere.
+     *
+     * @var array<string, string>
+     */
+    private const DERIVED_ORDER_APP_KEYS = [
+        'hero_slides' => 'heroSlides',
+        'homepage_categories' => 'homepageCategories',
+        'about_values' => 'aboutValues',
+    ];
+
+    /**
+     * Declaring a key in SiteSettingsContext (interface entry, default value,
+     * or parser) is not the same as rendering it. Without this, a key can
+     * claim the order app forever while only ever appearing on the website.
+     */
+    public function test_order_app_keys_are_rendered_not_merely_declared(): void
+    {
+        $corpus = $this->orderAppConsumerCorpus(excludeSettingsDeclarations: true);
+        $declaredOnly = [];
+
+        foreach (ContentRegistry::keysForApp('order_app') as $key) {
+            if (ContentRegistry::isDeprecated($key)) {
+                continue;
+            }
+            $needle = self::DERIVED_ORDER_APP_KEYS[$key] ?? $key;
+            if (! str_contains($corpus, $needle)) {
+                $declaredOnly[] = $key;
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $declaredOnly,
+            'Registry keys offered to the order app but never rendered there (scope them to website): '
+                .implode(', ', $declaredOnly),
+        );
+    }
+
     public function test_every_order_app_registry_key_is_consumed_in_order_src(): void
     {
         $corpus = $this->orderAppConsumerCorpus();
@@ -50,13 +90,16 @@ class ContentAppScopeHygieneTest extends TestCase
         );
     }
 
-    private function orderAppConsumerCorpus(): string
+    private function orderAppConsumerCorpus(bool $excludeSettingsDeclarations = false): string
     {
         $root = base_path('../apps/online-order-web/src');
         $chunks = [];
         foreach ($this->iterateSourceFiles($root, ['php', 'ts', 'tsx', 'js', 'jsx', 'css']) as $path) {
             $base = basename($path);
             if (preg_match('/\.test\./', $base)) {
+                continue;
+            }
+            if ($excludeSettingsDeclarations && $base === 'SiteSettingsContext.tsx') {
                 continue;
             }
             $chunks[] = $this->stripSiteSettingsInterface(file_get_contents($path) ?: '');

@@ -4,6 +4,18 @@ import { HomePage } from './HomePage';
 
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
+  // page_blocks is the only layout source, so the carousel needs a layout that
+  // actually contains the specials block.
+  const layoutBlocks = ['hero', 'specials', 'brand_footer'].map((type, position) => ({
+    id: position + 1,
+    app: 'order_app' as const,
+    page: 'home' as const,
+    block_type: type,
+    position,
+    is_enabled: true,
+    content_mode: 'own' as const,
+    settings: {},
+  }));
   const offers = [
     {
       id: 'special-1',
@@ -40,6 +52,7 @@ vi.mock('../api', async () => {
     fetchFeaturedReviews: vi.fn().mockResolvedValue({ reviews: [] }),
     fetchCustomerOrders: vi.fn().mockResolvedValue({ data: [] }),
     fetchItems: vi.fn().mockResolvedValue({ data: [] }),
+    fetchPageBlocks: vi.fn().mockResolvedValue({ blocks: layoutBlocks }),
     API_ORIGIN: 'https://example.test',
   };
 });
@@ -133,11 +146,10 @@ describe('HomePage offers carousel', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('promo-hero')).toBeTruthy();
-
     await waitFor(() => {
       expect(screen.getByTestId('home-offers-carousel')).toBeTruthy();
     });
+    expect(screen.getByTestId('promo-hero')).toBeTruthy();
 
     const cards = screen.getAllByTestId('specials-carousel-card');
     expect(cards.length).toBe(2);
