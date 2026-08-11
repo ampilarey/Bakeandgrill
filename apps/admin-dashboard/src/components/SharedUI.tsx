@@ -366,6 +366,8 @@ export function Modal({
   const uid = useId();
   const titleId = `modal-title-${uid}`;
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -375,17 +377,17 @@ export function Modal({
   const bodyChildren = lastIsActions ? childArr.slice(0, -1) : children;
   const footerNode = footer ?? (lastIsActions ? last : null);
 
+  // Body scroll lock + focus management (same pattern as ContentEditorSheet).
   useEffect(() => {
+    previouslyFocused.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.setTimeout(() => closeRef.current?.focus(), 0);
+
     const panel = panelRef.current;
-    if (!panel) return;
-    const els = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL));
-    const initial =
-      panel.querySelector<HTMLElement>('select, input:not([type="checkbox"]), textarea')
-      ?? els()[0];
-    const active = document.activeElement;
-    if (!active || !panel.contains(active)) {
-      initial?.focus();
-    }
+    const els = () =>
+      panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL)) : [];
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onCloseRef.current(); return; }
@@ -397,7 +399,14 @@ export function Modal({
       else { if (document.activeElement === lastEl) { e.preventDefault(); first.focus(); } }
     };
     document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', handleKey);
+      const target = previouslyFocused.current;
+      if (target && typeof target.focus === 'function') {
+        window.setTimeout(() => target.focus(), 0);
+      }
+    };
   }, []);
 
   return (
@@ -406,6 +415,7 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      data-testid="shared-modal-backdrop"
       style={{
         position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
         background: 'rgba(28,20,8,0.45)',
@@ -422,8 +432,11 @@ export function Modal({
         <div className="modal-header">
           <h3 id={titleId} style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
           <button
+            ref={closeRef}
+            type="button"
             onClick={onClose}
             aria-label="Close"
+            data-testid="shared-modal-close"
             className="icon-button"
             style={{
               background: 'var(--color-bg)', border: 'none', borderRadius: 8,
