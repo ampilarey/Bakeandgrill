@@ -17,6 +17,7 @@ final class ContentWriter
 {
     public function __construct(
         private readonly AuditLogService $audit,
+        private readonly ContentValidationService $validator,
     ) {}
 
     public function write(
@@ -28,6 +29,7 @@ final class ContentWriter
         string $auditAction = 'content.updated',
         array $extraMeta = [],
     ): void {
+        $value = $this->validator->normalizeForWrite($key, $scope, $value);
         $value = self::prepareValue($key, $value);
 
         $old = SiteSetting::getScoped($key, $scope, $locale);

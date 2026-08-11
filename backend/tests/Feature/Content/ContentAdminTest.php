@@ -69,7 +69,7 @@ class ContentAdminTest extends TestCase
         ])->assertOk();
         $this->assertSame('+960 WEB', SiteSetting::getScoped('business_phone', 'order_app'));
 
-        $this->postJson('/api/admin/content/business_phone/share')->assertOk();
+        $this->postJson('/api/admin/content/business_phone/share', ['source' => 'website'])->assertOk();
         $this->assertFalse(
             SiteSetting::query()->where('key', 'business_phone')->where('scope', 'website')->exists(),
         );
@@ -117,7 +117,7 @@ class ContentAdminTest extends TestCase
         ]], JSON_UNESCAPED_SLASHES), 'order_app');
 
         // Collapse to Same in both — must kill scoped forever-cache entries.
-        $this->postJson('/api/admin/content/hero_slides/share', ['locale' => 'en'])->assertOk();
+        $this->postJson('/api/admin/content/hero_slides/share', ['locale' => 'en', 'source' => 'shared'])->assertOk();
         $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
         $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
         $this->assertSame('same', \App\Domains\Content\ContentRegistry::linkState('hero_slides', 'en'));

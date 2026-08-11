@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
+use App\Domains\Content\ContentValidationService;
 use App\Domains\Content\ContentWriter;
 use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\VideoProcessor;
@@ -33,6 +34,7 @@ class ContentController extends Controller
         private readonly ContentWriter $writer,
         private readonly VideoProcessor $videos,
         private readonly MediaLibraryService $library,
+        private readonly ContentValidationService $contentValidator,
     ) {}
 
     /**
@@ -308,11 +310,15 @@ class ContentController extends Controller
             if (is_array($value) || is_object($value)) {
                 $value = json_encode($value, JSON_UNESCAPED_UNICODE);
             }
+            $key = (string) $change['key'];
+            $scope = (string) $change['scope'];
+            $changeLocale = (string) ($change['locale'] ?? $locale);
+            $value = $this->contentValidator->normalizeForWrite($key, $scope, $value);
             $row = ContentSchedule::query()->create([
-                'key' => $change['key'],
-                'scope' => $change['scope'],
-                'locale' => $change['locale'] ?? $locale,
-                'value' => (string) $value,
+                'key' => $key,
+                'scope' => $scope,
+                'locale' => $changeLocale,
+                'value' => $value,
                 'publish_at' => $publishAt,
                 'status' => ContentSchedule::STATUS_PENDING,
                 'user_id' => $request->user()?->id,
@@ -438,11 +444,14 @@ class ContentController extends Controller
                 if (is_array($value) || is_object($value)) {
                     $value = json_encode($value, JSON_UNESCAPED_UNICODE);
                 }
-                $this->ensureRow($entry['key'], $entry['scope'], $locale);
+                $key = (string) $entry['key'];
+                $scope = (string) $entry['scope'];
+                $value = $this->contentValidator->normalizeForWrite($key, $scope, $value);
+                $this->ensureRow($key, $scope, $locale);
                 $this->writer->write(
-                    $entry['key'],
-                    $entry['scope'],
-                    (string) $value,
+                    $key,
+                    $scope,
+                    $value,
                     $locale,
                     $request,
                     'content.imported',
@@ -465,6 +474,7 @@ class ContentController extends Controller
         if (!ContentRegistry::has($key) || !ContentRegistry::isShareable($key)) {
             return response()->json(['message' => 'Block cannot be shared.'], 422);
         }
+        $this->contentValidator->assertScopeAllowed($key, 'shared');
 
         $locale = (string) $request->input('locale', 'en');
 
@@ -502,6 +512,7 @@ class ContentController extends Controller
         if (!ContentRegistry::has($key) || !ContentRegistry::isShareable($key)) {
             return response()->json(['message' => 'Block cannot be split.'], 422);
         }
+        $this->contentValidator->assertScopeAllowed($key, 'shared');
 
         $locale = (string) $request->input('locale', 'en');
         $shared = SiteSetting::getScoped($key, 'shared', $locale);

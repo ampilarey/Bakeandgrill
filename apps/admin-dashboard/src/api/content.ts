@@ -4,6 +4,7 @@ export type ContentScope = 'shared' | 'website' | 'order_app';
 /** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
 export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
+export type ContentDraftAction = 'publish' | 'discard' | 'migrate';
 
 export type ContentEditorHint =
   | 'hero'
@@ -109,17 +110,25 @@ export async function saveContentDrafts(
   });
 }
 
-export async function shareContentBlock(key: string, locale: ContentLocale = 'en'): Promise<{ blocks: ContentBlock[] }> {
+export async function shareContentBlock(
+  key: string,
+  locale: ContentLocale = 'en',
+  options: { source: ContentScope; draft_action?: ContentDraftAction },
+): Promise<{ blocks: ContentBlock[] }> {
   return req(`/admin/content/${encodeURIComponent(key)}/share`, {
     method: 'POST',
-    body: JSON.stringify({ locale }),
+    body: JSON.stringify({ locale, ...options }),
   });
 }
 
-export async function splitContentBlock(key: string, locale: ContentLocale = 'en'): Promise<{ blocks: ContentBlock[] }> {
+export async function splitContentBlock(
+  key: string,
+  locale: ContentLocale = 'en',
+  options: { draft_action?: ContentDraftAction } = {},
+): Promise<{ blocks: ContentBlock[] }> {
   return req(`/admin/content/${encodeURIComponent(key)}/split`, {
     method: 'POST',
-    body: JSON.stringify({ locale }),
+    body: JSON.stringify({ locale, ...options }),
   });
 }
 

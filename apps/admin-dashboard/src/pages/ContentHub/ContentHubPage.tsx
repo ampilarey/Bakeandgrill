@@ -23,6 +23,7 @@ import {
   uploadContentVideo,
   type ContentApp,
   type ContentBlock,
+  type ContentDraftAction,
   type ContentLocale,
   type ContentRevision,
   type ContentScheduleRow,
@@ -57,6 +58,8 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
 type DraftMap = Record<string, string>;
+type DraftsByLocale = Record<ContentLocale, DraftMap>;
+type LocaleMetaMap<T> = Record<ContentLocale, T>;
 
 type DraftChange = {
   key: string;
@@ -77,6 +80,9 @@ type PreviewState = {
 };
 
 const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
+const EMPTY_DRAFTS_BY_LOCALE: DraftsByLocale = { en: {}, dv: {} };
+const TRUE_BY_LOCALE: LocaleMetaMap<boolean> = { en: true, dv: true };
+const NULL_BY_LOCALE: LocaleMetaMap<string | null> = { en: null, dv: null };
 
 /** Desktop layout prefs — Content Hub only. */
 const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
@@ -212,6 +218,18 @@ function scopeHasDraft(scope: ContentScope, key: string, drafts: DraftMap): bool
   return drafts[draftKey(scope, key)] !== undefined;
 }
 
+function blockDraftScopes(block: ContentBlock, drafts: DraftMap): ContentScope[] {
+  return ALL_SCOPES.filter((scope) => scopeHasDraft(scope, block.key, drafts));
+}
+
+function presentValue(value: string | null | undefined): boolean {
+  return value !== null && value !== undefined && value !== '';
+}
+
+function sharedSourceAvailable(block: ContentBlock, drafts: DraftMap): boolean {
+  return presentValue(storedValueForScope(block, 'shared', drafts));
+}
+
 /** Stored/draft value for a scope only — does not fall through to shared. */
 function storedValueForScope(
   block: ContentBlock,
@@ -290,8 +308,8 @@ export function ContentHubPage() {
   const [activeGroup, setActiveGroup] = useState<string | null>(() => urlGroup || null);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(() => Boolean(urlGroup));
   const [q, setQ] = useState('');
-  const [drafts, setDrafts] = useState<DraftMap>({});
   const [locale, setLocale] = useState<ContentLocale>('en');
+  const [draftsByLocale, setDraftsByLocale] = useState<DraftsByLocale>(() => ({ ...EMPTY_DRAFTS_BY_LOCALE }));
   const [historyTarget, setHistoryTarget] = useState<HistoryTarget>(null);
   const [revisions, setRevisions] = useState<ContentRevision[]>([]);
   const [schedules, setSchedules] = useState<ContentScheduleRow[]>([]);
@@ -303,9 +321,9 @@ export function ContentHubPage() {
   const [railCollapsed, setRailCollapsed] = useState(defaultRailCollapsed);
   /** Per-block active scope tab for split editors (resets on section change). */
   const [blockScopeTab, setBlockScopeTab] = useState<Record<string, ContentScope>>({});
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...NULL_BY_LOCALE }));
   const [autosaving, setAutosaving] = useState(false);
-  const [serverDraftSynced, setServerDraftSynced] = useState(true);
+  const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   const [mediaOpen, setMediaOpen] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -319,8 +337,40 @@ export function ContentHubPage() {
     scope: ContentScope;
     onDone: (url: string) => void;
   } | null>(null);
-  const draftsRef = useRef<DraftMap>({});
+  const draftsByLocaleRef = useRef<DraftsByLocale>({ ...EMPTY_DRAFTS_BY_LOCALE });
+  const serverDraftSyncedByLocaleRef = useRef<LocaleMetaMap<boolean>>({ ...TRUE_BY_LOCALE });
   const loadGen = useRef(0);
+  const saveGeneration = useRef(0);
+
+  const drafts = draftsByLocale[locale] ?? {};
+  const lastSavedAt = lastSavedAtByLocale[locale] ?? null;
+  const serverDraftSynced = serverDraftSyncedByLocale[locale] ?? true;
+
+  const replaceLocaleDrafts = (loc: ContentLocale, nextDrafts: DraftMap) => {
+    setDraftsByLocale((prev) => {
+      const next = { ...prev, [loc]: nextDrafts };
+      draftsByLocaleRef.current = next;
+      return next;
+    });
+  };
+
+  const updateLocaleDrafts = (loc: ContentLocale, updater: (prev: DraftMap) => DraftMap) => {
+    setDraftsByLocale((prev) => {
+      const nextDrafts = updater(prev[loc] ?? {});
+      const next = { ...prev, [loc]: nextDrafts };
+      draftsByLocaleRef.current = next;
+      return next;
+    });
+  };
+
+  const setLocaleSynced = (loc: ContentLocale, synced: boolean) => {
+    serverDraftSyncedByLocaleRef.current = { ...serverDraftSyncedByLocaleRef.current, [loc]: synced };
+    setServerDraftSyncedByLocale((prev) => ({ ...prev, [loc]: synced }));
+  };
+
+  const setLocaleLastSavedAt = (loc: ContentLocale, savedAt: string | null) => {
+    setLastSavedAtByLocale((prev) => ({ ...prev, [loc]: savedAt }));
+  };
 
   const load = async (loc: ContentLocale = locale) => {
     const gen = ++loadGen.current;
@@ -344,12 +394,15 @@ export function ContentHubPage() {
       for (const [key, value] of Object.entries(orderDrafts.drafts || {})) {
         restored[draftKey('order_app', key)] = value;
       }
+      const hadUnsyncedLocal = serverDraftSyncedByLocaleRef.current[loc] === false;
+      const nextDrafts = hadUnsyncedLocal
+        ? { ...restored, ...(draftsByLocaleRef.current[loc] ?? {}) }
+        : restored;
       setBlocks(blockRes.blocks);
       setSchedules(scheduleRes.schedules);
-      setDrafts(restored);
-      draftsRef.current = restored;
-      setLastSavedAt(latestIso([sharedDrafts.saved_at, websiteDrafts.saved_at, orderDrafts.saved_at]));
-      setServerDraftSynced(true);
+      replaceLocaleDrafts(loc, nextDrafts);
+      setLocaleLastSavedAt(loc, latestIso([sharedDrafts.saved_at, websiteDrafts.saved_at, orderDrafts.saved_at]));
+      setLocaleSynced(loc, !hadUnsyncedLocal);
     } catch (e) {
       if (gen !== loadGen.current) return;
       error(e instanceof Error ? e.message : 'Failed to load content');
@@ -406,12 +459,10 @@ export function ContentHubPage() {
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
 
   const setDraft = (scope: ContentScope, key: string, value: string) => {
-    setDrafts((prev) => {
-      const next = { ...prev, [draftKey(scope, key)]: value };
-      draftsRef.current = next;
-      return next;
-    });
-    setServerDraftSynced(false);
+    const loc = locale;
+    saveGeneration.current += 1;
+    updateLocaleDrafts(loc, (prev) => ({ ...prev, [draftKey(scope, key)]: value }));
+    setLocaleSynced(loc, false);
   };
 
   // Preview tokens — one per app so website/order drafts overlay correctly.
@@ -465,16 +516,22 @@ export function ContentHubPage() {
   useEffect(() => {
     if (dirtyCount === 0 || serverDraftSynced) return;
     const t = window.setTimeout(() => {
-      const changes = collectChanges(draftsRef.current, locale);
+      const loc = locale;
+      const gen = saveGeneration.current;
+      const changes = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc);
       if (changes.length === 0) return;
       setAutosaving(true);
-      void saveContentDrafts(changes, locale)
+      void saveContentDrafts(changes, loc)
         .then((res) => {
-          setLastSavedAt(res.saved_at);
-          setServerDraftSynced(true);
+          if (gen !== saveGeneration.current) return;
+          setLocaleLastSavedAt(loc, res.saved_at);
+          setLocaleSynced(loc, true);
         })
         .catch(() => { /* keep local changes */ })
-        .finally(() => setAutosaving(false));
+        .finally(() => {
+          const stillHasDrafts = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc).length > 0;
+          if (gen === saveGeneration.current || !stillHasDrafts) setAutosaving(false);
+        });
     }, 2500);
     return () => window.clearTimeout(t);
   }, [drafts, dirtyCount, serverDraftSynced, locale]);
@@ -533,10 +590,10 @@ export function ContentHubPage() {
     try {
       const { blocks: nextBlocks } = await updateContent(changes, locale);
       setBlocks(nextBlocks);
-      setDrafts({});
-      draftsRef.current = {};
-      setServerDraftSynced(true);
-      setLastSavedAt(new Date().toISOString());
+      saveGeneration.current += 1;
+      replaceLocaleDrafts(locale, {});
+      setLocaleSynced(locale, true);
+      setLocaleLastSavedAt(locale, new Date().toISOString());
       success('Content published');
     } catch (e) {
       error(e instanceof Error ? e.message : 'Save failed');
@@ -554,9 +611,9 @@ export function ContentHubPage() {
     setSaving(true);
     try {
       await scheduleContent(new Date(scheduleAt).toISOString(), changes, locale);
-      setDrafts({});
-      draftsRef.current = {};
-      setServerDraftSynced(true);
+      saveGeneration.current += 1;
+      replaceLocaleDrafts(locale, {});
+      setLocaleSynced(locale, true);
       setScheduleAt('');
       const { schedules: nextSchedules } = await getContentSchedules('pending');
       setSchedules(nextSchedules);
@@ -568,13 +625,72 @@ export function ContentHubPage() {
     }
   };
 
+  const discardDraftActionForModeChange = (block: ContentBlock): ContentDraftAction | undefined | null => {
+    const scopes = blockDraftScopes(block, drafts);
+    if (scopes.length === 0) return undefined;
+    const names = scopes.map(labelForScope).join(', ');
+    return window.confirm(
+      `${block.label} has unpublished ${locale.toUpperCase()} drafts for ${names}. Discard those drafts and change the mode?`,
+    )
+      ? 'discard'
+      : null;
+  };
+
+  const chooseShareSource = (block: ContentBlock): ContentScope | null => {
+    const choices: Array<{ scope: ContentScope; label: string }> = [
+      { scope: 'website', label: 'Website' },
+      { scope: 'order_app', label: 'Order app' },
+    ];
+    if (sharedSourceAvailable(block, drafts)) {
+      choices.push({ scope: 'shared', label: 'Shared' });
+    }
+
+    const message = [
+      'Make this block the same in both apps. Copy which source?',
+      ...choices.map((choice, index) => `${index + 1}. ${choice.label}`),
+    ].join('\n');
+    const raw = window.prompt(message, choices[0]?.label ?? 'Website');
+    if (raw === null) return null;
+    const normalized = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const numeric = Number.parseInt(normalized, 10);
+    if (Number.isFinite(numeric) && choices[numeric - 1]) {
+      return choices[numeric - 1].scope;
+    }
+    const matched = choices.find((choice) => (
+      choice.scope === normalized
+      || choice.label.toLowerCase().replace(/\s+/g, '_') === normalized
+      || (choice.scope === 'website' && normalized === 'web')
+      || (choice.scope === 'order_app' && normalized === 'order')
+      || (choice.scope === 'shared' && normalized === 'both')
+    ));
+    if (matched) return matched.scope;
+    error('Choose Website, Order app, or Shared as the source.');
+    return null;
+  };
+
+  const discardBlockDrafts = (block: ContentBlock) => {
+    saveGeneration.current += 1;
+    updateLocaleDrafts(locale, (prev) => {
+      const next = { ...prev };
+      for (const scope of ALL_SCOPES) {
+        delete next[draftKey(scope, block.key)];
+      }
+      return next;
+    });
+    setLocaleSynced(locale, true);
+  };
+
   const changeContentMode = async (block: ContentBlock, next: 'same' | 'different') => {
     if (linkState(block) === next || linkingKey) return;
+    const draftAction = discardDraftActionForModeChange(block);
+    if (draftAction === null) return;
+    const source = next === 'same' ? chooseShareSource(block) : null;
+    if (next === 'same' && !source) return;
     setLinkingKey(block.key);
     try {
       const { blocks: nextBlocks } = next === 'same'
-        ? await shareContentBlock(block.key, locale)
-        : await splitContentBlock(block.key, locale);
+        ? await shareContentBlock(block.key, locale, { source: source as ContentScope, ...(draftAction ? { draft_action: draftAction } : {}) })
+        : (draftAction ? await splitContentBlock(block.key, locale, { draft_action: draftAction }) : await splitContentBlock(block.key, locale));
       if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
         error('Could not update content mode — empty response');
         return;
@@ -589,6 +705,9 @@ export function ContentHubPage() {
             : 'Could not switch to same in both. Try again.',
         );
         return;
+      }
+      if (draftAction === 'discard') {
+        discardBlockDrafts(block);
       }
       success(next === 'different'
         ? 'Website and order app can now differ — use the tabs below'
@@ -609,10 +728,9 @@ export function ContentHubPage() {
     try {
       const { blocks: nextBlocks } = await copyContentBlock(block.key, from, to, locale);
       setBlocks(nextBlocks);
-      setDrafts((prev) => {
+      updateLocaleDrafts(locale, (prev) => {
         const next = { ...prev };
         delete next[draftKey(to, block.key)];
-        draftsRef.current = next;
         return next;
       });
       success(`Copied from ${fromLabel}`);
