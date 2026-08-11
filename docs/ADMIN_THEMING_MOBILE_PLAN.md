@@ -1,7 +1,20 @@
 # Admin Dashboard — Theming & Mobile Plan
 
-**Scope:** `apps/admin-dashboard` (55 pages)
-**Status:** Audit complete, implementation not started
+**Scope:** `apps/admin-dashboard` (70 page files)
+**Status: Revision 2** — the original audit's conclusions were correct and most of the work has
+since shipped. Revised after re-measuring against the code and after the Content Hub mobile work
+introduced a reusable sheet pattern that did not exist when this was written.
+
+| Item | Original finding | Today |
+|---|---|---|
+| Page chrome / structure | Uniform, leave alone | Unchanged. Still correct. |
+| Mobile tables | Handled by a catch-all; action: none | Confirmed. 55 pages carry tables, none need a wrapper. |
+| Shared modals on mobile | Not covered by the original audit | **Mostly handled** — `index.css:705` turns the SharedUI Modal into a bottom sheet with safe-area footer padding. 34 page files inherit it. 6 hand-rolled overlays do not — see §6.2. |
+| Dark mode migration | 3,188 hex literals vs 3 variable usages | **647 hex literals vs 3,110 variable usages — roughly 83% done.** |
+| Stage 1 (lint + baseline + CLAUDE.md) | Proposed | **Shipped.** |
+
+**What is genuinely left is in §6. Everything above it is history, kept because the reasoning
+still holds and because the "action: none" verdicts stop the work being reinvented.**
 
 ---
 
@@ -426,3 +439,126 @@ The migration is value-preserving in light theme by construction — every
 mapping substitutes a variable whose `:root` value is byte-identical to the
 literal it replaces. Any visible light-mode change means a mapping was applied
 to the wrong property and should be reverted rather than adjusted.
+
+---
+
+## 6. What is genuinely left (Revision 2)
+
+Everything above §6 is history. It is kept because the reasoning still holds and because the
+"action: none" verdicts stop finished questions being reopened. This section is the only part
+that describes outstanding work.
+
+Measured on the current tip of `claude/service-availability-maintenance-zj4whc`.
+
+### 6.1 The hex tail — 647 literals across 70 page files
+
+Down from 3,188. Variable usages are now 3,110, so roughly 83% of the migration has landed and
+the ten-value mechanical pass of §1.4 is done. What is left is **not** another find-and-replace;
+these are the one-off shades §1.4 predicted would need judgement.
+
+Concentration, highest first:
+
+| File | Literals |
+|---|---|
+| `ForecastPage.tsx` | 39 |
+| `DashboardPage.tsx` | 34 |
+| `TestChecklistPage.tsx` | 33 |
+| `ReportsPage/ReportsTabPanels.tsx` | 29 |
+| `MediaLibraryPage.tsx` | 26 |
+| `MenuPage/MenuItemEditorModal.tsx` | 22 |
+| `CustomersPage.tsx` | 22 |
+| `DeliveryPage.tsx` | 21 |
+| `ServiceAvailabilityPage.tsx` | 20 |
+| `OrdersPage.tsx` | 20 |
+| `OnlineOrderingPage/orderingControlUi.tsx` | 20 |
+| `SmsPage/RecipientsTab.tsx` | 19 |
+
+Those twelve files hold 305 of the 647 — 47%. The rest is a thin scatter.
+
+**This is gated on Stage 3c, not on effort.** Most of the remainder is status colour: badge
+tints, chart series, danger/success/warning shades that have no existing variable. Replacing
+them requires deciding *what the dark-mode value should be*, which is a design decision, not a
+substitution. Do not let anyone run a bulk pass over these — a wrong mapping here changes light
+mode, which §5 identifies as the actual regression risk.
+
+Recommended order: do the Stage 3b visual walk first (it has still not been done), then decide
+Stage 3c, then migrate the twelve files above. Migrating before the walk means guessing.
+
+### 6.2 Six hand-rolled overlays skip the shared mobile treatment
+
+The bottom-sheet block at `index.css:705` is scoped to `.modal-backdrop` — the SharedUI Modal.
+34 page files render `<Modal>` and inherit it correctly. Eight page files instead build their own
+`position: 'fixed'` overlay in an inline style, and those inherit nothing.
+
+Two of the eight are fine and should be left alone:
+
+- `ServiceAvailabilityPage.tsx` — the fixed element is a toast, not a modal.
+- `MediaLibraryPage.tsx` — already branches on `useIsMobile` and goes full-screen with
+  `paddingBottom: 96`. This is the pattern the others should copy.
+- `MenuPage/ImageCropModal.tsx` — already full-screen with `role="dialog"` and `aria-modal`.
+
+The remaining six have a real mobile problem:
+
+| File | Overlay | Behaviour on a 320–390px phone |
+|---|---|---|
+| `OrdersPage.tsx` | right drawer, `width: min(420px, 100vw)` | Full width, but `padding: 24` on all sides and no safe-area inset — content runs under the home indicator. |
+| `CustomersPage.tsx` | right drawer, `width: min(480px, 100vw)` | Same. Also `zIndex: 40/50` as raw numbers rather than the `--z-*` scale. |
+| `WebhooksPage.tsx` | right panel, `maxWidth: 480`, `height: 100%` | Full width; no safe-area inset; raw `zIndex: 40`. |
+| `DeliveryPage.tsx` | centred card, `maxWidth: 480`, backdrop `padding: 24` | 48px of the 320px viewport is spent on backdrop padding. |
+| `MenuPage.tsx` (recipe) | centred card, `width: 90%`, `maxHeight: 80vh` | Cramped; `80vh` not `80dvh`, so the mobile browser chrome eats the bottom. |
+| `MenuPage.tsx` (barcode) | centred card, `width: 90%`, `maxWidth: 360` | Same. |
+
+Two defects are shared by **all six, and by the shared Modal as well**:
+
+1. **No body scroll lock.** Nothing in `src/pages` sets `document.body.style.overflow`. On a
+   phone, scrolling inside an open drawer scrolls the page behind it.
+2. **No safe-area insets except the shared Modal's footer.** No page-level overlay references
+   `env(safe-area-inset-*)` at all.
+
+`ContentEditorSheet.tsx`, built during the Content Hub mobile work, already solves both — it
+portals, locks body scroll and restores the previous value, moves focus to the close button and
+returns it to the trigger on close, and pads all four safe-area insets. **That component is the
+reference implementation.** The right fix is to lift its behaviour into the shared Modal and then
+convert the six, not to reimplement it six more times.
+
+### 6.3 There is no real layout test coverage — and one suite faked it
+
+`ContentHub.mobileEditorSheet.test.tsx` contained a helper, `applyMobileViewportCss(width)`, that
+injected its own stylesheet declaring `width: ${width}px; overflow-x: hidden` on the very
+elements the test then measured, and asserted `document.documentElement.scrollWidth <= width`.
+The assertion could not fail. Proven twice: disabling the real mobile media query entirely left
+all six tests green, and forcing `.content-editor-sheet { position: static; width: 3000px }` also
+left all six green.
+
+jsdom has no layout engine. `scrollWidth` is not a measurement there — it is whatever the test
+put in. **Overflow assertions belong in Playwright against a real browser at a real viewport, or
+they belong nowhere.** A vitest suite may assert structure (the sheet mounted, focus moved, the
+draft label reads correctly); it may not assert pixels.
+
+Outstanding:
+
+- Replace the faked assertions with Playwright checks at 320 / 375 / 390px (in progress).
+- Sweep the other suites for the same pattern — any test that both writes CSS and measures it.
+- Once §6.2 lands, add one Playwright spec per converted overlay rather than per page.
+
+### 6.4 Two confirmed CSS defects, already fixed — noted so they are not reintroduced
+
+- `index.css:2100` — `.page-header-actions { flex-shrink: 0 }` forced header buttons past the
+  viewport edge on phones. Now overridden inside `@media (max-width: 767px)`.
+- `index.css:2885` — `.hub-block-more-menu { position: absolute; right: 0; min-width: 200px }`
+  opened partly off-screen for right-aligned rows. Now a collision-safe action sheet on mobile.
+
+Both were found by reading CSS, not by a test — which is the point of §6.3.
+
+### 6.5 Sequencing
+
+1. **Stage 3b visual walk** — still not done, and §6.1 is blocked behind it.
+2. **Lift `ContentEditorSheet`'s behaviour into the shared Modal** (scroll lock, focus
+   management, four-sided safe area). This improves 34 pages in one change.
+3. **Convert the six overlays in §6.2** to the shared Modal, one commit each.
+4. **Real Playwright layout coverage** (§6.3), added alongside step 3 so each conversion ships
+   with a test that can actually fail.
+5. **Stage 3c decision, then the twelve files in §6.1.**
+
+Steps 2 and 3 are worth more to a phone user than the whole of step 5. Dark mode is 83% done and
+mostly invisible in daylight; a drawer that scrolls the page behind it is felt every day.
