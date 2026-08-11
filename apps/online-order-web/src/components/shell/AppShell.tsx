@@ -13,6 +13,7 @@ import { BottomNav } from './BottomNav';
 import { FloatingCartBar } from './FloatingCartBar';
 import { TopNav } from './TopNav';
 import { DESKTOP_SHELL_MQ } from './navTabs';
+import { safePublicUrl } from '../../utils/safePublicUrl';
 
 function AppShellChrome() {
   const { t } = useLanguage();
@@ -26,7 +27,7 @@ function AppShellChrome() {
 
   const annEnabled = s.announcement_enabled === 'true';
   const annText = (s.announcement_text || '').trim();
-  const annUrl = (s.announcement_url || '').trim();
+  const annUrl = safePublicUrl(s.announcement_url || '');
   const annStyle = s.announcement_style || 'info';
 
   const annBgMap: Record<string, string> = {

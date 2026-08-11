@@ -15,7 +15,7 @@
                 return '/order' . $link;
             }
 
-            return $link;
+            return safe_public_url($link) ?? '#';
         }
     }
 @endphp
@@ -981,9 +981,11 @@
 
     $phone             = content('business_phone',    '+960 912 0011');
     $phoneTel          = 'tel:' . preg_replace('/[^+\d]/', '', $phone);
-    $waLink            = content('business_whatsapp', 'https://wa.me/9609120011');
-    $viberLink         = content('business_viber',    'viber://chat?number=9609120011');
-    $mapsUrl           = content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
+    $waLink            = safe_public_url((string) content('business_whatsapp', 'https://wa.me/9609120011'))
+        ?? 'https://wa.me/9609120011';
+    $viberLink         = safe_public_url((string) content('business_viber', '')) ?? '';
+    $mapsUrl           = safe_public_url((string) content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives'))
+        ?? 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives';
     $address           = content('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
     $landmark          = content('business_landmark', 'Near H. Sahara');
     $deliveryTime      = content('delivery_time',      '30–45 min');
@@ -1034,7 +1036,28 @@
     $defaultItemImage = content('default_item_image');
     $stripe = 0;
     try {
-        $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+        $draftPageBlocks = null;
+        if (app()->bound('content.draft_overrides')) {
+            $draftOverrides = app('content.draft_overrides');
+            $draftPageBlocks = is_array($draftOverrides)
+                ? ($draftOverrides['page_blocks']['website']['home'] ?? null)
+                : null;
+        }
+        if (is_array($draftPageBlocks)) {
+            $homeBlocks = collect($draftPageBlocks)->map(function ($row) {
+                $row = is_array($row) ? $row : [];
+                $block = new \App\Models\PageBlock();
+                // Preview rows already contain resolved draft settings. Do not
+                // let shared_content_id pull the old live shared row.
+                $row['shared_content_id'] = null;
+                $block->forceFill($row);
+                $block->exists = false;
+
+                return $block;
+            });
+        } else {
+            $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+        }
     } catch (\Throwable $e) {
         $homeBlocks = collect();
     }
@@ -1082,7 +1105,7 @@
             @php
                 $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
                     $sectionId,
-                    is_array($homeBlock->settings) ? $homeBlock->settings : [],
+                    $homeBlock->resolvedSettings(),
                 );
                 $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
                 $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);

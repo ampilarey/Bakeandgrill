@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { HomepageCategoryRow } from '../../context/SiteSettingsContext';
 import { API_ORIGIN } from '../../api';
+import { safePublicUrl } from '../../utils/safePublicUrl';
 
 function orderAppHref(url: string): string {
   const trimmed = url.trim();
@@ -81,7 +82,8 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
           }}
         >
           {rows.map((cat, i) => {
-            const href = orderAppHref(cat.link || '/menu');
+            const safeLink = safePublicUrl(cat.link || '/menu') ?? '#';
+            const href = safeLink === '#' ? '#' : orderAppHref(safeLink);
             const img = resolveImg(cat.image_url);
             const label = cat.name || cat.label || 'Category';
             const inner = (
@@ -164,7 +166,7 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
               color: 'inherit',
             };
 
-            if (href.startsWith('http')) {
+            if (!href.startsWith('/') || href === '#') {
               return (
                 <a key={`${label}-${i}`} href={href} style={cardStyle} rel="noopener noreferrer">
                   {inner}

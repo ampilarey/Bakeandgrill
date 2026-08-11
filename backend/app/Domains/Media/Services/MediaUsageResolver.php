@@ -12,6 +12,7 @@ use App\Models\SignageCampaign;
 use App\Models\SignagePlaylist;
 use App\Models\SiteSetting;
 use App\Support\MediaFileCleaner;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -151,6 +152,10 @@ final class MediaUsageResolver
             $out[] = $row;
         }
 
+        foreach ($this->contentJsonUsages($media, $candidates) as $row) {
+            $out[] = $row;
+        }
+
         return $this->uniqueRows($out);
     }
 
@@ -195,6 +200,107 @@ final class MediaUsageResolver
         }
 
         return $out;
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     * @return list<UsageRow>
+     */
+    private function contentJsonUsages(Media $media, array $candidates): array
+    {
+        $out = [];
+        $tables = [
+            'page_blocks' => ['field' => 'settings', 'type' => 'page_block', 'label' => 'Page block'],
+            'page_block_shared_contents' => ['field' => 'settings', 'type' => 'page_block_shared_content', 'label' => 'Shared page block content'],
+            'page_layout_drafts' => ['field' => 'payload', 'type' => 'page_layout_draft', 'label' => 'Page layout draft'],
+            'content_drafts' => ['field' => 'value', 'type' => 'content_draft', 'label' => 'Content draft'],
+            'content_revisions' => ['field' => 'value', 'type' => 'content_revision', 'label' => 'Content revision'],
+        ];
+
+        foreach ($tables as $table => $meta) {
+            $field = $meta['field'];
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $field)) {
+                continue;
+            }
+
+            foreach (DB::table($table)->get(['id', $field]) as $row) {
+                $value = $row->{$field} ?? null;
+                if (! $this->blobReferencesMedia($value, $media, $candidates)) {
+                    continue;
+                }
+
+                $out[] = [
+                    'type' => $meta['type'],
+                    'label' => $meta['label'] . ' #' . $row->id,
+                    'id' => (int) $row->id,
+                    'field' => $field,
+                ];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     */
+    private function blobReferencesMedia(mixed $value, Media $media, array $candidates): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        if (is_string($value)) {
+            foreach ($candidates as $url) {
+                if ($url !== '' && str_contains($value, $url)) {
+                    return true;
+                }
+            }
+
+            $decoded = json_decode($value, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return false;
+            }
+
+            return $this->arrayReferencesMedia($decoded, $media, $candidates);
+        }
+
+        if (is_array($value)) {
+            return $this->arrayReferencesMedia($value, $media, $candidates);
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<string>  $candidates
+     */
+    private function arrayReferencesMedia(mixed $value, Media $media, array $candidates, ?string $key = null): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $childKey => $child) {
+                if ($this->arrayReferencesMedia($child, $media, $candidates, is_string($childKey) ? $childKey : null)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($key === 'media_id' && is_numeric($value) && (int) $value === (int) $media->id) {
+            return true;
+        }
+
+        if (is_scalar($value)) {
+            $string = (string) $value;
+            foreach ($candidates as $url) {
+                if ($url !== '' && str_contains($string, $url)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

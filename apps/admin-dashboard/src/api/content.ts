@@ -4,6 +4,7 @@ export type ContentScope = 'shared' | 'website' | 'order_app';
 /** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
 export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
+export type ContentDraftAction = 'publish' | 'discard' | 'migrate';
 
 export type ContentEditorHint =
   | 'hero'
@@ -109,17 +110,25 @@ export async function saveContentDrafts(
   });
 }
 
-export async function shareContentBlock(key: string, locale: ContentLocale = 'en'): Promise<{ blocks: ContentBlock[] }> {
+export async function shareContentBlock(
+  key: string,
+  locale: ContentLocale = 'en',
+  options: { source: ContentScope; draft_action?: ContentDraftAction },
+): Promise<{ blocks: ContentBlock[] }> {
   return req(`/admin/content/${encodeURIComponent(key)}/share`, {
     method: 'POST',
-    body: JSON.stringify({ locale }),
+    body: JSON.stringify({ locale, ...options }),
   });
 }
 
-export async function splitContentBlock(key: string, locale: ContentLocale = 'en'): Promise<{ blocks: ContentBlock[] }> {
+export async function splitContentBlock(
+  key: string,
+  locale: ContentLocale = 'en',
+  options: { draft_action?: ContentDraftAction } = {},
+): Promise<{ blocks: ContentBlock[] }> {
   return req(`/admin/content/${encodeURIComponent(key)}/split`, {
     method: 'POST',
-    body: JSON.stringify({ locale }),
+    body: JSON.stringify({ locale, ...options }),
   });
 }
 
@@ -156,7 +165,16 @@ export async function uploadContentImage(
   file: File,
   original?: File,
   locale: ContentLocale = 'en',
-): Promise<{ url: string; thumb_url?: string; original_url?: string | null }> {
+): Promise<{
+  url: string;
+  thumb_url?: string;
+  original_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
+  media_id?: number | null;
+  id?: number | null;
+  embed?: boolean;
+}> {
   const { prepareImageForUpload } = await import('../utils/prepareUpload');
   const prepared = await prepareImageForUpload(file);
   const preparedOriginal = original ? await prepareImageForUpload(original) : undefined;
@@ -177,7 +195,17 @@ export async function uploadContentVideo(
   poster?: File | null,
   locale: ContentLocale = 'en',
   posterUrl?: string,
-): Promise<{ url: string; poster_url: string; thumb_url?: string }> {
+): Promise<{
+  url: string;
+  poster_url: string;
+  thumb_url?: string;
+  original_url?: string | null;
+  image_webp_url?: string | null;
+  thumb_webp_url?: string | null;
+  media_id?: number | null;
+  id?: number | null;
+  embed?: boolean;
+}> {
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);

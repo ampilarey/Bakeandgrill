@@ -222,4 +222,46 @@ describe('Content Hub dual-app editing', () => {
       expect(contentApi.getContentBlocks).toHaveBeenCalledWith('dv');
     });
   });
+
+  it('keeps unsynced drafts when switching away from and back to a locale', async () => {
+    vi.mocked(contentApi.getContentBlocks).mockImplementation(async (loc = 'en') => ({
+      locale: loc,
+      locales: ['en', 'dv'],
+      blocks: [
+        loc === 'dv'
+          ? {
+            ...phoneBlock(),
+            shared: '+960 DV LIVE',
+            resolved_website: '+960 DV LIVE',
+            resolved_order_app: '+960 DV LIVE',
+          }
+          : phoneBlock(),
+      ],
+    }));
+
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
+      target: { value: '+960 EN DRAFT' },
+    });
+    expect(screen.getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('+960 DV LIVE')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /^EN$/i }));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+    });
+  });
 });

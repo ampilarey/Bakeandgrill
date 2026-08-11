@@ -98,4 +98,17 @@ describe('PromoCarousel', () => {
     expect(screen.queryByRole('button', { name: 'Next slide' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
+
+  it('renders unsafe legacy CTA URLs as inert links', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[slide({ title: 'Unsafe', cta_text: 'Tap me', cta_url: 'javascript:alert(1)' })]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('link', { name: 'Tap me' })).toHaveAttribute('href', '#');
+  });
 });

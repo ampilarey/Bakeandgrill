@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { safePublicUrl } from '../../utils/safePublicUrl';
 
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {
   if (!src) return null;
@@ -29,15 +30,16 @@ function CtaLink({
   className: string;
   children: React.ReactNode;
 }) {
-  if (href.startsWith('http')) {
+  const safeHref = safePublicUrl(href) ?? '#';
+  if (!safeHref.startsWith('/')) {
     return (
-      <a href={href} className={className} rel="noopener noreferrer">
+      <a href={safeHref} className={className} rel="noopener noreferrer">
         {children}
       </a>
     );
   }
   return (
-    <Link to={orderAppHref(href)} className={className}>
+    <Link to={orderAppHref(safeHref)} className={className}>
       {children}
     </Link>
   );
@@ -209,6 +211,10 @@ export function PromoCarousel({
           const eyebrow = (slide.eyebrow ?? '').trim();
           const cta1 = (slide.cta_text ?? '').trim();
           const cta2 = (slide.cta2_text ?? '').trim();
+          const cta1Raw = (slide.cta_url ?? '').trim();
+          const cta2Raw = (slide.cta2_url ?? '').trim();
+          const cta1Href = safePublicUrl(cta1Raw || '/order/') ?? '#';
+          const cta2Href = safePublicUrl(cta2Raw || '/order/menu') ?? '#';
           return (
             <div
               key={i}
@@ -272,7 +278,7 @@ export function PromoCarousel({
                   <div className="home-promo-hero__ctas">
                     {cta1 ? (
                       <CtaLink
-                        href={(slide.cta_url ?? '').trim() || '/order/'}
+                        href={cta1Href}
                         className="home-banner-cta-primary"
                       >
                         {cta1}
@@ -280,7 +286,7 @@ export function PromoCarousel({
                     ) : null}
                     {cta2 ? (
                       <CtaLink
-                        href={(slide.cta2_url ?? '').trim() || '/order/menu'}
+                        href={cta2Href}
                         className="home-promo-hero__cta-secondary"
                       >
                         {cta2}

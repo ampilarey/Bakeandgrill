@@ -32,7 +32,7 @@ Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('p
 // Public Website Pages (Customer-facing only)
 // `service.banner` shares $serviceBanner with layout.blade.php and returns the
 // branded maintenance view (503) when the `marketing_site` service key is off.
-Route::middleware('service.banner')->group(function () {
+Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/', [HomeController::class, 'index'])->name('home');
     Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');

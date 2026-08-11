@@ -228,15 +228,10 @@ final class GenericBlockPresenter
         return $id > 0 ? $id : null;
     }
 
-    /** Only http(s), mailto, and same-site links survive. */
+    /** Only safe public URLs survive. */
     public static function safeUrl(string $url): string
     {
-        $url = trim(preg_replace('/[\x00-\x1F\x7F]/u', '', $url) ?? '');
-        if ($url === '') {
-            return '';
-        }
-
-        return preg_match('~^(https?://|mailto:|/|#)~i', $url) === 1 ? $url : '';
+        return safe_public_url($url) ?? '';
     }
 
     private static function plain(mixed $value): string

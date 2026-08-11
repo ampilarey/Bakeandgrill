@@ -41,6 +41,7 @@ class PageBlockValidationTest extends TestCase
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'mode_cards',
         ])->assertStatus(422);
     }
@@ -50,6 +51,7 @@ class PageBlockValidationTest extends TestCase
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
+            'version' => 0,
             'block_type' => 'spaceship',
         ])->assertStatus(422);
     }
@@ -66,17 +68,25 @@ class PageBlockValidationTest extends TestCase
             'settings' => [],
         ]);
 
-        $this->deleteJson("/api/admin/page-blocks/{$block->id}")
+        $this->deleteJson("/api/admin/page-blocks/{$block->id}", [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 0,
+        ])
             ->assertStatus(422)
             ->assertJsonFragment(['block_type' => ['These cards are the only way into ordering. Removing them would remove checkout.']]);
 
         $this->putJson("/api/admin/page-blocks/{$block->id}", [
+            'app' => 'order_app',
+            'page' => 'home',
+            'version' => 0,
             'is_enabled' => false,
         ])->assertStatus(422);
 
         $this->putJson('/api/admin/page-blocks/reorder', [
             'app' => 'order_app',
             'page' => 'home',
+            'version' => 0,
             'blocks' => [
                 ['id' => $block->id, 'position' => 0, 'is_enabled' => false],
             ],
@@ -97,17 +107,23 @@ class PageBlockValidationTest extends TestCase
             'settings' => [],
         ]);
 
-        $this->deleteJson("/api/admin/page-blocks/{$block->id}")->assertStatus(422);
+        $this->deleteJson("/api/admin/page-blocks/{$block->id}", [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+        ])->assertStatus(422);
     }
 
     public function test_settings_must_match_schema_when_defined(): void
     {
-        // hero has empty schema — still creatable
+        // Valid settings for schema-backed generic blocks are accepted into a draft.
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
-            'block_type' => 'hero',
-            'settings' => ['anything' => true],
+            'version' => 0,
+            'block_type' => 'button_band',
+            'content_mode' => 'own',
+            'settings' => ['text' => 'Order today', 'button1_label' => 'Order', 'button1_url' => '/order/'],
         ])->assertCreated();
     }
 }

@@ -315,7 +315,7 @@ export function MenuViewPage() {
               data-testid="menu-view-lang-dv"
               onClick={() => setLang('dv')}
             >
-              DV
+              ދވ
             </button>
           </div>
           <button

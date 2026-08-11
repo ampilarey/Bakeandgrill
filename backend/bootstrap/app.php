@@ -79,6 +79,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff_customer_or_driver.token' => App\Http\Middleware\EnsureStaffCustomerOrDriverToken::class,
             'service.available' => App\Http\Middleware\EnsureServiceAvailable::class,
             'service.banner' => App\Http\Middleware\ShareServiceAvailability::class,
+            'content.locale' => App\Http\Middleware\SetContentLocale::class,
         ]);
 
         // API routes must never redirect to a missing `login` named route (422/500).

@@ -68,8 +68,21 @@ if (!function_exists('content')) {
         }
 
         $app = app()->bound('content.draft_app') ? (string) app('content.draft_app') : 'website';
-        $locale = app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en';
+        // Staff draft preview locale wins over the public EN/DV cookie locale.
+        $locale = app()->bound('content.draft_locale')
+            ? (string) app('content.draft_locale')
+            : (app()->bound('content.locale') ? (string) app('content.locale') : 'en');
 
         return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
+    }
+}
+
+if (!function_exists('safe_public_url')) {
+    /**
+     * Return a safe public href/src URL, or null for executable/ambiguous input.
+     */
+    function safe_public_url(?string $url): ?string
+    {
+        return App\Domains\Content\ContentValidationService::safePublicUrl($url);
     }
 }

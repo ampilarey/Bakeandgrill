@@ -8,6 +8,8 @@ const updatePageBlock = vi.fn();
 const deletePageBlock = vi.fn();
 const createPageBlock = vi.fn();
 const createPageBlockPreviewToken = vi.fn();
+const publishPageBlocks = vi.fn();
+const discardPageBlockDraft = vi.fn();
 
 vi.mock('../../api/pageBlocks', () => ({
   fetchAdminPageBlocks: (...args: unknown[]) => fetchAdminPageBlocks(...args),
@@ -16,6 +18,8 @@ vi.mock('../../api/pageBlocks', () => ({
   deletePageBlock: (...args: unknown[]) => deletePageBlock(...args),
   createPageBlock: (...args: unknown[]) => createPageBlock(...args),
   createPageBlockPreviewToken: (...args: unknown[]) => createPageBlockPreviewToken(...args),
+  publishPageBlocks: (...args: unknown[]) => publishPageBlocks(...args),
+  discardPageBlockDraft: (...args: unknown[]) => discardPageBlockDraft(...args),
 }));
 
 describe('HomeLayoutEditor', () => {
@@ -85,10 +89,15 @@ describe('HomeLayoutEditor', () => {
         },
       ],
       unknown_types: [],
+      draft: false,
+      version: 0,
+      saved_at: null,
     }));
-    createPageBlock.mockResolvedValue({ block: { id: 99, block_type: 'rich_text' } });
+    createPageBlock.mockResolvedValue({ block: { id: 99, block_type: 'rich_text' }, draft: true, version: 1 });
     updatePageBlock.mockImplementation(async (id: number, payload: Record<string, unknown>) => ({
       block: { id, ...payload },
+      draft: true,
+      version: 1,
     }));
   });
 
@@ -121,6 +130,9 @@ describe('HomeLayoutEditor', () => {
 
     await waitFor(() =>
       expect(updatePageBlock).toHaveBeenCalledWith(11, {
+        app: 'website',
+        page: 'home',
+        version: 0,
         settings: { heading: 'Our newer story', body: 'Baked daily.' },
       }),
     );
@@ -147,6 +159,9 @@ describe('HomeLayoutEditor', () => {
       blocks: [],
       available_types: [],
       unknown_types: [],
+      draft: false,
+      version: 0,
+      saved_at: null,
     });
     render(<HomeLayoutEditor />);
 

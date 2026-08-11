@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Content;
 
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\ContentDraft;
 use App\Models\ContentRevision;
 use App\Models\Role;
 use App\Models\SiteSetting;
@@ -20,7 +21,7 @@ class ContentDraftPublishTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function actingAsOwner(): User
+    private function actingAsOwner(string $email = 'draft-owner@test.local', string $name = 'Draft Owner'): User
     {
         $role = Role::firstOrCreate(
             ['slug' => 'owner'],
@@ -28,8 +29,8 @@ class ContentDraftPublishTest extends TestCase
         );
         PermissionCatalogSync::sync();
         $user = User::create([
-            'name' => 'Draft Owner',
-            'email' => 'draft-owner@test.local',
+            'name' => $name,
+            'email' => $email,
             'password' => Hash::make('password'),
             'role_id' => $role->id,
             'pin_hash' => Hash::make('1234'),
@@ -55,9 +56,8 @@ class ContentDraftPublishTest extends TestCase
             ],
         ])->assertOk()->assertJsonPath('message', 'Draft saved.');
 
-        $draft = ContentRevision::query()
+        $draft = ContentDraft::query()
             ->where('key', 'cta_band_headline')
-            ->where('is_draft', true)
             ->first();
 
         $this->assertNotNull($draft);
@@ -104,10 +104,9 @@ class ContentDraftPublishTest extends TestCase
         );
 
         $this->assertFalse(
-            ContentRevision::query()
+            ContentDraft::query()
                 ->where('key', 'cta_band_headline')
                 ->where('scope', 'website')
-                ->where('is_draft', true)
                 ->exists(),
         );
 
@@ -139,5 +138,53 @@ class ContentDraftPublishTest extends TestCase
         foreach ($revs as $rev) {
             $this->assertNotSame('Draft only', $rev['value'] ?? null);
         }
+    }
+
+    public function test_user_drafts_are_private_and_other_users_do_not_clear_them_on_publish(): void
+    {
+        $userA = $this->actingAsOwner('draft-a@test.local', 'Draft A');
+
+        $this->putJson('/api/admin/content/drafts', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Private A draft'],
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('content_drafts', [
+            'user_id' => $userA->id,
+            'key' => 'cta_band_headline',
+            'scope' => 'website',
+            'locale' => 'en',
+            'value' => 'Private A draft',
+        ]);
+
+        $userB = $this->actingAsOwner('draft-b@test.local', 'Draft B');
+
+        $this->getJson('/api/admin/content/drafts?scope=website&locale=en')
+            ->assertOk()
+            ->assertJsonPath('drafts', []);
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'User B publish'],
+            ],
+        ])->assertOk();
+
+        $this->assertSame('User B publish', SiteSetting::getScoped('cta_band_headline', 'website', 'en'));
+        $this->assertDatabaseHas('content_drafts', [
+            'user_id' => $userA->id,
+            'key' => 'cta_band_headline',
+            'scope' => 'website',
+            'locale' => 'en',
+            'value' => 'Private A draft',
+        ]);
+        $this->assertDatabaseMissing('content_drafts', [
+            'user_id' => $userB->id,
+            'key' => 'cta_band_headline',
+            'scope' => 'website',
+            'locale' => 'en',
+        ]);
     }
 }

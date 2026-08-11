@@ -5,9 +5,13 @@
     $email     = content('business_email',    'admin@bakeandgrill.mv');
     $address   = content('business_address',  'Kalaafaanu Hingun, Malé, Maldives');
     $landmark  = content('business_landmark', 'Near H. Sahara');
-    $mapsUrl   = content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives');
-    $waLink    = content('business_whatsapp', 'https://wa.me/9609120011');
-    $viberLink = content('business_viber',    'viber://chat?number=9609120011');
+    $mapsUrl   = safe_public_url((string) content('business_maps_url', 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives'))
+        ?? 'https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives';
+    $waLink    = safe_public_url((string) content('business_whatsapp', 'https://wa.me/9609120011'))
+        ?? 'https://wa.me/9609120011';
+    $viberLink = safe_public_url((string) content('business_viber', '')) ?? '';
+    $mapsEmbedUrl = safe_public_url((string) content('maps_embed_url', 'https://www.google.com/maps?q=Kalaafaanu+Hingun+Male+Maldives&output=embed'))
+        ?? 'https://www.google.com/maps?q=Kalaafaanu+Hingun+Male+Maldives&output=embed';
     // Separate address line + city for the card display
     $addressParts = array_map('trim', explode(',', $address, 2));
     $addressLine1 = $addressParts[0] ?? $address;
@@ -173,9 +177,11 @@
             <a href="{{ $waLink }}" target="_blank" rel="noopener" class="contact-link-wa">
                 {{ content('contact_whatsapp_label', '💬 WhatsApp') }}
             </a>
-            <a href="{{ $viberLink }}" class="contact-link-viber">
-                {{ content('contact_viber_label', '📱 Viber') }}
-            </a>
+            @if($viberLink !== '')
+                <a href="{{ $viberLink }}" class="contact-link-viber">
+                    {{ content('contact_viber_label', '📱 Viber') }}
+                </a>
+            @endif
         </div>
     </div>
 
@@ -227,7 +233,7 @@
     <div class="map-wrap">
         <iframe
             title="Bake & Grill location on Google Maps"
-            src="{{ content('maps_embed_url', 'https://www.google.com/maps?q=Kalaafaanu+Hingun+Male+Maldives&output=embed') }}"
+            src="{{ $mapsEmbedUrl }}"
             allowfullscreen=""
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade">

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -75,6 +75,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -137,4 +138,43 @@ describe('Content Hub autosave + WYSIWYG', () => {
     expect(addSpy.mock.calls.some((c) => c[0] === 'beforeunload')).toBe(true);
     addSpy.mockRestore();
   });
+
+  it('ignores stale autosave responses after a newer draft change', async () => {
+    let resolveFirst: (value: { drafts: Record<string, string>; saved_at: string }) => void = () => {};
+    let resolveSecond: (value: { drafts: Record<string, string>; saved_at: string }) => void = () => {};
+    vi.mocked(contentApi.saveContentDrafts)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+    render(
+      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+    const editor = screen.getAllByTestId('rich-text-editor')[0];
+
+    editor.innerHTML = 'First draft';
+    fireEvent.input(editor);
+    await waitFor(() => expect(contentApi.saveContentDrafts).toHaveBeenCalledTimes(1), { timeout: 5000 });
+
+    editor.innerHTML = 'Second draft';
+    fireEvent.input(editor);
+    await waitFor(() => expect(contentApi.saveContentDrafts).toHaveBeenCalledTimes(2), { timeout: 5000 });
+
+    await act(async () => {
+      resolveSecond({ drafts: { cta_band_headline: 'Second draft' }, saved_at: '2026-07-23T11:00:00Z' });
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('draft-save-status').textContent).toMatch(/11:/);
+    });
+
+    await act(async () => {
+      resolveFirst({ drafts: { cta_band_headline: 'First draft' }, saved_at: '2026-07-23T10:00:00Z' });
+    });
+
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/11:/);
+    expect(screen.getByTestId('draft-save-status').textContent).not.toMatch(/10:/);
+  }, 12000);
 });

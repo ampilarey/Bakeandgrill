@@ -57,6 +57,8 @@ final class MediaLibraryService
         ?string $title = null,
         ?string $thumbUrl = null,
         ?string $originalUrl = null,
+        ?string $imageWebpUrl = null,
+        ?string $thumbWebpUrl = null,
     ): ?Media {
         $path = ltrim($path, '/');
         if ($path === '' || $this->isDerivedPath($path)) {
@@ -65,15 +67,26 @@ final class MediaLibraryService
 
         $existing = Media::query()->where('path', $path)->first();
         if ($existing) {
-            return $existing;
+            return $this->applyRegistrationMetadata(
+                $existing,
+                $source,
+                $uploader,
+                $title,
+                $thumbUrl,
+                $originalUrl,
+                $imageWebpUrl,
+                $thumbWebpUrl,
+            );
         }
 
         $disk = Storage::disk('public');
-        if (!$disk->exists($path)) {
+        $absolute = $disk->exists($path)
+            ? $disk->path($path)
+            : storage_path('app/public/' . $path);
+        if (!is_file($absolute)) {
             return null;
         }
 
-        $absolute = $disk->path($path);
         $mime = $this->guessMime($absolute, $path);
         $type = $this->mediaTypeFromMime($mime);
         if ($type === null) {
@@ -106,12 +119,55 @@ final class MediaLibraryService
             'width' => $width,
             'height' => $height,
             'thumb_url' => $resolvedThumb,
+            'image_webp_url' => $imageWebpUrl ? $this->toStorageUrl($imageWebpUrl) : null,
+            'thumb_webp_url' => $thumbWebpUrl ? $this->toStorageUrl($thumbWebpUrl) : null,
             'original_url' => $originalUrl ? $this->toStorageUrl($originalUrl) : null,
             'title' => $title ?: pathinfo($path, PATHINFO_FILENAME),
             'source' => $source,
             'checksum' => $checksum,
             'uploaded_by' => $uploader?->id,
         ]);
+    }
+
+    private function applyRegistrationMetadata(
+        Media $media,
+        string $source,
+        ?User $uploader,
+        ?string $title,
+        ?string $thumbUrl,
+        ?string $originalUrl,
+        ?string $imageWebpUrl,
+        ?string $thumbWebpUrl,
+    ): Media {
+        $updates = [];
+
+        if ($source !== '' && ($media->source === null || $media->source === '' || $media->source === 'other')) {
+            $updates['source'] = $source;
+        }
+        if ($uploader && !$media->uploaded_by) {
+            $updates['uploaded_by'] = $uploader->id;
+        }
+        if ($title && !$media->title) {
+            $updates['title'] = $title;
+        }
+        if ($thumbUrl) {
+            $updates['thumb_url'] = $this->toStorageUrl($thumbUrl);
+        }
+        if ($originalUrl) {
+            $updates['original_url'] = $this->toStorageUrl($originalUrl);
+        }
+        if ($imageWebpUrl) {
+            $updates['image_webp_url'] = $this->toStorageUrl($imageWebpUrl);
+        }
+        if ($thumbWebpUrl) {
+            $updates['thumb_webp_url'] = $this->toStorageUrl($thumbWebpUrl);
+        }
+
+        if ($updates !== []) {
+            $media->fill($updates)->save();
+        }
+
+        return $media->fresh();
     }
 
     /**
@@ -347,7 +403,7 @@ final class MediaLibraryService
         $absolute = Storage::disk('public')->path($path);
         [$width, $height] = $this->imageSize($absolute);
 
-        return Media::create([
+        $attributes = [
             'disk' => 'public',
             'path' => $path,
             'media_type' => 'image',
@@ -368,7 +424,17 @@ final class MediaLibraryService
             'source' => 'library',
             'checksum' => $checksum,
             'uploaded_by' => $uploader?->id,
-        ]);
+        ];
+
+        // storeProcessedPair() may have already catalogued the primary path.
+        $existing = Media::query()->where('path', $path)->first();
+        if ($existing) {
+            $existing->fill($attributes)->save();
+
+            return $existing->fresh();
+        }
+
+        return Media::create($attributes);
     }
 
     private function storeVideo(

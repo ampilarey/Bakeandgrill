@@ -70,6 +70,7 @@ const TRANSLATIONS: Translations = {
   "home.greeting_sub": "What would you like today?",
   "account.settings": "Settings",
   "account.dark_mode": "Dark mode",
+  "account.language": "Language",
   "account.more_links": "More",
   "account.link_preorder": "Pre-Order",
   "account.link_reservations": "Reservations",

@@ -132,10 +132,33 @@ describe('ContentHubPage', () => {
       expect(screen.queryByDisplayValue('+960 111')).toBeNull();
     });
 
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Website');
     fireEvent.click(screen.getByLabelText(/Same in both/i));
     await waitFor(() => {
-      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en');
+      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en', { source: 'website' });
     });
+    promptSpy.mockRestore();
+  });
+
+  it('passes discard draft_action after confirmation when mode changes with dirty drafts', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <MemoryRouter initialEntries={['/content?group=Contact']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByDisplayValue('+960 912 0011');
+    fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
+      target: { value: '+960 DRAFT' },
+    });
+    fireEvent.click(screen.getByLabelText(/Different per app/i));
+
+    await waitFor(() => {
+      expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en', { draft_action: 'discard' });
+    });
+    expect(confirmSpy).toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   it('branding block has no link control', async () => {

@@ -114,7 +114,7 @@ class BrandingSyncTest extends TestCase
         $this->assertTrue(MediaFileCleaner::isReferenced($urlA));
         $this->assertTrue(MediaFileCleaner::isReferenced($urlB));
 
-        $this->postJson('/api/admin/content/home_delivery_tagline/share', ['locale' => 'en'])->assertOk();
+        $this->postJson('/api/admin/content/home_delivery_tagline/share', ['locale' => 'en', 'source' => 'website'])->assertOk();
 
         // B7: collapsing to Same must never delete files still on disk / in catalog.
         $this->assertTrue(Storage::disk('public')->exists('site/website/a.jpg'));
