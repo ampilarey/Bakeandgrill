@@ -44,7 +44,7 @@ type PushProps = {
 
 /** Settings group: dark mode, optional push notifications row. */
 export function AccountSettingsBlock({ push }: { push?: PushProps }) {
-  const { t } = useLanguage();
+  const { t, lang, setLang } = useLanguage();
   const { darkMode, setDarkMode } = useTheme();
 
   return (
@@ -52,7 +52,7 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
       <div
         style={{
           ...linkRowStyle,
-          borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
+          borderBottom: '1px solid var(--color-border)',
         }}
       >
         <span>{t('account.dark_mode')}</span>
@@ -76,6 +76,55 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
         >
           {darkMode ? t('common.on') : t('common.off')}
         </button>
+      </div>
+
+      <div
+        style={{
+          ...linkRowStyle,
+          borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
+        }}
+      >
+        <span>{t('account.language')}</span>
+        <div
+          role="group"
+          aria-label={t('account.language')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: 3,
+            borderRadius: 999,
+            border: '1.5px solid var(--color-border)',
+            background: 'var(--color-surface-alt)',
+          }}
+        >
+          {(['en', 'dv'] as const).map((option) => {
+            const active = lang === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setLang(option)}
+                aria-pressed={active}
+                data-testid={`account-lang-${option}`}
+                style={{
+                  minWidth: 42,
+                  minHeight: 38,
+                  padding: '0 0.75rem',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: active ? 'var(--color-primary)' : 'transparent',
+                  color: active ? '#fff' : 'var(--color-text-muted)',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {option === 'en' ? 'EN' : 'ދވ'}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {push?.supported && (

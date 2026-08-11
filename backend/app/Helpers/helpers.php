@@ -68,7 +68,9 @@ if (!function_exists('content')) {
         }
 
         $app = app()->bound('content.draft_app') ? (string) app('content.draft_app') : 'website';
-        $locale = app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en';
+        $locale = app()->bound('content.locale')
+            ? (string) app('content.locale')
+            : (app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en');
 
         return App\Domains\Content\ContentResolver::for($app, $locale)->get($key, $default);
     }

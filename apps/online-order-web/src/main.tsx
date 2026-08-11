@@ -79,8 +79,8 @@ if (!rootEl) throw new Error('Root element #root not found in DOM');
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <SiteSettingsProvider>
-        <LanguageProvider>
+      <LanguageProvider>
+        <SiteSettingsProvider>
           <CartProvider>
             <ToastProvider>
             <AuthProvider>
@@ -138,8 +138,8 @@ ReactDOM.createRoot(rootEl).render(
             </AuthProvider>
             </ToastProvider>
           </CartProvider>
-        </LanguageProvider>
-      </SiteSettingsProvider>
+        </SiteSettingsProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

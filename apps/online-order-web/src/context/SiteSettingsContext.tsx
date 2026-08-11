@@ -1,17 +1,28 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AnalyticsTracker } from '../components/AnalyticsTracker';
 import { applyFavicon } from '../lib/applyFavicon';
 import { applyBrandPalette, deriveBrandPalette } from '../lib/brandPalette';
+import { useLanguage } from './LanguageContext';
 
-const SITE_SETTINGS_URL =
-  ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-    (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
-  '/content?app=order_app&locale=en';
+type ContentLocale = 'en' | 'dv';
 
-const SITE_SETTINGS_FALLBACK_URL =
+const API_BASE =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-    (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api')) +
-  '/site-settings/public';
+    (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'));
+
+export function buildContentUrl(lang: ContentLocale, apiBase = API_BASE): string {
+  const params = new URLSearchParams({ app: 'order_app', locale: lang });
+  return `${apiBase}/content?${params.toString()}`;
+}
+
+export function buildContentPreviewUrl(previewToken: string, lang: ContentLocale, apiBase = API_BASE): string {
+  const params = new URLSearchParams({ token: previewToken, locale: lang });
+  return `${apiBase}/content/preview?${params.toString()}`;
+}
+
+export function buildLegacyPublicSettingsUrl(apiBase = API_BASE): string {
+  return `${apiBase}/site-settings/public`;
+}
 
 export interface SiteSettings {
   site_name?: string;
@@ -309,10 +320,17 @@ const defaultContextValue: SiteSettingsContextValue = {
 const SiteSettingsContext = createContext<SiteSettingsContextValue>(defaultContextValue);
 
 export function SiteSettingsProvider({ children }: { children: React.ReactNode }) {
+  const { lang } = useLanguage();
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const requestSeq = useRef(0);
 
   useEffect(() => {
+    const seq = ++requestSeq.current;
+    let cancelled = false;
+    const isCurrent = () => !cancelled && requestSeq.current === seq;
+
     const apply = (s: Record<string, string | null> | undefined) => {
+      if (!isCurrent()) return;
       if (s && typeof s === 'object') {
         const nonNull = Object.fromEntries(
           Object.entries(s).filter(([, v]) => v != null)
@@ -322,31 +340,44 @@ export function SiteSettingsProvider({ children }: { children: React.ReactNode }
     };
 
     const previewToken = new URLSearchParams(window.location.search).get('previewToken');
-    const apiBase =
-      ((import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-        (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'));
     const previewUrl = previewToken
-      ? `${apiBase}/content/preview?token=${encodeURIComponent(previewToken)}`
+      ? buildContentPreviewUrl(previewToken, lang)
       : null;
 
-    fetch(previewUrl || SITE_SETTINGS_URL)
-      .then(async (r) => {
+    const load = async () => {
+      try {
+        const r = await fetch(previewUrl || buildContentUrl(lang));
         if (!r.ok) throw new Error(`content ${r.status}`);
-        return r.json();
-      })
-      .then((body: { content?: Record<string, string | null>; settings?: Record<string, string | null> }) => {
+        const body = await r.json() as { content?: Record<string, string | null>; settings?: Record<string, string | null> };
         apply(body.content ?? body.settings);
-      })
-      .catch(() => {
-        if (previewToken) return; // never fall back to public content when previewing
-        return fetch(SITE_SETTINGS_FALLBACK_URL)
-          .then((r) => r.json())
-          .then(({ settings: s }: { settings: Record<string, string | null> }) => apply(s))
-          .catch((e) => {
-            if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load site settings, using defaults:', e);
-          });
-      });
-  }, []);
+      } catch (e) {
+        if (!isCurrent()) return;
+        // Preview should never silently swap to live content. The legacy endpoint
+        // is English-only, so keep it as a last-resort compatibility path for EN.
+        if (previewToken || lang !== 'en') {
+          if (import.meta.env.DEV) console.warn('[SiteSettings] Failed to load content, using defaults:', e);
+          return;
+        }
+
+        try {
+          const fallback = await fetch(buildLegacyPublicSettingsUrl());
+          if (!fallback.ok) throw new Error(`site-settings ${fallback.status}`);
+          const body = await fallback.json() as { settings?: Record<string, string | null> };
+          apply(body.settings);
+        } catch (fallbackError) {
+          if (isCurrent() && import.meta.env.DEV) {
+            console.warn('[SiteSettings] Failed to load site settings, using defaults:', fallbackError);
+          }
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lang]);
 
   // Optional brand accent from CMS (valid hex only) — full derived palette.
   useEffect(() => {

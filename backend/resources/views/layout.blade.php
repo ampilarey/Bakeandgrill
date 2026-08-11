@@ -25,6 +25,14 @@
         ? ($orderBarMeta['active'] ? '/order/orders/' . $orderBar->id : '/order/order-history')
         : null;
 
+    $contentLocale = app()->bound('content.locale')
+        ? (string) app('content.locale')
+        : (app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en');
+    $contentLocale = $contentLocale === 'dv' ? 'dv' : 'en';
+    $contentDir = $contentLocale === 'dv' ? 'rtl' : 'ltr';
+    $langSwitchEnUrl = request()->fullUrlWithQuery(['lang' => 'en']);
+    $langSwitchDvUrl = request()->fullUrlWithQuery(['lang' => 'dv']);
+
     $siteName    = content('site_name',        'Bake & Grill');
     $siteTagline = content('site_tagline',     'Authentic Dhivehi cuisine, artisan pastries, and expertly grilled specialties — freshly made every day in the heart of Malé.');
     $metaTitle   = content('meta_title',       $siteName . ' – Café & Online Orders');
@@ -78,7 +86,7 @@
         : 'Closed';
 @endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ $contentLocale }}" dir="{{ $contentDir }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -214,6 +222,41 @@
             transition: background 0.15s, border-color 0.15s;
         }
         .dark-toggle:hover { background: var(--amber-light); border-color: var(--amber); }
+
+        .lang-switcher {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.15rem;
+            min-height: 40px;
+            padding: 0.2rem;
+            border: 1.5px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--muted);
+            font-weight: 800;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+        .lang-switcher a {
+            min-width: 34px;
+            min-height: 32px;
+            padding: 0 0.55rem;
+            border-radius: 999px;
+            color: inherit;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .lang-switcher a:hover {
+            background: var(--amber-light);
+            color: var(--amber);
+        }
+        .lang-switcher a.is-active {
+            background: var(--amber);
+            color: white;
+        }
 
         html { scroll-behavior: smooth; scroll-padding-top: 75px; }
 
@@ -1418,6 +1461,10 @@
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
             @endauth
+            <div class="lang-switcher" role="group" aria-label="Language">
+                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
+                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
+            </div>
             <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
             <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
         </div>
@@ -1489,6 +1536,10 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth
+            <div class="lang-switcher" role="group" aria-label="Language">
+                <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
+                <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
+            </div>
         </div>
     </div>
 </div>
