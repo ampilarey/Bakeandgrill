@@ -13,14 +13,14 @@ vi.mock('../../context/LanguageContext', () => ({
 
 function slide(partial: Partial<HeroSlideRow> & { title: string }): HeroSlideRow {
   return {
-    image: partial.image ?? '/storage/hero.jpg',
-    eyebrow: partial.eyebrow ?? '',
-    title: partial.title,
-    subtitle: partial.subtitle ?? '',
-    cta_text: partial.cta_text ?? '',
-    cta_url: partial.cta_url ?? '/order/',
-    cta2_text: partial.cta2_text ?? '',
-    cta2_url: partial.cta2_url ?? '/menu',
+    image: '/storage/hero.jpg',
+    eyebrow: '',
+    subtitle: '',
+    cta_text: '',
+    cta_url: '/order/',
+    cta2_text: '',
+    cta2_url: '/menu',
+    ...partial,
   };
 }
 
@@ -49,6 +49,40 @@ describe('PromoCarousel', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('applies photo/scrim CSS vars and text position independently', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Bright strong',
+              photo_brightness: 100,
+              text_background: 100,
+              text_position: 'top',
+            }),
+            slide({
+              title: 'Legacy dim',
+              dim: 50,
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const first = screen.getByTestId('hero-overlay-0');
+    expect(first).toHaveAttribute('data-text-position', 'top');
+    const firstSlide = first.closest('.home-promo-hero__slide') as HTMLElement;
+    expect(firstSlide.style.getPropertyValue('--hero-photo')).toBe('1');
+    expect(firstSlide.style.getPropertyValue('--hero-scrim')).toBe('1');
+
+    const second = screen.getByTestId('hero-overlay-1');
+    expect(second).toHaveAttribute('data-text-position', 'bottom');
+    const secondSlide = second.closest('.home-promo-hero__slide') as HTMLElement;
+    expect(secondSlide.style.getPropertyValue('--hero-photo')).toBe('0.5');
+    expect(secondSlide.style.getPropertyValue('--hero-scrim')).toBe('0.5');
   });
 
   it('renders prev/next and dots when there are multiple slides', async () => {

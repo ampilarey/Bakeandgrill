@@ -301,7 +301,7 @@ img.brand-logo--dark { display: none; }
     border: none;
   }
   .home-promo-hero__media {
-    opacity: calc(1 - 0.55 * var(--hero-dim, 1));
+    opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
   }
   .home-ordering-status-stack {
     top: 0.85rem;
@@ -317,7 +317,10 @@ img.brand-logo--dark { display: none; }
   overflow: hidden;
   height: 100%;
 }
-/* --hero-dim: 0–1 from slide.dim (100 = default wash) */
+/*
+ * --hero-photo / --hero-scrim: 0–1 — lockstep with website Blade
+ * (docs/HERO_READABILITY_PLAN.md). Legacy dim D ⇒ photo=(100-D)/100, scrim=D/100.
+ */
 .home-promo-hero__media {
   position: absolute;
   inset: 0;
@@ -325,7 +328,7 @@ img.brand-logo--dark { display: none; }
   height: 100%;
   object-fit: cover;
   display: block;
-  opacity: calc(1 - 0.55 * var(--hero-dim, 1));
+  opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
 }
 .home-promo-hero__fallback {
   width: 100%;
@@ -347,11 +350,14 @@ img.brand-logo--dark { display: none; }
   text-align: center;
   background: linear-gradient(
     180deg,
-    rgba(28, 20, 8, calc(0.22 * var(--hero-dim, 1))) 0%,
-    rgba(28, 20, 8, calc(0.72 * var(--hero-dim, 1))) 55%,
-    rgba(28, 20, 8, calc(0.92 * var(--hero-dim, 1))) 100%
+    rgba(28, 20, 8, calc(0.22 * var(--hero-scrim, 1))) 0%,
+    rgba(28, 20, 8, calc(0.72 * var(--hero-scrim, 1))) 55%,
+    rgba(28, 20, 8, calc(0.92 * var(--hero-scrim, 1))) 100%
   );
 }
+.home-promo-hero__overlay[data-text-position="top"] { justify-content: flex-start; }
+.home-promo-hero__overlay[data-text-position="middle"] { justify-content: center; }
+.home-promo-hero__overlay[data-text-position="bottom"] { justify-content: flex-end; }
 .home-promo-hero__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -506,7 +512,7 @@ img.brand-logo--dark { display: none; }
     min-height: 560px;
   }
   .home-promo-hero__media {
-    opacity: calc(1 - 0.38 * var(--hero-dim, 1));
+    opacity: calc(0.62 + 0.38 * var(--hero-photo, 0));
   }
   .home-promo-hero__overlay {
     justify-content: flex-end;
@@ -515,11 +521,14 @@ img.brand-logo--dark { display: none; }
     padding: 4rem clamp(2.5rem, 8vw, 7rem) 4.5rem;
     background: linear-gradient(
       180deg,
-      rgba(28, 20, 8, calc(0.12 * var(--hero-dim, 1))) 0%,
-      rgba(28, 20, 8, calc(0.45 * var(--hero-dim, 1))) 45%,
-      rgba(14, 10, 4, calc(0.88 * var(--hero-dim, 1))) 100%
+      rgba(28, 20, 8, calc(0.12 * var(--hero-scrim, 1))) 0%,
+      rgba(28, 20, 8, calc(0.45 * var(--hero-scrim, 1))) 45%,
+      rgba(14, 10, 4, calc(0.88 * var(--hero-scrim, 1))) 100%
     );
   }
+  .home-promo-hero__overlay[data-text-position="top"] { justify-content: flex-start; }
+  .home-promo-hero__overlay[data-text-position="middle"] { justify-content: center; }
+  .home-promo-hero__overlay[data-text-position="bottom"] { justify-content: flex-end; }
   .home-promo-hero__overlay > * {
     max-width: 720px;
   }

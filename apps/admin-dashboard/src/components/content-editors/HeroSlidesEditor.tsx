@@ -8,6 +8,11 @@ import { VideoStudioModal } from '../VideoStudioModal';
 import type { MediaAsset } from '../../api';
 import { Button, Toggle } from '../ui';
 import { ContentEditorSheet } from '../ContentEditorSheet';
+import {
+  resolveHeroSlidePresentation,
+  withHeroPresentationFields,
+  type HeroTextPosition,
+} from '../../utils/heroSlidePresentation';
 
 export type HeroSlideRow = {
   image: string;
@@ -15,8 +20,13 @@ export type HeroSlideRow = {
   image_focal_x?: number | string;
   image_focal_y?: number | string;
   image_alt?: string;
-  /** Overlay darkness 0–100 (100 = current default wash). */
+  /** @deprecated Prefer photo_brightness + text_background. */
   dim?: number | string;
+  /** 0–100, 100 = full bright (no knock-back). */
+  photo_brightness?: number | string;
+  /** 0–100, 100 = strong text background. */
+  text_background?: number | string;
+  text_position?: HeroTextPosition | string;
   /**
    * Customer visibility. Absent or true = Showing (legacy slides stay live).
    * Explicit false = Hidden — kept in admin, skipped by website + order app.
@@ -68,7 +78,9 @@ const emptySlide = (): HeroSlideRow => ({
   image_focal_x: 50,
   image_focal_y: 50,
   image_alt: '',
-  dim: 100,
+  photo_brightness: 100,
+  text_background: 100,
+  text_position: 'bottom',
 });
 
 const FIELDS: Array<{ key: keyof HeroSlideRow; label: string; col: 'half' | 'full'; placeholder: string; multiline?: boolean }> = [
@@ -206,8 +218,16 @@ export function HeroSlidesEditor({
     commitSlides(items.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
 
+  const applyPresentation = (
+    idx: number,
+    patch: Partial<{ photo_brightness: number; text_background: number; text_position: HeroTextPosition }>,
+  ) => {
+    // Replace the row so legacy `dim` cannot linger after merge.
+    commitSlides(items.map((s, i) => (i === idx ? withHeroPresentationFields(s, patch) : s)));
+  };
+
   const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => {
-    const dim = Math.max(0, Math.min(100, Number(slide.dim ?? 100)));
+    const presentation = resolveHeroSlidePresentation(slide);
     const showing = isHeroSlideShowing(slide);
     return (
       <div
@@ -271,22 +291,89 @@ export function HeroSlidesEditor({
           </button>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-            Dim overlay — {dim}%
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={dim}
-            onChange={(e) => update({ dim: Number(e.target.value) })}
-            style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
-            aria-label="Hero dim overlay"
-          />
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            0 = bright media · 100 = dark wash (default). Applies to website + order app.
-          </p>
+        <div
+          data-testid={`hero-slide-presentation-${idx}`}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label
+              htmlFor={`hero-${idx}-photo-brightness`}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+            >
+              Photo brightness — {presentation.photo_brightness}%
+            </label>
+            <input
+              id={`hero-${idx}-photo-brightness`}
+              type="range"
+              min={0}
+              max={100}
+              value={presentation.photo_brightness}
+              onChange={(e) => applyPresentation(idx, { photo_brightness: Number(e.target.value) })}
+              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+              aria-label="Photo brightness"
+            />
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+              Higher keeps the photo looking like the photo. Lower knocks it back.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label
+              htmlFor={`hero-${idx}-text-background`}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+            >
+              Text background — {presentation.text_background}%
+            </label>
+            <input
+              id={`hero-${idx}-text-background`}
+              type="range"
+              min={0}
+              max={100}
+              value={presentation.text_background}
+              onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
+              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+              aria-label="Text background"
+            />
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+              Dark gradient behind the words so they stay readable.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              Text position
+            </span>
+            <div
+              role="radiogroup"
+              aria-label="Text position"
+              style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+            >
+              {([
+                ['top', 'Top'],
+                ['middle', 'Middle'],
+                ['bottom', 'Bottom'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={presentation.text_position === value}
+                  data-testid={`hero-text-position-${idx}-${value}`}
+                  onClick={() => applyPresentation(idx, { text_position: value })}
+                  style={{
+                    ...btnStyle,
+                    fontWeight: presentation.text_position === value ? 700 : 600,
+                    background: presentation.text_position === value
+                      ? 'var(--color-warning-bg)'
+                      : 'var(--color-surface)',
+                    borderColor: presentation.text_position === value
+                      ? 'var(--color-primary)'
+                      : 'var(--color-border)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div

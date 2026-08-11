@@ -1,6 +1,6 @@
 # Hero Text Readability — Plan
 
-Status: proposed, not yet built.
+Status: **§2.1 and §2.2 built** on this branch. §2.3 and §2.4 not started.
 
 Owner's ask: *"How about adding setting to change the background color and other important
 features to change the all wording better visually"* — prompted by a live screenshot where the
@@ -51,22 +51,36 @@ over a white shop board, and a title straddling both.
 
 Split the single `dim` into two independent values:
 
-- **Photo brightness** — how much the image itself is knocked back. Default: none. A good photo
-  should look like a good photo.
-- **Text scrim** — how strong the dark gradient behind the text is. Default: enough to be
-  readable over a busy image.
+| Field | Admin label | Meaning | New-slide default |
+|---|---|---|---|
+| `photo_brightness` | Photo brightness | 100 = full bright; 0 = max knock-back (old dim=100) | **100** |
+| `text_background` | Text background | 100 = strong scrim; 0 = no scrim | **100** |
 
-Bright photo with a strong scrim then becomes possible, and it is the setting most slides want.
+CSS vars (both apps, lockstep): `--hero-photo` / `--hero-scrim` (0–1). **Remove `--hero-dim`.**
 
-Existing slides carry one `dim` value and must keep looking exactly as they do today. Map the old
-value onto both new values on read, so nothing shifts the day this ships.
+```css
+/* mobile photo */
+opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
+/* desktop photo */
+opacity: calc(0.62 + 0.38 * var(--hero-photo, 0));
+/* scrim — same stop alphas as before, driven by --hero-scrim */
+```
+
+**Legacy mapping (identical look on ship day):**
+
+- If `photo_brightness` / `text_background` present → use them
+- Else if `dim` present → `photo_brightness = 100 - dim`, `text_background = dim`
+- Else (neither) → treat as legacy dim=100 → photo=0, scrim=1
+
+Admin strips `dim` on save; new slides always persist the new keys.
 
 ### 2.2 Text position
 
 Where the text sits matters more than any colour choice. A title moved off a busy sign is legible
 with no scrim at all.
 
-Per slide: **top / middle / bottom** (currently always bottom). One setting, large effect.
+Per slide: **top / middle / bottom** (`text_position`). Default **bottom** so existing slides do
+not move. Both apps via `data-text-position` on the overlay.
 
 ### 2.3 A contrast warning in admin
 

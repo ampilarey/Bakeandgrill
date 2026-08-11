@@ -23,9 +23,13 @@
                 $focalX = isset($slide['image_focal_x']) ? (float) $slide['image_focal_x'] : 50;
                 $focalY = isset($slide['image_focal_y']) ? (float) $slide['image_focal_y'] : 50;
                 $imgAlt = $slide['image_alt'] ?? content('site_name', 'Bake & Grill');
-                $heroDim = isset($slide['dim']) ? max(0, min(100, (float) $slide['dim'])) / 100 : 1;
+                // Lockstep with order-app resolveHeroSlidePresentation / --hero-photo|--hero-scrim
+                $heroPres = \App\Domains\Content\HeroSlides::presentation(is_array($slide) ? $slide : []);
+                $heroPhoto = $heroPres['photo'];
+                $heroScrim = $heroPres['scrim'];
+                $heroTextPos = $heroPres['text_position'];
             @endphp
-            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;--hero-dim:{{ $heroDim }};">
+            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;--hero-photo:{{ $heroPhoto }};--hero-scrim:{{ $heroScrim }};">
                 @if(!empty($slide['video']))
                     <video
                         class="banner-video"
@@ -43,7 +47,7 @@
                         style="object-position:{{ $focalX }}% {{ $focalY }}%;"
                     >
                 @endif
-                <div class="banner-overlay">
+                <div class="banner-overlay" data-text-position="{{ $heroTextPos }}">
                     @php
                         $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
                         $titleHtml = (string) ($slide['title'] ?? '');
