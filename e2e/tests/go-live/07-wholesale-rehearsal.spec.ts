@@ -221,7 +221,7 @@ $i->save();
     expect(blocked.status(), '7.5 mismatch must block invoice').toBe(422);
     expect(await blocked.text()).toMatch(/mismatch/i);
 
-    // 7.6 resolve
+    // 7.6 resolve mismatch then invoice
     const resolved = await request.post(
       `/api/trade/deliveries/${del3.delivery.id}/resolve-mismatch`,
       {
@@ -231,7 +231,6 @@ $i->save();
     );
     expect(resolved.ok(), `7.6 resolve: ${await resolved.text()}`).toBeTruthy();
 
-    // 7.7 invoice
     const inv = await request.post(`/api/admin/trade-accounts/${tradeAccountId}/invoices`, {
       headers,
       data: {
@@ -239,13 +238,13 @@ $i->save();
         idempotency_key: `inv-ok-${Date.now()}`,
       },
     });
-    expect(inv.status(), `7.7 invoice: ${await inv.text()}`).toBe(201);
+    expect(inv.status(), `7.6 invoice: ${await inv.text()}`).toBe(201);
     const invoice = (await inv.json()) as {
       invoice: { id: number; total_laar: number };
     };
     expect(invoice.invoice.total_laar).toBeGreaterThan(0);
 
-    // 7.8 part payment
+    // 7.7 part payment
     const part = Math.floor(invoice.invoice.total_laar / 2);
     const pay = await request.post(`/api/admin/trade-accounts/${tradeAccountId}/payments`, {
       headers,
@@ -257,15 +256,15 @@ $i->save();
         invoice_ids: [invoice.invoice.id],
       },
     });
-    expect(pay.ok(), `7.8 part payment: ${await pay.text()}`).toBeTruthy();
+    expect(pay.ok(), `7.7 part payment: ${await pay.text()}`).toBeTruthy();
 
-    // 7.9 wholesale revenue appears separately in P&L
+    // 7.8 wholesale revenue appears separately in P&L
     const today = new Date().toISOString().slice(0, 10);
     const pnl = await request.get(
       `/api/reports/finance/profit-and-loss?from=${today}&to=${today}`,
       { headers },
     );
-    expect(pnl.ok(), `7.9 P&L: ${await pnl.text()}`).toBeTruthy();
+    expect(pnl.ok(), `7.8 P&L: ${await pnl.text()}`).toBeTruthy();
     const pnlBody = await pnl.text();
     expect(pnlBody).toMatch(/wholesale/i);
     const pnlJson = JSON.parse(pnlBody) as {
@@ -275,7 +274,26 @@ $i->save();
     const wholesale = Number(pnlJson.revenue?.wholesale ?? pnlJson.wholesale ?? NaN);
     expect(
       Number.isFinite(wholesale) && wholesale > 0,
-      `7.9 wholesale revenue must be > 0, got ${wholesale} from ${pnlBody.slice(0, 300)}`,
+      `7.8 wholesale revenue must be > 0, got ${wholesale} from ${pnlBody.slice(0, 300)}`,
     ).toBeTruthy();
+
+    // 7.9 dispatch beyond credit limit refused
+    tinker(`
+$c = App\\Models\\Customer::findOrFail(${customerId});
+$c->credit_limit_laar = 1;
+$c->credit_balance_laar = 0;
+$c->save();
+echo 'limit-1';
+`);
+    const over = await request.post('/api/trade/deliveries/dispatch', {
+      headers,
+      data: {
+        trade_account_id: tradeAccountId,
+        idempotency_key: `over-limit-${Date.now()}`,
+        lines: [{ item_id: itemId, qty: 5 }],
+      },
+    });
+    expect(over.status(), `7.9 over-limit dispatch: ${await over.text()}`).toBe(422);
+    expect(await over.text()).toMatch(/credit|limit|owed|held/i);
   });
 });
