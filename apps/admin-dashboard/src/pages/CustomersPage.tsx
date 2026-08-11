@@ -403,41 +403,43 @@ export function CustomersPage() {
         )}
       </TableCard>
 
-      {/* Customer detail — slide-in side panel */}
+      {/* Customer detail — SharedUI Modal (mobile bottom sheet + scroll lock) */}
       {selected && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={closeDetail}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 40, backdropFilter: 'blur(2px)' }}
-          />
-          {/* Drawer */}
-          <div style={{
-            position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
-            width: 'min(480px, 100vw)',
-            background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-            display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          }}>
-            {/* Header */}
-            <div style={{ padding: '18px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <Modal
+          title={detail?.customer.name ?? selected.name ?? selected.phone}
+          onClose={closeDetail}
+          maxWidth={480}
+          footer={(
+            <ModalActions>
+              {!editing ? (
+                <>
+                  <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
+                  <Btn variant="secondary" onClick={() => detail && setView360Id(detail.customer.id)}>View Customer 360</Btn>
+                  <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
+                  <Btn onClick={closeDetail}>Close</Btn>
+                </>
+              ) : (
+                <>
+                  <Btn variant="secondary" onClick={() => { setEditing(false); setSaveError(''); }}>Cancel</Btn>
+                  <Btn onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Btn>
+                </>
+              )}
+            </ModalActions>
+          )}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,129,58,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 17, color: 'var(--color-primary)', flexShrink: 0 }}>
                 {(detail?.customer.name ?? selected.name ?? '?').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {detail?.customer.name ?? selected.name ?? selected.phone}
-                </p>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{selected.phone}</p>
               </div>
-              <button onClick={closeDetail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, display: 'flex' }}>
-                ✕
-              </button>
             </div>
 
             {detailLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}><Spinner /></div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120 }}><Spinner /></div>
             ) : detail ? (
-              <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                 {/* KPI strip */}
                 <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -552,26 +554,7 @@ export function CustomersPage() {
                 )}
               </div>
             ) : null}
-
-            {/* Footer actions */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #F0EAE3', display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-              {!editing ? (
-                <>
-                  <Btn variant="secondary" onClick={() => setEditing(true)}>Edit</Btn>
-                  <Btn variant="secondary" onClick={() => detail && setView360Id(detail.customer.id)}>View Customer 360</Btn>
-                  <Btn variant="danger" onClick={() => detail && handleDelete(detail.customer)}>Deactivate</Btn>
-                  <div style={{ flex: 1 }} />
-                  <Btn onClick={closeDetail}>Close</Btn>
-                </>
-              ) : (
-                <>
-                  <Btn variant="secondary" onClick={() => { setEditing(false); setSaveError(''); }}>Cancel</Btn>
-                  <Btn onClick={() => void handleSave()} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Btn>
-                </>
-              )}
-            </div>
-          </div>
-        </>
+        </Modal>
       )}
 
       {view360Id != null && (
