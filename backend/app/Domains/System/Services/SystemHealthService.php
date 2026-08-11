@@ -8,6 +8,7 @@ use App\Domains\Operations\Services\OpsAlertsService;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\WebhookLog;
+use App\Support\DeployStamp;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -62,6 +63,7 @@ class SystemHealthService
             'queue' => $queue,
             'scheduler' => $scheduler,
             'storage' => $storage,
+            'deploy' => DeployStamp::read(),
             'timestamp' => now()->toIso8601String(),
         ];
     }
@@ -167,6 +169,7 @@ class SystemHealthService
 
         return [
             'status' => $issues > 0 ? 'degraded' : 'ok',
+            'deploy' => DeployStamp::read(),
             'failed_jobs_24h' => $failedJobs24h,
             'webhook_failures_24h' => $webhookFailures24h,
             'payment_pending_stuck' => $paymentPendingStuck,

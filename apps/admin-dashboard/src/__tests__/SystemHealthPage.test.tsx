@@ -9,6 +9,12 @@ describe('SystemHealthPage', () => {
     vi.restoreAllMocks();
     vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
       status: 'degraded',
+      deploy: {
+        commit: 'abcdef0123456789abcdef0123456789abcdef01',
+        commit_short: 'abcdef0',
+        branch: 'main',
+        deployed_at: '2026-08-11T06:00:00Z',
+      },
       failed_jobs_24h: 2,
       webhook_failures_24h: 1,
       payment_pending_stuck: 1,
@@ -39,6 +45,37 @@ describe('SystemHealthPage', () => {
       expect(screen.getByText('Up')).toBeTruthy();
       expect(screen.getByText('Issues detected in the last 24 hours')).toBeTruthy();
       expect(screen.getByText('#1009')).toBeTruthy();
+      expect(screen.getByTestId('deploy-stamp').textContent).toMatch(/Running abcdef0 on main, deployed/);
+    });
+  });
+
+  it('renders unknown deploy stamp when absent', async () => {
+    vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
+      status: 'ok',
+      deploy: { commit: 'unknown', commit_short: 'unknown', branch: 'unknown', deployed_at: 'unknown' },
+      failed_jobs_24h: 0,
+      webhook_failures_24h: 0,
+      payment_pending_stuck: 0,
+      sms_failed_24h: 0,
+      print_proxy_ok: null,
+      print_proxy_status: 'not_configured',
+      queue_depth: 0,
+      checked_at: new Date().toISOString(),
+      recent_failed_jobs: [],
+      recent_webhook_failures: [],
+      stuck_payment_pending_orders: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <SystemHealthPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('deploy-stamp').textContent).toBe(
+        'Running unknown on unknown, deployed unknown',
+      );
     });
   });
 });

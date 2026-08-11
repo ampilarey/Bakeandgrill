@@ -49,6 +49,14 @@ fi
 pgrep -af "artisan queue:work" | grep -E "$(basename "$ROOT")|${WORKER_FILTER%%.*}" || echo "WARN: queue worker may not be running"
 
 cd "$ROOT"
+if [[ -x ./scripts/write-deploy-stamp.sh ]]; then
+  ./scripts/write-deploy-stamp.sh "$ROOT" || echo "WARN: deploy stamp write failed"
+elif [[ -f ./scripts/write-deploy-stamp.sh ]]; then
+  bash ./scripts/write-deploy-stamp.sh "$ROOT" || echo "WARN: deploy stamp write failed"
+else
+  echo "WARN: write-deploy-stamp.sh missing — app will report unknown commit"
+fi
+
 if [[ -x ./scripts/post-deploy-smoke.sh ]]; then
   ./scripts/post-deploy-smoke.sh "$ENV"
 fi

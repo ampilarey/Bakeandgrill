@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\System\Services\SystemHealthService;
 use App\Http\Controllers\Controller;
+use App\Support\DeployStamp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,10 +16,14 @@ class SystemHealthController extends Controller
 
     /**
      * Public health probe — used by load balancers and uptime monitors.
+     * Exposes status + short commit SHA only (no branch, paths, or env details).
      */
     public function public(): JsonResponse
     {
-        return response()->json(['status' => 'ok']);
+        return response()->json([
+            'status' => 'ok',
+            'commit' => DeployStamp::publicCommitShort(),
+        ]);
     }
 
     /**
