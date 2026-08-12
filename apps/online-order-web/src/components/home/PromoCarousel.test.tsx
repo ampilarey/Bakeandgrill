@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PromoCarousel } from './PromoCarousel';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
@@ -85,9 +84,7 @@ describe('PromoCarousel', () => {
     expect(secondSlide.style.getPropertyValue('--hero-scrim')).toBe('0.5');
   });
 
-  it('renders prev/next and dots when there are multiple slides', async () => {
-    const user = userEvent.setup();
-
+  it('renders prev/next and dots when there are multiple slides', () => {
     render(
       <MemoryRouter>
         <PromoCarousel slides={threeSlides} apiOrigin="https://example.test" />
@@ -99,7 +96,7 @@ describe('PromoCarousel', () => {
     expect(screen.getByRole('button', { name: 'Next slide' })).toBeInTheDocument();
     expect(screen.getAllByRole('tab')).toHaveLength(3);
 
-    await user.click(screen.getByRole('button', { name: 'Next slide' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next slide' }));
     expect(screen.getByRole('tab', { name: 'Slide 2' })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -144,5 +141,55 @@ describe('PromoCarousel', () => {
     );
 
     expect(screen.getByRole('link', { name: 'Tap me' })).toHaveAttribute('href', '#');
+  });
+
+  it('puts text-hug title background on an inner span, not the heading', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Where Dhivehi breakfast<br><em>meets</em> baking',
+              title_bg: 'dark',
+              title_bg_strength: 70,
+              title_bg_full_width: false,
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByTestId('hero-title-0');
+    expect(heading.tagName).toBe('H2');
+    expect(heading).not.toHaveAttribute('data-has-bg');
+    const hug = heading.querySelector('.hero-text-bg');
+    expect(hug).toBeTruthy();
+    expect(hug).toHaveAttribute('data-has-bg', '1');
+    expect(hug).toHaveAttribute('data-bg-full', '0');
+    expect((hug as HTMLElement).style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);
+  });
+
+  it('keeps full-width title background on the heading itself', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Full bar',
+              title_bg: 'dark',
+              title_bg_strength: 50,
+              title_bg_full_width: true,
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByTestId('hero-title-0');
+    expect(heading).toHaveAttribute('data-has-bg', '1');
+    expect(heading).toHaveAttribute('data-bg-full', '1');
+    expect(heading.querySelector('.hero-text-bg')).toBeNull();
   });
 });

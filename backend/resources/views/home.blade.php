@@ -140,32 +140,39 @@
     text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
-/* §7.2: panel wraps with text unless full-width is chosen */
-.banner-title[data-has-bg="1"]:not([data-bg-full="1"]),
-.banner-sub[data-has-bg="1"]:not([data-bg-full="1"]) {
+/*
+ * §7.2 text-hug: paint lives on .hero-text-bg (inner span), NOT on the h2/p.
+ * .banner-copy is a flex column — flex items blockify `display: inline`, so a
+ * background on the heading itself becomes one big rectangle. The inner span
+ * stays inline with box-decoration-break: clone (highlight per line).
+ */
+.banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
+.banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
     display: inline;
     padding: 0.12em 0.4em;
     border-radius: 6px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
     text-shadow: none;
+    background: var(--hero-el-bg);
+    color: inherit;
 }
+/* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],
 .banner-sub[data-has-bg="1"][data-bg-full="1"] {
     display: block;
+    align-self: stretch;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     padding: 0.35em 0.55em;
     border-radius: 10px;
     text-shadow: none;
+    background: var(--hero-el-bg);
 }
 .banner-eyebrow[data-has-bg="1"],
 .banner-cta-primary[data-has-bg="1"],
 .banner-cta-secondary[data-has-bg="1"] {
-    background: var(--hero-el-bg);
-}
-.banner-title[data-has-bg="1"],
-.banner-sub[data-has-bg="1"] {
     background: var(--hero-el-bg);
 }
 .banner-sub {

@@ -22,6 +22,55 @@ function elementBgProps(el: HeroElementBackground): {
   };
 }
 
+/** Sanitize rich hero copy (title/subtitle allow br/em/strong). */
+function sanitizeHeroHtml(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['br', 'em', 'strong'] });
+}
+
+/**
+ * Title/subtitle with optional per-element background.
+ * Text-hug mode uses an inner .hero-text-bg span — the parent copy stack is
+ * flex, which blockifies display:inline on the heading itself into a rectangle.
+ */
+function HeroTextBlock({
+  as: Tag,
+  className,
+  html,
+  el,
+  testId,
+}: {
+  as: 'h2' | 'p';
+  className: string;
+  html: string;
+  el: HeroElementBackground;
+  testId?: string;
+}) {
+  const clean = sanitizeHeroHtml(html);
+  if (!el.css) {
+    return <Tag className={className} data-testid={testId} dangerouslySetInnerHTML={{ __html: clean }} />;
+  }
+  if (el.full_width) {
+    return (
+      <Tag
+        className={className}
+        data-testid={testId}
+        {...elementBgProps(el)}
+        dangerouslySetInnerHTML={{ __html: clean }}
+      />
+    );
+  }
+  return (
+    <Tag className={className} data-testid={testId}>
+      <span
+        className="hero-text-bg"
+        {...elementBgProps(el)}
+        dangerouslySetInnerHTML={{ __html: clean }}
+      />
+    </Tag>
+  );
+
+}
+
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {
   if (!src) return null;
   if (src.startsWith('http')) return src;
@@ -285,25 +334,21 @@ export function PromoCarousel({
                   </span>
                 ) : null}
                 {slide.title ? (
-                  <h2
+                  <HeroTextBlock
+                    as="h2"
                     className="home-promo-hero__title"
-                    {...elementBgProps(presentation.elements.title)}
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(slide.title, {
-                        ALLOWED_TAGS: ['br', 'em', 'strong'],
-                      }),
-                    }}
+                    html={slide.title}
+                    el={presentation.elements.title}
+                    testId={`hero-title-${i}`}
                   />
                 ) : null}
                 {slide.subtitle ? (
-                  <p
+                  <HeroTextBlock
+                    as="p"
                     className="home-promo-hero__sub"
-                    {...elementBgProps(presentation.elements.subtitle)}
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(slide.subtitle, {
-                        ALLOWED_TAGS: ['br', 'em', 'strong'],
-                      }),
-                    }}
+                    html={slide.subtitle}
+                    el={presentation.elements.subtitle}
+                    testId={`hero-sub-${i}`}
                   />
                 ) : null}
                 {cta1 || cta2 ? (

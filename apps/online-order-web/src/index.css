@@ -398,28 +398,34 @@ img.brand-logo--dark { display: none; }
   font-style: normal;
   color: #f0a96a;
 }
-/* §7.2: panel wraps with text unless full-width is chosen */
-.home-promo-hero__title[data-has-bg="1"]:not([data-bg-full="1"]),
-.home-promo-hero__sub[data-has-bg="1"]:not([data-bg-full="1"]) {
+/*
+ * §7.2 text-hug: paint on .hero-text-bg (inner span). Flex items in
+ * .home-promo-hero__copy blockify display:inline on the heading itself.
+ */
+.home-promo-hero__title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
+.home-promo-hero__sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
   display: inline;
   padding: 0.12em 0.4em;
   border-radius: 6px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   text-shadow: none;
+  background: var(--hero-el-bg);
+  color: inherit;
 }
 .home-promo-hero__title[data-has-bg="1"][data-bg-full="1"],
 .home-promo-hero__sub[data-has-bg="1"][data-bg-full="1"] {
   display: block;
+  align-self: stretch;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   padding: 0.35em 0.55em;
   border-radius: 10px;
   text-shadow: none;
+  background: var(--hero-el-bg);
 }
 .home-promo-hero__eyebrow[data-has-bg="1"],
-.home-promo-hero__title[data-has-bg="1"],
-.home-promo-hero__sub[data-has-bg="1"],
 .home-banner-cta-primary[data-has-bg="1"],
 .home-promo-hero__cta-secondary[data-has-bg="1"] {
   background: var(--hero-el-bg);

@@ -286,3 +286,5 @@ no background at all.
 **Legacy look after §7.1:** photo outside the text block is no longer washed by the full-bleed scrim (brighter edges). Text still sits on the copy-panel gradient at the same `text_background` strength. Mapping was not remapped.
 
 **Cache FINDING (§7.4):** website re-resolves slides each request (OK). Order app loads public content once into React context and filters at parse time — expired windows do not drop mid-session until refetch/navigation.
+
+**FINDING (§7.2 text-hug):** Putting `display: inline` + background on the title/subtitle heading itself failed inside the flex `.banner-copy` / `.home-promo-hero__copy` column — flex items are blockified, so the background became one big rectangle. Fix: paint text-hug backgrounds on an inner `.hero-text-bg` span; full-width bar still paints the heading.

@@ -78,24 +78,47 @@
                         >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
+                        {{-- Text-hug bg lives on an inner span: flex items blockify display:inline on the h2. --}}
                         <h2
                             class="banner-title"
-                            @if(!empty($titleEl['css']))
+                            @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
                                 data-has-bg="1"
-                                data-bg-full="{{ !empty($titleEl['full_width']) ? '1' : '0' }}"
+                                data-bg-full="1"
                                 style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
                             @endif
-                        >{!! $titleHtml !!}</h2>
+                        >
+                            @if(!empty($titleEl['css']) && empty($titleEl['full_width']))
+                                <span
+                                    class="hero-text-bg"
+                                    data-has-bg="1"
+                                    data-bg-full="0"
+                                    style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                                >{!! $titleHtml !!}</span>
+                            @else
+                                {!! $titleHtml !!}
+                            @endif
+                        </h2>
                     @endif
                     @if($subtitle !== '')
                         <p
                             class="banner-sub"
-                            @if(!empty($subEl['css']))
+                            @if(!empty($subEl['css']) && !empty($subEl['full_width']))
                                 data-has-bg="1"
-                                data-bg-full="{{ !empty($subEl['full_width']) ? '1' : '0' }}"
+                                data-bg-full="1"
                                 style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
                             @endif
-                        >{{ $subtitle }}</p>
+                        >
+                            @if(!empty($subEl['css']) && empty($subEl['full_width']))
+                                <span
+                                    class="hero-text-bg"
+                                    data-has-bg="1"
+                                    data-bg-full="0"
+                                    style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
+                                >{{ $subtitle }}</span>
+                            @else
+                                {{ $subtitle }}
+                            @endif
+                        </p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">
