@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AnalyticsTracker } from '../components/AnalyticsTracker';
 import { applyFavicon } from '../lib/applyFavicon';
 import { applyBrandPalette, deriveBrandPalette } from '../lib/brandPalette';
+import { isHeroSlideInScheduleWindow } from '../utils/heroSlidePresentation';
 import { useLanguage } from './LanguageContext';
 
 type ContentLocale = 'en' | 'dv';
@@ -144,6 +145,9 @@ export interface HeroSlideRow {
    * Explicit false = Hidden (admin keeps the slide; carousels skip it).
    */
   showing?: boolean;
+  /** Optional schedule window (restaurant TZ). Both empty = always. */
+  show_from?: string;
+  show_until?: string;
   eyebrow?: string;
   title?: string;
   subtitle?: string;
@@ -153,6 +157,18 @@ export interface HeroSlideRow {
   cta2_url?: string;
   video?: string;
   video_poster?: string;
+  eyebrow_bg?: string;
+  eyebrow_bg_strength?: number | string;
+  title_bg?: string;
+  title_bg_strength?: number | string;
+  title_bg_full_width?: boolean | string | number;
+  subtitle_bg?: string;
+  subtitle_bg_strength?: number | string;
+  subtitle_bg_full_width?: boolean | string | number;
+  cta1_bg?: string;
+  cta1_bg_strength?: number | string;
+  cta2_bg?: string;
+  cta2_bg_strength?: number | string;
 }
 
 export interface HomepageCategoryRow {
@@ -233,7 +249,9 @@ export function isHeroSlideShowing(slide: { showing?: boolean }): boolean {
 export function isRenderableHeroSlide(slide: unknown): slide is HeroSlideRow {
   if (!slide || typeof slide !== 'object') return false;
   const row = slide as HeroSlideRow;
+  // Manual Hidden wins over any dates — parity with HeroSlides::isRenderableSlide.
   if (!isHeroSlideShowing(row)) return false;
+  if (!isHeroSlideInScheduleWindow(row)) return false;
   const title = String(row.title ?? '').trim();
   const image = String(row.image ?? '').trim();
   const video = String((row as HeroSlideRow & { video?: string }).video ?? '').trim();

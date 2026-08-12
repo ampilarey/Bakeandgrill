@@ -272,3 +272,17 @@ warn when a second pending schedule already exists for the same key.
 
 1 and 2 are one piece of work and should ship together; doing 1 without 2 leaves the title with
 no background at all.
+
+### 7.6 Shipped (this branch)
+
+| Item | What landed |
+|---|---|
+| §7.1 | `--hero-scrim` paints `.banner-copy` / `.home-promo-hero__copy` only. Overlay is `background: none`. Photo opacity still only via `--hero-photo`. |
+| §7.2 | Per-slide `*_bg` + `*_bg_strength` (+ `title_bg_full_width` / `subtitle_bg_full_width`) for eyebrow, title, subtitle, cta1, cta2. Swatches + strength in `HeroSlidesEditor`; absent = hardcoded CSS look. Wired through PHP + both TS `heroSlidePresentation` helpers. |
+| §7.4 | Optional `show_from` / `show_until` on each slide; `HeroSlides::isRenderableSlide()` + order-app `isRenderableHeroSlide()`. Restaurant TZ (`Indian/Maldives`). `showing: false` wins. Plain-language label next to Showing. |
+| §7.3 | More trigger always shows “⋯ More”; Schedule publish surfaced inside Content Hub editor sheets + hero slide sheet. |
+| Warning | Content Hub warns when a pending schedule already exists for a key about to be re-scheduled. |
+
+**Legacy look after §7.1:** photo outside the text block is no longer washed by the full-bleed scrim (brighter edges). Text still sits on the copy-panel gradient at the same `text_background` strength. Mapping was not remapped.
+
+**Cache FINDING (§7.4):** website re-resolves slides each request (OK). Order app loads public content once into React context and filters at parse time — expired windows do not drop mid-session until refetch/navigation.
