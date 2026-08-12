@@ -59,7 +59,7 @@ import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
-import { HomeLayoutEditor, type HomeLayoutEditorHandle } from './HomeLayoutEditor';
+import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
@@ -361,8 +361,15 @@ export function ContentHubPage() {
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   /** Homepage layout draft — merged into global publish status. */
   const [layoutDraft, setLayoutDraft] = useState(false);
+  /** Bumps when layout draft versions change so the docked preview remints. */
+  const [layoutRevision, setLayoutRevision] = useState(0);
   /** Component counts per surface for the landing overview. */
   const [surfaceCounts, setSurfaceCounts] = useState<Record<string, number>>({});
+
+  const handleLayoutDraftChange = (signal: LayoutDraftSignal) => {
+    setLayoutDraft(signal.hasDraft);
+    setLayoutRevision(signal.revision);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -580,6 +587,7 @@ export function ContentHubPage() {
   };
 
   // Preview tokens — one per app so website/order drafts overlay correctly.
+  // include_layout is always on; layoutRevision remints when page-block drafts change.
   useEffect(() => {
     const t = window.setTimeout(() => {
       const websiteOverrides: Record<string, string> = {};
@@ -599,14 +607,21 @@ export function ContentHubPage() {
           orderOverrides[block.key] = valueForScope(block, previewScope, drafts);
         }
       }
-      if (Object.keys(websiteOverrides).length === 0 && Object.keys(orderOverrides).length === 0) {
+      // Layout-only drafts still need a token (empty overrides + include_layout).
+      if (
+        Object.keys(websiteOverrides).length === 0
+        && Object.keys(orderOverrides).length === 0
+        && !layoutDraft
+      ) {
         return;
       }
       setPreviewLoading(true);
-      const websiteReq = Object.keys(websiteOverrides).length > 0
+      const wantWebsite = Object.keys(websiteOverrides).length > 0 || layoutDraft;
+      const wantOrder = Object.keys(orderOverrides).length > 0 || layoutDraft;
+      const websiteReq = wantWebsite
         ? createContentPreviewToken('website', websiteOverrides, locale, true)
         : Promise.resolve(null);
-      const orderReq = Object.keys(orderOverrides).length > 0
+      const orderReq = wantOrder
         ? createContentPreviewToken('order_app', orderOverrides, locale, true)
         : Promise.resolve(null);
       void Promise.all([websiteReq, orderReq])
@@ -624,7 +639,7 @@ export function ContentHubPage() {
     }, 600);
     return () => window.clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drafts, contentBlocks, locale]);
+  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision]);
 
   // Autosave
   useEffect(() => {
@@ -802,16 +817,27 @@ export function ContentHubPage() {
       error('Set a future time and make some edits first');
       return;
     }
+    if (layoutDraft) {
+      const proceed = window.confirm(
+        'Homepage layout drafts cannot be scheduled. Content keys will be scheduled; layout stays as an unpublished draft until you Publish or Discard it. Continue?',
+      );
+      if (!proceed) return;
+    }
     setSaving(true);
     try {
       await scheduleContent(new Date(scheduleAt).toISOString(), changes, locale);
+      // Server clears matching ContentDraft rows; clear local state to match.
       saveGeneration.current += 1;
       replaceLocaleDrafts(locale, {});
       setLocaleSynced(locale, true);
       setScheduleAt('');
       const { schedules: nextSchedules } = await getContentSchedules('pending');
       setSchedules(nextSchedules);
-      success('Publish scheduled');
+      success(
+        layoutDraft
+          ? 'Content scheduled. Homepage layout draft was not included — publish it separately.'
+          : 'Publish scheduled',
+      );
     } catch (e) {
       error(e instanceof Error ? e.message : 'Schedule failed');
     } finally {
@@ -1736,7 +1762,7 @@ export function ContentHubPage() {
             ref={homeLayoutEditorRef}
             initialApp={homeLayoutApp}
             surfaceFilter={surfaceFilter ?? undefined}
-            onLayoutDraftChange={setLayoutDraft}
+            onLayoutDraftChange={handleLayoutDraftChange}
           />
         </>
       ) : (
@@ -1878,6 +1904,19 @@ export function ContentHubPage() {
           A pending schedule already exists for{' '}
           {pendingOverwriteKeys.map((s) => s.key).filter((k, i, a) => a.indexOf(k) === i).join(', ')}.
           Scheduling again will overwrite that whole value when the later one publishes.
+        </p>
+      ) : null}
+      {layoutDraft ? (
+        <p
+          data-testid="hub-schedule-layout-note"
+          style={{
+            margin: '0 0 8px',
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Homepage layout drafts are not scheduled. Publish or discard them separately.
         </p>
       ) : null}
       <input
