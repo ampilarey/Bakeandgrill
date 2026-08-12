@@ -94,21 +94,22 @@ vi.mock('../context/CartContext', () => ({
   }),
 }));
 
-vi.mock('../context/SiteSettingsContext', () => ({
-  useSiteSettingsContext: () => ({
-    text: (_k: string, d: string) => d,
-    settings: {
-      site_name: 'Bake & Grill',
-      logo: '/logo.png',
-      menu_new_days: '30',
-      default_item_image: '',
-    },
-  }),
-  useSiteSettings: () => ({
+const { siteSettings } = vi.hoisted(() => ({
+  siteSettings: {
     site_name: 'Bake & Grill',
     logo: '/logo.png',
     menu_new_days: '30',
+    default_item_image: '',
+    language_switcher_enabled: 'true',
+  },
+}));
+
+vi.mock('../context/SiteSettingsContext', () => ({
+  useSiteSettingsContext: () => ({
+    text: (_k: string, d: string) => d,
+    settings: siteSettings,
   }),
+  useSiteSettings: () => siteSettings,
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
@@ -116,6 +117,7 @@ vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 describe('MenuViewPage', () => {
   beforeEach(() => {
     setLang.mockClear();
+    siteSettings.language_switcher_enabled = 'true';
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -185,7 +187,8 @@ describe('MenuViewPage', () => {
     expect(within(newSection).queryByText('House Salad')).toBeNull();
   });
 
-  it('language toggle calls setLang', async () => {
+  it('language toggle calls setLang when admin switcher is on', async () => {
+    siteSettings.language_switcher_enabled = 'true';
     render(<MenuViewPage />);
 
     await screen.findByTestId('menu-view-page');
@@ -194,5 +197,14 @@ describe('MenuViewPage', () => {
 
     fireEvent.click(screen.getByTestId('menu-view-lang-en'));
     expect(setLang).toHaveBeenCalledWith('en');
+  });
+
+  it('hides language toggle when admin switcher is off', async () => {
+    siteSettings.language_switcher_enabled = 'false';
+    render(<MenuViewPage />);
+
+    await screen.findByTestId('menu-view-page');
+    expect(screen.queryByTestId('menu-view-lang-dv')).toBeNull();
+    expect(screen.queryByTestId('menu-view-lang-en')).toBeNull();
   });
 });

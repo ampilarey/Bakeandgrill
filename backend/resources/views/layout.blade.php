@@ -25,10 +25,14 @@
         ? ($orderBarMeta['active'] ? '/order/orders/' . $orderBar->id : '/order/order-history')
         : null;
 
+    $languageSwitcherEnabled = filter_var(
+        content('language_switcher_enabled', 'false'),
+        FILTER_VALIDATE_BOOLEAN
+    );
     $contentLocale = app()->bound('content.locale')
         ? (string) app('content.locale')
         : (app()->bound('content.draft_locale') ? (string) app('content.draft_locale') : 'en');
-    $contentLocale = $contentLocale === 'dv' ? 'dv' : 'en';
+    $contentLocale = ($languageSwitcherEnabled && $contentLocale === 'dv') ? 'dv' : 'en';
     $contentDir = $contentLocale === 'dv' ? 'rtl' : 'ltr';
     $langSwitchEnUrl = request()->fullUrlWithQuery(['lang' => 'en']);
     $langSwitchDvUrl = request()->fullUrlWithQuery(['lang' => 'dv']);
@@ -1463,10 +1467,12 @@
             @else
                 <a href="/customer/login" class="hdr-login">Login</a>
             @endauth
+            @if($languageSwitcherEnabled)
             <div class="lang-switcher" role="group" aria-label="Language">
                 <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
                 <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
             </div>
+            @endif
             <button id="darkToggleDesktop" class="dark-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
             <a href="/order/menu" class="hdr-order">{{ $navOrderCta }}</a>
         </div>
@@ -1538,10 +1544,12 @@
             @else
                 <a href="/customer/login" style="font-size:0.8rem;color:var(--muted);font-weight:500;padding:0.4rem 0.75rem;">Login</a>
             @endauth
+            @if($languageSwitcherEnabled)
             <div class="lang-switcher" role="group" aria-label="Language">
                 <a href="{{ $langSwitchEnUrl }}" class="{{ $contentLocale === 'en' ? 'is-active' : '' }}" aria-label="Switch to English">EN</a>
                 <a href="{{ $langSwitchDvUrl }}" class="{{ $contentLocale === 'dv' ? 'is-active' : '' }}" aria-label="Switch to Dhivehi">ދވ</a>
             </div>
+            @endif
         </div>
     </div>
 </div>

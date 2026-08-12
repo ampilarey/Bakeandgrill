@@ -1680,6 +1680,17 @@ return [
         // 'section_featured_enabled', 'section_categories_enabled',
         // 'section_proof_enabled', 'section_cta_enabled',
         // 'section_location_enabled', 'section_reviews_enabled' => …
+        'language_switcher_enabled' => [
+            'label' => 'Show language switcher (EN / ދވ)',
+            'group' => 'General',
+            'type' => 'boolean',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'validate' => 'nullable|in:true,false,0,1',
+            'default' => 'false',
+        ],
         'site_name' => [
             'label' => 'Site Name',
             'group' => 'General',
