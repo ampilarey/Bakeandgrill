@@ -64,8 +64,16 @@
     $footerLocationHeading   = content('footer_location_heading', 'Location');
 
     // Customer Surface Builder — chrome visibility from page_blocks (not hard-coded).
+    // Honor staff layout drafts in signed preview so header/footer/nav match home.
     try {
-        $websiteBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+        $draftWebsiteBlocks = app()->bound('content.draft_overrides')
+            ? \App\Domains\Content\Blocks\DraftPageBlockHydrator::forAppPage(
+                app('content.draft_overrides'),
+                'website',
+            )
+            : null;
+        $websiteBlocks = $draftWebsiteBlocks
+            ?? \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
     } catch (\Throwable $e) {
         $websiteBlocks = collect();
     }

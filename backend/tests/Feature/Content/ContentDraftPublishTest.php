@@ -187,4 +187,88 @@ class ContentDraftPublishTest extends TestCase
             'locale' => 'en',
         ]);
     }
+
+    public function test_discard_drafts_requires_staff_auth(): void
+    {
+        $this->deleteJson('/api/admin/content/drafts')->assertUnauthorized();
+    }
+
+    public function test_discard_drafts_removes_all_scopes_for_current_user_and_locale(): void
+    {
+        $user = $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content/drafts', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Draft website'],
+                ['key' => 'cta_band_headline', 'scope' => 'shared', 'value' => 'Draft shared'],
+            ],
+        ])->assertOk();
+        $this->putJson('/api/admin/content/drafts', [
+            'locale' => 'dv',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Draft DV'],
+            ],
+        ])->assertOk();
+
+        $this->deleteJson('/api/admin/content/drafts', ['locale' => 'en'])
+            ->assertOk()
+            ->assertJsonPath('deleted', 2)
+            ->assertJsonPath('locale', 'en');
+
+        $this->assertDatabaseMissing('content_drafts', ['user_id' => $user->id, 'locale' => 'en']);
+        // DV locale draft is untouched — discard is scoped to the requested locale.
+        $this->assertDatabaseHas('content_drafts', ['user_id' => $user->id, 'locale' => 'dv']);
+    }
+
+    public function test_discard_drafts_can_be_scoped_to_one_app(): void
+    {
+        $user = $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content/drafts', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Draft website'],
+                ['key' => 'cta_band_headline', 'scope' => 'shared', 'value' => 'Draft shared'],
+            ],
+        ])->assertOk();
+
+        $this->deleteJson('/api/admin/content/drafts', ['locale' => 'en', 'scope' => 'website'])
+            ->assertOk()
+            ->assertJsonPath('deleted', 1)
+            ->assertJsonPath('scope', 'website');
+
+        $this->assertDatabaseMissing('content_drafts', [
+            'user_id' => $user->id,
+            'scope' => 'website',
+            'locale' => 'en',
+        ]);
+        $this->assertDatabaseHas('content_drafts', [
+            'user_id' => $user->id,
+            'scope' => 'shared',
+            'locale' => 'en',
+        ]);
+    }
+
+    public function test_discard_drafts_does_not_touch_other_users_drafts(): void
+    {
+        $userA = $this->actingAsOwner('discard-a@test.local', 'Discard A');
+        $this->putJson('/api/admin/content/drafts', [
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'A draft'],
+            ],
+        ])->assertOk();
+
+        $userB = $this->actingAsOwner('discard-b@test.local', 'Discard B');
+        $this->putJson('/api/admin/content/drafts', [
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'B draft'],
+            ],
+        ])->assertOk();
+
+        $this->deleteJson('/api/admin/content/drafts')->assertOk();
+
+        $this->assertDatabaseMissing('content_drafts', ['user_id' => $userB->id]);
+        $this->assertDatabaseHas('content_drafts', ['user_id' => $userA->id]);
+    }
 }

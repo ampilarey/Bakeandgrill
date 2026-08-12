@@ -230,6 +230,51 @@ class ContentController extends Controller
     }
 
     /**
+     * DELETE /api/admin/content/drafts — discard the current user's autosaved
+     * drafts. Optional `scope` narrows to one app scope; otherwise all scopes
+     * for the given locale are discarded. Does not touch live SiteSetting.
+     */
+    public function discardDrafts(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'scope' => ['sometimes', 'nullable', 'string', Rule::in(ContentRegistry::SCOPES)],
+        ]);
+        $locale = $data['locale'] ?? 'en';
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $query = ContentDraft::query()
+            ->where('user_id', $user->id)
+            ->where('locale', $locale);
+        if (! empty($data['scope'])) {
+            $query->where('scope', $data['scope']);
+        }
+
+        $deleted = $query->count();
+        $query->delete();
+
+        $this->audit->log(
+            action: 'content.draft_discarded',
+            modelType: ContentDraft::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['count' => $deleted],
+            meta: ['locale' => $locale, 'scope' => $data['scope'] ?? null],
+            request: $request,
+        );
+
+        return response()->json([
+            'message' => 'Drafts discarded.',
+            'locale' => $locale,
+            'scope' => $data['scope'] ?? null,
+            'deleted' => $deleted,
+        ]);
+    }
+
+    /**
      * GET /api/admin/content/{key}/revisions
      */
     public function revisions(Request $request, string $key): JsonResponse

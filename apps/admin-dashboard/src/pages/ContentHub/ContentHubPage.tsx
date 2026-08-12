@@ -6,6 +6,7 @@ import {
 import {
   cancelContentSchedule,
   createContentPreviewToken,
+  discardContentDrafts,
   exportContent,
   getContentBlocks,
   getContentDrafts,
@@ -29,6 +30,11 @@ import {
   type ContentScheduleRow,
   type ContentScope,
 } from '../../api/content';
+import {
+  discardPageBlockDraft,
+  fetchAdminPageBlocks,
+  publishPageBlocks,
+} from '../../api/pageBlocks';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
 import {
   AboutValuesEditor,
@@ -53,14 +59,13 @@ import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
-import { HomeLayoutEditor } from './HomeLayoutEditor';
+import { HomeLayoutEditor, type HomeLayoutEditorHandle } from './HomeLayoutEditor';
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
 import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
 import type { ContentTask } from './taskLandingConfig';
 import { parseSurfaceId, countBlocksOnSurface, surfaceId, type SurfaceRecord } from './surfaceCatalog';
-import { fetchAdminPageBlocks } from '../../api/pageBlocks';
 import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
@@ -343,6 +348,13 @@ export function ContentHubPage() {
   const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   const [mediaOpen, setMediaOpen] = useState(false);
   const [linkingKey, setLinkingKey] = useState<string | null>(null);
+  /** Inline "make it the same" source-picker modal (replaces window.prompt). */
+  const [shareSourceModal, setShareSourceModal] = useState<{
+    block: ContentBlock;
+    choices: Array<{ scope: ContentScope; label: string }>;
+    selected: ContentScope;
+  } | null>(null);
+  const shareSourceResolveRef = useRef<((scope: ContentScope | null) => void) | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   /** Mobile: which visual block is open in a nested editor sheet. */
   const [mobileBlockEditorKey, setMobileBlockEditorKey] = useState<string | null>(null);
@@ -363,6 +375,7 @@ export function ContentHubPage() {
     scope: ContentScope;
     onDone: (url: string) => void;
   } | null>(null);
+  const homeLayoutEditorRef = useRef<HomeLayoutEditorHandle | null>(null);
   const draftsByLocaleRef = useRef<DraftsByLocale>({ ...EMPTY_DRAFTS_BY_LOCALE });
   const serverDraftSyncedByLocaleRef = useRef<LocaleMetaMap<boolean>>({ ...TRUE_BY_LOCALE });
   const loadGen = useRef(0);
@@ -453,6 +466,7 @@ export function ContentHubPage() {
           fetchAdminPageBlocks('order_app'),
         ]);
         if (cancelled) return;
+        setLayoutDraft(Boolean(w.draft) || Boolean(o.draft));
         const counts: Record<string, number> = {};
         for (const app of ['website', 'order_app'] as const) {
           const blocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
@@ -529,6 +543,32 @@ export function ContentHubPage() {
     return orderSectionNames(visibleContentGroups(contentBlocks));
   }, [contentBlocks]);
 
+  // Reject unknown ?group= deep links once sections have loaded — legacy/typo
+  // values must not silently open a blank or wrong editor.
+  useEffect(() => {
+    if (loading || !urlGroup) return;
+    if (urlGroup === LEGACY_PAGES_GROUP || urlGroup === 'Contact') return;
+    if (orderedSectionNames.length === 0) return;
+    if (orderedSectionNames.includes(urlGroup)) return;
+    // Defer by a tick — `orderedSectionNames` can briefly lag one render
+    // behind `loading` flipping to false (e.g. right after load()). If a
+    // follow-up render corrects it, this effect re-runs and the cleanup
+    // below cancels the stale clear before it fires.
+    const t = window.setTimeout(() => {
+      error(`Unknown content section "${urlGroup}". Showing the overview instead.`);
+      setActiveGroup(null);
+      setMobileEditorOpen(false);
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('group');
+        p.delete('section');
+        return p;
+      }, { replace: true });
+    }, 0);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, urlGroup, orderedSectionNames]);
+
   const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
 
@@ -564,10 +604,10 @@ export function ContentHubPage() {
       }
       setPreviewLoading(true);
       const websiteReq = Object.keys(websiteOverrides).length > 0
-        ? createContentPreviewToken('website', websiteOverrides, locale)
+        ? createContentPreviewToken('website', websiteOverrides, locale, true)
         : Promise.resolve(null);
       const orderReq = Object.keys(orderOverrides).length > 0
-        ? createContentPreviewToken('order_app', orderOverrides, locale)
+        ? createContentPreviewToken('order_app', orderOverrides, locale, true)
         : Promise.resolve(null);
       void Promise.all([websiteReq, orderReq])
         .then(([websiteRes, orderRes]) => {
@@ -685,7 +725,9 @@ export function ContentHubPage() {
 
   const handleTaskSelect = (task: ContentTask) => {
     if (task.advancedAction === 'history') {
-      success('Open any section, then use ⋯ on a field to view History.');
+      // History lives on each field's ⋯ menu — open Branding as a concrete destination.
+      handleSectionSelect('Branding');
+      success('Open ⋯ on any field to view and restore History.');
       return;
     }
     if (task.advancedAction === 'schedule' || task.advancedAction === 'import_export') {
@@ -693,7 +735,7 @@ export function ContentHubPage() {
       return;
     }
     if (!task.group) return;
-    handleSectionSelect(task.group, task.homeAppHint);
+    handleSectionSelect(task.group, task.homeAppHint, task.surface);
   };
 
   const homeLayoutApp = searchParams.get('homeApp') === 'order_app' ? 'order_app' as const : 'website' as const;
@@ -703,17 +745,49 @@ export function ContentHubPage() {
     clearActiveGroup();
   };
 
+  /**
+   * Publish layout drafts from a fresh server read. Do not trust the mounted
+   * HomeLayoutEditor's in-memory hasDraft — it can still be loading when the
+   * hub Publish bar is already enabled from the landing fetch.
+   */
+  const publishLayoutDraftsViaApi = async () => {
+    for (const app of ['website', 'order_app'] as const) {
+      const res = await fetchAdminPageBlocks(app);
+      if (!res.draft) continue;
+      await publishPageBlocks({ app, version: res.version ?? 0 });
+    }
+    setLayoutDraft(false);
+    await homeLayoutEditorRef.current?.reload?.();
+  };
+
+  const discardLayoutDraftsViaApi = async () => {
+    for (const app of ['website', 'order_app'] as const) {
+      const res = await fetchAdminPageBlocks(app);
+      if (!res.draft) continue;
+      await discardPageBlockDraft({ app });
+    }
+    setLayoutDraft(false);
+    await homeLayoutEditorRef.current?.reload?.();
+  };
+
+  // Unified publish — content keys and the Homepage layout draft are two
+  // separate backends, but staff think of "Publish" as one button.
   const publish = async () => {
     const changes = collectChanges(drafts, locale);
-    if (changes.length === 0) return;
+    if (changes.length === 0 && !layoutDraft) return;
     setSaving(true);
     try {
-      const { blocks: nextBlocks } = await updateContent(changes, locale);
-      setBlocks(nextBlocks);
-      saveGeneration.current += 1;
-      replaceLocaleDrafts(locale, {});
-      setLocaleSynced(locale, true);
-      setLocaleLastSavedAt(locale, new Date().toISOString());
+      if (changes.length > 0) {
+        const { blocks: nextBlocks } = await updateContent(changes, locale);
+        setBlocks(nextBlocks);
+        saveGeneration.current += 1;
+        replaceLocaleDrafts(locale, {});
+        setLocaleSynced(locale, true);
+        setLocaleLastSavedAt(locale, new Date().toISOString());
+      }
+      if (layoutDraft) {
+        await publishLayoutDraftsViaApi();
+      }
       success('Content published');
     } catch (e) {
       error(e instanceof Error ? e.message : 'Save failed');
@@ -756,7 +830,7 @@ export function ContentHubPage() {
       : null;
   };
 
-  const chooseShareSource = (block: ContentBlock): ContentScope | null => {
+  const chooseShareSource = (block: ContentBlock): Promise<ContentScope | null> => {
     const choices: Array<{ scope: ContentScope; label: string }> = [
       { scope: 'website', label: 'Website' },
       { scope: 'order_app', label: 'Order app' },
@@ -764,28 +838,17 @@ export function ContentHubPage() {
     if (sharedSourceAvailable(block, drafts)) {
       choices.push({ scope: 'shared', label: 'Shared' });
     }
+    return new Promise((resolve) => {
+      shareSourceResolveRef.current = resolve;
+      setShareSourceModal({ block, choices, selected: choices[0]?.scope ?? 'website' });
+    });
+  };
 
-    const message = [
-      'Make this block the same in both apps. Copy which source?',
-      ...choices.map((choice, index) => `${index + 1}. ${choice.label}`),
-    ].join('\n');
-    const raw = window.prompt(message, choices[0]?.label ?? 'Website');
-    if (raw === null) return null;
-    const normalized = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
-    const numeric = Number.parseInt(normalized, 10);
-    if (Number.isFinite(numeric) && choices[numeric - 1]) {
-      return choices[numeric - 1].scope;
-    }
-    const matched = choices.find((choice) => (
-      choice.scope === normalized
-      || choice.label.toLowerCase().replace(/\s+/g, '_') === normalized
-      || (choice.scope === 'website' && normalized === 'web')
-      || (choice.scope === 'order_app' && normalized === 'order')
-      || (choice.scope === 'shared' && normalized === 'both')
-    ));
-    if (matched) return matched.scope;
-    error('Choose Website, Order app, or Shared as the source.');
-    return null;
+  const resolveShareSourceModal = (scope: ContentScope | null) => {
+    const resolve = shareSourceResolveRef.current;
+    shareSourceResolveRef.current = null;
+    setShareSourceModal(null);
+    resolve?.(scope);
   };
 
   const discardBlockDrafts = (block: ContentBlock) => {
@@ -804,7 +867,7 @@ export function ContentHubPage() {
     if (linkState(block) === next || linkingKey) return;
     const draftAction = discardDraftActionForModeChange(block);
     if (draftAction === null) return;
-    const source = next === 'same' ? chooseShareSource(block) : null;
+    const source = next === 'same' ? await chooseShareSource(block) : null;
     if (next === 'same' && !source) return;
     setLinkingKey(block.key);
     try {
@@ -1111,12 +1174,34 @@ export function ContentHubPage() {
     />
   );
 
-  const discardAllContentDrafts = () => {
-    if (!window.confirm('Discard unpublished content drafts for this language?')) return;
-    saveGeneration.current += 1;
-    replaceLocaleDrafts(locale, {});
-    setLocaleSynced(locale, true);
-    success('Draft discarded');
+  // Unified discard — mirrors publish() by clearing both the content drafts
+  // (server + local) and the Homepage layout draft (via the editor's ref).
+  const discardAllContentDrafts = async () => {
+    const hasContentDrafts = dirtyCount > 0;
+    if (!hasContentDrafts && !layoutDraft) return;
+    const confirmMessage = hasContentDrafts && layoutDraft
+      ? 'Discard unpublished content and layout drafts for this language?'
+      : layoutDraft
+        ? 'Discard unpublished Home layout drafts?'
+        : 'Discard unpublished content drafts for this language?';
+    if (!window.confirm(confirmMessage)) return;
+    setSaving(true);
+    try {
+      if (hasContentDrafts) {
+        await discardContentDrafts(locale);
+      }
+      saveGeneration.current += 1;
+      replaceLocaleDrafts(locale, {});
+      setLocaleSynced(locale, true);
+      if (layoutDraft) {
+        await discardLayoutDraftsViaApi();
+      }
+      success('Draft discarded');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Could not discard drafts');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderVisualEditor = (
@@ -1587,22 +1672,80 @@ export function ContentHubPage() {
       </div>
     ) : null;
 
-    // Homepage: the page_blocks layout editor is the only arrangement control.
-    // The legacy home_section_order / section_*_enabled keys were retired in
-    // Stage F, so there is nothing left to disagree with it.
+    const announcementDualGateBanner = sectionName === 'Announcements' ? (
+      <div
+        className="hub-hours-ops-banner"
+        data-testid="announcement-dual-gate-banner"
+        role="note"
+      >
+        <strong>Two switches control the banner</strong>
+        <p>
+          The Announcement content toggle below must be on, and the Announcement
+          component must be placed/enabled on the Website or Order App surface
+          (Surface Builder → Header or Home). Both are required or nothing shows.
+        </p>
+        <button
+          type="button"
+          data-testid="announcement-open-surface-link"
+          onClick={() => handleSectionSelect('Homepage', 'website', 'website.desktop.header')}
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--color-primary)',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Open Website header placement →
+        </button>
+      </div>
+    ) : null;
+
+    // Homepage: page_blocks layout editor. Off Homepage it unmounts — unified
+    // Publish/Discard use publishLayoutDraftsViaApi / discardLayoutDraftsViaApi.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
-        <HomeLayoutEditor
-          initialApp={homeLayoutApp}
-          surfaceFilter={surfaceFilter ?? undefined}
-          onLayoutDraftChange={setLayoutDraft}
-        />
-      ) : sectionEnableBlocks.length > 0 ? (
+        <>
+          <div
+            role="note"
+            data-testid="hub-shared-content-vs-placement-banner"
+            style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start',
+              padding: '10px 12px',
+              marginBottom: 12,
+              borderRadius: 10,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg)',
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-text-muted)' }} aria-hidden />
+            <span>
+              Sharing a component&apos;s content (&ldquo;Same content in both&rdquo;) does not make it visible on
+              the other app. Both switches need to be on: the content sharing switch above, and the
+              component&apos;s own visibility/placement on that app&apos;s surface.
+            </span>
+          </div>
+          <HomeLayoutEditor
+            ref={homeLayoutEditorRef}
+            initialApp={homeLayoutApp}
+            surfaceFilter={surfaceFilter ?? undefined}
+            onLayoutDraftChange={setLayoutDraft}
+          />
+        </>
+      ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {hoursOpsBanner}
+          {announcementDualGateBanner}
           {sectionEnableBlocks.map(renderSectionEnable)}
         </div>
-      ) : hoursOpsBanner;
+      );
 
     const brandKit: ReactNode =
       isBrandKit && brandBlocksByKey.size > 0 ? (
@@ -1758,7 +1901,7 @@ export function ContentHubPage() {
 
   const moreMenuItems = (
     <>
-      {dirtyCount > 0 ? (
+      {effectiveDirtyCount > 0 ? (
         <button
           type="button"
           role="menuitem"
@@ -1766,7 +1909,7 @@ export function ContentHubPage() {
           data-testid="hub-discard-draft"
           onClick={() => {
             setMoreMenuOpen(false);
-            discardAllContentDrafts();
+            void discardAllContentDrafts();
           }}
         >
           Discard draft
@@ -1849,11 +1992,11 @@ export function ContentHubPage() {
       {effectiveDirtyCount > 0 ? (
         <Btn
           onClick={() => void publish()}
-          disabled={saving || dirtyCount === 0}
+          disabled={saving || effectiveDirtyCount === 0}
           className="content-studio-publish-desktop content-studio-publish-desktop--needed"
           data-testid="publish-live-btn"
           title={layoutDraft && dirtyCount === 0
-            ? 'Publish layout changes from the Home page editor'
+            ? 'Publishes unpublished Home page layout changes'
             : undefined}
         >
           <Save size={16} />
@@ -2121,7 +2264,7 @@ export function ContentHubPage() {
         })()}
 
         {/* Sticky mobile publish bar */}
-        {dirtyCount > 0 && isMobile ? (
+        {effectiveDirtyCount > 0 && isMobile ? (
           <div className="content-studio-sticky-bar" role="region" aria-label="Draft saved — not live">
             <span className="content-studio-sticky-bar-label">
               Draft saved — not live
@@ -2155,6 +2298,75 @@ export function ContentHubPage() {
             void navigator.clipboard?.writeText(asset.url);
           }}
         />
+
+        {shareSourceModal ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Make this the same in both apps"
+            data-testid="share-source-modal"
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+            }}
+          >
+            <div
+              onClick={() => resolveShareSourceModal(null)}
+              aria-hidden="true"
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}
+            />
+            <div
+              style={{
+                position: 'relative', width: '100%', maxWidth: 360, borderRadius: 14,
+                background: 'var(--color-surface)', boxShadow: '0 8px 24px rgba(28,20,8,0.15)',
+                padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>
+                Make this the same in both apps
+              </div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                {shareSourceModal.block.label} will use the same content in both apps. Which version should we keep?
+              </p>
+              <div role="radiogroup" aria-label="Copy which source?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {shareSourceModal.choices.map((choice) => (
+                  <label
+                    key={choice.scope}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}
+                  >
+                    <input
+                      type="radio"
+                      name="share-source"
+                      value={choice.scope}
+                      checked={shareSourceModal.selected === choice.scope}
+                      onChange={() => setShareSourceModal((prev) => (prev ? { ...prev, selected: choice.scope } : prev))}
+                      data-testid={`share-source-option-${choice.scope}`}
+                    />
+                    {choice.label}
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => resolveShareSourceModal(null)}
+                  data-testid="share-source-cancel"
+                  style={{ height: 40, padding: '0 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resolveShareSourceModal(shareSourceModal.selected)}
+                  data-testid="share-source-confirm"
+                  style={{ height: 40, padding: '0 14px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </PageShell>
   );

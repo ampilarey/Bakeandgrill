@@ -20,8 +20,8 @@ function isNavItemActive(pathname: string, search: string, to: string): boolean 
   if (!queryPart) {
     // Bare /settings should not highlight when another ?tab= item is active
     if (base === '/settings' && new URLSearchParams(search).has('tab')) return false;
-    // Bare /content should not highlight when a ?group= deep-link item is active
-    if (base === '/content' && new URLSearchParams(search).has('group')) return false;
+    // Bare /content stays active even with a ?group= deep-link — Content Hub
+    // has no separate nav item per group, so this is still "the" Content page.
     return true;
   }
   const want = new URLSearchParams(queryPart);

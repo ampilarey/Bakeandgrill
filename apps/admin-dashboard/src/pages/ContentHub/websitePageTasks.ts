@@ -114,8 +114,7 @@ export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
     matchesKey: (key) =>
       /^footer_/i.test(key)
       || FOOTER_EXTRA_KEYS.has(key)
-      || /^social_/i.test(key)
-      || key === 'home_chat_label',
+      || /^social_/i.test(key),
   },
 ];
 
@@ -220,12 +219,15 @@ export function blocksForContentView(
 export function visibleContentGroups(blocks: ContentBlock[]): string[] {
   const names = new Set<string>();
   for (const block of blocks) {
-    if (HIDDEN_CONTENT_GROUPS.has(block.group)) continue;
+    // Check remapping before the hidden-group skip — a key can live in a
+    // legacy group (e.g. `Pages`) but still route to a real, visible view
+    // (e.g. `Homepage`) via contentViewForKey.
     const view = contentViewForKey(block.key);
     if (view) {
       names.add(view);
       continue;
     }
+    if (HIDDEN_CONTENT_GROUPS.has(block.group)) continue;
     names.add(block.group);
   }
   for (const page of WEBSITE_PAGE_TASKS) {

@@ -9,6 +9,7 @@ use App\Domains\Content\Blocks\BlockTypeRegistry;
 use App\Domains\Content\Blocks\GenericBlockPresenter;
 use App\Domains\Content\Blocks\PageBlockRepository;
 use App\Domains\Content\Blocks\PageBlockValidator;
+use App\Domains\Content\Blocks\PageLayoutDraftBlocks;
 use App\Domains\Content\ContentDraftStore;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentWriter;
@@ -170,6 +171,7 @@ class PageBlockController extends Controller
             'content_mode' => ['nullable', 'string', Rule::in([PageBlock::MODE_SHARED, PageBlock::MODE_OWN])],
             'settings' => ['nullable', 'array'],
             'share_source' => ['nullable', 'string', Rule::in(['website', 'order_app', 'shared'])],
+            'clear_app_overrides' => ['nullable', 'boolean'],
         ]);
 
         [$app, $page] = $this->appPageForBlockRequest($id, $payload);
@@ -191,6 +193,9 @@ class PageBlockController extends Controller
                         ]);
                     }
                     $block['share_source'] = $source;
+                    // Explicit opt-in only — publishing a named-shared block must not
+                    // silently blank the other app's own content unless staff asked for it.
+                    $block['clear_app_overrides'] = (bool) ($payload['clear_app_overrides'] ?? false);
                     if (GenericBlockPresenter::isGeneric((string) $block['block_type'])) {
                         $block['settings'] = $this->sourceSettingsForGeneric($block, $source);
                         $block['shared_content_uuid'] = (string) ($block['shared_content_uuid'] ?? Str::uuid());
@@ -204,7 +209,7 @@ class PageBlockController extends Controller
                     );
                     $block['shared_content_id'] = null;
                     $block['shared_content_uuid'] = null;
-                    unset($block['share_source']);
+                    unset($block['share_source'], $block['clear_app_overrides']);
                 }
 
                 $block['content_mode'] = $nextMode;
@@ -558,47 +563,7 @@ class PageBlockController extends Controller
      */
     private function serializeDraftBlocks(array $blocks): array
     {
-        $out = [];
-        foreach ($blocks as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-            $type = (string) ($row['block_type'] ?? '');
-            $def = BlockTypeRegistry::get($type);
-            $settings = is_array($row['settings'] ?? null) ? $row['settings'] : [];
-            $settings = GenericBlockPresenter::sanitizeSettings($type, $settings);
-            $media = GenericBlockPresenter::resolveMedia($type, $settings);
-
-            $out[] = [
-                'id' => (int) ($row['id'] ?? 0),
-                'app' => (string) ($row['app'] ?? PageBlock::APP_WEBSITE),
-                'page' => (string) ($row['page'] ?? PageBlock::PAGE_HOME),
-                'block_type' => $type,
-                'position' => (int) ($row['position'] ?? 0),
-                'is_enabled' => (bool) ($row['is_enabled'] ?? true),
-                'content_mode' => (string) ($row['content_mode'] ?? PageBlock::MODE_SHARED),
-                'shared_content_id' => isset($row['shared_content_id']) ? (int) $row['shared_content_id'] : null,
-                'shared_content_uuid' => isset($row['shared_content_uuid']) ? (string) $row['shared_content_uuid'] : null,
-                'settings' => $settings,
-                'media' => $media,
-                'label' => $def?->label ?? $type,
-                'description' => $def?->description ?? '',
-                'removable' => $def?->removable ?? true,
-                'non_removable_reason' => $def?->nonRemovableReason,
-                'supports_shared_content' => $def?->supportsSharedContent ?? false,
-                'allows_multiple' => $def?->allowsMultiple ?? false,
-                'unknown' => $def === null,
-                ...(
-                    isset($row['share_source'])
-                        ? ['share_source' => (string) $row['share_source']]
-                        : []
-                ),
-            ];
-        }
-
-        usort($out, fn (array $a, array $b): int => ((int) $a['position']) <=> ((int) $b['position']));
-
-        return array_values($out);
+        return PageLayoutDraftBlocks::serialize($blocks);
     }
 
     /** @return array<string, mixed> */
@@ -696,7 +661,12 @@ class PageBlockController extends Controller
         }
 
         if ($mode === PageBlock::MODE_SHARED && ! GenericBlockPresenter::isGeneric($type) && isset($block['share_source'])) {
-            $this->publishNamedSharedContent($request, $type, (string) $block['share_source']);
+            $this->publishNamedSharedContent(
+                $request,
+                $type,
+                (string) $block['share_source'],
+                (bool) ($block['clear_app_overrides'] ?? false),
+            );
         }
 
         $data = PageBlockValidator::validateInstance([
@@ -778,15 +748,26 @@ class PageBlockController extends Controller
             'page' => $block->page,
             'block_type' => $block->block_type,
             'position' => $position,
-            'is_enabled' => true,
+            // Not auto-visible on the other app — staff must opt in from there too.
+            'is_enabled' => false,
             'content_mode' => PageBlock::MODE_SHARED,
             'shared_content_id' => $sharedContentId,
             'settings' => [],
         ]);
     }
 
-    private function publishNamedSharedContent(Request $request, string $type, string $source): void
-    {
+    /**
+     * Publish a named-shared block's underlying content keys to the `shared`
+     * scope. By default this does NOT clear the other app's own overrides —
+     * staff must explicitly opt in via `clear_app_overrides` so publishing a
+     * shared source cannot silently blank content the other app already has.
+     */
+    private function publishNamedSharedContent(
+        Request $request,
+        string $type,
+        string $source,
+        bool $clearAppOverrides = false,
+    ): void {
         foreach ($this->namedSharedKeys($type) as $key) {
             $value = $source === 'shared'
                 ? ContentResolver::for(PageBlock::APP_WEBSITE)->get($key)
@@ -804,7 +785,8 @@ class PageBlockController extends Controller
                 'en',
                 $request,
                 'content.page_block_shared',
-                ['block_type' => $type, 'source' => $source],
+                ['block_type' => $type, 'source' => $source, 'clear_app_overrides' => $clearAppOverrides],
+                $clearAppOverrides,
             );
         }
     }

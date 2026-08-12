@@ -60,6 +60,8 @@ export type ContentTask = {
   /** Existing Content Hub section name (`?group=`). Null = advanced action. */
   group: string | null;
   homeAppHint?: 'website' | 'order_app';
+  /** Surface Builder deep link (`?surface=app.device.slot`) — opens the Homepage layout editor pre-filtered. */
+  surface?: string;
   advancedAction?: 'history' | 'schedule' | 'import_export';
   /** Placement chips shown on the landing card. */
   placements?: string[];
@@ -97,9 +99,11 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'website_header',
         title: 'Website header',
-        description: 'Header chrome — prayer placement is controlled from Home Components',
+        description: 'Header chrome — components placed on the Website header surface',
         icon: PanelTop,
-        group: 'Announcements',
+        group: 'Homepage',
+        homeAppHint: 'website',
+        surface: 'website.mobile.header',
         placements: ['Website header'],
         statusHint: 'Fixed',
       },
@@ -115,10 +119,12 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'order_nav',
         title: 'Order App navigation',
-        description: 'Bottom / footer navigation links in the ordering app',
+        description: 'Bottom navigation tabs in the ordering app',
         icon: Navigation,
-        group: 'Footer',
-        placements: ['Order App footer'],
+        group: 'Homepage',
+        homeAppHint: 'order_app',
+        surface: 'order_app.mobile.bottom_navigation',
+        placements: ['Order App bottom navigation'],
       },
       {
         id: 'hero',
@@ -304,6 +310,27 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     group: 'Branding',
     placements: ['Both products (shared)'],
     statusHint: 'Shared',
+  },
+  {
+    id: 'website_header',
+    title: 'Website header',
+    description: 'Header chrome — components placed on the Website header surface',
+    icon: PanelTop,
+    group: 'Homepage',
+    homeAppHint: 'website',
+    surface: 'website.mobile.header',
+    placements: ['Website header'],
+    statusHint: 'Fixed',
+  },
+  {
+    id: 'order_nav',
+    title: 'Order App navigation',
+    description: 'Bottom navigation tabs in the ordering app',
+    icon: Navigation,
+    group: 'Homepage',
+    homeAppHint: 'order_app',
+    surface: 'order_app.mobile.bottom_navigation',
+    placements: ['Order App bottom navigation'],
   },
   {
     id: 'seo',
