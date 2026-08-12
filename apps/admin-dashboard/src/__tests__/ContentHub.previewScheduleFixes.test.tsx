@@ -154,7 +154,8 @@ describe('ContentHub preview + schedule fixes', () => {
     await waitFor(() => {
       expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.length).toBeGreaterThan(callsAfterMount);
     });
-    const lastCall = vi.mocked(contentApi.createContentPreviewToken).mock.calls.at(-1);
+    const calls = vi.mocked(contentApi.createContentPreviewToken).mock.calls;
+    const lastCall = calls[calls.length - 1];
     expect(lastCall?.[3]).toBe(true); // includeLayout
   });
 
