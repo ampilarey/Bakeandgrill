@@ -402,7 +402,9 @@
     .banner-overlay[data-text-position="middle"] { justify-content: center; }
     .banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
     .banner-copy {
-        max-width: 720px;
+        /* Wider than before so big desktop titles keep their intentional <br> lines
+           (was 720px — long first lines soft-wrapped into a 3rd visual line). */
+        max-width: min(980px, 94vw);
         padding: 1.25rem 1.5rem 1.4rem;
         background: linear-gradient(
             180deg,
@@ -418,12 +420,16 @@
         animation: banner-fade-up 0.7s ease both;
     }
     .banner-title {
-        font-size: clamp(2.75rem, 4.5vw, 4.25rem);
-        max-width: 800px;
+        font-size: clamp(2.55rem, 3.8vw, 3.65rem);
+        max-width: 100%;
         margin-left: auto;
         margin-right: auto;
         margin-bottom: 1rem;
         animation: banner-fade-up 0.75s ease 0.06s both;
+    }
+    /* Each CMS <br> segment stays one line on desktop (mobile may still soft-wrap). */
+    .banner-title .hero-title-line {
+        white-space: nowrap;
     }
     .banner-sub {
         font-size: 1.15rem;

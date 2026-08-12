@@ -93,7 +93,7 @@
                                 @endif
                                 style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @endif
-                        >{!! $titleHtml !!}</h2>
+                        >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line">{!! $titleLine !!}</span>@endforeach</h2>
                     @endif
                     @if($subtitle !== '')
                         <p
@@ -150,7 +150,7 @@
                 <div class="banner-overlay">
                     <div class="banner-copy">
                     <span class="banner-eyebrow">🍞 Fresh daily from 5am</span>
-                    <h2 class="banner-title">{{ $siteName }}<br><em>{{ $tagline }}</em></h2>
+                    <h2 class="banner-title"><span class="hero-title-line">{{ $siteName }}</span><br><span class="hero-title-line"><em>{{ $tagline }}</em></span></h2>
                     <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
                     <div class="banner-ctas">
                         <a href="/order/" class="banner-cta-primary">🛒 Order Now →</a>

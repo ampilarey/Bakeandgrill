@@ -612,7 +612,8 @@ img.brand-logo--dark { display: none; }
   .home-promo-hero__overlay[data-text-position="middle"] { justify-content: center; }
   .home-promo-hero__overlay[data-text-position="bottom"] { justify-content: flex-end; }
   .home-promo-hero__copy {
-    max-width: 720px;
+    /* Wider so desktop titles keep intentional <br> line breaks (was 720px). */
+    max-width: min(980px, 94vw);
     padding: 1.25rem 1.5rem 1.4rem;
     background: linear-gradient(
       180deg,
@@ -627,11 +628,14 @@ img.brand-logo--dark { display: none; }
     margin-bottom: 1.35rem;
   }
   .home-promo-hero__title {
-    font-size: clamp(2.75rem, 4.5vw, 4.25rem);
-    max-width: 800px;
+    font-size: clamp(2.55rem, 3.8vw, 3.65rem);
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
     margin-bottom: 1rem;
+  }
+  .home-promo-hero__title .hero-title-line {
+    white-space: nowrap;
   }
   .home-promo-hero__sub {
     font-size: 1.15rem;

@@ -164,7 +164,7 @@ describe('PromoCarousel', () => {
     expect(heading.tagName).toBe('H2');
     expect(heading).not.toHaveAttribute('data-has-bg');
     expect(heading).toHaveAttribute('data-bg-hug', '1');
-    expect(heading.querySelector('.hero-text-bg')).toBeNull();
+    expect(heading.querySelectorAll('.hero-title-line')).toHaveLength(2);
     expect(heading.innerHTML).toContain('<br>');
     expect(heading.innerHTML).toContain('<em>meets</em>');
     expect(heading.style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);

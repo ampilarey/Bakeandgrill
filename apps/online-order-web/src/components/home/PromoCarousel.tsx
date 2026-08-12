@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
 import {
   resolveHeroSlidePresentation,
+  splitHeroRichTextLines,
   type HeroElementBackground,
 } from '../../utils/heroSlidePresentation';
 
@@ -36,9 +37,21 @@ function sanitizeHeroHtml(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['br', 'em', 'strong'] });
 }
 
+/** Wrap each hard <br> segment so desktop can keep intentional line breaks. */
+function titleLineNodes(html: string): ReactNode {
+  const lines = splitHeroRichTextLines(html);
+  return lines.map((line, i) => (
+    <Fragment key={i}>
+      {i > 0 ? <br /> : null}
+      <span className="hero-title-line" dangerouslySetInnerHTML={{ __html: line }} />
+    </Fragment>
+  ));
+}
+
 /**
  * Title/subtitle with optional per-element contrast.
  * Glass: frosted panel. Full-width solid bar. Else: letter outline / halo.
+ * Titles split on <br> into .hero-title-line (desktop nowrap).
  */
 function HeroTextBlock({
   as: Tag,
@@ -54,37 +67,41 @@ function HeroTextBlock({
   testId?: string;
 }) {
   const clean = sanitizeHeroHtml(html);
-  if (!el.css) {
-    return <Tag className={className} data-testid={testId} dangerouslySetInnerHTML={{ __html: clean }} />;
+  const isTitle = Tag === 'h2';
+
+  const contrastProps: {
+    'data-bg-glass'?: '1';
+    'data-bg-full'?: '1';
+    'data-bg-hug'?: '1';
+    'data-has-bg'?: '1';
+    style?: CSSProperties;
+  } = {};
+  if (el.css) {
+    if (el.token === 'glass') {
+      contrastProps['data-bg-glass'] = '1';
+      if (el.full_width) contrastProps['data-bg-full'] = '1';
+      contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
+    } else if (el.full_width) {
+      Object.assign(contrastProps, elementBgProps(el));
+    } else {
+      contrastProps['data-bg-hug'] = '1';
+      contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
+    }
   }
-  if (el.token === 'glass') {
+
+  if (isTitle) {
     return (
-      <Tag
-        className={className}
-        data-testid={testId}
-        data-bg-glass="1"
-        {...(el.full_width ? { 'data-bg-full': '1' as const } : {})}
-        style={{ ['--hero-el-bg' as string]: el.css } as CSSProperties}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
+      <Tag className={className} data-testid={testId} {...contrastProps}>
+        {titleLineNodes(clean)}
+      </Tag>
     );
   }
-  if (el.full_width) {
-    return (
-      <Tag
-        className={className}
-        data-testid={testId}
-        {...elementBgProps(el)}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
-    );
-  }
+
   return (
     <Tag
       className={className}
       data-testid={testId}
-      data-bg-hug="1"
-      style={{ ['--hero-el-bg' as string]: el.css } as CSSProperties}
+      {...contrastProps}
       dangerouslySetInnerHTML={{ __html: clean }}
     />
   );
