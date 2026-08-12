@@ -56,6 +56,7 @@ type AppState = {
 export type HomeLayoutEditorHandle = {
   publishAll: () => Promise<void>;
   discardAll: () => Promise<void>;
+  reload: () => Promise<void>;
   hasDraft: boolean;
 };
 
@@ -108,9 +109,12 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   }, [initialApp, surfaceFilter?.app]);
 
   const hasDraft = website.hasDraft || orderApp.hasDraft;
+  // Skip while loading so we don't briefly report "no draft" and clear the
+  // parent's layoutDraft flag that was seeded from the landing fetch.
   useEffect(() => {
+    if (loading) return;
     onLayoutDraftChange?.(hasDraft);
-  }, [hasDraft, onLayoutDraftChange]);
+  }, [hasDraft, onLayoutDraftChange, loading]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -401,9 +405,15 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     setError('');
     setPreviewMsg('');
     try {
-      for (const app of ['website', 'order_app'] as HomeApp[]) {
-        if (!stateFor(app).hasDraft) continue;
-        await publishPageBlocks({ app, version: stateFor(app).version });
+      // Fresh server read — local hasDraft can lag while load() is in flight,
+      // and the hub Publish bar may enable before our first load settles.
+      const [w, o] = await Promise.all([
+        fetchAdminPageBlocks('website'),
+        fetchAdminPageBlocks('order_app'),
+      ]);
+      for (const res of [w, o]) {
+        if (!res.draft) continue;
+        await publishPageBlocks({ app: res.app as HomeApp, version: res.version ?? 0 });
       }
       await load();
       setPreviewMsg('Published to Website and Order App Home.');
@@ -418,9 +428,13 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     if (!skipConfirm && !window.confirm('Discard unpublished Home layout drafts for both apps?')) return;
     setBusy(true);
     try {
-      for (const app of ['website', 'order_app'] as HomeApp[]) {
-        if (!stateFor(app).hasDraft) continue;
-        await discardPageBlockDraft({ app });
+      const [w, o] = await Promise.all([
+        fetchAdminPageBlocks('website'),
+        fetchAdminPageBlocks('order_app'),
+      ]);
+      for (const res of [w, o]) {
+        if (!res.draft) continue;
+        await discardPageBlockDraft({ app: res.app as HomeApp });
       }
       await load();
       setPreviewMsg('Drafts discarded.');
@@ -436,6 +450,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   useImperativeHandle(ref, () => ({
     publishAll: () => publish(),
     discardAll: () => discard(true),
+    reload: () => load(),
     hasDraft,
   }));
 

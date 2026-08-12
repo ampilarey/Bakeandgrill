@@ -745,31 +745,29 @@ export function ContentHubPage() {
     clearActiveGroup();
   };
 
-  /** Publish layout drafts even when HomeLayoutEditor is unmounted (other sections). */
+  /**
+   * Publish layout drafts from a fresh server read. Do not trust the mounted
+   * HomeLayoutEditor's in-memory hasDraft — it can still be loading when the
+   * hub Publish bar is already enabled from the landing fetch.
+   */
   const publishLayoutDraftsViaApi = async () => {
-    if (homeLayoutEditorRef.current) {
-      await homeLayoutEditorRef.current.publishAll();
-      return;
-    }
     for (const app of ['website', 'order_app'] as const) {
       const res = await fetchAdminPageBlocks(app);
       if (!res.draft) continue;
       await publishPageBlocks({ app, version: res.version ?? 0 });
     }
     setLayoutDraft(false);
+    await homeLayoutEditorRef.current?.reload?.();
   };
 
   const discardLayoutDraftsViaApi = async () => {
-    if (homeLayoutEditorRef.current) {
-      await homeLayoutEditorRef.current.discardAll();
-      return;
-    }
     for (const app of ['website', 'order_app'] as const) {
       const res = await fetchAdminPageBlocks(app);
       if (!res.draft) continue;
       await discardPageBlockDraft({ app });
     }
     setLayoutDraft(false);
+    await homeLayoutEditorRef.current?.reload?.();
   };
 
   // Unified publish — content keys and the Homepage layout draft are two
@@ -1706,14 +1704,8 @@ export function ContentHubPage() {
       </div>
     ) : null;
 
-    // Homepage: the page_blocks layout editor is the only arrangement control.
-    // The legacy home_section_order / section_*_enabled keys were retired in
-    // Stage F, so there is nothing left to disagree with it.
-    // Keep HomeLayoutEditor mounted (hidden off Homepage) so unified Publish
-    // can drive layout drafts from any section via the ref.
-    // Homepage: the page_blocks layout editor is the only arrangement control.
-    // When staff leave Homepage, the editor unmounts — unified Publish/Discard
-    // fall back to page-blocks APIs (publishLayoutDraftsViaApi).
+    // Homepage: page_blocks layout editor. Off Homepage it unmounts — unified
+    // Publish/Discard use publishLayoutDraftsViaApi / discardLayoutDraftsViaApi.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
         <>
