@@ -22,15 +22,19 @@ import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../compo
 import { VideoStudioModal } from '../components/VideoStudioModal';
 import {
   buildRotateParams,
+  computeResizeOutputSize,
   cropParamsFromArea,
   exportMediaAsset,
   isCropReady,
   isRotateReady,
   normalizeRotateDegrees,
   rotatePreviewTransforms,
+  scaleSizeToPreview,
   toggleFlipAxis,
   type MediaFlip,
 } from '../utils/mediaEditHelpers';
+
+const RESIZE_PRESETS = [1200, 800, 512, 256];
 
 const USE_AS_OPTIONS: { key: MediaUseAsKey; label: string }[] = [
   { key: 'default_item_image', label: 'Default item image' },
@@ -486,6 +490,137 @@ function RotateEditPanel({
   );
 }
 
+function ResizeEditPanel({
+  params, onChange, asset,
+}: {
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+}) {
+  const srcW = asset?.width || 400;
+  const srcH = asset?.height || 300;
+  const keepAspect = (params.keep_aspect as boolean | undefined)
+    ?? (params.maintain_aspect as boolean | undefined)
+    ?? true;
+  const w = params.width as number | undefined;
+  const h = params.height as number | undefined;
+  const out = computeResizeOutputSize(srcW, srcH, { width: w, height: h, keepAspect });
+  const preview = scaleSizeToPreview(out.width, out.height, 200);
+  const src = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+
+  const commit = (next: EditParams) => {
+    const maintain = (next.keep_aspect as boolean | undefined)
+      ?? (next.maintain_aspect as boolean | undefined)
+      ?? keepAspect;
+    onChange({ ...next, keep_aspect: maintain, maintain_aspect: maintain });
+  };
+
+  const chip = (active: boolean): CSSProperties => ({
+    height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+    border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+    background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+    color: 'var(--color-text)',
+  });
+
+  const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 };
+  const inputStyle: CSSProperties = {
+    width: '100%', height: 44, minHeight: 44, border: '1px solid var(--color-border)',
+    borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13,
+    boxSizing: 'border-box', background: 'var(--color-surface)', color: 'var(--color-text)',
+  };
+
+  let hint = 'Set width and/or height';
+  if (w || h) hint = `New size: ${out.width} × ${out.height} px`;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-resize-panel">
+      <div
+        data-testid="edit-live-preview"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minHeight: Math.max(160, preview.height + 24), width: '100%',
+          background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+          padding: 12, boxSizing: 'border-box',
+        }}
+      >
+        {src ? (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            data-testid="resize-preview-img"
+            style={{
+              width: preview.width,
+              height: preview.height,
+              objectFit: keepAspect ? 'contain' : 'fill',
+              transition: 'width 0.15s ease, height 0.15s ease',
+            }}
+          />
+        ) : (
+          <div style={{ color: '#fff', fontSize: 13 }}>No image</div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+        {hint}{asset?.width && asset?.height ? ` · Original ${asset.width}×${asset.height}` : ''}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} role="group" aria-label="Resize presets">
+        {RESIZE_PRESETS.map((px) => (
+          <button
+            key={px}
+            type="button"
+            onClick={() => commit({
+              ...params,
+              width: px,
+              height: keepAspect ? Math.round((px * srcH) / srcW) : h,
+            })}
+            style={chip(w === px)}
+          >
+            {px}px
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <label style={labelStyle}>Width (px)
+          <input
+            type="number"
+            min={1}
+            value={w ?? ''}
+            onChange={(e) => commit({ ...params, width: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="auto"
+            data-testid="resize-width"
+            style={{ ...inputStyle, marginTop: 4 }}
+          />
+        </label>
+        <label style={labelStyle}>Height (px)
+          <input
+            type="number"
+            min={1}
+            value={h ?? ''}
+            onChange={(e) => commit({ ...params, height: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="auto"
+            data-testid="resize-height"
+            style={{ ...inputStyle, marginTop: 4 }}
+          />
+        </label>
+      </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+        <input
+          type="checkbox"
+          checked={keepAspect}
+          onChange={(e) => commit({ ...params, keep_aspect: e.target.checked, maintain_aspect: e.target.checked })}
+          data-testid="resize-keep-aspect"
+        />
+        Maintain aspect ratio
+      </label>
+    </div>
+  );
+}
+
 function EditOpPanel({
   op, params, onChange, asset, compact,
 }: {
@@ -516,37 +651,54 @@ function EditOpPanel({
         </div>
       );
     case 'resize':
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label style={labelStyle}>Width (px)
-              <input type="number" min={1} value={(params.width as number) ?? ''} onChange={(e) => set('width', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Height (px)
-              <input type="number" min={1} value={(params.height as number) ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
-            <input type="checkbox" checked={(params.maintain_aspect as boolean) ?? true} onChange={(e) => set('maintain_aspect', e.target.checked)} />
-            Maintain aspect ratio
-          </label>
-        </div>
-      );
+      return <ResizeEditPanel params={params} onChange={onChange} asset={asset} />;
     case 'crop':
       return <CropEditPanel params={params} onChange={onChange} asset={asset} compact={compact} />;
     case 'rotate':
       return <RotateEditPanel params={params} onChange={onChange} asset={asset} />;
-    case 'thumbnail':
+    case 'thumbnail': {
+      const tw = (params.width as number) ?? 300;
+      const th = (params.height as number) ?? 200;
+      const preview = scaleSizeToPreview(tw, th, 200);
+      const src = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <label style={labelStyle}>Width (px)
-            <input type="number" min={1} value={(params.width as number) ?? 300} onChange={(e) => set('width', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-          </label>
-          <label style={labelStyle}>Height (px)
-            <input type="number" min={1} value={(params.height as number) ?? 200} onChange={(e) => set('height', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-thumbnail-panel">
+          <div
+            data-testid="edit-live-preview"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              minHeight: Math.max(140, preview.height + 24), width: '100%',
+              background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+              padding: 12, boxSizing: 'border-box',
+            }}
+          >
+            {src ? (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                style={{
+                  width: preview.width,
+                  height: preview.height,
+                  objectFit: 'cover',
+                  transition: 'width 0.15s ease, height 0.15s ease',
+                }}
+              />
+            ) : (
+              <div style={{ color: '#fff', fontSize: 13 }}>No image</div>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <label style={labelStyle}>Width (px)
+              <input type="number" min={1} value={tw} onChange={(e) => set('width', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+            </label>
+            <label style={labelStyle}>Height (px)
+              <input type="number" min={1} value={th} onChange={(e) => set('height', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
+            </label>
+          </div>
         </div>
       );
+    }
     case 'optimize':
       return (
         <label style={labelStyle}>Quality (1–100)
@@ -1464,8 +1616,19 @@ export function MediaLibraryPage() {
                       key={op}
                       type="button"
                       onClick={() => {
-                        setEditOp(editOp === op ? null : op);
-                        setEditParams(op === 'rotate' ? {} : {});
+                        if (editOp === op) {
+                          setEditOp(null);
+                          setEditParams({});
+                        } else {
+                          setEditOp(op);
+                          setEditParams(
+                            op === 'optimize' ? { quality: 80 }
+                              : op === 'thumbnail' ? { width: 300, height: 200 }
+                                : op === 'convert' ? { format: 'jpeg', quality: 85 }
+                                  : op === 'resize' ? { keep_aspect: true, maintain_aspect: true }
+                                    : {},
+                          );
+                        }
                         setEditError('');
                       }}
                       style={{

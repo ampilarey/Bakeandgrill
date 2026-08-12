@@ -108,6 +108,43 @@ export function mediaExportFilename(asset: {
   return `${base}.${mimeExtension(asset.mime_type || 'application/octet-stream')}`;
 }
 
+/**
+ * Output pixel size after MediaEditor::opResize.
+ * With keep_aspect, fits inside the target box (defaults missing side to source size).
+ */
+export function computeResizeOutputSize(
+  srcW: number,
+  srcH: number,
+  opts: { width?: number | null; height?: number | null; keepAspect?: boolean } = {},
+): { width: number; height: number } {
+  const sw = Math.max(1, Math.round(srcW) || 1);
+  const sh = Math.max(1, Math.round(srcH) || 1);
+  const keepAspect = opts.keepAspect ?? true;
+  let tw = Math.max(1, Math.round(Number(opts.width) || sw));
+  let th = Math.max(1, Math.round(Number(opts.height) || sh));
+  if (keepAspect) {
+    const ratio = Math.min(tw / sw, th / sh);
+    tw = Math.max(1, Math.round(sw * ratio));
+    th = Math.max(1, Math.round(sh * ratio));
+  }
+  return { width: tw, height: th };
+}
+
+/** Scale output size down to fit a preview frame (pure layout helper). */
+export function scaleSizeToPreview(
+  width: number,
+  height: number,
+  maxEdge = 200,
+): { width: number; height: number } {
+  const w = Math.max(1, width);
+  const h = Math.max(1, height);
+  const scale = Math.min(1, maxEdge / Math.max(w, h));
+  return {
+    width: Math.max(24, Math.round(w * scale)),
+    height: Math.max(24, Math.round(h * scale)),
+  };
+}
+
 /** Fetch the asset and trigger a file download (export). */
 export async function exportMediaAsset(
   asset: {

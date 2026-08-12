@@ -308,6 +308,27 @@ describe('MediaLibraryPage', () => {
     expect(toastSuccess).toHaveBeenCalledWith('Set as default item image.');
   });
 
+  it('resize tool shows a live preview that updates with width', async () => {
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(screen.getByRole('button', { name: /^resize$/i }));
+
+    expect(await screen.findByTestId('edit-live-preview')).toBeTruthy();
+    const img = await screen.findByTestId('resize-preview-img');
+    const beforeStyle = img.getAttribute('style') || '';
+
+    // 100px edge fits in the 200px preview frame → style width shrinks visibly
+    fireEvent.change(screen.getByTestId('resize-width'), { target: { value: '100' } });
+
+    await waitFor(() => {
+      const after = screen.getByTestId('resize-preview-img').getAttribute('style') || '';
+      expect(after).not.toBe(beforeStyle);
+      expect(after).toMatch(/width:\s*100px/i);
+    });
+    // 1200×900 → width 100 keep-aspect → 100×75
+    expect(screen.getByText(/New size:\s*100\s*×\s*75/i)).toBeTruthy();
+  });
+
   it('export button downloads the asset file', async () => {
     const blob = new Blob(['fake-image'], { type: 'image/jpeg' });
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({

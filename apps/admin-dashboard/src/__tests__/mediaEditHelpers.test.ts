@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildRotateParams,
+  computeResizeOutputSize,
   cropParamsFromArea,
   isCropReady,
   isRotateReady,
   mediaExportFilename,
   normalizeRotateDegrees,
   rotatePreviewTransforms,
+  scaleSizeToPreview,
   toggleFlipAxis,
 } from '../utils/mediaEditHelpers';
 
@@ -78,5 +80,28 @@ describe('mediaEditHelpers — export', () => {
       title: 'Café Banner!',
       mime_type: 'image/png',
     })).toBe('Caf_Banner.png');
+  });
+});
+
+describe('mediaEditHelpers — resize preview', () => {
+  it('fits inside target box when keep_aspect and both sides set', () => {
+    // 400×300 into 200×75 → ratio min(0.5, 0.25) = 0.25 → 100×75
+    expect(computeResizeOutputSize(400, 300, { width: 200, height: 75, keepAspect: true }))
+      .toEqual({ width: 100, height: 75 });
+  });
+
+  it('scales from width alone when keep_aspect (height defaults to source)', () => {
+    expect(computeResizeOutputSize(400, 300, { width: 200, keepAspect: true }))
+      .toEqual({ width: 200, height: 150 });
+  });
+
+  it('stretches to exact size when keep_aspect is false', () => {
+    expect(computeResizeOutputSize(400, 300, { width: 200, height: 50, keepAspect: false }))
+      .toEqual({ width: 200, height: 50 });
+  });
+
+  it('scales preview box to max edge without inventing layout metrics', () => {
+    expect(scaleSizeToPreview(400, 300, 200)).toEqual({ width: 200, height: 150 });
+    expect(scaleSizeToPreview(50, 40, 200)).toEqual({ width: 50, height: 40 });
   });
 });
