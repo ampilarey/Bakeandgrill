@@ -1,11 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
-  Contact,
-  FileText,
   Home,
   Image,
-  Info,
   LayoutTemplate,
   Menu,
   MessageSquare,
@@ -17,6 +14,7 @@ import {
   Sparkles,
   Store,
 } from 'lucide-react';
+import { WEBSITE_PAGE_TASKS } from './websitePageTasks';
 
 /** Cluster id → display label for the section rail (aligned with task landing IA). */
 export type HubClusterId = 'quick' | 'website' | 'order_app' | 'advanced';
@@ -89,62 +87,12 @@ export const HUB_SECTIONS: HubSectionMeta[] = [
       },
     ],
   },
-  {
-    name: 'Pages',
-    cluster: 'website',
-    icon: FileText,
-    subGroups: [
-      {
-        id: 'contact',
-        label: 'Contact',
-        match: (key) => /^contact_/i.test(key) || key === 'maps_embed_url',
-      },
-      {
-        id: 'hours',
-        label: 'Hours',
-        match: (key) => /^hours_/i.test(key),
-      },
-      {
-        id: 'about',
-        label: 'About',
-        match: (key) => /^about_/i.test(key) || key === 'about_values',
-      },
-      {
-        id: 'privacy',
-        label: 'Privacy',
-        match: (key) => /^privacy_/i.test(key),
-      },
-      {
-        id: 'terms',
-        label: 'Terms',
-        match: (key) => /^terms_/i.test(key),
-      },
-      {
-        id: 'refund',
-        label: 'Refund',
-        match: (key) => /^refund_/i.test(key),
-      },
-      {
-        id: 'events',
-        label: 'Events',
-        match: (key) => /^events_/i.test(key) || /events_cta/i.test(key),
-      },
-      {
-        id: 'office',
-        label: 'Office orders',
-        match: (key) => /^office_orders_/i.test(key),
-      },
-      {
-        id: 'shared_home',
-        label: 'Shared home content',
-        match: (key) =>
-          key === 'homepage_categories' || key === 'trust_items' || key === 'proof_details',
-      },
-    ],
-  },
-  { name: 'Contact', cluster: 'website', icon: Contact },
-  { name: 'About', cluster: 'website', icon: Info },
-  { name: 'Footer', cluster: 'website', icon: LayoutTemplate },
+  // Focused Website pages (replaces legacy mixed `Pages` + Contact dump).
+  ...WEBSITE_PAGE_TASKS.map((page) => ({
+    name: page.group,
+    cluster: 'website' as const,
+    icon: page.icon,
+  })),
   { name: 'Order App', cluster: 'order_app', icon: ShoppingBag },
   { name: 'Status banners', cluster: 'order_app', icon: MessageSquare },
   { name: 'Pre-Order', cluster: 'order_app', icon: Sparkles },

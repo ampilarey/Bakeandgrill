@@ -26,6 +26,10 @@ describe('ContentTaskLanding', () => {
     expect(onSelectTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'order_home', group: 'Homepage', homeAppHint: 'order_app' }),
     );
+
+    expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
+    expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
+    expect(screen.queryByTestId('task-card-website_pages')).toBeNull();
   });
 
   it.each([320, 375, 390] as const)('does not overflow horizontally at %ipx', (width) => {

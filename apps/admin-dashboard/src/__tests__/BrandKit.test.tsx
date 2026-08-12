@@ -112,7 +112,7 @@ describe('Brand Kit UI', () => {
     expect(screen.queryByText('Phone number')).toBeNull();
     expect(screen.queryByLabelText(/Customise for Website and Order App/i)).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Contact & map' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
     expect(screen.getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
