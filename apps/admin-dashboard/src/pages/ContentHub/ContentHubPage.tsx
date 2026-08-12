@@ -965,7 +965,7 @@ export function ContentHubPage() {
     block: ContentBlock,
     scope: ContentScope,
     val: string,
-    opts?: { mobileMode?: boolean },
+    opts?: { mobileMode?: boolean; scheduleSlot?: ReactNode },
   ) => {
     const onChange = (next: string) => setDraft(scope, block.key, next);
     const triggerUpload = makeTriggerUpload(block, scope);
@@ -981,6 +981,7 @@ export function ContentHubPage() {
             uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, locale, posterUrl)}
             mobileMode={Boolean(opts?.mobileMode)}
             draftStatus={draftStatusNode}
+            scheduleSlot={opts?.scheduleSlot}
           />
         );
       case 'categories':
@@ -1486,6 +1487,55 @@ export function ContentHubPage() {
     </div>
   );
 
+  const pendingOverwriteKeys = useMemo(() => {
+    const changes = collectChanges(drafts, locale);
+    if (changes.length === 0 || schedules.length === 0) return [] as ContentScheduleRow[];
+    const changeKeys = new Set(changes.map((c) => `${c.key}::${c.scope}::${c.locale ?? locale}`));
+    return schedules.filter((s) => changeKeys.has(`${s.key}::${s.scope}::${s.locale}`));
+  }, [drafts, locale, schedules]);
+
+  const schedulePublishPanel = (
+    <div className="hub-more-schedule" data-testid="hub-schedule-publish">
+      <div className="hub-more-schedule-label">Schedule publish</div>
+      {pendingOverwriteKeys.length > 0 ? (
+        <p
+          data-testid="hub-schedule-overwrite-warning"
+          role="alert"
+          style={{
+            margin: '0 0 8px',
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: 'var(--color-warning-strong)',
+            background: 'var(--color-warning-bg)',
+            border: '1px solid var(--color-warning)',
+            borderRadius: 8,
+            padding: '8px 10px',
+          }}
+        >
+          A pending schedule already exists for{' '}
+          {pendingOverwriteKeys.map((s) => s.key).filter((k, i, a) => a.indexOf(k) === i).join(', ')}.
+          Scheduling again will overwrite that whole value when the later one publishes.
+        </p>
+      ) : null}
+      <input
+        type="datetime-local"
+        value={scheduleAt}
+        onChange={(e) => setScheduleAt(e.target.value)}
+        className="hub-more-schedule-input"
+        data-testid="hub-schedule-at"
+      />
+      <button
+        type="button"
+        onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
+        disabled={saving || dirtyCount === 0 || !scheduleAt}
+        className="hub-more-schedule-btn"
+        data-testid="hub-schedule-submit"
+      >
+        Schedule
+      </button>
+    </div>
+  );
+
   const moreMenuItems = (
     <>
       <button
@@ -1504,23 +1554,7 @@ export function ContentHubPage() {
       >
         <UploadIcon size={14} /> Import
       </button>
-      <div className="hub-more-schedule">
-        <div className="hub-more-schedule-label">Schedule publish</div>
-        <input
-          type="datetime-local"
-          value={scheduleAt}
-          onChange={(e) => setScheduleAt(e.target.value)}
-          className="hub-more-schedule-input"
-        />
-        <button
-          type="button"
-          onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
-          disabled={saving || dirtyCount === 0 || !scheduleAt}
-          className="hub-more-schedule-btn"
-        >
-          Schedule
-        </button>
-      </div>
+      {schedulePublishPanel}
       <button
         type="button"
         role="menuitem"
@@ -1601,7 +1635,7 @@ export function ContentHubPage() {
           aria-expanded={moreMenuOpen}
           aria-label="More actions"
         >
-          <MoreHorizontal size={16} /> {isMobile ? null : <span>⋯ More</span>}
+          <MoreHorizontal size={16} /> <span>⋯ More</span>
         </button>
         {moreMenuOpen && !isMobile ? (
           <div className="hub-more-menu" role="menu">
@@ -1707,6 +1741,11 @@ export function ContentHubPage() {
                 </Btn>
               ) : undefined}
             >
+              {dirtyCount > 0 ? (
+                <div style={{ marginBottom: 12 }} data-testid="content-editor-schedule-slot">
+                  {schedulePublishPanel}
+                </div>
+              ) : null}
               {activeGroup ? buildSectionContent(activeGroup, false) : null}
             </ContentEditorSheet>
 
@@ -1730,6 +1769,11 @@ export function ContentHubPage() {
                   testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
                 >
                   <>
+                    {dirtyCount > 0 ? (
+                      <div style={{ marginBottom: 12 }} data-testid="block-editor-schedule-slot">
+                        {schedulePublishPanel}
+                      </div>
+                    ) : null}
                     {renderContentModeControl(editBlock)}
                     {scopes.length > 1
                       ? renderScopeTabs(
@@ -1737,12 +1781,18 @@ export function ContentHubPage() {
                         scopes,
                         activeScope,
                         isHero
-                          ? renderVisualEditor(editBlock, activeScope, val, { mobileMode: true })
+                          ? renderVisualEditor(editBlock, activeScope, val, {
+                            mobileMode: true,
+                            scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
+                          })
                           : renderEditorForScope(editBlock, activeScope),
                       )
                       : (
                         isHero
-                          ? renderVisualEditor(editBlock, activeScope, val, { mobileMode: true })
+                          ? renderVisualEditor(editBlock, activeScope, val, {
+                            mobileMode: true,
+                            scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
+                          })
                           : renderEditorForScope(editBlock, activeScope)
                       )}
                   </>

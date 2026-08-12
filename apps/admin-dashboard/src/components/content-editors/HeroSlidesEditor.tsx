@@ -1,5 +1,5 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2 } from 'lucide-react';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { ContentImageField, type ContentImageUploadResult } from './ContentImageField';
@@ -9,8 +9,12 @@ import type { MediaAsset } from '../../api';
 import { Button, Toggle } from '../ui';
 import { ContentEditorSheet } from '../ContentEditorSheet';
 import {
+  formatHeroSlideScheduleLabel,
   resolveHeroSlidePresentation,
   withHeroPresentationFields,
+  type HeroBgToken,
+  type HeroElementKey,
+  type HeroPresentationPatch,
   type HeroTextPosition,
 } from '../../utils/heroSlidePresentation';
 
@@ -32,6 +36,8 @@ export type HeroSlideRow = {
    * Explicit false = Hidden — kept in admin, skipped by website + order app.
    */
   showing?: boolean;
+  show_from?: string;
+  show_until?: string;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -41,6 +47,34 @@ export type HeroSlideRow = {
   cta2_url: string;
   video?: string;
   video_poster?: string;
+  eyebrow_bg?: string;
+  eyebrow_bg_strength?: number | string;
+  title_bg?: string;
+  title_bg_strength?: number | string;
+  title_bg_full_width?: boolean | string | number;
+  subtitle_bg?: string;
+  subtitle_bg_strength?: number | string;
+  subtitle_bg_full_width?: boolean | string | number;
+  cta1_bg?: string;
+  cta1_bg_strength?: number | string;
+  cta2_bg?: string;
+  cta2_bg_strength?: number | string;
+};
+
+const BG_SWATCHES: Array<{ id: HeroBgToken; label: string; color: string }> = [
+  { id: 'none', label: 'None', color: 'transparent' },
+  { id: 'dark', label: 'Dark', color: '#1c1408' },
+  { id: 'light', label: 'Light', color: '#ffffff' },
+  { id: 'amber', label: 'Amber', color: '#d4813a' },
+  { id: 'brand_dark', label: 'Brand dark', color: '#2d1a0a' },
+];
+
+const ELEMENT_LABELS: Record<HeroElementKey, string> = {
+  eyebrow: 'Eyebrow',
+  title: 'Title',
+  subtitle: 'Subtitle',
+  cta1: 'Button 1',
+  cta2: 'Button 2',
 };
 
 /** Absent flag means visible — matches HeroSlides::isSlideShowing / order app. */
@@ -63,6 +97,8 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
   mobileMode?: boolean;
   /** Publish-state banner shown inside nested slide sheets. */
   draftStatus?: ReactNode;
+  /** Content Hub schedule controls — surfaced inside the slide sheet on mobile. */
+  scheduleSlot?: ReactNode;
 };
 
 const emptySlide = (): HeroSlideRow => ({
@@ -118,6 +154,7 @@ export function HeroSlidesEditor({
   label, description, value, onChange, triggerUpload, uploadImage, uploadVideo,
   mobileMode = false,
   draftStatus,
+  scheduleSlot,
 }: HeroSlidesEditorProps) {
   let items: HeroSlideRow[] = [];
   try {
@@ -133,6 +170,8 @@ export function HeroSlidesEditor({
   const [libraryTarget, setLibraryTarget] = useState<LibraryTarget>(null);
   const [studioIdx, setStudioIdx] = useState<number | null>(null);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [openElementPanels, setOpenElementPanels] = useState<Record<string, boolean>>({});
+  const [advancedHexOpen, setAdvancedHexOpen] = useState<Record<string, boolean>>({});
 
   const commitSlides = (next: HeroSlideRow[]) => onChange(JSON.stringify(next));
 
@@ -218,17 +257,218 @@ export function HeroSlidesEditor({
     commitSlides(items.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
 
-  const applyPresentation = (
-    idx: number,
-    patch: Partial<{ photo_brightness: number; text_background: number; text_position: HeroTextPosition }>,
-  ) => {
+  const applyPresentation = (idx: number, patch: HeroPresentationPatch) => {
     // Replace the row so legacy `dim` cannot linger after merge.
     commitSlides(items.map((s, i) => (i === idx ? withHeroPresentationFields(s, patch) : s)));
+  };
+
+  const renderElementBgEditor = (slide: HeroSlideRow, idx: number, key: HeroElementKey) => {
+    const panelKey = `${idx}-${key}`;
+    const open = Boolean(openElementPanels[panelKey]);
+    const el = resolveHeroSlidePresentation(slide).elements[key];
+    const storedToken = String((slide as Record<string, unknown>)[`${key}_bg`] ?? '').trim().toLowerCase();
+    const strength = el.strength ?? 70;
+    const isCustomHex = Boolean(storedToken) && !['none', 'dark', 'light', 'amber', 'brand_dark'].includes(storedToken);
+    const advOpen = Boolean(advancedHexOpen[panelKey]) || isCustomHex;
+
+    return (
+      <div
+        key={key}
+        data-testid={`hero-element-bg-${idx}-${key}`}
+        style={{
+          border: '1px solid var(--color-border)',
+          borderRadius: 10,
+          background: 'var(--color-bg)',
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setOpenElementPanels((m) => ({ ...m, [panelKey]: !open }))}
+          aria-expanded={open}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            textAlign: 'left',
+            minHeight: 44,
+          }}
+        >
+          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', flex: 1 }}>
+            {ELEMENT_LABELS[key]} background
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            {el.token ? (el.token === 'none' ? 'None' : el.token) : 'Default'}
+          </span>
+        </button>
+        {open ? (
+          <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} role="radiogroup" aria-label={`${ELEMENT_LABELS[key]} background colour`}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!storedToken}
+                data-testid={`hero-bg-swatch-${idx}-${key}-default`}
+                onClick={() => applyPresentation(idx, {
+                  [`${key}_bg`]: null,
+                  [`${key}_bg_strength`]: null,
+                  ...(key === 'title' || key === 'subtitle' ? { [`${key}_bg_full_width`]: null } : {}),
+                } as HeroPresentationPatch)}
+                style={{
+                  ...btnStyle,
+                  fontWeight: !storedToken ? 700 : 600,
+                  borderColor: !storedToken ? 'var(--color-primary)' : 'var(--color-border)',
+                  background: !storedToken ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                }}
+              >
+                Default
+              </button>
+              {BG_SWATCHES.map((swatch) => {
+                const selected = storedToken === swatch.id;
+                return (
+                  <button
+                    key={swatch.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    data-testid={`hero-bg-swatch-${idx}-${key}-${swatch.id}`}
+                    onClick={() => applyPresentation(idx, {
+                      [`${key}_bg`]: swatch.id,
+                      [`${key}_bg_strength`]: strength,
+                    } as HeroPresentationPatch)}
+                    style={{
+                      ...btnStyle,
+                      fontWeight: selected ? 700 : 600,
+                      borderColor: selected ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: selected ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 4,
+                        border: '1px solid var(--color-border)',
+                        background: swatch.color === 'transparent'
+                          ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 8px 8px'
+                          : swatch.color,
+                      }}
+                    />
+                    {swatch.label}
+                  </button>
+                );
+              })}
+            </div>
+            {storedToken && storedToken !== 'none' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label
+                  htmlFor={`hero-${idx}-${key}-bg-strength`}
+                  style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+                >
+                  Strength — {strength}%
+                </label>
+                <input
+                  id={`hero-${idx}-${key}-bg-strength`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={strength}
+                  onChange={(e) => applyPresentation(idx, {
+                    [`${key}_bg`]: storedToken,
+                    [`${key}_bg_strength`]: Number(e.target.value),
+                  } as HeroPresentationPatch)}
+                  style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+                  aria-label={`${ELEMENT_LABELS[key]} background strength`}
+                />
+              </div>
+            ) : null}
+            {(key === 'title' || key === 'subtitle') && storedToken && storedToken !== 'none' ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-text)', minHeight: 44 }}>
+                <input
+                  type="checkbox"
+                  checked={el.full_width}
+                  onChange={(e) => applyPresentation(idx, {
+                    [`${key}_bg`]: storedToken,
+                    [`${key}_bg_strength`]: strength,
+                    [`${key}_bg_full_width`]: e.target.checked,
+                  } as HeroPresentationPatch)}
+                />
+                Full-width bar (otherwise wraps with the words)
+              </label>
+            ) : null}
+            <div>
+              <button
+                type="button"
+                onClick={() => setAdvancedHexOpen((m) => ({ ...m, [panelKey]: !advOpen }))}
+                style={{ ...btnStyle, height: 36 }}
+              >
+                {advOpen ? 'Hide advanced' : 'Advanced'}
+              </button>
+              {advOpen ? (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label
+                    htmlFor={`hero-${idx}-${key}-bg-hex`}
+                    style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+                  >
+                    Custom hex
+                  </label>
+                  <input
+                    id={`hero-${idx}-${key}-bg-hex`}
+                    value={isCustomHex ? storedToken : ''}
+                    placeholder="#1c1408"
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      if (!v) {
+                        applyPresentation(idx, { [`${key}_bg`]: null } as HeroPresentationPatch);
+                        return;
+                      }
+                      applyPresentation(idx, {
+                        [`${key}_bg`]: v,
+                        [`${key}_bg_strength`]: strength,
+                      } as HeroPresentationPatch);
+                    }}
+                    style={{
+                      height: 40,
+                      borderRadius: 8,
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-surface)',
+                      padding: '0 10px',
+                      fontSize: 13,
+                      fontFamily: 'inherit',
+                      color: 'var(--color-text)',
+                      width: '100%',
+                      maxWidth: 200,
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => {
     const presentation = resolveHeroSlidePresentation(slide);
     const showing = isHeroSlideShowing(slide);
+    const scheduleLabel = formatHeroSlideScheduleLabel(slide);
+    const toDatetimeLocalValue = (raw: string | undefined) => {
+      const s = String(raw ?? '').trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00`;
+      const m = /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})/.exec(s);
+      if (m) return `${m[1]}T${m[2]}:${m[3]}`;
+      return '';
+    };
     return (
       <div
         data-testid={`hero-slide-${idx}`}
@@ -262,10 +502,11 @@ export function HeroSlidesEditor({
               <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                 {showing ? 'Showing' : 'Hidden'}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                {showing
-                  ? 'Customers can see this slide.'
-                  : 'Kept here for editing — customers will not see it.'}
+              <p
+                data-testid={`hero-slide-schedule-label-${idx}`}
+                style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--color-text-secondary)' }}
+              >
+                {scheduleLabel}
               </p>
             </div>
           </div>
@@ -274,6 +515,64 @@ export function HeroSlidesEditor({
             onChange={(next) => update({ showing: next })}
             size="sm"
           />
+        </div>
+
+        <div
+          data-testid={`hero-slide-dates-${idx}`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: '8px 10px',
+            borderRadius: 10,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-bg)',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
+            Slide dates
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Optional. Empty means always. Hidden above always wins. Times use the restaurant clock (Maldives).
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              Start
+              <input
+                type="datetime-local"
+                data-testid={`hero-show-from-${idx}`}
+                value={toDatetimeLocalValue(slide.show_from)}
+                onChange={(e) => applyPresentation(idx, { show_from: e.target.value || null })}
+                style={{
+                  height: 40,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  padding: '0 8px',
+                  fontFamily: 'inherit',
+                  color: 'var(--color-text)',
+                }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 140px', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+              End
+              <input
+                type="datetime-local"
+                data-testid={`hero-show-until-${idx}`}
+                value={toDatetimeLocalValue(slide.show_until)}
+                onChange={(e) => applyPresentation(idx, { show_until: e.target.value || null })}
+                style={{
+                  height: 40,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  padding: '0 8px',
+                  fontFamily: 'inherit',
+                  color: 'var(--color-text)',
+                }}
+              />
+            </label>
+          </div>
         </div>
 
         {uploadImage ? (
@@ -334,7 +633,7 @@ export function HeroSlidesEditor({
               aria-label="Text background"
             />
             <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Dark gradient behind the words so they stay readable.
+              Dark panel behind the words only — the photo stays untouched.
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -373,6 +672,20 @@ export function HeroSlidesEditor({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div
+            data-testid={`hero-element-bg-group-${idx}`}
+            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
+              Per-element backgrounds
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+              Leave on Default to keep today’s look. Open only the pieces you want to change.
+            </p>
+            {(['eyebrow', 'title', 'subtitle', 'cta1', 'cta2'] as HeroElementKey[]).map((key) =>
+              renderElementBgEditor(slide, idx, key))}
           </div>
         </div>
 
@@ -722,9 +1035,16 @@ export function HeroSlidesEditor({
             </div>
           )}
         >
-          {editing && editingIdx !== null
-            ? renderSlideFields(editing, editingIdx, (patch) => updateAt(editingIdx, patch), true)
-            : null}
+          {editing && editingIdx !== null ? (
+            <>
+              {scheduleSlot ? (
+                <div data-testid="hero-slide-schedule-slot" style={{ marginBottom: 12 }}>
+                  {scheduleSlot}
+                </div>
+              ) : null}
+              {renderSlideFields(editing, editingIdx, (patch) => updateAt(editingIdx, patch), true)}
+            </>
+          ) : null}
         </ContentEditorSheet>
       </div>
     );

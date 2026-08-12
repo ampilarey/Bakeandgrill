@@ -60,26 +60,68 @@
                         $cta2Raw = trim((string) ($slide['cta2_url'] ?? ''));
                         $cta1Href = safe_public_url($cta1Raw !== '' ? $cta1Raw : '/order/') ?? '#';
                         $cta2Href = safe_public_url($cta2Raw !== '' ? normalize_public_menu_link($cta2Raw) : '/order/menu') ?? '#';
+                        $el = $heroPres['elements'] ?? [];
+                        $eyebrowEl = $el['eyebrow'] ?? ['css' => null];
+                        $titleEl = $el['title'] ?? ['css' => null, 'full_width' => false];
+                        $subEl = $el['subtitle'] ?? ['css' => null, 'full_width' => false];
+                        $cta1El = $el['cta1'] ?? ['css' => null];
+                        $cta2El = $el['cta2'] ?? ['css' => null];
                     @endphp
+                    <div class="banner-copy">
                     @if($eyebrow !== '')
-                        <span class="banner-eyebrow">{{ $eyebrow }}</span>
+                        <span
+                            class="banner-eyebrow"
+                            @if(!empty($eyebrowEl['css']))
+                                data-has-bg="1"
+                                style="--hero-el-bg: {{ $eyebrowEl['css'] }}; background: var(--hero-el-bg);"
+                            @endif
+                        >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
-                        <h2 class="banner-title">{!! $titleHtml !!}</h2>
+                        <h2
+                            class="banner-title"
+                            @if(!empty($titleEl['css']))
+                                data-has-bg="1"
+                                data-bg-full="{{ !empty($titleEl['full_width']) ? '1' : '0' }}"
+                                style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                            @endif
+                        >{!! $titleHtml !!}</h2>
                     @endif
                     @if($subtitle !== '')
-                        <p class="banner-sub">{{ $subtitle }}</p>
+                        <p
+                            class="banner-sub"
+                            @if(!empty($subEl['css']))
+                                data-has-bg="1"
+                                data-bg-full="{{ !empty($subEl['full_width']) ? '1' : '0' }}"
+                                style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
+                            @endif
+                        >{{ $subtitle }}</p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">
                         @if($cta1Text !== '')
-                            <a href="{{ $cta1Href }}" class="banner-cta-primary">{{ $cta1Text }}</a>
+                            <a
+                                href="{{ $cta1Href }}"
+                                class="banner-cta-primary"
+                                @if(!empty($cta1El['css']))
+                                    data-has-bg="1"
+                                    style="--hero-el-bg: {{ $cta1El['css'] }}; background: var(--hero-el-bg);"
+                                @endif
+                            >{{ $cta1Text }}</a>
                         @endif
                         @if($cta2Text !== '')
-                            <a href="{{ $cta2Href }}" class="banner-cta-secondary">{{ $cta2Text }}</a>
+                            <a
+                                href="{{ $cta2Href }}"
+                                class="banner-cta-secondary"
+                                @if(!empty($cta2El['css']))
+                                    data-has-bg="1"
+                                    style="--hero-el-bg: {{ $cta2El['css'] }}; background: var(--hero-el-bg);"
+                                @endif
+                            >{{ $cta2Text }}</a>
                         @endif
                     </div>
                     @endif
+                    </div>
                 </div>
             </div>
             @endforeach
@@ -91,12 +133,14 @@
             @endphp
             <div class="banner-slide active" style="background: linear-gradient(160deg, #2D1A0A 0%, #1C1408 100%);">
                 <div class="banner-overlay">
+                    <div class="banner-copy">
                     <span class="banner-eyebrow">🍞 Fresh daily from 5am</span>
                     <h2 class="banner-title">{{ $siteName }}<br><em>{{ $tagline }}</em></h2>
                     <p class="banner-sub">Real food, proper char — order online or visit us in Malé.</p>
                     <div class="banner-ctas">
                         <a href="/order/" class="banner-cta-primary">🛒 Order Now →</a>
                         <a href="/order/menu" class="banner-cta-secondary">View Menu</a>
+                    </div>
                     </div>
                 </div>
             </div>

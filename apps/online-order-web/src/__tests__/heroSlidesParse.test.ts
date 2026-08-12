@@ -66,4 +66,26 @@ describe('hero slides parse parity', () => {
     });
     expect(slides).toEqual([]);
   });
+
+  it('skips slides outside show_from / show_until window', () => {
+    const past = {
+      ...slideA,
+      show_until: '2020-01-01',
+    };
+    const always = { ...slideB };
+    const slides = parseHeroSlides({
+      hero_slides: JSON.stringify([past, always]),
+    });
+    expect(slides).toHaveLength(1);
+    expect(slides[0]?.title).toBe('Title B');
+  });
+
+  it('showing false wins over an open date window', () => {
+    expect(isRenderableHeroSlide({
+      ...slideA,
+      showing: false,
+      show_from: '2000-01-01',
+      show_until: '2099-12-31',
+    })).toBe(false);
+  });
 });

@@ -4,7 +4,23 @@ import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
-import { resolveHeroSlidePresentation } from '../../utils/heroSlidePresentation';
+import {
+  resolveHeroSlidePresentation,
+  type HeroElementBackground,
+} from '../../utils/heroSlidePresentation';
+
+function elementBgProps(el: HeroElementBackground): {
+  'data-has-bg'?: '1';
+  'data-bg-full'?: '1' | '0';
+  style?: CSSProperties;
+} {
+  if (!el.css) return {};
+  return {
+    'data-has-bg': '1',
+    'data-bg-full': el.full_width ? '1' : '0',
+    style: { ['--hero-el-bg' as string]: el.css, background: 'var(--hero-el-bg)' } as CSSProperties,
+  };
+}
 
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {
   if (!src) return null;
@@ -26,21 +42,22 @@ function CtaLink({
   href,
   className,
   children,
+  ...rest
 }: {
   href: string;
   className: string;
   children: React.ReactNode;
-}) {
+} & React.HTMLAttributes<HTMLAnchorElement>) {
   const safeHref = safePublicUrl(href) ?? '#';
   if (!safeHref.startsWith('/')) {
     return (
-      <a href={safeHref} className={className} rel="noopener noreferrer">
+      <a href={safeHref} className={className} rel="noopener noreferrer" {...rest}>
         {children}
       </a>
     );
   }
   return (
-    <Link to={orderAppHref(safeHref)} className={className}>
+    <Link to={orderAppHref(safeHref)} className={className} {...rest}>
       {children}
     </Link>
   );
@@ -261,12 +278,16 @@ export function PromoCarousel({
                 data-text-position={presentation.text_position}
                 data-testid={`hero-overlay-${i}`}
               >
+                <div className="home-promo-hero__copy">
                 {eyebrow ? (
-                  <span className="home-promo-hero__eyebrow">{eyebrow}</span>
+                  <span className="home-promo-hero__eyebrow" {...elementBgProps(presentation.elements.eyebrow)}>
+                    {eyebrow}
+                  </span>
                 ) : null}
                 {slide.title ? (
                   <h2
                     className="home-promo-hero__title"
+                    {...elementBgProps(presentation.elements.title)}
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(slide.title, {
                         ALLOWED_TAGS: ['br', 'em', 'strong'],
@@ -277,6 +298,7 @@ export function PromoCarousel({
                 {slide.subtitle ? (
                   <p
                     className="home-promo-hero__sub"
+                    {...elementBgProps(presentation.elements.subtitle)}
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(slide.subtitle, {
                         ALLOWED_TAGS: ['br', 'em', 'strong'],
@@ -290,6 +312,7 @@ export function PromoCarousel({
                       <CtaLink
                         href={cta1Href}
                         className="home-banner-cta-primary"
+                        {...elementBgProps(presentation.elements.cta1)}
                       >
                         {cta1}
                       </CtaLink>
@@ -298,12 +321,14 @@ export function PromoCarousel({
                       <CtaLink
                         href={cta2Href}
                         className="home-promo-hero__cta-secondary"
+                        {...elementBgProps(presentation.elements.cta2)}
                       >
                         {cta2}
                       </CtaLink>
                     ) : null}
                   </div>
                 ) : null}
+                </div>
               </div>
             </div>
           );

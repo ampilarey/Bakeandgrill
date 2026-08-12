@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Content;
 
+use Carbon\Carbon;
+use DateTimeInterface;
+
 /**
  * Resolve hero slides from hero_slides array with legacy hero_slide_1/2/3 fallback.
  *
@@ -11,6 +14,17 @@ namespace App\Domains\Content;
  */
 final class HeroSlides
 {
+    /** @var list<string> */
+    public const ELEMENT_KEYS = ['eyebrow', 'title', 'subtitle', 'cta1', 'cta2'];
+
+    /** @var array<string, string> */
+    private const BG_TOKEN_RGB = [
+        'dark' => '28,20,8',
+        'light' => '255,255,255',
+        'amber' => '212,129,58',
+        'brand_dark' => '45,26,10',
+    ];
+
     /**
      * @param callable(string, mixed): mixed $get content getter (key, default)
      * @return list<array<string, mixed>>
@@ -75,6 +89,42 @@ final class HeroSlides
         return ! array_key_exists('showing', $slide) || $slide['showing'] !== false;
     }
 
+    /**
+     * Optional show_from / show_until window in the restaurant timezone.
+     * Both empty = always. Evaluated with config('app.timezone').
+     *
+     * @param  array<string, mixed>  $slide
+     */
+    public static function isSlideInScheduleWindow(array $slide, ?DateTimeInterface $now = null): bool
+    {
+        $fromRaw = trim((string) ($slide['show_from'] ?? ''));
+        $untilRaw = trim((string) ($slide['show_until'] ?? ''));
+        if ($fromRaw === '' && $untilRaw === '') {
+            return true;
+        }
+
+        $tz = (string) config('app.timezone', 'Indian/Maldives');
+        $nowLocal = $now === null
+            ? Carbon::now($tz)
+            : Carbon::parse($now)->timezone($tz);
+
+        if ($fromRaw !== '') {
+            $from = self::parseShowBound($fromRaw, 'from', $tz);
+            if ($from !== null && $nowLocal->lt($from)) {
+                return false;
+            }
+        }
+
+        if ($untilRaw !== '') {
+            $until = self::parseShowBound($untilRaw, 'until', $tz);
+            if ($until !== null && $nowLocal->gt($until)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** @param mixed $slide */
     public static function isRenderableSlide(mixed $slide): bool
     {
@@ -82,7 +132,12 @@ final class HeroSlides
             return false;
         }
 
+        // Manual Hidden wins over any dates.
         if (! self::isSlideShowing($slide)) {
+            return false;
+        }
+
+        if (! self::isSlideInScheduleWindow($slide)) {
             return false;
         }
 
@@ -94,11 +149,18 @@ final class HeroSlides
     }
 
     /**
-     * Resolve photo / scrim / text position for public rendering.
+     * Resolve photo / scrim / text position / per-element panels for public rendering.
      * Lockstep with order-app resolveHeroSlidePresentation().
      *
      * @param  array<string, mixed>  $slide
-     * @return array{photo: float, scrim: float, text_position: string, photo_brightness: int, text_background: int}
+     * @return array{
+     *   photo: float,
+     *   scrim: float,
+     *   text_position: string,
+     *   photo_brightness: int,
+     *   text_background: int,
+     *   elements: array<string, array{token: ?string, strength: ?int, full_width: bool, css: ?string}>
+     * }
      */
     public static function presentation(array $slide): array
     {
@@ -122,13 +184,104 @@ final class HeroSlides
         $rawPos = strtolower(trim((string) ($slide['text_position'] ?? 'bottom')));
         $textPosition = in_array($rawPos, ['top', 'middle', 'bottom'], true) ? $rawPos : 'bottom';
 
+        $elements = [];
+        foreach (self::ELEMENT_KEYS as $key) {
+            $elements[$key] = self::resolveElementBackground($slide, $key);
+        }
+
         return [
             'photo_brightness' => $photoBrightness,
             'text_background' => $textBackground,
             'photo' => $photoBrightness / 100.0,
             'scrim' => $textBackground / 100.0,
             'text_position' => $textPosition,
+            'elements' => $elements,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $slide
+     * @return array{token: ?string, strength: ?int, full_width: bool, css: ?string}
+     */
+    public static function resolveElementBackground(array $slide, string $key): array
+    {
+        $bgKey = "{$key}_bg";
+        $strengthKey = "{$key}_bg_strength";
+        $fullKey = "{$key}_bg_full_width";
+
+        $raw = $slide[$bgKey] ?? null;
+        if ($raw === null || $raw === '') {
+            return ['token' => null, 'strength' => null, 'full_width' => false, 'css' => null];
+        }
+
+        $token = strtolower(trim((string) $raw));
+        $hasStrength = array_key_exists($strengthKey, $slide) && $slide[$strengthKey] !== null && $slide[$strengthKey] !== '';
+        $strength = $hasStrength ? self::clamp100((float) $slide[$strengthKey]) : 70;
+        $fullWidth = false;
+        if ($key === 'title' || $key === 'subtitle') {
+            $fullWidth = self::truthyFlag($slide[$fullKey] ?? false);
+        }
+
+        if ($token === 'none') {
+            return ['token' => 'none', 'strength' => $strength, 'full_width' => $fullWidth, 'css' => 'transparent'];
+        }
+
+        $rgb = self::BG_TOKEN_RGB[$token] ?? self::hexToRgb($token);
+        if ($rgb === null) {
+            return ['token' => null, 'strength' => null, 'full_width' => false, 'css' => null];
+        }
+
+        $alpha = $strength / 100.0;
+
+        return [
+            'token' => $token,
+            'strength' => $strength,
+            'full_width' => $fullWidth,
+            'css' => "rgba({$rgb},{$alpha})",
+        ];
+    }
+
+    private static function truthyFlag(mixed $v): bool
+    {
+        if ($v === true || $v === 1 || $v === '1') {
+            return true;
+        }
+
+        return is_string($v) && strtolower($v) === 'true';
+    }
+
+    private static function hexToRgb(string $hex): ?string
+    {
+        $raw = ltrim(trim($hex), '#');
+        if (preg_match('/^[0-9a-f]{3}$/i', $raw) === 1) {
+            $raw = $raw[0].$raw[0].$raw[1].$raw[1].$raw[2].$raw[2];
+        }
+        if (preg_match('/^[0-9a-f]{6}$/i', $raw) !== 1) {
+            return null;
+        }
+        $n = hexdec($raw);
+
+        return (($n >> 16) & 255).','.(($n >> 8) & 255).','.($n & 255);
+    }
+
+    private static function parseShowBound(string $raw, string $edge, string $tz): ?Carbon
+    {
+        $s = trim($raw);
+        if ($s === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s) === 1) {
+            $dt = Carbon::parse($s, $tz);
+
+            return $edge === 'from' ? $dt->startOfDay() : $dt->endOfDay();
+        }
+
+        try {
+            return Carbon::parse($s, $tz);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private static function clamp100(float $n): int

@@ -225,7 +225,7 @@ final class MediaEditor
             'convert' => $this->opConvert($image, $params),
             'resize' => $this->opResize($image, $params),
             'crop' => $this->opCrop($image, $params),
-            'rotate' => $this->opRotate($image, $params),
+            'rotate' => $this->opRotate($image, $params, $asset),
             'thumbnail' => $this->opThumbnail($asset, $image),
             'optimize' => $this->opOptimize($image, $params),
             default => abort(422, 'Unknown edit operation.'),
@@ -324,26 +324,101 @@ final class MediaEditor
         return $this->encode($dst, 'jpeg', 82);
     }
 
-    /** @param  \GdImage|resource  $image */
-    private function opRotate($image, array $params): array
+    /**
+     * Flip and/or rotate. Both can be applied in one call (flip first, then rotate).
+     * Free angles expand the canvas; fill is white for JPEG, transparent for PNG/WebP.
+     *
+     * @param  \GdImage|resource  $image
+     * @param  array<string, mixed>  $params
+     */
+    private function opRotate($image, array $params, Media $asset): array
     {
-        $flip = (string) ($params['flip'] ?? '');
+        $flip = strtolower(trim((string) ($params['flip'] ?? '')));
         $degrees = (int) ($params['degrees'] ?? 0);
+        $degrees = (($degrees % 360) + 360) % 360;
+
+        $didSomething = false;
 
         if ($flip === 'horizontal') {
             imageflip($image, IMG_FLIP_HORIZONTAL);
+            $didSomething = true;
         } elseif ($flip === 'vertical') {
             imageflip($image, IMG_FLIP_VERTICAL);
-        } elseif (in_array($degrees, [90, 180, 270, -90], true)) {
-            $rotated = imagerotate($image, -$degrees, 0);
+            $didSomething = true;
+        } elseif ($flip === 'both') {
+            imageflip($image, IMG_FLIP_BOTH);
+            $didSomething = true;
+        } elseif ($flip !== '') {
             imagedestroy($image);
-            $image = $rotated;
-        } else {
-            imagedestroy($image);
-            abort(422, 'Provide flip=horizontal|vertical or degrees=90|180|270.');
+            abort(422, 'flip must be horizontal, vertical, or both.');
         }
 
-        return $this->encode($image, 'jpeg', 82);
+        $format = $this->outputFormatForAsset($asset, $params);
+
+        if ($degrees !== 0) {
+            // imagerotate() is counter-clockwise for positive angles; UI uses clockwise.
+            $bg = $this->allocateRotateFill($image, $format);
+            $rotated = imagerotate($image, -$degrees, $bg);
+            imagedestroy($image);
+            if ($rotated === false) {
+                abort(422, 'Could not rotate image.');
+            }
+            $image = $rotated;
+            if ($format === 'png' || $format === 'webp') {
+                imagealphablending($image, false);
+                imagesavealpha($image, true);
+            }
+            $didSomething = true;
+        }
+
+        if (! $didSomething) {
+            imagedestroy($image);
+            abort(422, 'Provide flip=horizontal|vertical|both and/or degrees (1–359).');
+        }
+
+        return $this->encode($image, $format, 82);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function outputFormatForAsset(Media $asset, array $params): string
+    {
+        $forced = strtolower(trim((string) ($params['format'] ?? '')));
+        if ($forced === 'jpg') {
+            $forced = 'jpeg';
+        }
+        if (in_array($forced, ['jpeg', 'png', 'webp'], true)) {
+            return $forced;
+        }
+
+        $mime = strtolower((string) ($asset->mime_type ?? ''));
+
+        return match (true) {
+            str_contains($mime, 'png') => 'png',
+            str_contains($mime, 'webp') => 'webp',
+            default => 'jpeg',
+        };
+    }
+
+    /** @param  \GdImage|resource  $image */
+    private function allocateRotateFill($image, string $format): int
+    {
+        if ($format === 'png' || $format === 'webp') {
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            $bg = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            if ($bg === false) {
+                return 0;
+            }
+
+            return $bg;
+        }
+
+        // JPEG — white corners (not black).
+        $bg = imagecolorallocate($image, 255, 255, 255);
+
+        return $bg === false ? 0 : $bg;
     }
 
     /** @param  \GdImage|resource  $image */

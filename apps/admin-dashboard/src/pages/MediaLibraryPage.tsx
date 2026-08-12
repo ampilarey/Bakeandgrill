@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react';
+import Cropper, { type Area } from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 import {
-  Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, FileText, Film, Folder,
-  Image, Images, Music, Pencil, Plus, RefreshCw, RotateCw,
+  Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, FileText, Film, FlipHorizontal2,
+  FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw, RotateCcw, RotateCw,
   Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
@@ -18,6 +20,16 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useToast } from '../components/ui';
 import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
 import { VideoStudioModal } from '../components/VideoStudioModal';
+import {
+  buildRotateParams,
+  cropParamsFromArea,
+  isCropReady,
+  isRotateReady,
+  normalizeRotateDegrees,
+  rotatePreviewTransforms,
+  toggleFlipAxis,
+  type MediaFlip,
+} from '../utils/mediaEditHelpers';
 
 const USE_AS_OPTIONS: { key: MediaUseAsKey; label: string }[] = [
   { key: 'default_item_image', label: 'Default item image' },
@@ -222,10 +234,269 @@ function AssetCard({
 
 type EditParams = Record<string, unknown>;
 
-function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditParams; onChange: (p: EditParams) => void }) {
+const CROP_ASPECTS: Array<{ label: string; value: number | undefined }> = [
+  { label: 'Free', value: undefined },
+  { label: '1:1', value: 1 },
+  { label: '4:3', value: 4 / 3 },
+  { label: '16:9', value: 16 / 9 },
+];
+
+/**
+ * Interactive crop — same react-easy-crop approach as MenuPage/ImageCropModal,
+ * but outputs x/y/width/height for the media edit API (not a downloaded File).
+ * ImageCropModal itself is a portal that exports a menu JPEG; not reusable here.
+ */
+function CropEditPanel({
+  params, onChange, asset, compact,
+}: {
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+  compact?: boolean;
+}) {
+  const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState<number | undefined>(undefined);
+  const imageSrc = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+  const frameH = compact ? 'min(56vh, 380px)' : 260;
+
+  const onCropComplete = useCallback((_area: Area, pixels: Area) => {
+    onChange({ ...paramsRef.current, ...cropParamsFromArea(pixels) });
+  }, [onChange]);
+
+  const chip = (active: boolean): CSSProperties => ({
+    height: 44, minHeight: 44, padding: '0 14px', borderRadius: 8, cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+    border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+    background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+    color: 'var(--color-text)',
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-crop-panel">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} role="group" aria-label="Crop aspect ratio">
+        {CROP_ASPECTS.map(({ label, value }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => setAspect(value)}
+            aria-pressed={aspect === value}
+            style={chip(aspect === value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div
+        data-testid="media-crop-frame"
+        style={{
+          position: 'relative', width: '100%', height: frameH, minHeight: compact ? 280 : 220,
+          background: 'var(--color-text)', borderRadius: 10, overflow: 'hidden',
+          touchAction: 'none',
+        }}
+      >
+        {imageSrc ? (
+          <Cropper
+            image={imageSrc}
+            crop={cropPos}
+            zoom={zoom}
+            aspect={aspect}
+            onCropChange={setCropPos}
+            onZoomChange={setZoom}
+            onCropComplete={onCropComplete}
+            objectFit="contain"
+            showGrid
+            style={{ containerStyle: { width: '100%', height: '100%' } }}
+          />
+        ) : (
+          <div style={{ color: '#fff', padding: 16 }}>No image</div>
+        )}
+      </div>
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block' }}>
+        Zoom
+        <input
+          type="range"
+          min={1}
+          max={3}
+          step={0.05}
+          value={zoom}
+          onChange={(e) => setZoom(Number(e.target.value))}
+          style={{ width: '100%', marginTop: 6, minHeight: 44 }}
+          aria-label="Crop zoom"
+          data-testid="media-crop-zoom"
+        />
+      </label>
+      <div data-testid="media-crop-pixels" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+        Selection: {Number(params.width) > 0 ? Math.round(Number(params.width)) : '—'}
+        {' × '}
+        {Number(params.height) > 0 ? Math.round(Number(params.height)) : '—'}
+        {' px'}
+        {(params.x != null || params.y != null)
+          ? ` @ ${Math.round(Number(params.x) || 0)}, ${Math.round(Number(params.y) || 0)}`
+          : ''}
+      </div>
+      <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+        Drag to move · pinch or use the slider to zoom. The framed area is what gets saved.
+      </p>
+    </div>
+  );
+}
+
+function RotateEditPanel({
+  params, onChange, asset,
+}: {
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+}) {
+  const degrees = normalizeRotateDegrees(Number(params.degrees) || 0);
+  const flip = (String(params.flip || '') as MediaFlip) || '';
+  const src = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const srcW = asset?.width || 400;
+  const srcH = asset?.height || 300;
+
+  const commit = (nextDegrees: number, nextFlip: MediaFlip) => {
+    onChange(buildRotateParams(nextDegrees, nextFlip));
+  };
+
+  const rad = (degrees * Math.PI) / 180;
+  const outW = Math.round(Math.abs(srcW * Math.cos(rad)) + Math.abs(srcH * Math.sin(rad))) || srcW;
+  const outH = Math.round(Math.abs(srcW * Math.sin(rad)) + Math.abs(srcH * Math.cos(rad))) || srcH;
+  const transform = rotatePreviewTransforms(degrees, flip);
+
+  const chip = (active: boolean): CSSProperties => ({
+    height: 44, minHeight: 44, padding: '0 12px', borderRadius: 8, cursor: 'pointer',
+    fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+    border: active ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+    background: active ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+    color: 'var(--color-text)',
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-rotate-panel">
+      <div
+        data-testid="edit-live-preview"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minHeight: 260, width: '100%', background: 'var(--color-text)',
+          borderRadius: 10, overflow: 'hidden', padding: 16, boxSizing: 'border-box',
+        }}
+      >
+        {src ? (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            style={{
+              maxWidth: degrees % 180 === 90 ? 160 : 220,
+              maxHeight: 200,
+              objectFit: 'contain',
+              transform: transform || undefined,
+              transition: 'transform 0.2s ease',
+            }}
+          />
+        ) : (
+          <div style={{ color: '#fff', fontSize: 13 }}>No image</div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+        {degrees || flip
+          ? <>Preview: {degrees}°{flip ? ` · flip ${flip}` : ''} · ~{outW}×{outH} px</>
+          : 'Choose a rotation or flip'}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button type="button" onClick={() => commit(degrees - 90, flip)} style={chip(false)} aria-label="Rotate left 90 degrees">
+          <RotateCcw size={16} /> 90°
+        </button>
+        <button type="button" onClick={() => commit(degrees + 90, flip)} style={chip(false)} aria-label="Rotate right 90 degrees">
+          <RotateCw size={16} /> 90°
+        </button>
+        <button
+          type="button"
+          onClick={() => commit(degrees, toggleFlipAxis(flip, 'horizontal'))}
+          style={chip(flip === 'horizontal' || flip === 'both')}
+          aria-label="Flip horizontal"
+          data-testid="media-flip-h"
+        >
+          <FlipHorizontal2 size={16} /> Flip H
+        </button>
+        <button
+          type="button"
+          onClick={() => commit(degrees, toggleFlipAxis(flip, 'vertical'))}
+          style={chip(flip === 'vertical' || flip === 'both')}
+          aria-label="Flip vertical"
+          data-testid="media-flip-v"
+        >
+          <FlipVertical2 size={16} /> Flip V
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {[0, 90, 180, 270].map((d) => (
+          <button key={d} type="button" onClick={() => commit(d, flip)} style={chip(degrees === d)}>
+            {d}°
+          </button>
+        ))}
+      </div>
+
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block' }}>
+        Angle ({degrees}°)
+        <input
+          type="range"
+          min={0}
+          max={359}
+          step={1}
+          value={degrees}
+          onChange={(e) => commit(Number(e.target.value), flip)}
+          style={{ width: '100%', marginTop: 6, minHeight: 44 }}
+          data-testid="rotate-angle-slider"
+          aria-label="Rotation angle"
+        />
+      </label>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block' }}>
+          Exact degrees
+          <input
+            type="number"
+            min={0}
+            max={359}
+            value={degrees}
+            onChange={(e) => commit(e.target.value === '' ? 0 : Number(e.target.value), flip)}
+            data-testid="rotate-degrees-input"
+            style={{
+              display: 'block', width: '100%', marginTop: 4, height: 44, minHeight: 44,
+              border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px',
+              fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box',
+              background: 'var(--color-surface)', color: 'var(--color-text)',
+            }}
+          />
+        </label>
+        <button type="button" onClick={() => onChange({})} style={{ ...chip(false), height: 44 }}>
+          Reset
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EditOpPanel({
+  op, params, onChange, asset, compact,
+}: {
+  op: MediaEditOp;
+  params: EditParams;
+  onChange: (p: EditParams) => void;
+  asset?: MediaAsset | null;
+  compact?: boolean;
+}) {
   const set = (k: string, v: unknown) => onChange({ ...params, [k]: v });
   const labelStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 };
-  const inputStyle: CSSProperties = { width: '100%', height: 38, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 };
+  const inputStyle: CSSProperties = { width: '100%', height: 44, minHeight: 44, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box', background: 'var(--color-surface)', color: 'var(--color-text)' };
 
   switch (op) {
     case 'convert':
@@ -254,51 +525,16 @@ function EditOpPanel({ op, params, onChange }: { op: MediaEditOp; params: EditPa
               <input type="number" min={1} value={(params.height as number) ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="auto" style={{ ...inputStyle, marginTop: 4 }} />
             </label>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
             <input type="checkbox" checked={(params.maintain_aspect as boolean) ?? true} onChange={(e) => set('maintain_aspect', e.target.checked)} />
             Maintain aspect ratio
           </label>
         </div>
       );
     case 'crop':
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <label style={labelStyle}>X offset
-              <input type="number" min={0} value={(params.x as number) ?? 0} onChange={(e) => set('x', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Y offset
-              <input type="number" min={0} value={(params.y as number) ?? 0} onChange={(e) => set('y', Number(e.target.value))} style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Width
-              <input type="number" min={1} value={(params.width as number) ?? ''} onChange={(e) => set('width', e.target.value ? Number(e.target.value) : undefined)} placeholder="required" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-            <label style={labelStyle}>Height
-              <input type="number" min={1} value={(params.height as number) ?? ''} onChange={(e) => set('height', e.target.value ? Number(e.target.value) : undefined)} placeholder="required" style={{ ...inputStyle, marginTop: 4 }} />
-            </label>
-          </div>
-        </div>
-      );
+      return <CropEditPanel params={params} onChange={onChange} asset={asset} compact={compact} />;
     case 'rotate':
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label style={labelStyle}>Degrees
-            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              {[90, 180, 270].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => set('degrees', d)}
-                  style={{ height: 36, padding: '0 14px', borderRadius: 8, border: (params.degrees as number) === d ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', background: (params.degrees as number) === d ? 'var(--color-warning-bg)' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                >
-                  {d}°
-                </button>
-              ))}
-              <input type="number" min={1} max={359} value={![90, 180, 270].includes(params.degrees as number) ? (params.degrees as number) ?? '' : ''} onChange={(e) => set('degrees', e.target.value ? Number(e.target.value) : 90)} placeholder="Custom" style={{ flex: 1, minWidth: 60, height: 36, border: '1px solid var(--color-border)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', fontSize: 13 }} />
-            </div>
-          </label>
-        </div>
-      );
+      return <RotateEditPanel params={params} onChange={onChange} asset={asset} />;
     case 'thumbnail':
       return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -957,9 +1193,10 @@ export function MediaLibraryPage() {
             style={isMobile ? {
               position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
               width: '100%', maxWidth: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-              background: 'var(--color-surface)', border: 'none', borderRadius: 0, padding: 16, paddingBottom: 96,
+              background: 'var(--color-surface)', border: 'none', borderRadius: 0, padding: 16,
+              paddingBottom: 'max(96px, calc(24px + env(safe-area-inset-bottom, 0px)))',
             } : {
-              width: 300, flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
+              width: 320, flexShrink: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 14, padding: 16, position: 'sticky', top: 12,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -1161,11 +1398,17 @@ export function MediaLibraryPage() {
                     <button
                       key={op}
                       type="button"
-                      onClick={() => { setEditOp(editOp === op ? null : op); setEditParams({}); setEditError(''); }}
+                      onClick={() => {
+                        setEditOp(editOp === op ? null : op);
+                        setEditParams(op === 'rotate' ? {} : {});
+                        setEditError('');
+                      }}
                       style={{
-                        height: 32, padding: '0 10px', borderRadius: 8, border: editOp === op ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        height: isMobile ? 40 : 32, minHeight: isMobile ? 40 : 32, padding: '0 10px', borderRadius: 8,
+                        border: editOp === op ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
                         background: editOp === op ? 'var(--color-warning-bg)' : 'var(--color-bg)', cursor: 'pointer',
-                        fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: editOp === op ? '#3D2B1F' : 'var(--color-text-secondary)',
+                        fontFamily: 'inherit', fontSize: 11, fontWeight: 600,
+                        color: editOp === op ? 'var(--color-text)' : 'var(--color-text-secondary)',
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}
                     >
@@ -1175,18 +1418,46 @@ export function MediaLibraryPage() {
                 </div>
 
                 {editOp && (
-                  <div style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 12, border: '1px solid var(--color-border)' }}>
-                    <EditOpPanel op={editOp} params={editParams} onChange={setEditParams} />
+                  <div
+                    data-testid="media-edit-panel"
+                    style={{ background: 'var(--color-bg)', borderRadius: 10, padding: 12, border: '1px solid var(--color-border)' }}
+                  >
+                    <EditOpPanel
+                      op={editOp}
+                      params={editParams}
+                      onChange={setEditParams}
+                      asset={selected}
+                      compact={isMobile}
+                    />
                     {editError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, margin: '8px 0 0' }}>{editError}</p>}
-                    <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: 'flex',
+                        gap: 8,
+                        position: isMobile ? 'sticky' : 'static',
+                        bottom: isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : undefined,
+                        paddingTop: 8,
+                        paddingBottom: isMobile ? 4 : 0,
+                        background: 'var(--color-bg)',
+                        zIndex: 2,
+                      }}
+                    >
                       <Btn
                         onClick={() => setShowSaveModeModal(true)}
-                        disabled={editSaving}
-                        style={{ flex: 1 }}
+                        disabled={
+                          editSaving
+                          || (editOp === 'crop' && !isCropReady(editParams))
+                          || (editOp === 'rotate' && !isRotateReady(editParams))
+                        }
+                        style={{ flex: 1, minHeight: 44 }}
+                        data-testid="media-edit-apply"
                       >
                         {editSaving ? 'Applying…' : 'Apply'}
                       </Btn>
-                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }}>Cancel</Btn>
+                      <Btn variant="ghost" onClick={() => { setEditOp(null); setEditParams({}); }} style={{ minHeight: 44 }}>
+                        Cancel
+                      </Btn>
                     </div>
                   </div>
                 )}

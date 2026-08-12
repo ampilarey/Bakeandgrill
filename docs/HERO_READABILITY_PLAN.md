@@ -1,6 +1,8 @@
 # Hero Text Readability — Plan
 
 Status: **§2.1 and §2.2 built** on this branch. §2.3 and §2.4 not started.
+**§7 is Revision 2** — what the owner reported after using 2.1/2.2 on a real phone. Read it
+before doing anything else; it changes the shape of §2.4.
 
 Owner's ask: *"How about adding setting to change the background color and other important
 features to change the all wording better visually"* — prompted by a live screenshot where the
@@ -153,3 +155,134 @@ and high-value. §2.3 is the one that prevents recurrence. §2.4 only matters on
 deviate from the default, which may be never.
 
 Ship 2.1 and 2.2 together; 2.3 after; 2.4 only if asked.
+
+---
+
+## 7. Revision 2 — after 2.1/2.2 shipped
+
+The owner used the new sliders on a phone and reported three things. All three check out.
+
+### 7.1 "When I change text background the whole photo colour changes" — correct, and it is the
+### remaining half of the original bug
+
+§2.1 split the *photo fade* from the *scrim*, and that part works: `photo_brightness` now drives
+only the image's own `opacity`. But the scrim was never confined to the text. It is still a single
+gradient painted on `.banner-overlay`, which is `position: absolute; inset: 0` — **the full slide**.
+
+Website `home.blade.php:89`:
+
+```css
+.banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg,
+        rgba(28,20,8, calc(0.22 * var(--hero-scrim, 1))) 0%,
+        rgba(28,20,8, calc(0.72 * var(--hero-scrim, 1))) 55%,
+        rgba(28,20,8, calc(0.92 * var(--hero-scrim, 1))) 100%);
+}
+```
+
+Identical in order-app `index.css:348`, and again in both desktop variants
+(`home.blade.php:311`, `index.css:522`).
+
+At the owner's setting — photo 100%, text background 100% — the image renders at full opacity and
+is then covered by a wash reaching 92% at the bottom. So "text background" is, in fact, a
+whole-photo dimmer wearing a different label. He is describing the code accurately.
+
+**The fix is to move the dark from behind the *slide* to behind the *words*.** A per-element
+background (a panel or pill behind eyebrow / title / subtitle) leaves the rest of the photograph
+untouched, which is exactly the outcome §2 was aiming at and only got halfway to.
+
+### 7.2 No element can be styled on its own — five hardcoded backgrounds
+
+The hero renders five things. Every one has a fixed background baked into the stylesheet, none of
+them per slide:
+
+| Element | Class | Current background |
+|---|---|---|
+| Eyebrow | `.banner-eyebrow` | `rgba(212,129,58,0.22)` pill + `rgba(212,129,58,0.4)` border |
+| Title | `.banner-title` | none — only `text-shadow: 0 2px 24px rgba(0,0,0,0.4)` |
+| Subtitle | `.banner-sub` | none |
+| Button 1 | `.banner-cta-primary` | `var(--amber)` |
+| Button 2 | `.banner-cta-secondary` | `rgba(255,255,255,0.1)` + border, `backdrop-filter: blur(6px)` |
+
+So the title and subtitle — the two hardest things to read in the owner's screenshot — have no
+background at all. They rely entirely on the full-bleed scrim from §7.1. That is why turning the
+scrim down makes them unreadable and turning it up ruins the photo. There is no third option
+today.
+
+**This supersedes §2.4.** That section argued against per-element colour on the grounds that the
+scrim would carry the readability. It does not carry it, and the owner has asked twice. Build the
+control — but as swatches plus an opacity slider, not a hex field. The owner's own words remain
+the constraint: *"How can an uneducated man like me select colors using codes."* A row of tappable
+swatches (None, Dark, Light, brand amber, brand dark) with a 0–100% strength slider gives him
+complete control over what he is asking for, in a form he can use on a phone, and a free hex entry
+can sit behind an "Advanced" disclosure for anyone who wants it.
+
+### 7.3 Scheduled publish on the phone — present, but unreachable from where he was
+
+It has not been removed. `ContentHubPage.tsx:1489–1530` builds a "Schedule publish" block, and
+line 1612 renders it inside `MobileActionSheet` on mobile. Two things hide it:
+
+1. **The trigger is icon-only on mobile.** Line 1604: `{isMobile ? null : <span>⋯ More</span>}`.
+   On desktop it reads "⋯ More". On a phone it is a bare glyph next to Publish.
+2. **A slide editor sheet covers the page header.** The owner's screenshot is the full-screen
+   "Slide 1" sheet, whose only actions are Duplicate / Delete / Done. The header holding ⋯ is
+   behind it. To schedule, he must close two sheets, find an unlabelled icon, and open a third.
+
+Not a missing feature — a placement failure. Fix by labelling the trigger and by surfacing
+scheduling where hero edits are actually made.
+
+### 7.4 Per-slide scheduling is not possible today, and the existing scheduler is unsafe for hero
+
+`ContentSchedule` stores `(key, scope, locale, value, publish_at)`. `hero_slides` is **one key
+holding the entire carousel as a JSON array**. So scheduling a hero change stores a snapshot of
+all slides taken at the moment Schedule is pressed.
+
+Two consequences, the second serious:
+
+- You cannot schedule one slide. The unit of scheduling is the whole carousel.
+- **Two pending hero schedules silently destroy each other.** Schedule A on Monday (snapshot with
+  slides 1–3), then edit slide 2 and schedule B on Tuesday (snapshot with the edit). When A fires
+  it writes its old array back, undoing the edit; when B fires it writes its array, undoing
+  anything else changed in between. Last write wins over the whole carousel, with no warning.
+
+**Do not solve this by extending `ContentSchedule`.** The right shape for what the owner wants —
+"this slide runs during Ramadan, that one over the weekend" — is per-slide dates stored on the
+slide itself:
+
+- `show_from` (optional) — do not display before this moment
+- `show_until` (optional) — do not display after it
+
+Evaluated in `HeroSlides::isRenderableSlide()` alongside the existing `showing` flag, and mirrored
+in the order app. `showing: false` stays as the manual override and wins over any dates. No new
+table, no snapshot, no conflict between two schedules, and the owner sets it in the same sheet
+where he edits the slide.
+
+The whole-carousel `ContentSchedule` path stays for everything else, but the Content Hub should
+warn when a second pending schedule already exists for the same key.
+
+### 7.5 Order
+
+1. §7.1 — confine the scrim to the text block. This alone changes what he sees most.
+2. §7.2 — per-element background colour + strength for the five elements.
+3. §7.4 — per-slide `show_from` / `show_until`.
+4. §7.3 — label the ⋯ trigger and put scheduling within reach of the hero editor.
+5. The duplicate-pending-schedule warning.
+
+1 and 2 are one piece of work and should ship together; doing 1 without 2 leaves the title with
+no background at all.
+
+### 7.6 Shipped (this branch)
+
+| Item | What landed |
+|---|---|
+| §7.1 | `--hero-scrim` paints `.banner-copy` / `.home-promo-hero__copy` only. Overlay is `background: none`. Photo opacity still only via `--hero-photo`. |
+| §7.2 | Per-slide `*_bg` + `*_bg_strength` (+ `title_bg_full_width` / `subtitle_bg_full_width`) for eyebrow, title, subtitle, cta1, cta2. Swatches + strength in `HeroSlidesEditor`; absent = hardcoded CSS look. Wired through PHP + both TS `heroSlidePresentation` helpers. |
+| §7.4 | Optional `show_from` / `show_until` on each slide; `HeroSlides::isRenderableSlide()` + order-app `isRenderableHeroSlide()`. Restaurant TZ (`Indian/Maldives`). `showing: false` wins. Plain-language label next to Showing. |
+| §7.3 | More trigger always shows “⋯ More”; Schedule publish surfaced inside Content Hub editor sheets + hero slide sheet. |
+| Warning | Content Hub warns when a pending schedule already exists for a key about to be re-scheduled. |
+
+**Legacy look after §7.1:** photo outside the text block is no longer washed by the full-bleed scrim (brighter edges). Text still sits on the copy-panel gradient at the same `text_background` strength. Mapping was not remapped.
+
+**Cache FINDING (§7.4):** website re-resolves slides each request (OK). Order app loads public content once into React context and filters at parse time — expired windows do not drop mid-session until refetch/navigation.

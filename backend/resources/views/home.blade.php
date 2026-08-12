@@ -80,7 +80,8 @@
 .banner-slide .banner-video {
     transform: none;
 }
-/* Mobile-first overlay (matches order-app .home-promo-hero__*) */
+/* Mobile-first overlay (matches order-app .home-promo-hero__*)
+ * §7.1: overlay positions the stack; --hero-scrim paints only .banner-copy. */
 .banner-overlay {
     position: absolute;
     inset: 0;
@@ -91,6 +92,20 @@
     text-align: center;
     padding: 1.75rem 1.25rem 2.75rem;
     z-index: 2;
+    background: none;
+    pointer-events: none;
+}
+.banner-overlay[data-text-position="top"] { justify-content: flex-start; }
+.banner-overlay[data-text-position="middle"] { justify-content: center; }
+.banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
+.banner-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.85rem 1rem 1rem;
+    border-radius: 16px;
+    pointer-events: auto;
     background: linear-gradient(
         180deg,
         rgba(28,20,8, calc(0.22 * var(--hero-scrim, 1))) 0%,
@@ -98,9 +113,6 @@
         rgba(28,20,8, calc(0.92 * var(--hero-scrim, 1))) 100%
     );
 }
-.banner-overlay[data-text-position="top"] { justify-content: flex-start; }
-.banner-overlay[data-text-position="middle"] { justify-content: center; }
-.banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
 
 /* Eyebrow / title / sub — keep in lockstep with order-app .home-promo-hero__* */
 .banner-eyebrow {
@@ -128,6 +140,34 @@
     text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
+/* §7.2: panel wraps with text unless full-width is chosen */
+.banner-title[data-has-bg="1"]:not([data-bg-full="1"]),
+.banner-sub[data-has-bg="1"]:not([data-bg-full="1"]) {
+    display: inline;
+    padding: 0.12em 0.4em;
+    border-radius: 6px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    text-shadow: none;
+}
+.banner-title[data-has-bg="1"][data-bg-full="1"],
+.banner-sub[data-has-bg="1"][data-bg-full="1"] {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35em 0.55em;
+    border-radius: 10px;
+    text-shadow: none;
+}
+.banner-eyebrow[data-has-bg="1"],
+.banner-cta-primary[data-has-bg="1"],
+.banner-cta-secondary[data-has-bg="1"] {
+    background: var(--hero-el-bg);
+}
+.banner-title[data-has-bg="1"],
+.banner-sub[data-has-bg="1"] {
+    background: var(--hero-el-bg);
+}
 .banner-sub {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.78);
@@ -308,18 +348,20 @@
         justify-content: flex-end;
         text-align: center;
         padding: 4rem clamp(2.5rem, 8vw, 7rem) 4.5rem;
+        background: none;
+    }
+    .banner-overlay[data-text-position="top"] { justify-content: flex-start; }
+    .banner-overlay[data-text-position="middle"] { justify-content: center; }
+    .banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
+    .banner-copy {
+        max-width: 720px;
+        padding: 1.25rem 1.5rem 1.4rem;
         background: linear-gradient(
             180deg,
             rgba(28, 20, 8, calc(0.12 * var(--hero-scrim, 1))) 0%,
             rgba(28, 20, 8, calc(0.45 * var(--hero-scrim, 1))) 45%,
             rgba(14, 10, 4, calc(0.88 * var(--hero-scrim, 1))) 100%
         );
-    }
-    .banner-overlay[data-text-position="top"] { justify-content: flex-start; }
-    .banner-overlay[data-text-position="middle"] { justify-content: center; }
-    .banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
-    .banner-overlay > * {
-        max-width: 720px;
     }
     .banner-eyebrow {
         font-size: 0.78rem;
