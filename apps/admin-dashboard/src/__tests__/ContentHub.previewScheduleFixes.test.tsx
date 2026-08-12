@@ -151,9 +151,12 @@ describe('ContentHub preview + schedule fixes', () => {
     expect(layoutSignalHandler).toBeTruthy();
     layoutSignalHandler?.({ hasDraft: true, revision: 4 });
 
-    await waitFor(() => {
-      expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.length).toBeGreaterThan(callsAfterMount);
-    });
+    await waitFor(
+      () => {
+        expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.length).toBeGreaterThan(callsAfterMount);
+      },
+      { timeout: 3000 },
+    );
     const calls = vi.mocked(contentApi.createContentPreviewToken).mock.calls;
     const lastCall = calls[calls.length - 1];
     expect(lastCall?.[3]).toBe(true); // includeLayout

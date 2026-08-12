@@ -10,6 +10,8 @@ export type ContentEditorSheetProps = {
   status?: ReactNode;
   /** Sticky bottom action bar (Publish, Done, etc.). */
   footer?: ReactNode;
+  /** Optional controls in the header row (locale, Preview, More). */
+  headerActions?: ReactNode;
   /** Nesting depth for stacking above parent sheets (0 = base). */
   layer?: number;
   /** Accessible name override. */
@@ -30,6 +32,7 @@ export function ContentEditorSheet({
   children,
   status,
   footer,
+  headerActions,
   layer = 0,
   ariaLabel,
   testId = 'content-editor-sheet',
@@ -42,6 +45,7 @@ export function ContentEditorSheet({
       onClose={onClose}
       status={status}
       footer={footer}
+      headerActions={headerActions}
       layer={layer}
       ariaLabel={ariaLabel}
       testId={testId}

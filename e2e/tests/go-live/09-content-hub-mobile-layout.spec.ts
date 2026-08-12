@@ -2,7 +2,7 @@
  * Content Hub mobile layout — real Chromium layout engine.
  * LOCAL project only. Does not inject CSS; asserts against shipped admin styles.
  *
- * Overview uses the Customer Surface Map task landing (not the old section-grid).
+ * Overview uses the Customer Surface Builder landing.
  * Overflow must stay green at 320 / 375 / 390 — do not accept known overflow.
  */
 import path from 'path';
@@ -21,11 +21,12 @@ const FIXTURE_PNG = path.resolve(__dirname, '../../fixtures/mobile-layout-hero.p
 
 async function openContentHub(page: Page): Promise<void> {
   await gotoAdminAuthenticated(page, '/admin/content');
-  await expect(page.getByTestId('content-task-landing')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('task-cluster-global')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('surface-builder-landing')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('task-cluster-brand_pages')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('task-card-hero')).toBeVisible();
+  await expect(page.getByTestId('task-card-announcement')).toBeVisible();
+  await expect(page.getByTestId('task-card-website_footer')).toBeVisible();
   await expect(page.getByTestId('task-card-order_menu')).toBeVisible();
-  await expect(page.getByTestId('task-card-status_banners')).toBeVisible();
 }
 
 async function openHeroSheet(page: Page): Promise<void> {
@@ -63,6 +64,27 @@ test.describe('Content Hub mobile layout (real engine)', () => {
           await expect(page.getByTestId('hub-search-overlay')).toBeVisible();
         }
 
+        await expectContentHubChromeInViewport(page);
+      });
+
+      test(`editor sheet + preview + more stay usable @ ${width}`, async ({ page }) => {
+        await openContentHub(page);
+        await openHeroSheet(page);
+
+        const sheet = page.getByTestId('content-editor-sheet');
+        await expect(sheet).toHaveAttribute('role', 'dialog');
+        await expect(page.getByTestId('preview-sheet-btn')).toBeVisible();
+        await expect(page.getByTestId('hub-sheet-more-btn')).toBeVisible();
+        await expectNoDocumentHorizontalOverflow(page);
+
+        await page.getByTestId('preview-sheet-btn').click();
+        await expect(page.getByTestId('preview-sheet')).toBeVisible();
+        await expectContentHubChromeInViewport(page);
+        await page.getByTestId('preview-sheet-close').click();
+        await expect(page.getByTestId('preview-sheet')).toBeHidden();
+
+        await page.getByTestId('hub-sheet-more-btn').click();
+        await expect(page.getByTestId('hub-more-menu-mobile')).toBeVisible();
         await expectContentHubChromeInViewport(page);
       });
 

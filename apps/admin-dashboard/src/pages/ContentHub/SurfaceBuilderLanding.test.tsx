@@ -27,6 +27,9 @@ describe('SurfaceBuilderLanding', () => {
     expect(screen.getByTestId('task-cluster-brand_pages')).toBeTruthy();
     expect(screen.getByTestId('task-dirty-brand_profile')).toBeTruthy();
     expect(screen.getByTestId('task-card-brand_profile')).toBeTruthy();
+    expect(screen.getByTestId('task-card-hero')).toBeTruthy();
+    expect(screen.getByTestId('task-card-announcement')).toBeTruthy();
+    expect(screen.getByTestId('task-card-website_footer')).toBeTruthy();
     expect(screen.getByTestId('task-card-seo')).toBeTruthy();
     expect(screen.getByTestId('task-card-legal')).toBeTruthy();
     expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
