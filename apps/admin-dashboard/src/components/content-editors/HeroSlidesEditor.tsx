@@ -1,5 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronDown, ChevronRight, ChevronUp, Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2,
+} from 'lucide-react';
 import type { ContentEditorWithUploadProps } from './types';
 import { RepeaterShell } from './RepeaterShell';
 import { ContentImageField, type ContentImageUploadResult } from './ContentImageField';
@@ -951,28 +953,72 @@ export function HeroSlidesEditor({
             const showing = isHeroSlideShowing(slide);
             const titleText = stripHtml(slide.title || '') || `Slide ${idx + 1}`;
             return (
-              <button
+              <div
                 key={idx}
-                type="button"
-                className="hero-slide-overview-card"
-                data-testid={`hero-slide-overview-${idx}`}
+                className="hero-slide-overview-row"
                 data-showing={showing ? 'true' : 'false'}
-                onClick={() => setEditingIdx(idx)}
               >
-                <span className="hero-slide-overview-thumb" aria-hidden>
-                  {slide.image || slide.video_poster ? (
-                    <img src={slide.image || slide.video_poster} alt="" />
-                  ) : (
-                    <Images size={18} />
-                  )}
-                </span>
-                <span className="hero-slide-overview-meta">
-                  <span className="hero-slide-overview-title">{titleText}</span>
-                  <span className={`hero-slide-overview-state${showing ? '' : ' hero-slide-overview-state--hidden'}`}>
-                    {showing ? 'Showing' : 'Hidden'}
+                <button
+                  type="button"
+                  className="hero-slide-overview-card"
+                  data-testid={`hero-slide-overview-${idx}`}
+                  onClick={() => setEditingIdx(idx)}
+                >
+                  <span className="hero-slide-overview-thumb" aria-hidden>
+                    {slide.image || slide.video_poster ? (
+                      <img src={slide.image || slide.video_poster} alt="" />
+                    ) : (
+                      <Images size={18} />
+                    )}
                   </span>
-                </span>
-              </button>
+                  <span className="hero-slide-overview-meta">
+                    <span className="hero-slide-overview-title">{titleText}</span>
+                    <span className={`hero-slide-overview-state${showing ? '' : ' hero-slide-overview-state--hidden'}`}>
+                      {showing ? 'Showing' : 'Hidden'}
+                      {' · '}
+                      {idx + 1}
+                      {' of '}
+                      {items.length}
+                    </span>
+                  </span>
+                </button>
+                <div className="hero-slide-overview-order" role="group" aria-label={`Reorder slide ${idx + 1}`}>
+                  <button
+                    type="button"
+                    className="hero-slide-move-btn"
+                    data-testid={`hero-slide-move-up-${idx}`}
+                    aria-label={`Move slide ${idx + 1} up`}
+                    disabled={idx === 0}
+                    onClick={() => {
+                      if (idx === 0) return;
+                      const next = items.slice();
+                      const tmp = next[idx - 1];
+                      next[idx - 1] = next[idx];
+                      next[idx] = tmp;
+                      commitSlides(next);
+                    }}
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="hero-slide-move-btn"
+                    data-testid={`hero-slide-move-down-${idx}`}
+                    aria-label={`Move slide ${idx + 1} down`}
+                    disabled={idx === items.length - 1}
+                    onClick={() => {
+                      if (idx >= items.length - 1) return;
+                      const next = items.slice();
+                      const tmp = next[idx + 1];
+                      next[idx + 1] = next[idx];
+                      next[idx] = tmp;
+                      commitSlides(next);
+                    }}
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
+              </div>
             );
           })}
         </div>

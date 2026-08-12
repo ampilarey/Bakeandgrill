@@ -75,7 +75,11 @@ export function PreviewPane({
         </div>
       ) : null}
       <div className="hub-preview-pane-frame">
-        <LivePreviewFrame url={url} loading={loading} />
+        <LivePreviewFrame
+          url={url}
+          loading={loading}
+          defaultDevice={variant === 'sheet' ? 'mobile' : 'desktop'}
+        />
       </div>
       {variant === 'column' ? (
         <div className="hub-preview-hint">

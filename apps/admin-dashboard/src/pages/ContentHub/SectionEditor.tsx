@@ -67,9 +67,10 @@ export function SectionEditor({
             data-testid="section-editor-back"
             className="hub-section-editor-back"
             onClick={onBack}
-            aria-label="Back to sections"
+            aria-label="Back to all tasks"
           >
             <ArrowLeft size={18} />
+            <span className="hub-section-editor-back-label">All tasks</span>
           </button>
         ) : null}
         <div style={{ minWidth: 0, flex: 1 }}>

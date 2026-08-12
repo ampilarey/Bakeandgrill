@@ -163,8 +163,8 @@ describe('ContentHub mobile editor sheet', () => {
   it('opens Hero in a portaled dialog sheet with draft status and compact overview', async () => {
     openHub('/content');
 
-    await screen.findByTestId('section-card-Hero');
-    const trigger = screen.getByTestId('section-card-Hero');
+    await screen.findByTestId('task-card-hero');
+    const trigger = screen.getByTestId('task-card-hero');
     fireEvent.click(trigger);
 
     const sheet = await screen.findByTestId('content-editor-sheet');
@@ -180,15 +180,15 @@ describe('ContentHub mobile editor sheet', () => {
     expect(within(sheet).getByTestId('edit-hero_slides')).toBeTruthy();
     expect(within(sheet).queryByTestId('hero-slide-0')).toBeNull();
 
-    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Same in both/);
-    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Different per app/);
+    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
+    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
   });
 
   it('locks body scroll while the sheet is open and restores it on close', async () => {
     document.body.style.overflow = 'auto';
     openHub('/content');
-    await screen.findByTestId('section-card-Hero');
-    fireEvent.click(screen.getByTestId('section-card-Hero'));
+    await screen.findByTestId('task-card-hero');
+    fireEvent.click(screen.getByTestId('task-card-hero'));
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     await waitFor(() => {
@@ -204,8 +204,8 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('moves focus to the close control on open and returns it to the trigger on close', async () => {
     openHub('/content');
-    await screen.findByTestId('section-card-Hero');
-    const trigger = screen.getByTestId('section-card-Hero');
+    await screen.findByTestId('task-card-hero');
+    const trigger = screen.getByTestId('task-card-hero');
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
     fireEvent.click(trigger);
@@ -227,8 +227,8 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('Edit Hero opens slide overview sheet; slide tap opens slide editor; draft state preserved', async () => {
     openHub('/content');
-    await screen.findByTestId('section-card-Hero');
-    fireEvent.click(screen.getByTestId('section-card-Hero'));
+    await screen.findByTestId('task-card-hero');
+    fireEvent.click(screen.getByTestId('task-card-hero'));
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('edit-hero_slides'));

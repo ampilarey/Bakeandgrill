@@ -149,7 +149,7 @@ describe('ContentHub desktop width', () => {
     });
   });
 
-  it('Same in both renders one editor with no tabs', async () => {
+  it('Shared with Website and Order App renders one editor with no tabs', async () => {
     mockBlocks([sharedPhone]);
     render(
       <MemoryRouter initialEntries={['/content?group=Contact']}>
@@ -330,7 +330,7 @@ describe('ContentHub desktop width — mobile unchanged', () => {
     );
 
     await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('section-rail-grid')).toBeTruthy();
+    expect(screen.getByTestId('content-task-landing')).toBeTruthy();
     expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
     expect(screen.queryByTestId('preview-toggle')).toBeNull();

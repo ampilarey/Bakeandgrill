@@ -57,6 +57,8 @@ import { HomeLayoutEditor } from './HomeLayoutEditor';
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
+import { ContentTaskLanding } from './ContentTaskLanding';
+import type { ContentTask } from './taskLandingConfig';
 import { orderSectionNames } from './hubLayoutConfig';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
@@ -426,9 +428,14 @@ export function ContentHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
-  // Sync URL group param → activeGroup (but not mobileEditorOpen)
+  // Sync URL group param → activeGroup (landing when cleared)
   useEffect(() => {
-    if (urlGroup) setActiveGroup(urlGroup);
+    if (urlGroup) {
+      setActiveGroup(urlGroup);
+    } else {
+      setActiveGroup(null);
+      setMobileEditorOpen(false);
+    }
   }, [urlGroup]);
 
   // Per-block scope tabs reset when the active section changes.
@@ -446,7 +453,7 @@ export function ContentHubPage() {
     writeStoredBool(LS_RAIL_COLLAPSED, collapsed);
   };
 
-  // Once blocks load with no active group, default to first section
+  // Landing is the default home — do not auto-jump into the first section.
   const contentBlocks = useMemo(
     () => blocks.filter((block) => !isDeprecatedBlock(block)),
     [blocks],
@@ -456,13 +463,6 @@ export function ContentHubPage() {
     const present = Array.from(new Set(contentBlocks.map((b) => b.group)));
     return orderSectionNames(present);
   }, [contentBlocks]);
-
-  useEffect(() => {
-    if (!loading && contentBlocks.length > 0 && !activeGroup && !urlGroup) {
-      const first = orderedSectionNames[0];
-      if (first) setActiveGroup(first);
-    }
-  }, [loading, contentBlocks, activeGroup, urlGroup, orderedSectionNames]);
 
   const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
@@ -567,30 +567,64 @@ export function ContentHubPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const selectGroup = (next: string) => {
+  const clearActiveGroup = () => {
+    setMobileBlockEditorKey(null);
+    setMobileEditorOpen(false);
+    setActiveGroup(null);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.delete('group');
+      p.delete('section');
+      p.delete('homeApp');
+      return p;
+    }, { replace: true });
+  };
+
+  const selectGroup = (next: string, homeAppHint?: 'website' | 'order_app') => {
+    if (!next) {
+      clearActiveGroup();
+      return;
+    }
     setActiveGroup(next);
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.delete('section');
       p.set('group', next);
+      if (next === 'Homepage' && homeAppHint) {
+        p.set('homeApp', homeAppHint);
+      } else {
+        p.delete('homeApp');
+      }
       return p;
     }, { replace: true });
   };
 
-  const handleSectionSelect = (name: string) => {
-    selectGroup(name);
+  const handleSectionSelect = (name: string, homeAppHint?: 'website' | 'order_app') => {
+    if (!name) {
+      clearActiveGroup();
+      return;
+    }
+    selectGroup(name, homeAppHint);
     setMobileEditorOpen(true);
   };
 
+  const handleTaskSelect = (task: ContentTask) => {
+    if (task.advancedAction === 'history') {
+      success('Open any section, then use ⋯ on a field to view History.');
+      return;
+    }
+    if (task.advancedAction === 'schedule' || task.advancedAction === 'import_export') {
+      setMoreMenuOpen(true);
+      return;
+    }
+    if (!task.group) return;
+    handleSectionSelect(task.group, task.homeAppHint);
+  };
+
+  const homeLayoutApp = searchParams.get('homeApp') === 'order_app' ? 'order_app' as const : 'website' as const;
+
   const handleMobileBack = () => {
-    setMobileBlockEditorKey(null);
-    setMobileEditorOpen(false);
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      p.delete('group');
-      p.delete('section');
-      return p;
-    }, { replace: true });
+    clearActiveGroup();
   };
 
   const publish = async () => {
@@ -853,6 +887,24 @@ export function ContentHubPage() {
     });
   }, [orderedSectionNames, contentBlocks, drafts]);
 
+  const availableGroups = useMemo(
+    () => new Set(orderedSectionNames),
+    [orderedSectionNames],
+  );
+
+  const dirtyGroups = useMemo(
+    () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
+    [railSections],
+  );
+
+  const taskLanding = (
+    <ContentTaskLanding
+      availableGroups={availableGroups}
+      dirtyGroups={dirtyGroups}
+      onSelectTask={handleTaskSelect}
+    />
+  );
+
   // ── Search (label only) ────────────────────────────────────────────────────
 
   const searchResults = useMemo(() => {
@@ -889,28 +941,39 @@ export function ContentHubPage() {
         data-testid={`content-mode-${block.key}`}
       >
         <div className="hub-content-mode-label">
-          {isHero ? 'Website & order app' : 'Content'}
+          {isHero ? 'Where these banners appear' : 'Sharing'}
         </div>
         {isHero ? (
           <p className="hub-content-mode-hint">
-            Same banners everywhere, or different slides on the website vs the order app.
+            Share one set of banners, or customise separately for the website and order app.
+            Customising creates a copy you can edit.
           </p>
-        ) : null}
-        <div className="hub-content-mode-options" role="radiogroup" aria-label="Content mode">
+        ) : (
+          <p className="hub-content-mode-hint">
+            Shared content stays in sync. Customising creates a copy for one app.
+          </p>
+        )}
+        <div className="hub-content-mode-options" role="radiogroup" aria-label="Content sharing">
           {(['same', 'different'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
               role="radio"
               aria-checked={state === mode}
-              aria-label={mode === 'same' ? 'Same in both' : 'Different per app'}
+              aria-label={
+                mode === 'same'
+                  ? 'Shared with Website and Order App'
+                  : 'Customise for Website and Order App'
+              }
               disabled={busy}
               className={`hub-content-mode-option${state === mode ? ' hub-content-mode-option--active' : ''}`}
               data-testid={`content-mode-${block.key}-${mode}`}
               onClick={() => void changeContentMode(block, mode)}
             >
               <span className="hub-content-mode-dot" aria-hidden />
-              {mode === 'same' ? 'Same in both' : 'Different per app'}
+              {mode === 'same'
+                ? 'Shared with Website and Order App'
+                : 'Customise for each app'}
             </button>
           ))}
         </div>
@@ -1300,7 +1363,7 @@ export function ContentHubPage() {
           {emptyOverrideScopes.length === 1 ? ' that app' : ' those apps'}
           {' '}
           will not see the shared content. That is intentional. Clear the empty list
-          or switch to “Same in both” if you meant to use the shared version.
+          or switch to “Use shared version again” if you meant to use the shared version.
         </div>
       </div>
     ) : null;
@@ -1384,7 +1447,7 @@ export function ContentHubPage() {
     // Stage F, so there is nothing left to disagree with it.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
-        <HomeLayoutEditor />
+        <HomeLayoutEditor initialApp={homeLayoutApp} />
       ) : sectionEnableBlocks.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sectionEnableBlocks.map(renderSectionEnable)}
@@ -1635,7 +1698,8 @@ export function ContentHubPage() {
           aria-expanded={moreMenuOpen}
           aria-label="More actions"
         >
-          <MoreHorizontal size={16} /> <span>⋯ More</span>
+          <MoreHorizontal size={16} />
+          <span className="hub-more-trigger-label">More</span>
         </button>
         {moreMenuOpen && !isMobile ? (
           <div className="hub-more-menu" role="menu">
@@ -1698,7 +1762,7 @@ export function ContentHubPage() {
         <PageHeader
           section="System"
           title="Content & Branding"
-          subtitle="Website + order app copy, branding & visuals"
+          subtitle="Edit what customers see — hero, brand, pages, and order app"
           action={headerActions}
         />
 
@@ -1711,14 +1775,7 @@ export function ContentHubPage() {
           /* ── Mobile layout ──────────────────────────────────────────────── */
           <div className="hub-mobile-shell">
             <div className="hub-mobile-overview">
-              {loading ? skeleton : (
-                <SectionRail
-                  variant="grid"
-                  sections={railSections}
-                  active={activeGroup}
-                  onSelect={handleSectionSelect}
-                />
-              )}
+              {loading ? skeleton : taskLanding}
             </div>
 
             {/* Section editor — full-screen sheet (not an inline push) */}
@@ -1853,8 +1910,8 @@ export function ContentHubPage() {
               {loading
                 ? skeleton
                 : activeGroup
-                  ? buildSectionContent(activeGroup, false)
-                  : null}
+                  ? buildSectionContent(activeGroup, true)
+                  : taskLanding}
             </div>
 
             {desktopPreviewOpen ? (

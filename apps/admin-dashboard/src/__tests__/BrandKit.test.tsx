@@ -110,12 +110,12 @@ describe('Brand Kit UI', () => {
       expect(el).toHaveTextContent(card.title);
     }
     expect(screen.queryByText('Phone number')).toBeNull();
-    expect(screen.queryByLabelText(/Different per app/i)).toBeNull();
+    expect(screen.queryByLabelText(/Customise for Website and Order App/i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
-    expect(screen.getByLabelText(/Different per app/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {

@@ -90,7 +90,7 @@ export function SectionRail({
       className={`hub-section-rail${collapsed ? ' hub-section-rail--collapsed' : ''}`}
     >
       <div className="hub-section-rail-header">
-        {!collapsed ? <div className="hub-section-rail-title">Sections</div> : <span />}
+        {!collapsed ? <div className="hub-section-rail-title">Browse</div> : <span />}
         {onToggleCollapsed ? (
           <button
             type="button"
@@ -105,6 +105,21 @@ export function SectionRail({
           </button>
         ) : null}
       </div>
+      <button
+        type="button"
+        data-testid="section-rail-tasks-home"
+        className={`hub-section-rail-row${!active ? ' hub-section-rail-row--active' : ''}`}
+        aria-label="All tasks"
+        aria-pressed={!active}
+        onClick={() => onSelect('')}
+        style={{ marginBottom: 6 }}
+      >
+        {!collapsed ? (
+          <span className="hub-section-rail-row-name" aria-hidden="true">All tasks</span>
+        ) : (
+          <span className="hub-section-rail-row-name" aria-hidden="true">∗</span>
+        )}
+      </button>
       {clusters.map((cluster) => (
         <div key={cluster.cluster} className="hub-section-rail-cluster">
           {!collapsed ? (

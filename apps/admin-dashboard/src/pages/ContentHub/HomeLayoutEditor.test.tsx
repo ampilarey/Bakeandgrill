@@ -138,6 +138,25 @@ describe('HomeLayoutEditor', () => {
     );
   });
 
+  it('shows Showing/Hidden and sharing badges on overview; sharing controls only after Edit', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
+
+    expect(screen.getByTestId('home-layout-visibility-10').textContent).toMatch(/Showing/);
+    expect(screen.getByTestId('home-layout-sharing-10').textContent).toMatch(/Shared with Website and Order App/);
+    expect(screen.queryByRole('button', { name: /Customise for Website/i })).toBeNull();
+
+    fireEvent.click(screen.getByTestId('home-layout-edit-10'));
+    expect(screen.getByRole('button', { name: /Customise for Website/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Use shared version again/i })).toBeTruthy();
+  });
+
+  it('opens on Order App tab when initialApp is order_app', async () => {
+    render(<HomeLayoutEditor initialApp="order_app" />);
+    await waitFor(() => expect(fetchAdminPageBlocks).toHaveBeenCalledWith('order_app'));
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-mode_cards')).toBeInTheDocument());
+  });
+
   it('keeps repeatable types in the add list once they are already used', async () => {
     render(<HomeLayoutEditor />);
     await waitFor(() => expect(screen.getByTestId('home-layout-block-rich_text')).toBeInTheDocument());
@@ -145,11 +164,13 @@ describe('HomeLayoutEditor', () => {
     expect(screen.getByRole('option', { name: 'Text block' })).toBeInTheDocument();
   });
 
-  it('does not offer a content form for named sections', async () => {
+  it('does not offer a content form for named sections (Edit opens sharing only)', async () => {
     render(<HomeLayoutEditor />);
     await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
 
-    expect(screen.queryByTestId('home-layout-edit-10')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('home-layout-edit-10'));
+    expect(screen.queryByLabelText('Heading')).toBeNull();
+    expect(screen.getByTestId('home-layout-editor-panel-10')).toBeTruthy();
   });
 
   it('shouts when a home page has no sections at all', async () => {
