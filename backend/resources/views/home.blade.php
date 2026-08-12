@@ -142,9 +142,9 @@
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
  * §7.2 text-hug: inline + box-decoration-break: clone. Keep normal line-height.
- * Paint a shorter centered band (background-size) so translucent strips don't
- * double up between lines. Do not set inline `background` on the span — that
- * shorthand overrides this band and forces a full-height fill.
+ * Paint a band slightly shorter than the line box, biased downward so bold
+ * glyphs aren't clipped under the baseline — without a full-height fill that
+ * stacks translucent strips. Do not set inline `background` on the span.
  */
 .banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
@@ -158,8 +158,9 @@
     background-color: transparent;
     background-image: linear-gradient(var(--hero-el-bg), var(--hero-el-bg));
     background-repeat: no-repeat;
-    background-size: 100% 0.7em;
-    background-position: center;
+    /* ~lh 1.08: leave a hairline gap; sit low so bottoms aren't bare */
+    background-size: 100% 0.96em;
+    background-position: left 0.1em;
 }
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],

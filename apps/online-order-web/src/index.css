@@ -399,8 +399,8 @@ img.brand-logo--dark { display: none; }
   color: #f0a96a;
 }
 /*
- * §7.2 text-hug: inline + clone; shorter centered band so lines don't double-paint.
- * Inline `background` must not be set on the span (overrides this).
+ * §7.2 text-hug: inline + clone; band biased down so glyph bottoms stay covered
+ * without a full-height fill that stacks. No inline `background` on the span.
  */
 .home-promo-hero__title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .home-promo-hero__sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
@@ -414,8 +414,8 @@ img.brand-logo--dark { display: none; }
   background-color: transparent;
   background-image: linear-gradient(var(--hero-el-bg), var(--hero-el-bg));
   background-repeat: no-repeat;
-  background-size: 100% 0.7em;
-  background-position: center;
+  background-size: 100% 0.96em;
+  background-position: left 0.1em;
 }
 .home-promo-hero__title[data-has-bg="1"][data-bg-full="1"],
 .home-promo-hero__sub[data-has-bg="1"][data-bg-full="1"] {
