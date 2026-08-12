@@ -158,9 +158,9 @@
     background-color: transparent;
     background-image: linear-gradient(var(--hero-el-bg), var(--hero-el-bg));
     background-repeat: no-repeat;
-    /* ~lh 1.08: leave a hairline gap; sit low so bottoms aren't bare */
-    background-size: 100% 0.96em;
-    background-position: left 0.1em;
+    /* ~lh 1.08: sit a touch lower (less empty above glyphs) still cover baseline */
+    background-size: 100% 0.93em;
+    background-position: left 0.15em;
 }
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],
