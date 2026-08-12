@@ -36,13 +36,13 @@ class PageBlockValidationTest extends TestCase
         Sanctum::actingAs($this->owner, ['staff']);
     }
 
-    public function test_rejects_block_type_not_permitted_in_app(): void
+    public function test_rejects_deprecated_promo_carousel_on_create(): void
     {
         $this->postJson('/api/admin/page-blocks', [
-            'app' => 'website',
+            'app' => 'order_app',
             'page' => 'home',
             'version' => 0,
-            'block_type' => 'mode_cards',
+            'block_type' => 'promo_carousel',
         ])->assertStatus(422);
     }
 
@@ -56,7 +56,7 @@ class PageBlockValidationTest extends TestCase
         ])->assertStatus(422);
     }
 
-    public function test_cannot_delete_or_disable_non_removable_mode_cards(): void
+    public function test_mode_cards_can_be_disabled_or_removed_with_safe_customer_fallback(): void
     {
         $block = PageBlock::create([
             'app' => 'order_app',
@@ -68,34 +68,21 @@ class PageBlockValidationTest extends TestCase
             'settings' => [],
         ]);
 
-        $this->deleteJson("/api/admin/page-blocks/{$block->id}", [
-            'app' => 'order_app',
-            'page' => 'home',
-            'version' => 0,
-        ])
-            ->assertStatus(422)
-            ->assertJsonFragment(['block_type' => ['These cards are the only way into ordering. Removing them would remove checkout.']]);
-
-        $this->putJson("/api/admin/page-blocks/{$block->id}", [
+        $disable = $this->putJson("/api/admin/page-blocks/{$block->id}", [
             'app' => 'order_app',
             'page' => 'home',
             'version' => 0,
             'is_enabled' => false,
-        ])->assertStatus(422);
+        ])->assertOk();
+        $this->assertFalse((bool) $disable->json('block.is_enabled'));
 
-        $this->putJson('/api/admin/page-blocks/reorder', [
-            'app' => 'order_app',
-            'page' => 'home',
-            'version' => 0,
-            'blocks' => [
-                ['id' => $block->id, 'position' => 0, 'is_enabled' => false],
-            ],
-        ])->assertStatus(422);
-
-        $this->assertTrue($block->fresh()->is_enabled);
+        // Soft warning only — disable is allowed (customer fallback keeps Home usable).
+        $this->assertNotEmpty(
+            \App\Domains\Content\Blocks\BlockTypeRegistry::get('mode_cards')?->flowWarning,
+        );
     }
 
-    public function test_cannot_delete_brand_footer(): void
+    public function test_brand_footer_can_be_removed(): void
     {
         $block = PageBlock::create([
             'app' => 'website',
@@ -111,7 +98,7 @@ class PageBlockValidationTest extends TestCase
             'app' => 'website',
             'page' => 'home',
             'version' => 0,
-        ])->assertStatus(422);
+        ])->assertSuccessful();
     }
 
     public function test_settings_must_match_schema_when_defined(): void

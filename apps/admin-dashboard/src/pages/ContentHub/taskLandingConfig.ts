@@ -79,7 +79,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
     tasks: [
       {
         id: 'brand_profile',
-        title: 'Brand profile & language',
+        title: 'Business profile & language',
         description: 'Logo, colours, site name, and language-facing brand assets',
         icon: Palette,
         group: 'Branding',
@@ -97,7 +97,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'website_header',
         title: 'Website header',
-        description: 'Header chrome — prayer times stay fixed; edit announcement & brand separately',
+        description: 'Header chrome — prayer placement is controlled from Home Components',
         icon: PanelTop,
         group: 'Announcements',
         placements: ['Website header'],

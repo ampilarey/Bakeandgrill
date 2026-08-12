@@ -629,6 +629,8 @@ class PageBlockController extends Controller
             'non_removable_reason' => $def?->nonRemovableReason,
             'supports_shared_content' => $def?->supportsSharedContent ?? false,
             'allows_multiple' => $def?->allowsMultiple ?? false,
+            'flow_warning' => $def?->flowWarning,
+            'dynamic_source' => $def?->dynamicSource,
             'unknown' => $def === null,
         ];
     }
@@ -647,6 +649,9 @@ class PageBlockController extends Controller
             'allows_multiple' => $d->allowsMultiple,
             'settings_schema' => $d->settingsSchema,
             'settings_defaults' => $d->settingsDefaults,
+            'deprecated' => $d->deprecated,
+            'flow_warning' => $d->flowWarning,
+            'dynamic_source' => $d->dynamicSource,
         ];
     }
 

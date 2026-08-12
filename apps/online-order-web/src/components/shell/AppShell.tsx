@@ -14,6 +14,7 @@ import { FloatingCartBar } from './FloatingCartBar';
 import { TopNav } from './TopNav';
 import { DESKTOP_SHELL_MQ } from './navTabs';
 import { safePublicUrl } from '../../utils/safePublicUrl';
+import { useHomeChrome } from '../../hooks/useHomeChrome';
 
 function AppShellChrome() {
   const { t } = useLanguage();
@@ -22,10 +23,11 @@ function AppShellChrome() {
   const { cart } = useCart();
   const location = useLocation();
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
+  const chrome = useHomeChrome();
   const cartCount = cart.reduce((n, e) => n + e.quantity, 0);
   const showCartChrome = cartCount > 0 && !hideNav && !isEventFlowPath(location.pathname);
 
-  const annEnabled = s.announcement_enabled === 'true';
+  const annEnabled = s.announcement_enabled === 'true' && chrome.announcementHeader;
   const annText = (s.announcement_text || '').trim();
   const annUrl = safePublicUrl(s.announcement_url || '');
   const annStyle = s.announcement_style || 'info';

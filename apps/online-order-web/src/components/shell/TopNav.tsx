@@ -8,6 +8,7 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useActiveOrder } from '../../hooks/useActiveOrder';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { SHELL_NAV_TABS } from './navTabs';
+import { useHomeChrome } from '../../hooks/useHomeChrome';
 
 /** Local phone digits only (AuthContext stores 7-digit local when available). */
 function localPhoneDigits(value: string | null): string | null {
@@ -43,6 +44,7 @@ export function TopNav() {
   const { isAuthenticated, customerName } = useAuth();
   const location = useLocation();
   const { hasActiveOrder } = useActiveOrder();
+  const chrome = useHomeChrome();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -112,9 +114,11 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="top-nav__prayer">
-          <PrayerBar />
-        </div>
+        {chrome.prayerHeaderDesktop ? (
+          <div className="top-nav__prayer" data-home-chrome="prayer_bar" data-placement="header">
+            <PrayerBar />
+          </div>
+        ) : null}
 
         <div className="top-nav__actions">
           {isAuthenticated ? (

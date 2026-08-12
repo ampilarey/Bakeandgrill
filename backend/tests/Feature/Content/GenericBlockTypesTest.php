@@ -115,7 +115,7 @@ class GenericBlockTypesTest extends TestCase
 
     // ── App permissions ──────────────────────────────────────────────────────
 
-    public function test_faq_list_cannot_be_added_to_the_order_app(): void
+    public function test_faq_list_can_be_added_to_the_order_app(): void
     {
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'order_app',
@@ -123,12 +123,11 @@ class GenericBlockTypesTest extends TestCase
             'version' => 0,
             'block_type' => 'faq_list',
             'settings' => ['items' => [['question' => 'Q', 'answer' => 'A']]],
-        ])->assertStatus(422)->assertJsonValidationErrors('block_type');
-
-        $this->assertSame(0, PageBlock::query()->where('block_type', 'faq_list')->count());
+        ])->assertSuccessful()
+            ->assertJsonPath('block.block_type', 'faq_list');
     }
 
-    public function test_a_rogue_faq_row_is_not_served_to_the_order_app(): void
+    public function test_faq_list_is_served_to_the_order_app_when_enabled(): void
     {
         PageBlock::create([
             'app' => 'order_app',
@@ -145,7 +144,7 @@ class GenericBlockTypesTest extends TestCase
             ->pluck('block_type')
             ->all();
 
-        $this->assertNotContains('faq_list', $types);
+        $this->assertContains('faq_list', $types);
     }
 
     // ── Settings schema ──────────────────────────────────────────────────────

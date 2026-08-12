@@ -35,18 +35,30 @@ import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
 import { renderGenericBlock } from '../components/home/blocks';
+import { ServiceBanner } from '../components/ServiceBanner';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
 /**
- * page_blocks is the only source of the home layout. When it is empty or the
- * request fails we render the blocks the owner is not allowed to remove — the
- * mode cards and the brand footer — so the page is never blank. The admin home
- * layout editor reports an empty layout loudly.
+ * Safe fallback when page_blocks is empty or the request fails — never blank
+ * the page. Owners can turn these off in a real layout; this is only a net.
  */
 const REQUIRED_BLOCKS: PageBlockRow[] = [
   { id: -1, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
   { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: {} },
 ];
+
+function deviceVisible(settings: Record<string, unknown> | undefined, isDesktop: boolean): boolean {
+  const key = isDesktop ? 'show_desktop' : 'show_mobile';
+  const v = settings?.[key];
+  if (v === undefined || v === null) return true;
+  return Boolean(v);
+}
+
+function placementOf(settings: Record<string, unknown> | undefined, isDesktop: boolean): 'home' | 'header' {
+  const key = isDesktop ? 'placement_desktop' : 'placement_mobile';
+  const v = settings?.[key];
+  return v === 'header' ? 'header' : 'home';
+}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -243,11 +255,6 @@ export function HomePage() {
   };
 
   const blocks = pageBlocks ?? REQUIRED_BLOCKS;
-  const openingStatusEnabled = blocks.some((b) => b.block_type === 'opening_status' && b.is_enabled);
-  const heroEnabled = blocks.some(
-    (b) => b.is_enabled && (b.block_type === 'hero' || b.block_type === 'promo_carousel'),
-  );
-  const heroStatusSlot = openingStatusEnabled && heroEnabled ? statusBadge : null;
 
   const reviewSection = reviews.length > 0 ? (
     <section
@@ -289,79 +296,81 @@ export function HomePage() {
     </section>
   ) : null;
 
-  const officeBlock = officeOrdersEnabled ? (
-    <section
-      key="office-catering"
-      style={{
-        borderTop: '1px solid var(--color-border)',
-        padding: '2rem var(--page-gutter)',
-        background: 'var(--color-surface-alt)',
-      }}
-    >
-      <div
+  const officeBlock = (key: string) =>
+    officeOrdersEnabled ? (
+      <section
+        key={key}
+        data-home-block="office_orders"
         style={{
-          maxWidth: '520px',
-          margin: '0 auto',
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-2xl)',
-          padding: '1.5rem',
+          borderTop: '1px solid var(--color-border)',
+          padding: '2rem var(--page-gutter)',
+          background: 'var(--color-surface-alt)',
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-          <h2
-            style={{
-              fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
-              fontWeight: 800,
-              color: 'var(--color-dark)',
-              margin: '0 0 0.5rem',
-            }}
-          >
-            {officeHeadline}
-          </h2>
-          <p
-            style={{
-              fontSize: '0.875rem',
-              color: 'var(--color-text-muted)',
-              margin: 0,
-              lineHeight: 1.55,
-            }}
-          >
-            {officeSubtext}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate('/events')}
+        <div
           style={{
-            width: '100%',
-            padding: '0.875rem',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '12px',
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
+            maxWidth: '520px',
+            margin: '0 auto',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-2xl)',
+            padding: '1.5rem',
           }}
         >
-          Plan your event
-        </button>
-      </div>
-    </section>
-  ) : null;
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <h2
+              style={{
+                fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+                fontWeight: 800,
+                color: 'var(--color-dark)',
+                margin: '0 0 0.5rem',
+              }}
+            >
+              {officeHeadline}
+            </h2>
+            <p
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--color-text-muted)',
+                margin: 0,
+                lineHeight: 1.55,
+              }}
+            >
+              {officeSubtext}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/events')}
+            style={{
+              width: '100%',
+              padding: '0.875rem',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Plan your event
+          </button>
+        </div>
+      </section>
+    ) : null;
 
   const nodes: ReactNode[] = [];
-  let chipsPlaced = false;
-  let trustPlaced = false;
-  let officePlaced = false;
 
   for (const block of blocks) {
     if (!block.is_enabled) continue;
-    const key = `${block.block_type}-${block.id}-${block.position}`;
+    if (!deviceVisible(block.settings, isDesktopShell)) continue;
 
-    switch (block.block_type) {
+    const key = `${block.block_type}-${block.id}-${block.position}`;
+    const type = block.block_type === 'promo_carousel' ? 'hero' : block.block_type;
+
+    switch (type) {
       case 'greeting':
         nodes.push(
           <GreetingHeader
@@ -372,22 +381,48 @@ export function HomePage() {
           />,
         );
         break;
-      case 'prayer_bar':
-        if (!isDesktopShell) {
-          nodes.push(
-            <div key={key} className="home-prayer-wrap">
-              <PrayerBar />
-            </div>,
-          );
-        }
+      case 'prayer_bar': {
+        if (placementOf(block.settings, isDesktopShell) !== 'home') break;
+        nodes.push(
+          <div key={key} className="home-prayer-wrap" data-home-block="prayer_bar">
+            <PrayerBar />
+          </div>,
+        );
+        break;
+      }
+      case 'announcement': {
+        if (placementOf(block.settings, isDesktopShell) !== 'home') break;
+        const annText = (s.announcement_text || '').trim();
+        if (s.announcement_enabled !== 'true' || !annText) break;
+        nodes.push(
+          <div
+            key={key}
+            data-home-block="announcement"
+            role="status"
+            style={{
+              width: '100%',
+              padding: '0.55rem 1.25rem',
+              background: 'var(--color-primary-light)',
+              borderBottom: '1px solid var(--color-border)',
+              color: 'var(--color-primary)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
+            {annText}
+          </div>,
+        );
+        break;
+      }
+      case 'service_availability':
+        nodes.push(
+          <div key={key} data-home-block="service_availability">
+            <ServiceBanner />
+          </div>,
+        );
         break;
       case 'hero':
-      case 'promo_carousel':
-        // Phone: chips sit between prayer and hero (historical). Desktop: chips after hero.
-        if (!isDesktopShell && !chipsPlaced) {
-          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />);
-          chipsPlaced = true;
-        }
         nodes.push(
           <PromoCarousel
             key={key}
@@ -397,21 +432,23 @@ export function HomePage() {
             siteName={siteName}
             fallbackTitle={text('home_hero_fallback_title', '')}
             fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
-            statusSlot={heroStatusSlot}
+            statusSlot={null}
           />,
         );
-        if (isDesktopShell && !chipsPlaced) {
-          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} />);
-          chipsPlaced = true;
-        }
+        break;
+      case 'stat_chips':
+        nodes.push(
+          <StatChipsRow
+            key={key}
+            {...chipsProps}
+            hideLoyalty={!isDesktopShell}
+          />,
+        );
         break;
       case 'opening_status':
-        // Shown inside the hero statusSlot while the hero is on (visual
-        // parity with the pre-builder home). Standalone only when the hero
-        // is off, so turning the hero off never removes the open/closed badge.
-        if (!heroEnabled && statusBadge) {
+        if (statusBadge) {
           nodes.push(
-            <div key={key} className="home-standalone-status" data-testid="home-standalone-status">
+            <div key={key} className="home-standalone-status" data-testid="home-standalone-status" data-home-block="opening_status">
               {statusBadge}
             </div>,
           );
@@ -419,10 +456,9 @@ export function HomePage() {
         break;
       case 'mode_cards':
         nodes.push(<ModeEntryCards key={key} />);
-        if (!trustPlaced) {
-          nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
-          trustPlaced = true;
-        }
+        break;
+      case 'trust_strip':
+        nodes.push(<TrustStrip key={key} items={trustItems} />);
         break;
       case 'specials':
         nodes.push(<SpecialsCarousel key={key} offers={offers} apiOrigin={API_ORIGIN} />);
@@ -440,6 +476,60 @@ export function HomePage() {
           />,
         );
         break;
+      case 'featured':
+      case 'proof':
+      case 'cta':
+      case 'location':
+        nodes.push(
+          <section
+            key={key}
+            data-home-block={type}
+            style={{
+              padding: '1.25rem var(--page-gutter)',
+              maxWidth: 'var(--layout-max)',
+              margin: '0 auto',
+            }}
+          >
+            <a
+              href={type === 'cta' || type === 'featured' ? '/menu' : type === 'location' ? '/contact' : '/'}
+              style={{ fontWeight: 700, color: 'var(--color-primary)' }}
+            >
+              {type === 'featured' && (text('home_featured_title', 'Featured items') || 'Featured items')}
+              {type === 'proof' && (text('home_proof_eyebrow', 'Why guests choose us') || 'Why guests choose us')}
+              {type === 'cta' && (text('cta_band_headline', 'Hungry?') || 'Hungry?')}
+              {type === 'location' && (text('home_visit_card_title', 'Visit us') || 'Visit us')}
+            </a>
+          </section>,
+        );
+        break;
+      case 'events_band':
+        nodes.push(
+          <section
+            key={key}
+            data-home-block="events_band"
+            style={{
+              padding: '2rem var(--page-gutter)',
+              borderTop: '1px solid var(--color-border)',
+              textAlign: 'center',
+            }}
+          >
+            <h2 style={{ fontWeight: 800, margin: '0 0 0.5rem' }}>
+              {text('events_section_headline', 'Events & Catering')}
+            </h2>
+            <p style={{ color: 'var(--color-text-muted)', margin: '0 0 1rem' }}>
+              {text('events_section_blurb', '')}
+            </p>
+            <button type="button" onClick={() => navigate('/events')} style={{ fontWeight: 700 }}>
+              {text('events_section_plan_cta', 'Plan your event')}
+            </button>
+          </section>,
+        );
+        break;
+      case 'office_orders': {
+        const node = officeBlock(key);
+        if (node) nodes.push(node);
+        break;
+      }
       case 'reorder_strip':
         nodes.push(
           <ReorderStrip
@@ -450,16 +540,8 @@ export function HomePage() {
             onReorder={(order) => void handleReorder(order)}
           />,
         );
-        if (!officePlaced && officeBlock) {
-          nodes.push(officeBlock);
-          officePlaced = true;
-        }
         break;
       case 'brand_footer':
-        if (!officePlaced && officeBlock) {
-          nodes.push(officeBlock);
-          officePlaced = true;
-        }
         nodes.push(
           <BrandFooter
             key={key}
@@ -474,12 +556,8 @@ export function HomePage() {
         );
         break;
       default: {
-        // Generic content blocks (text, image, video, …). `faq_list` is
-        // website-only and is deliberately not handled here, so a row saved
-        // for the wrong app renders nothing. Anything else is an unknown type
-        // and also renders nothing — never white-screen the home page.
         const generic = renderGenericBlock(
-          block.block_type,
+          type,
           key,
           block.settings ?? {},
           block.media ?? null,
@@ -490,16 +568,6 @@ export function HomePage() {
       }
     }
   }
-
-  if (!chipsPlaced) {
-    nodes.unshift(
-      isDesktopShell
-        ? <StatChipsRow key="stat-chips" {...chipsProps} />
-        : <StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />,
-    );
-  }
-  if (!trustPlaced) nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
-  if (!officePlaced && officeBlock) nodes.push(officeBlock);
 
   return <div className="home-page">{nodes}</div>;
 }

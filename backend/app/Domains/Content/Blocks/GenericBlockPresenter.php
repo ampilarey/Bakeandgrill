@@ -26,6 +26,8 @@ final class GenericBlockPresenter
         'faq_list',
     ];
 
+    // faq_list remains generic on both apps.
+
     /** Fields sanitised as rich text (an allow-list of markup survives). */
     private const RICH_FIELDS = ['body', 'text'];
 

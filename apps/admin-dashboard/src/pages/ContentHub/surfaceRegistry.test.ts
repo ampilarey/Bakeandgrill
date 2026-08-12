@@ -7,28 +7,31 @@ import {
   heroPromoConflict,
 } from './surfaceRegistry';
 import { CONTENT_TASK_CLUSTERS } from './taskLandingConfig';
+import { HOME_COMPONENT_LIBRARY } from './homeComponentLibrary';
 
 describe('surfaceRegistry', () => {
-  it('marks website brand_footer as managed elsewhere', () => {
-    const surface = blockSurfaceFor('brand_footer', 'website');
-    expect(surface.kind).toBe('managed_elsewhere');
-    expect(surface.statusHint).toBe('Managed elsewhere');
-    expect(surface.placements).toContain('Website footer');
+  it('treats brand_footer as a real Home component on both apps', () => {
+    const website = blockSurfaceFor('brand_footer', 'website');
+    const order = blockSurfaceFor('brand_footer', 'order_app');
+    expect(website.kind).toBe('reorderable_block');
+    expect(website.placements).toContain('Website home');
+    expect(order.placements).toContain('Order App footer');
   });
 
-  it('keeps order brand_footer editable on Order App', () => {
-    const surface = blockSurfaceFor('brand_footer', 'order_app');
-    expect(surface.placements).toContain('Order App footer');
-    expect(surface.kind).toBe('fixed_editable');
+  it('does not list injected Home modules', () => {
+    expect(WEBSITE_HOME_FIXED_MODULES.some((m) => m.id === 'website_trust_strip')).toBe(false);
+    expect(ORDER_HOME_FIXED_MODULES.some((m) => m.id === 'order_stat_chips')).toBe(false);
+    expect(ORDER_HOME_FIXED_MODULES).toHaveLength(0);
   });
 
-  it('documents prayer placement split', () => {
-    expect(WEBSITE_HOME_FIXED_MODULES.some((m) => m.id === 'website_prayer_header')).toBe(true);
-    expect(ORDER_HOME_FIXED_MODULES.some((m) => m.id === 'order_prayer_desktop')).toBe(true);
-    expect(ORDER_HOME_FIXED_MODULES.some((m) => m.id === 'order_prayer_phone')).toBe(true);
-    const phone = ORDER_HOME_FIXED_MODULES.find((m) => m.id === 'order_prayer_phone')!;
-    expect(phone.placements).toEqual(['Order App phone home']);
-    expect(phone.note).toMatch(/header-owned/i);
+  it('prayer is a dual-app Home component with header placements', () => {
+    const prayer = blockSurfaceFor('prayer_bar', 'website');
+    expect(prayer.placements).toEqual(expect.arrayContaining([
+      'Website header',
+      'Website home',
+      'Order App desktop header',
+      'Order App phone home',
+    ]));
   });
 
   it('detects hero + promo carousel conflict', () => {
@@ -36,12 +39,13 @@ describe('surfaceRegistry', () => {
     expect(heroPromoConflict(['hero'])).toBe(false);
   });
 
-  it('website ignores order-only blocks and website ignores brand_footer render', () => {
-    expect(blockRenderedOnApp('prayer_bar', 'website')).toBe(false);
-    expect(blockRenderedOnApp('brand_footer', 'website')).toBe(false);
-    expect(blockRenderedOnApp('featured', 'order_app')).toBe(false);
-    expect(blockRenderedOnApp('hero', 'website')).toBe(true);
-    expect(blockRenderedOnApp('prayer_bar', 'order_app')).toBe(true);
+  it('every Home component renders on both apps', () => {
+    for (const comp of HOME_COMPONENT_LIBRARY) {
+      expect(blockRenderedOnApp(comp.type, 'website')).toBe(true);
+      expect(blockRenderedOnApp(comp.type, 'order_app')).toBe(true);
+    }
+    expect(blockRenderedOnApp('prayer_bar', 'website')).toBe(true);
+    expect(blockRenderedOnApp('featured', 'order_app')).toBe(true);
   });
 });
 
@@ -52,9 +56,9 @@ describe('Content task surface map IA', () => {
     expect(order.tasks.some((t) => t.id === 'status_banners' && t.group === 'Status banners')).toBe(true);
   });
 
-  it('renames technical details to Brand profile & language under Global', () => {
+  it('renames technical details to Business profile & language under Global', () => {
     const global = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'global')!;
-    expect(global.tasks.some((t) => t.id === 'brand_profile')).toBe(true);
+    expect(global.tasks.some((t) => t.id === 'brand_profile' && /Business profile/i.test(t.title))).toBe(true);
     expect(CONTENT_TASK_CLUSTERS.flatMap((c) => c.tasks).some((t) => /Technical content/i.test(t.title))).toBe(false);
   });
 
