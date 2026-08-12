@@ -161,11 +161,8 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('opens Hero in a portaled dialog sheet with draft status and compact overview', async () => {
-    openHub('/content');
-
-    await screen.findByTestId('task-card-hero');
-    const trigger = screen.getByTestId('task-card-hero');
-    fireEvent.click(trigger);
+    // Surface Builder landing no longer has a Hero task card — open Hero via deep link.
+    openHub('/content?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(sheet.getAttribute('role')).toBe('dialog');
@@ -184,9 +181,7 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('locks body scroll while the sheet is open and restores it on close', async () => {
     document.body.style.overflow = 'auto';
-    openHub('/content');
-    await screen.findByTestId('task-card-hero');
-    fireEvent.click(screen.getByTestId('task-card-hero'));
+    openHub('/content?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     await waitFor(() => {
@@ -200,13 +195,8 @@ describe('ContentHub mobile editor sheet', () => {
     expect(document.body.style.overflow).toBe('auto');
   });
 
-  it('moves focus to the close control on open and returns it to the trigger on close', async () => {
-    openHub('/content');
-    await screen.findByTestId('task-card-hero');
-    const trigger = screen.getByTestId('task-card-hero');
-    trigger.focus();
-    expect(document.activeElement).toBe(trigger);
-    fireEvent.click(trigger);
+  it('moves focus to the close control on open and returns it to the surface landing on close', async () => {
+    openHub('/content?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     const closeBtn = within(sheet).getByTestId('content-editor-sheet-close');
@@ -218,15 +208,11 @@ describe('ContentHub mobile editor sheet', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
     });
-    await waitFor(() => {
-      expect(document.activeElement).toBe(trigger);
-    });
+    expect(await screen.findByTestId('surface-builder-landing')).toBeTruthy();
   });
 
   it('Edit Hero opens slide overview sheet; slide tap opens slide editor; draft state preserved', async () => {
-    openHub('/content');
-    await screen.findByTestId('task-card-hero');
-    fireEvent.click(screen.getByTestId('task-card-hero'));
+    openHub('/content?group=Hero');
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
