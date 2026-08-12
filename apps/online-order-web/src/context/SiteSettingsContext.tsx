@@ -88,6 +88,9 @@ export interface SiteSettings {
   order_payment_compliance?: string;
   order_auth_privacy_line?: string;
   order_home_reviews_title?: string;
+  order_home_greeting_hello?: string;
+  order_home_greeting_named?: string;
+  order_home_greeting_sub?: string;
   order_mode_delivery_hint?: string;
   order_mode_pickup_hint?: string;
   order_mode_dine_in_hint?: string;

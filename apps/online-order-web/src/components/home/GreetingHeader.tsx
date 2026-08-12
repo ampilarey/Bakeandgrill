@@ -29,7 +29,7 @@ export function GreetingHeader({
   chrome = 'phone',
 }: Props) {
   const { t } = useLanguage();
-  const { settings: s } = useSiteSettingsContext();
+  const { settings: s, text } = useSiteSettingsContext();
   const siteName = s.site_name || 'Bake & Grill';
   const logoSrc = s.logo || '/logo.png';
   const phone =
@@ -40,9 +40,12 @@ export function GreetingHeader({
     isAuthenticated && customerName && !isPhoneLabel(customerName)
       ? customerName.trim()
       : null;
+  const hello = text('order_home_greeting_hello', t('home.greeting_hello'));
+  const namedTemplate = text('order_home_greeting_named', t('home.greeting_named'));
+  const subtitle = text('order_home_greeting_sub', t('home.greeting_sub'));
   const title = displayName
-    ? t('home.greeting_named').replace('{name}', displayName)
-    : t('home.greeting_hello');
+    ? namedTemplate.replace('{name}', displayName)
+    : hello;
 
   return (
     <section
@@ -136,7 +139,7 @@ export function GreetingHeader({
           color: 'var(--color-text-muted)',
         }}
       >
-        {t('home.greeting_sub')}
+        {subtitle}
       </p>
     </section>
   );
