@@ -345,7 +345,7 @@ describe('ContentHub desktop width — mobile unchanged', () => {
     );
 
     await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('content-task-landing')).toBeTruthy();
+    expect(screen.getByTestId('surface-builder-landing')).toBeTruthy();
     expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
     expect(screen.queryByTestId('preview-toggle')).toBeNull();

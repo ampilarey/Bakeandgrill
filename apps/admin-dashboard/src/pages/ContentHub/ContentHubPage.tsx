@@ -57,8 +57,10 @@ import { HomeLayoutEditor } from './HomeLayoutEditor';
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
-import { ContentTaskLanding } from './ContentTaskLanding';
+import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
 import type { ContentTask } from './taskLandingConfig';
+import { parseSurfaceId, countBlocksOnSurface, surfaceId, type SurfaceRecord } from './surfaceCatalog';
+import { fetchAdminPageBlocks } from '../../api/pageBlocks';
 import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
@@ -347,6 +349,8 @@ export function ContentHubPage() {
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   /** Homepage layout draft — merged into global publish status. */
   const [layoutDraft, setLayoutDraft] = useState(false);
+  /** Component counts per surface for the landing overview. */
+  const [surfaceCounts, setSurfaceCounts] = useState<Record<string, number>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -438,6 +442,34 @@ export function ContentHubPage() {
     return () => { loadGen.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
+
+  // Surface component counts for the landing tree.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [w, o] = await Promise.all([
+          fetchAdminPageBlocks('website'),
+          fetchAdminPageBlocks('order_app'),
+        ]);
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const app of ['website', 'order_app'] as const) {
+          const blocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
+          for (const device of ['desktop', 'mobile'] as const) {
+            for (const slot of ['header', 'home', 'footer', 'bottom_navigation'] as const) {
+              if (device === 'desktop' && slot === 'bottom_navigation') continue;
+              counts[surfaceId(app, device, slot)] = countBlocksOnSurface(blocks, device, slot);
+            }
+          }
+        }
+        setSurfaceCounts(counts);
+      } catch {
+        if (!cancelled) setSurfaceCounts({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Sync URL group param → activeGroup (landing when cleared).
   // Legacy ?group=Pages must never open the mixed 48-block editor.
@@ -609,11 +641,12 @@ export function ContentHubPage() {
       p.delete('group');
       p.delete('section');
       p.delete('homeApp');
+      p.delete('surface');
       return p;
     }, { replace: true });
   };
 
-  const selectGroup = (next: string, homeAppHint?: 'website' | 'order_app') => {
+  const selectGroup = (next: string, homeAppHint?: 'website' | 'order_app', surface?: string) => {
     if (!next) {
       clearActiveGroup();
       return;
@@ -628,17 +661,26 @@ export function ContentHubPage() {
       } else {
         p.delete('homeApp');
       }
+      if (next === 'Homepage' && surface) {
+        p.set('surface', surface);
+      } else {
+        p.delete('surface');
+      }
       return p;
     }, { replace: true });
   };
 
-  const handleSectionSelect = (name: string, homeAppHint?: 'website' | 'order_app') => {
+  const handleSectionSelect = (name: string, homeAppHint?: 'website' | 'order_app', surface?: string) => {
     if (!name) {
       clearActiveGroup();
       return;
     }
-    selectGroup(name, homeAppHint);
+    selectGroup(name, homeAppHint, surface);
     setMobileEditorOpen(true);
+  };
+
+  const handleSurfaceSelect = (surface: SurfaceRecord) => {
+    handleSectionSelect('Homepage', surface.app, surface.id);
   };
 
   const handleTaskSelect = (task: ContentTask) => {
@@ -655,6 +697,7 @@ export function ContentHubPage() {
   };
 
   const homeLayoutApp = searchParams.get('homeApp') === 'order_app' ? 'order_app' as const : 'website' as const;
+  const surfaceFilter = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
 
   const handleMobileBack = () => {
     clearActiveGroup();
@@ -916,20 +959,16 @@ export function ContentHubPage() {
     });
   }, [orderedSectionNames, contentBlocks, drafts]);
 
-  const availableGroups = useMemo(
-    () => new Set(orderedSectionNames),
-    [orderedSectionNames],
-  );
-
   const dirtyGroups = useMemo(
     () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
     [railSections],
   );
 
   const taskLanding = (
-    <ContentTaskLanding
-      availableGroups={availableGroups}
+    <SurfaceBuilderLanding
+      surfaceCounts={surfaceCounts}
       dirtyGroups={dirtyGroups}
+      onSelectSurface={handleSurfaceSelect}
       onSelectTask={handleTaskSelect}
     />
   );
@@ -1555,6 +1594,7 @@ export function ContentHubPage() {
       sectionName === 'Homepage' ? (
         <HomeLayoutEditor
           initialApp={homeLayoutApp}
+          surfaceFilter={surfaceFilter ?? undefined}
           onLayoutDraftChange={setLayoutDraft}
         />
       ) : sectionEnableBlocks.length > 0 ? (

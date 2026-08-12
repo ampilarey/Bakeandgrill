@@ -187,4 +187,20 @@ describe('HomeLayoutEditor', () => {
       expect.objectContaining({ app: 'order_app', block_type: 'featured' }),
     ));
   });
+
+  it('filters components when surfaceFilter is set', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+
+    expect(screen.getByTestId('home-layout-surface-breadcrumb').textContent).toMatch(/Website · Mobile · Header/);
+    expect(screen.getByTestId('home-layout-block-prayer_bar')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-block-announcement')).toBeTruthy();
+    expect(screen.queryByTestId('home-layout-block-mode_cards')).toBeNull();
+    expect(screen.queryByTestId('home-layout-tab-website')).toBeNull();
+    expect(screen.getByTestId('home-layout-surface-app-lock')).toBeTruthy();
+  });
 });

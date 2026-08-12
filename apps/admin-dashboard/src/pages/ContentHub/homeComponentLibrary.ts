@@ -128,9 +128,22 @@ export const HOME_COMPONENT_LIBRARY: LibraryComponent[] = [
   {
     type: 'brand_footer',
     name: 'Brand footer / Home footer',
-    summary: 'Home footer with chat links and thanks line.',
+    summary: 'Compact Home footer with chat links and thanks line.',
     supportsSharedContent: true,
-    flowWarning: 'Hiding this removes Home contact shortcuts. Site-wide legal footer is separate.',
+    flowWarning: 'Hiding this removes Home contact shortcuts. Full footer surface is separate.',
+  },
+  {
+    type: 'site_footer',
+    name: 'Full footer',
+    summary: 'Full branding/contact/legal footer — not the same as bottom navigation.',
+    supportsSharedContent: true,
+    dynamicSource: 'Footer content keys + opening-hours service',
+  },
+  {
+    type: 'bottom_nav',
+    name: 'Bottom navigation',
+    summary: 'Mobile tab bar (Home, Menu, Orders, …). Separate from Footer.',
+    supportsSharedContent: false,
   },
   { type: 'rich_text', name: 'Custom text', summary: 'Heading and paragraph.', supportsSharedContent: true, allowsMultiple: true },
   { type: 'image', name: 'Custom image', summary: 'One picture with optional caption.', supportsSharedContent: true, allowsMultiple: true },
@@ -148,11 +161,31 @@ export function instanceStatus(block: { is_enabled: boolean } | undefined): AppI
   return block.is_enabled ? 'Added' : 'Hidden';
 }
 
+function placementSlotLabel(slot: string): string {
+  switch (slot) {
+    case 'header':
+      return 'header';
+    case 'footer':
+      return 'footer';
+    case 'bottom_navigation':
+      return 'bottom nav';
+    case 'home':
+    default:
+      return 'home';
+  }
+}
+
+function readPlacement(settings: Record<string, unknown> | undefined, key: string): string {
+  const v = settings?.[key];
+  if (v === 'header' || v === 'home' || v === 'footer' || v === 'bottom_navigation') return v;
+  return 'home';
+}
+
 export function placementLabels(settings: Record<string, unknown> | undefined): string[] {
   const showDesk = settings?.show_desktop !== false;
   const showMob = settings?.show_mobile !== false;
-  const placeDesk = settings?.placement_desktop === 'header' ? 'header' : 'home';
-  const placeMob = settings?.placement_mobile === 'header' ? 'header' : 'home';
+  const placeDesk = placementSlotLabel(readPlacement(settings, 'placement_desktop'));
+  const placeMob = placementSlotLabel(readPlacement(settings, 'placement_mobile'));
   const out: string[] = [];
   if (showDesk) out.push(`Desktop · ${placeDesk}`);
   else out.push('Desktop · off');
