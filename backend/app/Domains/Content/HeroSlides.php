@@ -295,8 +295,7 @@ final class HeroSlides
 
     /**
      * Split rich hero copy on &lt;br&gt; into non-empty line fragments.
-     * Used for text-hug backgrounds so each hard line is its own pill
-     * (avoids box-decoration-break line-fragment overlap).
+     * Kept for callers / tests; title contrast now uses outline/halo, not pills.
      *
      * @return list<string>
      */

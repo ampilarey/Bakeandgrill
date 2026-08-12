@@ -249,7 +249,7 @@ export function isHeroSlideInScheduleWindow(
 
 /**
  * Split rich hero copy on <br> into non-empty line fragments.
- * Lockstep with HeroSlides::splitRichTextLines — text-hug paints one pill per hard line.
+ * Lockstep with HeroSlides::splitRichTextLines (kept for callers; outline mode no longer needs pills).
  */
 export function splitHeroRichTextLines(html: string): string[] {
   const parts = html.split(/<br\s*\/?>/i);
