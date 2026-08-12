@@ -99,7 +99,7 @@ describe('ContentHubPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Content & Branding' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Branding' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Contact' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Contact & map' })).toBeTruthy();
   });
 
   it('shows Same/Different control and splits into scoped tabs', async () => {

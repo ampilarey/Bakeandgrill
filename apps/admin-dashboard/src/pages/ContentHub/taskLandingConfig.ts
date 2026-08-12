@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Sparkles,
 } from 'lucide-react';
+import { WEBSITE_PAGE_TASKS } from './websitePageTasks';
 
 /**
  * Task-based Content & Branding landing (owner IA).
@@ -22,7 +23,11 @@ export type ContentTaskId =
   | 'announcement'
   | 'brand_kit'
   | 'website_home'
-  | 'website_pages'
+  | 'contact_map'
+  | 'opening_hours'
+  | 'about'
+  | 'catering_events'
+  | 'footer'
   | 'order_home'
   | 'order_wording'
   | 'seo'
@@ -50,6 +55,14 @@ export type ContentTaskCluster = {
   label: string;
   tasks: ContentTask[];
 };
+
+const websitePageTasks: ContentTask[] = WEBSITE_PAGE_TASKS.map((page) => ({
+  id: page.id,
+  title: page.title,
+  description: page.description,
+  icon: page.icon,
+  group: page.group,
+}));
 
 export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
   {
@@ -91,13 +104,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         group: 'Homepage',
         homeAppHint: 'website',
       },
-      {
-        id: 'website_pages',
-        title: 'Website pages',
-        description: 'About, contact, hours, footer',
-        icon: FileText,
-        group: 'Pages',
-      },
+      ...websitePageTasks,
     ],
   },
   {
@@ -181,7 +188,12 @@ export function clusterIdForSection(sectionName: string): ContentTaskCluster['id
       if (task.group === sectionName) return cluster.id;
     }
   }
-  if (sectionName === 'Menu' || sectionName === 'Store' || sectionName === 'Status banners' || sectionName === 'Pre-Order' || sectionName === 'Contact' || sectionName === 'About' || sectionName === 'Footer') {
+  if (
+    sectionName === 'Menu'
+    || sectionName === 'Store'
+    || sectionName === 'Status banners'
+    || sectionName === 'Pre-Order'
+  ) {
     return sectionName === 'Status banners' || sectionName === 'Pre-Order' ? 'order_app' : 'advanced';
   }
   return 'advanced';

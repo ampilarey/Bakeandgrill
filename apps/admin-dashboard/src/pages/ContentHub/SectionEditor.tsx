@@ -5,6 +5,8 @@ import { sectionMeta } from './hubLayoutConfig';
 
 type Props = {
   sectionName: string;
+  /** Optional owner-facing title (defaults to sectionName). */
+  title?: string;
   blocks: ContentBlock[];
   /** Rendered above regular blocks (section order + enable toggles). */
   chrome?: ReactNode;
@@ -16,6 +18,8 @@ type Props = {
   isBrandKit?: boolean;
   /** Cards actually shown (chrome + brand kit + regular), for the header count. */
   cardCount?: number;
+  /** When false, omit the in-panel header (mobile sheet already shows title/Back). */
+  showHeader?: boolean;
 };
 
 type Bucket = { id: string; label: string; blocks: ContentBlock[] };
@@ -47,6 +51,7 @@ function bucketBlocks(sectionName: string, blocks: ContentBlock[]): Bucket[] {
  */
 export function SectionEditor({
   sectionName,
+  title,
   blocks,
   chrome,
   brandKit,
@@ -54,32 +59,40 @@ export function SectionEditor({
   onBack,
   isBrandKit,
   cardCount,
+  showHeader = true,
 }: Props) {
   const buckets = bucketBlocks(sectionName, blocks);
   const shownCount = cardCount ?? blocks.length;
+  const heading = title ?? sectionName;
 
   return (
     <section data-testid="section-editor" data-section={sectionName} className="hub-section-editor">
-      <header className="hub-section-editor-header">
-        {onBack ? (
-          <button
-            type="button"
-            data-testid="section-editor-back"
-            className="hub-section-editor-back"
-            onClick={onBack}
-            aria-label="Back to all tasks"
-          >
-            <ArrowLeft size={18} />
-            <span className="hub-section-editor-back-label">All tasks</span>
-          </button>
-        ) : null}
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 className="hub-section-editor-title">{sectionName}</h2>
-          <div className="hub-section-editor-sub" data-testid="section-editor-count">
-            {isBrandKit ? 'Brand Kit' : `${shownCount} block${shownCount === 1 ? '' : 's'}`}
+      {showHeader ? (
+        <header className="hub-section-editor-header">
+          {onBack ? (
+            <button
+              type="button"
+              data-testid="section-editor-back"
+              className="hub-section-editor-back"
+              onClick={onBack}
+              aria-label="Back to all tasks"
+            >
+              <ArrowLeft size={18} />
+              <span className="hub-section-editor-back-label">All tasks</span>
+            </button>
+          ) : null}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 className="hub-section-editor-title">{heading}</h2>
+            <div className="hub-section-editor-sub" data-testid="section-editor-count">
+              {isBrandKit ? 'Brand Kit' : `${shownCount} block${shownCount === 1 ? '' : 's'}`}
+            </div>
           </div>
+        </header>
+      ) : (
+        <div className="hub-section-editor-sub" data-testid="section-editor-count" style={{ marginBottom: 10 }}>
+          {isBrandKit ? 'Brand Kit' : `${shownCount} block${shownCount === 1 ? '' : 's'}`}
         </div>
-      </header>
+      )}
 
       {chrome ? <div className="hub-section-editor-chrome">{chrome}</div> : null}
       {brandKit ? <div className="hub-section-editor-brandkit">{brandKit}</div> : null}

@@ -129,13 +129,13 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     );
 
     await screen.findByTestId('section-editor');
-    expect(screen.queryByTestId('section-dirty-Contact')).toBeNull();
+    expect(screen.queryByTestId('section-dirty-Contact & map')).toBeNull();
 
     const phoneInput = screen.getByDisplayValue('+960 912 0011');
     fireEvent.change(phoneInput, { target: { value: '+960 999 9999' } });
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-dirty-Contact')).toBeTruthy();
+      expect(screen.getByTestId('section-dirty-Contact & map')).toBeTruthy();
     });
   });
 
@@ -164,9 +164,9 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(resultBtn).toBeTruthy();
     fireEvent.click(resultBtn!);
 
-    // Editor should switch to Contact
+    // Editor should switch to Contact & map
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Contact');
+      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Contact & map');
     });
   });
 

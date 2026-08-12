@@ -60,6 +60,14 @@ import { PreviewPane } from './PreviewPane';
 import { ContentTaskLanding } from './ContentTaskLanding';
 import type { ContentTask } from './taskLandingConfig';
 import { orderSectionNames } from './hubLayoutConfig';
+import {
+  LEGACY_PAGES_GROUP,
+  blocksForContentView,
+  contentViewForKey,
+  isGroupDirty,
+  visibleContentGroups,
+  websitePageTaskByGroup,
+} from './websitePageTasks';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
@@ -428,15 +436,38 @@ export function ContentHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
-  // Sync URL group param → activeGroup (landing when cleared)
+  // Sync URL group param → activeGroup (landing when cleared).
+  // Legacy ?group=Pages must never open the mixed 48-block editor.
+  // Legacy ?group=Contact opens the focused Contact & map page.
   useEffect(() => {
+    if (urlGroup === LEGACY_PAGES_GROUP) {
+      setActiveGroup(null);
+      setMobileEditorOpen(false);
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('group');
+        p.delete('section');
+        return p;
+      }, { replace: true });
+      return;
+    }
+    if (urlGroup === 'Contact') {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('section');
+        p.set('group', 'Contact & map');
+        return p;
+      }, { replace: true });
+      return;
+    }
     if (urlGroup) {
       setActiveGroup(urlGroup);
+      setMobileEditorOpen(true);
     } else {
       setActiveGroup(null);
       setMobileEditorOpen(false);
     }
-  }, [urlGroup]);
+  }, [urlGroup, setSearchParams]);
 
   // Per-block scope tabs reset when the active section changes.
   useEffect(() => {
@@ -460,8 +491,7 @@ export function ContentHubPage() {
   );
 
   const orderedSectionNames = useMemo(() => {
-    const present = Array.from(new Set(contentBlocks.map((b) => b.group)));
-    return orderSectionNames(present);
+    return orderSectionNames(visibleContentGroups(contentBlocks));
   }, [contentBlocks]);
 
   const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
@@ -874,15 +904,11 @@ export function ContentHubPage() {
 
   const railSections = useMemo(() => {
     return orderedSectionNames.map((name) => {
-      const sectionBlockKeys = new Set(contentBlocks.filter((b) => b.group === name).map((b) => b.key));
-      const dirty = Object.keys(drafts).some((dk) => {
-        const parsed = parseDraftKey(dk);
-        return parsed && sectionBlockKeys.has(parsed.key);
-      });
+      const viewBlocks = blocksForContentView(name, contentBlocks);
       return {
         name,
-        count: contentBlocks.filter((b) => b.group === name).length,
-        dirty,
+        count: viewBlocks.length,
+        dirty: isGroupDirty(name, contentBlocks, Object.keys(drafts), parseDraftKey),
       };
     });
   }, [orderedSectionNames, contentBlocks, drafts]);
@@ -913,13 +939,30 @@ export function ContentHubPage() {
     return contentBlocks
       .filter((b) => b.label.toLowerCase().includes(needle))
       .slice(0, 12)
-      .map((b) => ({ block: b, sectionName: b.group }));
+      .map((b) => ({
+        block: b,
+        sectionName: contentViewForKey(b.key) ?? (
+          b.group === LEGACY_PAGES_GROUP || b.group === 'Contact' ? 'Website' : b.group
+        ),
+      }));
   }, [contentBlocks, q]);
 
   const handleSearchSelect = (block: ContentBlock) => {
-    selectGroup(block.group);
+    const view = contentViewForKey(block.key) ?? (
+      block.group === LEGACY_PAGES_GROUP || block.group === 'Contact'
+        ? null
+        : block.group
+    );
+    if (!view) {
+      // Remapped away from navigation — stay on landing rather than opening Pages.
+      setQ('');
+      setSearchOverlayOpen(false);
+      return;
+    }
+    selectGroup(view);
     setMobileEditorOpen(true);
     setQ('');
+    setSearchOverlayOpen(false);
     window.setTimeout(() => {
       const el = document.querySelector(`[data-block-key="${block.key}"]`);
       if (el && typeof (el as HTMLElement).scrollIntoView === 'function') {
@@ -1425,10 +1468,12 @@ export function ContentHubPage() {
   // ── Build section editor content ───────────────────────────────────────────
 
   const buildSectionContent = (sectionName: string, withBack: boolean) => {
-    const sectionBlocks = contentBlocks.filter((b) => b.group === sectionName);
+    const sectionBlocks = blocksForContentView(sectionName, contentBlocks);
     const sectionEnableBlocks = sectionBlocks.filter((b) => b.section_enable);
     const regularBlocks = sectionBlocks.filter((b) => !b.section_enable);
     const isBrandKit = sectionName === 'Branding';
+    const pageTask = websitePageTaskByGroup(sectionName);
+    const editorTitle = pageTask?.title ?? sectionName;
 
     const brandBlocksByKey = new Map(
       regularBlocks.filter((b) => BRAND_KIT_KEYS.includes(b.key)).map((b) => [b.key, b] as const),
@@ -1491,6 +1536,7 @@ export function ContentHubPage() {
     return (
       <SectionEditor
         sectionName={sectionName}
+        title={editorTitle}
         blocks={leftoverBrandBlocks}
         chrome={chrome}
         brandKit={brandKit}
@@ -1498,9 +1544,14 @@ export function ContentHubPage() {
         onBack={withBack ? handleMobileBack : undefined}
         isBrandKit={isBrandKit}
         cardCount={cardCount}
+        showHeader={withBack}
       />
     );
   };
+
+  const activeEditorTitle = activeGroup
+    ? (websitePageTaskByGroup(activeGroup)?.title ?? activeGroup)
+    : 'Section';
 
   // ── Header actions ─────────────────────────────────────────────────────────
 
@@ -1781,7 +1832,7 @@ export function ContentHubPage() {
             {/* Section editor — full-screen sheet (not an inline push) */}
             <ContentEditorSheet
               open={!loading && mobileEditorOpen && Boolean(activeGroup)}
-              title={activeGroup || 'Section'}
+              title={activeEditorTitle}
               onClose={handleMobileBack}
               status={draftStatusNode}
               layer={0}

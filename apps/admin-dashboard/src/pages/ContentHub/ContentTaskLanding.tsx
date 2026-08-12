@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { CONTENT_TASK_CLUSTERS, type ContentTask, type ContentTaskId } from './taskLandingConfig';
+import { isWebsitePageGroup } from './websitePageTasks';
 
 export type ContentTaskLandingProps = {
   /** Section names that currently have blocks (hide empty destinations). */
@@ -25,8 +26,13 @@ export function ContentTaskLanding({
       {CONTENT_TASK_CLUSTERS.map((cluster) => {
         const tasks = cluster.tasks.filter((task) => {
           if (task.group == null) return true;
-          // Always show Homepage / Hero / Branding even if registry empty (layout still useful).
-          if (task.group === 'Homepage' || task.group === 'Hero' || task.group === 'Branding') {
+          // Always show Homepage / Hero / Branding / Website pages even if registry empty.
+          if (
+            task.group === 'Homepage'
+            || task.group === 'Hero'
+            || task.group === 'Branding'
+            || isWebsitePageGroup(task.group)
+          ) {
             return true;
           }
           return availableGroups.has(task.group);
