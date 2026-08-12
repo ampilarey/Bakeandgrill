@@ -17,9 +17,19 @@ vi.mock('../../context/LanguageContext', () => ({
   }),
 }));
 
+const textMock = vi.fn((key: string, fallback: string) => {
+  const cms: Record<string, string> = {
+    order_home_greeting_hello: 'Hey there',
+    order_home_greeting_named: 'Hey, {name}',
+    order_home_greeting_sub: 'Ready to order?',
+  };
+  return cms[key] ?? fallback;
+});
+
 vi.mock('../../context/SiteSettingsContext', () => ({
   useSiteSettingsContext: () => ({
     settings: { site_name: 'Bake & Grill', logo: '/logo.png' },
+    text: textMock,
   }),
 }));
 
@@ -28,7 +38,7 @@ describe('GreetingHeader', () => {
     vi.clearAllMocks();
   });
 
-  it('shows Hello + subtitle on phone chrome', () => {
+  it('shows CMS greeting + subtitle on phone chrome', () => {
     render(
       <MemoryRouter>
         <GreetingHeader customerName={null} isAuthenticated={false} chrome="phone" />
@@ -36,26 +46,26 @@ describe('GreetingHeader', () => {
     );
 
     expect(screen.getByTestId('home-greeting')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hello');
-    expect(screen.getByText('What would you like today?')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey there');
+    expect(screen.getByText('Ready to order?')).toBeTruthy();
     expect(screen.getByText('Bake & Grill')).toBeTruthy();
     expect(screen.getByText('Sign in')).toBeTruthy();
   });
 
-  it('uses profile name in Hello, not a phone number', () => {
+  it('uses profile name in CMS named greeting, not a phone number', () => {
     const { rerender } = render(
       <MemoryRouter>
         <GreetingHeader customerName="Aisha" isAuthenticated chrome="phone" />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hello, Aisha');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey, Aisha');
 
     rerender(
       <MemoryRouter>
         <GreetingHeader customerName="9120011" isAuthenticated chrome="desktop" />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hello');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey there');
     expect(screen.queryByText('Bake & Grill')).toBeNull();
   });
 });
