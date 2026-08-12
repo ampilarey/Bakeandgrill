@@ -59,11 +59,8 @@ final class GenericBlockPresenter
 
         return match ($type) {
             'rich_text' => $text('heading') === '' && $text('body') === '',
-            // Treat missing/deleted media as empty so the home walker does not
-            // emit an empty data-home-block wrapper.
-            'image' => self::resolveImage(self::mediaId($settings)) === null,
-            'video' => self::resolveVideo(self::mediaId($settings)) === null,
-            'image_text' => self::resolveImage(self::mediaId($settings)) === null
+            'image', 'video' => self::mediaId($settings) === null,
+            'image_text' => self::mediaId($settings) === null
                 && $text('heading') === ''
                 && $text('body') === '',
             'button_band' => $text('text') === ''

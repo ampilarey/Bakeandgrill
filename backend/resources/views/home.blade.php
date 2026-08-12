@@ -1247,6 +1247,24 @@
                     $settings,
                 );
                 $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
+                // Deleted media still has media_id — resolve before wrapping so we
+                // never emit an empty data-home-block attribute.
+                if (! $blockIsEmpty && $sectionId === 'image') {
+                    $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveImage(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) === null;
+                } elseif (! $blockIsEmpty && $sectionId === 'video') {
+                    $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveVideo(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) === null;
+                } elseif (! $blockIsEmpty && $sectionId === 'image_text') {
+                    $hasImg = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveImage(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) !== null;
+                    $hasCopy = trim(strip_tags((string) ($blockSettings['heading'] ?? ''))) !== ''
+                        || trim(strip_tags((string) ($blockSettings['body'] ?? ''))) !== '';
+                    $blockIsEmpty = ! $hasImg && ! $hasCopy;
+                }
                 $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);
             @endphp
             @unless($blockIsEmpty)

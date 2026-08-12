@@ -38,8 +38,10 @@ class HomeLayoutOrderRenderTest extends TestCase
         // page_blocks is authoritative — re-seed from the settings under test.
         HomeLayoutMigrator::migrate();
 
+        // Chrome rows (prayer/trust/announcement/events/footer/nav) are added by
+        // CustomerSurfaceMigrator — compare the legacy content sequence only.
         $types = array_column(
-            \App\Domains\Content\Blocks\HomeLayoutSnapshot::fromPageBlocks('website'),
+            \App\Domains\Content\Blocks\HomeLayoutSnapshot::legacyContentFromPageBlocks('website'),
             'type',
         );
         $this->assertSame(
@@ -57,7 +59,8 @@ class HomeLayoutOrderRenderTest extends TestCase
         $this->assertNotFalse($specialsPos, 'Expected specials section to render.');
         $this->assertLessThan($specialsPos, $ctaPos, 'CTA should render before specials when ordered first.');
 
-        // The two apps migrate independently — the order app keeps its own order.
+        // The two apps migrate independently — the order app keeps its own order
+        // (legacy content sequence; surface chrome rows are filtered out).
         $this->assertSame(
             [
                 'greeting',
@@ -72,7 +75,7 @@ class HomeLayoutOrderRenderTest extends TestCase
                 'brand_footer',
             ],
             array_column(
-                \App\Domains\Content\Blocks\HomeLayoutSnapshot::fromPageBlocks('order_app'),
+                \App\Domains\Content\Blocks\HomeLayoutSnapshot::legacyContentFromPageBlocks('order_app'),
                 'type',
             ),
         );
