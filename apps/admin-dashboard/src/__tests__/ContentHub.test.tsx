@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -110,30 +110,32 @@ describe('ContentHubPage', () => {
     );
 
     await screen.findByText('Phone number');
-    expect(screen.getByTestId('content-mode-business_phone')).toBeTruthy();
-    expect(screen.getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    expect(within(sheet).getByTestId('content-mode-business_phone')).toBeTruthy();
+    expect(within(sheet).getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/[◉○]/);
 
-    fireEvent.click(screen.getByLabelText(/Customise for Website and Order App/i));
+    fireEvent.click(within(sheet).getByLabelText(/Customise for Website and Order App/i));
 
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en');
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('scope-tabs-business_phone')).toBeTruthy();
-      expect(screen.getByDisplayValue('+960 111')).toBeTruthy();
-      expect(screen.queryByDisplayValue('+960 222')).toBeNull();
+      expect(within(sheet).getByTestId('scope-tabs-business_phone')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 111')).toBeTruthy();
+      expect(within(sheet).queryByDisplayValue('+960 222')).toBeNull();
     });
 
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 222')).toBeTruthy();
-      expect(screen.queryByDisplayValue('+960 111')).toBeNull();
+      expect(within(sheet).getByDisplayValue('+960 222')).toBeTruthy();
+      expect(within(sheet).queryByDisplayValue('+960 111')).toBeNull();
     });
 
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Website');
-    fireEvent.click(screen.getByLabelText(/Shared with Website and Order App/i));
+    fireEvent.click(within(sheet).getByLabelText(/Shared with Website and Order App/i));
     await waitFor(() => {
       expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en', { source: 'website' });
     });
@@ -148,11 +150,13 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByDisplayValue('+960 912 0011');
-    fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByDisplayValue('+960 912 0011');
+    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 DRAFT' },
     });
-    fireEvent.click(screen.getByLabelText(/Customise for Website and Order App/i));
+    fireEvent.click(within(sheet).getByLabelText(/Customise for Website and Order App/i));
 
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en', { draft_action: 'discard' });
@@ -244,8 +248,10 @@ describe('ContentHubPage', () => {
       );
     });
     expect(confirmSpy).toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await waitFor(() => {
-      expect(screen.getAllByDisplayValue('+960 ORDER').length).toBeGreaterThanOrEqual(1);
+      expect(within(sheet).getAllByDisplayValue('+960 ORDER').length).toBeGreaterThanOrEqual(1);
     });
 
     confirmSpy.mockRestore();

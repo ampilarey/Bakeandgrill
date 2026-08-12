@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import {
   createPageBlock,
   createPageBlockPreviewToken,
@@ -12,6 +13,7 @@ import {
   type PageBlockRow,
   type PageBlockType,
 } from '../../api/pageBlocks';
+import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { GenericBlockSettingsForm, isGenericBlockType, type BlockSettings } from './GenericBlockSettingsForm';
 
 type Props = {
@@ -19,6 +21,8 @@ type Props = {
   reloadKey?: number;
   /** Prefer Website or Order App tab (from Content task landing). */
   initialApp?: PageBlockApp;
+  /** Notify parent when layout draft state changes (unified publish status). */
+  onLayoutDraftChange?: (hasDraft: boolean) => void;
 };
 
 const APP_TABS: Array<{ id: PageBlockApp; label: string }> = [
@@ -44,11 +48,14 @@ const BLOCK_THUMB: Partial<Record<string, string>> = {
 };
 
 /**
- * Guided home-page layout workspace — Website / Order App selector, section
- * cards in display order, draft → preview → publish. Sharing controls open
- * only when editing a section (not on every overview card).
+ * Guided home-page layout — Overview → Edit.
+ * Overview cards stay simple; reorder/hide/remove live in Reorder mode or the editor.
  */
-export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Props) {
+export function HomeLayoutEditor({
+  reloadKey = 0,
+  initialApp = 'website',
+  onLayoutDraftChange,
+}: Props) {
   const [app, setApp] = useState<PageBlockApp>(initialApp);
   const [blocks, setBlocks] = useState<PageBlockRow[]>([]);
   const [types, setTypes] = useState<PageBlockType[]>([]);
@@ -58,19 +65,24 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
   const [busy, setBusy] = useState(false);
   const [addType, setAddType] = useState('');
   const [previewMsg, setPreviewMsg] = useState('');
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [draftVersion, setDraftVersion] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setApp(initialApp);
   }, [initialApp]);
 
+  useEffect(() => {
+    onLayoutDraftChange?.(hasDraft);
+  }, [hasDraft, onLayoutDraftChange]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    setExpandedId(null);
+    setEditingId(null);
     try {
       const res = await fetchAdminPageBlocks(app);
       setBlocks(res.blocks ?? []);
@@ -78,7 +90,6 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       setUnknown(res.unknown_types ?? []);
       setDraftVersion(res.version ?? 0);
       setHasDraft(Boolean(res.draft));
-      setSavedAt(res.saved_at ?? null);
     } catch (e) {
       setError((e as Error).message || 'Could not load home layout.');
     } finally {
@@ -266,7 +277,7 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       await load();
       // A fresh generic block is empty — open its form so the owner can type
       // something into it right away.
-      if (isGenericBlockType(addType)) setExpandedId(created.block.id);
+      if (isGenericBlockType(addType)) setEditingId(created.block.id);
     } catch (e) {
       setError((e as Error).message || 'Could not add block.');
     } finally {
@@ -304,7 +315,6 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       setBlocks(res.blocks ?? []);
       setDraftVersion(res.version ?? 0);
       setHasDraft(Boolean(res.draft));
-      setSavedAt(null);
       setPreviewMsg('Published. The live home page now uses these layout changes.');
     } catch (e) {
       setError((e as Error).message || 'Could not publish layout.');
@@ -323,7 +333,6 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       setBlocks(res.blocks ?? []);
       setDraftVersion(res.version ?? 0);
       setHasDraft(Boolean(res.draft));
-      setSavedAt(null);
       setPreviewMsg('Draft discarded. You are viewing the live layout again.');
     } catch (e) {
       setError((e as Error).message || 'Could not discard draft.');
@@ -332,9 +341,12 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
     }
   };
 
+  const editing = editingId != null ? blocks.find((b) => b.id === editingId) ?? null : null;
+
   return (
     <div
       data-testid="home-layout-editor"
+      data-reorder={reorderMode ? 'true' : 'false'}
       style={{
         border: '1px solid var(--color-border)',
         borderRadius: 12,
@@ -344,50 +356,111 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Home page</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 520 }}>
-            Sections appear in the order below. Edits save as a draft — Draft preview, then Publish.
-            Hero banners are edited from Quick edits → Hero banners; visibility and order stay here.
+            Tap a section to edit. Use Reorder sections to change order.
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <span
+          <div
+            data-testid="home-layout-draft-status"
             style={{
-              alignSelf: 'center',
+              marginTop: 8,
               fontSize: 12,
               fontWeight: 700,
               color: hasDraft ? 'var(--color-warning-strong)' : 'var(--color-success)',
             }}
           >
-            {hasDraft
-              ? `Unpublished layout draft${savedAt ? ' (saved)' : ''}`
-              : 'Layout matches live site'}
-          </span>
+            {hasDraft ? 'Draft saved — not live' : 'All published'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => void preview()}
-            disabled={busy || loading}
-            style={btnSecondary}
+            data-testid="home-layout-reorder-toggle"
+            aria-pressed={reorderMode}
+            onClick={() => setReorderMode((v) => !v)}
+            style={{
+              ...btnSecondary,
+              background: reorderMode ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: reorderMode ? 'var(--color-bg)' : 'var(--color-text)',
+              borderColor: reorderMode ? 'var(--color-primary)' : 'var(--color-border)',
+            }}
           >
-            Draft preview
+            {reorderMode ? 'Done reordering' : 'Reorder sections'}
           </button>
-          <button
-            type="button"
-            onClick={() => void publish()}
-            disabled={busy || loading || !hasDraft}
-            style={btnPrimary}
-          >
-            Publish
-          </button>
-          <button
-            type="button"
-            onClick={() => void discard()}
-            disabled={busy || loading || !hasDraft}
-            style={btnSecondary}
-          >
-            Discard
-          </button>
+          {hasDraft ? (
+            <>
+              <button
+                type="button"
+                data-testid="home-layout-preview-btn"
+                onClick={() => void preview()}
+                disabled={busy || loading}
+                style={btnSecondary}
+              >
+                Preview
+              </button>
+              <button
+                type="button"
+                data-testid="home-layout-publish-btn"
+                onClick={() => void publish()}
+                disabled={busy || loading}
+                style={btnPrimary}
+              >
+                Publish changes
+              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  data-testid="home-layout-more-btn"
+                  aria-label="More layout actions"
+                  aria-expanded={moreOpen}
+                  onClick={() => setMoreOpen((o) => !o)}
+                  style={{ ...btnSecondary, minWidth: 40, padding: '8px' }}
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+                {moreOpen ? (
+                  <div
+                    role="menu"
+                    data-testid="home-layout-more-menu"
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: '100%',
+                      marginTop: 4,
+                      minWidth: 160,
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 10,
+                      padding: 6,
+                      zIndex: 20,
+                      boxShadow: '0 8px 24px rgba(28,20,8,0.12)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-testid="home-layout-discard-btn"
+                      disabled={busy || loading}
+                      onClick={() => {
+                        setMoreOpen(false);
+                        void discard();
+                      }}
+                      style={{
+                        ...btnSecondary,
+                        width: '100%',
+                        border: 'none',
+                        textAlign: 'left',
+                        color: 'var(--color-danger)',
+                      }}
+                    >
+                      Discard draft
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -432,10 +505,11 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
             </div>
           )}
           {blocks.map((block, index) => {
-            const expanded = expandedId === block.id;
-            const canEditContent = isGenericBlockType(block.block_type);
-            const showEditor = expanded && (canEditContent || block.supports_shared_content);
             const thumb = BLOCK_THUMB[block.block_type] ?? '▪';
+            const summary = block.description
+              || (block.block_type === 'hero'
+                ? 'Edit photos and text from Quick edits → Hero banners.'
+                : 'Home page section');
             return (
               <div
                 key={block.id}
@@ -444,7 +518,7 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
                 className="home-layout-section-card"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'auto 1fr auto',
+                  gridTemplateColumns: reorderMode ? 'auto 1fr auto' : 'auto 1fr auto',
                   gap: 10,
                   padding: '10px 12px',
                   borderRadius: 10,
@@ -472,163 +546,96 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
                 >
                   {thumb}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflowWrap: 'anywhere' }}>
+                <button
+                  type="button"
+                  data-testid={`home-layout-edit-${block.id}`}
+                  onClick={() => {
+                    if (reorderMode) return;
+                    setEditingId(block.id);
+                  }}
+                  disabled={reorderMode}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 4,
+                    minWidth: 0,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    textAlign: 'left',
+                    cursor: reorderMode ? 'default' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflowWrap: 'anywhere' }}>
                     {block.label}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                    <span
-                      data-testid={`home-layout-visibility-${block.id}`}
-                      style={badgeStyle(block.is_enabled)}
-                    >
-                      {block.is_enabled ? 'Showing' : 'Hidden'}
-                    </span>
-                    {block.supports_shared_content ? (
-                      <span
-                        data-testid={`home-layout-sharing-${block.id}`}
-                        style={badgeStyle(block.content_mode === 'shared')}
-                      >
-                        {block.content_mode === 'shared'
-                          ? 'Shared with Website and Order App'
-                          : app === 'website'
-                            ? 'Customised for Website'
-                            : 'Customised for Order App'}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, overflowWrap: 'anywhere' }}>
-                    {block.description}
-                  </div>
-                  {block.block_type === 'opening_status' && (
-                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Shown inside the hero banner while the hero is on — moving it here only
-                      matters when the hero is turned off.
-                    </div>
-                  )}
-                  {block.block_type === 'hero' && (
-                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      Edit photos and text from Quick edits → Hero banners.
-                    </div>
-                  )}
-                  {!block.removable && (
-                    <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
-                      Required — {block.non_removable_reason}
-                    </div>
-                  )}
-                  {(canEditContent || block.supports_shared_content) && (
+                  </span>
+                  <span
+                    data-testid={`home-layout-visibility-${block.id}`}
+                    style={badgeStyle(block.is_enabled)}
+                  >
+                    {block.is_enabled ? 'Showing' : 'Hidden'}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>
+                    {summary}
+                  </span>
+                </button>
+                {reorderMode ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>
                     <button
                       type="button"
-                      data-testid={`home-layout-edit-${block.id}`}
-                      onClick={() => setExpandedId(expanded ? null : block.id)}
-                      style={{ ...chipBtn, marginTop: 8 }}
+                      aria-label={`Move ${block.label} up`}
+                      data-testid={`home-layout-move-up-${block.id}`}
+                      disabled={busy || index === 0}
+                      onClick={() => move(index, -1)}
+                      style={btnTiny}
                     >
-                      {expanded ? 'Done' : 'Edit'}
+                      ↑
                     </button>
-                  )}
-                  {showEditor && (
-                    <div
-                      data-testid={`home-layout-editor-panel-${block.id}`}
-                      style={{ marginTop: 10, borderTop: '1px solid var(--color-border)', paddingTop: 10 }}
+                    <button
+                      type="button"
+                      aria-label={`Move ${block.label} down`}
+                      data-testid={`home-layout-move-down-${block.id}`}
+                      disabled={busy || index === blocks.length - 1}
+                      onClick={() => move(index, 1)}
+                      style={btnTiny}
                     >
-                      {block.supports_shared_content && (
-                        <div style={{ display: 'flex', gap: 6, marginBottom: canEditContent ? 10 : 0, flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            disabled={busy || block.content_mode === 'shared'}
-                            onClick={() => void setMode(block, 'shared')}
-                            style={{
-                              ...chipBtn,
-                              background: block.content_mode === 'shared' ? 'var(--color-primary)' : 'transparent',
-                              color: block.content_mode === 'shared' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-                            }}
-                          >
-                            Use shared version again
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy || block.content_mode === 'own'}
-                            onClick={() => void setMode(block, 'own')}
-                            style={{
-                              ...chipBtn,
-                              background: block.content_mode === 'own' ? 'var(--color-primary)' : 'transparent',
-                              color: block.content_mode === 'own' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-                            }}
-                          >
-                            {app === 'website' ? 'Customise for Website' : 'Customise for Order App'}
-                          </button>
-                        </div>
-                      )}
-                      {canEditContent && (
-                        <GenericBlockSettingsForm
-                          block={block}
-                          busy={busy}
-                          onSave={(settings) => saveSettings(block, settings)}
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>
-                  <button
-                    type="button"
-                    aria-label={`Move ${block.label} up`}
-                    data-testid={`home-layout-move-up-${block.id}`}
-                    disabled={busy || index === 0}
-                    onClick={() => move(index, -1)}
-                    style={btnTiny}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Move ${block.label} down`}
-                    data-testid={`home-layout-move-down-${block.id}`}
-                    disabled={busy || index === blocks.length - 1}
-                    onClick={() => move(index, 1)}
-                    style={btnTiny}
-                  >
-                    ↓
-                  </button>
-                  <button type="button" disabled={busy} onClick={() => void toggleEnabled(block)} style={btnTiny}>
-                    {block.is_enabled ? 'Hide' : 'Show'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || !block.removable}
-                    title={!block.removable ? (block.non_removable_reason ?? undefined) : 'Remove'}
-                    onClick={() => void remove(block)}
-                    style={{ ...btnTiny, color: block.removable ? 'var(--color-danger)' : 'var(--color-text-muted)' }}
-                  >
-                    Remove
-                  </button>
-                </div>
+                      ↓
+                    </button>
+                  </div>
+                ) : (
+                  <ChevronRight size={18} aria-hidden style={{ alignSelf: 'center', color: 'var(--color-text-muted)' }} />
+                )}
               </div>
             );
           })}
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-            <select
-              value={addType}
-              onChange={(e) => setAddType(e.target.value)}
-              style={{
-                minHeight: 40,
-                borderRadius: 8,
-                border: '1px solid var(--color-border)',
-                padding: '0 10px',
-                fontSize: 13,
-                flex: 1,
-                minWidth: 180,
-              }}
-            >
-              <option value="">Add a section…</option>
-              {addable.map((t) => (
-                <option key={t.type} value={t.type}>{t.label}</option>
-              ))}
-            </select>
-            <button type="button" disabled={busy || !addType} onClick={() => void addBlock()} style={btnPrimary}>
-              Add
-            </button>
-          </div>
+          {!reorderMode ? (
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+              <select
+                value={addType}
+                onChange={(e) => setAddType(e.target.value)}
+                style={{
+                  minHeight: 40,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  padding: '0 10px',
+                  fontSize: 13,
+                  flex: 1,
+                  minWidth: 180,
+                }}
+              >
+                <option value="">Add a section…</option>
+                {addable.map((t) => (
+                  <option key={t.type} value={t.type}>{t.label}</option>
+                ))}
+              </select>
+              <button type="button" disabled={busy || !addType} onClick={() => void addBlock()} style={btnPrimary}>
+                Add
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -643,6 +650,114 @@ export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Prop
       {previewMsg && (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-success)' }}>{previewMsg}</div>
       )}
+
+      <ContentEditorSheet
+        open={Boolean(editing)}
+        title={editing ? `Edit ${editing.label}` : 'Edit section'}
+        onClose={() => setEditingId(null)}
+        status={(
+          <span data-testid="home-layout-editor-draft-status" style={{ fontSize: 12, fontWeight: 700 }}>
+            {hasDraft ? 'Draft saved — not live' : 'All published'}
+          </span>
+        )}
+        layer={1}
+        testId="home-layout-section-editor"
+        footer={hasDraft ? (
+          <button
+            type="button"
+            data-testid="home-layout-editor-publish"
+            onClick={() => void publish()}
+            disabled={busy}
+            style={{ ...btnPrimary, width: '100%', minHeight: 44 }}
+          >
+            Publish changes
+          </button>
+        ) : undefined}
+      >
+        {editing ? (
+          <div data-testid={`home-layout-editor-panel-${editing.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                data-testid={`home-layout-visibility-switch-${editing.id}`}
+                checked={editing.is_enabled}
+                disabled={busy || (!editing.removable && editing.is_enabled)}
+                onChange={() => void toggleEnabled(editing)}
+              />
+              Showing on this home page
+            </label>
+            {editing.supports_shared_content ? (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <span
+                  data-testid={`home-layout-sharing-${editing.id}`}
+                  style={badgeStyle(editing.content_mode === 'shared')}
+                >
+                  {editing.content_mode === 'shared'
+                    ? 'Shared with Website and Order App'
+                    : app === 'website'
+                      ? 'Customised for Website'
+                      : 'Customised for Order App'}
+                </span>
+                <button
+                  type="button"
+                  disabled={busy || editing.content_mode === 'shared'}
+                  onClick={() => void setMode(editing, 'shared')}
+                  style={chipBtn}
+                >
+                  Use shared version again
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || editing.content_mode === 'own'}
+                  onClick={() => void setMode(editing, 'own')}
+                  style={chipBtn}
+                >
+                  {app === 'website' ? 'Customise for Website' : 'Customise for Order App'}
+                </button>
+              </div>
+            ) : null}
+            {editing.block_type === 'hero' ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+                Banner photos and text are edited from Quick edits → Hero banners. Here you control
+                whether this section shows and where it sits in the page order.
+              </p>
+            ) : null}
+            {!editing.removable && editing.non_removable_reason ? (
+              <p style={{ fontSize: 12, color: 'var(--color-warning-strong)', fontWeight: 600, margin: 0 }}>
+                Required — {editing.non_removable_reason}
+              </p>
+            ) : null}
+            {isGenericBlockType(editing.block_type) ? (
+              <GenericBlockSettingsForm
+                block={editing}
+                busy={busy}
+                onSave={(settings) => saveSettings(editing, settings)}
+              />
+            ) : null}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                Advanced
+              </div>
+              <button
+                type="button"
+                data-testid={`home-layout-remove-${editing.id}`}
+                disabled={busy || !editing.removable}
+                title={!editing.removable ? (editing.non_removable_reason ?? undefined) : 'Remove section'}
+                onClick={() => {
+                  void remove(editing).then(() => setEditingId(null));
+                }}
+                style={{
+                  ...btnSecondary,
+                  color: editing.removable ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                  width: '100%',
+                }}
+              >
+                Remove section
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </ContentEditorSheet>
     </div>
   );
 }

@@ -26,13 +26,15 @@ type Props = {
   technicalScopesLabel: string;
   rawValuePreview: string;
   /**
-   * Mobile compact overview: hide the full editor, show Edit affordance.
+   * Overview → Edit: hide the full editor, show Edit affordance.
    * Simple boolean switches stay inline (callers omit compact).
    */
   compact?: boolean;
   onEdit?: () => void;
-  /** Thumbnail / Showing summary under the helper when compact. */
+  /** Thumbnail / one-line summary under the helper when compact. */
   compactSummary?: ReactNode;
+  /** Showing / Hidden (or Set / Not set) status for overview cards. */
+  visibilityLabel?: string;
 };
 
 /**
@@ -57,6 +59,7 @@ export function BlockCard({
   compact = false,
   onEdit,
   compactSummary,
+  visibilityLabel,
 }: Props) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,6 +67,9 @@ export function BlockCard({
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const sentence = helper ?? helperForBlock(block);
   const isBoolean = block.type === 'boolean' && Boolean(booleanControl);
+  const openEditor = () => {
+    if (compact && onEdit && !isBoolean) onEdit();
+  };
 
   useEffect(() => {
     if (!menuOpen || isMobile) return;
@@ -139,6 +145,12 @@ export function BlockCard({
       data-testid={`block-card-${block.key}`}
       data-block-key={block.key}
       data-compact={compact ? 'true' : 'false'}
+      onClick={(e) => {
+        if (!compact || isBoolean || !onEdit) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button, a, input, textarea, select, [role="menu"], [role="menuitem"]')) return;
+        openEditor();
+      }}
     >
       <div className="hub-block-card-top">
         <div className="hub-block-card-titles">
@@ -154,22 +166,34 @@ export function BlockCard({
             <>
               <div className="hub-block-card-label">{block.label}</div>
               <div className="hub-block-card-helper">{sentence}</div>
-              {compact && compactSummary ? (
+              {compact && (compactSummary || visibilityLabel) ? (
                 <div className="hub-block-card-summary" data-testid={`block-summary-${block.key}`}>
                   {compactSummary}
+                  {visibilityLabel ? (
+                    <span
+                      className={`hub-block-visibility hub-block-visibility--${visibilityLabel.toLowerCase().includes('hidden') || visibilityLabel.toLowerCase().includes('not') ? 'hidden' : 'showing'}`}
+                      data-testid={`block-visibility-${block.key}`}
+                    >
+                      {visibilityLabel}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
             </>
           )}
         </div>
         <div className="hub-block-card-actions">
-          {modeControl}
+          {/* Overview stays simple — sharing/scope controls live inside the Edit sheet. */}
+          {!compact ? modeControl : null}
           {compact && onEdit && !isBoolean ? (
             <button
               type="button"
               className="hub-block-edit-btn"
               data-testid={`edit-${block.key}`}
-              onClick={onEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
             >
               <Pencil size={14} /> Edit
             </button>

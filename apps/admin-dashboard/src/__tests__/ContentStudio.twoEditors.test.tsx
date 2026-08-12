@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -152,14 +152,17 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
+    await screen.findByTestId('edit-business_phone');
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await waitFor(
       () => {
-        expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
+        expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
       },
       { timeout: 8000 },
     );
 
-    fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
+    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 WEB EDIT' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
@@ -182,15 +185,19 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('scope-tabs-hero_slides');
+    fireEvent.click(await screen.findByTestId('edit-hero_slides'));
+    const sheet = await screen.findByTestId('hero-editor-sheet');
+    await within(sheet).findByTestId('scope-tabs-hero_slides');
     // Default tab is Website — switch to Order app to edit that scope.
-    fireEvent.click(screen.getByTestId('scope-tab-hero_slides-order_app'));
+    fireEvent.click(within(sheet).getByTestId('scope-tab-hero_slides-order_app'));
+    fireEvent.click(await within(sheet).findByTestId('hero-slide-overview-0'));
+    const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Order eyebrow')).toBeTruthy();
+      expect(within(slideSheet).getByDisplayValue('Order eyebrow')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByDisplayValue('Order eyebrow'), {
+    fireEvent.change(within(slideSheet).getByDisplayValue('Order eyebrow'), {
       target: { value: 'Edited order eyebrow' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
@@ -245,23 +252,31 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    let sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 912 0011')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
+    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 EN DRAFT' },
     });
-    expect(screen.getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+    expect(within(sheet).getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 DV LIVE')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 DV LIVE')).toBeTruthy();
     });
+    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByRole('button', { name: /^EN$/i }));
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
     });
   });
 });

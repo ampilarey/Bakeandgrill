@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react';
-import { Check, ChevronDown, ChevronRight, History, ImagePlus } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, History, ImagePlus, Pencil } from 'lucide-react';
 import type { ContentBlock, ContentScope } from '../../api/content';
+import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { BRAND_KIT_CARDS, type BrandKitCardMeta, type BrandKitPreviewKind } from './brandKitConfig';
 
 export type BrandKitCardsProps = {
@@ -12,6 +13,7 @@ export type BrandKitCardsProps = {
   onOpenHistory: (block: ContentBlock) => void;
   historyPanel: (block: ContentBlock) => ReactNode;
   siteName?: string;
+  draftStatus?: ReactNode;
 };
 
 function isSet(value: string): boolean {
@@ -288,7 +290,111 @@ function DropZone({
   );
 }
 
-function Card({
+function OverviewCard({
+  meta,
+  value,
+  onEdit,
+}: {
+  meta: BrandKitCardMeta;
+  value: string;
+  onEdit: () => void;
+}) {
+  const set = isSet(value);
+  const thumb =
+    meta.preview === 'color'
+      ? (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : 'var(--color-primary)')
+      : value;
+  const cardStyle: CSSProperties = {
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 14,
+    padding: 14,
+    display: 'grid',
+    gridTemplateColumns: '48px 1fr auto',
+    gap: 12,
+    alignItems: 'center',
+    cursor: 'pointer',
+    minWidth: 0,
+  };
+
+  return (
+    <article
+      data-testid={`brand-kit-card-${meta.key}`}
+      data-compact="true"
+      style={cardStyle}
+      onClick={onEdit}
+    >
+      <div
+        aria-hidden
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: meta.preview === 'menu-circle' ? '50%' : 10,
+          background: meta.preview === 'color' ? thumb : 'var(--color-border-light)',
+          border: '1px solid var(--color-border)',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {meta.preview !== 'color' && value ? (
+          <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : null}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)' }}>{meta.title}</div>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            marginTop: 2,
+            lineHeight: 1.4,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {meta.where}
+        </div>
+        <div
+          data-testid={`brand-kit-visibility-${meta.key}`}
+          style={{
+            marginTop: 6,
+            fontSize: 12,
+            fontWeight: 700,
+            color: set ? 'var(--color-success)' : 'var(--color-text-muted)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          {set ? (
+            <>
+              <Check size={12} /> Showing
+            </>
+          ) : (
+            'Not set'
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        data-testid={`edit-brand-${meta.key}`}
+        className="hub-block-edit-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+      >
+        <Pencil size={14} /> Edit
+      </button>
+    </article>
+  );
+}
+
+function BrandKitEditorBody({
   meta,
   block,
   value,
@@ -314,30 +420,15 @@ function Card({
   const set = isSet(value);
   const isColor = meta.preview === 'color';
 
-  const cardStyle: CSSProperties = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 14,
-    padding: 16,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  };
-
   return (
-    <article data-testid={`brand-kit-card-${meta.key}`} style={cardStyle}>
-      <div>
-        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-text)' }}>{meta.title}</div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.45 }}>{meta.where}</div>
-      </div>
-
+    <div data-testid={`brand-kit-editor-${meta.key}`} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Preview kind={meta.preview} value={value} siteName={siteName} />
 
       {isColor ? (
         <label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, cursor: 'pointer' }}>
           <input
             type="color"
-            value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : 'var(--color-primary)'}
+            value={/^#([0-9a-fA-F]{6})$/.test(value) ? value : '#d4813a'}
             onChange={(e) => onSetValue(e.target.value.toUpperCase())}
             style={{ width: 48, height: 44, border: '1px solid var(--color-border)', borderRadius: 10, padding: 2, background: 'var(--color-surface)', cursor: 'pointer' }}
             aria-label="Pick brand colour"
@@ -404,7 +495,7 @@ function Card({
             <input
               value={value}
               onChange={(e) => onSetValue(e.target.value)}
-              placeholder={isColor ? 'var(--color-primary)' : '/storage/…'}
+              placeholder={isColor ? '#D4813A' : '/storage/…'}
               aria-label={`${meta.title} raw value`}
               style={{
                 width: '100%',
@@ -437,7 +528,7 @@ function Card({
           </div>
         ) : null}
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -450,8 +541,12 @@ export function BrandKitCards({
   onOpenHistory,
   historyPanel,
   siteName = 'Bake & Grill',
+  draftStatus,
 }: BrandKitCardsProps) {
   const cards = BRAND_KIT_CARDS.filter((meta) => blocksByKey.has(meta.key));
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const editingMeta = editingKey ? cards.find((c) => c.key === editingKey) : undefined;
+  const editingBlock = editingKey ? blocksByKey.get(editingKey) : undefined;
 
   return (
     <div data-testid="brand-kit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -472,80 +567,42 @@ export function BrandKitCards({
         Change it once — both surfaces update together.
       </div>
 
-      <div
-        data-testid="brand-kit-summary"
-        className="hub-brand-kit-summary"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-          gap: 10,
-          background: 'var(--color-bg)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 12,
-          padding: 12,
-          position: 'sticky',
-          top: 0,
-          zIndex: 2,
-        }}
-      >
-        {cards.map((meta) => {
-          const block = blocksByKey.get(meta.key)!;
-          const value = valueOf(block);
-          const set = isSet(value);
-          const thumb =
-            meta.preview === 'color'
-              ? (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim()) ? value.trim() : 'var(--color-primary)')
-              : value;
-          return (
-            <div key={meta.key} style={{ textAlign: 'center', minWidth: 0 }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  margin: '0 auto 6px',
-                  borderRadius: meta.preview === 'menu-circle' ? '50%' : 10,
-                  background: meta.preview === 'color' ? thumb : 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {meta.preview !== 'color' && value ? (
-                  <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : null}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>
-                {meta.title.split('—')[0].trim().split(' ').slice(0, 2).join(' ')}
-              </div>
-              <div style={{ fontSize: 11, color: set ? '#195C36' : 'var(--color-text-muted)', marginTop: 2 }}>
-                {set ? '✓' : 'not set'}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="hub-brand-kit-grid" data-testid="brand-kit-cards-grid">
+      <div className="hub-brand-kit-grid" data-testid="brand-kit-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {cards.map((meta) => {
           const block = blocksByKey.get(meta.key)!;
           return (
-            <Card
+            <OverviewCard
               key={meta.key}
               meta={meta}
-              block={block}
               value={valueOf(block)}
-              onSetValue={(v) => onSetValue(block, v)}
-              onUploadFile={(file) => void onUploadFile(block, file)}
-              onOpenLibrary={() => onOpenLibrary(block)}
-              onOpenHistory={() => onOpenHistory(block)}
-              historyPanel={historyPanel(block)}
-              siteName={siteName}
+              onEdit={() => setEditingKey(meta.key)}
             />
           );
         })}
       </div>
+
+      {editingMeta && editingBlock ? (
+        <ContentEditorSheet
+          open
+          title={`Edit ${editingMeta.title}`}
+          onClose={() => setEditingKey(null)}
+          status={draftStatus}
+          layer={1}
+          testId={`brand-kit-editor-sheet-${editingMeta.key}`}
+        >
+          <BrandKitEditorBody
+            meta={editingMeta}
+            block={editingBlock}
+            value={valueOf(editingBlock)}
+            onSetValue={(v) => onSetValue(editingBlock, v)}
+            onUploadFile={(file) => void onUploadFile(editingBlock, file)}
+            onOpenLibrary={() => onOpenLibrary(editingBlock)}
+            onOpenHistory={() => onOpenHistory(editingBlock)}
+            historyPanel={historyPanel(editingBlock)}
+            siteName={siteName}
+          />
+        </ContentEditorSheet>
+      ) : null}
     </div>
   );
 }

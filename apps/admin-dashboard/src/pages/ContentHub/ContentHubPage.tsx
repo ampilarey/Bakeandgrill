@@ -344,6 +344,8 @@ export function ContentHubPage() {
   /** Mobile: which visual block is open in a nested editor sheet. */
   const [mobileBlockEditorKey, setMobileBlockEditorKey] = useState<string | null>(null);
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
+  /** Homepage layout draft — merged into global publish status. */
+  const [layoutDraft, setLayoutDraft] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -1058,14 +1060,24 @@ export function ContentHubPage() {
     );
   };
 
+  const effectiveDirtyCount = dirtyCount + (layoutDraft ? 1 : 0);
+
   const draftStatusNode = (
     <DraftPublishStatus
-      dirtyCount={dirtyCount}
+      dirtyCount={effectiveDirtyCount}
       autosaving={autosaving}
       lastSavedAt={lastSavedAt}
       compact={isMobile}
     />
   );
+
+  const discardAllContentDrafts = () => {
+    if (!window.confirm('Discard unpublished content drafts for this language?')) return;
+    saveGeneration.current += 1;
+    replaceLocaleDrafts(locale, {});
+    setLocaleSynced(locale, true);
+    success('Draft discarded');
+  };
 
   const renderVisualEditor = (
     block: ContentBlock,
@@ -1418,9 +1430,10 @@ export function ContentHubPage() {
       </>
     );
 
-    // Mobile: complex visual editors open in a sheet — keep the card as an overview.
-    const useCompact = isMobile && Boolean(block.editor) && !isBoolean;
+    // Overview → Edit on every device: forms live in the focused sheet, not on cards.
+    const useCompact = !isBoolean;
     let compactSummary: ReactNode = null;
+    let visibilityLabel: string | undefined;
     if (useCompact && block.editor === 'hero') {
       let slides: Array<{ image?: string; title?: string; showing?: boolean }> = [];
       try {
@@ -1440,6 +1453,34 @@ export function ContentHubPage() {
           </span>
         </div>
       );
+      visibilityLabel = showingCount > 0 ? 'Showing' : 'Hidden';
+    } else if (useCompact) {
+      const trimmed = activeValue.trim();
+      let oneLine = trimmed.replace(/\s+/g, ' ');
+      if (oneLine.startsWith('[') || oneLine.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            oneLine = `${parsed.length} item${parsed.length === 1 ? '' : 's'}`;
+            visibilityLabel = parsed.length > 0 ? 'Showing' : 'Hidden';
+          } else if (parsed && typeof parsed === 'object') {
+            oneLine = 'Configured';
+            visibilityLabel = 'Showing';
+          }
+        } catch {
+          oneLine = oneLine.slice(0, 72);
+        }
+      } else if (oneLine.length > 72) {
+        oneLine = `${oneLine.slice(0, 69)}…`;
+      }
+      compactSummary = (
+        <span className="hub-block-value-summary">
+          {oneLine || 'Not set yet'}
+        </span>
+      );
+      if (!visibilityLabel) {
+        visibilityLabel = trimmed ? 'Showing' : 'Hidden';
+      }
     }
 
     return (
@@ -1461,6 +1502,7 @@ export function ContentHubPage() {
         compact={useCompact}
         onEdit={useCompact ? () => setMobileBlockEditorKey(block.key) : undefined}
         compactSummary={compactSummary}
+        visibilityLabel={visibilityLabel}
       />
     );
   };
@@ -1492,7 +1534,10 @@ export function ContentHubPage() {
     // Stage F, so there is nothing left to disagree with it.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
-        <HomeLayoutEditor initialApp={homeLayoutApp} />
+        <HomeLayoutEditor
+          initialApp={homeLayoutApp}
+          onLayoutDraftChange={setLayoutDraft}
+        />
       ) : sectionEnableBlocks.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {sectionEnableBlocks.map(renderSectionEnable)}
@@ -1502,6 +1547,7 @@ export function ContentHubPage() {
     const brandKit: ReactNode =
       isBrandKit && brandBlocksByKey.size > 0 ? (
         <BrandKitCards
+          draftStatus={draftStatusNode}
           blocksByKey={brandBlocksByKey}
           siteName={siteName}
           valueOf={(block) => valueForScope(block, brandKitWriteScope(block), drafts)}
@@ -1652,6 +1698,20 @@ export function ContentHubPage() {
 
   const moreMenuItems = (
     <>
+      {dirtyCount > 0 ? (
+        <button
+          type="button"
+          role="menuitem"
+          className="hub-more-item"
+          data-testid="hub-discard-draft"
+          onClick={() => {
+            setMoreMenuOpen(false);
+            discardAllContentDrafts();
+          }}
+        >
+          Discard draft
+        </button>
+      ) : null}
       <button
         type="button"
         role="menuitem"
@@ -1726,19 +1786,20 @@ export function ContentHubPage() {
         </button>
       ) : null}
 
-      <Btn
-        onClick={() => void publish()}
-        disabled={saving || dirtyCount === 0}
-        className={`content-studio-publish-desktop${dirtyCount > 0 ? ' content-studio-publish-desktop--needed' : ''}`}
-        data-testid="publish-live-btn"
-      >
-        <Save size={16} />
-        {saving
-          ? 'Publishing…'
-          : dirtyCount > 0
-            ? `Publish to make live (${dirtyCount})`
-            : 'Publish'}
-      </Btn>
+      {effectiveDirtyCount > 0 ? (
+        <Btn
+          onClick={() => void publish()}
+          disabled={saving || dirtyCount === 0}
+          className="content-studio-publish-desktop content-studio-publish-desktop--needed"
+          data-testid="publish-live-btn"
+          title={layoutDraft && dirtyCount === 0
+            ? 'Publish layout changes from the Home page editor'
+            : undefined}
+        >
+          <Save size={16} />
+          {saving ? 'Publishing…' : 'Publish changes'}
+        </Btn>
+      ) : null}
 
       <div className="hub-more-wrap" ref={moreMenuRef}>
         <button
@@ -1845,7 +1906,7 @@ export function ContentHubPage() {
                   data-testid="publish-live-btn-sheet"
                   className="content-studio-publish-sticky"
                 >
-                  <Save size={16} /> {saving ? 'Publishing…' : `Publish to make live (${dirtyCount})`}
+                  <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
                 </Btn>
               ) : undefined}
             >
@@ -1856,57 +1917,6 @@ export function ContentHubPage() {
               ) : null}
               {activeGroup ? buildSectionContent(activeGroup, false) : null}
             </ContentEditorSheet>
-
-            {/* Nested visual-block editor sheet (Hero, etc.) */}
-            {(() => {
-              const editBlock = mobileBlockEditorKey
-                ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
-                : null;
-              if (!editBlock) return null;
-              const scopes = editorScopesForBlock(editBlock);
-              const activeScope = preferredScopeTab(scopes, blockScopeTab[editBlock.key]);
-              const val = valueForScope(editBlock, activeScope, drafts);
-              const isHero = editBlock.editor === 'hero';
-              return (
-                <ContentEditorSheet
-                  open
-                  title={editBlock.label}
-                  onClose={() => setMobileBlockEditorKey(null)}
-                  status={draftStatusNode}
-                  layer={1}
-                  testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
-                >
-                  <>
-                    {dirtyCount > 0 ? (
-                      <div style={{ marginBottom: 12 }} data-testid="block-editor-schedule-slot">
-                        {schedulePublishPanel}
-                      </div>
-                    ) : null}
-                    {renderContentModeControl(editBlock)}
-                    {scopes.length > 1
-                      ? renderScopeTabs(
-                        editBlock.key,
-                        scopes,
-                        activeScope,
-                        isHero
-                          ? renderVisualEditor(editBlock, activeScope, val, {
-                            mobileMode: true,
-                            scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
-                          })
-                          : renderEditorForScope(editBlock, activeScope),
-                      )
-                      : (
-                        isHero
-                          ? renderVisualEditor(editBlock, activeScope, val, {
-                            mobileMode: true,
-                            scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
-                          })
-                          : renderEditorForScope(editBlock, activeScope)
-                      )}
-                  </>
-                </ContentEditorSheet>
-              );
-            })()}
 
             {mobileEditorOpen ? (
               <button
@@ -1976,11 +1986,85 @@ export function ContentHubPage() {
           </div>
         )}
 
-        {/* Sticky mobile publish bar — same “not live yet” wording as header */}
-        {dirtyCount > 0 ? (
-          <div className="content-studio-sticky-bar" role="region" aria-label="Changes not yet live">
+        {/* Focused block editor — Overview → Edit (mobile sheet / desktop drawer) */}
+        {(() => {
+          const editBlock = mobileBlockEditorKey
+            ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
+            : null;
+          if (!editBlock) return null;
+          const scopes = editorScopesForBlock(editBlock);
+          const activeScope = preferredScopeTab(scopes, blockScopeTab[editBlock.key]);
+          const val = valueForScope(editBlock, activeScope, drafts);
+          const isHero = editBlock.editor === 'hero';
+          const emptyOverrideScopes = (['website', 'order_app'] as const).filter((scope) =>
+            emptyArrayMasksShared(editBlock, scope, drafts),
+          );
+          const emptyArrayBanner = emptyOverrideScopes.length > 0 ? (
+            <div
+              className="hub-empty-array-warning"
+              data-testid={`empty-array-override-${editBlock.key}`}
+              role="status"
+            >
+              <AlertCircle size={16} aria-hidden />
+              <div>
+                <strong>This app is set to show nothing</strong>
+                {' — '}
+                {emptyOverrideScopes.map((s) => labelForScope(s)).join(' & ')}
+                {' '}
+                has an empty list, so customers on
+                {emptyOverrideScopes.length === 1 ? ' that app' : ' those apps'}
+                {' '}
+                will not see the shared content. That is intentional. Clear the empty list
+                or switch to “Use shared version again” if you meant to use the shared version.
+              </div>
+            </div>
+          ) : null;
+          const editorBody = isHero
+            ? renderVisualEditor(editBlock, activeScope, val, {
+              mobileMode: true,
+              scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
+            })
+            : renderEditorForScope(editBlock, activeScope);
+          return (
+            <ContentEditorSheet
+              open
+              title={`Edit ${editBlock.label}`}
+              onClose={() => setMobileBlockEditorKey(null)}
+              status={draftStatusNode}
+              layer={1}
+              testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
+              footer={dirtyCount > 0 ? (
+                <Btn
+                  onClick={() => void publish()}
+                  disabled={saving}
+                  style={{ width: '100%' }}
+                  data-testid="publish-live-btn-block-sheet"
+                >
+                  <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
+                </Btn>
+              ) : undefined}
+            >
+              <>
+                {dirtyCount > 0 ? (
+                  <div style={{ marginBottom: 12 }} data-testid="block-editor-schedule-slot">
+                    {schedulePublishPanel}
+                  </div>
+                ) : null}
+                {emptyArrayBanner}
+                {renderContentModeControl(editBlock)}
+                {scopes.length > 1
+                  ? renderScopeTabs(editBlock.key, scopes, activeScope, editorBody)
+                  : editorBody}
+              </>
+            </ContentEditorSheet>
+          );
+        })()}
+
+        {/* Sticky mobile publish bar */}
+        {dirtyCount > 0 && isMobile ? (
+          <div className="content-studio-sticky-bar" role="region" aria-label="Draft saved — not live">
             <span className="content-studio-sticky-bar-label">
-              {dirtyCount} change{dirtyCount === 1 ? '' : 's'} not yet live
+              Draft saved — not live
             </span>
             <Btn
               onClick={() => void publish()}
@@ -1989,7 +2073,7 @@ export function ContentHubPage() {
               data-testid="publish-live-btn-mobile"
               className="content-studio-publish-sticky"
             >
-              <Save size={16} /> {saving ? 'Publishing…' : `Publish to make live (${dirtyCount})`}
+              <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
             </Btn>
           </div>
         ) : null}

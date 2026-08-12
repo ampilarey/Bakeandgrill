@@ -170,7 +170,7 @@ describe('ContentHub mobile editor sheet', () => {
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(sheet.getAttribute('role')).toBe('dialog');
     expect(sheet.getAttribute('aria-modal')).toBe('true');
-    expect(sheet.parentElement).toBe(document.body);
+    expect(document.body.contains(sheet)).toBe(true);
 
     expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Hero');
     expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
@@ -179,9 +179,7 @@ describe('ContentHub mobile editor sheet', () => {
     expect(within(sheet).getByTestId('block-card-hero_slides')).toBeTruthy();
     expect(within(sheet).getByTestId('edit-hero_slides')).toBeTruthy();
     expect(within(sheet).queryByTestId('hero-slide-0')).toBeNull();
-
-    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
-    expect(within(sheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
+    expect(within(sheet).queryByTestId('content-mode-hero_slides')).toBeNull();
   });
 
   it('locks body scroll while the sheet is open and restores it on close', async () => {
@@ -233,12 +231,14 @@ describe('ContentHub mobile editor sheet', () => {
 
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
     const heroSheet = await screen.findByTestId('hero-editor-sheet');
-    expect(heroSheet.parentElement).toBe(document.body);
+    expect(document.body.contains(heroSheet)).toBe(true);
     expect(heroSheet.getAttribute('role')).toBe('dialog');
     expect(within(heroSheet).getByTestId('draft-save-status')).toBeTruthy();
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-0')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1').textContent).toMatch(/Hidden/);
+    expect(within(heroSheet).queryByTestId('hero-slide-move-up-0')).toBeNull();
 
     expect(within(heroSheet).queryByLabelText(/Title/i)).toBeNull();
 
@@ -251,7 +251,7 @@ describe('ContentHub mobile editor sheet', () => {
     fireEvent.change(title, { target: { value: 'Draft title change' } });
     await waitFor(() => {
       expect(
-        screen.getAllByTestId('draft-save-status').some((el) => /not yet live/i.test(el.textContent || '')),
+        screen.getAllByTestId('draft-save-status').some((el) => /Draft saved — not live/i.test(el.textContent || '')),
       ).toBe(true);
     });
 
@@ -266,7 +266,7 @@ describe('ContentHub mobile editor sheet', () => {
 
     expect(contentApi.updateContent).not.toHaveBeenCalled();
     const statuses = screen.getAllByTestId('draft-save-status');
-    expect(statuses.some((el) => /not yet live/i.test(el.textContent || ''))).toBe(true);
+    expect(statuses.some((el) => /Draft saved — not live/i.test(el.textContent || ''))).toBe(true);
   });
 
   it('block ⋯ menu uses a collision-safe mobile action sheet', async () => {

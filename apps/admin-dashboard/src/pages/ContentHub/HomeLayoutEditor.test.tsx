@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomeLayoutEditor } from './HomeLayoutEditor';
 
@@ -99,15 +99,56 @@ describe('HomeLayoutEditor', () => {
       draft: true,
       version: 1,
     }));
+    deletePageBlock.mockResolvedValue({ blocks: [], draft: true, version: 1 });
   });
 
-  it('explains why mode cards cannot be removed', async () => {
+  it('keeps overview cards simple — no permanent Up/Down/Hide/Remove', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('home-layout-move-up-10')).toBeNull();
+    expect(screen.queryByTestId('home-layout-move-down-10')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Hide$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Customise for Website/i })).toBeNull();
+
+    expect(screen.getByTestId('home-layout-visibility-10').textContent).toMatch(/Showing/);
+    expect(screen.getByTestId('home-layout-edit-10')).toBeTruthy();
+  });
+
+  it('shows move controls only in Reorder mode', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('home-layout-reorder-toggle'));
+    expect(screen.getByTestId('home-layout-editor').getAttribute('data-reorder')).toBe('true');
+    expect(screen.getByTestId('home-layout-move-up-10')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-move-down-10')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Hide$/i })).toBeNull();
+  });
+
+  it('opens a focused editor sheet with Show/Hide, sharing, and Remove section', async () => {
+    render(<HomeLayoutEditor />);
+    await waitFor(() => expect(screen.getByTestId('home-layout-edit-10')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('home-layout-edit-10'));
+    const sheet = await screen.findByTestId('home-layout-section-editor');
+    expect(sheet.textContent).toMatch(/Edit Hero banner/);
+    expect(within(sheet).getByTestId('home-layout-visibility-switch-10')).toBeTruthy();
+    expect(within(sheet).getByRole('button', { name: /Customise for Website/i })).toBeTruthy();
+    expect(within(sheet).getByTestId('home-layout-remove-10')).toBeTruthy();
+  });
+
+  it('explains why mode cards cannot be removed inside the editor', async () => {
     render(<HomeLayoutEditor />);
     fireEvent.click(screen.getByTestId('home-layout-tab-order_app'));
     await waitFor(() => {
-      expect(screen.getByTestId('home-layout-block-mode_cards').textContent).toMatch(/only way into ordering/i);
+      expect(screen.getByTestId('home-layout-block-mode_cards')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    fireEvent.click(screen.getByTestId('home-layout-edit-1'));
+    const sheet = await screen.findByTestId('home-layout-section-editor');
+    expect(sheet.textContent).toMatch(/only way into ordering/i);
+    expect(within(sheet).getByTestId('home-layout-remove-1')).toBeDisabled();
   });
 
   it('loads each app independently when tabs are clicked', async () => {
@@ -117,7 +158,7 @@ describe('HomeLayoutEditor', () => {
     await waitFor(() => expect(fetchAdminPageBlocks).toHaveBeenCalledWith('order_app'));
   });
 
-  it('edits and saves a generic block’s content in place', async () => {
+  it('edits and saves a generic block’s content in the focused editor', async () => {
     render(<HomeLayoutEditor />);
     await waitFor(() => expect(screen.getByTestId('home-layout-edit-11')).toBeInTheDocument());
 
@@ -138,19 +179,6 @@ describe('HomeLayoutEditor', () => {
     );
   });
 
-  it('shows Showing/Hidden and sharing badges on overview; sharing controls only after Edit', async () => {
-    render(<HomeLayoutEditor />);
-    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
-
-    expect(screen.getByTestId('home-layout-visibility-10').textContent).toMatch(/Showing/);
-    expect(screen.getByTestId('home-layout-sharing-10').textContent).toMatch(/Shared with Website and Order App/);
-    expect(screen.queryByRole('button', { name: /Customise for Website/i })).toBeNull();
-
-    fireEvent.click(screen.getByTestId('home-layout-edit-10'));
-    expect(screen.getByRole('button', { name: /Customise for Website/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Use shared version again/i })).toBeTruthy();
-  });
-
   it('opens on Order App tab when initialApp is order_app', async () => {
     render(<HomeLayoutEditor initialApp="order_app" />);
     await waitFor(() => expect(fetchAdminPageBlocks).toHaveBeenCalledWith('order_app'));
@@ -162,15 +190,6 @@ describe('HomeLayoutEditor', () => {
     await waitFor(() => expect(screen.getByTestId('home-layout-block-rich_text')).toBeInTheDocument());
 
     expect(screen.getByRole('option', { name: 'Text block' })).toBeInTheDocument();
-  });
-
-  it('does not offer a content form for named sections (Edit opens sharing only)', async () => {
-    render(<HomeLayoutEditor />);
-    await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('home-layout-edit-10'));
-    expect(screen.queryByLabelText('Heading')).toBeNull();
-    expect(screen.getByTestId('home-layout-editor-panel-10')).toBeTruthy();
   });
 
   it('shouts when a home page has no sections at all', async () => {
@@ -196,5 +215,38 @@ describe('HomeLayoutEditor', () => {
     await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
 
     expect(screen.queryByTestId('home-layout-empty-warning')).not.toBeInTheDocument();
+  });
+
+  it('uses truthful draft wording — never mixes All published with layout draft', async () => {
+    fetchAdminPageBlocks.mockResolvedValue({
+      app: 'website',
+      page: 'home',
+      blocks: [
+        {
+          id: 10,
+          app: 'website',
+          page: 'home',
+          block_type: 'hero',
+          position: 0,
+          is_enabled: true,
+          content_mode: 'shared',
+          settings: {},
+          label: 'Hero banner',
+          description: 'Top slideshow',
+          removable: true,
+          supports_shared_content: true,
+        },
+      ],
+      available_types: [],
+      unknown_types: [],
+      draft: true,
+      version: 1,
+      saved_at: '2026-08-12T00:00:00Z',
+    });
+    render(<HomeLayoutEditor />);
+    await screen.findByTestId('home-layout-draft-status');
+    expect(screen.getByTestId('home-layout-draft-status').textContent).toMatch(/Draft saved — not live/);
+    expect(screen.getByTestId('home-layout-draft-status').textContent).not.toMatch(/All published/);
+    expect(screen.queryByText(/Unpublished layout draft/i)).toBeNull();
   });
 });

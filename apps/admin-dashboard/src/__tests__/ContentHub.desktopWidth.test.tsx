@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -112,15 +112,17 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('scope-tabs-business_phone');
-    expect(screen.getByDisplayValue('+960 WEB')).toBeTruthy();
-    expect(screen.queryByDisplayValue('+960 ORDER')).toBeNull();
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByTestId('scope-tabs-business_phone');
+    expect(within(sheet).getByDisplayValue('+960 WEB')).toBeTruthy();
+    expect(within(sheet).queryByDisplayValue('+960 ORDER')).toBeNull();
     expect(document.querySelectorAll('.content-preview-grid').length).toBe(0);
 
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 ORDER')).toBeTruthy();
-      expect(screen.queryByDisplayValue('+960 WEB')).toBeNull();
+      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
+      expect(within(sheet).queryByDisplayValue('+960 WEB')).toBeNull();
     });
   });
 
@@ -132,20 +134,22 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByDisplayValue('+960 WEB');
-    fireEvent.change(screen.getByDisplayValue('+960 WEB'), { target: { value: '+960 WEB EDIT' } });
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByDisplayValue('+960 WEB');
+    fireEvent.change(within(sheet).getByDisplayValue('+960 WEB'), { target: { value: '+960 WEB EDIT' } });
 
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 ORDER')).toBeTruthy();
-      expect(screen.getByTestId('scope-tab-dirty-business_phone-website')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
+      expect(within(sheet).getByTestId('scope-tab-dirty-business_phone-website')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByDisplayValue('+960 ORDER'), { target: { value: '+960 ORDER EDIT' } });
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-website'));
+    fireEvent.change(within(sheet).getByDisplayValue('+960 ORDER'), { target: { value: '+960 ORDER EDIT' } });
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-website'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 WEB EDIT')).toBeTruthy();
-      expect(screen.getByTestId('scope-tab-dirty-business_phone-order_app')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 WEB EDIT')).toBeTruthy();
+      expect(within(sheet).getByTestId('scope-tab-dirty-business_phone-order_app')).toBeTruthy();
     });
   });
 
@@ -157,8 +161,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByDisplayValue('+960 SHARED');
-    expect(screen.queryByTestId('scope-tabs-business_phone')).toBeNull();
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByDisplayValue('+960 SHARED');
+    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
   });
 
   it('boolean split block stays compact and untabbed', async () => {
@@ -182,8 +188,11 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('scope-tabs-business_phone');
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByTestId('scope-tabs-business_phone');
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
     fireEvent.click(screen.getByTestId('block-more-business_phone'));
     fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
 
@@ -213,11 +222,14 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('scope-tabs-business_phone');
-    fireEvent.click(screen.getByTestId('scope-tab-business_phone-order_app'));
+    fireEvent.click(await screen.findByTestId('edit-business_phone'));
+    let sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await within(sheet).findByTestId('scope-tabs-business_phone');
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 ORDER')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
     });
+    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByTestId('block-more-business_phone'));
     expect(screen.getByTestId('copy-from-website-business_phone')).toBeTruthy();
@@ -233,8 +245,11 @@ describe('ContentHub desktop width', () => {
       );
     });
     expect(confirmSpy).toHaveBeenCalledWith('Replace the Order app value with the Website value?');
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(screen.getByDisplayValue('+960 WEB')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('+960 WEB')).toBeTruthy();
     });
 
     confirmSpy.mockRestore();

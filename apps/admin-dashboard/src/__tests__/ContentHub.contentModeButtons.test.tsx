@@ -86,17 +86,16 @@ describe('Content Hub content-mode buttons (mobile)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('content-mode-hero_slides');
-    fireEvent.click(screen.getByTestId('content-mode-hero_slides-different'));
+    await screen.findByTestId('edit-hero_slides');
+    fireEvent.click(screen.getByTestId('edit-hero_slides'));
+    const heroSheet = await screen.findByTestId('hero-editor-sheet');
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides')).toBeTruthy();
+    fireEvent.click(within(heroSheet).getByTestId('content-mode-hero_slides-different'));
 
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('hero_slides', 'en');
     });
 
-    // Compact mobile overview keeps Same/Different on the card; scope tabs
-    // appear inside the hero editor sheet after Edit.
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-    const heroSheet = await screen.findByTestId('hero-editor-sheet');
     await waitFor(() => {
       expect(within(heroSheet).getByTestId('scope-tabs-hero_slides')).toBeTruthy();
     });

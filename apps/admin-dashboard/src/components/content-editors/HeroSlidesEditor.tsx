@@ -174,6 +174,7 @@ export function HeroSlidesEditor({
   const [libraryTarget, setLibraryTarget] = useState<LibraryTarget>(null);
   const [studioIdx, setStudioIdx] = useState<number | null>(null);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [heroReorderMode, setHeroReorderMode] = useState(false);
   const [openElementPanels, setOpenElementPanels] = useState<Record<string, boolean>>({});
   const [advancedHexOpen, setAdvancedHexOpen] = useState<Record<string, boolean>>({});
 
@@ -942,10 +943,26 @@ export function HeroSlidesEditor({
   if (mobileMode) {
     const editing = editingIdx !== null ? items[editingIdx] : null;
     return (
-      <div className="hero-slides-mobile" data-testid="hero-slides-mobile" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
-          {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}
+      <div
+        className="hero-slides-mobile"
+        data-testid="hero-slides-mobile"
+        data-reorder={heroReorderMode ? 'true' : 'false'}
+        style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
+            {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}
+          </div>
+          <button
+            type="button"
+            data-testid="hero-reorder-toggle"
+            aria-pressed={heroReorderMode}
+            className="hub-block-edit-btn"
+            onClick={() => setHeroReorderMode((v) => !v)}
+          >
+            {heroReorderMode ? 'Done reordering' : 'Reorder slides'}
+          </button>
         </div>
         {sharedChrome}
         <div className="hero-slide-overview-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -962,7 +979,11 @@ export function HeroSlidesEditor({
                   type="button"
                   className="hero-slide-overview-card"
                   data-testid={`hero-slide-overview-${idx}`}
-                  onClick={() => setEditingIdx(idx)}
+                  disabled={heroReorderMode}
+                  onClick={() => {
+                    if (heroReorderMode) return;
+                    setEditingIdx(idx);
+                  }}
                 >
                   <span className="hero-slide-overview-thumb" aria-hidden>
                     {slide.image || slide.video_poster ? (
@@ -982,42 +1003,44 @@ export function HeroSlidesEditor({
                     </span>
                   </span>
                 </button>
-                <div className="hero-slide-overview-order" role="group" aria-label={`Reorder slide ${idx + 1}`}>
-                  <button
-                    type="button"
-                    className="hero-slide-move-btn"
-                    data-testid={`hero-slide-move-up-${idx}`}
-                    aria-label={`Move slide ${idx + 1} up`}
-                    disabled={idx === 0}
-                    onClick={() => {
-                      if (idx === 0) return;
-                      const next = items.slice();
-                      const tmp = next[idx - 1];
-                      next[idx - 1] = next[idx];
-                      next[idx] = tmp;
-                      commitSlides(next);
-                    }}
-                  >
-                    <ChevronUp size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="hero-slide-move-btn"
-                    data-testid={`hero-slide-move-down-${idx}`}
-                    aria-label={`Move slide ${idx + 1} down`}
-                    disabled={idx === items.length - 1}
-                    onClick={() => {
-                      if (idx >= items.length - 1) return;
-                      const next = items.slice();
-                      const tmp = next[idx + 1];
-                      next[idx + 1] = next[idx];
-                      next[idx] = tmp;
-                      commitSlides(next);
-                    }}
-                  >
-                    <ChevronDown size={16} />
-                  </button>
-                </div>
+                {heroReorderMode ? (
+                  <div className="hero-slide-overview-order" role="group" aria-label={`Reorder slide ${idx + 1}`}>
+                    <button
+                      type="button"
+                      className="hero-slide-move-btn"
+                      data-testid={`hero-slide-move-up-${idx}`}
+                      aria-label={`Move slide ${idx + 1} up`}
+                      disabled={idx === 0}
+                      onClick={() => {
+                        if (idx === 0) return;
+                        const next = items.slice();
+                        const tmp = next[idx - 1];
+                        next[idx - 1] = next[idx];
+                        next[idx] = tmp;
+                        commitSlides(next);
+                      }}
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="hero-slide-move-btn"
+                      data-testid={`hero-slide-move-down-${idx}`}
+                      aria-label={`Move slide ${idx + 1} down`}
+                      disabled={idx === items.length - 1}
+                      onClick={() => {
+                        if (idx >= items.length - 1) return;
+                        const next = items.slice();
+                        const tmp = next[idx + 1];
+                        next[idx + 1] = next[idx];
+                        next[idx] = tmp;
+                        commitSlides(next);
+                      }}
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+                ) : null}
               </div>
             );
           })}

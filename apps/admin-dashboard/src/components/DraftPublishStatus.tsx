@@ -12,7 +12,8 @@ export type DraftPublishStatusProps = {
 
 /**
  * Truthful publish-state label for Content Hub.
- * Unpublished drafts must never read as “done” / published.
+ * - No changes: All published
+ * - Draft exists: Draft saved — not live
  */
 export function DraftPublishStatus({
   dirtyCount,
@@ -33,22 +34,16 @@ export function DraftPublishStatus({
         <>
           <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
           <span className="hub-draft-status-text">
-            <span className="hub-draft-status-primary">
-              {dirtyCount} change{dirtyCount === 1 ? '' : 's'} not yet live
-            </span>
+            <span className="hub-draft-status-primary">Draft saved — not live</span>
             {!compact ? (
               <span className="hub-draft-status-secondary">
                 {autosaving
                   ? 'Saving… customers still see the old version'
                   : lastSavedAt
-                    ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString()} — not live yet`
-                    : 'Not live yet — customers still see the old version'}
+                    ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString()}`
+                    : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} waiting to publish`}
               </span>
-            ) : (
-              <span className="hub-draft-status-secondary">
-                Not live yet — customers still see the old version
-              </span>
-            )}
+            ) : null}
           </span>
         </>
       ) : (
@@ -56,9 +51,6 @@ export function DraftPublishStatus({
           <CheckCircle2 size={14} aria-hidden className="hub-draft-status-icon" />
           <span className="hub-draft-status-text">
             <span className="hub-draft-status-primary">All published</span>
-            {!compact ? (
-              <span className="hub-draft-status-secondary">Customers see the live version</span>
-            ) : null}
           </span>
         </>
       )}

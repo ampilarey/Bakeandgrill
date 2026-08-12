@@ -34,9 +34,13 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
-vi.mock('../components/ui', () => ({
-  useToast: () => ({ success: vi.fn(), error: vi.fn() }),
-}));
+vi.mock('../components/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../components/ui')>();
+  return {
+    ...actual,
+    useToast: () => ({ success: vi.fn(), error: vi.fn() }),
+  };
+});
 vi.mock('../components/MediaPicker', () => ({
   MediaPicker: () => null,
 }));
@@ -265,10 +269,13 @@ describe('ContentHub mobile polish — systemic', () => {
     openSection('Hero');
     await screen.findByTestId('section-editor');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Where these banners appear/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/customise separately/i);
+    fireEvent.click(screen.getByTestId('edit-hero_slides'));
+    const heroSheet = await screen.findByTestId('hero-editor-sheet');
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Where these banners appear/);
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
+    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/customise separately/i);
+    fireEvent.click(within(heroSheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByTestId('section-rail-Homepage'));
     await waitFor(() => {
@@ -283,7 +290,9 @@ describe('ContentHub mobile polish — systemic', () => {
       expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Footer');
     });
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getAllByLabelText(/Shared with Website and Order App/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('edit-footer_tagline'));
+    const footerSheet = await screen.findByTestId('block-editor-sheet-footer_tagline');
+    expect(within(footerSheet).getAllByLabelText(/Shared with Website and Order App/i).length).toBeGreaterThan(0);
   });
 
   it('section-enable switches use Show this section / Website / Order app — never Both', async () => {
@@ -364,11 +373,13 @@ describe('ContentHub mobile polish — systemic', () => {
       ) as never,
     });
 
-    const mode = screen.getByTestId('content-mode-footer_tagline');
+    fireEvent.click(screen.getByTestId('edit-footer_tagline'));
+    const sheet = await screen.findByTestId('block-editor-sheet-footer_tagline');
+    const mode = within(sheet).getByTestId('content-mode-footer_tagline');
     fireEvent.click(within(mode).getByLabelText(/Customise for Website and Order App/i));
-    await screen.findByTestId('scope-tabs-footer_tagline');
-    expect(screen.getByTestId('scope-tab-footer_tagline-website').textContent).toMatch(/Website/);
-    expect(screen.getByTestId('scope-tab-footer_tagline-order_app').textContent).toMatch(/Order app/);
+    await within(sheet).findByTestId('scope-tabs-footer_tagline');
+    expect(within(sheet).getByTestId('scope-tab-footer_tagline-website').textContent).toMatch(/Website/);
+    expect(within(sheet).getByTestId('scope-tab-footer_tagline-order_app').textContent).toMatch(/Order app/);
   });
 
   it('Brand Kit still hides key/type behind Advanced', async () => {
@@ -376,13 +387,15 @@ describe('ContentHub mobile polish — systemic', () => {
     await screen.findByTestId('brand-kit-card-logo');
     const logoCard = screen.getByTestId('brand-kit-card-logo');
     expect(logoCard.textContent).not.toMatch(/logo · image · en/i);
-    const advancedBtn = Array.from(logoCard.querySelectorAll('button')).find((b) =>
+    fireEvent.click(screen.getByTestId('edit-brand-logo'));
+    const sheet = await screen.findByTestId('brand-kit-editor-sheet-logo');
+    const advancedBtn = Array.from(sheet.querySelectorAll('button')).find((b) =>
       /Advanced/i.test(b.textContent || ''),
     );
     expect(advancedBtn).toBeTruthy();
     fireEvent.click(advancedBtn!);
     await waitFor(() => {
-      expect(logoCard).toHaveTextContent(/logo · image · en/i);
+      expect(sheet).toHaveTextContent(/logo · image · en/i);
     });
   });
 });

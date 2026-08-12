@@ -1,9 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
+
+async function openCtaEditor() {
+  fireEvent.click(await screen.findByTestId('edit-cta_band_headline'));
+  const sheet = await screen.findByTestId('block-editor-sheet-cta_band_headline');
+  await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+  return sheet;
+}
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(),
@@ -87,20 +94,19 @@ describe('Content Hub draft vs published status', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Edited draft';
     fireEvent.input(editor);
 
-    const status = await screen.findByTestId('draft-save-status');
+    const status = screen.getAllByTestId('draft-save-status')[0];
     expect(status.className).toMatch(/unpublished/);
-    expect(status.textContent).toMatch(/not yet live/i);
-    expect(status.textContent).toMatch(/customers still see the old version/i);
-    expect(status.textContent).not.toMatch(/^Draft saved/);
+    expect(status.textContent).toMatch(/Draft saved — not live/);
+    expect(status.textContent).not.toMatch(/All published/);
 
     const publish = screen.getByTestId('publish-live-btn');
     expect(publish).toBeTruthy();
-    expect(publish.textContent).toMatch(/Publish to make live/i);
+    expect(publish.textContent).toMatch(/Publish changes/i);
     expect(publish.className).toMatch(/needed/);
   });
 
@@ -111,8 +117,8 @@ describe('Content Hub draft vs published status', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Autosaved only';
     fireEvent.input(editor);
 
@@ -133,19 +139,19 @@ describe('Content Hub draft vs published status', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Go live';
     fireEvent.input(editor);
 
     fireEvent.click(screen.getByTestId('publish-live-btn'));
     await waitFor(() => expect(contentApi.updateContent).toHaveBeenCalled());
 
-    const status = await screen.findByTestId('draft-save-status');
     await waitFor(() => {
+      const status = screen.getAllByTestId('draft-save-status')[0];
       expect(status.className).toMatch(/live/);
       expect(status.textContent).toMatch(/All published/);
-      expect(status.textContent).toMatch(/Customers see the live version/i);
+      expect(status.textContent).not.toMatch(/Draft saved/);
     });
   });
 });

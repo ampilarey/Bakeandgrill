@@ -1,9 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
+
+async function openCtaEditor() {
+  fireEvent.click(await screen.findByTestId('edit-cta_band_headline'));
+  const sheet = await screen.findByTestId('block-editor-sheet-cta_band_headline');
+  await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+  return sheet;
+}
 
 vi.mock('../api/content', () => ({
   getContentBlocks: vi.fn(),
@@ -86,9 +93,8 @@ describe('Content Hub autosave + WYSIWYG', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Edited draft';
     fireEvent.input(editor);
 
@@ -112,8 +118,8 @@ describe('Content Hub autosave + WYSIWYG', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Ready to publish';
     fireEvent.input(editor);
 
@@ -130,8 +136,8 @@ describe('Content Hub autosave + WYSIWYG', () => {
         <ContentHubPage />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'dirty';
     fireEvent.input(editor);
 
@@ -152,8 +158,8 @@ describe('Content Hub autosave + WYSIWYG', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    const editor = screen.getAllByTestId('rich-text-editor')[0];
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
 
     editor.innerHTML = 'First draft';
     fireEvent.input(editor);
@@ -167,14 +173,14 @@ describe('Content Hub autosave + WYSIWYG', () => {
       resolveSecond({ drafts: { cta_band_headline: 'Second draft' }, saved_at: '2026-07-23T11:00:00Z' });
     });
     await waitFor(() => {
-      expect(screen.getByTestId('draft-save-status').textContent).toMatch(/11:/);
+      expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/11:/);
     });
 
     await act(async () => {
       resolveFirst({ drafts: { cta_band_headline: 'First draft' }, saved_at: '2026-07-23T10:00:00Z' });
     });
 
-    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/11:/);
-    expect(screen.getByTestId('draft-save-status').textContent).not.toMatch(/10:/);
+    expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/11:/);
+    expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/10:/);
   }, 12000);
 });

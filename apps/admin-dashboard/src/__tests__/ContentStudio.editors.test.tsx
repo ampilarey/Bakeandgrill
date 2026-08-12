@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -121,14 +121,19 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
+    await screen.findByTestId('edit-hero_slides');
+    fireEvent.click(screen.getByTestId('edit-hero_slides'));
+    const sheet = await screen.findByTestId('hero-editor-sheet');
+    fireEvent.click(await within(sheet).findByTestId('hero-slide-overview-0'));
+    const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Shared eyebrow')).toBeTruthy();
+      expect(within(slideSheet).getByDisplayValue('Shared eyebrow')).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByDisplayValue('Shared eyebrow'), {
+    fireEvent.change(within(slideSheet).getByDisplayValue('Shared eyebrow'), {
       target: { value: 'Edited eyebrow' },
     });
-    expect(screen.getByDisplayValue('Edited eyebrow')).toBeTruthy();
+    expect(within(slideSheet).getByDisplayValue('Edited eyebrow')).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByTestId('live-preview-frame')).toBeTruthy();
     });
@@ -141,14 +146,18 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
+    await screen.findByTestId('edit-homepage_categories');
+    fireEvent.click(screen.getByTestId('edit-homepage_categories'));
+    const sheet = await screen.findByTestId('block-editor-sheet-homepage_categories');
     await waitFor(() => {
-      expect(screen.getAllByText('Hedhikaa').length).toBeGreaterThan(0);
+      expect(within(sheet).getAllByText('Hedhikaa').length).toBeGreaterThan(0);
     });
 
-    const uploadBtn = screen.getAllByRole('button', { name: /^Upload$/ })[0];
+    const uploadBtn = within(sheet).getAllByRole('button', { name: /^Upload$/ })[0];
     fireEvent.click(uploadBtn);
 
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = sheet.querySelector('input[type="file"]') as HTMLInputElement
+      ?? document.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(['x'], 'cat.jpg', { type: 'image/jpeg' });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
@@ -163,7 +172,7 @@ describe('Content Hub visual editors', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('/storage/site/website/hero.jpg')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('/storage/site/website/hero.jpg')).toBeTruthy();
     });
   });
 

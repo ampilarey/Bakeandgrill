@@ -131,7 +131,9 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     await screen.findByTestId('section-editor');
     expect(screen.queryByTestId('section-dirty-Contact & map')).toBeNull();
 
-    const phoneInput = screen.getByDisplayValue('+960 912 0011');
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    const phoneInput = within(sheet).getByDisplayValue('+960 912 0011');
     fireEvent.change(phoneInput, { target: { value: '+960 999 9999' } });
 
     await waitFor(() => {

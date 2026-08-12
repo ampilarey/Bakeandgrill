@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -115,7 +115,9 @@ describe('Brand Kit UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Contact & map' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
-    expect(screen.getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('edit-business_phone'));
+    const phoneSheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    expect(within(phoneSheet).getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {
@@ -127,22 +129,24 @@ describe('Brand Kit UI', () => {
 
     await screen.findByTestId('brand-kit-card-logo');
     const logoCard = screen.getByTestId('brand-kit-card-logo');
-    expect(logoCard.querySelectorAll('[data-testid="brand-kit-dropzone"]').length).toBe(1);
-    expect(logoCard.querySelector('input[type="file"]:not([style*="display: none"])')).toBeNull();
-    expect(screen.queryByPlaceholderText('/storage/…')).toBeNull();
+    expect(logoCard.querySelectorAll('[data-testid="brand-kit-dropzone"]').length).toBe(0);
+    fireEvent.click(screen.getByTestId('edit-brand-logo'));
+    const sheet = await screen.findByTestId('brand-kit-editor-sheet-logo');
+    expect(within(sheet).getAllByTestId('brand-kit-dropzone').length).toBe(1);
+    expect(within(sheet).queryByPlaceholderText('/storage/…')).toBeNull();
 
-    const advancedBtn = Array.from(logoCard.querySelectorAll('button')).find((b) =>
+    const advancedBtn = Array.from(sheet.querySelectorAll('button')).find((b) =>
       /Advanced/i.test(b.textContent || ''),
     );
     expect(advancedBtn).toBeTruthy();
     fireEvent.click(advancedBtn!);
     await waitFor(() => {
-      expect(logoCard.querySelector('input[placeholder="/storage/…"]')).toBeTruthy();
+      expect(within(sheet).getByPlaceholderText('/storage/…')).toBeTruthy();
     });
-    expect(logoCard).toHaveTextContent(/logo · image · en · Website \+ Order app/i);
+    expect(sheet).toHaveTextContent(/logo · image · en · Website \+ Order app/i);
   });
 
-  it('empty asset shows Not set — using the default', async () => {
+  it('empty asset shows Not set on overview and default copy in editor', async () => {
     render(
       <MemoryRouter initialEntries={['/content?group=Branding']}>
         <ContentHubPage />
@@ -151,8 +155,11 @@ describe('Brand Kit UI', () => {
 
     await screen.findByTestId('brand-kit-card-favicon');
     const faviconCard = screen.getByTestId('brand-kit-card-favicon');
-    expect(faviconCard).toHaveTextContent('Not set — using the default');
+    expect(faviconCard).toHaveTextContent('Not set');
     const logoCard = screen.getByTestId('brand-kit-card-logo');
-    expect(logoCard).toHaveTextContent('Set');
+    expect(logoCard).toHaveTextContent('Showing');
+    fireEvent.click(screen.getByTestId('edit-brand-favicon'));
+    const sheet = await screen.findByTestId('brand-kit-editor-sheet-favicon');
+    expect(sheet).toHaveTextContent('Not set — using the default');
   });
 });

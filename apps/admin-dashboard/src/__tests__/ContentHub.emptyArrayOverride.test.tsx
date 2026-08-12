@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -80,7 +80,10 @@ describe('Content Hub empty JSON array override warning', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('block-card-hero_slides')).toBeTruthy());
-    const banner = screen.getByTestId('empty-array-override-hero_slides');
+    expect(screen.queryByTestId('empty-array-override-hero_slides')).toBeNull();
+    fireEvent.click(screen.getByTestId('edit-hero_slides'));
+    const sheet = await screen.findByTestId('hero-editor-sheet');
+    const banner = within(sheet).getByTestId('empty-array-override-hero_slides');
     expect(banner.textContent).toMatch(/show nothing/i);
     expect(banner.textContent).toMatch(/Website/);
     expect(banner.textContent).toMatch(/shared/i);
