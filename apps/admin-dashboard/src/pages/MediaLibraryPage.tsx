@@ -913,10 +913,25 @@ export function MediaLibraryPage() {
     setShowSaveModeModal(false);
     try {
       const result = await editMedia(selected.id, editOp, editParams, mode);
+      const next = result.asset;
       setEditResult(result);
       setCanRestore(mode === 'replace');
-      setSelected(result.asset);
-      setAssets((prev) => prev.map((a) => (a.id === result.asset.id ? result.asset : a)));
+      setSelected(next);
+      setDetailTitle(next.title || '');
+      setDetailAlt(next.alt_text || '');
+      setDetailTags(next.tags || []);
+      // Copy creates a new id — map() would miss it and the grid would stay stale until refresh.
+      if (mode === 'copy') {
+        setAssets((prev) => {
+          if (prev.some((a) => a.id === next.id)) {
+            return prev.map((a) => (a.id === next.id ? next : a));
+          }
+          return [next, ...prev];
+        });
+        setMeta((m) => ({ ...m, total: m.total + 1 }));
+      } else {
+        setAssets((prev) => prev.map((a) => (a.id === next.id ? next : a)));
+      }
       setEditOp(null);
     } catch (e) {
       setEditError((e as Error).message || 'Edit failed');

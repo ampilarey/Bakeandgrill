@@ -208,6 +208,30 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByRole('button', { name: /restore previous version/i })).toBeTruthy();
   }, 30_000);
 
+  it('save as new copy prepends the new asset into the grid without refresh', async () => {
+    const copyAsset = makeAsset(99, { title: 'Asset 1 (edited)', checksum: 'copy-checksum' });
+    const editSpy = vi.spyOn(api, 'editMedia').mockResolvedValue({
+      asset: copyAsset,
+      updated_references: 0,
+      mode: 'copy',
+    });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(screen.getByRole('button', { name: /^resize$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /save as new copy/i }));
+
+    await waitFor(() => {
+      expect(editSpy).toHaveBeenCalledWith(1, 'resize', expect.any(Object), 'copy');
+    });
+
+    // New id must appear in the grid immediately (regression: map-by-id never inserted copies).
+    expect(await screen.findByTestId('asset-card-99')).toBeTruthy();
+    expect(screen.getByTestId('asset-card-1')).toBeTruthy();
+    expect(await screen.findByText(/saved as a new copy/i)).toBeTruthy();
+  });
+
   it('shows empty state when no assets match', async () => {
     vi.mocked(api.getMedia).mockResolvedValueOnce({ data: [], meta: emptyMeta });
     renderWithRouter(<MediaLibraryPage />);
