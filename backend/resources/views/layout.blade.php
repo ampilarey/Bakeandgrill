@@ -1442,14 +1442,9 @@
             <a href="/#offers">Offers</a>
             <a href="/order/events">Pre-order</a>
         </nav>
-        @php
-            $websitePrayerDesktopHeader = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'prayer_bar', 'desktop');
-        @endphp
-        @if($websitePrayerDesktopHeader)
-        <div class="header-prayer" data-home-chrome="prayer_bar" data-placement="header" data-device="desktop">
+        <div class="header-prayer">
             @include('partials.prayer-banner')
         </div>
-        @endif
         <div class="header-actions">
             @auth('customer')
                 @php
@@ -1497,18 +1492,15 @@
     @endif
 </header>
 
-{{-- ─── Announcement Banner (header placement from Website Home components) ─── --}}
+{{-- ─── Announcement Banner ──────────────────────────────────────── --}}
 @php
-    $annHeaderDesktop = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'announcement', 'desktop');
-    $annHeaderMobile = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'announcement', 'mobile');
     $annEnabled = content('announcement_enabled', 'false') === 'true';
     $annText    = trim(content('announcement_text', ''));
     $annUrl     = safe_public_url((string) content('announcement_url',  '')) ?? '';
     $annStyle   = content('announcement_style', 'info');
 @endphp
-@if($annEnabled && $annText && ($annHeaderDesktop || $annHeaderMobile))
-<div class="site-announcement site-announcement--{{ e($annStyle) }}" role="banner" aria-label="Site announcement"
-     data-home-chrome="announcement" data-placement="header">
+@if($annEnabled && $annText)
+<div class="site-announcement site-announcement--{{ e($annStyle) }}" role="banner" aria-label="Site announcement">
     @if($annUrl)
         <a href="{{ e($annUrl) }}" class="site-announcement__inner">
             <span class="site-announcement__text">{{ $annText }}</span>
@@ -1577,15 +1569,10 @@
 </div>
 @endif
 
-{{-- Prayer banner (mobile header — controlled by Website Home prayer_bar placement) --}}
-@php
-    $websitePrayerMobileHeader = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'prayer_bar', 'mobile');
-@endphp
-@if($websitePrayerMobileHeader)
-<div class="site-prayer-wrap site-prayer-wrap--mobile" data-home-chrome="prayer_bar" data-placement="header" data-device="mobile">
+{{-- Prayer banner (mobile — desktop copy lives inline in .header-prayer) --}}
+<div class="site-prayer-wrap site-prayer-wrap--mobile">
     @include('partials.prayer-banner')
 </div>
-@endif
 
 @yield('content')
 
