@@ -53,7 +53,7 @@ vi.mock('../api', async () => {
     fetchFeaturedReviews: vi.fn().mockResolvedValue({ reviews: [] }),
     fetchCustomerOrders: vi.fn().mockResolvedValue({ data: [] }),
     fetchItems: vi.fn().mockResolvedValue({ data: [] }),
-    fetchPageBlocks: vi.fn().mockResolvedValue({ blocks: layoutBlocks }),
+    fetchPageBlocks: vi.fn().mockResolvedValue({ app: 'order_app', page: 'home', blocks: layoutBlocks }),
     API_ORIGIN: 'https://example.test',
   };
 });

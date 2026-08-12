@@ -105,7 +105,7 @@ vi.mock('../components/TomorrowOrderingBadge', () => ({
 }));
 
 function renderHome(blocks: PageBlockRow[]) {
-  fetchPageBlocksMock.mockResolvedValue({ blocks });
+  fetchPageBlocksMock.mockResolvedValue({ app: 'order_app', page: 'home', blocks });
   return render(
     <MemoryRouter>
       <PageBlocksProvider>

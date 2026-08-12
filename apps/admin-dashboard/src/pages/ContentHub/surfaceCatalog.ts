@@ -48,7 +48,7 @@ export function surfaceId(app: SurfaceApp, device: SurfaceDevice, slot: SurfaceS
 }
 
 /** Bottom navigation is mobile-only (phone chrome). Desktop has no bottom nav surface. */
-export function slotsFor(app: SurfaceApp, device: SurfaceDevice): SurfaceSlot[] {
+export function slotsFor(_app: SurfaceApp, device: SurfaceDevice): SurfaceSlot[] {
   if (device === 'mobile') {
     return ['header', 'home', 'footer', 'bottom_navigation'];
   }

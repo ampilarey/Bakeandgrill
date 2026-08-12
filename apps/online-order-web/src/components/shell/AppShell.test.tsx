@@ -115,7 +115,11 @@ describe('AppShell', () => {
     fetchPageBlocks.mockReset();
     checkSession.mockResolvedValue({ authenticated: false } as never);
     fetchCustomerOrders.mockResolvedValue({ data: [] } as never);
-    fetchPageBlocks.mockResolvedValue({ blocks: defaultShellBlocks() });
+    fetchPageBlocks.mockResolvedValue({
+      app: 'order_app',
+      page: 'home',
+      blocks: defaultShellBlocks(),
+    });
   });
 
   it('renders 5-tab bottom nav with t() labels on phone', async () => {
@@ -175,6 +179,8 @@ describe('AppShell', () => {
 
   it('hides bottom nav when bottom_nav is not on the mobile bottom_navigation surface', async () => {
     fetchPageBlocks.mockResolvedValue({
+      app: 'order_app',
+      page: 'home',
       blocks: [
         shellBlock('bottom_nav', {
           show_mobile: true,

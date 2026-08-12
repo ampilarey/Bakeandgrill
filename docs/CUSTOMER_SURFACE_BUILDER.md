@@ -103,11 +103,20 @@ Generic blocks (`rich_text`, `image`, `image_text`, `video`, `button_band`, `faq
 
 ## Tests
 
-Coverage: `tests/Feature/Content/CustomerSurfaceBuilderTest.php` (surface catalog, migrator idempotency, per-app visibility, `forSurface`, library create, footer vs bottom nav, prayer placement).
+### Backend (CI)
+
+`CustomerSurfaceBuilderTest` — surface catalog, migrator idempotency, independent website/order on-off, shared content ≠ shared visibility, `forSurface`, all library types on both apps, footer vs bottom_nav, prayer placement.
 
 Related: `PageBlockRenderTest`, `SurfaceMapKeysTest`, `HomeLayoutMigrationGateTest`.
 
-**Test results:** run in CI (`php artisan test --filter=CustomerSurfaceBuilder`).
+```bash
+php artisan test --filter=CustomerSurfaceBuilder
+```
+
+### Frontend (ran on agent)
+
+- Order app: **19 passed** — `surfaceBlocks`, TopNav prayer gate, AppShell bottom-nav gate, navTabs, HomePage opening/empty.
+- Admin: **27 passed** — `surfaceCatalog`, SurfaceBuilderLanding, overflow budgets (320/375/390/1024/1280/1440), homeComponentLibrary, HomeLayoutEditor surface filter.
 
 ## Key files
 

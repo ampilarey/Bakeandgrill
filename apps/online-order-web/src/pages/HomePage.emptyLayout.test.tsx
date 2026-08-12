@@ -117,7 +117,7 @@ describe('HomePage with no page_blocks', () => {
   });
 
   it('renders the non-removable blocks only when the layout is empty', async () => {
-    fetchPageBlocksMock.mockResolvedValue({ blocks: [] });
+    fetchPageBlocksMock.mockResolvedValue({ app: 'order_app', page: 'home', blocks: [] });
     await expectRequiredChromeOnly();
   });
 
