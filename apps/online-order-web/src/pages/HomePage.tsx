@@ -26,6 +26,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { DESKTOP_SHELL_MQ } from '../components/shell/navTabs';
 
 import { GreetingHeader } from '../components/home/GreetingHeader';
+import { HomePhoneHeader } from '../components/home/HomePhoneHeader';
 import { StatChipsRow } from '../components/home/StatChipsRow';
 import { PromoCarousel } from '../components/home/PromoCarousel';
 import { ModeEntryCards } from '../components/home/ModeEntryCards';
@@ -78,7 +79,7 @@ export function HomePage() {
   } = useSiteSettingsContext();
   const { isAuthenticated, authReady, customerName } = useAuth();
   const { t } = useLanguage();
-  /** Desktop/iPad home chrome; phone keeps the original greeting stack. */
+  /** Desktop/iPad uses TopNav; phone uses a sticky HomePhoneHeader. */
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
   const reorderFetched = useRef(false);
   const loyaltyFetched = useRef(false);
@@ -501,5 +502,15 @@ export function HomePage() {
   if (!trustPlaced) nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
   if (!officePlaced && officeBlock) nodes.push(officeBlock);
 
-  return <div className="home-page">{nodes}</div>;
+  return (
+    <div className="home-page">
+      {!isDesktopShell ? (
+        <HomePhoneHeader
+          customerName={customerName}
+          isAuthenticated={isAuthenticated}
+        />
+      ) : null}
+      {nodes}
+    </div>
+  );
 }

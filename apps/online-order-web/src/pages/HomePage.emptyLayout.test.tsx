@@ -71,6 +71,9 @@ vi.mock('../components/home/PromoCarousel', () => ({
 vi.mock('../components/home/GreetingHeader', () => ({
   GreetingHeader: () => <div data-testid="greeting" />,
 }));
+vi.mock('../components/home/HomePhoneHeader', () => ({
+  HomePhoneHeader: () => <div data-testid="home-phone-header" />,
+}));
 vi.mock('../components/home/StatChipsRow', () => ({ StatChipsRow: () => null }));
 vi.mock('../components/home/ModeEntryCards', () => ({
   ModeEntryCards: () => <div data-testid="mode-cards" />,

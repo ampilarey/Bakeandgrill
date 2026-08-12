@@ -87,6 +87,7 @@ vi.mock('../components/home/PromoCarousel', () => ({
 }));
 
 vi.mock('../components/home/GreetingHeader', () => ({ GreetingHeader: () => null }));
+vi.mock('../components/home/HomePhoneHeader', () => ({ HomePhoneHeader: () => null }));
 vi.mock('../components/home/StatChipsRow', () => ({ StatChipsRow: () => null }));
 vi.mock('../components/home/ModeEntryCards', () => ({ ModeEntryCards: () => null }));
 vi.mock('../components/home/TrustStrip', () => ({ TrustStrip: () => null }));

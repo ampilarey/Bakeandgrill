@@ -104,6 +104,9 @@ vi.mock('../components/home/PromoCarousel', () => ({
   PromoCarousel: () => <div data-testid="promo-hero">Hero</div>,
 }));
 
+vi.mock('../components/home/HomePhoneHeader', () => ({
+  HomePhoneHeader: () => null,
+}));
 vi.mock('../components/home/GreetingHeader', () => ({
   GreetingHeader: () => null,
 }));

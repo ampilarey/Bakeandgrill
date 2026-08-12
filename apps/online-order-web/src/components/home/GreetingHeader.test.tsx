@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GreetingHeader } from './GreetingHeader';
 
@@ -10,9 +9,6 @@ vi.mock('../../context/LanguageContext', () => ({
         'home.greeting_hello': 'Hello',
         'home.greeting_named': 'Hello, {name}',
         'home.greeting_sub': 'What would you like today?',
-        'home.sign_in': 'Sign in',
-        'nav.account': 'Account',
-        'header.website_aria': 'Visit {name} website',
       })[key] ?? key,
   }),
 }));
@@ -38,34 +34,27 @@ describe('GreetingHeader', () => {
     vi.clearAllMocks();
   });
 
-  it('shows CMS greeting + subtitle on phone chrome', () => {
+  it('shows CMS greeting + subtitle without brand chrome', () => {
     render(
-      <MemoryRouter>
-        <GreetingHeader customerName={null} isAuthenticated={false} chrome="phone" />
-      </MemoryRouter>,
+      <GreetingHeader customerName={null} isAuthenticated={false} chrome="phone" />,
     );
 
     expect(screen.getByTestId('home-greeting')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey there');
     expect(screen.getByText('Ready to order?')).toBeTruthy();
-    expect(screen.getByText('Bake & Grill')).toBeTruthy();
-    expect(screen.getByText('Sign in')).toBeTruthy();
+    expect(screen.queryByText('Bake & Grill')).toBeNull();
+    expect(screen.queryByText('Sign in')).toBeNull();
   });
 
   it('uses profile name in CMS named greeting, not a phone number', () => {
     const { rerender } = render(
-      <MemoryRouter>
-        <GreetingHeader customerName="Aisha" isAuthenticated chrome="phone" />
-      </MemoryRouter>,
+      <GreetingHeader customerName="Aisha" isAuthenticated chrome="phone" />,
     );
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey, Aisha');
 
     rerender(
-      <MemoryRouter>
-        <GreetingHeader customerName="9120011" isAuthenticated chrome="desktop" />
-      </MemoryRouter>,
+      <GreetingHeader customerName="9120011" isAuthenticated chrome="desktop" />,
     );
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hey there');
-    expect(screen.queryByText('Bake & Grill')).toBeNull();
   });
 });

@@ -2275,6 +2275,34 @@ textarea.field-input {
   }
 }
 
+/* ── Phone home sticky header (brand + account; welcome scrolls below) ─ */
+.home-phone-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.home-phone-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  max-width: var(--layout-max);
+  margin: 0 auto;
+  padding: 0.45rem var(--page-gutter);
+  min-height: calc(var(--touch-target) + 0.25rem);
+}
+
+@supports not (background: color-mix(in srgb, white 50%, transparent)) {
+  .home-phone-header {
+    background: var(--color-bg);
+  }
+}
+
 /* ── Home greeting (phone): brand → main website ───────────────────── */
 .home-brand-link {
   display: inline-flex;
