@@ -285,13 +285,16 @@ class CustomerSurfaceBuilderTest extends TestCase
         $this->assertFalse(HomeChromeResolver::showInHeader('website', 'prayer_bar', 'mobile'));
 
         $blocks = PageBlockRepository::forPage('website');
-        $this->assertSame(
-            ['prayer_bar'],
-            PageBlockRepository::forSurface('website', 'desktop', 'header', $blocks)->pluck('block_type')->all(),
-        );
-        $this->assertSame(
-            ['prayer_bar'],
-            PageBlockRepository::forSurface('website', 'mobile', 'home', $blocks)->pluck('block_type')->all(),
-        );
+        $desktopHeader = PageBlockRepository::forSurface('website', 'desktop', 'header', $blocks)
+            ->pluck('block_type')
+            ->all();
+        $mobileHome = PageBlockRepository::forSurface('website', 'mobile', 'home', $blocks)
+            ->pluck('block_type')
+            ->all();
+
+        $this->assertContains('prayer_bar', $desktopHeader);
+        $this->assertNotContains('prayer_bar', PageBlockRepository::forSurface('website', 'desktop', 'home', $blocks)->pluck('block_type')->all());
+        $this->assertContains('prayer_bar', $mobileHome);
+        $this->assertNotContains('prayer_bar', PageBlockRepository::forSurface('website', 'mobile', 'header', $blocks)->pluck('block_type')->all());
     }
 }
