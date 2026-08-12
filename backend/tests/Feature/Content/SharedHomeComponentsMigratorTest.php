@@ -32,7 +32,8 @@ class SharedHomeComponentsMigratorTest extends TestCase
             ->pluck('block_type')
             ->all();
         $this->assertContains('hero', $beforeWebsite);
-        $this->assertNotContains('trust_strip', $beforeWebsite);
+        // CustomerSurfaceMigrator (via HomeLayoutMigrator) already promotes trust_strip.
+        $this->assertContains('trust_strip', $beforeWebsite);
 
         SharedHomeComponentsMigrator::migrate();
 
@@ -113,10 +114,8 @@ class SharedHomeComponentsMigratorTest extends TestCase
         $this->assertTrue((bool) $orderTrust->fresh()->is_enabled);
     }
 
-    public function test_customer_website_home_keeps_legacy_trust_and_events_chrome(): void
+    public function test_disabled_trust_and_events_blocks_do_not_render_on_website(): void
     {
-        // Customer Website home still uses the previous injected chrome.
-        // Admin page_blocks rows for trust/events do not remove that layout.
         HomeLayoutMigrator::migrate();
         SharedHomeComponentsMigrator::migrate();
         PageBlock::query()
@@ -126,8 +125,8 @@ class SharedHomeComponentsMigratorTest extends TestCase
         Cache::flush();
 
         $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringContainsString('class="trust-strip"', $html);
-        $this->assertStringContainsString('class="events-band"', $html);
+        $this->assertStringNotContainsString('class="trust-strip"', $html);
+        $this->assertStringNotContainsString('class="events-band"', $html);
     }
 
     public function test_announcement_setting_seeds_announcement_block(): void

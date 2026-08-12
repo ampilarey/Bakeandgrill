@@ -117,4 +117,22 @@ final class HomeLayoutSnapshot
             ->values()
             ->all();
     }
+
+    /**
+     * Legacy home sections only — excludes surface chrome added by CustomerSurfaceMigrator.
+     *
+     * @return list<SectionRow>
+     */
+    public static function legacyContentFromPageBlocks(string $app, string $page = PageBlock::PAGE_HOME): array
+    {
+        $legacyTypes = array_column(
+            $app === PageBlock::APP_WEBSITE ? self::legacyWebsite() : self::legacyOrderApp(),
+            'type',
+        );
+
+        return array_values(array_filter(
+            self::fromPageBlocks($app, $page),
+            fn (array $row) => in_array($row['type'], $legacyTypes, true),
+        ));
+    }
 }

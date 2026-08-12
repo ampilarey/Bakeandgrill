@@ -244,7 +244,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('content-task-landing');
+    await screen.findByTestId('surface-builder-landing');
     // No column-variant preview pane on mobile (sheet is closed)
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
@@ -256,7 +256,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('content-task-landing');
+    await screen.findByTestId('surface-builder-landing');
 
     expect(screen.queryByTestId('section-editor')).toBeNull();
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();

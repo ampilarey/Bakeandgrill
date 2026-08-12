@@ -48,6 +48,43 @@ final class PageBlockRepository
         });
     }
 
+    /**
+     * Blocks enabled for one customer surface (app × device × slot), ordered for that device.
+     *
+     * @return Collection<int, PageBlock>
+     */
+    public static function forSurface(
+        string $app,
+        string $device,
+        string $slot,
+        ?Collection $blocks = null,
+        bool $enabledOnly = true,
+    ): Collection {
+        $blocks ??= self::forPage($app);
+
+        return $blocks
+            ->filter(function (PageBlock $block) use ($device, $slot, $enabledOnly) {
+                if ($enabledOnly && ! $block->is_enabled) {
+                    return false;
+                }
+                $settings = $block->resolvedSettings();
+                if (! BlockDeviceSettings::visibleOnDevice($settings, $device)) {
+                    return false;
+                }
+
+                return BlockDeviceSettings::placementOnDevice($settings, $device) === $slot;
+            })
+            ->sortBy(function (PageBlock $block) use ($device) {
+                $settings = $block->resolvedSettings();
+
+                return [
+                    BlockDeviceSettings::orderOnDevice($settings, $device, (int) $block->position),
+                    (int) $block->id,
+                ];
+            })
+            ->values();
+    }
+
     public static function bust(string $app, string $page = PageBlock::PAGE_HOME): void
     {
         Cache::forget(self::cacheKey($app, $page));

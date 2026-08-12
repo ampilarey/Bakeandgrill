@@ -1151,11 +1151,9 @@
                 : null;
         }
         if (is_array($draftPageBlocks)) {
-            $homeBlocks = collect($draftPageBlocks)->map(function ($row) {
+            $allHomeBlocks = collect($draftPageBlocks)->map(function ($row) {
                 $row = is_array($row) ? $row : [];
                 $block = new \App\Models\PageBlock();
-                // Preview rows already contain resolved draft settings. Do not
-                // let shared_content_id pull the old live shared row.
                 $row['shared_content_id'] = null;
                 $block->forceFill($row);
                 $block->exists = false;
@@ -1163,75 +1161,127 @@
                 return $block;
             });
         } else {
-            $homeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+            $allHomeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
         }
     } catch (\Throwable $e) {
-        $homeBlocks = collect();
+        $allHomeBlocks = collect();
     }
-    $usePageBlocks = $homeBlocks->isNotEmpty();
-    // The trust strip is fixed chrome, not a block: it always renders in the
-    // hero slot (immediately under the hero when on, in its place when off),
-    // exactly like the legacy path below.
-    $trustStripRendered = false;
+
+    // Customer Surface Builder: Home slot only — no automatic insertion of trust/events/etc.
+    // Header/footer chrome is owned by layout.blade.php via HomeChromeResolver.
+    $homeBlocksDesktop = \App\Domains\Content\Blocks\PageBlockRepository::forSurface(
+        'website', 'desktop', 'home', $allHomeBlocks, true,
+    );
+    $homeBlocksMobile = \App\Domains\Content\Blocks\PageBlockRepository::forSurface(
+        'website', 'mobile', 'home', $allHomeBlocks, true,
+    );
+    // Merge unique by id preserving desktop order, then append mobile-only — render
+    // with device visibility classes when a block is only on one device.
+    $merged = collect();
+    foreach ($homeBlocksDesktop as $b) {
+        $merged[$b->id ?: spl_object_id($b)] = $b;
+    }
+    foreach ($homeBlocksMobile as $b) {
+        $key = $b->id ?: spl_object_id($b);
+        if (! isset($merged[$key])) {
+            $merged[$key] = $b;
+        }
+    }
+    $homeBlocks = $merged->values();
+
+    $namedHomePartials = [
+        'greeting', 'prayer_bar', 'hero', 'announcement', 'service_availability',
+        'opening_status', 'stat_chips', 'mode_cards', 'specials', 'featured',
+        'categories', 'trust_strip', 'proof', 'reviews', 'reorder_strip', 'cta',
+        'location', 'events_band', 'office_orders', 'brand_footer',
+    ];
 @endphp
 
-@if($usePageBlocks)
-    @if(!$homeBlocks->contains(fn ($b) => $b->block_type === 'hero'))
-        @include('partials.home.trust-strip')
-        @php $trustStripRendered = true; @endphp
-    @endif
+@if($homeBlocks->isNotEmpty())
     @foreach($homeBlocks as $homeBlock)
-        @php $sectionId = $homeBlock->block_type; @endphp
+        @php
+            $sectionId = $homeBlock->block_type;
+            $settings = $homeBlock->resolvedSettings();
+            $showDesk = \App\Domains\Content\Blocks\BlockDeviceSettings::showDesktop($settings)
+                && \App\Domains\Content\Blocks\BlockDeviceSettings::placementDesktop($settings) === 'home';
+            $showMob = \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($settings)
+                && \App\Domains\Content\Blocks\BlockDeviceSettings::placementMobile($settings) === 'home';
+            if (! $showDesk && ! $showMob) {
+                continue;
+            }
+            $deviceClass = '';
+            if ($showDesk && ! $showMob) {
+                $deviceClass = ' home-block--desktop-only';
+            } elseif ($showMob && ! $showDesk) {
+                $deviceClass = ' home-block--mobile-only';
+            }
+        @endphp
 
-        @if($sectionId === 'hero')
-            @if($homeBlock->is_enabled)
-                @include('partials.home.hero')
-            @endif
-            @unless($trustStripRendered)
-                @include('partials.home.trust-strip')
-                @php $trustStripRendered = true; @endphp
-            @endunless
-            @continue
-        @endif
-
-        @if(!$homeBlock->is_enabled)
-            @continue
-        @endif
         @if(!\App\Domains\Content\Blocks\BlockTypeRegistry::isKnown($sectionId))
-            {{-- Unknown types render nothing here; the admin layout editor reports them. --}}
             @continue
         @endif
 
-        @if($sectionId === 'brand_footer')
-            {{-- Footer lives in layout.blade.php; block is non-removable for admin safety. --}}
+        {{-- Header/footer/bottom_nav owned elsewhere --}}
+        @if(in_array($sectionId, ['site_footer', 'bottom_nav'], true))
             @continue
         @endif
 
-        {{-- Generic content blocks: settings-driven, may appear many times. --}}
+        @if($sectionId === 'prayer_bar')
+            <div class="{{ trim($deviceClass) }}" data-home-block="prayer_bar">
+                @include('partials.home.prayer-home')
+            </div>
+            @continue
+        @endif
+
+        @if($sectionId === 'hero' || $sectionId === 'promo_carousel')
+            <div class="{{ trim($deviceClass) }}" data-home-block="hero">
+                @include('partials.home.hero')
+            </div>
+            @continue
+        @endif
+
         @if(\App\Domains\Content\Blocks\GenericBlockPresenter::isGeneric($sectionId))
             @php
                 $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
                     $sectionId,
-                    $homeBlock->resolvedSettings(),
+                    $settings,
                 );
                 $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::isEmpty($sectionId, $blockSettings);
+                // Deleted media still has media_id — resolve before wrapping so we
+                // never emit an empty data-home-block attribute.
+                if (! $blockIsEmpty && $sectionId === 'image') {
+                    $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveImage(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) === null;
+                } elseif (! $blockIsEmpty && $sectionId === 'video') {
+                    $blockIsEmpty = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveVideo(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) === null;
+                } elseif (! $blockIsEmpty && $sectionId === 'image_text') {
+                    $hasImg = \App\Domains\Content\Blocks\GenericBlockPresenter::resolveImage(
+                        \App\Domains\Content\Blocks\GenericBlockPresenter::mediaId($blockSettings)
+                    ) !== null;
+                    $hasCopy = trim(strip_tags((string) ($blockSettings['heading'] ?? ''))) !== ''
+                        || trim(strip_tags((string) ($blockSettings['body'] ?? ''))) !== '';
+                    $blockIsEmpty = ! $hasImg && ! $hasCopy;
+                }
                 $genericPartial = 'partials.home.'.str_replace('_', '-', $sectionId);
             @endphp
             @unless($blockIsEmpty)
                 @php
                     $stripeIndex = $stripe;
-                    // A divider has no background of its own, so it must not
-                    // shift the alternating stripe of the sections after it.
                     if ($sectionId !== 'divider') {
                         $stripe++;
                     }
                 @endphp
-                @include($genericPartial, ['blockSettings' => $blockSettings, 'stripeIndex' => $stripeIndex])
+                <div class="{{ trim($deviceClass) }}" data-home-block="{{ $sectionId }}">
+                    @include($genericPartial, ['blockSettings' => $blockSettings, 'stripeIndex' => $stripeIndex])
+                </div>
             @endunless
             @continue
         @endif
 
-        @if(!in_array($sectionId, ['specials', 'featured', 'categories', 'proof', 'cta', 'location'], true))
+        @if(!in_array($sectionId, $namedHomePartials, true))
             @continue
         @endif
 
@@ -1240,38 +1290,16 @@
         @endif
 
         @php
+            $partial = $sectionId === 'prayer_bar' ? 'prayer-home' : str_replace('_', '-', $sectionId);
             $stripeIndex = $stripe;
-            $stripe++;
+            if (! in_array($sectionId, ['divider', 'opening_status', 'announcement'], true)) {
+                $stripe++;
+            }
         @endphp
-        @include('partials.home.'.$sectionId, ['stripeIndex' => $stripeIndex])
-    @endforeach
-@else
-    {{-- No blocks for this page: render the required chrome only, never a
-         blank page. The brand footer lives in layout.blade.php; the trust
-         strip keeps its historical hero-slot placement. The admin home layout
-         editor reports the empty layout loudly. --}}
-    @include('partials.home.trust-strip')
-@endif
-
-
-{{-- ══════════════════════════════════════════════════════════
-     EVENTS & CATERING
-══════════════════════════════════════════════════════════ --}}
-@php
-    $eventsHeadline = content('events_section_headline', 'Events & Catering');
-    $eventsBlurb = content('events_section_blurb', 'Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.');
-    $eventsBrowseCta = content('events_section_browse_cta', 'Browse catering menu');
-    $eventsPlanCta = content('events_section_plan_cta', 'Plan your event');
-@endphp
-<section class="events-band" style="padding:3.5rem 2rem; background:var(--surface); border-top:1px solid var(--border);">
-    <div style="max-width:640px; margin:0 auto; text-align:center;">
-        <h2 style="font-size:clamp(1.5rem,3vw,2rem); font-weight:800; color:var(--dark); margin:0 0 0.75rem;">{{ $eventsHeadline }}</h2>
-        <p style="font-size:1rem; color:var(--muted); line-height:1.55; margin:0 0 1.5rem;">{{ $eventsBlurb }}</p>
-        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center;">
-            <a href="/order/catering" class="btn-outline" style="min-height:48px; display:inline-flex; align-items:center; padding:0 1.25rem;">{{ $eventsBrowseCta }}</a>
-            <a href="/order/events" class="btn-primary" style="min-height:48px; display:inline-flex; align-items:center; padding:0 1.25rem;">{{ $eventsPlanCta }}</a>
+        <div class="{{ trim($deviceClass) }}" data-home-block="{{ $sectionId }}">
+            @include('partials.home.'.$partial, ['stripeIndex' => $stripeIndex])
         </div>
-    </div>
-</section>
+    @endforeach
+@endif
 
 @endsection

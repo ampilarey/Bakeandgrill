@@ -116,7 +116,7 @@ describe('ContentHub Website pages focused tasks', () => {
 
   it('does not expose a generic mixed Pages editor or task', async () => {
     openHub('/content');
-    await screen.findByTestId('content-task-landing');
+    await screen.findByTestId('surface-builder-landing');
     expect(screen.queryByTestId('task-card-website_pages')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Pages' })).toBeNull();
     expect(screen.queryByTestId('section-card-Pages')).toBeNull();
@@ -125,12 +125,12 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
     expect(screen.getByTestId('task-card-order_about')).toBeTruthy();
     expect(screen.getByTestId('task-card-catering_events')).toBeTruthy();
-    expect(screen.getByTestId('task-card-website_footer')).toBeTruthy();
+    expect(screen.getByTestId('surface-card-website.mobile.footer')).toBeTruthy();
   });
 
   it('legacy ?group=Pages redirects to the Website task overview', async () => {
     openHub('/content?group=Pages');
-    await screen.findByTestId('content-task-landing');
+    await screen.findByTestId('surface-builder-landing');
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
     expect(screen.queryByTestId('section-editor')).toBeNull();
     expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();

@@ -37,12 +37,12 @@ class HomeLayoutMigrationGateTest extends TestCase
 
         $this->assertSame(
             $beforeWebsite,
-            HomeLayoutSnapshot::fromPageBlocks('website'),
+            HomeLayoutSnapshot::legacyContentFromPageBlocks('website'),
             'Website home order/enabled set changed during migration.',
         );
         $this->assertSame(
             $beforeOrder,
-            HomeLayoutSnapshot::fromPageBlocks('order_app'),
+            HomeLayoutSnapshot::legacyContentFromPageBlocks('order_app'),
             'Order-app home order/enabled set changed during migration.',
         );
     }
@@ -71,8 +71,8 @@ class HomeLayoutMigrationGateTest extends TestCase
 
         HomeLayoutMigrator::migrate();
 
-        $this->assertSame($beforeWebsite, HomeLayoutSnapshot::fromPageBlocks('website'));
-        $this->assertSame($beforeOrder, HomeLayoutSnapshot::fromPageBlocks('order_app'));
+        $this->assertSame($beforeWebsite, HomeLayoutSnapshot::legacyContentFromPageBlocks('website'));
+        $this->assertSame($beforeOrder, HomeLayoutSnapshot::legacyContentFromPageBlocks('order_app'));
     }
 
     public function test_migration_is_idempotent(): void
@@ -104,11 +104,11 @@ class HomeLayoutMigrationGateTest extends TestCase
         $this->assertSame($firstNormalized, $second);
         $this->assertSame(
             HomeLayoutSnapshot::legacyWebsite(),
-            HomeLayoutSnapshot::fromPageBlocks('website'),
+            HomeLayoutSnapshot::legacyContentFromPageBlocks('website'),
         );
         $this->assertSame(
             HomeLayoutSnapshot::legacyOrderApp(),
-            HomeLayoutSnapshot::fromPageBlocks('order_app'),
+            HomeLayoutSnapshot::legacyContentFromPageBlocks('order_app'),
         );
     }
 
@@ -165,8 +165,8 @@ class HomeLayoutMigrationGateTest extends TestCase
     }
 
     /**
-     * Empty page_blocks must never blank the home page: required chrome
-     * (trust strip + the layout brand footer) still renders.
+     * Empty page_blocks must never blank the home page: layout chrome
+     * (header, legacy prayer fallback) still renders — but no auto-injected sections.
      */
     public function test_empty_page_blocks_still_renders_required_chrome(): void
     {
@@ -177,7 +177,8 @@ class HomeLayoutMigrationGateTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertNotSame('', trim(strip_tags($html)));
-        $this->assertStringContainsString('class="trust-strip"', $html);
+        $this->assertStringContainsString('site-header', $html);
+        $this->assertStringNotContainsString('class="trust-strip"', $html);
     }
 
     /**

@@ -23,10 +23,17 @@ import {
   type LibraryComponent,
 } from './homeComponentLibrary';
 import { heroPromoConflict } from './surfaceRegistry';
+import {
+  blockOnSurface,
+  surfaceBreadcrumb,
+  typesForSlot,
+  type SurfaceFilter,
+} from './surfaceCatalog';
 
 type Props = {
   reloadKey?: number;
   initialApp?: PageBlockApp;
+  surfaceFilter?: SurfaceFilter;
   onLayoutDraftChange?: (hasDraft: boolean) => void;
 };
 
@@ -46,6 +53,7 @@ const emptyApp = (): AppState => ({ blocks: [], types: [], version: 0, hasDraft:
 export function HomeLayoutEditor({
   reloadKey = 0,
   initialApp = 'website',
+  surfaceFilter,
   onLayoutDraftChange,
 }: Props) {
   const [website, setWebsite] = useState<AppState>(emptyApp);
@@ -56,11 +64,11 @@ export function HomeLayoutEditor({
   const [previewMsg, setPreviewMsg] = useState('');
   const [editingType, setEditingType] = useState<string | null>(null);
   const [reorderApp, setReorderApp] = useState<HomeApp | null>(null);
-  const [focusApp, setFocusApp] = useState<HomeApp>(initialApp);
+  const [focusApp, setFocusApp] = useState<HomeApp>(surfaceFilter?.app ?? initialApp);
 
   useEffect(() => {
-    setFocusApp(initialApp);
-  }, [initialApp]);
+    setFocusApp(surfaceFilter?.app ?? initialApp);
+  }, [initialApp, surfaceFilter?.app]);
 
   const hasDraft = website.hasDraft || orderApp.hasDraft;
   useEffect(() => {
@@ -127,6 +135,17 @@ export function HomeLayoutEditor({
     }
     return Array.from(byType.values());
   }, [website.types, orderApp.types]);
+
+  const visibleLibrary = useMemo(() => {
+    if (!surfaceFilter) return library;
+    const slotTypes = new Set(typesForSlot(surfaceFilter.slot));
+    return library.filter((comp) => {
+      if (slotTypes.has(comp.type)) return true;
+      const inst = stateFor(surfaceFilter.app).blocks.find((b) => b.block_type === comp.type);
+      if (!inst) return false;
+      return blockOnSurface(inst.settings, surfaceFilter.device, surfaceFilter.slot);
+    });
+  }, [library, surfaceFilter, website.blocks, orderApp.blocks]);
 
   const conflict =
     heroPromoConflict(website.blocks.filter((b) => b.is_enabled).map((b) => b.block_type))
@@ -360,6 +379,7 @@ export function HomeLayoutEditor({
       data-testid="home-layout-editor"
       data-reorder={reorderApp ? 'true' : 'false'}
       data-app={focusApp}
+      data-surface={surfaceFilter ? `${surfaceFilter.app}.${surfaceFilter.device}.${surfaceFilter.slot}` : undefined}
       style={{
         border: '1px solid var(--color-border)',
         borderRadius: 12,
@@ -372,9 +392,21 @@ export function HomeLayoutEditor({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)' }}>Home Components</div>
+          {surfaceFilter ? (
+            <div
+              data-testid="home-layout-surface-breadcrumb"
+              style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}
+            >
+              {surfaceBreadcrumb(surfaceFilter)}
+            </div>
+          ) : null}
+          <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)' }}>
+            {surfaceFilter ? 'Surface components' : 'Home Components'}
+          </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 560 }}>
-            One library for Website and Order App. Sharing content does not force shared visibility or order.
+            {surfaceFilter
+              ? 'Components you can place on this surface. Edit to adjust visibility, order, and content.'
+              : 'One library for Website and Order App. Sharing content does not force shared visibility or order.'}
           </div>
           <div
             data-testid="home-layout-draft-status"
@@ -415,27 +447,36 @@ export function HomeLayoutEditor({
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        {([
-          ['website', 'Website'],
-          ['order_app', 'Order App'],
-        ] as const).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            data-testid={`home-layout-tab-${id}`}
-            onClick={() => {
-              setFocusApp(id);
-              if (reorderApp) setReorderApp(id);
-            }}
-            style={{
-              ...btnSecondary,
-              background: focusApp === id ? 'var(--color-primary)' : 'transparent',
-              color: focusApp === id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-            }}
+        {!surfaceFilter ? (
+          ([
+            ['website', 'Website'],
+            ['order_app', 'Order App'],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              data-testid={`home-layout-tab-${id}`}
+              onClick={() => {
+                setFocusApp(id);
+                if (reorderApp) setReorderApp(id);
+              }}
+              style={{
+                ...btnSecondary,
+                background: focusApp === id ? 'var(--color-primary)' : 'transparent',
+                color: focusApp === id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+              }}
+            >
+              {label}
+            </button>
+          ))
+        ) : (
+          <span
+            data-testid="home-layout-surface-app-lock"
+            style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', alignSelf: 'center' }}
           >
-            {label}
-          </button>
-        ))}
+            {focusApp === 'website' ? 'Website' : 'Order App'}
+          </span>
+        )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
           {(['desktop', 'mobile'] as const).map((device) => (
             <button
@@ -479,7 +520,7 @@ export function HomeLayoutEditor({
           data-testid="home-components-overview"
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
-          {library.map((comp) => {
+          {visibleLibrary.map((comp) => {
             const w = findInstance('website', comp.type);
             const o = findInstance('order_app', comp.type);
             const wStatus = instanceStatus(w);
@@ -798,51 +839,67 @@ function AppInstancePanel({
 function DevicePlacementFields({
   settings,
   onChange,
+  device,
 }: {
   settings: BlockSettings;
   onChange: (s: BlockSettings) => void;
+  device?: 'desktop' | 'mobile';
 }) {
   const set = (key: string, value: unknown) => onChange({ ...settings, [key]: value });
+
+  const desktopOptions: Array<{ value: string; label: string }> = [
+    { value: 'home', label: 'Home' },
+    { value: 'header', label: 'Header' },
+    { value: 'footer', label: 'Footer' },
+    { value: 'off', label: 'Hidden' },
+  ];
+
+  const mobileOptions: Array<{ value: string; label: string }> = [
+    { value: 'home', label: 'Home' },
+    { value: 'header', label: 'Header' },
+    { value: 'footer', label: 'Footer' },
+    { value: 'bottom_navigation', label: 'Bottom navigation' },
+    { value: 'off', label: 'Hidden' },
+  ];
+
+  function selectValue(showKey: 'show_desktop' | 'show_mobile', placeKey: 'placement_desktop' | 'placement_mobile'): string {
+    if (settings[showKey] === false) return 'off';
+    const v = settings[placeKey];
+    if (v === 'header' || v === 'home' || v === 'footer' || v === 'bottom_navigation') return v;
+    return 'home';
+  }
+
+  const fields: Array<{ id: 'desktop' | 'mobile'; label: string; showKey: 'show_desktop' | 'show_mobile'; placeKey: 'placement_desktop' | 'placement_mobile'; options: Array<{ value: string; label: string }> }> = [
+    { id: 'desktop', label: 'Desktop', showKey: 'show_desktop', placeKey: 'placement_desktop', options: desktopOptions },
+    { id: 'mobile', label: 'Mobile', showKey: 'show_mobile', placeKey: 'placement_mobile', options: mobileOptions },
+  ];
+
+  const visibleFields = device ? fields.filter((f) => f.id === device) : fields;
+
   return (
-    <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }} className="form-grid-2">
-      <label style={labelStyle}>
-        Desktop
-        <select
-          value={settings.show_desktop === false ? 'off' : (settings.placement_desktop === 'header' ? 'header' : 'home')}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === 'off') set('show_desktop', false);
-            else {
-              set('show_desktop', true);
-              set('placement_desktop', v);
-            }
-          }}
-          style={selectStyle}
-        >
-          <option value="home">Home</option>
-          <option value="header">Header</option>
-          <option value="off">Hidden</option>
-        </select>
-      </label>
-      <label style={labelStyle}>
-        Mobile
-        <select
-          value={settings.show_mobile === false ? 'off' : (settings.placement_mobile === 'header' ? 'header' : 'home')}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === 'off') set('show_mobile', false);
-            else {
-              set('show_mobile', true);
-              set('placement_mobile', v);
-            }
-          }}
-          style={selectStyle}
-        >
-          <option value="home">Home</option>
-          <option value="header">Header</option>
-          <option value="off">Hidden</option>
-        </select>
-      </label>
+    <div style={{ display: 'grid', gap: 8, gridTemplateColumns: visibleFields.length > 1 ? '1fr 1fr' : '1fr' }} className="form-grid-2">
+      {visibleFields.map((field) => (
+        <label key={field.id} style={labelStyle}>
+          {field.label}
+          <select
+            value={selectValue(field.showKey, field.placeKey)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'off') set(field.showKey, false);
+              else {
+                set(field.showKey, true);
+                set(field.placeKey, v);
+              }
+            }}
+            style={selectStyle}
+            data-testid={`home-layout-placement-${field.id}`}
+          >
+            {field.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </label>
+      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ActiveOrderProvider } from '../../context/ActiveOrderContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { usePageBlocks } from '../../context/PageBlocksContext';
 import { ShellNavProvider, useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useCart } from '../../context/CartContext';
@@ -14,11 +15,13 @@ import { FloatingCartBar } from './FloatingCartBar';
 import { TopNav } from './TopNav';
 import { DESKTOP_SHELL_MQ } from './navTabs';
 import { safePublicUrl } from '../../utils/safePublicUrl';
+import { chromeEnabled } from '../../utils/surfaceBlocks';
 
 function AppShellChrome() {
   const { t } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
   const { hideNav } = useShellNav();
+  const { blocks, loading: blocksLoading } = usePageBlocks();
   const { cart } = useCart();
   const location = useLocation();
   const isDesktopShell = useMediaQuery(DESKTOP_SHELL_MQ);
@@ -29,6 +32,17 @@ function AppShellChrome() {
   const annText = (s.announcement_text || '').trim();
   const annUrl = safePublicUrl(s.announcement_url || '');
   const annStyle = s.announcement_style || 'info';
+  const device = isDesktopShell ? 'desktop' : 'mobile';
+  const announcementPlaced =
+    chromeEnabled(blocks, 'announcement', device, 'header')
+    || chromeEnabled(blocks, 'announcement', device, 'home');
+  const showAnnouncementBanner =
+    annEnabled
+    && annText
+    && (blocksLoading || announcementPlaced);
+  const showBottomNav =
+    !isDesktopShell
+    && (blocksLoading || chromeEnabled(blocks, 'bottom_nav', 'mobile', 'bottom_navigation'));
 
   const annBgMap: Record<string, string> = {
     info: 'var(--color-primary-light)',
@@ -65,7 +79,7 @@ function AppShellChrome() {
 
       {isDesktopShell && <TopNav />}
 
-      {annEnabled && annText && (
+      {showAnnouncementBanner && (
         <div
           role="status"
           aria-label={t('a11y.announcement')}
@@ -104,7 +118,7 @@ function AppShellChrome() {
       </main>
 
       <FloatingCartBar />
-      {!isDesktopShell && <BottomNav />}
+      {showBottomNav ? <BottomNav /> : null}
     </div>
   );
 }

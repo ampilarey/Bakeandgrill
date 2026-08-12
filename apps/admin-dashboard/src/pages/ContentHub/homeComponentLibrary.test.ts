@@ -8,7 +8,8 @@ describe('homeComponentLibrary', () => {
       'greeting', 'prayer_bar', 'hero', 'announcement', 'service_availability',
       'opening_status', 'stat_chips', 'mode_cards', 'specials', 'featured',
       'categories', 'trust_strip', 'proof', 'reviews', 'reorder_strip', 'cta',
-      'location', 'events_band', 'office_orders', 'brand_footer', 'rich_text',
+      'location', 'events_band', 'office_orders', 'brand_footer', 'site_footer',
+      'bottom_nav', 'rich_text',
       'image', 'image_text', 'video', 'button_band', 'faq_list', 'divider',
     ]) {
       expect(types).toContain(required);
@@ -22,11 +23,18 @@ describe('homeComponentLibrary', () => {
     expect(instanceStatus({ is_enabled: false })).toBe('Hidden');
   });
 
-  it('placement labels cover desktop and mobile', () => {
+  it('placement labels cover desktop and mobile including footer and bottom nav', () => {
     expect(placementLabels({
       show_desktop: true,
       placement_desktop: 'header',
       show_mobile: false,
     })).toEqual(['Desktop · header', 'Mobile · off']);
+
+    expect(placementLabels({
+      show_desktop: true,
+      placement_desktop: 'footer',
+      show_mobile: true,
+      placement_mobile: 'bottom_navigation',
+    })).toEqual(['Desktop · footer', 'Mobile · bottom nav']);
   });
 });

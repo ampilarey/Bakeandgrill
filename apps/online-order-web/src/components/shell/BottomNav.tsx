@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { usePageBlocks } from '../../context/PageBlocksContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useActiveOrder } from '../../hooks/useActiveOrder';
-import { SHELL_NAV_TABS } from './navTabs';
+import { resolveBottomNavTabs } from './navTabs';
 
 /**
  * 5-tab bottom navigation — phone only (≤767px).
@@ -12,14 +13,16 @@ import { SHELL_NAV_TABS } from './navTabs';
 export function BottomNav() {
   const { t } = useLanguage();
   const { hideNav } = useShellNav();
+  const { blocks } = usePageBlocks();
   const location = useLocation();
   const { activeOrderCount } = useActiveOrder();
+  const tabs = resolveBottomNavTabs(blocks);
 
   if (hideNav) return null;
 
   return (
     <nav className="bottom-nav" aria-label={t('nav.aria')}>
-      {SHELL_NAV_TABS.map(({ to, labelKey, match, Icon, showActiveOrderBadge }) => {
+      {tabs.map(({ to, labelKey, match, Icon, showActiveOrderBadge, displayLabel }) => {
         const active = match(location.pathname);
         const count = showActiveOrderBadge ? activeOrderCount : 0;
         return (
@@ -42,7 +45,7 @@ export function BottomNav() {
                 </span>
               )}
             </span>
-            <span>{t(labelKey)}</span>
+            <span>{displayLabel ?? t(labelKey)}</span>
           </Link>
         );
       })}

@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import { PrayerBar } from '../PrayerBar';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { usePageBlocks } from '../../context/PageBlocksContext';
 import { useShellNav } from '../../context/ShellNavContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useActiveOrder } from '../../hooks/useActiveOrder';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
+import { chromeEnabled } from '../../utils/surfaceBlocks';
 import { SHELL_NAV_TABS } from './navTabs';
 
 /** Local phone digits only (AuthContext stores 7-digit local when available). */
@@ -43,6 +45,7 @@ export function TopNav() {
   const { isAuthenticated, customerName } = useAuth();
   const location = useLocation();
   const { hasActiveOrder } = useActiveOrder();
+  const { blocks, loading: blocksLoading } = usePageBlocks();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -69,6 +72,8 @@ export function TopNav() {
   const onAccount =
     location.pathname === '/account' || location.pathname.startsWith('/account/');
   const phone = isAuthenticated ? localPhoneDigits(customerName) : null;
+  const showPrayer =
+    blocksLoading || chromeEnabled(blocks, 'prayer_bar', 'desktop', 'header');
 
   return (
     <header className={`top-nav${scrolled ? ' is-scrolled' : ''}`}>
@@ -112,9 +117,11 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="top-nav__prayer">
-          <PrayerBar />
-        </div>
+        {showPrayer ? (
+          <div className="top-nav__prayer">
+            <PrayerBar />
+          </div>
+        ) : null}
 
         <div className="top-nav__actions">
           {isAuthenticated ? (

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from './HomePage';
+import { PageBlocksProvider } from '../context/PageBlocksContext';
 
 /**
  * Stage F: page_blocks is the only home layout source. An empty layout (or a
@@ -96,7 +97,9 @@ vi.mock('../components/TomorrowOrderingBadge', () => ({ TomorrowOrderingBadge: (
 async function expectRequiredChromeOnly() {
   render(
     <MemoryRouter>
-      <HomePage />
+      <PageBlocksProvider>
+        <HomePage />
+      </PageBlocksProvider>
     </MemoryRouter>,
   );
 
@@ -114,7 +117,7 @@ describe('HomePage with no page_blocks', () => {
   });
 
   it('renders the non-removable blocks only when the layout is empty', async () => {
-    fetchPageBlocksMock.mockResolvedValue({ blocks: [] });
+    fetchPageBlocksMock.mockResolvedValue({ app: 'order_app', page: 'home', blocks: [] });
     await expectRequiredChromeOnly();
   });
 

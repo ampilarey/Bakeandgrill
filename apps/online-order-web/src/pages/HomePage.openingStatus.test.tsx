@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from './HomePage';
+import { PageBlocksProvider } from '../context/PageBlocksContext';
 import type { PageBlockRow } from '../api';
 
 /**
@@ -104,10 +105,12 @@ vi.mock('../components/TomorrowOrderingBadge', () => ({
 }));
 
 function renderHome(blocks: PageBlockRow[]) {
-  fetchPageBlocksMock.mockResolvedValue({ blocks });
+  fetchPageBlocksMock.mockResolvedValue({ app: 'order_app', page: 'home', blocks });
   return render(
     <MemoryRouter>
-      <HomePage />
+      <PageBlocksProvider>
+        <HomePage />
+      </PageBlocksProvider>
     </MemoryRouter>,
   );
 }
