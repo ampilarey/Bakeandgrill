@@ -38,11 +38,17 @@ import {
   type SurfaceFilter,
 } from './surfaceCatalog';
 
+export type LayoutDraftSignal = {
+  hasDraft: boolean;
+  /** Bumps whenever either app's layout draft version changes — used to remint previews. */
+  revision: number;
+};
+
 type Props = {
   reloadKey?: number;
   initialApp?: PageBlockApp;
   surfaceFilter?: SurfaceFilter;
-  onLayoutDraftChange?: (hasDraft: boolean) => void;
+  onLayoutDraftChange?: (signal: LayoutDraftSignal) => void;
 };
 
 type AppState = {
@@ -109,12 +115,13 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   }, [initialApp, surfaceFilter?.app]);
 
   const hasDraft = website.hasDraft || orderApp.hasDraft;
+  const layoutRevision = (website.version * 1_000_000) + orderApp.version + (hasDraft ? 1 : 0);
   // Skip while loading so we don't briefly report "no draft" and clear the
   // parent's layoutDraft flag that was seeded from the landing fetch.
   useEffect(() => {
     if (loading) return;
-    onLayoutDraftChange?.(hasDraft);
-  }, [hasDraft, onLayoutDraftChange, loading]);
+    onLayoutDraftChange?.({ hasDraft, revision: layoutRevision });
+  }, [hasDraft, layoutRevision, onLayoutDraftChange, loading]);
 
   const load = useCallback(async () => {
     setLoading(true);

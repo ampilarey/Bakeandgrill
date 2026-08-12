@@ -7,6 +7,7 @@ namespace Tests\Feature\Content;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\ContentDraft;
 use App\Models\ContentRevision;
+use App\Models\ContentSchedule;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -270,5 +271,67 @@ class ContentDraftPublishTest extends TestCase
 
         $this->assertDatabaseMissing('content_drafts', ['user_id' => $userB->id]);
         $this->assertDatabaseHas('content_drafts', ['user_id' => $userA->id]);
+    }
+
+    public function test_schedule_clears_matching_content_drafts_for_current_user(): void
+    {
+        $user = $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content/drafts', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Scheduled draft'],
+                ['key' => 'site_tagline', 'scope' => 'shared', 'value' => 'Keep this draft'],
+            ],
+        ])->assertOk();
+
+        $this->postJson('/api/admin/content/schedule', [
+            'publish_at' => now()->addHour()->toIso8601String(),
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Scheduled draft'],
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('drafts_cleared', 1);
+
+        $this->assertDatabaseMissing('content_drafts', [
+            'user_id' => $user->id,
+            'key' => 'cta_band_headline',
+            'scope' => 'website',
+            'locale' => 'en',
+        ]);
+        // Unrelated draft stays until publish/discard.
+        $this->assertDatabaseHas('content_drafts', [
+            'user_id' => $user->id,
+            'key' => 'site_tagline',
+            'scope' => 'shared',
+            'locale' => 'en',
+        ]);
+        $this->assertSame(1, ContentSchedule::query()->where('key', 'cta_band_headline')->count());
+    }
+
+    public function test_schedule_does_not_clear_other_users_drafts(): void
+    {
+        $userA = $this->actingAsOwner('schedule-a@test.local', 'Schedule A');
+        $this->putJson('/api/admin/content/drafts', [
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'A draft'],
+            ],
+        ])->assertOk();
+
+        $this->actingAsOwner('schedule-b@test.local', 'Schedule B');
+        $this->postJson('/api/admin/content/schedule', [
+            'publish_at' => now()->addHour()->toIso8601String(),
+            'changes' => [
+                ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'B schedule'],
+            ],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('content_drafts', [
+            'user_id' => $userA->id,
+            'key' => 'cta_band_headline',
+            'value' => 'A draft',
+        ]);
     }
 }

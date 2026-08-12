@@ -354,6 +354,8 @@ class ContentController extends Controller
         $locale = $data['locale'] ?? 'en';
         $publishAt = $data['publish_at'];
         $created = [];
+        $user = $request->user();
+        $userId = $user instanceof User ? $user->id : null;
 
         foreach ($data['changes'] as $change) {
             $value = $change['value'] ?? '';
@@ -371,9 +373,26 @@ class ContentController extends Controller
                 'value' => $value,
                 'publish_at' => $publishAt,
                 'status' => ContentSchedule::STATUS_PENDING,
-                'user_id' => $request->user()?->id,
+                'user_id' => $userId,
             ]);
             $created[] = $row;
+        }
+
+        // Clear matching autosaved drafts so reload doesn't show "Draft saved —
+        // not live" for values that are already queued to publish.
+        $draftsCleared = 0;
+        if ($userId !== null) {
+            foreach ($data['changes'] as $change) {
+                $key = (string) $change['key'];
+                $scope = (string) $change['scope'];
+                $changeLocale = (string) ($change['locale'] ?? $locale);
+                $draftsCleared += ContentDraft::query()
+                    ->where('user_id', $userId)
+                    ->where('key', $key)
+                    ->where('scope', $scope)
+                    ->where('locale', $changeLocale)
+                    ->delete();
+            }
         }
 
         $this->audit->log(
@@ -381,7 +400,11 @@ class ContentController extends Controller
             modelType: ContentSchedule::class,
             modelId: null,
             oldValues: [],
-            newValues: ['count' => count($created), 'publish_at' => $publishAt],
+            newValues: [
+                'count' => count($created),
+                'publish_at' => $publishAt,
+                'drafts_cleared' => $draftsCleared,
+            ],
             meta: ['locale' => $locale],
             request: $request,
         );
@@ -389,6 +412,7 @@ class ContentController extends Controller
         return response()->json([
             'message' => 'Content scheduled.',
             'schedules' => $created,
+            'drafts_cleared' => $draftsCleared,
         ], 201);
     }
 
