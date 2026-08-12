@@ -141,23 +141,18 @@
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
- * §7.2 text-hug: one inline .hero-text-bg span (not per-<br> blocks — those
- * become wide rectangles when soft-wrapped). box-decoration-break: clone paints
- * each visual line. Line-height must exceed 2× vertical pad so fragments don't stack.
+ * §7.2 text-hug: inline span + box-decoration-break: clone (one strip per
+ * visual line). Keep the title's normal line-height — do NOT open spacing.
+ * Horizontal pad only so clones never stack vertically.
  */
-.banner-title[data-bg-hug="1"],
-.banner-sub[data-bg-hug="1"] {
-    display: block;
-    text-align: center;
-    line-height: 1.55;
-}
 .banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
     display: inline;
-    padding: 0.08em 0.4em;
-    border-radius: 6px;
+    padding: 0 0.4em;
+    border-radius: 4px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
+    box-shadow: 0.15em 0 0 var(--hero-el-bg), -0.15em 0 0 var(--hero-el-bg);
     text-shadow: none;
     background: var(--hero-el-bg);
     color: inherit;

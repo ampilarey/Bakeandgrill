@@ -399,23 +399,17 @@ img.brand-logo--dark { display: none; }
   color: #f0a96a;
 }
 /*
- * §7.2 text-hug: one inline .hero-text-bg span + box-decoration-break: clone
- * so every soft-wrapped / <br> line gets its own tight highlight (not a block
- * rectangle). line-height 1.55 > 2× pad so clones don't overlap.
+ * §7.2 text-hug: inline span + box-decoration-break: clone. Keep normal
+ * title line-height — horizontal pad only so line strips don't stack.
  */
-.home-promo-hero__title[data-bg-hug="1"],
-.home-promo-hero__sub[data-bg-hug="1"] {
-  display: block;
-  text-align: center;
-  line-height: 1.55;
-}
 .home-promo-hero__title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .home-promo-hero__sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
   display: inline;
-  padding: 0.08em 0.4em;
-  border-radius: 6px;
+  padding: 0 0.4em;
+  border-radius: 4px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  box-shadow: 0.15em 0 0 var(--hero-el-bg), -0.15em 0 0 var(--hero-el-bg);
   text-shadow: none;
   background: var(--hero-el-bg);
   color: inherit;
