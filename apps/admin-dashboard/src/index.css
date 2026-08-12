@@ -2301,8 +2301,13 @@ a { text-decoration: none; color: inherit; }
 /* ── Desktop shell ─────────────────────────────────────────── */
 .hub-desktop-shell {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+.hub-desktop-shell--preview-off .hub-editor-area {
+  max-width: none;
 }
 
 /* ── Section Rail — desktop 240px sticky (56px when collapsed) ─ */
@@ -2649,9 +2654,9 @@ a { text-decoration: none; color: inherit; }
   color: var(--color-text);
 }
 
-/* ── Preview pane — desktop sticky 400px column ──────────────── */
+/* ── Preview pane — desktop sticky column (wider on large screens) ─ */
 .hub-preview-pane--column {
-  width: 400px;
+  width: min(480px, 34vw);
   flex-shrink: 0;
   position: sticky;
   top: 12px;
@@ -2662,6 +2667,16 @@ a { text-decoration: none; color: inherit; }
   border: 1px solid var(--color-border);
   border-radius: 14px;
   overflow: hidden;
+}
+@media (min-width: 1440px) {
+  .hub-preview-pane--column {
+    width: min(560px, 32vw);
+  }
+}
+@media (min-width: 1680px) {
+  .hub-preview-pane--column {
+    width: min(640px, 30vw);
+  }
 }
 .hub-preview-pane-toolbar {
   display: flex;
@@ -3224,6 +3239,16 @@ a { text-decoration: none; color: inherit; }
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+@media (min-width: 900px) {
+  .content-item-editor--drawer {
+    width: min(720px, 52vw);
+  }
+}
+@media (min-width: 1400px) {
+  .content-item-editor--drawer {
+    width: min(800px, 46vw);
+  }
+}
 .content-editor-sheet-header {
   flex-shrink: 0;
   padding: 12px 14px 10px;
@@ -3756,7 +3781,8 @@ a { text-decoration: none; color: inherit; }
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
-  max-width: 720px;
+  width: 100%;
+  max-width: none;
   padding: 0 0 1.5rem;
 }
 .hub-task-landing-intro {
@@ -3764,6 +3790,7 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.9rem;
   line-height: 1.45;
   color: var(--color-text-secondary);
+  max-width: 52rem;
 }
 .hub-task-cluster {
   display: flex;
@@ -3779,6 +3806,7 @@ a { text-decoration: none; color: inherit; }
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
+/* Mobile: stacked list. Desktop: multi-column cards (see ≥900px below). */
 .hub-task-grid {
   display: flex;
   flex-direction: column;
@@ -3800,9 +3828,11 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
   font-family: inherit;
   color: var(--color-text);
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 .hub-task-card:hover {
   border-color: var(--color-primary);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 .hub-task-card-icon {
   display: inline-flex;
@@ -3868,6 +3898,61 @@ a { text-decoration: none; color: inherit; }
   flex-shrink: 0;
   color: var(--color-text-muted);
 }
+
+/* Desktop Content Hub — use horizontal space (mobile keeps stacked list) */
+@media (min-width: 900px) {
+  .hub-task-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .hub-task-card {
+    min-height: 96px;
+    height: 100%;
+    padding: 1rem 1rem 0.9rem;
+    align-items: flex-start;
+  }
+  .hub-task-card-icon {
+    margin-top: 2px;
+  }
+  .hub-task-card-body {
+    gap: 4px;
+  }
+  .hub-task-card-chevron {
+    margin-top: 4px;
+    align-self: center;
+  }
+  .hub-fixed-module-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .hub-brand-kit-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .home-layout-section-card {
+    padding: 14px 16px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hub-desktop-shell--preview-off .hub-task-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  .hub-task-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .hub-desktop-shell--preview-off .hub-task-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .hub-brand-kit-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .hub-fixed-module-list {
   display: flex;
   flex-direction: column;

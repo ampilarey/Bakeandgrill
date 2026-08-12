@@ -58,4 +58,17 @@ describe('ContentTaskLanding', () => {
     expect(root.scrollWidth).toBeLessThanOrEqual(width + 1);
     root.remove();
   });
+
+  it('uses full width of the editor column (no phone-style max-width cap)', () => {
+    render(
+      <ContentTaskLanding
+        availableGroups={new Set(['Hero', 'Branding', 'Homepage'])}
+        onSelectTask={() => undefined}
+      />,
+    );
+    const landing = screen.getByTestId('content-task-landing');
+    expect(landing.className).toContain('hub-task-landing');
+    // Cap removed so desktop can use a multi-column task grid.
+    expect(getComputedStyle(landing).maxWidth === 'none' || getComputedStyle(landing).maxWidth === '').toBe(true);
+  });
 });

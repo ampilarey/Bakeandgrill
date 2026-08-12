@@ -101,7 +101,8 @@ const NULL_BY_LOCALE: LocaleMetaMap<string | null> = { en: null, dv: null };
 /** Desktop layout prefs — Content Hub only. */
 const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
 const LS_RAIL_COLLAPSED = 'bg_hub_rail_collapsed';
-const PREVIEW_DEFAULT_MIN_WIDTH = 1600;
+/** Open the docked preview by default on typical desktop widths. */
+const PREVIEW_DEFAULT_MIN_WIDTH = 1280;
 
 function readStoredBool(key: string): boolean | null {
   try {

@@ -287,10 +287,10 @@ describe('ContentHub desktop width', () => {
     expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
   });
 
-  it('defaults preview ON at >=1600 and OFF below when nothing stored', async () => {
+  it('defaults preview ON at >=1280 and OFF below when nothing stored', async () => {
     mockBlocks([sharedPhone]);
 
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
     const wide = render(
       <MemoryRouter initialEntries={['/content?group=Contact']}>
         <ContentHubPage />
@@ -301,7 +301,7 @@ describe('ContentHub desktop width', () => {
     expect(screen.getByTestId('preview-pane')).toBeTruthy();
     wide.unmount();
 
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
     render(
       <MemoryRouter initialEntries={['/content?group=Contact']}>
         <ContentHubPage />
