@@ -396,59 +396,30 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     mockBlocks();
   });
 
-  it('mobile structure exposes full-width title containers on Homepage content cards', async () => {
+  it('mobile structure exposes title containers on Homepage content cards', async () => {
     openSection('Homepage');
     await screen.findByTestId('section-editor');
     await screen.findByTestId('home-layout-editor');
 
-    // jsdom does not evaluate @media from stylesheets; apply the same mobile
-    // stacking rules the 767px query in index.css defines, then assert structure.
-    const style = document.createElement('style');
-    style.textContent = `
-      .hub-block-card-top { display: flex; flex-direction: column; align-items: stretch; }
-      .hub-block-card-titles { width: 100%; flex: none; }
-      .hub-block-card-actions { width: 100%; flex-shrink: 1; }
-      .hub-section-enable { display: flex; flex-direction: column; align-items: stretch; }
-      .hub-section-enable-face { width: 100%; flex: none; }
-    `;
-    document.head.appendChild(style);
-
-    // Legacy order/enable chrome is replaced by the layout editor on Homepage.
+    // Layout (flex stack / 100% width) is asserted in Playwright against real CSS.
+    // jsdom here only checks that the stacking hooks exist in the DOM.
     expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
 
     const blockCard = screen.getByTestId('block-card-proof_stat');
-    const blockTitles = blockCard.querySelector('.hub-block-card-titles') as HTMLElement;
-    const blockTop = blockCard.querySelector('.hub-block-card-top') as HTMLElement;
-
-    expect(blockTitles).toBeTruthy();
-    expect(getComputedStyle(blockTop).flexDirection).toBe('column');
-    expect(getComputedStyle(blockTitles).width).toBe('100%');
+    expect(blockCard.querySelector('.hub-block-card-titles')).toBeTruthy();
+    expect(blockCard.querySelector('.hub-block-card-top')).toBeTruthy();
 
     const helper = within(blockCard).getByText(
       /Large number shown in the social proof band/i,
     );
     expect(helper.textContent!.trim().split(/\s+/).length).toBeGreaterThanOrEqual(4);
-
-    style.remove();
   });
 
-  it('mobile structure exposes full-width face on section-enable cards', async () => {
+  it('mobile structure exposes section-enable face containers', async () => {
     openSection('Footer');
     await screen.findByTestId('section-enable-section_footer_enabled');
 
-    const style = document.createElement('style');
-    style.textContent = `
-      .hub-section-enable { display: flex; flex-direction: column; align-items: stretch; }
-      .hub-section-enable-face { width: 100%; flex: none; }
-    `;
-    document.head.appendChild(style);
-
     const enableCard = screen.getByTestId('section-enable-section_footer_enabled');
-    const enableFace = enableCard.querySelector('.hub-section-enable-face') as HTMLElement;
-    expect(enableFace).toBeTruthy();
-    expect(getComputedStyle(enableCard).flexDirection).toBe('column');
-    expect(getComputedStyle(enableFace).width).toBe('100%');
-
-    style.remove();
+    expect(enableCard.querySelector('.hub-section-enable-face')).toBeTruthy();
   });
 });

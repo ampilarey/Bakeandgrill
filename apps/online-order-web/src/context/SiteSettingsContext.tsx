@@ -131,8 +131,14 @@ export interface HeroSlideRow {
   image_focal_x?: number | string;
   image_focal_y?: number | string;
   image_alt?: string;
-  /** Overlay darkness 0–100 (100 = default wash). */
+  /** @deprecated Prefer photo_brightness + text_background (HERO_READABILITY_PLAN). */
   dim?: number | string;
+  /** 0–100, 100 = full bright photo (no knock-back). */
+  photo_brightness?: number | string;
+  /** 0–100, 100 = strong text scrim. */
+  text_background?: number | string;
+  /** Text stack position on the slide. Default bottom. */
+  text_position?: 'top' | 'middle' | 'bottom' | string;
   /**
    * Customer visibility. Absent or true = Showing.
    * Explicit false = Hidden (admin keeps the slide; carousels skip it).

@@ -165,6 +165,27 @@ final class ContentValidationService
                 $this->fail('value', 'Hero Slides item '.($index + 1).' showing must be true or false.');
             }
 
+            foreach (['photo_brightness', 'text_background', 'dim'] as $numericField) {
+                if (! array_key_exists($numericField, $slide) || $slide[$numericField] === null || $slide[$numericField] === '') {
+                    continue;
+                }
+                if (! is_numeric($slide[$numericField])) {
+                    $this->fail('value', 'Hero Slides item '.($index + 1)." {$numericField} must be a number from 0 to 100.");
+                }
+                $n = (float) $slide[$numericField];
+                if ($n < 0 || $n > 100) {
+                    $this->fail('value', 'Hero Slides item '.($index + 1)." {$numericField} must be a number from 0 to 100.");
+                }
+            }
+
+            if (array_key_exists('text_position', $slide) && $slide['text_position'] !== null && $slide['text_position'] !== '') {
+                $pos = strtolower(trim((string) $slide['text_position']));
+                if (! in_array($pos, ['top', 'middle', 'bottom'], true)) {
+                    $this->fail('value', 'Hero Slides item '.($index + 1).' text_position must be top, middle, or bottom.');
+                }
+                $slides[$index]['text_position'] = $pos;
+            }
+
             foreach (self::JSON_PUBLIC_URL_FIELDS['hero_slides'] as $field) {
                 if (! array_key_exists($field, $slide)) {
                     continue;

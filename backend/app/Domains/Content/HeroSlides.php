@@ -94,6 +94,53 @@ final class HeroSlides
     }
 
     /**
+     * Resolve photo / scrim / text position for public rendering.
+     * Lockstep with order-app resolveHeroSlidePresentation().
+     *
+     * @param  array<string, mixed>  $slide
+     * @return array{photo: float, scrim: float, text_position: string, photo_brightness: int, text_background: int}
+     */
+    public static function presentation(array $slide): array
+    {
+        $hasPhoto = array_key_exists('photo_brightness', $slide) && $slide['photo_brightness'] !== null && $slide['photo_brightness'] !== '';
+        $hasScrim = array_key_exists('text_background', $slide) && $slide['text_background'] !== null && $slide['text_background'] !== '';
+        $hasDim = array_key_exists('dim', $slide) && $slide['dim'] !== null && $slide['dim'] !== '';
+
+        // Implicit legacy default was dim=100 (knocked-back photo + strong scrim).
+        $photoBrightness = 0;
+        $textBackground = 100;
+
+        if ($hasPhoto || $hasScrim) {
+            $photoBrightness = $hasPhoto ? self::clamp100((float) $slide['photo_brightness']) : 100;
+            $textBackground = $hasScrim ? self::clamp100((float) $slide['text_background']) : 100;
+        } elseif ($hasDim) {
+            $dim = self::clamp100((float) $slide['dim']);
+            $photoBrightness = 100 - $dim;
+            $textBackground = $dim;
+        }
+
+        $rawPos = strtolower(trim((string) ($slide['text_position'] ?? 'bottom')));
+        $textPosition = in_array($rawPos, ['top', 'middle', 'bottom'], true) ? $rawPos : 'bottom';
+
+        return [
+            'photo_brightness' => $photoBrightness,
+            'text_background' => $textBackground,
+            'photo' => $photoBrightness / 100.0,
+            'scrim' => $textBackground / 100.0,
+            'text_position' => $textPosition,
+        ];
+    }
+
+    private static function clamp100(float $n): int
+    {
+        if (! is_finite($n)) {
+            return 100;
+        }
+
+        return (int) max(0, min(100, round($n)));
+    }
+
+    /**
      * @return array{0: list<array<string, mixed>>, 1: bool} [slides, hasArray]
      */
     private static function decodeSlideArray(mixed $raw): array

@@ -1,7 +1,20 @@
 # Admin Dashboard — Theming & Mobile Plan
 
-**Scope:** `apps/admin-dashboard` (55 pages)
-**Status:** Audit complete, implementation not started
+**Scope:** `apps/admin-dashboard` (70 page files)
+**Status: Revision 2** — the original audit's conclusions were correct and most of the work has
+since shipped. Revised after re-measuring against the code and after the Content Hub mobile work
+introduced a reusable sheet pattern that did not exist when this was written.
+
+| Item | Original finding | Today |
+|---|---|---|
+| Page chrome / structure | Uniform, leave alone | Unchanged. Still correct. |
+| Mobile tables | Handled by a catch-all; action: none | Confirmed. 55 pages carry tables, none need a wrapper. |
+| Shared modals on mobile | Not covered by the original audit | **Shipped for SharedUI Modal + the six page overlays** — bottom sheet, body-scroll lock, focus return, four-sided safe area, portal to `document.body`. `components/ui/Modal.tsx` still exists (used by `VideoStudioModal`) — see §6.2. |
+| Dark mode migration | 3,188 hex literals vs 3 variable usages | **647 hex literals vs 3,110 variable usages — roughly 83% done.** |
+| Stage 1 (lint + baseline + CLAUDE.md) | Proposed | **Shipped.** |
+
+**What is genuinely left is in §6. Everything above it is history, kept because the reasoning
+still holds and because the "action: none" verdicts stop the work being reinvented.**
 
 ---
 
@@ -426,3 +439,125 @@ The migration is value-preserving in light theme by construction — every
 mapping substitutes a variable whose `:root` value is byte-identical to the
 literal it replaces. Any visible light-mode change means a mapping was applied
 to the wrong property and should be reverted rather than adjusted.
+
+---
+
+## 6. What is genuinely left (Revision 2)
+
+Everything above §6 is history. It is kept because the reasoning still holds and because the
+"action: none" verdicts stop finished questions being reopened. This section is the only part
+that describes outstanding work.
+
+Measured on the current tip of `claude/service-availability-maintenance-zj4whc`.
+
+### 6.1 The hex tail — 647 literals across 70 page files
+
+Down from 3,188. Variable usages are now 3,110, so roughly 83% of the migration has landed and
+the ten-value mechanical pass of §1.4 is done. What is left is **not** another find-and-replace;
+these are the one-off shades §1.4 predicted would need judgement.
+
+Concentration, highest first:
+
+| File | Literals |
+|---|---|
+| `ForecastPage.tsx` | 39 |
+| `DashboardPage.tsx` | 34 |
+| `TestChecklistPage.tsx` | 33 |
+| `ReportsPage/ReportsTabPanels.tsx` | 29 |
+| `MediaLibraryPage.tsx` | 26 |
+| `MenuPage/MenuItemEditorModal.tsx` | 22 |
+| `CustomersPage.tsx` | 22 |
+| `DeliveryPage.tsx` | 21 |
+| `ServiceAvailabilityPage.tsx` | 20 |
+| `OrdersPage.tsx` | 20 |
+| `OnlineOrderingPage/orderingControlUi.tsx` | 20 |
+| `SmsPage/RecipientsTab.tsx` | 19 |
+
+Those twelve files hold 305 of the 647 — 47%. The rest is a thin scatter.
+
+**This is gated on Stage 3c, not on effort.** Most of the remainder is status colour: badge
+tints, chart series, danger/success/warning shades that have no existing variable. Replacing
+them requires deciding *what the dark-mode value should be*, which is a design decision, not a
+substitution. Do not let anyone run a bulk pass over these — a wrong mapping here changes light
+mode, which §5 identifies as the actual regression risk.
+
+Recommended order: do the Stage 3b visual walk first (it has still not been done), then decide
+Stage 3c, then migrate the twelve files above. Migrating before the walk means guessing.
+
+### 6.2 SharedUI Modal mobile treatment — shipped; `ui/Modal` still live
+
+The bottom-sheet block at `index.css:705` is scoped to `.modal-backdrop .modal-container`.
+`components/SharedUI.tsx` is still the only component that renders `modal-backdrop`.
+
+**What shipped**
+
+1. **SharedUI Modal** now follows the `ContentEditorSheet` pattern: portals to `document.body`,
+   saves/restores `document.body.style.overflow` (so nested modals do not leave the page
+   permanently locked), focuses the close control on open and returns focus on close, and pads
+   safe-area insets on top/left/right on mobile (footer still owns `safe-area-inset-bottom`).
+   Desktop look (sizes, colours, borders, radii) is unchanged.
+2. **Six hand-rolled overlays converted** to SharedUI Modal (one commit each):
+   `OrdersPage`, `CustomersPage`, `WebhooksPage` (logs panel), `DeliveryPage` (order detail),
+   `MenuPage` recipe, `MenuPage` barcode label. Left alone as planned:
+   `ServiceAvailabilityPage` (toast), `MediaLibraryPage` (already full-screen via `useIsMobile`),
+   `MenuPage/ImageCropModal` (already `role="dialog"` full-screen).
+3. **Playwright coverage** — `e2e/tests/go-live/10-admin-shared-modal-overlays.spec.ts`
+   (`--project=local`) at 320 / 375 / 390. Asserts real layout only (no injected CSS): no
+   horizontal document overflow, close control inside the viewport, modal-container fits, body
+   scroll locked while open. Proven to go red when scroll-lock is removed and when the mobile
+   sheet is forced to `min-width: 3000px`.
+
+**Not deleted — plan was wrong about "imported by no page".**
+`components/ui/Modal.tsx` is still exported from `components/ui/index.ts` and **is imported by
+`components/VideoStudioModal.tsx`** (Tailwind `fixed inset-0`, no `modal-backdrop`, so the
+mobile sheet CSS never reaches it). Deleting it was blocked until VideoStudio is migrated to
+SharedUI Modal. Do not leave that migration half-done: either migrate + delete, or add
+`modal-backdrop` / drop the misleading comment.
+
+**FINDING (app, not fixed here):** at **320px** the SharedUI Modal overlay specs fail
+`documentElement.scrollWidth` (~4px over). 375 / 390 are green.
+
+### 6.3 There is no real layout test coverage — and one suite faked it
+
+`ContentHub.mobileEditorSheet.test.tsx` contained a helper, `applyMobileViewportCss(width)`, that
+injected its own stylesheet declaring `width: ${width}px; overflow-x: hidden` on the very
+elements the test then measured, and asserted `document.documentElement.scrollWidth <= width`.
+The assertion could not fail. Proven twice: disabling the real mobile media query entirely left
+all six tests green, and forcing `.content-editor-sheet { position: static; width: 3000px }` also
+left all six green.
+
+jsdom has no layout engine. `scrollWidth` is not a measurement there — it is whatever the test
+put in. **Overflow assertions belong in Playwright against a real browser at a real viewport, or
+they belong nowhere.** A vitest suite may assert structure (the sheet mounted, focus moved, the
+draft label reads correctly); it may not assert pixels.
+
+Outstanding / shipped:
+
+- ~~Replace the faked assertions with Playwright checks at 320 / 375 / 390px~~ **Done**
+  (`09-content-hub-mobile-layout.spec.ts`, `10-admin-shared-modal-overlays.spec.ts`).
+- Sweep the other suites for the same pattern — any test that both writes CSS and measures it
+  (Signage / ContentHub polish self-fulfilling asserts stripped earlier on this branch).
+- ~~Once §6.2 lands, add one Playwright spec per converted overlay~~ **Done**.
+
+### 6.4 Two confirmed CSS defects, already fixed — noted so they are not reintroduced
+
+- `index.css:2100` — `.page-header-actions { flex-shrink: 0 }` forced header buttons past the
+  viewport edge on phones. Now overridden inside `@media (max-width: 767px)`.
+- `index.css:2885` — `.hub-block-more-menu { position: absolute; right: 0; min-width: 200px }`
+  opened partly off-screen for right-aligned rows. Now a collision-safe action sheet on mobile.
+
+Both were found by reading CSS, not by a test — which is the point of §6.3.
+
+### 6.5 Sequencing
+
+1. **Stage 3b visual walk** — still not done, and §6.1 is blocked behind it.
+2. ~~**Lift `ContentEditorSheet`'s behaviour into the SharedUI Modal**~~ **Done** (scroll lock,
+   focus, four-sided safe area, portal). ~~Delete `components/ui/Modal.tsx`~~ **Blocked** —
+   `VideoStudioModal` still imports it; migrate that first, then delete.
+3. ~~**Convert the six overlays in §6.2**~~ **Done** (one commit per file / overlay).
+4. ~~**Real Playwright layout coverage**~~ **Done** for the six overlays
+   (`10-admin-shared-modal-overlays.spec.ts`). Content Hub coverage is in
+   `09-content-hub-mobile-layout.spec.ts`.
+5. **Stage 3c decision, then the twelve files in §6.1.**
+6. **Follow-ups from this pass:** migrate `VideoStudioModal` → SharedUI Modal and delete
+   `ui/Modal`; fix the real **320px** `scrollWidth` overflow (FINDING in §6.2 / §6.3).

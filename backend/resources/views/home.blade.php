@@ -59,14 +59,19 @@
     position: relative;
     overflow: hidden;
 }
-/* --hero-dim: 0–1 (from slide.dim 0–100). 1 = current dark wash; 0 = bright. */
+/*
+ * --hero-photo / --hero-scrim: 0–1 (see docs/HERO_READABILITY_PLAN.md).
+ * Keep in lockstep with order-app .home-promo-hero__*
+ * photo 1 = full bright; scrim 1 = strong text background.
+ * Legacy dim D ⇒ photo=(100-D)/100, scrim=D/100 (identical look).
+ */
 .banner-slide img,
 .banner-slide .banner-video {
     position: absolute;
     inset: 0;
     width: 100%; height: 100%;
     object-fit: cover;
-    opacity: calc(1 - 0.55 * var(--hero-dim, 1));
+    opacity: calc(0.45 + 0.55 * var(--hero-photo, 0));
     transform: scale(1.05);
     transition: transform 8s linear;
 }
@@ -88,11 +93,14 @@
     z-index: 2;
     background: linear-gradient(
         180deg,
-        rgba(28,20,8, calc(0.22 * var(--hero-dim, 1))) 0%,
-        rgba(28,20,8, calc(0.72 * var(--hero-dim, 1))) 55%,
-        rgba(28,20,8, calc(0.92 * var(--hero-dim, 1))) 100%
+        rgba(28,20,8, calc(0.22 * var(--hero-scrim, 1))) 0%,
+        rgba(28,20,8, calc(0.72 * var(--hero-scrim, 1))) 55%,
+        rgba(28,20,8, calc(0.92 * var(--hero-scrim, 1))) 100%
     );
 }
+.banner-overlay[data-text-position="top"] { justify-content: flex-start; }
+.banner-overlay[data-text-position="middle"] { justify-content: center; }
+.banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
 
 /* Eyebrow / title / sub — keep in lockstep with order-app .home-promo-hero__* */
 .banner-eyebrow {
@@ -293,7 +301,7 @@
     }
     .banner-slide img,
     .banner-slide .banner-video {
-        opacity: calc(1 - 0.38 * var(--hero-dim, 1));
+        opacity: calc(0.62 + 0.38 * var(--hero-photo, 0));
     }
     .banner-overlay {
         align-items: center;
@@ -302,11 +310,14 @@
         padding: 4rem clamp(2.5rem, 8vw, 7rem) 4.5rem;
         background: linear-gradient(
             180deg,
-            rgba(28, 20, 8, calc(0.12 * var(--hero-dim, 1))) 0%,
-            rgba(28, 20, 8, calc(0.45 * var(--hero-dim, 1))) 45%,
-            rgba(14, 10, 4, calc(0.88 * var(--hero-dim, 1))) 100%
+            rgba(28, 20, 8, calc(0.12 * var(--hero-scrim, 1))) 0%,
+            rgba(28, 20, 8, calc(0.45 * var(--hero-scrim, 1))) 45%,
+            rgba(14, 10, 4, calc(0.88 * var(--hero-scrim, 1))) 100%
         );
     }
+    .banner-overlay[data-text-position="top"] { justify-content: flex-start; }
+    .banner-overlay[data-text-position="middle"] { justify-content: center; }
+    .banner-overlay[data-text-position="bottom"] { justify-content: flex-end; }
     .banner-overlay > * {
         max-width: 720px;
     }

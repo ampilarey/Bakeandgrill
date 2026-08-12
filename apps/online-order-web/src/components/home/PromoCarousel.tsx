@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import type { HeroSlideRow } from '../../context/SiteSettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
+import { resolveHeroSlidePresentation } from '../../utils/heroSlidePresentation';
 
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {
   if (!src) return null;
@@ -203,8 +204,7 @@ export function PromoCarousel({
           const imgBroken = imgErrors.has(i);
           const focalX = Number(slide.image_focal_x ?? 50);
           const focalY = Number(slide.image_focal_y ?? 50);
-          const dimRaw = Number(slide.dim ?? 100);
-          const heroDim = Number.isFinite(dimRaw) ? Math.min(1, Math.max(0, dimRaw / 100)) : 1;
+          const presentation = resolveHeroSlidePresentation(slide);
           const alt =
             slide.image_alt
             || (slide.title ? String(slide.title).replace(/<[^>]+>/g, '') : 'Promotional banner');
@@ -219,7 +219,13 @@ export function PromoCarousel({
             <div
               key={i}
               className="home-promo-hero__slide"
-              style={{ flex: `0 0 ${100 / n}%`, ...( { '--hero-dim': String(heroDim) } as CSSProperties ) }}
+              style={{
+                flex: `0 0 ${100 / n}%`,
+                ...( {
+                  '--hero-photo': String(presentation.photo),
+                  '--hero-scrim': String(presentation.scrim),
+                } as CSSProperties ),
+              }}
             >
               {videoSrc ? (
                 <video
@@ -250,7 +256,11 @@ export function PromoCarousel({
                 </div>
               )}
 
-              <div className="home-promo-hero__overlay">
+              <div
+                className="home-promo-hero__overlay"
+                data-text-position={presentation.text_position}
+                data-testid={`hero-overlay-${i}`}
+              >
                 {eyebrow ? (
                   <span className="home-promo-hero__eyebrow">{eyebrow}</span>
                 ) : null}

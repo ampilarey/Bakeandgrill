@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
+import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -237,58 +237,52 @@ export function DeliveryPage() {
 
       {/* Order detail modal */}
       {selected && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          onClick={() => setSelected(null)}
+        <Modal
+          title={`#${selected.order_number}`}
+          onClose={() => setSelected(null)}
+          maxWidth={480}
         >
-          <Card style={{ width: '100%', maxWidth: 480 }}>
-            <div onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>
-                  <Link to={`/orders?order=${selected.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
-                    #{selected.order_number}
-                  </Link>
-                </h2>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
-              </div>
-              <Badge label={selected.status} color={statColor(selected.status)} />
-              <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
-                <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Delivery Details</p>
-                <p style={{ fontSize: 14, color: 'var(--color-text)' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
-                {selected.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{selected.delivery_island}</p>}
-                {selected.delivery_contact_name && (
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 6 }}>
-                    👤 {selected.delivery_contact_name} · {selected.delivery_contact_phone}
-                  </p>
-                )}
-              </div>
-              {drivers.length > 0 && !['completed', 'cancelled'].includes(selected.status) && (
-                <AssignDriverInline
-                  order={selected}
-                  drivers={drivers}
-                  onAssigned={(updated) => { setSelected(updated); void loadOrders(); }}
-                />
-              )}
-              {selected.proof_of_delivery_path && (
-                <div style={{ marginTop: 16 }}>
-                  <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Proof of delivery</p>
-                  <a
-                    href={`/storage/${selected.proof_of_delivery_path}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: '#2563eb', fontWeight: 600 }}
-                  >
-                    View delivery photo →
-                  </a>
-                </div>
-              )}
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}>
-                <span>Total</span>
-                <span style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</span>
-              </div>
+          <p style={{ margin: '0 0 12px', fontSize: 13 }}>
+            <Link to={`/orders?order=${selected.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700 }}>
+              Open full order →
+            </Link>
+          </p>
+          <Badge label={selected.status} color={statColor(selected.status)} />
+          <div style={{ background: '#FFF8F3', borderRadius: 10, padding: 16, marginTop: 16, border: '1px solid #F0DCC8' }}>
+            <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Delivery Details</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text)' }}>{selected.delivery_address_line1 ?? 'N/A'}</p>
+            {selected.delivery_island && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{selected.delivery_island}</p>}
+            {selected.delivery_contact_name && (
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 6 }}>
+                👤 {selected.delivery_contact_name} · {selected.delivery_contact_phone}
+              </p>
+            )}
+          </div>
+          {drivers.length > 0 && !['completed', 'cancelled'].includes(selected.status) && (
+            <AssignDriverInline
+              order={selected}
+              drivers={drivers}
+              onAssigned={(updated) => { setSelected(updated); void loadOrders(); }}
+            />
+          )}
+          {selected.proof_of_delivery_path && (
+            <div style={{ marginTop: 16 }}>
+              <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-primary)', marginBottom: 8 }}>Proof of delivery</p>
+              <a
+                href={`/storage/${selected.proof_of_delivery_path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13, color: '#2563eb', fontWeight: 600 }}
+              >
+                View delivery photo →
+              </a>
             </div>
-          </Card>
-        </div>
+          )}
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18 }}>
+            <span>Total</span>
+            <span style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(selected.total ?? 0)).toFixed(2)}</span>
+          </div>
+        </Modal>
       )}
     </>
 

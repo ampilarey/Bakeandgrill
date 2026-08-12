@@ -17,7 +17,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   Badge, Btn, Card, EmptyState, TableStateBar,
   PageHeader, PageShell, Select, Spinner, statColor,
-  ConfirmDialog, useConfirmDialog,
+  ConfirmDialog, useConfirmDialog, Modal,
 } from '../components/Layout';
 import { downloadCSV } from '../utils/csvExport';
 
@@ -310,22 +310,12 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: 'rgba(0,0,0,0.4)', display: 'flex',
-      alignItems: 'stretch', justifyContent: 'flex-end',
-    }} onClick={onClose}>
-      <div className="order-detail-drawer" style={{
-        width: 'min(420px, 100vw)', background: 'var(--color-surface)', height: '100%',
-        overflowY: 'auto', padding: 24, boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
-      }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 18, color: 'var(--color-text)' }}>
-            {order ? `#${order.order_number}` : 'Order Details'}
-          </h2>
-          <button onClick={onClose} aria-label="Close order details" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
-        </div>
-
+    <>
+    <Modal
+      title={order ? `#${order.order_number}` : 'Order Details'}
+      onClose={onClose}
+      maxWidth={420}
+    >
         {toast && (
           <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '8px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{toast}</div>
         )}
@@ -745,9 +735,9 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
             )}
           </>
         )}
-      </div>
-      <ConfirmDialog state={refundDlg} close={closeRefundDlg} />
-    </div>
+    </Modal>
+    <ConfirmDialog state={refundDlg} close={closeRefundDlg} />
+    </>
   );
 }
 
