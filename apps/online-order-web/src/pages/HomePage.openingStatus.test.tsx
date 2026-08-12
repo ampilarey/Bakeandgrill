@@ -4,7 +4,10 @@ import { HomePage } from './HomePage';
 import type { PageBlockRow } from '../api';
 
 /**
- * Opening-status block always follows its own placement — never forced into Hero.
+ * Opening-status block behaviour vs the hero:
+ * - hero ON  → badge lives inside the hero statusSlot, never standalone.
+ * - hero OFF → badge renders standalone at the opening_status block position,
+ *   so turning the hero off does not silently remove the open/closed badge.
  */
 
 const fetchPageBlocksMock = vi.fn();
@@ -76,6 +79,7 @@ vi.mock('../context/SiteSettingsContext', () => ({
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 vi.mock('../hooks/useMediaQuery', () => ({ useMediaQuery: () => false }));
 
+// Hero mock renders its statusSlot so we can count badges inside vs outside.
 vi.mock('../components/home/PromoCarousel', () => ({
   PromoCarousel: ({ statusSlot }: { statusSlot?: React.ReactNode }) => (
     <div data-testid="promo-hero">{statusSlot}</div>
@@ -91,7 +95,6 @@ vi.mock('../components/home/SpecialsCarousel', () => ({ SpecialsCarousel: () => 
 vi.mock('../components/home/ReorderStrip', () => ({ ReorderStrip: () => null }));
 vi.mock('../components/home/BrandFooter', () => ({ BrandFooter: () => null }));
 vi.mock('../components/PrayerBar', () => ({ PrayerBar: () => null }));
-vi.mock('../components/ServiceBanner', () => ({ ServiceBanner: () => null }));
 vi.mock('../components/OpeningStatusBadge', () => ({
   OpeningStatusBadge: () => <span data-testid="opening-status-badge" />,
 }));
@@ -113,7 +116,7 @@ describe('HomePage opening status block', () => {
     fetchPageBlocksMock.mockReset();
   });
 
-  it('hero on + opening_status on: badge is standalone, not inside hero', async () => {
+  it('hero on + opening_status on: exactly one badge, inside the hero, no standalone strip', async () => {
     renderHome([
       block('hero', 0),
       block('opening_status', 1),
@@ -123,13 +126,14 @@ describe('HomePage opening status block', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('promo-hero')).toBeTruthy();
-      expect(screen.getByTestId('home-standalone-status')).toBeTruthy();
+      expect(screen.getAllByTestId('home-ordering-status-stack').length).toBe(1);
     });
-    expect(screen.getByTestId('promo-hero').querySelector('[data-testid="home-ordering-status-stack"]')).toBeNull();
-    expect(screen.getAllByTestId('home-ordering-status-stack').length).toBe(1);
+    // Badge sits inside the hero, never as its own strip.
+    expect(screen.getByTestId('promo-hero').querySelector('[data-testid="home-ordering-status-stack"]')).toBeTruthy();
+    expect(screen.queryByTestId('home-standalone-status')).toBeNull();
   });
 
-  it('hero off + opening_status on: standalone badge', async () => {
+  it('hero off + opening_status on: still exactly one badge, standalone', async () => {
     renderHome([
       block('opening_status', 0),
       block('mode_cards', 1),
@@ -143,12 +147,13 @@ describe('HomePage opening status block', () => {
     expect(screen.queryByTestId('promo-hero')).toBeNull();
   });
 
-  it('opening_status off: no badge', async () => {
+  it('hero off + opening_status off: no badge at all', async () => {
     renderHome([
       block('mode_cards', 0),
       block('brand_footer', 1),
     ]);
 
+    // Wait for the block layout to settle (mode_cards path renders nothing visible here).
     await waitFor(() => {
       expect(fetchPageBlocksMock).toHaveBeenCalled();
     });
@@ -156,5 +161,6 @@ describe('HomePage opening status block', () => {
       expect(screen.queryByTestId('home-ordering-status-stack')).toBeNull();
     });
     expect(screen.queryByTestId('home-standalone-status')).toBeNull();
+    expect(screen.queryByTestId('promo-hero')).toBeNull();
   });
 });

@@ -502,13 +502,6 @@
 /* ══════════════════════════════════════════════════════════
    TRUST MICRO-STRIP
 ══════════════════════════════════════════════════════════ */
-.home-block-desktop-only { display: block; }
-.home-block-mobile-only { display: none; }
-@media (max-width: 767px) {
-    .home-block-desktop-only { display: none !important; }
-    .home-block-mobile-only { display: block; }
-}
-
 .trust-strip {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -1176,65 +1169,45 @@
         $homeBlocks = collect();
     }
     $usePageBlocks = $homeBlocks->isNotEmpty();
-    $namedHomePartials = [
-        'hero', 'specials', 'featured', 'categories', 'proof', 'cta', 'location',
-        'trust_strip', 'events_band', 'brand_footer', 'office_orders', 'greeting',
-        'mode_cards', 'opening_status', 'announcement', 'service_availability',
-        'stat_chips', 'reviews', 'reorder_strip',
-    ];
+    // The trust strip is fixed chrome, not a block: it always renders in the
+    // hero slot (immediately under the hero when on, in its place when off),
+    // exactly like the legacy path below.
+    $trustStripRendered = false;
 @endphp
 
 @if($usePageBlocks)
+    @if(!$homeBlocks->contains(fn ($b) => $b->block_type === 'hero'))
+        @include('partials.home.trust-strip')
+        @php $trustStripRendered = true; @endphp
+    @endif
     @foreach($homeBlocks as $homeBlock)
-        @php
-            $sectionId = $homeBlock->block_type;
-            $blockSettings = array_merge(
-                \App\Domains\Content\Blocks\BlockDeviceSettings::DEFAULTS,
-                $homeBlock->resolvedSettings(),
-            );
-        @endphp
+        @php $sectionId = $homeBlock->block_type; @endphp
+
+        @if($sectionId === 'hero')
+            @if($homeBlock->is_enabled)
+                @include('partials.home.hero')
+            @endif
+            @unless($trustStripRendered)
+                @include('partials.home.trust-strip')
+                @php $trustStripRendered = true; @endphp
+            @endunless
+            @continue
+        @endif
 
         @if(!$homeBlock->is_enabled)
             @continue
         @endif
         @if(!\App\Domains\Content\Blocks\BlockTypeRegistry::isKnown($sectionId))
+            {{-- Unknown types render nothing here; the admin layout editor reports them. --}}
             @continue
         @endif
 
-        {{-- Header-placed chrome is rendered from layout.blade.php, not here. --}}
-        @if(in_array($sectionId, ['prayer_bar', 'announcement'], true))
-            @php
-                $placeDesktop = \App\Domains\Content\Blocks\BlockDeviceSettings::placementDesktop($blockSettings);
-                $placeMobile = \App\Domains\Content\Blocks\BlockDeviceSettings::placementMobile($blockSettings);
-                $showDesktop = \App\Domains\Content\Blocks\BlockDeviceSettings::showDesktop($blockSettings);
-                $showMobile = \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($blockSettings);
-            @endphp
-            @if($sectionId === 'prayer_bar')
-                @if($showDesktop && $placeDesktop === 'home')
-                    <div class="home-block-desktop-only" data-device="desktop">
-                        @include('partials.home.prayer-home')
-                    </div>
-                @endif
-                @if($showMobile && $placeMobile === 'home')
-                    <div class="home-block-mobile-only" data-device="mobile">
-                        @include('partials.home.prayer-home')
-                    </div>
-                @endif
-                @continue
-            @endif
-            @if($sectionId === 'announcement')
-                @if(($showDesktop && $placeDesktop === 'home') || ($showMobile && $placeMobile === 'home'))
-                    @include('partials.home.announcement')
-                @endif
-                @continue
-            @endif
+        @if($sectionId === 'brand_footer')
+            {{-- Footer lives in layout.blade.php; block is non-removable for admin safety. --}}
+            @continue
         @endif
 
-        @if($sectionId === 'promo_carousel')
-            {{-- Legacy alias: merged into hero. --}}
-            @php $sectionId = 'hero'; @endphp
-        @endif
-
+        {{-- Generic content blocks: settings-driven, may appear many times. --}}
         @if(\App\Domains\Content\Blocks\GenericBlockPresenter::isGeneric($sectionId))
             @php
                 $blockSettings = \App\Domains\Content\Blocks\GenericBlockPresenter::sanitizeSettings(
@@ -1247,6 +1220,8 @@
             @unless($blockIsEmpty)
                 @php
                     $stripeIndex = $stripe;
+                    // A divider has no background of its own, so it must not
+                    // shift the alternating stripe of the sections after it.
                     if ($sectionId !== 'divider') {
                         $stripe++;
                     }
@@ -1256,7 +1231,7 @@
             @continue
         @endif
 
-        @if(!in_array($sectionId, $namedHomePartials, true))
+        @if(!in_array($sectionId, ['specials', 'featured', 'categories', 'proof', 'cta', 'location'], true))
             @continue
         @endif
 
@@ -1265,15 +1240,38 @@
         @endif
 
         @php
-            $partial = 'partials.home.'.str_replace('_', '-', $sectionId);
             $stripeIndex = $stripe;
-            if (! in_array($sectionId, ['announcement', 'opening_status', 'stat_chips', 'prayer_bar'], true)) {
-                $stripe++;
-            }
+            $stripe++;
         @endphp
-        @include($partial, ['stripeIndex' => $stripeIndex])
+        @include('partials.home.'.$sectionId, ['stripeIndex' => $stripeIndex])
     @endforeach
+@else
+    {{-- No blocks for this page: render the required chrome only, never a
+         blank page. The brand footer lives in layout.blade.php; the trust
+         strip keeps its historical hero-slot placement. The admin home layout
+         editor reports the empty layout loudly. --}}
+    @include('partials.home.trust-strip')
 @endif
-{{-- Empty page_blocks: no auto-injected chrome. Site header/footer still wrap the page. --}}
+
+
+{{-- ══════════════════════════════════════════════════════════
+     EVENTS & CATERING
+══════════════════════════════════════════════════════════ --}}
+@php
+    $eventsHeadline = content('events_section_headline', 'Events & Catering');
+    $eventsBlurb = content('events_section_blurb', 'Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.');
+    $eventsBrowseCta = content('events_section_browse_cta', 'Browse catering menu');
+    $eventsPlanCta = content('events_section_plan_cta', 'Plan your event');
+@endphp
+<section class="events-band" style="padding:3.5rem 2rem; background:var(--surface); border-top:1px solid var(--border);">
+    <div style="max-width:640px; margin:0 auto; text-align:center;">
+        <h2 style="font-size:clamp(1.5rem,3vw,2rem); font-weight:800; color:var(--dark); margin:0 0 0.75rem;">{{ $eventsHeadline }}</h2>
+        <p style="font-size:1rem; color:var(--muted); line-height:1.55; margin:0 0 1.5rem;">{{ $eventsBlurb }}</p>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; justify-content:center;">
+            <a href="/order/catering" class="btn-outline" style="min-height:48px; display:inline-flex; align-items:center; padding:0 1.25rem;">{{ $eventsBrowseCta }}</a>
+            <a href="/order/events" class="btn-primary" style="min-height:48px; display:inline-flex; align-items:center; padding:0 1.25rem;">{{ $eventsPlanCta }}</a>
+        </div>
+    </div>
+</section>
 
 @endsection

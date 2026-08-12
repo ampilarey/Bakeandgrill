@@ -113,8 +113,10 @@ class SharedHomeComponentsMigratorTest extends TestCase
         $this->assertTrue((bool) $orderTrust->fresh()->is_enabled);
     }
 
-    public function test_website_home_does_not_auto_inject_trust_or_events_outside_layout(): void
+    public function test_customer_website_home_keeps_legacy_trust_and_events_chrome(): void
     {
+        // Customer Website home still uses the previous injected chrome.
+        // Admin page_blocks rows for trust/events do not remove that layout.
         HomeLayoutMigrator::migrate();
         SharedHomeComponentsMigrator::migrate();
         PageBlock::query()
@@ -124,8 +126,8 @@ class SharedHomeComponentsMigratorTest extends TestCase
         Cache::flush();
 
         $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringNotContainsString('class="trust-strip"', $html);
-        $this->assertStringNotContainsString('data-home-block="events_band"', $html);
+        $this->assertStringContainsString('class="trust-strip"', $html);
+        $this->assertStringContainsString('class="events-band"', $html);
     }
 
     public function test_announcement_setting_seeds_announcement_block(): void
