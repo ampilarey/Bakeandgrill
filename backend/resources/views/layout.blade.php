@@ -98,12 +98,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>@yield('title', $metaTitle)</title>
     <meta name="description" content="@yield('description', $metaDesc)">
-    <meta name="keywords" content="{{ e($metaKeywords) }}">
+    {{-- Blade {{ }} already HTML-escapes — do not wrap with e() or & becomes &amp;amp; --}}
+    <meta name="keywords" content="{{ $metaKeywords }}">
     <meta name="author" content="Bake &amp; Grill">
 
     <!-- Open Graph -->
     <meta property="og:type" content="restaurant">
-    <meta property="og:site_name" content="{{ e($siteName) }}">
+    <meta property="og:site_name" content="{{ $siteName }}">
+    {{-- @yield outputs raw: escape defaults with e(); section titles should be plain text. --}}
     <meta property="og:title" content="@yield('title', e($metaTitle))">
     <meta property="og:description" content="@yield('description', e($metaDesc))">
     <meta property="og:image" content="{{ $ogImage }}">
@@ -125,21 +127,22 @@
     <link rel="canonical" href="{{ url()->current() }}">
 
     <!-- Structured Data (JSON-LD) -->
+    {{-- @json() emits a quoted JSON string; do not HTML-escape inside JSON-LD. --}}
     <script type="application/ld+json">
     {
       "@@context": "https://schema.org",
       "@@type": "Restaurant",
-      "name": "{{ e($siteName) }}",
-      "description": "{{ e($metaDesc) }}",
-      "url": "{{ url('/') }}",
-      "logo": "{{ $logoUrl }}",
+      "name": @json($siteName),
+      "description": @json($metaDesc),
+      "url": @json(url('/')),
+      "logo": @json($logoUrl),
       "address": {
         "@@type": "PostalAddress",
         "addressLocality": "Malé",
         "addressCountry": "MV"
       },
       "servesCuisine": ["Maldivian", "Grills", "Bakery"],
-      "hasMenu": "{{ url('/order') }}",
+      "hasMenu": @json(url('/order')),
       "acceptsReservations": true
     }
     </script>

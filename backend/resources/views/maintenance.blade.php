@@ -171,7 +171,7 @@
 <body>
     <main class="maintenance-shell" role="main">
         <div class="maintenance-card">
-            <img src="{{ $logoUrl }}" alt="{{ e($siteName) }}" class="maintenance-logo">
+            <img src="{{ $logoUrl }}" alt="{{ $siteName }}" class="maintenance-logo">
             <span class="maintenance-eyebrow">We&rsquo;ll be right back</span>
             <h1 class="maintenance-title">Our website is briefly down for maintenance.</h1>
             <p class="maintenance-message">{{ $message }}</p>

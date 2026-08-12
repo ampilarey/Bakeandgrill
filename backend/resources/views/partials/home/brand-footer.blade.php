@@ -10,7 +10,7 @@
 <section class="home-brand-footer" data-home-block="brand_footer" style="padding:2.5rem 1.5rem; border-top:1px solid var(--border); background:var(--surface);">
     <div style="max-width:640px; margin:0 auto; text-align:center;">
         @if($logo)
-            <img src="{{ e($logo) }}" alt="{{ e($siteName) }}" style="height:40px; width:auto; margin:0 auto 1rem; display:block;" />
+            <img src="{{ $logo }}" alt="{{ $siteName }}" style="height:40px; width:auto; margin:0 auto 1rem; display:block;" />
         @endif
         <p style="font-weight:800; font-size:1.1rem; margin:0 0 0.5rem; color:var(--dark);">{{ $siteName }}</p>
         @if($blurb !== '')
