@@ -23,34 +23,15 @@ class WebsiteModeCardsRenderTest extends TestCase
 
     public function test_website_home_renders_order_app_style_mode_cards(): void
     {
-        // Website legacy defaults omit mode_cards; Surface Builder / admins add it.
-        // Seed an enabled row after hero so the public home exercises the partial.
-        $heroPos = (int) (PageBlock::query()
-            ->where('app', 'website')
-            ->where('page', 'home')
-            ->where('block_type', 'hero')
-            ->value('position') ?? 0);
-
-        PageBlock::query()
-            ->where('app', 'website')
-            ->where('page', 'home')
-            ->where('position', '>', $heroPos)
-            ->increment('position');
-
-        PageBlock::create([
-            'app' => 'website',
-            'page' => 'home',
-            'block_type' => 'mode_cards',
-            'position' => $heroPos + 1,
-            'is_enabled' => true,
-            'content_mode' => 'own',
-            'settings' => [
-                'show_desktop' => true,
-                'show_mobile' => true,
-                'placement_desktop' => 'home',
-                'placement_mobile' => 'home',
-            ],
-        ]);
+        $this->assertTrue(
+            PageBlock::query()
+                ->where('app', 'website')
+                ->where('page', 'home')
+                ->where('block_type', 'mode_cards')
+                ->where('is_enabled', true)
+                ->exists(),
+            'CustomerSurfaceMigrator must seed website mode_cards.',
+        );
 
         $html = $this->get('/')->assertOk()->getContent();
 
@@ -61,7 +42,9 @@ class WebsiteModeCardsRenderTest extends TestCase
         $this->assertStringContainsString('data-testid="mode-entry-dine_in"', $html);
         $this->assertStringContainsString('Eat here', $html);
         $this->assertStringNotContainsString('>Dine-in</a>', $html);
-        $this->assertStringContainsString('/order/images/mode-delivery.jpg', $html);
-        $this->assertStringContainsString('/order/images/mode-pickup.jpg', $html);
+        $this->assertStringContainsString('/images/modes/mode-delivery.jpg', $html);
+        $this->assertStringContainsString('/images/modes/mode-pickup.jpg', $html);
+        $this->assertStringContainsString('min-width: 0', $html);
+        $this->assertStringNotContainsString('calc(50% - 0.5rem)', $html);
     }
 }

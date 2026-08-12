@@ -39,4 +39,11 @@ class ModeEntryCardsPresenterTest extends TestCase
 
         $this->assertStringStartsWith('Closed until ', $line);
     }
+
+    public function test_resolve_image_url_prefers_public_modes_path(): void
+    {
+        $url = ModeEntryCardsPresenter::resolveImageUrl('delivery');
+        $this->assertSame('/images/modes/mode-delivery.jpg', $url);
+        $this->assertFileExists(public_path('images/modes/mode-delivery.jpg'));
+    }
 }

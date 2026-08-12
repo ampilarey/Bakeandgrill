@@ -6,7 +6,7 @@
     data-home-block="mode_cards"
     aria-label="Choose order mode"
 >
-    <div class="home-mode-cards__row">
+    <div class="home-mode-cards__row mode-entry-cards">
         @foreach($modeCards as $card)
             @if($card['available'] && $card['href'])
                 <a
@@ -51,6 +51,7 @@
 </section>
 
 <style>
+/* Keep in lockstep with order-app ModeEntryCards (flex 1 1 0, min-width 0). */
 .home-mode-cards {
     padding: 1rem 1.25rem 1.25rem;
     max-width: 960px;
@@ -63,7 +64,7 @@
 }
 .home-mode-card {
     flex: 1 1 0;
-    min-width: 140px;
+    min-width: 0;
     border: 1.5px solid var(--border);
     border-radius: 1.25rem;
     overflow: hidden;
@@ -77,6 +78,8 @@
     text-decoration: none;
     display: block;
     box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
 }
 .home-mode-card[data-available="false"] {
     opacity: 0.88;
@@ -101,6 +104,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    z-index: 1;
+}
+.home-mode-card__media:has(img) .home-mode-card__icon {
+    display: none;
 }
 .home-mode-card__body {
     padding: 0.875rem 1rem 1rem;
@@ -195,15 +202,9 @@
     font-family: inherit;
     color: var(--text);
 }
-@media (max-width: 520px) {
-    .home-mode-card {
-        flex: 1 1 calc(50% - 0.5rem);
-        min-width: calc(50% - 0.5rem);
-    }
-}
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 (function () {
     document.querySelectorAll('[data-mode-info]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -212,11 +213,6 @@
             if (dlg && typeof dlg.showModal === 'function') {
                 dlg.showModal();
             }
-        });
-    });
-    document.querySelectorAll('.home-mode-card__media img').forEach(function (img) {
-        img.addEventListener('error', function () {
-            img.remove();
         });
     });
 })();
