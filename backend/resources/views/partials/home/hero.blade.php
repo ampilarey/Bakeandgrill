@@ -73,7 +73,7 @@
                             class="banner-eyebrow"
                             @if(!empty($eyebrowEl['css']))
                                 data-has-bg="1"
-                                style="--hero-el-bg: {{ $eyebrowEl['css'] }}; background: var(--hero-el-bg);"
+                                style="--hero-el-bg: {{ $eyebrowEl['css'] }};"
                             @endif
                         >{{ $eyebrow }}</span>
                     @endif
@@ -84,7 +84,7 @@
                             @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
                                 data-has-bg="1"
                                 data-bg-full="1"
-                                style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                                style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @elseif(!empty($titleEl['css']))
                                 data-bg-hug="1"
                             @endif
@@ -94,7 +94,7 @@
                                     class="hero-text-bg"
                                     data-has-bg="1"
                                     data-bg-full="0"
-                                    style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                                    style="--hero-el-bg: {{ $titleEl['css'] }};"
                                 >{!! $titleHtml !!}</span>
                             @else
                                 {!! $titleHtml !!}
@@ -107,7 +107,7 @@
                             @if(!empty($subEl['css']) && !empty($subEl['full_width']))
                                 data-has-bg="1"
                                 data-bg-full="1"
-                                style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
+                                style="--hero-el-bg: {{ $subEl['css'] }};"
                             @elseif(!empty($subEl['css']))
                                 data-bg-hug="1"
                             @endif
@@ -117,7 +117,7 @@
                                     class="hero-text-bg"
                                     data-has-bg="1"
                                     data-bg-full="0"
-                                    style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
+                                    style="--hero-el-bg: {{ $subEl['css'] }};"
                                 >{{ $subtitle }}</span>
                             @else
                                 {{ $subtitle }}
@@ -132,7 +132,7 @@
                                 class="banner-cta-primary"
                                 @if(!empty($cta1El['css']))
                                     data-has-bg="1"
-                                    style="--hero-el-bg: {{ $cta1El['css'] }}; background: var(--hero-el-bg);"
+                                    style="--hero-el-bg: {{ $cta1El['css'] }};"
                                 @endif
                             >{{ $cta1Text }}</a>
                         @endif
@@ -142,7 +142,7 @@
                                 class="banner-cta-secondary"
                                 @if(!empty($cta2El['css']))
                                     data-has-bg="1"
-                                    style="--hero-el-bg: {{ $cta2El['css'] }}; background: var(--hero-el-bg);"
+                                    style="--hero-el-bg: {{ $cta2El['css'] }};"
                                 @endif
                             >{{ $cta2Text }}</a>
                         @endif

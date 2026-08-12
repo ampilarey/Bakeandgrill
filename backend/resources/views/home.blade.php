@@ -141,21 +141,25 @@
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
- * §7.2 text-hug: inline span + box-decoration-break: clone (one strip per
- * visual line). Keep the title's normal line-height — do NOT open spacing.
- * Horizontal pad only so clones never stack vertically.
+ * §7.2 text-hug: inline + box-decoration-break: clone. Keep normal line-height.
+ * Paint a shorter centered band (background-size) so translucent strips don't
+ * double up between lines. Do not set inline `background` on the span — that
+ * shorthand overrides this band and forces a full-height fill.
  */
 .banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
     display: inline;
     padding: 0 0.4em;
-    border-radius: 4px;
+    border-radius: 3px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
-    box-shadow: 0.15em 0 0 var(--hero-el-bg), -0.15em 0 0 var(--hero-el-bg);
     text-shadow: none;
-    background: var(--hero-el-bg);
     color: inherit;
+    background-color: transparent;
+    background-image: linear-gradient(var(--hero-el-bg), var(--hero-el-bg));
+    background-repeat: no-repeat;
+    background-size: 100% 0.7em;
+    background-position: center;
 }
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],

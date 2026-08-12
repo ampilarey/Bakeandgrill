@@ -18,7 +18,9 @@ function elementBgProps(el: HeroElementBackground): {
   return {
     'data-has-bg': '1',
     'data-bg-full': el.full_width ? '1' : '0',
-    style: { ['--hero-el-bg' as string]: el.css, background: 'var(--hero-el-bg)' } as CSSProperties,
+    // Only the CSS var — stylesheet paints (hug uses a short background-size band;
+    // an inline `background` shorthand would override that and force full-height fill).
+    style: { ['--hero-el-bg' as string]: el.css } as CSSProperties,
   };
 }
 
