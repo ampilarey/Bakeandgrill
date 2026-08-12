@@ -66,7 +66,6 @@ import { PreviewPane } from './PreviewPane';
 import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
 import type { ContentTask } from './taskLandingConfig';
 import { parseSurfaceId, countBlocksOnSurface, surfaceId, type SurfaceRecord } from './surfaceCatalog';
-import { fetchAdminPageBlocks } from '../../api/pageBlocks';
 import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
