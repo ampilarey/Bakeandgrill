@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Drag
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import {
-  Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, FileText, Film, FlipHorizontal2,
-  FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw, RotateCcw, RotateCw,
-  Search, Sliders, Trash2, Upload, X,
+  Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, Download, FileText, Film,
+  FlipHorizontal2, FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw,
+  RotateCcw, RotateCw, Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
   assignMediaCollections, createMediaCollection, deleteMedia, deleteMediaCollection,
@@ -23,6 +23,7 @@ import { VideoStudioModal } from '../components/VideoStudioModal';
 import {
   buildRotateParams,
   cropParamsFromArea,
+  exportMediaAsset,
   isCropReady,
   isRotateReady,
   normalizeRotateDegrees,
@@ -596,6 +597,7 @@ export function MediaLibraryPage() {
   const [detailSaving, setDetailSaving] = useState(false);
   const [detailError, setDetailError] = useState('');
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Usage
   const [usageItems, setUsageItems] = useState<MediaUsageItem[]>([]);
@@ -728,6 +730,25 @@ export function MediaLibraryPage() {
       setTimeout(() => setCopiedUrl(false), 2000);
     } catch {
       // fallback: do nothing
+    }
+  };
+
+  const handleExport = async (preferOriginal = false) => {
+    if (!selected) return;
+    setExporting(true);
+    try {
+      await exportMediaAsset(selected, preferOriginal);
+      toast.success(preferOriginal ? 'Original downloaded' : 'File downloaded');
+    } catch (e) {
+      try {
+        const url = preferOriginal && selected.original_url ? selected.original_url : selected.url;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast.success('Opened file in a new tab');
+      } catch {
+        toast.error((e as Error).message || 'Export failed');
+      }
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -1219,15 +1240,59 @@ export function MediaLibraryPage() {
               <div>Used in {selected.usage_count} place{selected.usage_count === 1 ? '' : 's'}</div>
             </div>
 
-            {/* Copy URL */}
-            <button
-              type="button"
-              onClick={() => void copyUrl()}
-              style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid var(--color-border)', background: copiedUrl ? '#f0fdf4' : 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: copiedUrl ? 'var(--color-success-strong)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}
-            >
-              {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
-              {copiedUrl ? 'Copied!' : 'Copy URL'}
-            </button>
+            {/* Copy URL + Export */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => void copyUrl()}
+                style={{
+                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: copiedUrl ? 'var(--color-success-bg, #f0fdf4)' : 'var(--color-bg)',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                  color: copiedUrl ? 'var(--color-success-strong)' : 'var(--color-text-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
+                {copiedUrl ? 'Copied!' : 'Copy URL'}
+              </button>
+              <button
+                type="button"
+                data-testid="export-download"
+                onClick={() => void handleExport(false)}
+                disabled={exporting || !selected.url}
+                style={{
+                  flex: 1, minWidth: 120, height: 44, minHeight: 44, borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-primary-soft, #FFF7ED)',
+                  cursor: exporting ? 'wait' : 'pointer', fontFamily: 'inherit',
+                  fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Download size={14} />
+                {exporting ? 'Exporting…' : 'Export'}
+              </button>
+            </div>
+            {selected.original_url && selected.original_url !== selected.url && (
+              <button
+                type="button"
+                data-testid="export-original"
+                onClick={() => void handleExport(true)}
+                disabled={exporting}
+                style={{
+                  width: '100%', height: 40, minHeight: 40, marginTop: -6, marginBottom: 14,
+                  borderRadius: 8, border: '1px dashed var(--color-border)',
+                  background: 'var(--color-surface)', cursor: exporting ? 'wait' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                  color: 'var(--color-text-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Download size={13} /> Export original
+              </button>
+            )}
 
             {selected.media_type === 'image' && canUseAs && (
               <div data-testid="media-use-as" style={{ marginBottom: 14 }}>

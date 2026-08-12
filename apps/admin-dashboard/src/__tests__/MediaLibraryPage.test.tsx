@@ -307,4 +307,27 @@ describe('MediaLibraryPage', () => {
     });
     expect(toastSuccess).toHaveBeenCalledWith('Set as default item image.');
   });
+
+  it('export button downloads the asset file', async () => {
+    const blob = new Blob(['fake-image'], { type: 'image/jpeg' });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => blob,
+    } as Response);
+    const createObjectURL = vi.fn(() => 'blob:mock');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+
+    renderWithRouter(<MediaLibraryPage />);
+    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    fireEvent.click(await screen.findByTestId('export-download'));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+    });
+    expect(toastSuccess).toHaveBeenCalledWith('File downloaded');
+    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
 });

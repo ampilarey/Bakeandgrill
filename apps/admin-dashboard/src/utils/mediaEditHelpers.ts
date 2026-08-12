@@ -76,3 +76,65 @@ export function rotatePreviewTransforms(degrees: number, flip: MediaFlip): strin
   if (d) parts.push(`rotate(${d}deg)`);
   return parts.join(' ');
 }
+
+function mimeExtension(mime: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/svg+xml': 'svg',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'audio/mpeg': 'mp3',
+    'application/pdf': 'pdf',
+  };
+  if (map[mime]) return map[mime];
+  const sub = mime.split('/')[1];
+  return (sub || 'bin').split('+')[0] || 'bin';
+}
+
+/** Filename for browser download / export. */
+export function mediaExportFilename(asset: {
+  url: string;
+  title?: string | null;
+  mime_type?: string | null;
+  id: number;
+}): string {
+  const fromUrl = (asset.url.split('?')[0] || '').split('/').pop() || '';
+  if (fromUrl.includes('.')) return fromUrl;
+  const base = (asset.title || `media-${asset.id}`).replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || `media-${asset.id}`;
+  return `${base}.${mimeExtension(asset.mime_type || 'application/octet-stream')}`;
+}
+
+/** Fetch the asset and trigger a file download (export). */
+export async function exportMediaAsset(
+  asset: {
+    url: string;
+    title?: string | null;
+    mime_type?: string | null;
+    id: number;
+    original_url?: string | null;
+  },
+  preferOriginal = false,
+): Promise<void> {
+  const raw = (preferOriginal && asset.original_url) ? asset.original_url : asset.url;
+  if (!raw) throw new Error('No file URL to export');
+  const filename = mediaExportFilename({ ...asset, url: raw });
+  const res = await fetch(raw, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}

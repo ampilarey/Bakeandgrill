@@ -4,6 +4,7 @@ import {
   cropParamsFromArea,
   isCropReady,
   isRotateReady,
+  mediaExportFilename,
   normalizeRotateDegrees,
   rotatePreviewTransforms,
   toggleFlipAxis,
@@ -57,5 +58,25 @@ describe('mediaEditHelpers — rotate', () => {
   it('preview transform applies flip then rotate', () => {
     expect(rotatePreviewTransforms(90, 'horizontal')).toBe('scaleX(-1) rotate(90deg)');
     expect(rotatePreviewTransforms(0, 'both')).toBe('scaleX(-1) scaleY(-1)');
+  });
+});
+
+describe('mediaEditHelpers — export', () => {
+  it('prefers filename from URL path when present', () => {
+    expect(mediaExportFilename({
+      id: 1,
+      url: 'https://cdn.example.com/media/hero-shot.jpg?v=abc',
+      title: 'Ignored',
+      mime_type: 'image/jpeg',
+    })).toBe('hero-shot.jpg');
+  });
+
+  it('builds filename from title + mime when URL has no extension', () => {
+    expect(mediaExportFilename({
+      id: 9,
+      url: 'https://cdn.example.com/media/9',
+      title: 'Café Banner!',
+      mime_type: 'image/png',
+    })).toBe('Caf_Banner.png');
   });
 });

@@ -16,7 +16,9 @@ Calibration: `origin/claude/media-library-editing` (tip `f5ea79a78`, 2026-07-24)
 
 ## LOST WORK
 
-Ordered by business cost (customer/staff product gap first).
+> **Update 2026-08-12:** Media Library Export / Export original was **reimplemented forward on main** (helpers in `mediaEditHelpers.ts` + detail-drawer buttons). The product gap below is closed. `origin/claude/media-library-editing` remains **safe to delete** — still do not merge that tip.
+
+Ordered by business cost (customer/staff product gap first). *At audit time:*
 
 | Branch | Tip date | What the live product is missing | Stale | Same-file commits on main since merge-base | Merge or reimplement? |
 |---|---|---|---|---|---|
