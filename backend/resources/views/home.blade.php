@@ -1143,26 +1143,14 @@
     $defaultItemImage = content('default_item_image');
     $stripe = 0;
     try {
-        $draftPageBlocks = null;
-        if (app()->bound('content.draft_overrides')) {
-            $draftOverrides = app('content.draft_overrides');
-            $draftPageBlocks = is_array($draftOverrides)
-                ? ($draftOverrides['page_blocks']['website']['home'] ?? null)
-                : null;
-        }
-        if (is_array($draftPageBlocks)) {
-            $allHomeBlocks = collect($draftPageBlocks)->map(function ($row) {
-                $row = is_array($row) ? $row : [];
-                $block = new \App\Models\PageBlock();
-                $row['shared_content_id'] = null;
-                $block->forceFill($row);
-                $block->exists = false;
-
-                return $block;
-            });
-        } else {
-            $allHomeBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
-        }
+        $draftHomeBlocks = app()->bound('content.draft_overrides')
+            ? \App\Domains\Content\Blocks\DraftPageBlockHydrator::forAppPage(
+                app('content.draft_overrides'),
+                'website',
+            )
+            : null;
+        $allHomeBlocks = $draftHomeBlocks
+            ?? \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
     } catch (\Throwable $e) {
         $allHomeBlocks = collect();
     }

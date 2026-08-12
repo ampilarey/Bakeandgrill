@@ -6,6 +6,7 @@ namespace Tests\Feature\Content;
 
 use App\Domains\Content\ContentDraftStore;
 use App\Domains\Permissions\PermissionCatalogSync;
+use App\Models\PageLayoutDraft;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -18,7 +19,7 @@ class ContentPreviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function actingAsOwner(): void
+    private function actingAsOwner(): User
     {
         $role = Role::firstOrCreate(
             ['slug' => 'owner'],
@@ -34,6 +35,8 @@ class ContentPreviewTest extends TestCase
             'is_active' => true,
         ]);
         Sanctum::actingAs($user, ['staff']);
+
+        return $user;
     }
 
     public function test_preview_token_requires_staff_auth(): void
@@ -69,6 +72,86 @@ class ContentPreviewTest extends TestCase
 
         $this->assertSame('+960 DRAFT', $preview['business_phone']);
         $this->assertSame('+960 LIVE', SiteSetting::getScoped('business_phone', 'shared'));
+    }
+
+    public function test_preview_token_include_layout_merges_page_layout_draft_blocks(): void
+    {
+        $user = $this->actingAsOwner();
+
+        PageLayoutDraft::query()->create([
+            'user_id' => $user->id,
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 1,
+            'payload' => [
+                'blocks' => [[
+                    'id' => -1,
+                    'app' => 'website',
+                    'page' => 'home',
+                    'block_type' => 'rich_text',
+                    'position' => 0,
+                    'is_enabled' => true,
+                    'content_mode' => 'own',
+                    'settings' => ['heading' => 'Draft Layout Marker Heading', 'body' => '<p>draft body</p>'],
+                ]],
+            ],
+        ]);
+
+        $res = $this->postJson('/api/admin/content/preview-token', [
+            'app' => 'website',
+            'locale' => 'en',
+            'overrides' => ['business_phone' => '+960 DRAFT'],
+            'include_layout' => true,
+        ])->assertOk()->json();
+
+        $this->assertSame('rich_text', $res['token'] !== '' ? $this->mergedLayoutBlockType($res['token']) : null);
+
+        $html = $this->get($res['website_url'])->assertOk()->getContent();
+        $this->assertStringContainsString('Draft Layout Marker Heading', $html);
+    }
+
+    public function test_preview_token_without_include_layout_does_not_merge_page_blocks(): void
+    {
+        $user = $this->actingAsOwner();
+
+        PageLayoutDraft::query()->create([
+            'user_id' => $user->id,
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 1,
+            'payload' => [
+                'blocks' => [[
+                    'id' => -1,
+                    'app' => 'website',
+                    'page' => 'home',
+                    'block_type' => 'rich_text',
+                    'position' => 0,
+                    'is_enabled' => true,
+                    'content_mode' => 'own',
+                    'settings' => ['heading' => 'Should Not Appear Without Flag', 'body' => ''],
+                ]],
+            ],
+        ]);
+
+        $res = $this->postJson('/api/admin/content/preview-token', [
+            'app' => 'website',
+            'locale' => 'en',
+            'overrides' => ['business_phone' => '+960 DRAFT'],
+        ])->assertOk()->json();
+
+        $draft = ContentDraftStore::get($res['token']);
+        $this->assertArrayNotHasKey('page_blocks', $draft['overrides'] ?? []);
+
+        $html = $this->get($res['website_url'])->assertOk()->getContent();
+        $this->assertStringNotContainsString('Should Not Appear Without Flag', $html);
+    }
+
+    private function mergedLayoutBlockType(string $token): ?string
+    {
+        $draft = ContentDraftStore::get($token);
+        $blocks = $draft['overrides']['page_blocks']['website']['home'] ?? [];
+
+        return $blocks[0]['block_type'] ?? null;
     }
 
     public function test_signed_website_preview_renders_draft(): void

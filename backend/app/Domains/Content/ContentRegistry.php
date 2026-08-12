@@ -140,11 +140,19 @@ final class ContentRegistry
         return (bool) ($block['rich'] ?? false);
     }
 
+    /**
+     * A block is shareable only when explicitly flagged AND it targets BOTH
+     * website and order_app — a block that only ever targets one app has
+     * nothing to "share" across apps, so same/different toggles do not apply.
+     */
     public static function isShareable(string $key): bool
     {
         $block = self::block($key);
+        if (! (bool) ($block['shareable'] ?? false)) {
+            return false;
+        }
 
-        return (bool) ($block['shareable'] ?? false);
+        return self::targetsApp($key, 'website') && self::targetsApp($key, 'order_app');
     }
 
     /**

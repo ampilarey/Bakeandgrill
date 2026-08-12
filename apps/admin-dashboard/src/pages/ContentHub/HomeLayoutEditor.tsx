@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { ChevronRight } from 'lucide-react';
 import {
   createPageBlock,
@@ -44,25 +52,54 @@ type AppState = {
   hasDraft: boolean;
 };
 
+/** Imperative handle so a parent (Content Hub unified publish bar) can drive this editor. */
+export type HomeLayoutEditorHandle = {
+  publishAll: () => Promise<void>;
+  discardAll: () => Promise<void>;
+  hasDraft: boolean;
+};
+
+/** One overview row — a single component instance (or an unfilled "add" slot for a type). */
+type OverviewRow = {
+  rowKey: string;
+  comp: LibraryComponent;
+  website?: PageBlockRow;
+  orderApp?: PageBlockRow;
+  /** True for the trailing "add another" slot on multi-instance types. */
+  isAddSlot?: boolean;
+};
+
+/**
+ * The currently open editor sheet, identified by specific block ids rather
+ * than just a type — required so multi-instance blocks (e.g. rich text) edit
+ * one instance at a time instead of always the first of that type.
+ */
+type EditingSession = {
+  type: string;
+  websiteId: number | null;
+  orderId: number | null;
+  isAddSlot: boolean;
+};
+
 const emptyApp = (): AppState => ({ blocks: [], types: [], version: 0, hasDraft: false });
 
 /**
  * Home Components overview — dual-app cards + focused editor.
  * Overview shows Website / Order App status; Edit opens drawer/sheet.
  */
-export function HomeLayoutEditor({
+export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(function HomeLayoutEditor({
   reloadKey = 0,
   initialApp = 'website',
   surfaceFilter,
   onLayoutDraftChange,
-}: Props) {
+}: Props, ref) {
   const [website, setWebsite] = useState<AppState>(emptyApp);
   const [orderApp, setOrderApp] = useState<AppState>(emptyApp);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewMsg, setPreviewMsg] = useState('');
-  const [editingType, setEditingType] = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
   const [reorderApp, setReorderApp] = useState<HomeApp | null>(null);
   const [focusApp, setFocusApp] = useState<HomeApp>(surfaceFilter?.app ?? initialApp);
 
@@ -112,8 +149,12 @@ export function HomeLayoutEditor({
     else setOrderApp(next);
   };
 
-  const findInstance = (app: HomeApp, type: string) =>
-    stateFor(app).blocks.find((b) => b.block_type === type);
+  /** Find a specific instance by id, or (legacy) the first instance of a type. */
+  const findInstance = (app: HomeApp, type: string, id?: number) => {
+    const list = stateFor(app).blocks;
+    if (id !== undefined) return list.find((b) => b.id === id);
+    return list.find((b) => b.block_type === type);
+  };
 
   const library = useMemo(() => {
     const fromApi = [...website.types, ...orderApp.types];
@@ -151,7 +192,44 @@ export function HomeLayoutEditor({
     heroPromoConflict(website.blocks.filter((b) => b.is_enabled).map((b) => b.block_type))
     || heroPromoConflict(orderApp.blocks.filter((b) => b.is_enabled).map((b) => b.block_type));
 
-  const addToApp = async (app: HomeApp, type: string) => {
+  /**
+   * Overview rows — one card per component type normally, but one card per
+   * *instance* for blocks that allow multiple (e.g. rich text). Each app's
+   * instances are listed independently since multi-instance blocks are not
+   * paired 1:1 across apps like singleton blocks are.
+   */
+  const overviewRows = useMemo((): OverviewRow[] => {
+    const rows: OverviewRow[] = [];
+    for (const comp of visibleLibrary) {
+      if (!comp.allowsMultiple) {
+        rows.push({
+          rowKey: comp.type,
+          comp,
+          website: findInstance('website', comp.type),
+          orderApp: findInstance('order_app', comp.type),
+        });
+        continue;
+      }
+      const wInstances = website.blocks.filter((b) => b.block_type === comp.type);
+      const oInstances = orderApp.blocks.filter((b) => b.block_type === comp.type);
+      const max = Math.max(wInstances.length, oInstances.length);
+      for (let i = 0; i < max; i += 1) {
+        rows.push({
+          rowKey: `${comp.type}-${wInstances[i]?.id ?? 'none'}-${oInstances[i]?.id ?? 'none'}`,
+          comp,
+          website: wInstances[i],
+          orderApp: oInstances[i],
+        });
+      }
+      // Always offer one more empty slot so staff can add another instance
+      // even after the first one exists (multi-instance blocks are not capped).
+      rows.push({ rowKey: `${comp.type}-add-${max}`, comp, isAddSlot: max > 0 });
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleLibrary, website.blocks, orderApp.blocks]);
+
+  const addToApp = async (app: HomeApp, type: string): Promise<PageBlockRow | null> => {
     setBusy(true);
     setError('');
     try {
@@ -170,8 +248,10 @@ export function HomeLayoutEditor({
         version: refreshed.version ?? res.version,
         hasDraft: true,
       });
+      return res.block;
     } catch (e) {
       setError((e as Error).message || `Could not add to ${app}.`);
+      return null;
     } finally {
       setBusy(false);
     }
@@ -334,8 +414,8 @@ export function HomeLayoutEditor({
     }
   };
 
-  const discard = async () => {
-    if (!window.confirm('Discard unpublished Home layout drafts for both apps?')) return;
+  const discard = async (skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm('Discard unpublished Home layout drafts for both apps?')) return;
     setBusy(true);
     try {
       for (const app of ['website', 'order_app'] as HomeApp[]) {
@@ -350,6 +430,14 @@ export function HomeLayoutEditor({
       setBusy(false);
     }
   };
+
+  // Exposed so the Content Hub's unified publish/discard bar can drive the
+  // layout editor without duplicating its confirm/API-call logic.
+  useImperativeHandle(ref, () => ({
+    publishAll: () => publish(),
+    discardAll: () => discard(true),
+    hasDraft,
+  }));
 
   const preview = async (app: HomeApp, device: 'desktop' | 'mobile') => {
     setBusy(true);
@@ -370,9 +458,13 @@ export function HomeLayoutEditor({
     }
   };
 
-  const editingComp = editingType ? library.find((c) => c.type === editingType) ?? null : null;
-  const webInst = editingType ? findInstance('website', editingType) : undefined;
-  const orderInst = editingType ? findInstance('order_app', editingType) : undefined;
+  const editingComp = editingSession ? library.find((c) => c.type === editingSession.type) ?? null : null;
+  const webInst = editingSession?.websiteId != null
+    ? findInstance('website', editingSession.type, editingSession.websiteId)
+    : undefined;
+  const orderInst = editingSession?.orderId != null
+    ? findInstance('order_app', editingSession.type, editingSession.orderId)
+    : undefined;
 
   return (
     <div
@@ -520,9 +612,10 @@ export function HomeLayoutEditor({
           data-testid="home-components-overview"
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
-          {visibleLibrary.map((comp) => {
-            const w = findInstance('website', comp.type);
-            const o = findInstance('order_app', comp.type);
+          {overviewRows.map((row) => {
+            const { comp, rowKey, isAddSlot } = row;
+            const w = row.website;
+            const o = row.orderApp;
             const wStatus = instanceStatus(w);
             const oStatus = instanceStatus(o);
             const shared =
@@ -530,8 +623,8 @@ export function HomeLayoutEditor({
               && Boolean(w && o);
             return (
               <div
-                key={comp.type}
-                data-testid={`home-layout-block-${comp.type}`}
+                key={rowKey}
+                data-testid={`home-layout-block-${rowKey}`}
                 data-block-id={w?.id ?? o?.id ?? comp.type}
                 className="home-layout-section-card"
                 style={{
@@ -548,7 +641,12 @@ export function HomeLayoutEditor({
                 <button
                   type="button"
                   data-testid={`home-layout-edit-${w?.id ?? o?.id ?? comp.type}`}
-                  onClick={() => setEditingType(comp.type)}
+                  onClick={() => setEditingSession({
+                    type: comp.type,
+                    websiteId: w?.id ?? null,
+                    orderId: o?.id ?? null,
+                    isAddSlot: Boolean(isAddSlot),
+                  })}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -564,21 +662,21 @@ export function HomeLayoutEditor({
                   }}
                 >
                   <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflowWrap: 'anywhere' }}>
-                    {comp.name}
+                    {isAddSlot ? `+ Add another ${comp.name}` : comp.name}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>
                     {comp.summary}
                   </span>
                   <span className="hub-task-card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <span
-                      data-testid={`home-comp-website-status-${comp.type}`}
+                      data-testid={`home-comp-website-status-${rowKey}`}
                       className="hub-placement-chip hub-placement-chip--status"
                       style={badgeStyle(wStatus === 'Added')}
                     >
                       Website: {wStatus}
                     </span>
                     <span
-                      data-testid={`home-comp-order-status-${comp.type}`}
+                      data-testid={`home-comp-order-status-${rowKey}`}
                       className="hub-placement-chip hub-placement-chip--status"
                       style={badgeStyle(oStatus === 'Added')}
                     >
@@ -606,8 +704,8 @@ export function HomeLayoutEditor({
       {editingComp ? (
         <ContentEditorSheet
           open
-          title={`Edit ${editingComp.name}`}
-          onClose={() => setEditingType(null)}
+          title={editingSession?.isAddSlot ? `Add another ${editingComp.name}` : `Edit ${editingComp.name}`}
+          onClose={() => setEditingSession(null)}
           testId="home-layout-section-editor"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
@@ -629,7 +727,11 @@ export function HomeLayoutEditor({
               block={webInst}
               busy={busy}
               supportsShared={editingComp.supportsSharedContent}
-              onAdd={() => void addToApp('website', editingComp.type)}
+              onAdd={() => {
+                void addToApp('website', editingComp.type).then((block) => {
+                  if (block) setEditingSession((prev) => (prev ? { ...prev, websiteId: block.id } : prev));
+                });
+              }}
               onToggle={() => webInst && void toggleEnabled('website', webInst)}
               onRemove={() => webInst && void removeFromApp('website', webInst)}
               onMode={(mode) => webInst && void setMode('website', webInst, mode)}
@@ -641,7 +743,11 @@ export function HomeLayoutEditor({
               block={orderInst}
               busy={busy}
               supportsShared={editingComp.supportsSharedContent}
-              onAdd={() => void addToApp('order_app', editingComp.type)}
+              onAdd={() => {
+                void addToApp('order_app', editingComp.type).then((block) => {
+                  if (block) setEditingSession((prev) => (prev ? { ...prev, orderId: block.id } : prev));
+                });
+              }}
               onToggle={() => orderInst && void toggleEnabled('order_app', orderInst)}
               onRemove={() => orderInst && void removeFromApp('order_app', orderInst)}
               onMode={(mode) => orderInst && void setMode('order_app', orderInst, mode)}
@@ -652,7 +758,7 @@ export function HomeLayoutEditor({
       ) : null}
     </div>
   );
-}
+});
 
 function ReorderList({
   app,

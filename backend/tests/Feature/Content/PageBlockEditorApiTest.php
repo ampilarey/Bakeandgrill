@@ -120,12 +120,21 @@ class PageBlockEditorApiTest extends TestCase
 
         $website = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
             ->firstWhere('block_type', 'rich_text');
+        $this->assertSame('Shared story', $website['settings']['heading'] ?? null);
+
+        // The twin block on the other app is created disabled — staff must
+        // opt in from that app before it becomes publicly visible there.
         $order = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
             ->firstWhere('block_type', 'rich_text');
+        $this->assertNull($order);
 
-        $this->assertSame('Shared story', $website['settings']['heading'] ?? null);
-        $this->assertSame('Shared story', $order['settings']['heading'] ?? null);
-        $this->assertSame($website['shared_content_id'], $order['shared_content_id']);
+        $orderTwin = PageBlock::query()
+            ->where('app', 'order_app')
+            ->where('block_type', 'rich_text')
+            ->first();
+        $this->assertNotNull($orderTwin);
+        $this->assertFalse((bool) $orderTwin->is_enabled);
+        $this->assertSame($website['shared_content_id'], $orderTwin->shared_content_id);
     }
 
     public function test_own_generic_block_only_publishes_to_one_app(): void

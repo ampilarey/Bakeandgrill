@@ -134,12 +134,12 @@ describe('ContentHubPage', () => {
       expect(within(sheet).queryByDisplayValue('+960 111')).toBeNull();
     });
 
-    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Website');
     fireEvent.click(within(sheet).getByLabelText(/Shared with Website and Order App/i));
+    const shareModal = await screen.findByTestId('share-source-modal');
+    fireEvent.click(within(shareModal).getByTestId('share-source-confirm'));
     await waitFor(() => {
       expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en', { source: 'website' });
     });
-    promptSpy.mockRestore();
   });
 
   it('passes discard draft_action after confirmation when mode changes with dirty drafts', async () => {

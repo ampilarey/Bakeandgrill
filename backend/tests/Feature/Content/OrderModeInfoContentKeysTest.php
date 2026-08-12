@@ -24,13 +24,19 @@ class OrderModeInfoContentKeysTest extends TestCase
         'order_mode_learn_more',
     ];
 
-    public function test_mode_info_keys_are_registered_public_and_order_app_only(): void
+    /**
+     * order_mode_* keys target both apps so the Website "Order mode cards"
+     * band (ModeEntryCardsPresenter) can be edited from the Website side too
+     * — see ContentRegistry::isShareable() and ModeEntryCardsPresenter.
+     */
+    public function test_mode_info_keys_are_registered_public_and_shared_across_both_apps(): void
     {
         foreach (self::KEYS as $key) {
             $this->assertTrue(ContentRegistry::has($key), "missing {$key}");
             $this->assertTrue(ContentRegistry::isPublic($key), "not public {$key}");
             $this->assertTrue(ContentRegistry::targetsApp($key, 'order_app'), "not order_app {$key}");
-            $this->assertFalse(ContentRegistry::targetsApp($key, 'website'), "leaked to website {$key}");
+            $this->assertTrue(ContentRegistry::targetsApp($key, 'website'), "not website {$key}");
+            $this->assertTrue(ContentRegistry::isShareable($key), "not shareable {$key}");
             $block = ContentRegistry::block($key);
             $this->assertNotEmpty($block['description'] ?? null, "missing description {$key}");
         }

@@ -67,7 +67,10 @@ final class ModeEntryCardsPresenter
     public static function cards(?string $locale = null): array
     {
         $locale ??= app()->bound('content.locale') ? (string) app('content.locale') : 'en';
-        $copy = ContentResolver::for('order_app', $locale);
+        // order_mode_* keys now target both apps (website + order_app) so Website
+        // can edit them directly. Resolve with the website app — the chain still
+        // falls through to shared/registry defaults when unset.
+        $copy = ContentResolver::for('website', $locale);
         $gate = self::resolveGatePayload();
 
         $statusAvailable = (string) $copy->get('order_mode_status_available', 'Available now');
@@ -233,7 +236,7 @@ final class ModeEntryCardsPresenter
         }
 
         // Delivery meta often lives on website/shared — fall back through website resolver.
-        $website = ContentResolver::for('website', $copy->locale());
+        $website = $copy;
         $eta = self::trimmedOr((string) $website->get('delivery_time', ''), '')
             ?: self::trimmedOr((string) $website->get('delivery_eta', ''), '');
         $threshold = self::trimmedOr((string) $website->get('delivery_threshold', ''), '');

@@ -110,6 +110,16 @@ export async function saveContentDrafts(
   });
 }
 
+/** Discard the current user's autosaved drafts for a locale (optionally scoped to one app). */
+export async function discardContentDrafts(
+  locale: ContentLocale = 'en',
+  scope?: ContentScope,
+): Promise<{ message: string; locale: string; scope: ContentScope | null; deleted: number }> {
+  const q = new URLSearchParams({ locale });
+  if (scope) q.set('scope', scope);
+  return req(`/admin/content/drafts?${q}`, { method: 'DELETE' });
+}
+
 export async function shareContentBlock(
   key: string,
   locale: ContentLocale = 'en',
@@ -276,9 +286,10 @@ export async function createContentPreviewToken(
   app: ContentApp,
   overrides: Record<string, string>,
   locale: ContentLocale = 'en',
+  includeLayout: boolean = false,
 ): Promise<{ token: string; website_url: string; order_app_url: string; expires_in: number }> {
   return req('/admin/content/preview-token', {
     method: 'POST',
-    body: JSON.stringify({ app, locale, overrides }),
+    body: JSON.stringify({ app, locale, overrides, include_layout: includeLayout }),
   });
 }

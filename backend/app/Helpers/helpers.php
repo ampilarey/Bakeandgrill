@@ -60,10 +60,15 @@ if (!function_exists('content')) {
     function content(string $key, mixed $default = null): mixed
     {
         // Staff preview draft overlay (set only by ContentWebsitePreviewController).
+        // Empty string is a valid override (preview clearing a field); only skip
+        // nested page_blocks / non-scalar bags and missing keys.
         if (app()->bound('content.draft_overrides')) {
             $overrides = app('content.draft_overrides');
-            if (is_array($overrides) && array_key_exists($key, $overrides) && $overrides[$key] !== null && $overrides[$key] !== '') {
-                return $overrides[$key];
+            if (is_array($overrides) && array_key_exists($key, $overrides) && $overrides[$key] !== null) {
+                $overlay = $overrides[$key];
+                if (is_scalar($overlay) || $overlay === '') {
+                    return $overlay;
+                }
             }
         }
 

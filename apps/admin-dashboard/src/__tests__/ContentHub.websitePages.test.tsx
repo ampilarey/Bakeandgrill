@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
+import * as pageBlocksApi from '../api/pageBlocks';
 
 let isMobileFlag = true;
 
@@ -15,6 +16,7 @@ vi.mock('../api/content', () => ({
   getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
+  discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: null, deleted: 0 })),
   updateContent: vi.fn(),
   shareContentBlock: vi.fn(async () => ({ blocks: [] })),
   splitContentBlock: vi.fn(async () => ({ blocks: [] })),
@@ -212,6 +214,70 @@ describe('ContentHub Website pages focused tasks', () => {
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-homepage_categories')).toBeTruthy();
     expect(screen.getByTestId('block-card-trust_items')).toBeTruthy();
+  });
+
+  it('enables Publish and publishes the layout when only the Home layout has a draft', async () => {
+    isMobileFlag = false;
+    window.localStorage.setItem('bg_hub_preview_open', '0');
+    vi.mocked(pageBlocksApi.fetchAdminPageBlocks).mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [],
+      available_types: [],
+      unknown_types: [],
+      draft: app === 'website',
+      version: app === 'website' ? 3 : 0,
+      saved_at: null,
+    }));
+
+    openHub('/content?group=Homepage');
+    await screen.findByTestId('section-editor');
+
+    // No content key drafts exist — Publish should still appear because the
+    // Home layout has an unpublished draft (website app, version 3).
+    const publishBtn = await screen.findByTestId('publish-live-btn');
+    expect(publishBtn.hasAttribute('disabled')).toBe(false);
+
+    fireEvent.click(publishBtn);
+
+    await waitFor(() => {
+      expect(pageBlocksApi.publishPageBlocks).toHaveBeenCalledWith({ app: 'website', version: 3 });
+    });
+    expect(pageBlocksApi.publishPageBlocks).not.toHaveBeenCalledWith(
+      expect.objectContaining({ app: 'order_app' }),
+    );
+    expect(contentApi.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('discards the layout draft via the unified Discard draft action', async () => {
+    isMobileFlag = false;
+    window.localStorage.setItem('bg_hub_preview_open', '0');
+    vi.mocked(pageBlocksApi.fetchAdminPageBlocks).mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [],
+      available_types: [],
+      unknown_types: [],
+      draft: app === 'website',
+      version: app === 'website' ? 3 : 0,
+      saved_at: null,
+    }));
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    openHub('/content?group=Homepage');
+    await screen.findByTestId('section-editor');
+    await screen.findByTestId('publish-live-btn');
+
+    const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;
+    fireEvent.click(moreTrigger);
+    fireEvent.click(await screen.findByTestId('hub-discard-draft'));
+
+    await waitFor(() => {
+      expect(pageBlocksApi.discardPageBlockDraft).toHaveBeenCalledWith({ app: 'website' });
+    });
+    expect(contentApi.discardContentDrafts).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
   });
 
   it.each([320, 375, 390] as const)('Contact & map sheet does not overflow at %ipx', async (width) => {
