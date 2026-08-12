@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from './HomePage';
+import { PageBlocksProvider } from '../context/PageBlocksContext';
 
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
@@ -145,7 +146,9 @@ describe('HomePage offers carousel', () => {
   it('shows one consolidated offers carousel without duplicate offer ids', async () => {
     render(
       <MemoryRouter>
-        <HomePage />
+        <PageBlocksProvider>
+          <HomePage />
+        </PageBlocksProvider>
       </MemoryRouter>,
     );
 

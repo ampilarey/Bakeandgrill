@@ -7,7 +7,6 @@ import {
   fetchCustomerOrders,
   getReorderPayload,
   fetchFeaturedReviews,
-  fetchPageBlocks,
   API_ORIGIN,
   type FeaturedReview,
   type PageBlockRow,
@@ -15,6 +14,7 @@ import {
 import type { Offer, Order } from '../api';
 import { getLoyaltyAccount } from '../api/promotions';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { usePageBlocks } from '../context/PageBlocksContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OpeningStatusBadge } from '../components/OpeningStatusBadge';
 import { TomorrowOrderingBadge } from '../components/TomorrowOrderingBadge';
@@ -37,16 +37,15 @@ import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
 import { renderGenericBlock } from '../components/home/blocks';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
+import { blocksForSurface } from '../utils/surfaceBlocks';
 
 /**
- * page_blocks is the only source of the home layout. When it is empty or the
- * request fails we render the blocks the owner is not allowed to remove — the
- * mode cards and the brand footer — so the page is never blank. The admin home
- * layout editor reports an empty layout loudly.
+ * page_blocks is the only source of the home layout. When empty/failed we keep
+ * a minimal safe path into ordering — never blank, never silent chrome injects.
  */
 const REQUIRED_BLOCKS: PageBlockRow[] = [
   { id: -1, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
-  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: { placement_desktop: 'footer', placement_mobile: 'footer' } },
 ];
 
 export function HomePage() {
@@ -69,7 +68,14 @@ export function HomePage() {
   const [reorderingId, setReorderingId] = useState<number | null>(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
   const [chipsLoading, setChipsLoading] = useState(true);
-  const [pageBlocks, setPageBlocks] = useState<PageBlockRow[] | null>(null);
+  const { blocks: rawPageBlocks, loading: pageBlocksLoading } = usePageBlocks();
+  const pageBlocks =
+    pageBlocksLoading && rawPageBlocks.length === 0
+      ? null
+      : (() => {
+          const rows = rawPageBlocks.filter((b) => b.is_enabled);
+          return rows.length > 0 ? rows : REQUIRED_BLOCKS;
+        })();
   const {
     settings: s,
     heroSlides,
@@ -97,17 +103,6 @@ export function HomePage() {
   const siteName = s.site_name || 'Bake & Grill';
 
   usePageTitle(null);
-
-  // ── Home layout from page_blocks (the only source) ─────────────────────────
-  useEffect(() => {
-    const previewToken = new URLSearchParams(window.location.search).get('previewToken');
-    fetchPageBlocks({ app: 'order_app', previewToken })
-      .then((res) => {
-        const rows = (res.blocks ?? []).filter((b) => b.is_enabled);
-        setPageBlocks(rows.length > 0 ? rows : REQUIRED_BLOCKS);
-      })
-      .catch(() => setPageBlocks(REQUIRED_BLOCKS));
-  }, []);
 
   // ── Tomorrow-ordering gate (separate from today’s online ordering badge) ───
   // Open only when the owner gate is on AND at least one item allows pre-order.
@@ -243,10 +238,15 @@ export function HomePage() {
     loyaltyPoints,
   };
 
-  const blocks = pageBlocks ?? REQUIRED_BLOCKS;
-  const openingStatusEnabled = blocks.some((b) => b.block_type === 'opening_status' && b.is_enabled);
-  const heroEnabled = blocks.some(
-    (b) => b.is_enabled && (b.block_type === 'hero' || b.block_type === 'promo_carousel'),
+  const allBlocks = pageBlocks ?? REQUIRED_BLOCKS;
+  const device = isDesktopShell ? 'desktop' : 'mobile';
+  const homeBlocks = blocksForSurface(allBlocks, device, 'home', true);
+  const footerBlocks = blocksForSurface(allBlocks, device, 'footer', true);
+  const openingStatusEnabled = allBlocks.some(
+    (b) => b.block_type === 'opening_status' && b.is_enabled,
+  );
+  const heroEnabled = homeBlocks.some(
+    (b) => b.block_type === 'hero' || b.block_type === 'promo_carousel',
   );
   const heroStatusSlot = openingStatusEnabled && heroEnabled ? statusBadge : null;
 
@@ -290,9 +290,10 @@ export function HomePage() {
     </section>
   ) : null;
 
-  const officeBlock = officeOrdersEnabled ? (
+  const officeBlockNode = (key: string) => (
     <section
-      key="office-catering"
+      key={key}
+      data-home-block="office_orders"
       style={{
         borderTop: '1px solid var(--color-border)',
         padding: '2rem var(--page-gutter)',
@@ -351,45 +352,29 @@ export function HomePage() {
         </button>
       </div>
     </section>
-  ) : null;
+  );
 
-  const nodes: ReactNode[] = [];
-  let chipsPlaced = false;
-  let trustPlaced = false;
-  let officePlaced = false;
-
-  for (const block of blocks) {
-    if (!block.is_enabled) continue;
+  const renderBlock = (block: PageBlockRow): ReactNode => {
     const key = `${block.block_type}-${block.id}-${block.position}`;
-
     switch (block.block_type) {
       case 'greeting':
-        nodes.push(
+        return (
           <GreetingHeader
             key={key}
             customerName={customerName}
             isAuthenticated={isAuthenticated}
             chrome={isDesktopShell ? 'desktop' : 'phone'}
-          />,
+          />
         );
-        break;
       case 'prayer_bar':
-        if (!isDesktopShell) {
-          nodes.push(
-            <div key={key} className="home-prayer-wrap">
-              <PrayerBar />
-            </div>,
-          );
-        }
-        break;
+        return (
+          <div key={key} className="home-prayer-wrap" data-home-block="prayer_bar">
+            <PrayerBar />
+          </div>
+        );
       case 'hero':
       case 'promo_carousel':
-        // Phone: chips sit between prayer and hero (historical). Desktop: chips after hero.
-        if (!isDesktopShell && !chipsPlaced) {
-          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />);
-          chipsPlaced = true;
-        }
-        nodes.push(
+        return (
           <PromoCarousel
             key={key}
             slides={heroSlides}
@@ -399,69 +384,57 @@ export function HomePage() {
             fallbackTitle={text('home_hero_fallback_title', '')}
             fallbackSubtitle={text('home_hero_fallback_subtitle', '')}
             statusSlot={heroStatusSlot}
-          />,
+          />
         );
-        if (isDesktopShell && !chipsPlaced) {
-          nodes.push(<StatChipsRow key="stat-chips" {...chipsProps} />);
-          chipsPlaced = true;
-        }
-        break;
       case 'opening_status':
-        // Shown inside the hero statusSlot while the hero is on (visual
-        // parity with the pre-builder home). Standalone only when the hero
-        // is off, so turning the hero off never removes the open/closed badge.
         if (!heroEnabled && statusBadge) {
-          nodes.push(
-            <div key={key} className="home-standalone-status" data-testid="home-standalone-status">
+          return (
+            <div key={key} className="home-standalone-status" data-testid="home-standalone-status" data-home-block="opening_status">
               {statusBadge}
-            </div>,
+            </div>
           );
         }
-        break;
+        return null;
+      case 'stat_chips':
+        return (
+          <StatChipsRow
+            key={key}
+            {...chipsProps}
+            hideLoyalty={!isDesktopShell}
+          />
+        );
       case 'mode_cards':
-        nodes.push(<ModeEntryCards key={key} />);
-        if (!trustPlaced) {
-          nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
-          trustPlaced = true;
-        }
-        break;
+        return <ModeEntryCards key={key} />;
+      case 'trust_strip':
+        return <TrustStrip key={key} items={trustItems} />;
       case 'specials':
-        nodes.push(<SpecialsCarousel key={key} offers={offers} apiOrigin={API_ORIGIN} />);
-        break;
+        return <SpecialsCarousel key={key} offers={offers} apiOrigin={API_ORIGIN} />;
       case 'reviews':
-        if (reviewSection) nodes.push(<div key={key}>{reviewSection}</div>);
-        break;
+        return reviewSection ? <div key={key} data-home-block="reviews">{reviewSection}</div> : null;
       case 'categories':
-        nodes.push(
+        return (
           <CategoryShortcuts
             key={key}
             categories={homepageCategories}
             eyebrow={text('home_categories_eyebrow', '')}
             title={text('home_categories_title', '')}
-          />,
+          />
         );
-        break;
       case 'reorder_strip':
-        nodes.push(
+        return (
           <ReorderStrip
             key={key}
             orders={recentOrders}
             customerName={customerName}
             reorderingId={reorderingId}
             onReorder={(order) => void handleReorder(order)}
-          />,
+          />
         );
-        if (!officePlaced && officeBlock) {
-          nodes.push(officeBlock);
-          officePlaced = true;
-        }
-        break;
+      case 'office_orders':
+        return officeOrdersEnabled ? officeBlockNode(key) : null;
       case 'brand_footer':
-        if (!officePlaced && officeBlock) {
-          nodes.push(officeBlock);
-          officePlaced = true;
-        }
-        nodes.push(
+      case 'site_footer':
+        return (
           <BrandFooter
             key={key}
             whatsappLink={waLink}
@@ -470,40 +443,47 @@ export function HomePage() {
             siteName={siteName}
             blurb={text('footer_text', '')}
             thanks={text('footer_thanks', '')}
-            chatLabel={text('home_chat_label', '')}
-          />,
+            chatLabel={text('home_chat_label', 'Chat with us')}
+          />
         );
+      case 'announcement':
+      case 'service_availability':
+      case 'featured':
+      case 'proof':
+      case 'cta':
+      case 'location':
+      case 'events_band':
+      case 'bottom_nav':
+        // announcement/service/bottom_nav are shell chrome; featured/proof/cta/location/events
+        // use generic or dedicated renderers when present.
         break;
-      default: {
-        // Generic content blocks (text, image, video, …). `faq_list` is
-        // website-only and is deliberately not handled here, so a row saved
-        // for the wrong app renders nothing. Anything else is an unknown type
-        // and also renders nothing — never white-screen the home page.
-        const generic = renderGenericBlock(
-          block.block_type,
-          key,
-          block.settings ?? {},
-          block.media ?? null,
-          API_ORIGIN,
-        );
-        if (generic) nodes.push(generic);
+      default:
         break;
-      }
     }
-  }
 
-  if (!chipsPlaced) {
-    nodes.unshift(
-      isDesktopShell
-        ? <StatChipsRow key="stat-chips" {...chipsProps} />
-        : <StatChipsRow key="stat-chips" {...chipsProps} hideLoyalty />,
+    const generic = renderGenericBlock(
+      block.block_type,
+      key,
+      block.settings ?? {},
+      block.media ?? null,
+      API_ORIGIN,
     );
+    return generic;
+  };
+
+  const nodes: ReactNode[] = [];
+  for (const block of homeBlocks) {
+    const node = renderBlock(block);
+    if (node) nodes.push(node);
   }
-  if (!trustPlaced) nodes.push(<TrustStrip key="trust-strip" items={trustItems} />);
-  if (!officePlaced && officeBlock) nodes.push(officeBlock);
+  for (const block of footerBlocks) {
+    if (block.block_type === 'bottom_nav') continue;
+    const node = renderBlock(block);
+    if (node) nodes.push(node);
+  }
 
   return (
-    <div className="home-page">
+    <div className="home-page" data-surface={`order_app.${device}.home`}>
       {!isDesktopShell ? (
         <HomePhoneHeader
           customerName={customerName}

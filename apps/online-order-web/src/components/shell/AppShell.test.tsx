@@ -1,10 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PageBlockRow } from '../../api';
 import { AppShell } from './AppShell';
 import { AuthProvider } from '../../context/AuthContext';
 import { CartProvider } from '../../context/CartContext';
 import { LanguageProvider } from '../../context/LanguageContext';
+import { PageBlocksProvider } from '../../context/PageBlocksContext';
 import { SiteSettingsProvider } from '../../context/SiteSettingsContext';
 import * as api from '../../api';
 
@@ -14,33 +16,78 @@ vi.mock('../../api', async () => {
     ...actual,
     checkSession: vi.fn(),
     fetchCustomerOrders: vi.fn(),
+    fetchPageBlocks: vi.fn(),
     getCustomerMe: vi.fn().mockRejectedValue(new Error('unauth')),
   };
 });
 
 const checkSession = vi.mocked(api.checkSession);
 const fetchCustomerOrders = vi.mocked(api.fetchCustomerOrders);
+const fetchPageBlocks = vi.mocked(api.fetchPageBlocks);
+
+function shellBlock(
+  blockType: string,
+  settings: Record<string, unknown> = {},
+  id = 1,
+): PageBlockRow {
+  return {
+    id,
+    app: 'order_app',
+    page: 'home',
+    block_type: blockType,
+    position: id,
+    is_enabled: true,
+    content_mode: 'own',
+    settings,
+  };
+}
+
+function defaultShellBlocks(): PageBlockRow[] {
+  return [
+    shellBlock('prayer_bar', { show_desktop: true, placement_desktop: 'header' }, 1),
+    shellBlock(
+      'announcement',
+      {
+        show_desktop: true,
+        show_mobile: true,
+        placement_desktop: 'header',
+        placement_mobile: 'header',
+      },
+      2,
+    ),
+    shellBlock(
+      'bottom_nav',
+      {
+        show_mobile: true,
+        placement_mobile: 'bottom_navigation',
+      },
+      3,
+    ),
+  ];
+}
 
 function wrap(initial = '/') {
   return render(
     <SiteSettingsProvider>
-      <LanguageProvider>
-        <CartProvider>
-          <AuthProvider>
-            <MemoryRouter initialEntries={[initial]}>
-              <Routes>
-                <Route element={<AppShell />}>
-                  <Route index element={<div>home-body</div>} />
-                  <Route path="menu" element={<div>menu-body</div>} />
-                  <Route path="order-history" element={<div>orders-body</div>} />
-                  <Route path="events" element={<div>events-body</div>} />
-                  <Route path="rewards" element={<div>rewards-body</div>} />
-                </Route>
-              </Routes>
-            </MemoryRouter>
-          </AuthProvider>
-        </CartProvider>
-      </LanguageProvider>
+      <PageBlocksProvider>
+        <LanguageProvider>
+          <CartProvider>
+            <AuthProvider>
+              <MemoryRouter initialEntries={[initial]}>
+                <Routes>
+                  <Route element={<AppShell />}>
+                    <Route index element={<div>home-body</div>} />
+                    <Route path="menu" element={<div>menu-body</div>} />
+                    <Route path="order-history" element={<div>orders-body</div>} />
+                    <Route path="events" element={<div>events-body</div>} />
+                    <Route path="rewards" element={<div>rewards-body</div>} />
+                  </Route>
+                </Routes>
+              </MemoryRouter>
+            </AuthProvider>
+          </CartProvider>
+        </LanguageProvider>
+      </PageBlocksProvider>
     </SiteSettingsProvider>,
   );
 }
@@ -65,16 +112,18 @@ describe('AppShell', () => {
   beforeEach(() => {
     checkSession.mockReset();
     fetchCustomerOrders.mockReset();
+    fetchPageBlocks.mockReset();
     checkSession.mockResolvedValue({ authenticated: false } as never);
     fetchCustomerOrders.mockResolvedValue({ data: [] } as never);
+    fetchPageBlocks.mockResolvedValue({ blocks: defaultShellBlocks() });
   });
 
   it('renders 5-tab bottom nav with t() labels on phone', async () => {
     mockMatchMedia(false);
     wrap();
     expect(screen.getByText('home-body')).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('.bottom-nav')).toBeTruthy());
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy();
-    expect(document.querySelector('.bottom-nav')).toBeTruthy();
     expect(document.querySelector('.top-nav')).toBeNull();
     expect(screen.getByText('Home')).toBeTruthy();
     expect(screen.getByText('Menu')).toBeTruthy();
@@ -85,19 +134,20 @@ describe('AppShell', () => {
     expect(screen.queryByText('Account')).toBeNull();
   });
 
-  it('renders top nav instead of bottom nav on tablet/desktop', () => {
+  it('renders top nav instead of bottom nav on tablet/desktop', async () => {
     mockMatchMedia(true);
     wrap();
-    expect(document.querySelector('.top-nav')).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('.top-nav')).toBeTruthy());
     expect(document.querySelector('.bottom-nav')).toBeNull();
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy();
     expect(screen.getByText('Home')).toBeTruthy();
     expect(screen.getByText('Menu')).toBeTruthy();
   });
 
-  it('does not mount legacy prayer-strip portal', () => {
+  it('does not mount legacy prayer-strip portal', async () => {
     mockMatchMedia(false);
     wrap();
+    await waitFor(() => expect(fetchPageBlocks).toHaveBeenCalled());
     expect(document.getElementById('prayer-strip-root')).toBeNull();
   });
 
@@ -121,5 +171,21 @@ describe('AppShell', () => {
     const phone = wrap('/order-history');
     await waitFor(() => expect(phone.container.querySelector('.bottom-nav__count')).toBeTruthy());
     expect(phone.container.querySelector('.active-order-capsule')).toBeNull();
+  });
+
+  it('hides bottom nav when bottom_nav is not on the mobile bottom_navigation surface', async () => {
+    fetchPageBlocks.mockResolvedValue({
+      blocks: [
+        shellBlock('bottom_nav', {
+          show_mobile: true,
+          placement_mobile: 'home',
+        }),
+      ],
+    });
+    mockMatchMedia(false);
+    wrap();
+    await waitFor(() => expect(fetchPageBlocks).toHaveBeenCalled());
+    await waitFor(() => expect(document.querySelector('.bottom-nav')).toBeNull());
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull();
   });
 });

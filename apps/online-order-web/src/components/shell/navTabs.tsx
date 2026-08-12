@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { PageBlockRow } from '../../api';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { brandLogoSrc } from '../../lib/brandLogo';
 import { MenuIcon, OrdersIcon } from '../icons';
@@ -60,6 +61,35 @@ export type ShellNavTab = {
   showActiveOrderBadge?: boolean;
 };
 
+export type ResolvedShellNavTab = ShellNavTab & {
+  /** Admin-configured label override from bottom_nav settings.tabs */
+  displayLabel?: string;
+};
+
+type BottomNavTabConfig = {
+  id: string;
+  label?: string;
+  href?: string;
+  visible?: boolean;
+};
+
+function shellTabId(tab: ShellNavTab): string {
+  if (tab.to === '/') return 'home';
+  if (tab.to === '/menu') return 'menu';
+  if (tab.to === '/order-history') return 'orders';
+  if (tab.to === '/events') return 'events';
+  if (tab.to === '/gift-cards') return 'gift_cards';
+  return tab.to.replace(/^\//, '').replace(/\//g, '_');
+}
+
+function normalizeOrderAppHref(href: string): string {
+  const trimmed = href.trim();
+  if (!trimmed) return '';
+  if (trimmed === '/orders') return '/order-history';
+  if (trimmed.startsWith('/order/')) return trimmed.slice('/order'.length) || '/';
+  return trimmed;
+}
+
 export const SHELL_NAV_TABS: ShellNavTab[] = [
   {
     to: '/',
@@ -98,6 +128,36 @@ export const SHELL_NAV_TABS: ShellNavTab[] = [
     Icon: GiftIcon,
   },
 ];
+
+const SHELL_TAB_BY_ID = Object.fromEntries(
+  SHELL_NAV_TABS.map((tab) => [shellTabId(tab), tab]),
+) as Record<string, ShellNavTab>;
+
+/** Resolve bottom-nav tabs from page_blocks settings, falling back to defaults. */
+export function resolveBottomNavTabs(blocks: PageBlockRow[]): ResolvedShellNavTab[] {
+  const block = blocks.find((b) => b.block_type === 'bottom_nav');
+  const rawTabs = block?.settings?.tabs;
+  if (!Array.isArray(rawTabs) || rawTabs.length === 0) {
+    return SHELL_NAV_TABS;
+  }
+
+  const resolved: ResolvedShellNavTab[] = [];
+  for (const entry of rawTabs as BottomNavTabConfig[]) {
+    if (entry.visible === false) continue;
+    const shell = SHELL_TAB_BY_ID[entry.id];
+    if (!shell) continue;
+    const href = typeof entry.href === 'string' ? normalizeOrderAppHref(entry.href) : '';
+    resolved.push({
+      ...shell,
+      to: href || shell.to,
+      displayLabel: typeof entry.label === 'string' && entry.label.trim() !== ''
+        ? entry.label.trim()
+        : undefined,
+    });
+  }
+
+  return resolved.length > 0 ? resolved : SHELL_NAV_TABS;
+}
 
 /** Tablet + desktop chrome breakpoint (iPad portrait and up). */
 export const DESKTOP_SHELL_MQ = '(min-width: 768px)';

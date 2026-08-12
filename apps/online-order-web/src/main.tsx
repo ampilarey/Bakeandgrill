@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
+import { PageBlocksProvider } from './context/PageBlocksContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { LanguageSwitcherGate } from './components/LanguageSwitcherGate';
 import { CartProvider } from './context/CartContext';
@@ -82,6 +83,7 @@ ReactDOM.createRoot(rootEl).render(
     <ErrorBoundary>
       <LanguageProvider>
         <SiteSettingsProvider>
+          <PageBlocksProvider>
           <LanguageSwitcherGate />
           <CartProvider>
             <ToastProvider>
@@ -140,6 +142,7 @@ ReactDOM.createRoot(rootEl).render(
             </AuthProvider>
             </ToastProvider>
           </CartProvider>
+          </PageBlocksProvider>
         </SiteSettingsProvider>
       </LanguageProvider>
     </ErrorBoundary>
