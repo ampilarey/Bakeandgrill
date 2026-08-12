@@ -247,6 +247,27 @@ export function isHeroSlideInScheduleWindow(
   return true;
 }
 
+/**
+ * Split rich hero copy on <br> into non-empty line fragments.
+ * Lockstep with HeroSlides::splitRichTextLines — text-hug paints one pill per hard line.
+ */
+export function splitHeroRichTextLines(html: string): string[] {
+  const parts = html.split(/<br\s*\/?>/i);
+  const lines = parts.filter((part) => {
+    const text = part
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
+    return text.length > 0;
+  });
+  if (lines.length === 0) return html !== '' ? [html] : [];
+  return lines;
+}
+
 /** Plain-language schedule next to the Showing toggle. */
 export function formatHeroSlideScheduleLabel(
   slide: { showing?: boolean; show_from?: string | null; show_until?: string | null },

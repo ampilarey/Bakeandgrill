@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
 import {
   resolveHeroSlidePresentation,
+  splitHeroRichTextLines,
   type HeroElementBackground,
 } from '../../utils/heroSlidePresentation';
 
@@ -29,8 +30,8 @@ function sanitizeHeroHtml(html: string): string {
 
 /**
  * Title/subtitle with optional per-element background.
- * Text-hug mode uses an inner .hero-text-bg span — the parent copy stack is
- * flex, which blockifies display:inline on the heading itself into a rectangle.
+ * Text-hug mode: one .hero-text-bg pill per hard <br> line so backgrounds
+ * never stack (box-decoration-break clone overlap).
  */
 function HeroTextBlock({
   as: Tag,
@@ -59,13 +60,17 @@ function HeroTextBlock({
       />
     );
   }
+  const lines = splitHeroRichTextLines(clean);
   return (
     <Tag className={className} data-testid={testId} data-bg-hug="1">
-      <span
-        className="hero-text-bg"
-        {...elementBgProps(el)}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
+      {lines.map((line, i) => (
+        <span
+          key={i}
+          className="hero-text-bg"
+          {...elementBgProps(el)}
+          dangerouslySetInnerHTML={{ __html: line }}
+        />
+      ))}
     </Tag>
   );
 }

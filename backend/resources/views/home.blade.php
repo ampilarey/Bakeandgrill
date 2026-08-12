@@ -141,27 +141,25 @@
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
- * §7.2 text-hug: paint lives on .hero-text-bg (inner span), NOT on the h2/p.
- * .banner-copy is a flex column — flex items blockify `display: inline`, so a
- * background on the heading itself becomes one big rectangle. The inner span
- * stays inline with box-decoration-break: clone (highlight per line).
- *
- * Vertical pad + tight line-height stacks cloned fragments. Open the line box
- * and keep pad mostly horizontal so lines don't overlap.
+ * §7.2 text-hug: one .hero-text-bg pill per hard <br> line (split in Blade).
+ * Flex column + gap keeps pills apart — no box-decoration-break clone overlap.
  */
-.banner-title[data-bg-hug="1"] {
-    line-height: 1.4;
-}
+.banner-title[data-bg-hug="1"],
 .banner-sub[data-bg-hug="1"] {
-    line-height: 1.7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.22em;
+    line-height: 1.15;
 }
 .banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
-    display: inline;
-    padding: 0.05em 0.4em;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.18em 0.45em;
     border-radius: 6px;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
     text-shadow: none;
     background: var(--hero-el-bg);
     color: inherit;

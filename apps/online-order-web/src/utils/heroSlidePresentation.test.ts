@@ -5,7 +5,21 @@ import {
   legacyDimMediaOpacityMobile,
   resolveHeroSlidePresentation,
   restaurantLocalStamp,
+  splitHeroRichTextLines,
 } from './heroSlidePresentation';
+
+describe('splitHeroRichTextLines', () => {
+  it('splits on br and keeps inline markup', () => {
+    expect(splitHeroRichTextLines('Where Dhivehi breakfast<br><em>meets</em> baking')).toEqual([
+      'Where Dhivehi breakfast',
+      '<em>meets</em> baking',
+    ]);
+  });
+
+  it('returns a single line when there is no br', () => {
+    expect(splitHeroRichTextLines('One line')).toEqual(['One line']);
+  });
+});
 
 describe('resolveHeroSlidePresentation', () => {
   it.each([

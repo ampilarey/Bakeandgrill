@@ -78,7 +78,7 @@
                         >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
-                        {{-- Text-hug bg lives on an inner span: flex items blockify display:inline on the h2. --}}
+                        {{-- Text-hug: one .hero-text-bg pill per <br> line (avoids clone overlap). --}}
                         <h2
                             class="banner-title"
                             @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
@@ -90,12 +90,14 @@
                             @endif
                         >
                             @if(!empty($titleEl['css']) && empty($titleEl['full_width']))
-                                <span
-                                    class="hero-text-bg"
-                                    data-has-bg="1"
-                                    data-bg-full="0"
-                                    style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
-                                >{!! $titleHtml !!}</span>
+                                @foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $titleLine)
+                                    <span
+                                        class="hero-text-bg"
+                                        data-has-bg="1"
+                                        data-bg-full="0"
+                                        style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                                    >{!! $titleLine !!}</span>
+                                @endforeach
                             @else
                                 {!! $titleHtml !!}
                             @endif

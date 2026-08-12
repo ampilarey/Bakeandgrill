@@ -294,6 +294,32 @@ final class HeroSlides
     }
 
     /**
+     * Split rich hero copy on &lt;br&gt; into non-empty line fragments.
+     * Used for text-hug backgrounds so each hard line is its own pill
+     * (avoids box-decoration-break line-fragment overlap).
+     *
+     * @return list<string>
+     */
+    public static function splitRichTextLines(string $html): array
+    {
+        $parts = preg_split('/<br\s*\/?>/i', $html);
+        if ($parts === false) {
+            $parts = [$html];
+        }
+
+        $lines = [];
+        foreach ($parts as $part) {
+            $text = trim(html_entity_decode(strip_tags($part), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($text === '') {
+                continue;
+            }
+            $lines[] = $part;
+        }
+
+        return $lines === [] ? ($html !== '' ? [$html] : []) : $lines;
+    }
+
+    /**
      * @return array{0: list<array<string, mixed>>, 1: bool} [slides, hasArray]
      */
     private static function decodeSlideArray(mixed $raw): array

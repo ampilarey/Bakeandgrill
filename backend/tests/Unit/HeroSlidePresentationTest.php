@@ -104,6 +104,22 @@ class HeroSlidePresentationTest extends TestCase
         $this->assertSame('rgba(28,20,8,0.5)', $resolved['elements']['title']['css']);
     }
 
+    public function test_split_rich_text_lines_on_br(): void
+    {
+        $this->assertSame(
+            ['Where Dhivehi breakfast', '<em>meets</em> baking'],
+            HeroSlides::splitRichTextLines('Where Dhivehi breakfast<br><em>meets</em> baking'),
+        );
+        $this->assertSame(
+            ['One line'],
+            HeroSlides::splitRichTextLines('One line'),
+        );
+        $this->assertSame(
+            ['A', 'B'],
+            HeroSlides::splitRichTextLines('A<br/>B<br>'),
+        );
+    }
+
     public function test_element_bg_none_is_transparent(): void
     {
         $resolved = HeroSlides::presentation([

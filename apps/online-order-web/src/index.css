@@ -399,23 +399,25 @@ img.brand-logo--dark { display: none; }
   color: #f0a96a;
 }
 /*
- * §7.2 text-hug: paint on .hero-text-bg (inner span). Flex items in
- * .home-promo-hero__copy blockify display:inline on the heading itself.
- * Open line-height + mostly-horizontal pad so cloned line fragments don't overlap.
+ * §7.2 text-hug: one .hero-text-bg pill per hard <br> line (split in JSX).
+ * Flex column + gap keeps pills apart — no box-decoration-break clone overlap.
  */
-.home-promo-hero__title[data-bg-hug="1"] {
-  line-height: 1.4;
-}
+.home-promo-hero__title[data-bg-hug="1"],
 .home-promo-hero__sub[data-bg-hug="1"] {
-  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22em;
+  line-height: 1.15;
 }
 .home-promo-hero__title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .home-promo-hero__sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
-  display: inline;
-  padding: 0.05em 0.4em;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.18em 0.45em;
   border-radius: 6px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
   text-shadow: none;
   background: var(--hero-el-bg);
   color: inherit;
