@@ -141,26 +141,23 @@
 }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
- * §7.2 text-hug: inline + box-decoration-break: clone. Keep normal line-height.
- * Paint a band slightly shorter than the line box, biased downward so bold
- * glyphs aren't clipped under the baseline — without a full-height fill that
- * stacks translucent strips. Do not set inline `background` on the span.
+ * §7.2 non-bar title/subtitle contrast: letter outline + soft halo from
+ * --hero-el-bg (no per-line background boxes — those fought line layout).
  */
-.banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
-.banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
-    display: inline;
-    padding: 0 0.4em;
-    border-radius: 3px;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-    text-shadow: none;
-    color: inherit;
-    background-color: transparent;
-    background-image: linear-gradient(var(--hero-el-bg), var(--hero-el-bg));
-    background-repeat: no-repeat;
-    /* ~lh 1.08: sit a touch lower (less empty above glyphs) still cover baseline */
-    background-size: 100% 0.93em;
-    background-position: left 0.15em;
+.banner-title[data-bg-hug="1"],
+.banner-sub[data-bg-hug="1"] {
+    -webkit-text-stroke: 0.02em var(--hero-el-bg);
+    paint-order: stroke fill;
+    text-shadow:
+        -0.035em -0.035em 0 var(--hero-el-bg),
+         0.035em -0.035em 0 var(--hero-el-bg),
+        -0.035em  0.035em 0 var(--hero-el-bg),
+         0.035em  0.035em 0 var(--hero-el-bg),
+        -0.035em 0 0 var(--hero-el-bg),
+         0.035em 0 0 var(--hero-el-bg),
+         0 -0.035em 0 var(--hero-el-bg),
+         0  0.035em 0 var(--hero-el-bg),
+         0 0.08em 0.28em rgba(0, 0, 0, 0.55);
 }
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],
@@ -173,6 +170,7 @@
     padding: 0.35em 0.55em;
     border-radius: 10px;
     text-shadow: none;
+    -webkit-text-stroke: 0;
     background: var(--hero-el-bg);
 }
 .banner-eyebrow[data-has-bg="1"],

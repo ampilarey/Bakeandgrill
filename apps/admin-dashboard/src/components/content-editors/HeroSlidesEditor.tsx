@@ -401,7 +401,7 @@ export function HeroSlidesEditor({
                     [`${key}_bg_full_width`]: e.target.checked,
                   } as HeroPresentationPatch)}
                 />
-                Full-width bar (otherwise wraps with the words)
+                Full-width bar (off = letter outline / halo — no box)
               </label>
             ) : null}
             <div>

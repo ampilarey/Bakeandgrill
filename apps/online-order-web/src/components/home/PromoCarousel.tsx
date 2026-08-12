@@ -18,8 +18,7 @@ function elementBgProps(el: HeroElementBackground): {
   return {
     'data-has-bg': '1',
     'data-bg-full': el.full_width ? '1' : '0',
-    // Only the CSS var — stylesheet paints (hug uses a short background-size band;
-    // an inline `background` shorthand would override that and force full-height fill).
+    // CSS var only — stylesheet paints bar / outline (no inline background shorthand).
     style: { ['--hero-el-bg' as string]: el.css } as CSSProperties,
   };
 }
@@ -30,9 +29,9 @@ function sanitizeHeroHtml(html: string): string {
 }
 
 /**
- * Title/subtitle with optional per-element background.
- * Text-hug: one inline .hero-text-bg span — CSS box-decoration-break: clone
- * paints each soft-wrapped / <br> line tightly (not a block rectangle).
+ * Title/subtitle with optional per-element contrast.
+ * Non-bar (default): letter outline + halo via data-bg-hug.
+ * Full-width: solid bar on the heading itself.
  */
 function HeroTextBlock({
   as: Tag,
@@ -62,13 +61,13 @@ function HeroTextBlock({
     );
   }
   return (
-    <Tag className={className} data-testid={testId} data-bg-hug="1">
-      <span
-        className="hero-text-bg"
-        {...elementBgProps(el)}
-        dangerouslySetInnerHTML={{ __html: clean }}
-      />
-    </Tag>
+    <Tag
+      className={className}
+      data-testid={testId}
+      data-bg-hug="1"
+      style={{ ['--hero-el-bg' as string]: el.css } as CSSProperties}
+      dangerouslySetInnerHTML={{ __html: clean }}
+    />
   );
 }
 

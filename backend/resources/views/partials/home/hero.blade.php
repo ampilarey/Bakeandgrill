@@ -78,7 +78,7 @@
                         >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
-                        {{-- Text-hug: single inline span + box-decoration-break (soft-wrap + <br>). --}}
+                        {{-- Non-bar contrast = outline/halo on the heading (no per-line boxes). --}}
                         <h2
                             class="banner-title"
                             @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
@@ -87,19 +87,9 @@
                                 style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @elseif(!empty($titleEl['css']))
                                 data-bg-hug="1"
+                                style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @endif
-                        >
-                            @if(!empty($titleEl['css']) && empty($titleEl['full_width']))
-                                <span
-                                    class="hero-text-bg"
-                                    data-has-bg="1"
-                                    data-bg-full="0"
-                                    style="--hero-el-bg: {{ $titleEl['css'] }};"
-                                >{!! $titleHtml !!}</span>
-                            @else
-                                {!! $titleHtml !!}
-                            @endif
-                        </h2>
+                        >{!! $titleHtml !!}</h2>
                     @endif
                     @if($subtitle !== '')
                         <p
@@ -110,19 +100,9 @@
                                 style="--hero-el-bg: {{ $subEl['css'] }};"
                             @elseif(!empty($subEl['css']))
                                 data-bg-hug="1"
+                                style="--hero-el-bg: {{ $subEl['css'] }};"
                             @endif
-                        >
-                            @if(!empty($subEl['css']) && empty($subEl['full_width']))
-                                <span
-                                    class="hero-text-bg"
-                                    data-has-bg="1"
-                                    data-bg-full="0"
-                                    style="--hero-el-bg: {{ $subEl['css'] }};"
-                                >{{ $subtitle }}</span>
-                            @else
-                                {{ $subtitle }}
-                            @endif
-                        </p>
+                        >{{ $subtitle }}</p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">

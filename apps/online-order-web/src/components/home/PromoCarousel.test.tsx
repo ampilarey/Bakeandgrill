@@ -143,7 +143,7 @@ describe('PromoCarousel', () => {
     expect(screen.getByRole('link', { name: 'Tap me' })).toHaveAttribute('href', '#');
   });
 
-  it('puts text-hug title background on a single inline span, not the heading', () => {
+  it('applies outline/halo contrast on the heading when not full-width', () => {
     render(
       <MemoryRouter>
         <PromoCarousel
@@ -164,13 +164,10 @@ describe('PromoCarousel', () => {
     expect(heading.tagName).toBe('H2');
     expect(heading).not.toHaveAttribute('data-has-bg');
     expect(heading).toHaveAttribute('data-bg-hug', '1');
-    const pills = heading.querySelectorAll('.hero-text-bg');
-    expect(pills).toHaveLength(1);
-    expect(pills[0]).toHaveAttribute('data-has-bg', '1');
-    expect(pills[0]).toHaveAttribute('data-bg-full', '0');
-    expect(pills[0].innerHTML).toContain('<br>');
-    expect(pills[0].innerHTML).toContain('<em>meets</em>');
-    expect((pills[0] as HTMLElement).style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);
+    expect(heading.querySelector('.hero-text-bg')).toBeNull();
+    expect(heading.innerHTML).toContain('<br>');
+    expect(heading.innerHTML).toContain('<em>meets</em>');
+    expect(heading.style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);
   });
 
   it('keeps full-width title background on the heading itself', () => {
