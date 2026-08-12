@@ -1534,7 +1534,9 @@
     $annText    = trim(content('announcement_text', ''));
     $annUrl     = safe_public_url((string) content('announcement_url',  '')) ?? '';
     $annStyle   = content('announcement_style', 'info');
-    $annShow = ($showAnnouncementDesktop || $showAnnouncementMobile) && $annText !== '';
+    $annContentOn = filter_var(content('announcement_enabled', 'false'), FILTER_VALIDATE_BOOLEAN);
+    // Surface placement (page_blocks) AND content master switch both required.
+    $annShow = $annContentOn && ($showAnnouncementDesktop || $showAnnouncementMobile) && $annText !== '';
 @endphp
 @if($annShow)
 <div

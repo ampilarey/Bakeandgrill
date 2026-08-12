@@ -27,10 +27,9 @@ final class CustomerSurfaceMigrator
     {
         $app = PageBlock::APP_WEBSITE;
         self::ensureBlock($app, 'prayer_bar', BlockDeviceSettings::prayerDefaults('website'), 0);
-        self::ensureBlock($app, 'announcement', array_merge(
-            BlockDeviceSettings::announcementDefaults(),
-            // Keep historical gate: only "added"; enable follows content key at render time via settings.
-        ), 1, enabled: (string) \App\Models\SiteSetting::get('announcement_enabled', 'false') === 'true');
+        // Placement chrome is on by default; announcement_enabled content key still
+        // gates whether the banner text is shown (see layout.blade.php).
+        self::ensureBlock($app, 'announcement', BlockDeviceSettings::announcementDefaults(), 1, enabled: true);
         self::ensureBlock($app, 'trust_strip', BlockDeviceSettings::DEFAULTS, afterType: 'hero');
         self::ensureBlock($app, 'events_band', BlockDeviceSettings::DEFAULTS, append: true);
         self::ensureBlock($app, 'site_footer', [
