@@ -35,6 +35,13 @@ import { CategoryShortcuts } from '../components/home/CategoryShortcuts';
 import { SpecialsCarousel } from '../components/home/SpecialsCarousel';
 import { ReorderStrip } from '../components/home/ReorderStrip';
 import { BrandFooter } from '../components/home/BrandFooter';
+import {
+  CtaBlock,
+  EventsBandBlock,
+  FeaturedBlock,
+  LocationBlock,
+  ProofBlock,
+} from '../components/home/SurfaceMarketingBlocks';
 import { renderGenericBlock } from '../components/home/blocks';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 import { blocksForSurface } from '../utils/surfaceBlocks';
@@ -446,17 +453,21 @@ export function HomePage() {
             chatLabel={text('home_chat_label', 'Chat with us')}
           />
         );
+      case 'featured':
+        return <FeaturedBlock key={key} blockKey={key} />;
+      case 'proof':
+        return <ProofBlock key={key} blockKey={key} />;
+      case 'cta':
+        return <CtaBlock key={key} blockKey={key} />;
+      case 'location':
+        return <LocationBlock key={key} blockKey={key} />;
+      case 'events_band':
+        return <EventsBandBlock key={key} blockKey={key} />;
       case 'announcement':
       case 'service_availability':
-      case 'featured':
-      case 'proof':
-      case 'cta':
-      case 'location':
-      case 'events_band':
       case 'bottom_nav':
-        // announcement/service/bottom_nav are shell chrome; featured/proof/cta/location/events
-        // use generic or dedicated renderers when present.
-        break;
+        // Shell chrome — rendered by AppShell / BottomNav from the same page_blocks.
+        return null;
       default:
         break;
     }
