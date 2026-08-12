@@ -78,7 +78,7 @@
                         >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
-                        {{-- Text-hug: one .hero-text-bg pill per <br> line (avoids clone overlap). --}}
+                        {{-- Text-hug: single inline span + box-decoration-break (soft-wrap + <br>). --}}
                         <h2
                             class="banner-title"
                             @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
@@ -90,14 +90,12 @@
                             @endif
                         >
                             @if(!empty($titleEl['css']) && empty($titleEl['full_width']))
-                                @foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $titleLine)
-                                    <span
-                                        class="hero-text-bg"
-                                        data-has-bg="1"
-                                        data-bg-full="0"
-                                        style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
-                                    >{!! $titleLine !!}</span>
-                                @endforeach
+                                <span
+                                    class="hero-text-bg"
+                                    data-has-bg="1"
+                                    data-bg-full="0"
+                                    style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                                >{!! $titleHtml !!}</span>
                             @else
                                 {!! $titleHtml !!}
                             @endif

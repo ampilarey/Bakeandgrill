@@ -143,7 +143,7 @@ describe('PromoCarousel', () => {
     expect(screen.getByRole('link', { name: 'Tap me' })).toHaveAttribute('href', '#');
   });
 
-  it('puts text-hug title background on one pill per hard line, not the heading', () => {
+  it('puts text-hug title background on a single inline span, not the heading', () => {
     render(
       <MemoryRouter>
         <PromoCarousel
@@ -165,11 +165,11 @@ describe('PromoCarousel', () => {
     expect(heading).not.toHaveAttribute('data-has-bg');
     expect(heading).toHaveAttribute('data-bg-hug', '1');
     const pills = heading.querySelectorAll('.hero-text-bg');
-    expect(pills).toHaveLength(2);
+    expect(pills).toHaveLength(1);
     expect(pills[0]).toHaveAttribute('data-has-bg', '1');
     expect(pills[0]).toHaveAttribute('data-bg-full', '0');
-    expect(pills[0].textContent).toContain('Where Dhivehi breakfast');
-    expect(pills[1].innerHTML).toContain('<em>meets</em>');
+    expect(pills[0].innerHTML).toContain('<br>');
+    expect(pills[0].innerHTML).toContain('<em>meets</em>');
     expect((pills[0] as HTMLElement).style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);
   });
 
