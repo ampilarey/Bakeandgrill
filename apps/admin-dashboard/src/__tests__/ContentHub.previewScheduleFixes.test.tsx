@@ -159,11 +159,11 @@ describe('ContentHub preview + schedule fixes', () => {
   });
 
   it('schedules content, warns about layout drafts, and clears local draft state', async () => {
-    vi.mocked(contentApi.getContentDrafts).mockImplementation(async (scope: string) => {
+    vi.mocked(contentApi.getContentDrafts).mockImplementation(async (scope) => {
       if (scope === 'website') {
-        return { drafts: { cta_band_headline: 'Draft headline' }, saved_at: '2026-08-12T12:00:00Z' };
+        return { drafts: { cta_band_headline: 'Draft headline' } as Record<string, string>, saved_at: '2026-08-12T12:00:00Z' };
       }
-      return { drafts: {}, saved_at: null };
+      return { drafts: {} as Record<string, string>, saved_at: null };
     });
 
     openHub('/content?group=Homepage');
