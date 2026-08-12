@@ -22,10 +22,12 @@ describe('OrderModeContext', () => {
   beforeEach(() => {
     localStorage.clear();
     setSalesChannel('online_pickup');
+    window.history.replaceState({}, '', '/');
   });
 
   afterEach(() => {
     localStorage.clear();
+    window.history.replaceState({}, '', '/');
   });
 
   it('maps sales channels to modes', () => {
@@ -124,5 +126,14 @@ describe('OrderModeContext', () => {
     });
     window.removeEventListener('sales_channel_change', spy);
     expect(events).toBe(0);
+  });
+
+  it('honours ?mode= deep links from the marketing site and strips the param', () => {
+    window.history.replaceState({}, '', '/menu?mode=delivery&utm=1');
+    const { result } = renderHook(() => useOrderMode(), { wrapper });
+    expect(result.current.mode).toBe('delivery');
+    expect(result.current.modeConfirmed).toBe(true);
+    expect(getSalesChannel()).toBe('delivery');
+    expect(window.location.search).toBe('?utm=1');
   });
 });
