@@ -1,5 +1,7 @@
 <div class="home-mode-card__media" aria-hidden="true">
-    <img src="{{ $card['image'] }}" alt="" loading="lazy">
+    @if(!empty($card['image']))
+        <img src="{{ $card['image'] }}" alt="" loading="lazy">
+    @endif
     <span class="home-mode-card__icon">{{ $card['icon'] }}</span>
 </div>
 <div class="home-mode-card__body">

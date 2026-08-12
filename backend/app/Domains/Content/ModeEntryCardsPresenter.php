@@ -43,10 +43,11 @@ final class ModeEntryCardsPresenter
         'dine_in' => '🍽️',
     ];
 
+    /** Public URLs — prefer /images/modes so missing files 404 instead of the order SPA HTML. */
     private const IMAGES = [
-        'delivery' => '/order/images/mode-delivery.jpg',
-        'pickup' => '/order/images/mode-pickup.jpg',
-        'dine_in' => '/order/images/mode-dinein.jpg',
+        'delivery' => '/images/modes/mode-delivery.jpg',
+        'pickup' => '/images/modes/mode-pickup.jpg',
+        'dine_in' => '/images/modes/mode-dinein.jpg',
     ];
 
     /**
@@ -59,7 +60,7 @@ final class ModeEntryCardsPresenter
      *   cta: string,
      *   href: string|null,
      *   info: string,
-     *   image: string,
+     *   image: string|null,
      *   icon: string,
      * }>
      */
@@ -105,12 +106,33 @@ final class ModeEntryCardsPresenter
                 'cta' => $available ? "{$label} →" : "{$learnMore} →",
                 'href' => $available ? '/order/menu?mode='.$kind : null,
                 'info' => $info[$kind],
-                'image' => self::IMAGES[$kind],
+                'image' => self::resolveImageUrl($kind),
                 'icon' => self::ICONS[$kind],
             ];
         }
 
         return $cards;
+    }
+
+    public static function resolveImageUrl(string $kind): ?string
+    {
+        $url = self::IMAGES[$kind] ?? null;
+        if ($url === null) {
+            return null;
+        }
+
+        $relative = ltrim($url, '/');
+        if (is_file(public_path($relative))) {
+            return $url;
+        }
+
+        // Fallback used by the order app build (same filenames).
+        $orderRelative = 'order/images/'.basename($relative);
+        if (is_file(public_path($orderRelative))) {
+            return '/'.$orderRelative;
+        }
+
+        return null;
     }
 
     /**

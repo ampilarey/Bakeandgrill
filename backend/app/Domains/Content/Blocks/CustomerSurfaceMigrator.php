@@ -30,7 +30,9 @@ final class CustomerSurfaceMigrator
         // Placement chrome is on by default; announcement_enabled content key still
         // gates whether the banner text is shown (see layout.blade.php).
         self::ensureBlock($app, 'announcement', BlockDeviceSettings::announcementDefaults(), 1, enabled: true);
-        self::ensureBlock($app, 'trust_strip', BlockDeviceSettings::DEFAULTS, afterType: 'hero');
+        // Match order-app home: hero → mode cards → trust strip.
+        self::ensureBlock($app, 'mode_cards', BlockDeviceSettings::DEFAULTS, afterType: 'hero');
+        self::ensureBlock($app, 'trust_strip', BlockDeviceSettings::DEFAULTS, afterType: 'mode_cards');
         self::ensureBlock($app, 'events_band', BlockDeviceSettings::DEFAULTS, append: true);
         self::ensureBlock($app, 'site_footer', [
             'show_desktop' => true,

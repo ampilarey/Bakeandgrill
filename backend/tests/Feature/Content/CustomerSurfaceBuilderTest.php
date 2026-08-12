@@ -66,7 +66,7 @@ class CustomerSurfaceBuilderTest extends TestCase
     public function test_customer_surface_migrator_creates_chrome_blocks_idempotently(): void
     {
         $expected = [
-            'website' => ['prayer_bar', 'site_footer', 'bottom_nav'],
+            'website' => ['prayer_bar', 'mode_cards', 'site_footer', 'bottom_nav'],
             'order_app' => ['prayer_bar', 'site_footer', 'bottom_nav'],
         ];
 
