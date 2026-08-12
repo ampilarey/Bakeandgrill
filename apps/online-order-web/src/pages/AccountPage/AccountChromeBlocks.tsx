@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { isLanguageSwitcherEnabled } from '../../components/LanguageSwitcherGate';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { useTheme } from '../../hooks/useTheme';
@@ -45,14 +46,18 @@ type PushProps = {
 /** Settings group: dark mode, optional push notifications row. */
 export function AccountSettingsBlock({ push }: { push?: PushProps }) {
   const { t, lang, setLang } = useLanguage();
+  const { settings } = useSiteSettingsContext();
   const { darkMode, setDarkMode } = useTheme();
+  const languageSwitcherEnabled = isLanguageSwitcherEnabled(settings);
 
   return (
     <SectionCard title={t('account.settings')}>
       <div
         style={{
           ...linkRowStyle,
-          borderBottom: '1px solid var(--color-border)',
+          borderBottom: languageSwitcherEnabled || push?.supported
+            ? '1px solid var(--color-border)'
+            : 'none',
         }}
       >
         <span>{t('account.dark_mode')}</span>
@@ -78,54 +83,56 @@ export function AccountSettingsBlock({ push }: { push?: PushProps }) {
         </button>
       </div>
 
-      <div
-        style={{
-          ...linkRowStyle,
-          borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
-        }}
-      >
-        <span>{t('account.language')}</span>
+      {languageSwitcherEnabled ? (
         <div
-          role="group"
-          aria-label={t('account.language')}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: 3,
-            borderRadius: 999,
-            border: '1.5px solid var(--color-border)',
-            background: 'var(--color-surface-alt)',
+            ...linkRowStyle,
+            borderBottom: push?.supported ? '1px solid var(--color-border)' : 'none',
           }}
         >
-          {(['en', 'dv'] as const).map((option) => {
-            const active = lang === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setLang(option)}
-                aria-pressed={active}
-                data-testid={`account-lang-${option}`}
-                style={{
-                  minWidth: 42,
-                  minHeight: 38,
-                  padding: '0 0.75rem',
-                  borderRadius: 999,
-                  border: 'none',
-                  background: active ? 'var(--color-primary)' : 'transparent',
-                  color: active ? '#fff' : 'var(--color-text-muted)',
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {option === 'en' ? 'EN' : 'ދވ'}
-              </button>
-            );
-          })}
+          <span>{t('account.language')}</span>
+          <div
+            role="group"
+            aria-label={t('account.language')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: 3,
+              borderRadius: 999,
+              border: '1.5px solid var(--color-border)',
+              background: 'var(--color-surface-alt)',
+            }}
+          >
+            {(['en', 'dv'] as const).map((option) => {
+              const active = lang === option;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setLang(option)}
+                  aria-pressed={active}
+                  data-testid={`account-lang-${option}`}
+                  style={{
+                    minWidth: 42,
+                    minHeight: 38,
+                    padding: '0 0.75rem',
+                    borderRadius: 999,
+                    border: 'none',
+                    background: active ? 'var(--color-primary)' : 'transparent',
+                    color: active ? '#fff' : 'var(--color-text-muted)',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {option === 'en' ? 'EN' : 'ދވ'}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {push?.supported && (
         <div style={{ ...linkRowStyle, borderBottom: 'none' }}>

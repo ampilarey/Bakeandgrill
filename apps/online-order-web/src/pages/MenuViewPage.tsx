@@ -10,6 +10,7 @@ import { MenuSectionHeader } from '../components/menu/MenuSectionHeader';
 import { ProductCard } from '../components/menu/ProductCard';
 import { OfferCard } from '../components/home/OfferCard';
 import { ItemSheet } from '../components/ItemSheet';
+import { isLanguageSwitcherEnabled } from '../components/LanguageSwitcherGate';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -66,6 +67,7 @@ function sortMenuViewItems(list: Item[]): Item[] {
 export function MenuViewPage() {
   const { lang, setLang } = useLanguage();
   const { settings: s } = useSiteSettingsContext();
+  const languageSwitcherEnabled = isLanguageSwitcherEnabled(s);
   usePageTitle('Dine-in menu');
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -298,26 +300,28 @@ export function MenuViewPage() {
           </div>
         </div>
         <div className="menu-view-header__actions">
-          <div className="menu-view-lang" role="group" aria-label="Language">
-            <button
-              type="button"
-              className={`menu-view-lang__btn${lang === 'en' ? ' is-active' : ''}`}
-              aria-pressed={lang === 'en'}
-              data-testid="menu-view-lang-en"
-              onClick={() => setLang('en')}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              className={`menu-view-lang__btn${lang === 'dv' ? ' is-active' : ''}`}
-              aria-pressed={lang === 'dv'}
-              data-testid="menu-view-lang-dv"
-              onClick={() => setLang('dv')}
-            >
-              ދވ
-            </button>
-          </div>
+          {languageSwitcherEnabled ? (
+            <div className="menu-view-lang" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={`menu-view-lang__btn${lang === 'en' ? ' is-active' : ''}`}
+                aria-pressed={lang === 'en'}
+                data-testid="menu-view-lang-en"
+                onClick={() => setLang('en')}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`menu-view-lang__btn${lang === 'dv' ? ' is-active' : ''}`}
+                aria-pressed={lang === 'dv'}
+                data-testid="menu-view-lang-dv"
+                onClick={() => setLang('dv')}
+              >
+                ދވ
+              </button>
+            </div>
+          ) : null}
           <button
             type="button"
             className="menu-view-print-btn"

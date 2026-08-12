@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { LanguageSwitcherGate } from './components/LanguageSwitcherGate';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
@@ -81,6 +82,7 @@ ReactDOM.createRoot(rootEl).render(
     <ErrorBoundary>
       <LanguageProvider>
         <SiteSettingsProvider>
+          <LanguageSwitcherGate />
           <CartProvider>
             <ToastProvider>
             <AuthProvider>

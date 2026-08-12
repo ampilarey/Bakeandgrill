@@ -109,6 +109,7 @@ export interface SiteSettings {
   footer_contact_heading?: string;
   footer_rights_suffix?: string;
   nav_order_cta_text?: string;
+  language_switcher_enabled?: string;
   announcement_enabled?: string;
   announcement_text?: string;
   announcement_url?: string;

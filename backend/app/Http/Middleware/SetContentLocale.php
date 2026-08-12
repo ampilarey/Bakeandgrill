@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\SiteSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,32 @@ class SetContentLocale
 
     public function handle(Request $request, Closure $next): Response
     {
+        $switcherOn = filter_var(
+            SiteSetting::get('language_switcher_enabled', 'false'),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+
+        // When the admin toggle is off, always serve English (ignore cookie / ?lang=).
+        if (! $switcherOn) {
+            app()->instance('content.locale', 'en');
+
+            /** @var Response $response */
+            $response = $next($request);
+            $response->headers->setCookie(cookie(
+                self::COOKIE_NAME,
+                'en',
+                60 * 24 * 365,
+                '/',
+                null,
+                $request->isSecure(),
+                true,
+                false,
+                'Lax',
+            ));
+
+            return $response;
+        }
+
         $queryLocale = $this->normalizeLocale($request->query('lang'));
         $cookieLocale = $this->normalizeLocale($request->cookie(self::COOKIE_NAME));
         $locale = $queryLocale ?? $cookieLocale ?? 'en';
