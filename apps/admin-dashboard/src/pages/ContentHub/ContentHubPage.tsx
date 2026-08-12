@@ -30,6 +30,11 @@ import {
   type ContentScheduleRow,
   type ContentScope,
 } from '../../api/content';
+import {
+  discardPageBlockDraft,
+  fetchAdminPageBlocks,
+  publishPageBlocks,
+} from '../../api/pageBlocks';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
 import {
   AboutValuesEditor,
@@ -462,6 +467,7 @@ export function ContentHubPage() {
           fetchAdminPageBlocks('order_app'),
         ]);
         if (cancelled) return;
+        setLayoutDraft(Boolean(w.draft) || Boolean(o.draft));
         const counts: Record<string, number> = {};
         for (const app of ['website', 'order_app'] as const) {
           const blocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
@@ -720,7 +726,9 @@ export function ContentHubPage() {
 
   const handleTaskSelect = (task: ContentTask) => {
     if (task.advancedAction === 'history') {
-      success('Open any section, then use ⋯ on a field to view History.');
+      // History lives on each field's ⋯ menu — open Branding as a concrete destination.
+      handleSectionSelect('Branding');
+      success('Open ⋯ on any field to view and restore History.');
       return;
     }
     if (task.advancedAction === 'schedule' || task.advancedAction === 'import_export') {
@@ -736,6 +744,33 @@ export function ContentHubPage() {
 
   const handleMobileBack = () => {
     clearActiveGroup();
+  };
+
+  /** Publish layout drafts even when HomeLayoutEditor is unmounted (other sections). */
+  const publishLayoutDraftsViaApi = async () => {
+    if (homeLayoutEditorRef.current) {
+      await homeLayoutEditorRef.current.publishAll();
+      return;
+    }
+    for (const app of ['website', 'order_app'] as const) {
+      const res = await fetchAdminPageBlocks(app);
+      if (!res.draft) continue;
+      await publishPageBlocks({ app, version: res.version ?? 0 });
+    }
+    setLayoutDraft(false);
+  };
+
+  const discardLayoutDraftsViaApi = async () => {
+    if (homeLayoutEditorRef.current) {
+      await homeLayoutEditorRef.current.discardAll();
+      return;
+    }
+    for (const app of ['website', 'order_app'] as const) {
+      const res = await fetchAdminPageBlocks(app);
+      if (!res.draft) continue;
+      await discardPageBlockDraft({ app });
+    }
+    setLayoutDraft(false);
   };
 
   // Unified publish — content keys and the Homepage layout draft are two
@@ -754,7 +789,7 @@ export function ContentHubPage() {
         setLocaleLastSavedAt(locale, new Date().toISOString());
       }
       if (layoutDraft) {
-        await homeLayoutEditorRef.current?.publishAll();
+        await publishLayoutDraftsViaApi();
       }
       success('Content published');
     } catch (e) {
@@ -1162,7 +1197,7 @@ export function ContentHubPage() {
       replaceLocaleDrafts(locale, {});
       setLocaleSynced(locale, true);
       if (layoutDraft) {
-        await homeLayoutEditorRef.current?.discardAll();
+        await discardLayoutDraftsViaApi();
       }
       success('Draft discarded');
     } catch (e) {
@@ -1640,9 +1675,46 @@ export function ContentHubPage() {
       </div>
     ) : null;
 
+    const announcementDualGateBanner = sectionName === 'Announcements' ? (
+      <div
+        className="hub-hours-ops-banner"
+        data-testid="announcement-dual-gate-banner"
+        role="note"
+      >
+        <strong>Two switches control the banner</strong>
+        <p>
+          The Announcement content toggle below must be on, and the Announcement
+          component must be placed/enabled on the Website or Order App surface
+          (Surface Builder → Header or Home). Both are required or nothing shows.
+        </p>
+        <button
+          type="button"
+          data-testid="announcement-open-surface-link"
+          onClick={() => handleSectionSelect('Homepage', 'website', 'website.desktop.header')}
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--color-primary)',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Open Website header placement →
+        </button>
+      </div>
+    ) : null;
+
     // Homepage: the page_blocks layout editor is the only arrangement control.
     // The legacy home_section_order / section_*_enabled keys were retired in
     // Stage F, so there is nothing left to disagree with it.
+    // Keep HomeLayoutEditor mounted (hidden off Homepage) so unified Publish
+    // can drive layout drafts from any section via the ref.
+    // Homepage: the page_blocks layout editor is the only arrangement control.
+    // When staff leave Homepage, the editor unmounts — unified Publish/Discard
+    // fall back to page-blocks APIs (publishLayoutDraftsViaApi).
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
         <>
@@ -1676,12 +1748,13 @@ export function ContentHubPage() {
             onLayoutDraftChange={setLayoutDraft}
           />
         </>
-      ) : sectionEnableBlocks.length > 0 ? (
+      ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {hoursOpsBanner}
+          {announcementDualGateBanner}
           {sectionEnableBlocks.map(renderSectionEnable)}
         </div>
-      ) : hoursOpsBanner;
+      );
 
     const brandKit: ReactNode =
       isBrandKit && brandBlocksByKey.size > 0 ? (
