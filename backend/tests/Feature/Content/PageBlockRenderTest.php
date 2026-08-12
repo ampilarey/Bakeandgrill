@@ -20,6 +20,7 @@ class PageBlockRenderTest extends TestCase
         parent::setUp();
         Cache::flush();
         HomeLayoutMigrator::migrate();
+        CustomerSurfaceMigrator::migrate();
     }
 
     public function test_website_home_loads_blocks_in_a_single_query(): void
@@ -68,9 +69,15 @@ class PageBlockRenderTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('class="hero-banner"', $html, 'Disabled hero must not render.');
-        // Legacy behaviour: the trust strip is independent of the hero and
-        // must keep its historical placement even when the hero is off.
         $this->assertStringContainsString('class="trust-strip"', $html);
+        $this->assertTrue(
+            PageBlock::query()
+                ->where('app', 'website')
+                ->where('block_type', 'trust_strip')
+                ->where('is_enabled', true)
+                ->exists(),
+            'Trust strip must render from an explicit enabled page_block, not auto-injection.',
+        );
     }
 
     public function test_empty_page_blocks_degrades_without_blank_page(): void
@@ -80,11 +87,11 @@ class PageBlockRenderTest extends TestCase
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertNotSame('', trim(strip_tags($html)));
-        // Stage F: no legacy section order any more. An empty layout renders
-        // the required chrome only — trust strip plus the layout brand footer —
-        // and never a blank page.
-        $this->assertStringContainsString('class="trust-strip"', $html);
-        $this->assertStringContainsString('site-footer', $html);
+        // Empty layout: layout chrome only (header + legacy prayer fallback) — no
+        // auto-injected trust strip, events band, or site footer.
+        $this->assertStringContainsString('site-header', $html);
+        $this->assertStringNotContainsString('class="trust-strip"', $html);
+        $this->assertStringNotContainsString('data-block="site_footer"', $html);
         $this->assertStringNotContainsString('class="cta-band-inner"', $html, 'Empty layout must not resurrect removed sections.');
         $this->assertStringNotContainsString('class="proof-strip"', $html, 'Empty layout must not resurrect removed sections.');
     }

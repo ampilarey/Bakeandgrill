@@ -22,6 +22,7 @@ final class HomeLayoutMigrator
         return DB::transaction(function () {
             $website = self::writeApp(PageBlock::APP_WEBSITE, HomeLayoutSnapshot::legacyWebsite());
             $order = self::writeApp(PageBlock::APP_ORDER, HomeLayoutSnapshot::legacyOrderApp());
+            CustomerSurfaceMigrator::migrate();
             PageBlockRepository::bustAll();
 
             return ['website' => $website, 'order_app' => $order];

@@ -62,6 +62,22 @@
     $navOrderCta = content('nav_order_cta_text', 'Order Now →');
     $footerQuickLinksHeading = content('footer_quick_links_heading', 'Quick Links');
     $footerLocationHeading   = content('footer_location_heading', 'Location');
+
+    // Customer Surface Builder — chrome visibility from page_blocks (not hard-coded).
+    try {
+        $websiteBlocks = \App\Domains\Content\Blocks\PageBlockRepository::forPage('website');
+    } catch (\Throwable $e) {
+        $websiteBlocks = collect();
+    }
+    $showPrayerDesktopHeader = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'prayer_bar', 'desktop', $websiteBlocks);
+    $showPrayerMobileHeader = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'prayer_bar', 'mobile', $websiteBlocks);
+    $showAnnouncementDesktop = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'announcement', 'desktop', $websiteBlocks)
+        || \App\Domains\Content\Blocks\HomeChromeResolver::showInHome('website', 'announcement', 'desktop', $websiteBlocks);
+    $showAnnouncementMobile = \App\Domains\Content\Blocks\HomeChromeResolver::showInHeader('website', 'announcement', 'mobile', $websiteBlocks)
+        || \App\Domains\Content\Blocks\HomeChromeResolver::showInHome('website', 'announcement', 'mobile', $websiteBlocks);
+    $siteFooterChrome = \App\Domains\Content\Blocks\HomeChromeResolver::resolve('website', 'site_footer', $websiteBlocks);
+    $showSiteFooterDesktop = $siteFooterChrome['enabled'] && \App\Domains\Content\Blocks\BlockDeviceSettings::showDesktop($siteFooterChrome['settings']);
+    $showSiteFooterMobile = $siteFooterChrome['enabled'] && \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($siteFooterChrome['settings']);
     $footerContactHeading    = content('footer_contact_heading', 'Contact');
     $footerRightsSuffix      = content('footer_rights_suffix', 'All rights reserved.');
     $footerTextRaw           = trim(content('footer_text', ''));
@@ -313,6 +329,22 @@
             text-decoration: none; color: inherit;
         }
         .site-announcement__arrow { opacity: 0.7; }
+        @media (min-width: 768px) {
+            .site-announcement--mobile-only,
+            .site-footer--mobile-only { display: none !important; }
+        }
+        @media (max-width: 767px) {
+            .site-announcement--desktop-only,
+            .site-footer--desktop-only { display: none !important; }
+        }
+
+        /* Home slot blocks with per-device visibility (Surface Builder) */
+        .home-block--desktop-only { display: contents; }
+        .home-block--mobile-only { display: none; }
+        @media (max-width: 767px) {
+            .home-block--desktop-only { display: none; }
+            .home-block--mobile-only { display: contents; }
+        }
 
         /* min-height (not height) so expanded prayer can grow — matches order-app .top-nav__inner */
         .header-inner {
@@ -1445,9 +1477,11 @@
             <a href="/#offers">Offers</a>
             <a href="/order/events">Pre-order</a>
         </nav>
-        <div class="header-prayer">
+        @if($showPrayerDesktopHeader)
+        <div class="header-prayer" data-surface="website.desktop.header" data-block="prayer_bar">
             @include('partials.prayer-banner')
         </div>
+        @endif
         <div class="header-actions">
             @auth('customer')
                 @php
@@ -1495,15 +1529,20 @@
     @endif
 </header>
 
-{{-- ─── Announcement Banner ──────────────────────────────────────── --}}
+{{-- ─── Announcement Banner (surface-controlled) ─────────────────── --}}
 @php
-    $annEnabled = content('announcement_enabled', 'false') === 'true';
     $annText    = trim(content('announcement_text', ''));
     $annUrl     = safe_public_url((string) content('announcement_url',  '')) ?? '';
     $annStyle   = content('announcement_style', 'info');
+    $annShow = ($showAnnouncementDesktop || $showAnnouncementMobile) && $annText !== '';
 @endphp
-@if($annEnabled && $annText)
-<div class="site-announcement site-announcement--{{ e($annStyle) }}" role="banner" aria-label="Site announcement">
+@if($annShow)
+<div
+    class="site-announcement site-announcement--{{ e($annStyle) }}{{ $showAnnouncementDesktop ? '' : ' site-announcement--mobile-only' }}{{ $showAnnouncementMobile ? '' : ' site-announcement--desktop-only' }}"
+    role="banner"
+    aria-label="Site announcement"
+    data-block="announcement"
+>
     @if($annUrl)
         <a href="{{ e($annUrl) }}" class="site-announcement__inner">
             <span class="site-announcement__text">{{ $annText }}</span>
@@ -1572,15 +1611,18 @@
 </div>
 @endif
 
-{{-- Prayer banner (mobile — desktop copy lives inline in .header-prayer) --}}
-<div class="site-prayer-wrap site-prayer-wrap--mobile">
+{{-- Prayer banner (mobile header placement — Home placement is a page block) --}}
+@if($showPrayerMobileHeader)
+<div class="site-prayer-wrap site-prayer-wrap--mobile" data-surface="website.mobile.header" data-block="prayer_bar">
     @include('partials.prayer-banner')
 </div>
+@endif
 
 @yield('content')
 
-{{-- ─── Footer ──────────────────────────────────────────────────── --}}
-<footer class="site-footer">
+{{-- ─── Footer (site_footer surface — not bottom navigation) ──────── --}}
+@if($showSiteFooterDesktop || $showSiteFooterMobile)
+<footer class="site-footer{{ $showSiteFooterDesktop ? '' : ' site-footer--mobile-only' }}{{ $showSiteFooterMobile ? '' : ' site-footer--desktop-only' }}" data-block="site_footer">
     <div class="footer-grid">
         <div class="footer-brand">
             <a href="/" class="footer-brand-logo">
@@ -1690,9 +1732,16 @@
         <span>Malé, Maldives</span>
     </div>
 </footer>
+@endif
 
-{{-- ─── Mobile Bottom Nav — same layout metrics as order-app BottomNav ─── --}}
-<nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav>
+{{-- ─── Mobile Bottom Nav (surface-controlled; separate from Footer) ─── --}}
+@php
+    $websiteBottomNav = \App\Domains\Content\Blocks\HomeChromeResolver::resolve('website', 'bottom_nav', $websiteBlocks);
+    $showWebsiteBottomNav = $websiteBottomNav['enabled']
+        && \App\Domains\Content\Blocks\BlockDeviceSettings::showMobile($websiteBottomNav['settings']);
+@endphp
+@if($showWebsiteBottomNav)
+<nav class="mobile-bottom-nav" aria-label="Mobile navigation" data-mobile-bottom-nav data-block="bottom_nav">
     <a href="/" class="mob-nav-item" data-nav="home">
         <span class="mob-nav-icon" aria-hidden="true">
             <img class="mob-nav-brand-logo brand-logo--light" src="{{ $logoUrl }}" alt="" width="24" height="24" decoding="async">
@@ -1725,6 +1774,7 @@
         <span class="mob-nav-label">Account</span>
     </a>
 </nav>
+@endif
 
 {{-- Shared floating island dropdown (used by prayer banners) --}}
 <div id="hptPanel" class="hpt-panel" role="listbox" aria-label="Select island">
