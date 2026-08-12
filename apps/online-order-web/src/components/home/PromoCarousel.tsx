@@ -60,7 +60,7 @@ function HeroTextBlock({
     );
   }
   return (
-    <Tag className={className} data-testid={testId}>
+    <Tag className={className} data-testid={testId} data-bg-hug="1">
       <span
         className="hero-text-bg"
         {...elementBgProps(el)}
@@ -68,7 +68,6 @@ function HeroTextBlock({
       />
     </Tag>
   );
-
 }
 
 function resolveImg(src: string | undefined, apiOrigin: string): string | null {

@@ -163,6 +163,7 @@ describe('PromoCarousel', () => {
     const heading = screen.getByTestId('hero-title-0');
     expect(heading.tagName).toBe('H2');
     expect(heading).not.toHaveAttribute('data-has-bg');
+    expect(heading).toHaveAttribute('data-bg-hug', '1');
     const hug = heading.querySelector('.hero-text-bg');
     expect(hug).toBeTruthy();
     expect(hug).toHaveAttribute('data-has-bg', '1');

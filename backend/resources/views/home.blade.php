@@ -145,11 +145,20 @@
  * .banner-copy is a flex column — flex items blockify `display: inline`, so a
  * background on the heading itself becomes one big rectangle. The inner span
  * stays inline with box-decoration-break: clone (highlight per line).
+ *
+ * Vertical pad + tight line-height stacks cloned fragments. Open the line box
+ * and keep pad mostly horizontal so lines don't overlap.
  */
+.banner-title[data-bg-hug="1"] {
+    line-height: 1.4;
+}
+.banner-sub[data-bg-hug="1"] {
+    line-height: 1.7;
+}
 .banner-title > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]),
 .banner-sub > .hero-text-bg[data-has-bg="1"]:not([data-bg-full="1"]) {
     display: inline;
-    padding: 0.12em 0.4em;
+    padding: 0.05em 0.4em;
     border-radius: 6px;
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;

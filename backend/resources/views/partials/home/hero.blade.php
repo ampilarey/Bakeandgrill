@@ -85,6 +85,8 @@
                                 data-has-bg="1"
                                 data-bg-full="1"
                                 style="--hero-el-bg: {{ $titleEl['css'] }}; background: var(--hero-el-bg);"
+                            @elseif(!empty($titleEl['css']))
+                                data-bg-hug="1"
                             @endif
                         >
                             @if(!empty($titleEl['css']) && empty($titleEl['full_width']))
@@ -106,6 +108,8 @@
                                 data-has-bg="1"
                                 data-bg-full="1"
                                 style="--hero-el-bg: {{ $subEl['css'] }}; background: var(--hero-el-bg);"
+                            @elseif(!empty($subEl['css']))
+                                data-bg-hug="1"
                             @endif
                         >
                             @if(!empty($subEl['css']) && empty($subEl['full_width']))
