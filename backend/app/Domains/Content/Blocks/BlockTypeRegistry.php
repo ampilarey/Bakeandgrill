@@ -99,12 +99,13 @@ final class BlockTypeRegistry
             new BlockTypeDefinition(
                 type: 'greeting',
                 label: 'Greeting / welcome',
-                description: 'Welcome line at the top of Home (“Hello …”).',
+                description: 'Welcome line at the top of Home (“Hello …”). On the Order App phone, this also carries the logo and Login/account chip.',
                 apps: self::BOTH,
                 removable: true,
                 supportsSharedContent: true,
                 settingsSchema: $deviceSchema,
                 settingsDefaults: $deviceDefaults,
+                flowWarning: 'On Order App phone, removing Greeting hides the Hello copy. Logo and Login still show as fallback chrome.',
             ),
             new BlockTypeDefinition(
                 type: 'prayer_bar',

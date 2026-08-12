@@ -52,6 +52,25 @@ describe('GreetingHeader', () => {
     expect(screen.getByText('Sign in')).toBeTruthy();
   });
 
+  it('can render phone chrome without Hello copy', () => {
+    render(
+      <MemoryRouter>
+        <GreetingHeader
+          customerName={null}
+          isAuthenticated={false}
+          chrome="phone"
+          showCopy={false}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('home-phone-chrome')).toBeTruthy();
+    expect(screen.getByText('Bake & Grill')).toBeTruthy();
+    expect(screen.getByText('Sign in')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(screen.queryByText('Ready to order?')).toBeNull();
+  });
+
   it('uses profile name in CMS named greeting, not a phone number', () => {
     const { rerender } = render(
       <MemoryRouter>

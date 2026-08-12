@@ -291,6 +291,10 @@ final class SharedHomeComponentsMigrator
         }
 
         if ($app === PageBlock::APP_ORDER) {
+            // Phone logo + login render inside the greeting chrome — keep it present.
+            if (! $has('greeting')) {
+                $prepend($list, $new('greeting', true));
+            }
             if (! $has('prayer_bar')) {
                 $insertAfter($list, 'greeting', $new('prayer_bar', true));
                 if (! $has('prayer_bar')) {

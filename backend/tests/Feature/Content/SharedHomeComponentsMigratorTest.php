@@ -145,4 +145,33 @@ class SharedHomeComponentsMigratorTest extends TestCase
                 ->exists(),
         );
     }
+
+    public function test_missing_order_app_greeting_is_restored(): void
+    {
+        HomeLayoutMigrator::migrate();
+        SharedHomeComponentsMigrator::migrate();
+
+        PageBlock::query()
+            ->where('app', 'order_app')
+            ->where('block_type', 'greeting')
+            ->delete();
+
+        $this->assertFalse(
+            PageBlock::query()
+                ->where('app', 'order_app')
+                ->where('block_type', 'greeting')
+                ->exists(),
+        );
+
+        SharedHomeComponentsMigrator::migrate();
+
+        $order = PageBlock::query()
+            ->where('app', 'order_app')
+            ->orderBy('position')
+            ->pluck('block_type')
+            ->all();
+
+        $this->assertContains('greeting', $order);
+        $this->assertSame('greeting', $order[0]);
+    }
 }

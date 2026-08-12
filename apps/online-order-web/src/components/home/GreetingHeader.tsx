@@ -12,6 +12,11 @@ type Props = {
    * desktop — Hello only (TopNav already has brand/account).
    */
   chrome?: 'phone' | 'desktop';
+  /**
+   * When false, only the phone brand/account row renders (no Hello copy).
+   * Used so logo + login stay visible if the greeting block is missing.
+   */
+  showCopy?: boolean;
 };
 
 /** True when the label is a Maldives local phone (digits only). */
@@ -27,6 +32,7 @@ export function GreetingHeader({
   customerName,
   isAuthenticated,
   chrome = 'phone',
+  showCopy = true,
 }: Props) {
   const { t } = useLanguage();
   const { settings: s, text } = useSiteSettingsContext();
@@ -62,12 +68,13 @@ export function GreetingHeader({
     >
       {chrome === 'phone' ? (
         <div
+          data-testid="home-phone-chrome"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '0.75rem',
-            marginBottom: '0.55rem',
+            marginBottom: showCopy ? '0.55rem' : 0,
           }}
         >
           <a
@@ -115,32 +122,36 @@ export function GreetingHeader({
         </div>
       ) : null}
 
-      <h1
-        className="home-greeting__title"
-        style={{
-          margin: 0,
-          fontSize: chrome === 'desktop' ? '1.5rem' : '1.35rem',
-          fontWeight: 800,
-          color: 'var(--color-dark)',
-          letterSpacing: '-0.02em',
-          lineHeight: 1.25,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        {title}
-      </h1>
-      <p
-        className="home-greeting__sub"
-        style={{
-          margin: '0.25rem 0 0',
-          fontSize: '0.875rem',
-          color: 'var(--color-text-muted)',
-        }}
-      >
-        {subtitle}
-      </p>
+      {showCopy ? (
+        <>
+          <h1
+            className="home-greeting__title"
+            style={{
+              margin: 0,
+              fontSize: chrome === 'desktop' ? '1.5rem' : '1.35rem',
+              fontWeight: 800,
+              color: 'var(--color-dark)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.25,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {title}
+          </h1>
+          <p
+            className="home-greeting__sub"
+            style={{
+              margin: '0.25rem 0 0',
+              fontSize: '0.875rem',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            {subtitle}
+          </p>
+        </>
+      ) : null}
     </section>
   );
 }

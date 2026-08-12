@@ -39,13 +39,14 @@ import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 
 /**
  * page_blocks is the only source of the home layout. When it is empty or the
- * request fails we render the blocks the owner is not allowed to remove — the
- * mode cards and the brand footer — so the page is never blank. The admin home
+ * request fails we render a minimal safe stack — greeting (phone logo/login),
+ * mode cards, and brand footer — so the page is never blank. The admin home
  * layout editor reports an empty layout loudly.
  */
 const REQUIRED_BLOCKS: PageBlockRow[] = [
-  { id: -1, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
-  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: -1, app: 'order_app', page: 'home', block_type: 'greeting', position: 0, is_enabled: true, content_mode: 'shared', settings: {} },
+  { id: -2, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 1, is_enabled: true, content_mode: 'own', settings: {} },
+  { id: -3, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 2, is_enabled: true, content_mode: 'shared', settings: {} },
 ];
 
 export function HomePage() {
@@ -356,6 +357,21 @@ export function HomePage() {
   let chipsPlaced = false;
   let trustPlaced = false;
   let officePlaced = false;
+  const greetingEnabled = blocks.some((b) => b.block_type === 'greeting' && b.is_enabled);
+
+  // Phone logo + Login live in the greeting chrome. If the greeting block was
+  // removed or never migrated, still show that chrome so account access remains.
+  if (!isDesktopShell && !greetingEnabled) {
+    nodes.push(
+      <GreetingHeader
+        key="phone-chrome-fallback"
+        customerName={customerName}
+        isAuthenticated={isAuthenticated}
+        chrome="phone"
+        showCopy={false}
+      />,
+    );
+  }
 
   for (const block of blocks) {
     if (!block.is_enabled) continue;

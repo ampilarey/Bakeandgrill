@@ -18,7 +18,13 @@ export type LibraryComponent = {
 
 /** Canonical library (non-deprecated). */
 export const HOME_COMPONENT_LIBRARY: LibraryComponent[] = [
-  { type: 'greeting', name: 'Greeting / welcome', summary: 'Welcome line at the top of Home.', supportsSharedContent: true },
+  {
+    type: 'greeting',
+    name: 'Greeting / welcome',
+    summary: 'Welcome line at the top of Home. On Order App phone this also carries logo + Login.',
+    supportsSharedContent: true,
+    flowWarning: 'On Order App phone, removing Greeting hides the Hello copy. Logo and Login still show as fallback chrome.',
+  },
   {
     type: 'prayer_bar',
     name: 'Prayer Time Banner',

@@ -4,9 +4,9 @@ import { HomePage } from './HomePage';
 
 /**
  * Stage F: page_blocks is the only home layout source. An empty layout (or a
- * failed request) must never blank the page — the blocks the owner cannot
- * remove, the mode cards and the brand footer, still render, and nothing else
- * from the retired legacy list comes back.
+ * failed request) must never blank the page — greeting (phone logo/login),
+ * mode cards, and brand footer still render, and nothing else from the retired
+ * legacy list comes back.
  */
 
 const fetchPageBlocksMock = vi.fn();
@@ -98,9 +98,9 @@ async function expectRequiredChromeOnly() {
   );
 
   await waitFor(() => expect(screen.getByTestId('mode-cards')).toBeTruthy());
+  expect(screen.getByTestId('greeting')).toBeTruthy();
   expect(screen.getByTestId('brand-footer')).toBeTruthy();
   expect(screen.queryByTestId('promo-hero')).toBeNull();
-  expect(screen.queryByTestId('greeting')).toBeNull();
   expect(screen.queryByTestId('prayer-bar')).toBeNull();
   expect(screen.queryByTestId('categories')).toBeNull();
 }
