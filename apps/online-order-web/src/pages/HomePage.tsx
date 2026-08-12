@@ -363,15 +363,14 @@ export function HomePage() {
 
     switch (block.block_type) {
       case 'greeting':
-        if (!isDesktopShell) {
-          nodes.push(
-            <GreetingHeader
-              key={key}
-              customerName={customerName}
-              isAuthenticated={isAuthenticated}
-            />,
-          );
-        }
+        nodes.push(
+          <GreetingHeader
+            key={key}
+            customerName={customerName}
+            isAuthenticated={isAuthenticated}
+            chrome={isDesktopShell ? 'desktop' : 'phone'}
+          />,
+        );
         break;
       case 'prayer_bar':
         if (!isDesktopShell) {
