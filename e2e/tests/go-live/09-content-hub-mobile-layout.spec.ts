@@ -2,15 +2,8 @@
  * Content Hub mobile layout — real Chromium layout engine.
  * LOCAL project only. Does not inject CSS; asserts against shipped admin styles.
  *
- * FINDING (do not "fix" in this file): at 320px, documentElement.scrollWidth is
- * ~324–325 (> viewport). Specs at 320 are expected to fail until that layout bug
- * is fixed in application CSS. 375 / 390 must stay green on real styles.
- *
- * Breakage proof (must FAIL against real CSS):
- * 1) Unreachable `@media` around `.page-header` → editor sheet @ 375
- *    (`.page-header-actions` right edge ~473).
- * 2) `.content-editor-sheet { position: static; width: 3000px }` → scrollWidth 3000
- *    on overview + sheet specs @ 375.
+ * Overview uses the Customer Surface Map task landing (not the old section-grid).
+ * Overflow must stay green at 320 / 375 / 390 — do not accept known overflow.
  */
 import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
@@ -28,16 +21,18 @@ const FIXTURE_PNG = path.resolve(__dirname, '../../fixtures/mobile-layout-hero.p
 
 async function openContentHub(page: Page): Promise<void> {
   await gotoAdminAuthenticated(page, '/admin/content');
-  await expect(page.getByTestId('section-rail-grid')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('section-card-Hero')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('content-task-landing')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('task-cluster-global')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('task-card-hero')).toBeVisible();
+  await expect(page.getByTestId('task-card-order_menu')).toBeVisible();
+  await expect(page.getByTestId('task-card-status_banners')).toBeVisible();
 }
 
 async function openHeroSheet(page: Page): Promise<void> {
-  const heroCard = page.getByTestId('section-card-Hero');
+  const heroCard = page.getByTestId('task-card-hero');
   if (await heroCard.isVisible().catch(() => false)) {
     await heroCard.click();
   } else {
-    // Already deep-linked into a group, or grid rendered differently — open via URL.
     await page.goto('/admin/content?group=Hero', { waitUntil: 'domcontentloaded' });
   }
   await expect(page.getByTestId('content-editor-sheet')).toBeVisible({ timeout: 15_000 });
@@ -60,6 +55,7 @@ test.describe('Content Hub mobile layout (real engine)', () => {
         await openContentHub(page);
         await expect(page.getByRole('group', { name: 'Language' })).toBeVisible();
         await expect(page.getByTestId('draft-save-status')).toBeVisible();
+        await expectNoDocumentHorizontalOverflow(page);
 
         const searchToggle = page.getByTestId('hub-search-toggle');
         if (await searchToggle.isVisible().catch(() => false)) {
@@ -100,6 +96,7 @@ test.describe('Content Hub mobile layout (real engine)', () => {
           );
         }
         await expectTextWrapsNotScrollsX(page, title);
+        await expectNoDocumentHorizontalOverflow(page);
         await expectContentHubChromeInViewport(page);
       });
 
@@ -112,6 +109,7 @@ test.describe('Content Hub mobile layout (real engine)', () => {
         await expect(menu).toBeVisible();
         await expect(menu).toContainText('hero_slides');
         await expectContentHubChromeInViewport(page);
+        await expectNoDocumentHorizontalOverflow(page);
       });
 
       test(`image library + crop flow stay inside viewport @ ${width}`, async ({ page }) => {
@@ -123,7 +121,6 @@ test.describe('Content Hub mobile layout (real engine)', () => {
         const slideSheet = page.getByTestId('hero-slide-editor-sheet');
         await expect(slideSheet).toBeVisible();
 
-        // Library picker (image library)
         await slideSheet.getByRole('button', { name: /^Library$/i }).click();
         const picker = page.getByTestId('media-picker-modal');
         await expect(picker).toBeVisible({ timeout: 15_000 });
@@ -131,7 +128,6 @@ test.describe('Content Hub mobile layout (real engine)', () => {
         await picker.getByRole('button', { name: /^Close$/i }).click();
         await expect(picker).toBeHidden({ timeout: 10_000 });
 
-        // Crop modal via the slide sheet's image file input
         const fileInput = slideSheet.locator('input[type="file"][accept*="image"]').first();
         await expect(fileInput).toBeAttached({ timeout: 10_000 });
         await fileInput.setInputFiles(FIXTURE_PNG);

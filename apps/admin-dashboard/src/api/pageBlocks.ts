@@ -39,6 +39,8 @@ export type PageBlockRow = {
   supports_shared_content: boolean;
   /** Generic content blocks may be added more than once per page. */
   allows_multiple?: boolean;
+  flow_warning?: string | null;
+  dynamic_source?: string | null;
   unknown?: boolean;
 };
 
@@ -54,6 +56,9 @@ export type PageBlockType = {
   /** Laravel rules keyed by settings field — drives the editor form. */
   settings_schema?: Record<string, string>;
   settings_defaults?: Record<string, unknown>;
+  deprecated?: boolean;
+  flow_warning?: string | null;
+  dynamic_source?: string | null;
 };
 
 export async function fetchAdminPageBlocks(app: PageBlockApp, page = 'home'): Promise<{

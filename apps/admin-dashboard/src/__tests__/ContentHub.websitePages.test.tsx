@@ -123,9 +123,9 @@ describe('ContentHub Website pages focused tasks', () => {
 
     expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
     expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
-    expect(screen.getByTestId('task-card-about')).toBeTruthy();
+    expect(screen.getByTestId('task-card-order_about')).toBeTruthy();
     expect(screen.getByTestId('task-card-catering_events')).toBeTruthy();
-    expect(screen.getByTestId('task-card-footer')).toBeTruthy();
+    expect(screen.getByTestId('task-card-website_footer')).toBeTruthy();
   });
 
   it('legacy ?group=Pages redirects to the Website task overview', async () => {

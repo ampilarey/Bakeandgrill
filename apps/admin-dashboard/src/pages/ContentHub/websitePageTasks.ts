@@ -53,6 +53,12 @@ const HOMEPAGE_OWNED_KEYS = new Set([
   'homepage_categories',
   'trust_items',
   'proof_details',
+  'home_chat_label',
+  'home_visit_card_title',
+  'home_delivery_card_title',
+  'home_directions_cta',
+  'home_call_cta',
+  'home_order_via_app_label',
 ]);
 
 const FOOTER_EXTRA_KEYS = new Set([
@@ -78,8 +84,8 @@ export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
   {
     id: 'opening_hours',
     group: 'Opening hours',
-    title: 'Opening hours',
-    description: 'Hours page titles, status text, and CTAs',
+    title: 'Operating hours',
+    description: 'Hours page wording — schedule is managed in Online Ordering',
     icon: Clock,
     matchesKey: (key) => /^hours_/i.test(key),
   },
@@ -87,7 +93,7 @@ export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
     id: 'about',
     group: 'About',
     title: 'About',
-    description: 'Story, title, and values',
+    description: 'Order App About page — story, title, and values',
     icon: Info,
     matchesKey: (key) => /^about_/i.test(key),
   },
@@ -95,7 +101,7 @@ export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
     id: 'catering_events',
     group: 'Catering & events',
     title: 'Catering & events',
-    description: 'Events section and catering CTAs',
+    description: 'Website home band + contact CTAs (not a full standalone page)',
     icon: CalendarDays,
     matchesKey: (key) => /^events_/i.test(key) || /^contact_events_cta_/i.test(key),
   },
@@ -103,12 +109,13 @@ export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
     id: 'footer',
     group: 'Footer',
     title: 'Footer',
-    description: 'Footer text, links, and socials',
+    description: 'Website footer + Order App brand footer text and nav links',
     icon: LayoutTemplate,
     matchesKey: (key) =>
       /^footer_/i.test(key)
       || FOOTER_EXTRA_KEYS.has(key)
-      || /^social_/i.test(key),
+      || /^social_/i.test(key)
+      || key === 'home_chat_label',
   },
 ];
 

@@ -124,10 +124,10 @@ class HomeLayoutMigrationGateTest extends TestCase
      */
     public function test_rendered_website_home_matches_frozen_legacy_order(): void
     {
-        // class="…" needles so the <style> block (.hero-banner { … }) never matches.
+        // Stage B gate: HomeLayoutMigrator alone (pre shared-home upgrade).
+        // Trust strip is NOT auto-injected anymore — only explicit page_blocks render.
         $markers = [
             'hero' => 'class="hero-banner"',
-            'trust_strip' => 'class="trust-strip"',
             'specials' => 'id="offers"',
             'featured' => 'class="products-grid"',
             'categories' => 'class="categories-grid"',
@@ -136,21 +136,13 @@ class HomeLayoutMigrationGateTest extends TestCase
             'location' => 'class="loc-ctas"',
         ];
 
-        // The trust strip is fixed chrome that renders in the hero slot.
-        $frozen = [];
-        foreach (LegacyHomeLayout::WEBSITE_DEFAULT as $row) {
-            $frozen[] = $row['type'];
-            if ($row['type'] === 'hero') {
-                $frozen[] = 'trust_strip';
-            }
-        }
+        $frozen = array_column(LegacyHomeLayout::WEBSITE_DEFAULT, 'type');
 
         HomeLayoutMigrator::migrate();
         Cache::flush();
 
         $rendered = $this->orderedMarkers($this->get('/')->assertOk()->getContent(), $markers);
 
-        $this->assertContains('trust_strip', $rendered);
         $this->assertContains('hero', $rendered);
         $this->assertGreaterThanOrEqual(
             5,
@@ -165,8 +157,8 @@ class HomeLayoutMigrationGateTest extends TestCase
     }
 
     /**
-     * Empty page_blocks must never blank the home page: required chrome
-     * (trust strip + the layout brand footer) still renders.
+     * Empty page_blocks must never blank the page shell (header/footer still wrap).
+     * Trust strip is not auto-injected outside the saved layout.
      */
     public function test_empty_page_blocks_still_renders_required_chrome(): void
     {
@@ -177,7 +169,7 @@ class HomeLayoutMigrationGateTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertNotSame('', trim(strip_tags($html)));
-        $this->assertStringContainsString('class="trust-strip"', $html);
+        $this->assertStringNotContainsString('class="trust-strip"', $html);
     }
 
     /**

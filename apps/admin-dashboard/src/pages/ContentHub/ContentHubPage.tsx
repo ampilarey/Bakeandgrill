@@ -1529,6 +1529,24 @@ export function ContentHubPage() {
       ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
       : 'Bake & Grill';
 
+    const hoursOpsBanner = sectionName === 'Opening hours' ? (
+      <div className="hub-hours-ops-banner" data-testid="hours-ops-banner">
+        <strong>Page wording vs real opening times</strong>
+        <p>
+          Fields below only change the Hours page copy (titles, notes, CTAs).
+          They do not open or close the café or online ordering. Manage the real
+          schedule in Online Ordering.
+        </p>
+        <a
+          href="/admin/online-ordering"
+          data-testid="hours-manage-ops-link"
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}
+        >
+          Manage operating hours →
+        </a>
+      </div>
+    ) : null;
+
     // Homepage: the page_blocks layout editor is the only arrangement control.
     // The legacy home_section_order / section_*_enabled keys were retired in
     // Stage F, so there is nothing left to disagree with it.
@@ -1540,9 +1558,10 @@ export function ContentHubPage() {
         />
       ) : sectionEnableBlocks.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {hoursOpsBanner}
           {sectionEnableBlocks.map(renderSectionEnable)}
         </div>
-      ) : null;
+      ) : hoursOpsBanner;
 
     const brandKit: ReactNode =
       isBrandKit && brandBlocksByKey.size > 0 ? (

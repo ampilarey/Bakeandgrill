@@ -10,8 +10,24 @@ export type ContentTaskLandingProps = {
   onSelectTask: (task: ContentTask) => void;
 };
 
+/** Always show these owner destinations even if the registry snapshot is empty. */
+const ALWAYS_VISIBLE_GROUPS = new Set([
+  'Homepage',
+  'Hero',
+  'Branding',
+  'Announcements',
+  'Footer',
+  'Menu',
+  'Status banners',
+  'Order App',
+  'SEO',
+  'Legal',
+  'About',
+  'General',
+]);
+
 /**
- * Task-based landing for Content & Branding — primary owner entry (mobile + desktop home).
+ * Customer Surface Map landing — primary owner entry (mobile + desktop home).
  */
 export function ContentTaskLanding({
   availableGroups,
@@ -21,18 +37,12 @@ export function ContentTaskLanding({
   return (
     <div className="hub-task-landing" data-testid="content-task-landing">
       <p className="hub-task-landing-intro">
-        Choose what you want to change. You do not need to know about scopes, JSON, or technical keys.
+        Edit what customers see. Each card shows where content appears — Website, Order App phone, or desktop.
       </p>
       {CONTENT_TASK_CLUSTERS.map((cluster) => {
         const tasks = cluster.tasks.filter((task) => {
           if (task.group == null) return true;
-          // Always show Homepage / Hero / Branding / Website pages even if registry empty.
-          if (
-            task.group === 'Homepage'
-            || task.group === 'Hero'
-            || task.group === 'Branding'
-            || isWebsitePageGroup(task.group)
-          ) {
+          if (ALWAYS_VISIBLE_GROUPS.has(task.group) || isWebsitePageGroup(task.group)) {
             return true;
           }
           return availableGroups.has(task.group);
@@ -86,6 +96,16 @@ function TaskCard({
           ) : null}
         </span>
         <span className="hub-task-card-desc">{task.description}</span>
+        {(task.placements?.length || task.statusHint) ? (
+          <span className="hub-task-card-meta" data-testid={`task-placements-${task.id}`}>
+            {task.statusHint ? (
+              <span className="hub-placement-chip hub-placement-chip--status">{task.statusHint}</span>
+            ) : null}
+            {(task.placements ?? []).map((p) => (
+              <span key={p} className="hub-placement-chip">{p}</span>
+            ))}
+          </span>
+        ) : null}
       </span>
       <ChevronRight size={18} className="hub-task-card-chevron" aria-hidden />
     </button>

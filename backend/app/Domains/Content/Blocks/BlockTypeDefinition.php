@@ -26,6 +26,12 @@ final class BlockTypeDefinition
         public readonly ?string $nonRemovableReason = null,
         public readonly array $settingsDefaults = [],
         public readonly bool $allowsMultiple = false,
+        /** Deprecated types stay readable/migratable but are not offered as new adds. */
+        public readonly bool $deprecated = false,
+        /** Soft warning when turning off / removing a flow-critical section. */
+        public readonly ?string $flowWarning = null,
+        /** Dynamic data service powering this block (loyalty, prayer, menu, …). */
+        public readonly ?string $dynamicSource = null,
     ) {}
 
     public function allowsApp(string $app): bool

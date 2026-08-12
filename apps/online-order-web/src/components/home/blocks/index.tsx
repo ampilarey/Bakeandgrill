@@ -5,6 +5,7 @@ import { ImageBlock } from './ImageBlock';
 import { ImageTextBlock } from './ImageTextBlock';
 import { RichTextBlock } from './RichTextBlock';
 import { VideoBlock } from './VideoBlock';
+import { FaqListBlock } from './FaqListBlock';
 import {
   isGenericBlockEmpty,
   isGenericBlockType,
@@ -13,11 +14,10 @@ import {
 } from './blockTypes';
 
 export * from './blockTypes';
-export { ButtonBandBlock, DividerBlock, ImageBlock, ImageTextBlock, RichTextBlock, VideoBlock };
+export { ButtonBandBlock, DividerBlock, ImageBlock, ImageTextBlock, RichTextBlock, VideoBlock, FaqListBlock };
 
 /**
- * Renders one generic content block, or null when the type does not belong on
- * the order app (`faq_list` is website-only) or has nothing to show.
+ * Renders one generic content block, or null when the type is unknown / empty.
  */
 export function renderGenericBlock(
   type: string,
@@ -42,6 +42,8 @@ export function renderGenericBlock(
       return <DividerBlock key={key} settings={settings} />;
     case 'video':
       return <VideoBlock key={key} settings={settings} media={media} apiOrigin={apiOrigin} />;
+    case 'faq_list':
+      return <FaqListBlock key={key} settings={settings} />;
     default:
       return null;
   }

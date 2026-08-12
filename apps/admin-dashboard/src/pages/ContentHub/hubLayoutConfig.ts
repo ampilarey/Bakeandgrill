@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { WEBSITE_PAGE_TASKS } from './websitePageTasks';
 
-/** Cluster id → display label for the section rail (aligned with task landing IA). */
-export type HubClusterId = 'quick' | 'website' | 'order_app' | 'advanced';
+/** Cluster id → display label for the section rail (aligned with surface map IA). */
+export type HubClusterId = 'global' | 'website' | 'order_app' | 'tools';
 
 export type HubSectionMeta = {
   name: string;
@@ -27,13 +27,13 @@ export type HubSectionMeta = {
   subGroups?: Array<{ id: string; label: string; match: (key: string, label: string) => boolean }>;
 };
 
-export const HUB_CLUSTER_ORDER: HubClusterId[] = ['quick', 'website', 'order_app', 'advanced'];
+export const HUB_CLUSTER_ORDER: HubClusterId[] = ['global', 'website', 'order_app', 'tools'];
 
 export const HUB_CLUSTER_LABELS: Record<HubClusterId, string> = {
-  quick: 'Quick edits',
+  global: 'Global',
   website: 'Website',
-  order_app: 'Order app',
-  advanced: 'Advanced',
+  order_app: 'Order App',
+  tools: 'Tools',
 };
 
 /**
@@ -41,9 +41,10 @@ export const HUB_CLUSTER_LABELS: Record<HubClusterId, string> = {
  * Drive rail / editor from this map — not hardcoded JSX.
  */
 export const HUB_SECTIONS: HubSectionMeta[] = [
-  { name: 'Hero', cluster: 'quick', icon: Image },
-  { name: 'Announcements', cluster: 'quick', icon: Bell },
-  { name: 'Branding', cluster: 'quick', icon: Palette },
+  { name: 'Branding', cluster: 'global', icon: Palette },
+  { name: 'Announcements', cluster: 'global', icon: Bell },
+  { name: 'Hero', cluster: 'global', icon: Image },
+  { name: 'Footer', cluster: 'global', icon: LayoutTemplate },
   {
     name: 'Homepage',
     cluster: 'website',
@@ -78,33 +79,33 @@ export const HUB_SECTIONS: HubSectionMeta[] = [
       {
         id: 'location',
         label: 'Location',
-        match: (key) => /location/i.test(key),
+        match: (key) => /location|home_visit|home_delivery|home_directions|home_call|home_chat|home_order_via/i.test(key),
       },
       {
         id: 'delivery',
         label: 'Delivery cards',
-        match: (key) => /delivery|open_badge|closed_badge|hero_fallback/i.test(key),
+        match: (key) => /open_badge|closed_badge|hero_fallback/i.test(key),
       },
     ],
   },
-  // Focused Website pages (replaces legacy mixed `Pages` + Contact dump).
-  ...WEBSITE_PAGE_TASKS.map((page) => ({
+  ...WEBSITE_PAGE_TASKS.filter((p) => p.id !== 'about' && p.id !== 'footer').map((page) => ({
     name: page.group,
     cluster: 'website' as const,
     icon: page.icon,
   })),
+  { name: 'About', cluster: 'order_app', icon: LayoutTemplate },
+  { name: 'SEO', cluster: 'website', icon: Search },
+  { name: 'Legal', cluster: 'website', icon: Shield },
   { name: 'Order App', cluster: 'order_app', icon: ShoppingBag },
+  { name: 'Menu', cluster: 'order_app', icon: Menu },
   { name: 'Status banners', cluster: 'order_app', icon: MessageSquare },
   { name: 'Pre-Order', cluster: 'order_app', icon: Sparkles },
-  { name: 'SEO', cluster: 'advanced', icon: Search },
-  { name: 'Legal', cluster: 'advanced', icon: Shield },
-  { name: 'Menu', cluster: 'advanced', icon: Menu },
-  { name: 'General', cluster: 'advanced', icon: Settings },
-  { name: 'Store', cluster: 'advanced', icon: Store },
+  { name: 'General', cluster: 'tools', icon: Settings },
+  { name: 'Store', cluster: 'tools', icon: Store },
 ];
 
-/** Fallback cluster for unknown section names (was `settings`). */
-export const HUB_FALLBACK_CLUSTER: HubClusterId = 'advanced';
+/** Fallback cluster for unknown section names. */
+export const HUB_FALLBACK_CLUSTER: HubClusterId = 'tools';
 
 const SECTION_BY_NAME = new Map(HUB_SECTIONS.map((s) => [s.name, s]));
 

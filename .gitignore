@@ -74,3 +74,4 @@ playwright-report/
 /print-proxy/dist/
 pos-uat-evidence/
 scripts/ui-audit/out/
+backend/dump.rdb

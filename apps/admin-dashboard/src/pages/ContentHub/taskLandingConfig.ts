@@ -1,94 +1,133 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
+  Clock,
+  Contact,
   FileText,
   History,
   Home,
   Image,
+  Info,
+  LayoutTemplate,
+  Menu,
+  MessageSquare,
+  Navigation,
   Palette,
+  PanelBottom,
+  PanelTop,
   Search,
   Settings2,
   ShoppingBag,
   Sparkles,
+  Upload,
 } from 'lucide-react';
-import { WEBSITE_PAGE_TASKS } from './websitePageTasks';
 
 /**
- * Task-based Content & Branding landing (owner IA).
- * Each task opens an existing Content Hub section via `?group=…`.
+ * Customer Surface Map landing — Global / Website / Order App / Tools.
+ * Every important destination is reachable from desktop and mobile (not rail-only).
  */
 
 export type ContentTaskId =
-  | 'hero'
+  | 'brand_profile'
   | 'announcement'
-  | 'brand_kit'
+  | 'website_header'
+  | 'website_footer'
+  | 'order_nav'
   | 'website_home'
   | 'contact_map'
   | 'opening_hours'
-  | 'about'
-  | 'catering_events'
-  | 'footer'
-  | 'order_home'
-  | 'order_wording'
-  | 'seo'
   | 'legal'
+  | 'seo'
+  | 'order_home'
+  | 'order_menu'
+  | 'order_wording'
+  | 'order_about'
+  | 'order_contact'
+  | 'order_hours'
+  | 'order_privacy'
+  | 'status_banners'
+  | 'catering_events'
+  | 'hero'
   | 'history'
   | 'schedule'
-  | 'import_export'
-  | 'technical';
+  | 'import_export';
 
 export type ContentTask = {
   id: ContentTaskId;
   title: string;
   description: string;
   icon: LucideIcon;
-  /** Existing Content Hub section name (`?group=`). Null = open Advanced action (More menu). */
+  /** Existing Content Hub section name (`?group=`). Null = advanced action. */
   group: string | null;
-  /** Optional query hint for home layout app tab (informational; layout editor has its own tabs). */
   homeAppHint?: 'website' | 'order_app';
-  /** Opens the More-menu / advanced surface instead of a section. */
-  advancedAction?: 'history' | 'schedule' | 'import_export' | 'technical';
+  advancedAction?: 'history' | 'schedule' | 'import_export';
+  /** Placement chips shown on the landing card. */
+  placements?: string[];
+  statusHint?: string;
 };
 
 export type ContentTaskCluster = {
-  id: 'quick' | 'website' | 'order_app' | 'advanced';
+  id: 'global' | 'website' | 'order_app' | 'tools';
   label: string;
   tasks: ContentTask[];
 };
 
-const websitePageTasks: ContentTask[] = WEBSITE_PAGE_TASKS.map((page) => ({
-  id: page.id,
-  title: page.title,
-  description: page.description,
-  icon: page.icon,
-  group: page.group,
-}));
-
 export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
   {
-    id: 'quick',
-    label: 'Quick edits',
+    id: 'global',
+    label: 'Global',
     tasks: [
       {
-        id: 'hero',
-        title: 'Hero banners',
-        description: 'Slideshow photos, titles, and buttons',
-        icon: Image,
-        group: 'Hero',
+        id: 'brand_profile',
+        title: 'Business profile & language',
+        description: 'Logo, colours, site name, and language-facing brand assets',
+        icon: Palette,
+        group: 'Branding',
+        placements: ['Both products (shared)'],
+        statusHint: 'Shared',
       },
       {
         id: 'announcement',
         title: 'Announcement',
-        description: 'Banner message across the site',
+        description: 'Banner message across Website and Order App',
         icon: Bell,
         group: 'Announcements',
+        placements: ['Website header', 'Order App desktop header', 'Order App phone home'],
       },
       {
-        id: 'brand_kit',
-        title: 'Brand Kit',
-        description: 'Logo, colours, and share image',
-        icon: Palette,
-        group: 'Branding',
+        id: 'website_header',
+        title: 'Website header',
+        description: 'Header chrome — prayer placement is controlled from Home Components',
+        icon: PanelTop,
+        group: 'Announcements',
+        placements: ['Website header'],
+        statusHint: 'Fixed',
+      },
+      {
+        id: 'website_footer',
+        title: 'Website footer',
+        description: 'Site-wide footer copy, links, and socials (also powers Order App brand footer text)',
+        icon: PanelBottom,
+        group: 'Footer',
+        placements: ['Website footer', 'Order App footer'],
+        statusHint: 'Shared',
+      },
+      {
+        id: 'order_nav',
+        title: 'Order App navigation',
+        description: 'Bottom / footer navigation links in the ordering app',
+        icon: Navigation,
+        group: 'Footer',
+        placements: ['Order App footer'],
+      },
+      {
+        id: 'hero',
+        title: 'Hero banners',
+        description: 'Slideshow photos and titles used by Website Home and Order App Home',
+        icon: Image,
+        group: 'Hero',
+        placements: ['Website home', 'Order App phone home', 'Order App desktop home'],
+        statusHint: 'Shared',
       },
     ],
   },
@@ -98,13 +137,56 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
     tasks: [
       {
         id: 'website_home',
-        title: 'Home page',
-        description: 'Layout and sections customers see first',
+        title: 'Home',
+        description: 'Reorderable sections plus fixed trust strip, events band, and footer',
         icon: Home,
         group: 'Homepage',
         homeAppHint: 'website',
+        placements: ['Website home'],
       },
-      ...websitePageTasks,
+      {
+        id: 'contact_map',
+        title: 'Contact & map',
+        description: 'Phone, messaging, address, and map — shared with Order App Contact',
+        icon: Contact,
+        group: 'Contact & map',
+        placements: ['Website contact', 'Order App contact', 'Both products (shared)'],
+        statusHint: 'Shared',
+      },
+      {
+        id: 'opening_hours',
+        title: 'Operating hours',
+        description: 'Hours page wording — real café schedule is managed in Online Ordering',
+        icon: Clock,
+        group: 'Opening hours',
+        placements: ['Website hours', 'Order App hours'],
+        statusHint: 'Shared',
+      },
+      {
+        id: 'catering_events',
+        title: 'Catering & events',
+        description: 'Website home band and contact CTAs — not a standalone full page builder',
+        icon: LayoutTemplate,
+        group: 'Catering & events',
+        placements: ['Website home', 'Website contact'],
+        statusHint: 'Fixed',
+      },
+      {
+        id: 'legal',
+        title: 'Legal pages',
+        description: 'Privacy, terms, and refunds on the Website',
+        icon: FileText,
+        group: 'Legal',
+        placements: ['Website legal'],
+      },
+      {
+        id: 'seo',
+        title: 'SEO & analytics',
+        description: 'Search titles, descriptions, and tracking IDs',
+        icon: Search,
+        group: 'SEO',
+        placements: ['Website header'],
+      },
     ],
   },
   {
@@ -113,43 +195,81 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
     tasks: [
       {
         id: 'order_home',
-        title: 'Order app home',
-        description: 'Home layout for the ordering app',
+        title: 'Home',
+        description: 'Phone & desktop home layout — prayer phone block vs desktop header ownership',
         icon: ShoppingBag,
         group: 'Homepage',
         homeAppHint: 'order_app',
+        placements: ['Order App phone home', 'Order App desktop home'],
+      },
+      {
+        id: 'order_menu',
+        title: 'Menu',
+        description: 'Menu page wording and empty-state copy in the Order App',
+        icon: Menu,
+        group: 'Menu',
+        placements: ['Order App menu'],
       },
       {
         id: 'order_wording',
-        title: 'Order app wording',
-        description: 'Greeting, modes, checkout, and status text',
+        title: 'Checkout & sign-in wording',
+        description: 'Greeting, modes, checkout, and account copy',
         icon: Sparkles,
         group: 'Order App',
+        placements: ['Order App checkout', 'Order App phone home'],
+      },
+      {
+        id: 'order_about',
+        title: 'About',
+        description: 'Order App About page story and values',
+        icon: Info,
+        group: 'About',
+        placements: ['Order App about'],
+      },
+      {
+        id: 'order_contact',
+        title: 'Contact',
+        description: 'Uses the same contact details as Website Contact & map',
+        icon: Contact,
+        group: 'Contact & map',
+        placements: ['Order App contact', 'Both products (shared)'],
+        statusHint: 'Shared',
+      },
+      {
+        id: 'order_hours',
+        title: 'Hours',
+        description: 'Hours page wording — schedule itself lives in Online Ordering',
+        icon: Clock,
+        group: 'Opening hours',
+        placements: ['Order App hours'],
+        statusHint: 'Shared',
+      },
+      {
+        id: 'order_privacy',
+        title: 'Privacy',
+        description: 'Order App privacy copy (legal pages)',
+        icon: FileText,
+        group: 'Legal',
+        placements: ['Order App privacy'],
+      },
+      {
+        id: 'status_banners',
+        title: 'Ordering status banners',
+        description: 'Open/closed and service messages customers see while ordering',
+        icon: MessageSquare,
+        group: 'Status banners',
+        placements: ['Order App status banners'],
       },
     ],
   },
   {
-    id: 'advanced',
-    label: 'Advanced',
+    id: 'tools',
+    label: 'Tools',
     tasks: [
       {
-        id: 'seo',
-        title: 'SEO',
-        description: 'Search titles and descriptions',
-        icon: Search,
-        group: 'SEO',
-      },
-      {
-        id: 'legal',
-        title: 'Legal pages',
-        description: 'Privacy, terms, and refunds',
-        icon: FileText,
-        group: 'Legal',
-      },
-      {
         id: 'history',
-        title: 'History',
-        description: 'Past versions of a field (open a section, then ⋯)',
+        title: 'Publishing history',
+        description: 'Past versions of a field — open any section, then Advanced → History',
         icon: History,
         group: null,
         advancedAction: 'history',
@@ -166,35 +286,39 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         id: 'import_export',
         title: 'Import / export',
         description: 'Backup or restore content JSON',
-        icon: Settings2,
+        icon: Upload,
         group: null,
         advancedAction: 'import_export',
-      },
-      {
-        id: 'technical',
-        title: 'Technical content details',
-        description: 'General settings, store, and menu behaviour',
-        icon: Settings2,
-        group: 'General',
       },
     ],
   },
 ];
 
-/** Map a Content Hub section name → preferred landing cluster (for rail regroup). */
+/** Map a Content Hub section name → preferred landing cluster. */
 export function clusterIdForSection(sectionName: string): ContentTaskCluster['id'] {
   for (const cluster of CONTENT_TASK_CLUSTERS) {
     for (const task of cluster.tasks) {
       if (task.group === sectionName) return cluster.id;
     }
   }
-  if (
-    sectionName === 'Menu'
-    || sectionName === 'Store'
-    || sectionName === 'Status banners'
-    || sectionName === 'Pre-Order'
-  ) {
-    return sectionName === 'Status banners' || sectionName === 'Pre-Order' ? 'order_app' : 'advanced';
+  if (sectionName === 'Menu' || sectionName === 'Status banners' || sectionName === 'Pre-Order' || sectionName === 'Order App') {
+    return 'order_app';
   }
-  return 'advanced';
+  if (sectionName === 'General' || sectionName === 'Store' || sectionName === 'SEO' || sectionName === 'Legal') {
+    return sectionName === 'SEO' || sectionName === 'Legal' ? 'website' : 'tools';
+  }
+  if (
+    sectionName === 'Homepage'
+    || sectionName === 'Contact & map'
+    || sectionName === 'Opening hours'
+    || sectionName === 'Catering & events'
+    || sectionName === 'Footer'
+    || sectionName === 'About'
+  ) {
+    return sectionName === 'About' ? 'order_app' : 'website';
+  }
+  if (sectionName === 'Hero' || sectionName === 'Announcements' || sectionName === 'Branding') {
+    return 'global';
+  }
+  return 'tools';
 }

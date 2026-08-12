@@ -43,6 +43,12 @@ final class PageBlockValidator
             ]);
         }
 
+        if ($def->deprecated && $existingType === null) {
+            throw ValidationException::withMessages([
+                'block_type' => "“{$def->label}” is no longer available. Use Hero banner / promotional carousel instead.",
+            ]);
+        }
+
         if (! $def->allowsApp((string) $data['app'])) {
             throw ValidationException::withMessages([
                 'block_type' => "“{$def->label}” cannot be added to the {$data['app']} home page.",
@@ -67,10 +73,22 @@ final class PageBlockValidator
             $settings = [];
         }
 
+        // Prayer / announcement get device-aware defaults per app.
+        $defaults = $def->settingsDefaults;
+        if ($type === 'prayer_bar') {
+            $defaults = array_merge(
+                BlockDeviceSettings::prayerDefaults((string) $data['app']),
+                $defaults,
+            );
+        }
+        if ($type === 'announcement') {
+            $defaults = array_merge(BlockDeviceSettings::announcementDefaults(), $defaults);
+        }
+
         // Required settings (a divider's style, an image_text's side) get their
         // default the first time a block is created, so "add section" never
         // needs the owner to fill a form before the block can exist.
-        foreach ($def->settingsDefaults as $key => $value) {
+        foreach ($defaults as $key => $value) {
             if (! array_key_exists($key, $settings) || $settings[$key] === null || $settings[$key] === '') {
                 $settings[$key] = $value;
             }

@@ -9,6 +9,7 @@ export const GENERIC_BLOCK_TYPES = [
   'button_band',
   'divider',
   'video',
+  'faq_list',
 ] as const;
 
 export type GenericBlockType = (typeof GENERIC_BLOCK_TYPES)[number];
@@ -90,6 +91,16 @@ export function isGenericBlockEmpty(
       return text('text') === '' && text('button1_label') === '' && text('button2_label') === '';
     case 'divider':
       return false;
+    case 'faq_list': {
+      const raw = settings.items;
+      if (!Array.isArray(raw) || raw.length === 0) return true;
+      return !raw.some((row) => {
+        if (!row || typeof row !== 'object') return false;
+        const q = plain(String((row as { question?: string }).question ?? ''));
+        const a = plain(String((row as { answer?: string }).answer ?? ''));
+        return q !== '' && a !== '';
+      });
+    }
     default:
       return true;
   }
