@@ -97,7 +97,7 @@ class WebsiteFooterTest extends TestCase
         $this->assertStringNotContainsString('>More</', $html);
     }
 
-    public function test_whatsapp_viber_appear_once_in_page_and_once_in_footer(): void
+    public function test_whatsapp_viber_appear_once_in_page_and_in_each_footer_variant(): void
     {
         $html = $this->get('/')->assertOk()->getContent();
 
@@ -110,14 +110,34 @@ class WebsiteFooterTest extends TestCase
         preg_match_all('/class="[^"]*chat-btn-viber[^"]*"/', $html, $viberInPage);
         $this->assertCount(1, $viberInPage[0], 'Viber once in-page');
 
-        preg_match_all('/class="[^"]*footer-wa[^"]*"/', $html, $waFooter);
-        $this->assertCount(1, $waFooter[0], 'WhatsApp once in footer');
+        // Desktop multi-column footer
+        preg_match_all('/class="[^"]*\bfooter-wa\b[^"]*"/', $html, $waFooter);
+        $this->assertCount(1, $waFooter[0], 'WhatsApp once in desktop footer');
 
-        preg_match_all('/class="[^"]*footer-viber[^"]*"/', $html, $viberFooter);
-        $this->assertCount(1, $viberFooter[0], 'Viber once in footer');
+        preg_match_all('/class="[^"]*\bfooter-viber\b[^"]*"/', $html, $viberFooter);
+        $this->assertCount(1, $viberFooter[0], 'Viber once in desktop footer');
+
+        // Compact mobile BrandFooter twin (shared with Order App)
+        $this->assertStringContainsString('data-testid="brand-footer-mobile"', $html);
+        preg_match_all('/class="[^"]*brand-footer__wa[^"]*"/', $html, $waMobile);
+        $this->assertCount(1, $waMobile[0], 'WhatsApp once in mobile brand footer');
+        preg_match_all('/class="[^"]*brand-footer__viber[^"]*"/', $html, $viberMobile);
+        $this->assertCount(1, $viberMobile[0], 'Viber once in mobile brand footer');
 
         $this->assertStringNotContainsString('Order via WhatsApp', $html);
         $this->assertStringNotContainsString('Order via Viber', $html);
+    }
+
+    public function test_mobile_brand_footer_mirrors_order_app_stack(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/data-testid="brand-footer-mobile".*brand-footer__name.*brand-footer__thanks.*brand-footer__chat-label.*brand-footer__legal.*brand-footer__bottom/s',
+            $html,
+        );
+        $this->assertStringContainsString('Malé, Maldives', $html);
+        $this->assertStringContainsString('Chat with us', $html);
     }
 
     public function test_footer_blurb_ignores_legacy_copyright_footer_text(): void

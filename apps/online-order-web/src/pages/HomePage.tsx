@@ -487,8 +487,20 @@ export function HomePage() {
     const node = renderBlock(block);
     if (node) nodes.push(node);
   }
+  // One compact footer only — brand_footer and site_footer share BrandFooter.
+  // Prefer site_footer when both are placed on the footer surface.
+  const footerChrome = (() => {
+    const candidates = footerBlocks.filter(
+      (b) => b.block_type === 'site_footer' || b.block_type === 'brand_footer',
+    );
+    if (candidates.length === 0) return null;
+    return candidates.find((b) => b.block_type === 'site_footer') ?? candidates[0];
+  })();
   for (const block of footerBlocks) {
     if (block.block_type === 'bottom_nav') continue;
+    if (block.block_type === 'site_footer' || block.block_type === 'brand_footer') {
+      if (!footerChrome || block.id !== footerChrome.id) continue;
+    }
     const node = renderBlock(block);
     if (node) nodes.push(node);
   }

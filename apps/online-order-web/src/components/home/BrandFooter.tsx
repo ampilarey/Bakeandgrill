@@ -5,6 +5,7 @@ import { useSiteSettingsContext } from '../../context/SiteSettingsContext';
 import { MAIN_WEBSITE_HREF } from '../../utils/mainWebsite';
 import { isExternalHref, shouldLeaveOrderApp, toOrderSpaPath } from '../../utils/footerNav';
 import { safePublicUrl } from '../../utils/safePublicUrl';
+import { FOOTER_THANKS_DEFAULT, normalizeFooterBlurb } from '../../utils/footerBlurb';
 
 type Props = {
   whatsappLink: string;
@@ -18,6 +19,10 @@ type Props = {
   chatLabel?: string;
 };
 
+/**
+ * Compact marketing footer — shared mobile design with the Website site_footer.
+ * Keep markup/CSS classes in sync with layout.blade.php `.brand-footer--website`.
+ */
 export function BrandFooter({
   whatsappLink,
   viberLink,
@@ -31,9 +36,10 @@ export function BrandFooter({
   const { footerLinks, text } = useSiteSettingsContext();
   const name = siteName || text('site_name', 'Bake & Grill');
   const rights = text('footer_rights_suffix', 'All rights reserved.');
-  const thanks = (thanksProp ?? '').trim() || t('home.footer_thanks');
-  const blurbLine = (blurb ?? '').trim();
-  const chat = (chatLabel ?? '').trim();
+  const tagline = text('site_tagline', '');
+  const thanks = (thanksProp ?? '').trim() || FOOTER_THANKS_DEFAULT || t('home.footer_thanks');
+  const blurbLine = normalizeFooterBlurb(blurb ?? '', tagline);
+  const chat = (chatLabel ?? '').trim() || text('home_chat_label', 'Chat with us');
   const year = new Date().getFullYear();
   const safeWhatsappLink = safePublicUrl(whatsappLink) ?? 'https://wa.me/9609120011';
   const safeViberLink = safePublicUrl(viberLink);
@@ -50,7 +56,7 @@ export function BrandFooter({
     <footer className="brand-footer" data-testid="brand-footer">
       <div className="brand-footer__inner">
         <div className="brand-footer__brand">
-          {logoSrc && (
+          {logoSrc ? (
             <a
               href={MAIN_WEBSITE_HREF}
               aria-label={t('header.website_aria').replace('{name}', name)}
@@ -58,17 +64,18 @@ export function BrandFooter({
             >
               <img src={logoSrc} alt="" className="brand-footer__logo" />
             </a>
-          )}
-          {blurbLine !== '' && (
+          ) : null}
+          <p className="brand-footer__name">{name}</p>
+          {blurbLine !== '' ? (
             <p className="brand-footer__blurb">{blurbLine}</p>
-          )}
+          ) : null}
           <p className="brand-footer__thanks">{thanks}</p>
         </div>
 
         <div className="brand-footer__chat">
-          {chat && (
+          {chat ? (
             <p className="brand-footer__chat-label">{chat}</p>
-          )}
+          ) : null}
           <a
             href={safeWhatsappLink}
             target="_blank"
@@ -79,7 +86,7 @@ export function BrandFooter({
             <WhatsAppIcon />
             {t('home.footer_whatsapp')}
           </a>
-          {safeViberLink && (
+          {safeViberLink ? (
             <a
               href={safeViberLink}
               aria-label={t('home.footer_viber')}
@@ -88,7 +95,7 @@ export function BrandFooter({
               <ViberIcon />
               {t('home.footer_viber')}
             </a>
-          )}
+          ) : null}
         </div>
 
         <nav className="brand-footer__legal" aria-label="Legal">
