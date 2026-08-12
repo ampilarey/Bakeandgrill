@@ -18,8 +18,8 @@ import {
   Store,
 } from 'lucide-react';
 
-/** Cluster id → display label for the section rail / mobile grid. */
-export type HubClusterId = 'brand' | 'home' | 'pages' | 'order_app' | 'settings';
+/** Cluster id → display label for the section rail (aligned with task landing IA). */
+export type HubClusterId = 'quick' | 'website' | 'order_app' | 'advanced';
 
 export type HubSectionMeta = {
   name: string;
@@ -29,14 +29,13 @@ export type HubSectionMeta = {
   subGroups?: Array<{ id: string; label: string; match: (key: string, label: string) => boolean }>;
 };
 
-export const HUB_CLUSTER_ORDER: HubClusterId[] = ['brand', 'home', 'pages', 'order_app', 'settings'];
+export const HUB_CLUSTER_ORDER: HubClusterId[] = ['quick', 'website', 'order_app', 'advanced'];
 
 export const HUB_CLUSTER_LABELS: Record<HubClusterId, string> = {
-  brand: 'Brand',
-  home: 'Home',
-  pages: 'Pages',
+  quick: 'Quick edits',
+  website: 'Website',
   order_app: 'Order app',
-  settings: 'Settings',
+  advanced: 'Advanced',
 };
 
 /**
@@ -44,11 +43,12 @@ export const HUB_CLUSTER_LABELS: Record<HubClusterId, string> = {
  * Drive rail / editor from this map — not hardcoded JSX.
  */
 export const HUB_SECTIONS: HubSectionMeta[] = [
-  { name: 'Branding', cluster: 'brand', icon: Palette },
-  { name: 'Hero', cluster: 'home', icon: Image },
+  { name: 'Hero', cluster: 'quick', icon: Image },
+  { name: 'Announcements', cluster: 'quick', icon: Bell },
+  { name: 'Branding', cluster: 'quick', icon: Palette },
   {
     name: 'Homepage',
-    cluster: 'home',
+    cluster: 'website',
     icon: Home,
     subGroups: [
       {
@@ -89,10 +89,9 @@ export const HUB_SECTIONS: HubSectionMeta[] = [
       },
     ],
   },
-  { name: 'Announcements', cluster: 'home', icon: Bell },
   {
     name: 'Pages',
-    cluster: 'pages',
+    cluster: 'website',
     icon: FileText,
     subGroups: [
       {
@@ -143,18 +142,21 @@ export const HUB_SECTIONS: HubSectionMeta[] = [
       },
     ],
   },
-  { name: 'Contact', cluster: 'pages', icon: Contact },
-  { name: 'About', cluster: 'pages', icon: Info },
-  { name: 'Legal', cluster: 'pages', icon: Shield },
-  { name: 'Footer', cluster: 'pages', icon: LayoutTemplate },
-  { name: 'SEO', cluster: 'pages', icon: Search },
-  { name: 'Menu', cluster: 'order_app', icon: Menu },
+  { name: 'Contact', cluster: 'website', icon: Contact },
+  { name: 'About', cluster: 'website', icon: Info },
+  { name: 'Footer', cluster: 'website', icon: LayoutTemplate },
   { name: 'Order App', cluster: 'order_app', icon: ShoppingBag },
   { name: 'Status banners', cluster: 'order_app', icon: MessageSquare },
   { name: 'Pre-Order', cluster: 'order_app', icon: Sparkles },
-  { name: 'General', cluster: 'settings', icon: Settings },
-  { name: 'Store', cluster: 'settings', icon: Store },
+  { name: 'SEO', cluster: 'advanced', icon: Search },
+  { name: 'Legal', cluster: 'advanced', icon: Shield },
+  { name: 'Menu', cluster: 'advanced', icon: Menu },
+  { name: 'General', cluster: 'advanced', icon: Settings },
+  { name: 'Store', cluster: 'advanced', icon: Store },
 ];
+
+/** Fallback cluster for unknown section names (was `settings`). */
+export const HUB_FALLBACK_CLUSTER: HubClusterId = 'advanced';
 
 const SECTION_BY_NAME = new Map(HUB_SECTIONS.map((s) => [s.name, s]));
 
@@ -162,7 +164,7 @@ export function sectionMeta(name: string): HubSectionMeta {
   return (
     SECTION_BY_NAME.get(name) ?? {
       name,
-      cluster: 'settings',
+      cluster: HUB_FALLBACK_CLUSTER,
       icon: LayoutTemplate,
     }
   );

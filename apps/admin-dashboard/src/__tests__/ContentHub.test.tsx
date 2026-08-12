@@ -111,10 +111,10 @@ describe('ContentHubPage', () => {
 
     await screen.findByText('Phone number');
     expect(screen.getByTestId('content-mode-business_phone')).toBeTruthy();
-    expect(screen.getByLabelText(/Different per app/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/[◉○]/);
 
-    fireEvent.click(screen.getByLabelText(/Different per app/i));
+    fireEvent.click(screen.getByLabelText(/Customise for Website and Order App/i));
 
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en');
@@ -133,7 +133,7 @@ describe('ContentHubPage', () => {
     });
 
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Website');
-    fireEvent.click(screen.getByLabelText(/Same in both/i));
+    fireEvent.click(screen.getByLabelText(/Shared with Website and Order App/i));
     await waitFor(() => {
       expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en', { source: 'website' });
     });
@@ -152,7 +152,7 @@ describe('ContentHubPage', () => {
     fireEvent.change(screen.getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 DRAFT' },
     });
-    fireEvent.click(screen.getByLabelText(/Different per app/i));
+    fireEvent.click(screen.getByLabelText(/Customise for Website and Order App/i));
 
     await waitFor(() => {
       expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en', { draft_action: 'discard' });
@@ -170,8 +170,8 @@ describe('ContentHubPage', () => {
 
     await screen.findByText('Logo — for light backgrounds');
     expect(screen.queryByText('Phone number')).toBeNull();
-    expect(screen.queryByLabelText(/Different per app/i)).toBeNull();
-    expect(screen.queryByLabelText(/Same in both/i)).toBeNull();
+    expect(screen.queryByLabelText(/Customise for Website and Order App/i)).toBeNull();
+    expect(screen.queryByLabelText(/Shared with Website and Order App/i)).toBeNull();
   });
 
   it('opens Branding from ?group= deep link', async () => {

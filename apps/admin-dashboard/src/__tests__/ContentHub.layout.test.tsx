@@ -242,38 +242,31 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-rail-grid');
+    await screen.findByTestId('content-task-landing');
     // No column-variant preview pane on mobile (sheet is closed)
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 
-  it('tapping a section card opens editor sheet; close returns to overview', async () => {
+  it('tapping a task card opens editor sheet; close returns to overview', async () => {
     render(
       <MemoryRouter>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    // Wait for grid to load
-    await screen.findByTestId('section-rail-grid');
+    await screen.findByTestId('content-task-landing');
 
-    // SectionEditor not visible yet
     expect(screen.queryByTestId('section-editor')).toBeNull();
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
 
-    // Click Contact card
-    const contactCard = screen.getByTestId('section-card-Contact');
-    fireEvent.click(contactCard);
+    fireEvent.click(screen.getByTestId('task-card-brand_kit'));
 
-    // Full-screen sheet with section editor
     const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Contact');
+    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Branding');
     expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
 
-    // Close sheet
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
-    // Editor disappears
     await waitFor(() => {
       expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
       expect(screen.queryByTestId('section-editor')).toBeNull();

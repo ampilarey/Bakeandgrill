@@ -79,7 +79,7 @@ describe('Content Hub content-mode buttons (mobile)', () => {
     vi.clearAllMocks();
   });
 
-  it('Different per app button calls split and shows scope tabs', async () => {
+  it('Customise for Website and Order App button calls split and shows scope tabs', async () => {
     render(
       <MemoryRouter initialEntries={['/content?group=Hero']}>
         <ContentHubPage />

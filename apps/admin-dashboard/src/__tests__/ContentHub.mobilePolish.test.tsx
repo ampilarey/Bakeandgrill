@@ -265,10 +265,10 @@ describe('ContentHub mobile polish — systemic', () => {
     openSection('Hero');
     await screen.findByTestId('section-editor');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Website & order app/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Same in both/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Different per app/);
-    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/different slides/i);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Where these banners appear/);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
+    expect(screen.getByTestId('content-mode-hero_slides').textContent).toMatch(/customise separately/i);
 
     fireEvent.click(screen.getByTestId('section-rail-Homepage'));
     await waitFor(() => {
@@ -283,7 +283,7 @@ describe('ContentHub mobile polish — systemic', () => {
       expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Footer');
     });
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    expect(screen.getAllByLabelText(/Same in both/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText(/Shared with Website and Order App/i).length).toBeGreaterThan(0);
   });
 
   it('section-enable switches use Show this section / Website / Order app — never Both', async () => {
@@ -365,7 +365,7 @@ describe('ContentHub mobile polish — systemic', () => {
     });
 
     const mode = screen.getByTestId('content-mode-footer_tagline');
-    fireEvent.click(within(mode).getByLabelText(/Different per app/i));
+    fireEvent.click(within(mode).getByLabelText(/Customise for Website and Order App/i));
     await screen.findByTestId('scope-tabs-footer_tagline');
     expect(screen.getByTestId('scope-tab-footer_tagline-website').textContent).toMatch(/Website/);
     expect(screen.getByTestId('scope-tab-footer_tagline-order_app').textContent).toMatch(/Order app/);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import {
   createPageBlock,
   createPageBlockPreviewToken,
@@ -17,19 +17,39 @@ import { GenericBlockSettingsForm, isGenericBlockType, type BlockSettings } from
 type Props = {
   /** Optional: bump to force reload after publish. */
   reloadKey?: number;
+  /** Prefer Website or Order App tab (from Content task landing). */
+  initialApp?: PageBlockApp;
 };
 
 const APP_TABS: Array<{ id: PageBlockApp; label: string }> = [
-  { id: 'website', label: 'Website home' },
-  { id: 'order_app', label: 'Order app home' },
+  { id: 'website', label: 'Website' },
+  { id: 'order_app', label: 'Order App' },
 ];
 
+const BLOCK_THUMB: Partial<Record<string, string>> = {
+  hero: '🖼',
+  specials: '★',
+  categories: '▦',
+  featured_items: '◎',
+  social_proof: '❝',
+  cta: '→',
+  location: '⌖',
+  rich_text: '¶',
+  image: '▣',
+  image_text: '▣¶',
+  button_band: '▢',
+  video: '▶',
+  divider: '—',
+  faq: '?',
+};
+
 /**
- * Per-app home layout builder — lives inside ContentHub Homepage chrome
- * so the owner has one place to edit content and arrangement.
+ * Guided home-page layout workspace — Website / Order App selector, section
+ * cards in display order, draft → preview → publish. Sharing controls open
+ * only when editing a section (not on every overview card).
  */
-export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
-  const [app, setApp] = useState<PageBlockApp>('website');
+export function HomeLayoutEditor({ reloadKey = 0, initialApp = 'website' }: Props) {
+  const [app, setApp] = useState<PageBlockApp>(initialApp);
   const [blocks, setBlocks] = useState<PageBlockRow[]>([]);
   const [types, setTypes] = useState<PageBlockType[]>([]);
   const [unknown, setUnknown] = useState<string[]>([]);
@@ -42,6 +62,10 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   const [draftVersion, setDraftVersion] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    setApp(initialApp);
+  }, [initialApp]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,14 +179,30 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   const setMode = async (block: PageBlockRow, mode: 'shared' | 'own') => {
     let shareSource: 'website' | 'order_app' | 'shared' | undefined;
     if (mode === 'shared' && block.content_mode === 'own') {
-      const choice = window.prompt(
-        `Share “${block.label}” across both apps.\n\nUse content from: website, order_app, or shared?`,
-        app,
-      );
-      if (choice !== 'website' && choice !== 'order_app' && choice !== 'shared') {
+      if (!window.confirm(
+        `Use the shared version of “${block.label}” again?\n\n`
+        + 'Website and Order App will show the same content. Next you choose which copy becomes that shared version.',
+      )) {
         return;
       }
-      shareSource = choice;
+      const choiceRaw = window.prompt(
+        'Which copy should become the shared version?\n\n'
+        + 'Type website, order, or keep (keep = leave the old shared content as-is)',
+        app === 'order_app' ? 'order' : 'website',
+      );
+      const choice = (choiceRaw || '').trim().toLowerCase();
+      if (choice === 'website') shareSource = 'website';
+      else if (choice === 'order' || choice === 'order_app') shareSource = 'order_app';
+      else if (choice === 'keep' || choice === 'shared') shareSource = 'shared';
+      else return;
+    }
+    if (mode === 'own' && block.content_mode === 'shared') {
+      if (!window.confirm(
+        `Customise “${block.label}” for this app only?\n\n`
+        + 'A copy of the shared content is created as your starting point. The other app keeps the shared version until you customise it too.',
+      )) {
+        return;
+      }
     }
     setBusy(true);
     setError('');
@@ -305,11 +345,10 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Home page layout</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 480 }}>
-            Add, turn on/off, and rearrange sections for each home page. Text blocks, pictures,
-            videos, buttons, dividers, and FAQs are written right here with “Edit content”. The
-            named sections (hero, specials, categories …) are still edited in the cards below.
+          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Home page</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 520 }}>
+            Sections appear in the order below. Edits save as a draft — Draft preview, then Publish.
+            Hero banners are edited from Quick edits → Hero banners; visibility and order stay here.
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -321,7 +360,9 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
               color: hasDraft ? 'var(--color-warning-strong)' : 'var(--color-success)',
             }}
           >
-            {hasDraft ? `Draft v${draftVersion}${savedAt ? ' saved' : ''}` : 'Saved live'}
+            {hasDraft
+              ? `Unpublished layout draft${savedAt ? ' (saved)' : ''}`
+              : 'Layout matches live site'}
           </span>
           <button
             type="button"
@@ -390,112 +431,180 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
               This home page has no sections — customers will only see required chrome. Add sections below.
             </div>
           )}
-          {blocks.map((block, index) => (
-            <div
-              key={block.id}
-              data-testid={`home-layout-block-${block.block_type}`}
-              data-block-id={block.id}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 10,
-                border: '1px solid var(--color-border)',
-                background: block.is_enabled ? 'var(--color-bg)' : 'var(--color-border-light)',
-                opacity: block.is_enabled ? 1 : 0.7,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>
-                  {block.label}
-                  {!block.is_enabled && (
-                    <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-                      Off
+          {blocks.map((block, index) => {
+            const expanded = expandedId === block.id;
+            const canEditContent = isGenericBlockType(block.block_type);
+            const showEditor = expanded && (canEditContent || block.supports_shared_content);
+            const thumb = BLOCK_THUMB[block.block_type] ?? '▪';
+            return (
+              <div
+                key={block.id}
+                data-testid={`home-layout-block-${block.block_type}`}
+                data-block-id={block.id}
+                className="home-layout-section-card"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr auto',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid var(--color-border)',
+                  background: block.is_enabled ? 'var(--color-bg)' : 'var(--color-border-light)',
+                  opacity: block.is_enabled ? 1 : 0.75,
+                  minWidth: 0,
+                }}
+              >
+                <div
+                  aria-hidden
+                  data-testid={`home-layout-thumb-${block.id}`}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 8,
+                    background: 'var(--color-border-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                    color: 'var(--color-text-secondary)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {thumb}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflowWrap: 'anywhere' }}>
+                    {block.label}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    <span
+                      data-testid={`home-layout-visibility-${block.id}`}
+                      style={badgeStyle(block.is_enabled)}
+                    >
+                      {block.is_enabled ? 'Showing' : 'Hidden'}
                     </span>
+                    {block.supports_shared_content ? (
+                      <span
+                        data-testid={`home-layout-sharing-${block.id}`}
+                        style={badgeStyle(block.content_mode === 'shared')}
+                      >
+                        {block.content_mode === 'shared'
+                          ? 'Shared with Website and Order App'
+                          : app === 'website'
+                            ? 'Customised for Website'
+                            : 'Customised for Order App'}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4, overflowWrap: 'anywhere' }}>
+                    {block.description}
+                  </div>
+                  {block.block_type === 'opening_status' && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Shown inside the hero banner while the hero is on — moving it here only
+                      matters when the hero is turned off.
+                    </div>
                   )}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                  {block.description}
-                </div>
-                {block.block_type === 'opening_status' && (
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Shown inside the hero banner while the hero is on — moving it here only
-                    matters when the hero is turned off.
-                  </div>
-                )}
-                {!block.removable && (
-                  <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
-                    Required — {block.non_removable_reason}
-                  </div>
-                )}
-                {block.supports_shared_content && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Content:</span>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void setMode(block, 'shared')}
-                      style={{
-                        ...chipBtn,
-                        background: block.content_mode === 'shared' ? 'var(--color-primary)' : 'transparent',
-                        color: block.content_mode === 'shared' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-                      }}
-                    >
-                      Shared (both apps)
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void setMode(block, 'own')}
-                      style={{
-                        ...chipBtn,
-                        background: block.content_mode === 'own' ? 'var(--color-primary)' : 'transparent',
-                        color: block.content_mode === 'own' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-                      }}
-                    >
-                      This app only
-                    </button>
-                  </div>
-                )}
-                {isGenericBlockType(block.block_type) && (
-                  <>
+                  {block.block_type === 'hero' && (
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      Edit photos and text from Quick edits → Hero banners.
+                    </div>
+                  )}
+                  {!block.removable && (
+                    <div style={{ fontSize: 11, color: 'var(--color-warning-strong)', marginTop: 4, fontWeight: 600 }}>
+                      Required — {block.non_removable_reason}
+                    </div>
+                  )}
+                  {(canEditContent || block.supports_shared_content) && (
                     <button
                       type="button"
                       data-testid={`home-layout-edit-${block.id}`}
-                      onClick={() => setExpandedId(expandedId === block.id ? null : block.id)}
+                      onClick={() => setExpandedId(expanded ? null : block.id)}
                       style={{ ...chipBtn, marginTop: 8 }}
                     >
-                      {expandedId === block.id ? 'Hide content' : 'Edit content'}
+                      {expanded ? 'Done' : 'Edit'}
                     </button>
-                    {expandedId === block.id && (
-                      <GenericBlockSettingsForm
-                        block={block}
-                        busy={busy}
-                        onSave={(settings) => saveSettings(block, settings)}
-                      />
-                    )}
-                  </>
-                )}
+                  )}
+                  {showEditor && (
+                    <div
+                      data-testid={`home-layout-editor-panel-${block.id}`}
+                      style={{ marginTop: 10, borderTop: '1px solid var(--color-border)', paddingTop: 10 }}
+                    >
+                      {block.supports_shared_content && (
+                        <div style={{ display: 'flex', gap: 6, marginBottom: canEditContent ? 10 : 0, flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            disabled={busy || block.content_mode === 'shared'}
+                            onClick={() => void setMode(block, 'shared')}
+                            style={{
+                              ...chipBtn,
+                              background: block.content_mode === 'shared' ? 'var(--color-primary)' : 'transparent',
+                              color: block.content_mode === 'shared' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+                            }}
+                          >
+                            Use shared version again
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy || block.content_mode === 'own'}
+                            onClick={() => void setMode(block, 'own')}
+                            style={{
+                              ...chipBtn,
+                              background: block.content_mode === 'own' ? 'var(--color-primary)' : 'transparent',
+                              color: block.content_mode === 'own' ? 'var(--color-bg)' : 'var(--color-text-secondary)',
+                            }}
+                          >
+                            {app === 'website' ? 'Customise for Website' : 'Customise for Order App'}
+                          </button>
+                        </div>
+                      )}
+                      {canEditContent && (
+                        <GenericBlockSettingsForm
+                          block={block}
+                          busy={busy}
+                          onSave={(settings) => saveSettings(block, settings)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>
+                  <button
+                    type="button"
+                    aria-label={`Move ${block.label} up`}
+                    data-testid={`home-layout-move-up-${block.id}`}
+                    disabled={busy || index === 0}
+                    onClick={() => move(index, -1)}
+                    style={btnTiny}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Move ${block.label} down`}
+                    data-testid={`home-layout-move-down-${block.id}`}
+                    disabled={busy || index === blocks.length - 1}
+                    onClick={() => move(index, 1)}
+                    style={btnTiny}
+                  >
+                    ↓
+                  </button>
+                  <button type="button" disabled={busy} onClick={() => void toggleEnabled(block)} style={btnTiny}>
+                    {block.is_enabled ? 'Hide' : 'Show'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || !block.removable}
+                    title={!block.removable ? (block.non_removable_reason ?? undefined) : 'Remove'}
+                    onClick={() => void remove(block)}
+                    style={{ ...btnTiny, color: block.removable ? 'var(--color-danger)' : 'var(--color-text-muted)' }}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>
-                <button type="button" disabled={busy || index === 0} onClick={() => move(index, -1)} style={btnTiny}>↑</button>
-                <button type="button" disabled={busy || index === blocks.length - 1} onClick={() => move(index, 1)} style={btnTiny}>↓</button>
-                <button type="button" disabled={busy} onClick={() => void toggleEnabled(block)} style={btnTiny}>
-                  {block.is_enabled ? 'Turn off' : 'Turn on'}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || !block.removable}
-                  title={!block.removable ? (block.non_removable_reason ?? undefined) : 'Remove'}
-                  onClick={() => void remove(block)}
-                  style={{ ...btnTiny, color: block.removable ? 'var(--color-danger)' : 'var(--color-text-muted)' }}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
             <select
@@ -538,7 +647,7 @@ export function HomeLayoutEditor({ reloadKey = 0 }: Props) {
   );
 }
 
-const btnSecondary: React.CSSProperties = {
+const btnSecondary: CSSProperties = {
   padding: '8px 12px',
   borderRadius: 8,
   border: '1px solid var(--color-border)',
@@ -549,14 +658,14 @@ const btnSecondary: React.CSSProperties = {
   fontFamily: 'inherit',
 };
 
-const btnPrimary: React.CSSProperties = {
+const btnPrimary: CSSProperties = {
   ...btnSecondary,
   background: 'var(--color-primary)',
   borderColor: 'var(--color-primary)',
   color: 'var(--color-bg)',
 };
 
-const btnTiny: React.CSSProperties = {
+const btnTiny: CSSProperties = {
   padding: '4px 8px',
   borderRadius: 6,
   border: '1px solid var(--color-border)',
@@ -567,7 +676,7 @@ const btnTiny: React.CSSProperties = {
   fontFamily: 'inherit',
 };
 
-const chipBtn: React.CSSProperties = {
+const chipBtn: CSSProperties = {
   padding: '4px 8px',
   borderRadius: 999,
   border: '1px solid var(--color-border)',
@@ -576,3 +685,19 @@ const chipBtn: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'inherit',
 };
+
+function badgeStyle(active: boolean): CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '2px 8px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 700,
+    border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+    background: active ? 'rgba(212, 129, 58, 0.12)' : 'var(--color-surface)',
+    color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
+  };
+}
