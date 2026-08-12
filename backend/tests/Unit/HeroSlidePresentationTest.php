@@ -104,6 +104,21 @@ class HeroSlidePresentationTest extends TestCase
         $this->assertSame('rgba(28,20,8,0.5)', $resolved['elements']['title']['css']);
     }
 
+    public function test_element_bg_glass_maps_strength_to_white_opacity(): void
+    {
+        $resolved = HeroSlides::presentation([
+            'title' => 'T',
+            'cta2_bg' => 'glass',
+            'cta2_bg_strength' => 10,
+            'title_bg' => 'glass',
+            'title_bg_strength' => 10,
+        ]);
+        $this->assertSame('glass', $resolved['elements']['cta2']['token']);
+        $this->assertSame('rgba(255,255,255,0.1)', $resolved['elements']['cta2']['css']);
+        $this->assertSame('glass', $resolved['elements']['title']['token']);
+        $this->assertSame('rgba(255,255,255,0.1)', $resolved['elements']['title']['css']);
+    }
+
     public function test_split_rich_text_lines_on_br(): void
     {
         $this->assertSame(

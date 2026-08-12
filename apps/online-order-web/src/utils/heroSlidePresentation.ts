@@ -10,9 +10,9 @@ export type HeroTextPosition = 'top' | 'middle' | 'bottom';
 /** Restaurant wall-clock TZ — matches config('app.timezone') default. */
 export const RESTAURANT_TIMEZONE = 'Indian/Maldives';
 
-export type HeroBgToken = 'none' | 'dark' | 'light' | 'amber' | 'brand_dark';
+export type HeroBgToken = 'none' | 'dark' | 'light' | 'amber' | 'brand_dark' | 'glass';
 
-export const HERO_BG_TOKEN_RGB: Record<Exclude<HeroBgToken, 'none'>, string> = {
+export const HERO_BG_TOKEN_RGB: Record<'dark' | 'light' | 'amber' | 'brand_dark', string> = {
   dark: '28,20,8',
   light: '255,255,255',
   amber: '212,129,58',
@@ -112,9 +112,20 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
     return { token: 'none', strength, full_width, css: 'transparent' };
   }
 
+  // Frosted glass — strength → white fill opacity (10 ≈ secondary CTA look).
+  if (token === 'glass') {
+    const alpha = Math.min(0.45, Math.max(0.02, strength / 100));
+    return {
+      token: 'glass',
+      strength,
+      full_width,
+      css: `rgba(255,255,255,${alpha})`,
+    };
+  }
+
   let rgb: string | null = null;
   if (token in HERO_BG_TOKEN_RGB) {
-    rgb = HERO_BG_TOKEN_RGB[token as Exclude<HeroBgToken, 'none'>];
+    rgb = HERO_BG_TOKEN_RGB[token as keyof typeof HERO_BG_TOKEN_RGB];
   } else {
     rgb = hexToRgb(token.startsWith('#') ? token : `#${token}`);
   }

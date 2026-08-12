@@ -159,6 +159,44 @@
          0  0.035em 0 var(--hero-el-bg),
          0 0.08em 0.28em rgba(0, 0, 0, 0.55);
 }
+/* Frosted glass — same recipe as default secondary CTA; optional on any element. */
+.banner-title[data-bg-glass="1"],
+.banner-sub[data-bg-glass="1"] {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+    padding: 0.4em 0.75em;
+    background: var(--hero-el-bg);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 11px;
+    text-shadow: none;
+    -webkit-text-stroke: 0;
+}
+.banner-title[data-bg-glass="1"][data-bg-full="1"],
+.banner-sub[data-bg-glass="1"][data-bg-full="1"] {
+    width: 100%;
+    align-self: stretch;
+}
+.banner-eyebrow[data-bg-glass="1"],
+.banner-cta-primary[data-bg-glass="1"],
+.banner-cta-secondary[data-bg-glass="1"] {
+    background: var(--hero-el-bg);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: none;
+    color: #fff;
+}
+.banner-cta-primary[data-bg-glass="1"]:hover,
+.banner-cta-secondary[data-bg-glass="1"]:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-has-bg="1"][data-bg-full="1"],
 .banner-sub[data-has-bg="1"][data-bg-full="1"] {

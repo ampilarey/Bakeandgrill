@@ -417,6 +417,44 @@ img.brand-logo--dark { display: none; }
      0  0.035em 0 var(--hero-el-bg),
      0 0.08em 0.28em rgba(0, 0, 0, 0.55);
 }
+/* Frosted glass — optional; same recipe as default secondary CTA */
+.home-promo-hero__title[data-bg-glass="1"],
+.home-promo-hero__sub[data-bg-glass="1"] {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding: 0.4em 0.75em;
+  background: var(--hero-el-bg);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 11px;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+.home-promo-hero__title[data-bg-glass="1"][data-bg-full="1"],
+.home-promo-hero__sub[data-bg-glass="1"][data-bg-full="1"] {
+  width: 100%;
+  align-self: stretch;
+}
+.home-promo-hero__eyebrow[data-bg-glass="1"],
+.home-banner-cta-primary[data-bg-glass="1"],
+.home-promo-hero__cta-secondary[data-bg-glass="1"] {
+  background: var(--hero-el-bg);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: none;
+  color: #fff !important;
+}
+.home-banner-cta-primary[data-bg-glass="1"]:hover,
+.home-promo-hero__cta-secondary[data-bg-glass="1"]:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
 .home-promo-hero__title[data-has-bg="1"][data-bg-full="1"],
 .home-promo-hero__sub[data-has-bg="1"][data-bg-full="1"] {
   display: block;

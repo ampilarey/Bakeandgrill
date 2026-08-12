@@ -288,3 +288,5 @@ no background at all.
 **Cache FINDING (§7.4):** website re-resolves slides each request (OK). Order app loads public content once into React context and filters at parse time — expired windows do not drop mid-session until refetch/navigation.
 
 **FINDING (§7.2 title contrast):** Per-line background “text-hug” boxes were abandoned — flex/soft-wrap/clone kept producing rectangles, overlap, or clipped bands. Non-bar title/subtitle contrast is now a **letter outline + soft halo** (`data-bg-hug`, `-webkit-text-stroke` + stacked `text-shadow` from `--hero-el-bg`). Full-width bar checkbox still paints a solid bar on the heading.
+
+**Glass swatch (§7.2):** Optional `glass` token on any element (eyebrow / title / subtitle / button 1 / button 2) — frosted panel matching default secondary CTA (`rgba(255,255,255,α)` + `backdrop-filter: blur(6px)` + light border). Strength → opacity (default 10 when first selected). `data-bg-glass="1"`.

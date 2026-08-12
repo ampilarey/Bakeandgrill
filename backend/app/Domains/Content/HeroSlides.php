@@ -226,6 +226,19 @@ final class HeroSlides
             return ['token' => 'none', 'strength' => $strength, 'full_width' => $fullWidth, 'css' => 'transparent'];
         }
 
+        // Frosted glass — same family as secondary CTA (white wash + blur via CSS).
+        // Strength maps to fill opacity (10 ≈ button-2 look).
+        if ($token === 'glass') {
+            $alpha = max(0.02, min(0.45, $strength / 100.0));
+
+            return [
+                'token' => 'glass',
+                'strength' => $strength,
+                'full_width' => $fullWidth,
+                'css' => 'rgba(255,255,255,'.$alpha.')',
+            ];
+        }
+
         $rgb = self::BG_TOKEN_RGB[$token] ?? self::hexToRgb($token);
         if ($rgb === null) {
             return ['token' => null, 'strength' => null, 'full_width' => false, 'css' => null];

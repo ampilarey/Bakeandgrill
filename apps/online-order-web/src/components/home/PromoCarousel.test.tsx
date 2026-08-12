@@ -170,6 +170,29 @@ describe('PromoCarousel', () => {
     expect(heading.style.getPropertyValue('--hero-el-bg')).toMatch(/rgba/);
   });
 
+  it('applies frosted glass panel when title_bg is glass', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Glass title',
+              title_bg: 'glass',
+              title_bg_strength: 10,
+              title_bg_full_width: false,
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByTestId('hero-title-0');
+    expect(heading).toHaveAttribute('data-bg-glass', '1');
+    expect(heading).not.toHaveAttribute('data-bg-hug');
+    expect(heading.style.getPropertyValue('--hero-el-bg')).toBe('rgba(255,255,255,0.1)');
+  });
+
   it('keeps full-width title background on the heading itself', () => {
     render(
       <MemoryRouter>

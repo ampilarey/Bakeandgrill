@@ -8,6 +8,20 @@ import {
   splitHeroRichTextLines,
 } from './heroSlidePresentation';
 
+describe('glass element background', () => {
+  it('maps strength to white fill opacity like secondary CTA at 10', () => {
+    const r = resolveHeroSlidePresentation({
+      title_bg: 'glass',
+      title_bg_strength: 10,
+      cta1_bg: 'glass',
+      cta1_bg_strength: 10,
+    });
+    expect(r.elements.title.token).toBe('glass');
+    expect(r.elements.title.css).toBe('rgba(255,255,255,0.1)');
+    expect(r.elements.cta1.css).toBe('rgba(255,255,255,0.1)');
+  });
+});
+
 describe('splitHeroRichTextLines', () => {
   it('splits on br and keeps inline markup', () => {
     expect(splitHeroRichTextLines('Where Dhivehi breakfast<br><em>meets</em> baking')).toEqual([

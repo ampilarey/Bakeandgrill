@@ -67,6 +67,8 @@ const BG_SWATCHES: Array<{ id: HeroBgToken; label: string; color: string }> = [
   { id: 'light', label: 'Light', color: '#ffffff' },
   { id: 'amber', label: 'Amber', color: '#d4813a' },
   { id: 'brand_dark', label: 'Brand dark', color: '#2d1a0a' },
+  // Frosted white wash + blur — matches default secondary CTA look at strength 10
+  { id: 'glass', label: 'Glass', color: 'rgba(255,255,255,0.35)' },
 ];
 
 const ELEMENT_LABELS: Record<HeroElementKey, string> = {
@@ -268,7 +270,7 @@ export function HeroSlidesEditor({
     const el = resolveHeroSlidePresentation(slide).elements[key];
     const storedToken = String((slide as Record<string, unknown>)[`${key}_bg`] ?? '').trim().toLowerCase();
     const strength = el.strength ?? 70;
-    const isCustomHex = Boolean(storedToken) && !['none', 'dark', 'light', 'amber', 'brand_dark'].includes(storedToken);
+    const isCustomHex = Boolean(storedToken) && !['none', 'dark', 'light', 'amber', 'brand_dark', 'glass'].includes(storedToken);
     const advOpen = Boolean(advancedHexOpen[panelKey]) || isCustomHex;
 
     return (
@@ -341,7 +343,8 @@ export function HeroSlidesEditor({
                     data-testid={`hero-bg-swatch-${idx}-${key}-${swatch.id}`}
                     onClick={() => applyPresentation(idx, {
                       [`${key}_bg`]: swatch.id,
-                      [`${key}_bg_strength`]: strength,
+                      // Glass defaults to 10% opacity (same as secondary CTA fill)
+                      [`${key}_bg_strength`]: swatch.id === 'glass' && storedToken !== 'glass' ? 10 : strength,
                     } as HeroPresentationPatch)}
                     style={{
                       ...btnStyle,
@@ -359,7 +362,9 @@ export function HeroSlidesEditor({
                         border: '1px solid var(--color-border)',
                         background: swatch.color === 'transparent'
                           ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 8px 8px'
-                          : swatch.color,
+                          : swatch.id === 'glass'
+                            ? 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.12))'
+                            : swatch.color,
                       }}
                     />
                     {swatch.label}
@@ -373,7 +378,7 @@ export function HeroSlidesEditor({
                   htmlFor={`hero-${idx}-${key}-bg-strength`}
                   style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
                 >
-                  Strength — {strength}%
+                  {storedToken === 'glass' ? 'Opacity' : 'Strength'} — {strength}%
                 </label>
                 <input
                   id={`hero-${idx}-${key}-bg-strength`}
@@ -401,7 +406,7 @@ export function HeroSlidesEditor({
                     [`${key}_bg_full_width`]: e.target.checked,
                   } as HeroPresentationPatch)}
                 />
-                Full-width bar (off = letter outline / halo — no box)
+                Full-width bar (off = {storedToken === 'glass' ? 'glass panel around the words' : 'letter outline / halo — no box'})
               </label>
             ) : null}
             <div>

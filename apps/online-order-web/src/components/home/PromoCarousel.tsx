@@ -11,15 +11,23 @@ import {
 
 function elementBgProps(el: HeroElementBackground): {
   'data-has-bg'?: '1';
+  'data-bg-glass'?: '1';
   'data-bg-full'?: '1' | '0';
   style?: CSSProperties;
 } {
   if (!el.css) return {};
+  const style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
+  if (el.token === 'glass') {
+    return {
+      'data-bg-glass': '1',
+      ...(el.full_width ? { 'data-bg-full': '1' as const } : {}),
+      style,
+    };
+  }
   return {
     'data-has-bg': '1',
     'data-bg-full': el.full_width ? '1' : '0',
-    // CSS var only — stylesheet paints bar / outline (no inline background shorthand).
-    style: { ['--hero-el-bg' as string]: el.css } as CSSProperties,
+    style,
   };
 }
 
@@ -30,8 +38,7 @@ function sanitizeHeroHtml(html: string): string {
 
 /**
  * Title/subtitle with optional per-element contrast.
- * Non-bar (default): letter outline + halo via data-bg-hug.
- * Full-width: solid bar on the heading itself.
+ * Glass: frosted panel. Full-width solid bar. Else: letter outline / halo.
  */
 function HeroTextBlock({
   as: Tag,
@@ -49,6 +56,18 @@ function HeroTextBlock({
   const clean = sanitizeHeroHtml(html);
   if (!el.css) {
     return <Tag className={className} data-testid={testId} dangerouslySetInnerHTML={{ __html: clean }} />;
+  }
+  if (el.token === 'glass') {
+    return (
+      <Tag
+        className={className}
+        data-testid={testId}
+        data-bg-glass="1"
+        {...(el.full_width ? { 'data-bg-full': '1' as const } : {})}
+        style={{ ['--hero-el-bg' as string]: el.css } as CSSProperties}
+        dangerouslySetInnerHTML={{ __html: clean }}
+      />
+    );
   }
   if (el.full_width) {
     return (

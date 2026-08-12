@@ -72,21 +72,25 @@
                         <span
                             class="banner-eyebrow"
                             @if(!empty($eyebrowEl['css']))
-                                data-has-bg="1"
+                                @if(($eyebrowEl['token'] ?? '') === 'glass') data-bg-glass="1" @else data-has-bg="1" @endif
                                 style="--hero-el-bg: {{ $eyebrowEl['css'] }};"
                             @endif
                         >{{ $eyebrow }}</span>
                     @endif
                     @if($titleVisible)
-                        {{-- Non-bar contrast = outline/halo on the heading (no per-line boxes). --}}
+                        {{-- Glass panel, full-width bar, or outline/halo — never per-line boxes. --}}
                         <h2
                             class="banner-title"
-                            @if(!empty($titleEl['css']) && !empty($titleEl['full_width']))
-                                data-has-bg="1"
-                                data-bg-full="1"
-                                style="--hero-el-bg: {{ $titleEl['css'] }};"
-                            @elseif(!empty($titleEl['css']))
-                                data-bg-hug="1"
+                            @if(!empty($titleEl['css']))
+                                @if(($titleEl['token'] ?? '') === 'glass')
+                                    data-bg-glass="1"
+                                    @if(!empty($titleEl['full_width'])) data-bg-full="1" @endif
+                                @elseif(!empty($titleEl['full_width']))
+                                    data-has-bg="1"
+                                    data-bg-full="1"
+                                @else
+                                    data-bg-hug="1"
+                                @endif
                                 style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @endif
                         >{!! $titleHtml !!}</h2>
@@ -94,12 +98,16 @@
                     @if($subtitle !== '')
                         <p
                             class="banner-sub"
-                            @if(!empty($subEl['css']) && !empty($subEl['full_width']))
-                                data-has-bg="1"
-                                data-bg-full="1"
-                                style="--hero-el-bg: {{ $subEl['css'] }};"
-                            @elseif(!empty($subEl['css']))
-                                data-bg-hug="1"
+                            @if(!empty($subEl['css']))
+                                @if(($subEl['token'] ?? '') === 'glass')
+                                    data-bg-glass="1"
+                                    @if(!empty($subEl['full_width'])) data-bg-full="1" @endif
+                                @elseif(!empty($subEl['full_width']))
+                                    data-has-bg="1"
+                                    data-bg-full="1"
+                                @else
+                                    data-bg-hug="1"
+                                @endif
                                 style="--hero-el-bg: {{ $subEl['css'] }};"
                             @endif
                         >{{ $subtitle }}</p>
@@ -111,7 +119,7 @@
                                 href="{{ $cta1Href }}"
                                 class="banner-cta-primary"
                                 @if(!empty($cta1El['css']))
-                                    data-has-bg="1"
+                                    @if(($cta1El['token'] ?? '') === 'glass') data-bg-glass="1" @else data-has-bg="1" @endif
                                     style="--hero-el-bg: {{ $cta1El['css'] }};"
                                 @endif
                             >{{ $cta1Text }}</a>
@@ -121,7 +129,7 @@
                                 href="{{ $cta2Href }}"
                                 class="banner-cta-secondary"
                                 @if(!empty($cta2El['css']))
-                                    data-has-bg="1"
+                                    @if(($cta2El['token'] ?? '') === 'glass') data-bg-glass="1" @else data-has-bg="1" @endif
                                     style="--hero-el-bg: {{ $cta2El['css'] }};"
                                 @endif
                             >{{ $cta2Text }}</a>
