@@ -19,8 +19,8 @@ class PageBlockRenderTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        // HomeLayoutMigrator also runs CustomerSurfaceMigrator for chrome rows.
         HomeLayoutMigrator::migrate();
-        CustomerSurfaceMigrator::migrate();
     }
 
     public function test_website_home_loads_blocks_in_a_single_query(): void
