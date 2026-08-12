@@ -261,7 +261,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     expect(screen.queryByTestId('section-editor')).toBeNull();
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('task-card-brand_kit'));
+    fireEvent.click(screen.getByTestId('task-card-brand_profile'));
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Branding');

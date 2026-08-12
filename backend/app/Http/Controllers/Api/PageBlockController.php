@@ -811,6 +811,8 @@ class PageBlockController extends Controller
             'hero', 'promo_carousel' => ['hero_slides'],
             'specials' => ['offers_headline', 'offers_subtext'],
             'categories' => ['homepage_categories', 'home_categories_eyebrow', 'home_categories_title'],
+            // home_chat_label is registered in config/content.php and may be
+            // published when sharing brand_footer — keep the list registry-backed.
             'brand_footer' => ['footer_text', 'footer_thanks', 'home_chat_label'],
             default => [],
         };

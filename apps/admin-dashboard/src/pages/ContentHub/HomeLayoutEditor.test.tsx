@@ -114,6 +114,9 @@ describe('HomeLayoutEditor', () => {
 
     expect(screen.getByTestId('home-layout-visibility-10').textContent).toMatch(/Showing/);
     expect(screen.getByTestId('home-layout-edit-10')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-fixed-modules')).toBeTruthy();
+    expect(screen.getByTestId('home-fixed-website_prayer_header')).toBeTruthy();
+    expect(screen.getByTestId('home-fixed-website_trust_strip')).toBeTruthy();
   });
 
   it('shows move controls only in Reorder mode', async () => {

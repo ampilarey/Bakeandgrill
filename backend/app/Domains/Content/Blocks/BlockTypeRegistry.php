@@ -158,7 +158,7 @@ final class BlockTypeRegistry
             new BlockTypeDefinition(
                 type: 'promo_carousel',
                 label: 'Promo carousel',
-                description: 'Promotional slides on the order app (same family as the hero banner).',
+                description: 'Order App slides from the same hero_slides data as Hero. Do not enable both Hero and Promo — customers would see two identical carousels.',
                 apps: ['order_app'],
                 removable: true,
                 supportsSharedContent: true,
@@ -174,7 +174,7 @@ final class BlockTypeRegistry
             new BlockTypeDefinition(
                 type: 'prayer_bar',
                 label: 'Prayer times bar',
-                description: 'Shows the next prayer time on the phone home screen.',
+                description: 'Phone Order App home only. Website header and Order App desktop header prayer are separate and always shown there.',
                 apps: ['order_app'],
                 removable: true,
                 supportsSharedContent: false,
@@ -182,7 +182,7 @@ final class BlockTypeRegistry
             new BlockTypeDefinition(
                 type: 'opening_status',
                 label: 'Opening status',
-                description: 'Open/closed badge showing whether ordering is available right now.',
+                description: 'Open/closed badge. When Hero/Promo is on, this embeds inside the hero instead of sitting freely.',
                 apps: ['order_app'],
                 removable: true,
                 supportsSharedContent: false,
@@ -190,11 +190,11 @@ final class BlockTypeRegistry
             new BlockTypeDefinition(
                 type: 'brand_footer',
                 label: 'Brand footer',
-                description: 'Logo, contact links, and legal/contact wording at the bottom of the page.',
+                description: 'Order App home footer. Website ignores this layout row — Website footer is site-wide layout (edit Footer).',
                 apps: ['website', 'order_app'],
                 removable: false,
                 supportsSharedContent: true,
-                nonRemovableReason: 'The footer carries contact and legal information and must stay on the page.',
+                nonRemovableReason: 'The Order App footer carries contact and legal information and must stay on the page.',
             ),
 
             // ── Generic content blocks ───────────────────────────────────────

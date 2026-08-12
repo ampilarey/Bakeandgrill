@@ -15,6 +15,13 @@ import {
 } from '../../api/pageBlocks';
 import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { GenericBlockSettingsForm, isGenericBlockType, type BlockSettings } from './GenericBlockSettingsForm';
+import {
+  ORDER_HOME_FIXED_MODULES,
+  WEBSITE_HOME_FIXED_MODULES,
+  blockRenderedOnApp,
+  blockSurfaceFor,
+  heroPromoConflict,
+} from './surfaceRegistry';
 
 type Props = {
   /** Optional: bump to force reload after publish. */
@@ -101,13 +108,6 @@ export function HomeLayoutEditor({
     void load();
   }, [load, reloadKey]);
 
-  const usedTypes = new Set(blocks.map((b) => b.block_type));
-  // Named sections exist once per page; generic content blocks (text, image,
-  // divider, …) can be stacked as many times as the owner wants.
-  const addable = types.filter(
-    (t) => !usedTypes.has(t.type) || t.allows_multiple || t.type === 'promo_carousel',
-  );
-
   const persistOrder = async (next: PageBlockRow[]) => {
     setBusy(true);
     setError('');
@@ -133,14 +133,19 @@ export function HomeLayoutEditor({
     }
   };
 
-  const move = (index: number, dir: -1 | 1) => {
-    const j = index + dir;
-    if (j < 0 || j >= blocks.length) return;
-    const next = [...blocks];
-    const tmp = next[index];
-    next[index] = next[j];
-    next[j] = tmp;
-    void persistOrder(next);
+  const moveLayout = (layoutIndex: number, dir: -1 | 1) => {
+    const visible = blocks.filter((b) => {
+      if (app === 'website' && b.block_type === 'brand_footer') return false;
+      return blockRenderedOnApp(b.block_type, app);
+    });
+    const j = layoutIndex + dir;
+    if (j < 0 || j >= visible.length) return;
+    const nextVisible = [...visible];
+    const tmp = nextVisible[layoutIndex];
+    nextVisible[layoutIndex] = nextVisible[j];
+    nextVisible[j] = tmp;
+    const ignored = blocks.filter((b) => !nextVisible.some((x) => x.id === b.id));
+    void persistOrder([...nextVisible, ...ignored]);
   };
 
   const toggleEnabled = async (block: PageBlockRow) => {
@@ -342,11 +347,31 @@ export function HomeLayoutEditor({
   };
 
   const editing = editingId != null ? blocks.find((b) => b.id === editingId) ?? null : null;
+  const layoutBlocks = blocks.filter((b) => {
+    // Website brand_footer is ignored by the Website home renderer.
+    if (app === 'website' && b.block_type === 'brand_footer') return false;
+    return blockRenderedOnApp(b.block_type, app);
+  });
+  const ignoredBlocks = blocks.filter((b) => !layoutBlocks.some((x) => x.id === b.id));
+  const conflict = heroPromoConflict(layoutBlocks.filter((b) => b.is_enabled).map((b) => b.block_type));
+  const fixedModules = app === 'website'
+    ? WEBSITE_HOME_FIXED_MODULES
+    : ORDER_HOME_FIXED_MODULES.filter((m) => m.kind !== 'reorderable_block');
+  const addable = types.filter((t) => {
+    if (!t.apps.includes(app)) return false;
+    const present = layoutBlocks.some((b) => b.block_type === t.type);
+    if (t.type === 'promo_carousel' && layoutBlocks.some((b) => b.block_type === 'hero')) return false;
+    if (t.type === 'hero' && layoutBlocks.some((b) => b.block_type === 'promo_carousel')) return false;
+    if (t.type === 'brand_footer' && app === 'website') return false;
+    if (!t.allows_multiple && present) return false;
+    return blockRenderedOnApp(t.type, app);
+  });
 
   return (
     <div
       data-testid="home-layout-editor"
       data-reorder={reorderMode ? 'true' : 'false'}
+      data-app={app}
       style={{
         border: '1px solid var(--color-border)',
         borderRadius: 12,
@@ -357,9 +382,11 @@ export function HomeLayoutEditor({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>Home page</div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--color-text)' }}>
+            {app === 'website' ? 'Website Home' : 'Order App Home'}
+          </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 520 }}>
-            Tap a section to edit. Use Reorder sections to change order.
+            Reorderable sections below. Fixed and injected modules are listed separately — they cannot pretend to move.
           </div>
           <div
             data-testid="home-layout-draft-status"
@@ -487,7 +514,60 @@ export function HomeLayoutEditor({
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading layout…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {blocks.length === 0 && !error && (
+          <div className="hub-fixed-module-list" data-testid="home-layout-fixed-modules">
+            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-secondary)' }}>
+              Fixed & injected (not free-form layout)
+            </div>
+            {fixedModules.map((mod) => (
+              <div
+                key={mod.id}
+                className="hub-fixed-module-card"
+                data-testid={`home-fixed-${mod.id}`}
+                data-kind={mod.kind}
+              >
+                <div className="hub-fixed-module-title">{mod.name}</div>
+                <div className="hub-task-card-meta" style={{ marginTop: 6 }}>
+                  <span className="hub-placement-chip hub-placement-chip--status">{mod.statusHint ?? 'Fixed'}</span>
+                  {mod.placements.map((p) => (
+                    <span key={p} className="hub-placement-chip">{p}</span>
+                  ))}
+                </div>
+                {mod.note ? <div className="hub-fixed-module-note">{mod.note}</div> : null}
+                {mod.managedBy ? (
+                  <a
+                    href={mod.managedBy.href}
+                    style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--color-primary)' }}
+                  >
+                    {mod.managedBy.label} →
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          {conflict ? (
+            <div className="hub-hero-promo-warning" data-testid="home-layout-hero-promo-warning" role="status">
+              Hero and Promo carousel both use the same slides (hero_slides). Disable one so customers do not see two identical carousels.
+            </div>
+          ) : null}
+
+          {ignoredBlocks.length > 0 ? (
+            <div className="hub-fixed-module-card" data-testid="home-layout-ignored-blocks">
+              <div className="hub-fixed-module-title">Not shown on this surface</div>
+              <div className="hub-fixed-module-note">
+                {ignoredBlocks.map((b) => b.label).join(', ')}
+                {app === 'website'
+                  ? ' — Website ignores these layout rows (footer is site-wide; prayer is header-owned).'
+                  : ' — Order App does not render these Website-only blocks.'}
+              </div>
+            </div>
+          ) : null}
+
+          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            Reorderable sections
+          </div>
+
+          {layoutBlocks.length === 0 && !error && (
             <div
               role="alert"
               data-testid="home-layout-empty-warning"
@@ -504,21 +584,21 @@ export function HomeLayoutEditor({
               This home page has no sections — customers will only see required chrome. Add sections below.
             </div>
           )}
-          {blocks.map((block, index) => {
+          {layoutBlocks.map((block, index) => {
+            const surface = blockSurfaceFor(block.block_type, app);
             const thumb = BLOCK_THUMB[block.block_type] ?? '▪';
-            const summary = block.description
-              || (block.block_type === 'hero'
-                ? 'Edit photos and text from Quick edits → Hero banners.'
-                : 'Home page section');
+            const summary = surface.note || block.description || surface.summary;
+            const canReorder = surface.actions.includes('reorder');
             return (
               <div
                 key={block.id}
                 data-testid={`home-layout-block-${block.block_type}`}
                 data-block-id={block.id}
+                data-surface-kind={surface.kind}
                 className="home-layout-section-card"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: reorderMode ? 'auto 1fr auto' : 'auto 1fr auto',
+                  gridTemplateColumns: reorderMode && canReorder ? 'auto 1fr auto' : 'auto 1fr auto',
                   gap: 10,
                   padding: '10px 12px',
                   borderRadius: 10,
@@ -571,24 +651,30 @@ export function HomeLayoutEditor({
                   <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', overflowWrap: 'anywhere' }}>
                     {block.label}
                   </span>
-                  <span
-                    data-testid={`home-layout-visibility-${block.id}`}
-                    style={badgeStyle(block.is_enabled)}
-                  >
-                    {block.is_enabled ? 'Showing' : 'Hidden'}
+                  <span className="hub-task-card-meta">
+                    <span
+                      data-testid={`home-layout-visibility-${block.id}`}
+                      className="hub-placement-chip hub-placement-chip--status"
+                      style={badgeStyle(block.is_enabled)}
+                    >
+                      {block.is_enabled ? 'Showing' : 'Hidden'}
+                    </span>
+                    {surface.placements.slice(0, 3).map((p) => (
+                      <span key={p} className="hub-placement-chip">{p}</span>
+                    ))}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>
                     {summary}
                   </span>
                 </button>
-                {reorderMode ? (
+                {reorderMode && canReorder ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'stretch' }}>
                     <button
                       type="button"
                       aria-label={`Move ${block.label} up`}
                       data-testid={`home-layout-move-up-${block.id}`}
                       disabled={busy || index === 0}
-                      onClick={() => move(index, -1)}
+                      onClick={() => moveLayout(index, -1)}
                       style={btnTiny}
                     >
                       ↑
@@ -597,8 +683,8 @@ export function HomeLayoutEditor({
                       type="button"
                       aria-label={`Move ${block.label} down`}
                       data-testid={`home-layout-move-down-${block.id}`}
-                      disabled={busy || index === blocks.length - 1}
-                      onClick={() => move(index, 1)}
+                      disabled={busy || index === layoutBlocks.length - 1}
+                      onClick={() => moveLayout(index, 1)}
                       style={btnTiny}
                     >
                       ↓
@@ -718,7 +804,7 @@ export function HomeLayoutEditor({
             ) : null}
             {editing.block_type === 'hero' ? (
               <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
-                Banner photos and text are edited from Quick edits → Hero banners. Here you control
+                Banner photos and text are edited from Global → Hero banners. Here you control
                 whether this section shows and where it sits in the page order.
               </p>
             ) : null}
