@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Monitor, Smartphone, X } from 'lucide-react';
 import { LivePreviewFrame } from './LivePreviewFrame';
 
@@ -14,6 +15,11 @@ type Props = {
   onClose?: () => void;
   /** Publish-state banner — must stay truthful inside the preview sheet. */
   draftStatus?: ReactNode;
+  /**
+   * Nesting depth when variant=sheet (portaled). Default 3 stacks above
+   * section (0) and block (1) editor sheets.
+   */
+  layer?: number;
 };
 
 /**
@@ -28,6 +34,7 @@ export function PreviewPane({
   open = true,
   onClose,
   draftStatus,
+  layer = 3,
 }: Props) {
   const [app, setApp] = useState<PreviewApp>('website');
 
@@ -90,12 +97,20 @@ export function PreviewPane({
   );
 
   if (variant === 'sheet') {
-    if (!open) return null;
-    return (
-      <div data-testid="preview-sheet" className="hub-preview-sheet" role="dialog" aria-modal="true" aria-label="Live preview">
+    if (!open || typeof document === 'undefined') return null;
+    return createPortal(
+      <div
+        data-testid="preview-sheet"
+        className="hub-preview-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Live preview"
+        style={{ zIndex: 50 + layer * 2 }}
+      >
         <div className="hub-preview-sheet-backdrop" onClick={onClose} />
         <div className="hub-preview-sheet-panel">{body}</div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 

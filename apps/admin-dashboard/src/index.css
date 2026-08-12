@@ -2249,6 +2249,7 @@ a { text-decoration: none; color: inherit; }
     left: 12px;
     right: 12px;
     bottom: calc(var(--admin-tabbar-h, 56px) + 8px);
+    /* Below editor sheets (50+) — landing-only; open sheets use their own Publish footer. */
     z-index: calc(var(--z-overlay) - 1);
     gap: 10px;
     align-items: center;
@@ -2738,11 +2739,10 @@ a { text-decoration: none; color: inherit; }
   gap: 4px;
 }
 
-/* ── Preview sheet — mobile full-screen overlay ──────────────── */
+/* ── Preview sheet — mobile full-screen overlay (z-index set inline via layer) */
 .hub-preview-sheet {
   position: fixed;
   inset: 0;
-  z-index: var(--z-modal, 50);
   display: flex;
   flex-direction: column;
 }
@@ -2769,26 +2769,31 @@ a { text-decoration: none; color: inherit; }
   min-height: 0;
 }
 
-/* ── Floating preview button — mobile ───────────────────────── */
-.hub-preview-float-btn {
-  position: fixed;
-  bottom: calc(var(--admin-tabbar-h, 56px) + 16px);
-  right: 16px;
-  z-index: calc(var(--z-overlay, 40) - 1);
+/* ── Sheet header tools (locale / Preview / More inside editor sheet) ─ */
+.content-editor-sheet-header-actions,
+.hub-sheet-header-actions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: none;
-  background: var(--color-text);
-  color: var(--color-bg);
+  flex-shrink: 0;
+  min-width: 0;
+}
+.hub-sheet-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(28, 20, 8, 0.24);
 }
 
 /* ── Block card ───────────────────────────────────────────────── */
@@ -2995,8 +3000,10 @@ a { text-decoration: none; color: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -3110,7 +3117,7 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--color-border);
@@ -3122,7 +3129,8 @@ a { text-decoration: none; color: inherit; }
   cursor: pointer;
 }
 .hub-search-toggle {
-  width: 36px;
+  width: 44px;
+  min-width: 44px;
   padding: 0;
 }
 .hub-block-edit-btn {
@@ -3349,8 +3357,10 @@ a { text-decoration: none; color: inherit; }
   overflow-wrap: anywhere;
 }
 .hub-mobile-action-sheet-close {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border: none;
   background: var(--color-bg);
   border-radius: 8px;
@@ -3534,10 +3544,11 @@ a { text-decoration: none; color: inherit; }
   border: 1px solid var(--color-border);
   border-radius: 10px;
   overflow: hidden;
-  height: 36px;
+  height: 44px;
 }
 .hub-locale-btn {
-  height: 36px;
+  height: 44px;
+  min-height: 44px;
   padding: 0 12px;
   border: none;
   background: var(--color-surface);

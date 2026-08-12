@@ -728,6 +728,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           open
           title={editingSession?.isAddSlot ? `Add another ${editingComp.name}` : `Edit ${editingComp.name}`}
           onClose={() => setEditingSession(null)}
+          layer={1}
           testId="home-layout-section-editor"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
@@ -1066,8 +1067,8 @@ const btnSecondary: CSSProperties = {
 };
 
 const btnTiny: CSSProperties = {
-  minHeight: 32,
-  minWidth: 36,
+  minHeight: 44,
+  minWidth: 44,
   borderRadius: 8,
   border: '1px solid var(--color-border)',
   background: 'var(--color-surface)',

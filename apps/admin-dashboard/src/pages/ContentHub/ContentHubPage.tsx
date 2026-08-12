@@ -667,23 +667,24 @@ export function ContentHubPage() {
 
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasUnsaved && dirtyCount === 0) return;
+      if (!hasUnsaved && dirtyCount === 0 && !layoutDraft) return;
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [hasUnsaved, dirtyCount]);
+  }, [hasUnsaved, dirtyCount, layoutDraft]);
 
-  // More menu click-outside
+  // More menu click-outside (desktop popover only — mobile uses a portaled sheet
+  // with its own backdrop, so a document listener would close it before taps run).
   useEffect(() => {
-    if (!moreMenuOpen) return;
+    if (!moreMenuOpen || isMobile) return;
     const onDoc = (e: MouseEvent) => {
       if (!moreMenuRef.current?.contains(e.target as Node)) setMoreMenuOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [moreMenuOpen]);
+  }, [moreMenuOpen, isMobile]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -1713,7 +1714,11 @@ export function ContentHubPage() {
         <button
           type="button"
           data-testid="announcement-open-surface-link"
-          onClick={() => handleSectionSelect('Homepage', 'website', 'website.desktop.header')}
+          onClick={() => handleSectionSelect(
+            'Homepage',
+            'website',
+            isMobile ? 'website.mobile.header' : 'website.desktop.header',
+          )}
           style={{
             fontSize: 13,
             fontWeight: 700,
@@ -2068,6 +2073,7 @@ export function ContentHubPage() {
           onClose={() => setMoreMenuOpen(false)}
           testId="hub-more-menu-mobile"
           returnFocusTo={moreBtnRef.current}
+          layer={5}
         >
           {moreMenuItems}
         </MobileActionSheet>
@@ -2088,7 +2094,7 @@ export function ContentHubPage() {
             <button
               type="button"
               onClick={() => void cancelContentSchedule(schedule.id).then(() => load()).catch((e) => error(e instanceof Error ? e.message : 'Cancel failed'))}
-              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 32 }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, minHeight: 44 }}
             >
               Cancel
             </button>
@@ -2112,7 +2118,7 @@ export function ContentHubPage() {
 
   return (
     <PageShell>
-      <div className={`content-studio-page hub-page${dirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
+      <div className={`content-studio-page hub-page${effectiveDirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
         <PageHeader
           section="System"
           title="Content & Branding"
@@ -2140,7 +2146,42 @@ export function ContentHubPage() {
               status={draftStatusNode}
               layer={0}
               testId="content-editor-sheet"
-              footer={dirtyCount > 0 ? (
+              headerActions={(
+                <div className="hub-sheet-header-actions">
+                  <div className="hub-locale-seg" role="group" aria-label="Language">
+                    {(['en', 'dv'] as const).map((loc) => (
+                      <button
+                        key={loc}
+                        type="button"
+                        aria-pressed={locale === loc}
+                        onClick={() => setLocale(loc)}
+                        className={`hub-locale-btn${locale === loc ? ' hub-locale-btn--active' : ''}`}
+                      >
+                        {loc === 'en' ? 'EN' : 'DV'}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="preview-sheet-btn"
+                    className="hub-sheet-preview-btn"
+                    onClick={() => setPreviewSheetOpen(true)}
+                  >
+                    <Eye size={16} /> Preview
+                  </button>
+                  <button
+                    type="button"
+                    className="hub-more-trigger"
+                    data-testid="hub-sheet-more-btn"
+                    onClick={() => setMoreMenuOpen(true)}
+                    aria-expanded={moreMenuOpen}
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                </div>
+              )}
+              footer={effectiveDirtyCount > 0 ? (
                 <Btn
                   onClick={() => void publish()}
                   disabled={saving}
@@ -2160,17 +2201,6 @@ export function ContentHubPage() {
               {activeGroup ? buildSectionContent(activeGroup, false) : null}
             </ContentEditorSheet>
 
-            {mobileEditorOpen ? (
-              <button
-                type="button"
-                data-testid="preview-sheet-btn"
-                className="hub-preview-float-btn"
-                onClick={() => setPreviewSheetOpen(true)}
-              >
-                <Eye size={16} /> Preview
-              </button>
-            ) : null}
-
             <PreviewPane
               variant="sheet"
               websiteUrl={previewState.website}
@@ -2179,6 +2209,7 @@ export function ContentHubPage() {
               open={previewSheetOpen}
               onClose={() => setPreviewSheetOpen(false)}
               draftStatus={draftStatusNode}
+              layer={3}
             />
 
             <ContentEditorSheet
@@ -2275,7 +2306,7 @@ export function ContentHubPage() {
               status={draftStatusNode}
               layer={1}
               testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
-              footer={dirtyCount > 0 ? (
+              footer={effectiveDirtyCount > 0 ? (
                 <Btn
                   onClick={() => void publish()}
                   disabled={saving}

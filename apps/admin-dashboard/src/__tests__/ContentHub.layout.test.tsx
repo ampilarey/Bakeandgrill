@@ -275,24 +275,21 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     });
   });
 
-  it('preview sheet opens and closes via floating button', async () => {
+  it('preview sheet opens and closes via sheet header Preview button', async () => {
     render(
       <MemoryRouter initialEntries={['/content?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
+    const sheet = await screen.findByTestId('content-editor-sheet');
+    expect(within(sheet).queryByTestId('preview-pane')).toBeNull();
 
-    // No preview-pane column
-    expect(screen.queryByTestId('preview-pane')).toBeNull();
-
-    // Open preview sheet
-    fireEvent.click(screen.getByTestId('preview-sheet-btn'));
+    // Preview lives in the portaled sheet header (above the editor stack).
+    fireEvent.click(within(sheet).getByTestId('preview-sheet-btn'));
     await screen.findByTestId('preview-sheet');
     expect(screen.getByTestId('preview-pane')).toBeTruthy();
 
-    // Close preview sheet
     fireEvent.click(screen.getByTestId('preview-sheet-close'));
     await waitFor(() => {
       expect(screen.queryByTestId('preview-sheet')).toBeNull();

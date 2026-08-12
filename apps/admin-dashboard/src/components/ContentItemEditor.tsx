@@ -2,11 +2,11 @@ import {
   useEffect,
   useId,
   useRef,
-  useState,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export type ContentItemEditorProps = {
   open: boolean;
@@ -17,6 +17,8 @@ export type ContentItemEditorProps = {
   status?: ReactNode;
   /** Sticky bottom action bar (Publish, Done, etc.). */
   footer?: ReactNode;
+  /** Optional controls in the header row (locale, Preview, More). */
+  headerActions?: ReactNode;
   /** Nesting depth for stacking above parent sheets (0 = base). */
   layer?: number;
   ariaLabel?: string;
@@ -28,21 +30,6 @@ export type ContentItemEditorProps = {
    */
   presentation?: 'auto' | 'fullscreen' | 'drawer';
 };
-
-function useIsNarrow(breakpoint = 768): boolean {
-  const [narrow, setNarrow] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches : true,
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const onChange = () => setNarrow(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, [breakpoint]);
-  return narrow;
-}
 
 /**
  * Responsive focused editor for Content & Branding.
@@ -56,6 +43,7 @@ export function ContentItemEditor({
   children,
   status,
   footer,
+  headerActions,
   layer = 0,
   ariaLabel,
   testId = 'content-item-editor',
@@ -65,7 +53,7 @@ export function ContentItemEditor({
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
-  const narrow = useIsNarrow();
+  const narrow = useIsMobile();
   const mode = presentation === 'auto' ? (narrow ? 'fullscreen' : 'drawer') : presentation;
 
   useEffect(() => {
@@ -124,6 +112,11 @@ export function ContentItemEditor({
         <header className="content-editor-sheet-header">
           <div className="content-editor-sheet-header-row">
             <h2 id={titleId} className="content-editor-sheet-title">{title}</h2>
+            {headerActions ? (
+              <div className="content-editor-sheet-header-actions" data-testid="content-editor-sheet-header-actions">
+                {headerActions}
+              </div>
+            ) : null}
             <button
               ref={closeRef}
               type="button"
