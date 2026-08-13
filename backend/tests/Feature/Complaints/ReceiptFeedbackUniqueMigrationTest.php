@@ -64,6 +64,12 @@ class ReceiptFeedbackUniqueMigrationTest extends TestCase
             $this->assertStringContainsString('One rating per receipt is not enforced', $e->getMessage());
         }
 
+        // PostgreSQL aborts the RefreshDatabase transaction after a failed ADD CONSTRAINT;
+        // further schema/DML on this connection will fail with 25P02 — message asserts above are enough.
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            return;
+        }
+
         $this->assertFalse(
             ReceiptFeedbackUnique::hasUniqueOnReceiptId(),
             'Unique must not exist after a failed ensure (duplicates still present)',

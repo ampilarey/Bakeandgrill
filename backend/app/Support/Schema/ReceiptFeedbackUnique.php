@@ -51,9 +51,15 @@ final class ReceiptFeedbackUnique
                 $table->unique('receipt_id', self::INDEX_NAME);
             });
         } catch (\Throwable $e) {
-            if (self::hasUniqueOnReceiptId()) {
-                // Constraint already existed under another name / race — confirmed present.
-                return;
+            // PostgreSQL aborts the ambient transaction after a failed ADD CONSTRAINT.
+            // Avoid further schema introspection on a dead TX — wrap and rethrow.
+            try {
+                if (self::hasUniqueOnReceiptId()) {
+                    // Constraint already existed under another name / race — confirmed present.
+                    return;
+                }
+            } catch (\Throwable) {
+                // Schema queries may fail after TX abort; treat as not unique.
             }
 
             throw new RuntimeException(
