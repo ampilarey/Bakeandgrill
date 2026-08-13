@@ -84,18 +84,13 @@ class PublicSiteSettingsTest extends TestCase
 
     public function test_public_api_returns_updated_menu_page_title(): void
     {
-        SiteSetting::updateOrCreate(
-            ['key' => 'menu_page_title', 'scope' => 'shared'],
-            [
-                'value' => 'Test Menu Headline',
-                'type' => 'text',
-                'group' => 'Menu',
-                'label' => 'Menu Page — Title',
-                'description' => '',
-                'is_public' => true,
-            ],
-        );
+        SiteSetting::set('menu_page_title', 'Test Menu Headline', 'order_app');
+        SiteSetting::query()
+            ->where('key', 'menu_page_title')
+            ->where('scope', 'order_app')
+            ->update(['is_public' => true, 'group' => 'Menu', 'type' => 'text']);
         SiteSetting::bust();
+        \App\Domains\Content\ContentResolver::bust();
 
         $response = $this->getJson('/api/site-settings/public');
         $response->assertOk();

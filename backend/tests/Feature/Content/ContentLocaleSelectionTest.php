@@ -23,8 +23,8 @@ class ContentLocaleSelectionTest extends TestCase
 
     public function test_website_query_locale_renders_localized_content_and_sets_cookie(): void
     {
-        SiteSetting::set('site_name', 'Bake English', 'shared', 'en');
-        SiteSetting::set('site_name', 'ބޭކް ދިވެހި', 'shared', 'dv');
+        SiteSetting::set('site_name', 'Bake English', 'website', 'en');
+        SiteSetting::set('site_name', 'ބޭކް ދިވެހި', 'website', 'dv');
 
         $this->get('/?lang=dv')
             ->assertOk()

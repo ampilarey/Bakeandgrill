@@ -45,30 +45,11 @@ class WebsiteFooterTest extends TestCase
         $this->assertStringNotContainsString('data-social="facebook"', $emptyHtml);
         $this->assertStringNotContainsString('data-social="tiktok"', $emptyHtml);
 
-        SiteSetting::updateOrCreate(
-            ['key' => 'social_instagram'],
-            [
-                'value' => 'https://instagram.com/bakeandgrill',
-                'type' => 'text',
-                'group' => 'Social',
-                'label' => 'Instagram URL',
-                'description' => '',
-                'is_public' => true,
-            ],
-        );
-        SiteSetting::updateOrCreate(
-            ['key' => 'social_facebook'],
-            [
-                'value' => 'https://facebook.com/bakeandgrill',
-                'type' => 'text',
-                'group' => 'Social',
-                'label' => 'Facebook URL',
-                'description' => '',
-                'is_public' => true,
-            ],
-        );
+        SiteSetting::set('social_instagram', 'https://instagram.com/bakeandgrill', 'website');
+        SiteSetting::set('social_facebook', 'https://facebook.com/bakeandgrill', 'website');
         SiteSetting::bust();
         Cache::flush();
+        \App\Domains\Content\ContentResolver::bust();
 
         $response = $this->get('/');
         $response->assertOk();
@@ -122,30 +103,11 @@ class WebsiteFooterTest extends TestCase
 
     public function test_footer_blurb_ignores_legacy_copyright_footer_text(): void
     {
-        SiteSetting::updateOrCreate(
-            ['key' => 'footer_text'],
-            [
-                'value' => '© 2026 Bake & Grill. All rights reserved.',
-                'type' => 'textarea',
-                'group' => 'Footer',
-                'label' => 'Footer blurb',
-                'description' => '',
-                'is_public' => true,
-            ],
-        );
-        SiteSetting::updateOrCreate(
-            ['key' => 'site_tagline'],
-            [
-                'value' => 'Fresh every day in Malé.',
-                'type' => 'textarea',
-                'group' => 'General',
-                'label' => 'Tagline',
-                'description' => '',
-                'is_public' => true,
-            ],
-        );
+        SiteSetting::set('footer_text', '© 2026 Bake & Grill. All rights reserved.', 'website');
+        SiteSetting::set('site_tagline', 'Fresh every day in Malé.', 'website');
         SiteSetting::bust();
         Cache::flush();
+        \App\Domains\Content\ContentResolver::bust();
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('data-footer-hours-today', $html);
