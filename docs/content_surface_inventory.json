@@ -1,0 +1,2441 @@
+{
+    "generated_for_commit": "9af4350fa",
+    "audited_at": "2026-08-13",
+    "website": {
+        "page_count_keys": 149,
+        "pages": {
+            "everywhere": {
+                "title": "Everywhere (layout chrome)",
+                "route": "layout.blade.php (all pages extending layout)",
+                "template": "backend/resources/views/layout.blade.php",
+                "keys": [
+                    "language_switcher_enabled",
+                    "site_name",
+                    "site_tagline",
+                    "meta_title",
+                    "meta_description",
+                    "meta_keywords",
+                    "og_image",
+                    "logo",
+                    "logo_dark",
+                    "primary_color",
+                    "favicon",
+                    "business_phone",
+                    "business_email",
+                    "business_address",
+                    "business_landmark",
+                    "business_maps_url",
+                    "business_whatsapp",
+                    "business_viber",
+                    "google_tag_manager_id",
+                    "google_analytics_id",
+                    "announcement_enabled",
+                    "announcement_style",
+                    "announcement_text",
+                    "announcement_url",
+                    "footer_contact_heading",
+                    "footer_delivery_text",
+                    "footer_hours_heading",
+                    "footer_links",
+                    "footer_location_heading",
+                    "footer_payments_text",
+                    "footer_quick_links_heading",
+                    "footer_ramadan_note",
+                    "footer_rights_suffix",
+                    "footer_text",
+                    "footer_thanks",
+                    "show_social_links",
+                    "social_facebook",
+                    "social_instagram",
+                    "social_tiktok",
+                    "nav_order_cta_text",
+                    "home_chat_label"
+                ],
+                "renderers": {
+                    "language_switcher_enabled": "layout.blade.php header",
+                    "site_name": "layout.blade.php / OG / footer",
+                    "site_tagline": "layout.blade.php footer",
+                    "meta_title": "layout.blade.php <title>",
+                    "meta_description": "layout.blade.php meta",
+                    "meta_keywords": "layout.blade.php meta",
+                    "og_image": "layout.blade.php OG",
+                    "logo": "layout.blade.php header/footer",
+                    "logo_dark": "layout.blade.php",
+                    "primary_color": "BrandPalette via layout",
+                    "favicon": "layout.blade.php",
+                    "business_phone": "layout footer contact",
+                    "business_email": "layout footer contact",
+                    "business_address": "layout footer contact",
+                    "business_landmark": "layout footer contact",
+                    "business_maps_url": "layout footer contact",
+                    "business_whatsapp": "layout footer contact",
+                    "business_viber": "layout footer contact",
+                    "google_tag_manager_id": "layout head",
+                    "google_analytics_id": "layout head",
+                    "announcement_enabled": "layout announcement gate",
+                    "announcement_style": "layout announcement",
+                    "announcement_text": "layout announcement",
+                    "announcement_url": "layout announcement",
+                    "footer_contact_heading": "layout site_footer chrome",
+                    "footer_delivery_text": "layout site_footer chrome",
+                    "footer_hours_heading": "layout site_footer chrome",
+                    "footer_links": "layout site_footer chrome",
+                    "footer_location_heading": "layout site_footer chrome",
+                    "footer_payments_text": "layout site_footer chrome",
+                    "footer_quick_links_heading": "layout site_footer chrome",
+                    "footer_ramadan_note": "layout site_footer chrome",
+                    "footer_rights_suffix": "layout site_footer chrome",
+                    "footer_text": "layout site_footer chrome",
+                    "footer_thanks": "layout site_footer chrome",
+                    "show_social_links": "layout site_footer chrome",
+                    "social_facebook": "layout site_footer chrome",
+                    "social_instagram": "layout site_footer chrome",
+                    "social_tiktok": "layout site_footer chrome",
+                    "nav_order_cta_text": "layout HEADER Order CTA (group=Footer mismatch)",
+                    "home_chat_label": "layout footer chat (group=Homepage mismatch)"
+                }
+            },
+            "home": {
+                "title": "Home",
+                "route": "GET / (name=home)",
+                "template": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                "keys": [
+                    "hero_slides",
+                    "trust_items",
+                    "homepage_categories",
+                    "proof_details",
+                    "proof_label",
+                    "proof_stat",
+                    "cta_band_headline",
+                    "cta_band_subtext",
+                    "default_item_image",
+                    "delivery_threshold",
+                    "delivery_time",
+                    "events_section_blurb",
+                    "events_section_browse_cta",
+                    "events_section_headline",
+                    "events_section_plan_cta",
+                    "home_call_cta",
+                    "home_categories_eyebrow",
+                    "home_categories_subtitle",
+                    "home_categories_title",
+                    "home_closed_badge_text",
+                    "home_delivery_card_title",
+                    "home_delivery_payment_line",
+                    "home_delivery_quality_line",
+                    "home_delivery_subtitle",
+                    "home_delivery_tagline",
+                    "home_directions_cta",
+                    "home_featured_eyebrow_bestseller",
+                    "home_featured_eyebrow_handpicked",
+                    "home_featured_subtitle",
+                    "home_featured_title_bestseller",
+                    "home_featured_title_handpicked",
+                    "home_location_eyebrow",
+                    "home_location_subtitle",
+                    "home_location_title",
+                    "home_open_badge_text",
+                    "home_order_via_app_label",
+                    "home_proof_eyebrow",
+                    "home_specials_eyebrow",
+                    "home_specials_title",
+                    "home_visit_card_title",
+                    "offers_headline",
+                    "offers_subtext",
+                    "order_mode_delivery_hint",
+                    "order_mode_delivery_info",
+                    "order_mode_dine_in_hint",
+                    "order_mode_dine_in_info",
+                    "order_mode_learn_more",
+                    "order_mode_pickup_hint",
+                    "order_mode_pickup_info",
+                    "order_mode_status_available",
+                    "order_mode_status_unavailable",
+                    "order_mode_status_unavailable_opens"
+                ],
+                "renderers": {
+                    "hero_slides": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "trust_items": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "homepage_categories": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "proof_details": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "proof_label": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "proof_stat": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "cta_band_headline": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "cta_band_subtext": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "default_item_image": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "delivery_threshold": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "delivery_time": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "events_section_blurb": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "events_section_browse_cta": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "events_section_headline": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "events_section_plan_cta": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_call_cta": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_categories_eyebrow": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_categories_subtitle": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_categories_title": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_closed_badge_text": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_delivery_card_title": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_delivery_payment_line": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_delivery_quality_line": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_delivery_subtitle": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_delivery_tagline": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_directions_cta": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_featured_eyebrow_bestseller": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_featured_eyebrow_handpicked": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_featured_subtitle": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_featured_title_bestseller": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_featured_title_handpicked": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_location_eyebrow": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_location_subtitle": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_location_title": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_open_badge_text": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_order_via_app_label": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_proof_eyebrow": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_specials_eyebrow": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_specials_title": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "home_visit_card_title": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "offers_headline": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "offers_subtext": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_delivery_hint": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_delivery_info": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_dine_in_hint": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_dine_in_info": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_learn_more": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_pickup_hint": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_pickup_info": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_status_available": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_status_unavailable": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_status_unavailable_opens": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+                },
+                "notes": "Composable via page_blocks. Order = DB position / order_desktop / order_mobile for surface home. Walker maps block_type → partials/home/{type}. mode_cards reads order_mode_* via ModeEntryCardsPresenter (not literal content() in blade). Events & Catering has no standalone website page — events_section_* render in home events_band only. Menu URL redirects to /order/menu."
+            },
+            "contact": {
+                "title": "Contact",
+                "route": "GET /contact",
+                "template": "backend/resources/views/contact.blade.php",
+                "keys": [
+                    "business_hours",
+                    "maps_embed_url",
+                    "contact_email_label",
+                    "contact_events_cta_headline",
+                    "contact_events_cta_text",
+                    "contact_hours_fallback",
+                    "contact_hours_heading",
+                    "contact_location_heading",
+                    "contact_location_maps_label",
+                    "contact_map_heading",
+                    "contact_meta_title",
+                    "contact_page_eyebrow",
+                    "contact_page_subtitle",
+                    "contact_page_title",
+                    "contact_phone_label",
+                    "contact_schedule_label",
+                    "contact_touch_heading",
+                    "contact_viber_label",
+                    "contact_whatsapp_label"
+                ],
+                "renderers": {
+                    "business_hours": "backend/resources/views/contact.blade.php",
+                    "maps_embed_url": "backend/resources/views/contact.blade.php",
+                    "contact_email_label": "backend/resources/views/contact.blade.php",
+                    "contact_events_cta_headline": "backend/resources/views/contact.blade.php",
+                    "contact_events_cta_text": "backend/resources/views/contact.blade.php",
+                    "contact_hours_fallback": "backend/resources/views/contact.blade.php",
+                    "contact_hours_heading": "backend/resources/views/contact.blade.php",
+                    "contact_location_heading": "backend/resources/views/contact.blade.php",
+                    "contact_location_maps_label": "backend/resources/views/contact.blade.php",
+                    "contact_map_heading": "backend/resources/views/contact.blade.php",
+                    "contact_meta_title": "backend/resources/views/contact.blade.php",
+                    "contact_page_eyebrow": "backend/resources/views/contact.blade.php",
+                    "contact_page_subtitle": "backend/resources/views/contact.blade.php",
+                    "contact_page_title": "backend/resources/views/contact.blade.php",
+                    "contact_phone_label": "backend/resources/views/contact.blade.php",
+                    "contact_schedule_label": "backend/resources/views/contact.blade.php",
+                    "contact_touch_heading": "backend/resources/views/contact.blade.php",
+                    "contact_viber_label": "backend/resources/views/contact.blade.php",
+                    "contact_whatsapp_label": "backend/resources/views/contact.blade.php"
+                }
+            },
+            "hours": {
+                "title": "Hours",
+                "route": "GET /hours",
+                "template": "backend/resources/views/hours.blade.php",
+                "keys": [
+                    "hours_call_confirm_label",
+                    "hours_closed_status_text",
+                    "hours_contact_page_label",
+                    "hours_meta_description",
+                    "hours_meta_title",
+                    "hours_open_status_text",
+                    "hours_order_btn_label",
+                    "hours_page_cta_subtitle",
+                    "hours_page_cta_title",
+                    "hours_page_eyebrow",
+                    "hours_page_note",
+                    "hours_page_title",
+                    "hours_special_closure_label"
+                ],
+                "renderers": {
+                    "hours_call_confirm_label": "backend/resources/views/hours.blade.php",
+                    "hours_closed_status_text": "backend/resources/views/hours.blade.php",
+                    "hours_contact_page_label": "backend/resources/views/hours.blade.php",
+                    "hours_meta_description": "backend/resources/views/hours.blade.php",
+                    "hours_meta_title": "backend/resources/views/hours.blade.php",
+                    "hours_open_status_text": "backend/resources/views/hours.blade.php",
+                    "hours_order_btn_label": "backend/resources/views/hours.blade.php",
+                    "hours_page_cta_subtitle": "backend/resources/views/hours.blade.php",
+                    "hours_page_cta_title": "backend/resources/views/hours.blade.php",
+                    "hours_page_eyebrow": "backend/resources/views/hours.blade.php",
+                    "hours_page_note": "backend/resources/views/hours.blade.php",
+                    "hours_page_title": "backend/resources/views/hours.blade.php",
+                    "hours_special_closure_label": "backend/resources/views/hours.blade.php"
+                }
+            },
+            "legal_privacy": {
+                "title": "Legal — Privacy",
+                "route": "GET /privacy → 301 /order/privacy (blade privacy.blade.php exists but public URL is Order App)",
+                "template": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                "keys": [
+                    "legal_privacy_body",
+                    "legal_last_updated_date",
+                    "privacy_address_label",
+                    "privacy_email",
+                    "privacy_email_label",
+                    "privacy_last_updated_label",
+                    "privacy_meta_title",
+                    "privacy_page_title",
+                    "privacy_phone_label"
+                ],
+                "renderers": {
+                    "legal_privacy_body": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "legal_last_updated_date": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_address_label": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_email": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_email_label": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_last_updated_label": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_meta_title": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_page_title": "backend/resources/views/privacy.blade.php (unrouted publicly)",
+                    "privacy_phone_label": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+                }
+            },
+            "legal_terms": {
+                "title": "Legal — Terms",
+                "route": "GET /terms",
+                "template": "backend/resources/views/terms.blade.php",
+                "keys": [
+                    "legal_terms_body",
+                    "terms_email_label",
+                    "terms_last_updated_label",
+                    "terms_meta_title",
+                    "terms_page_corporate_service_text",
+                    "terms_page_subtitle",
+                    "terms_page_title",
+                    "terms_phone_label"
+                ],
+                "renderers": {
+                    "legal_terms_body": "backend/resources/views/terms.blade.php",
+                    "terms_email_label": "backend/resources/views/terms.blade.php",
+                    "terms_last_updated_label": "backend/resources/views/terms.blade.php",
+                    "terms_meta_title": "backend/resources/views/terms.blade.php",
+                    "terms_page_corporate_service_text": "backend/resources/views/terms.blade.php",
+                    "terms_page_subtitle": "backend/resources/views/terms.blade.php",
+                    "terms_page_title": "backend/resources/views/terms.blade.php",
+                    "terms_phone_label": "backend/resources/views/terms.blade.php"
+                }
+            },
+            "legal_refund": {
+                "title": "Legal — Refund",
+                "route": "GET /refund",
+                "template": "backend/resources/views/refund.blade.php",
+                "keys": [
+                    "legal_refund_body",
+                    "refund_last_updated_label",
+                    "refund_meta_title",
+                    "refund_page_subtitle",
+                    "refund_page_title"
+                ],
+                "renderers": {
+                    "legal_refund_body": "backend/resources/views/refund.blade.php",
+                    "refund_last_updated_label": "backend/resources/views/refund.blade.php",
+                    "refund_meta_title": "backend/resources/views/refund.blade.php",
+                    "refund_page_subtitle": "backend/resources/views/refund.blade.php",
+                    "refund_page_title": "backend/resources/views/refund.blade.php"
+                }
+            },
+            "menu": {
+                "title": "Menu",
+                "route": "GET /menu → 301 /order/menu",
+                "template": "(no website blade — Order App owns Menu)",
+                "keys": [],
+                "notes": "No website Menu page renderer. menu_new_days is listed under reads_nowhere for website.",
+                "renderers": []
+            },
+            "events_catering": {
+                "title": "Events & Catering",
+                "route": "No website page; /pre-order → /order/events",
+                "template": "Home band only: partials/home/events-band.blade.php",
+                "keys": [],
+                "notes": "events_section_* keys are inventoried under Home (where they render).",
+                "renderers": []
+            },
+            "reads_nowhere": {
+                "title": "Reads nowhere I could find (website)",
+                "route": "n/a",
+                "template": "n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides",
+                "keys": [
+                    "business_website",
+                    "menu_new_days"
+                ],
+                "notes": "Do not delete. business_website may be intended for Contact/Signage; menu_new_days is an Order/Signage concern still registered for website.",
+                "renderers": {
+                    "business_website": "n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides",
+                    "menu_new_days": "n/a — no website Blade; Order App /view + Signage"
+                }
+            }
+        },
+        "key_index": {
+            "language_switcher_enabled": {
+                "page": "everywhere",
+                "order": 1,
+                "label": "Show language switcher (EN / ދވ)",
+                "group": "General",
+                "renderer": "layout.blade.php header"
+            },
+            "site_name": {
+                "page": "everywhere",
+                "order": 2,
+                "label": "Site Name",
+                "group": "General",
+                "renderer": "layout.blade.php / OG / footer"
+            },
+            "site_tagline": {
+                "page": "everywhere",
+                "order": 3,
+                "label": "Tagline",
+                "group": "General",
+                "renderer": "layout.blade.php footer"
+            },
+            "meta_title": {
+                "page": "everywhere",
+                "order": 4,
+                "label": "Meta Title",
+                "group": "SEO",
+                "renderer": "layout.blade.php <title>"
+            },
+            "meta_description": {
+                "page": "everywhere",
+                "order": 5,
+                "label": "Meta Description",
+                "group": "SEO",
+                "renderer": "layout.blade.php meta"
+            },
+            "meta_keywords": {
+                "page": "everywhere",
+                "order": 6,
+                "label": "SEO — Meta keywords",
+                "group": "SEO",
+                "renderer": "layout.blade.php meta"
+            },
+            "og_image": {
+                "page": "everywhere",
+                "order": 7,
+                "label": "Link preview image",
+                "group": "Branding",
+                "renderer": "layout.blade.php OG"
+            },
+            "logo": {
+                "page": "everywhere",
+                "order": 8,
+                "label": "Logo (Light)",
+                "group": "Branding",
+                "renderer": "layout.blade.php header/footer"
+            },
+            "logo_dark": {
+                "page": "everywhere",
+                "order": 9,
+                "label": "Logo (Dark)",
+                "group": "Branding",
+                "renderer": "layout.blade.php"
+            },
+            "primary_color": {
+                "page": "everywhere",
+                "order": 10,
+                "label": "Primary Color",
+                "group": "Branding",
+                "renderer": "BrandPalette via layout"
+            },
+            "favicon": {
+                "page": "everywhere",
+                "order": 11,
+                "label": "Favicon",
+                "group": "Branding",
+                "renderer": "layout.blade.php"
+            },
+            "business_phone": {
+                "page": "everywhere",
+                "order": 12,
+                "label": "Business Phone",
+                "group": "General",
+                "renderer": "layout footer contact"
+            },
+            "business_email": {
+                "page": "everywhere",
+                "order": 13,
+                "label": "Business Email",
+                "group": "General",
+                "renderer": "layout footer contact"
+            },
+            "business_address": {
+                "page": "everywhere",
+                "order": 14,
+                "label": "Business Address",
+                "group": "General",
+                "renderer": "layout footer contact"
+            },
+            "business_landmark": {
+                "page": "everywhere",
+                "order": 15,
+                "label": "Landmark / Direction Hint",
+                "group": "Contact",
+                "renderer": "layout footer contact"
+            },
+            "business_maps_url": {
+                "page": "everywhere",
+                "order": 16,
+                "label": "Google Maps URL",
+                "group": "Contact",
+                "renderer": "layout footer contact"
+            },
+            "business_whatsapp": {
+                "page": "everywhere",
+                "order": 17,
+                "label": "WhatsApp Link",
+                "group": "Contact",
+                "renderer": "layout footer contact"
+            },
+            "business_viber": {
+                "page": "everywhere",
+                "order": 18,
+                "label": "Viber Link",
+                "group": "Contact",
+                "renderer": "layout footer contact"
+            },
+            "google_tag_manager_id": {
+                "page": "everywhere",
+                "order": 19,
+                "label": "Google Tag Manager ID",
+                "group": "SEO",
+                "renderer": "layout head"
+            },
+            "google_analytics_id": {
+                "page": "everywhere",
+                "order": 20,
+                "label": "Google Analytics ID",
+                "group": "SEO",
+                "renderer": "layout head"
+            },
+            "announcement_enabled": {
+                "page": "everywhere",
+                "order": 21,
+                "label": "Show Announcement Banner",
+                "group": "Announcements",
+                "renderer": "layout announcement gate"
+            },
+            "announcement_style": {
+                "page": "everywhere",
+                "order": 22,
+                "label": "Announcement — Style",
+                "group": "Announcements",
+                "renderer": "layout announcement"
+            },
+            "announcement_text": {
+                "page": "everywhere",
+                "order": 23,
+                "label": "Announcement — Text",
+                "group": "Announcements",
+                "renderer": "layout announcement"
+            },
+            "announcement_url": {
+                "page": "everywhere",
+                "order": 24,
+                "label": "Announcement — Link URL (optional)",
+                "group": "Announcements",
+                "renderer": "layout announcement"
+            },
+            "footer_contact_heading": {
+                "page": "everywhere",
+                "order": 25,
+                "label": "Footer — Contact Heading",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_delivery_text": {
+                "page": "everywhere",
+                "order": 26,
+                "label": "Footer — Delivery line",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_hours_heading": {
+                "page": "everywhere",
+                "order": 27,
+                "label": "Footer — Hours Heading",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_links": {
+                "page": "everywhere",
+                "order": 28,
+                "label": "Footer Links",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_location_heading": {
+                "page": "everywhere",
+                "order": 29,
+                "label": "Footer — Location Heading",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_payments_text": {
+                "page": "everywhere",
+                "order": 30,
+                "label": "Footer — Payments line",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_quick_links_heading": {
+                "page": "everywhere",
+                "order": 31,
+                "label": "Footer — Quick Links Heading",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_ramadan_note": {
+                "page": "everywhere",
+                "order": 32,
+                "label": "Footer — Ramadan note",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_rights_suffix": {
+                "page": "everywhere",
+                "order": 33,
+                "label": "Footer — Rights Suffix",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_text": {
+                "page": "everywhere",
+                "order": 34,
+                "label": "Footer blurb",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "footer_thanks": {
+                "page": "everywhere",
+                "order": 35,
+                "label": "Footer thanks",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "show_social_links": {
+                "page": "everywhere",
+                "order": 36,
+                "label": "Show social links",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "social_facebook": {
+                "page": "everywhere",
+                "order": 37,
+                "label": "Facebook URL",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "social_instagram": {
+                "page": "everywhere",
+                "order": 38,
+                "label": "Instagram URL",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "social_tiktok": {
+                "page": "everywhere",
+                "order": 39,
+                "label": "TikTok URL",
+                "group": "Footer",
+                "renderer": "layout site_footer chrome"
+            },
+            "nav_order_cta_text": {
+                "page": "everywhere",
+                "order": 40,
+                "label": "Nav — Order CTA Button",
+                "group": "Footer",
+                "renderer": "layout HEADER Order CTA (group=Footer mismatch)"
+            },
+            "home_chat_label": {
+                "page": "everywhere",
+                "order": 41,
+                "label": "Home — Chat label",
+                "group": "Homepage",
+                "renderer": "layout footer chat (group=Homepage mismatch)"
+            },
+            "hero_slides": {
+                "page": "home",
+                "order": 1,
+                "label": "Hero Slides",
+                "group": "Hero",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "trust_items": {
+                "page": "home",
+                "order": 2,
+                "label": "Trust Items",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "homepage_categories": {
+                "page": "home",
+                "order": 3,
+                "label": "Hedhikaa",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "proof_details": {
+                "page": "home",
+                "order": 4,
+                "label": "Baking starts",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "proof_label": {
+                "page": "home",
+                "order": 5,
+                "label": "Social Proof — Label",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "proof_stat": {
+                "page": "home",
+                "order": 6,
+                "label": "Social Proof — Main Stat",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "cta_band_headline": {
+                "page": "home",
+                "order": 7,
+                "label": "CTA Band — Headline",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "cta_band_subtext": {
+                "page": "home",
+                "order": 8,
+                "label": "CTA Band — Subtext",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "default_item_image": {
+                "page": "home",
+                "order": 9,
+                "label": "Default item photo",
+                "group": "Branding",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "delivery_threshold": {
+                "page": "home",
+                "order": 10,
+                "label": "Free Delivery Threshold",
+                "group": "Contact",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "delivery_time": {
+                "page": "home",
+                "order": 11,
+                "label": "Delivery Time Promise",
+                "group": "Contact",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "events_section_blurb": {
+                "page": "home",
+                "order": 12,
+                "label": "Events Section Blurb",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "events_section_browse_cta": {
+                "page": "home",
+                "order": 13,
+                "label": "Events Section Browse Cta",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "events_section_headline": {
+                "page": "home",
+                "order": 14,
+                "label": "Events Section Headline",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "events_section_plan_cta": {
+                "page": "home",
+                "order": 15,
+                "label": "Events Section Plan Cta",
+                "group": "Pages",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_call_cta": {
+                "page": "home",
+                "order": 16,
+                "label": "Home — Call CTA",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_categories_eyebrow": {
+                "page": "home",
+                "order": 17,
+                "label": "Categories Section — Eyebrow",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_categories_subtitle": {
+                "page": "home",
+                "order": 18,
+                "label": "Categories Section — Subtitle",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_categories_title": {
+                "page": "home",
+                "order": 19,
+                "label": "Categories Section — Title",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_closed_badge_text": {
+                "page": "home",
+                "order": 20,
+                "label": "Home — Closed Badge Text",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_delivery_card_title": {
+                "page": "home",
+                "order": 21,
+                "label": "Home — Delivery card title",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_delivery_payment_line": {
+                "page": "home",
+                "order": 22,
+                "label": "Delivery Card — Payment Line",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_delivery_quality_line": {
+                "page": "home",
+                "order": 23,
+                "label": "Delivery Card — Quality Line",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_delivery_subtitle": {
+                "page": "home",
+                "order": 24,
+                "label": "Delivery Card — Subtitle",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_delivery_tagline": {
+                "page": "home",
+                "order": 25,
+                "label": "Delivery Card — Tagline",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_directions_cta": {
+                "page": "home",
+                "order": 26,
+                "label": "Home — Directions CTA",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_featured_eyebrow_bestseller": {
+                "page": "home",
+                "order": 27,
+                "label": "Featured Items — Eyebrow (has sales data)",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_featured_eyebrow_handpicked": {
+                "page": "home",
+                "order": 28,
+                "label": "Featured Items — Eyebrow (no sales data)",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_featured_subtitle": {
+                "page": "home",
+                "order": 29,
+                "label": "Featured Items — Subtitle",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_featured_title_bestseller": {
+                "page": "home",
+                "order": 30,
+                "label": "Featured Items — Title (has sales data)",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_featured_title_handpicked": {
+                "page": "home",
+                "order": 31,
+                "label": "Featured Items — Title (no sales data)",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_location_eyebrow": {
+                "page": "home",
+                "order": 32,
+                "label": "Location Section — Eyebrow",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_location_subtitle": {
+                "page": "home",
+                "order": 33,
+                "label": "Location Section — Subtitle",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_location_title": {
+                "page": "home",
+                "order": 34,
+                "label": "Location Section — Title",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_open_badge_text": {
+                "page": "home",
+                "order": 35,
+                "label": "Home — Open Badge Text",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_order_via_app_label": {
+                "page": "home",
+                "order": 36,
+                "label": "Home — Order via app label",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_proof_eyebrow": {
+                "page": "home",
+                "order": 37,
+                "label": "Social Proof — Eyebrow",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_specials_eyebrow": {
+                "page": "home",
+                "order": 38,
+                "label": "Specials eyebrow",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_specials_title": {
+                "page": "home",
+                "order": 39,
+                "label": "Specials title",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "home_visit_card_title": {
+                "page": "home",
+                "order": 40,
+                "label": "Home — Visit card title",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "offers_headline": {
+                "page": "home",
+                "order": 41,
+                "label": "Offers rail headline",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "offers_subtext": {
+                "page": "home",
+                "order": 42,
+                "label": "Offers rail subtext",
+                "group": "Homepage",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_delivery_hint": {
+                "page": "home",
+                "order": 43,
+                "label": "Delivery mode hint",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_delivery_info": {
+                "page": "home",
+                "order": 44,
+                "label": "Delivery — info sheet",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_dine_in_hint": {
+                "page": "home",
+                "order": 45,
+                "label": "Eat here mode hint",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_dine_in_info": {
+                "page": "home",
+                "order": 46,
+                "label": "Eat here — info sheet",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_learn_more": {
+                "page": "home",
+                "order": 47,
+                "label": "Mode card — Learn more",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_pickup_hint": {
+                "page": "home",
+                "order": 48,
+                "label": "Pickup mode hint",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_pickup_info": {
+                "page": "home",
+                "order": 49,
+                "label": "Pickup — info sheet",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_status_available": {
+                "page": "home",
+                "order": 50,
+                "label": "Mode status — available",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_status_unavailable": {
+                "page": "home",
+                "order": 51,
+                "label": "Mode status — unavailable",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_status_unavailable_opens": {
+                "page": "home",
+                "order": 52,
+                "label": "Mode status — closed until",
+                "group": "Order App",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "business_hours": {
+                "page": "contact",
+                "order": 1,
+                "label": "Business Hours (display)",
+                "group": "General",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "maps_embed_url": {
+                "page": "contact",
+                "order": 2,
+                "label": "Google Maps embed URL",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_email_label": {
+                "page": "contact",
+                "order": 3,
+                "label": "Contact Page — Email Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_events_cta_headline": {
+                "page": "contact",
+                "order": 4,
+                "label": "Contact Events Cta Headline",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_events_cta_text": {
+                "page": "contact",
+                "order": 5,
+                "label": "Contact Events Cta Text",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_hours_fallback": {
+                "page": "contact",
+                "order": 6,
+                "label": "Contact Page — Hours Fallback Text",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_hours_heading": {
+                "page": "contact",
+                "order": 7,
+                "label": "Contact Page — Hours Card Heading",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_location_heading": {
+                "page": "contact",
+                "order": 8,
+                "label": "Contact Page — Location Card Heading",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_location_maps_label": {
+                "page": "contact",
+                "order": 9,
+                "label": "Contact Page — Maps Link Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_map_heading": {
+                "page": "contact",
+                "order": 10,
+                "label": "Contact Page — Map Section Heading",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_meta_title": {
+                "page": "contact",
+                "order": 11,
+                "label": "Contact Page — Browser Title",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_page_eyebrow": {
+                "page": "contact",
+                "order": 12,
+                "label": "Contact Page — Hero Eyebrow",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_page_subtitle": {
+                "page": "contact",
+                "order": 13,
+                "label": "Contact Page — Hero Subtitle",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_page_title": {
+                "page": "contact",
+                "order": 14,
+                "label": "Contact Page — Hero Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_phone_label": {
+                "page": "contact",
+                "order": 15,
+                "label": "Contact Page — Phone Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_schedule_label": {
+                "page": "contact",
+                "order": 16,
+                "label": "Contact Page — Schedule Link Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_touch_heading": {
+                "page": "contact",
+                "order": 17,
+                "label": "Contact Page — Contact Card Heading",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_viber_label": {
+                "page": "contact",
+                "order": 18,
+                "label": "Contact Page — Viber Button Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "contact_whatsapp_label": {
+                "page": "contact",
+                "order": 19,
+                "label": "Contact Page — WhatsApp Button Label",
+                "group": "Contact",
+                "renderer": "backend/resources/views/contact.blade.php"
+            },
+            "hours_call_confirm_label": {
+                "page": "hours",
+                "order": 1,
+                "label": "Hours Page — Footer \"Call to confirm\" prefix",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_closed_status_text": {
+                "page": "hours",
+                "order": 2,
+                "label": "Hours Page — Closed Status Badge",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_contact_page_label": {
+                "page": "hours",
+                "order": 3,
+                "label": "Hours Page — Footer contact-page link label",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_meta_description": {
+                "page": "hours",
+                "order": 4,
+                "label": "Hours Page — Meta Description",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_meta_title": {
+                "page": "hours",
+                "order": 5,
+                "label": "Hours Page — Browser Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_open_status_text": {
+                "page": "hours",
+                "order": 6,
+                "label": "Hours Page — Open Status Badge",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_order_btn_label": {
+                "page": "hours",
+                "order": 7,
+                "label": "Hours Page — CTA Button Label",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_page_cta_subtitle": {
+                "page": "hours",
+                "order": 8,
+                "label": "Hours Page — CTA Subtitle",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_page_cta_title": {
+                "page": "hours",
+                "order": 9,
+                "label": "Hours Page — CTA Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_page_eyebrow": {
+                "page": "hours",
+                "order": 10,
+                "label": "Hours Page — Hero Eyebrow",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_page_note": {
+                "page": "hours",
+                "order": 11,
+                "label": "Hours Page — Holiday Note",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_page_title": {
+                "page": "hours",
+                "order": 12,
+                "label": "Hours Page — Hero Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "hours_special_closure_label": {
+                "page": "hours",
+                "order": 13,
+                "label": "Hours Page — Special Closure Prefix",
+                "group": "Pages",
+                "renderer": "backend/resources/views/hours.blade.php"
+            },
+            "legal_privacy_body": {
+                "page": "legal_privacy",
+                "order": 1,
+                "label": "Privacy Policy — Body Override (plain text)",
+                "group": "Legal",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "legal_last_updated_date": {
+                "page": "legal_privacy",
+                "order": 2,
+                "label": "Legal — Last updated date",
+                "group": "Legal",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_address_label": {
+                "page": "legal_privacy",
+                "order": 3,
+                "label": "Privacy Page — Address Label in Contact block",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_email": {
+                "page": "legal_privacy",
+                "order": 4,
+                "label": "Privacy Page — Privacy Contact Email",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_email_label": {
+                "page": "legal_privacy",
+                "order": 5,
+                "label": "Privacy Page — Email Label in Contact block",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_last_updated_label": {
+                "page": "legal_privacy",
+                "order": 6,
+                "label": "Privacy Page — \"Last updated\" prefix",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_meta_title": {
+                "page": "legal_privacy",
+                "order": 7,
+                "label": "Privacy Page — Browser Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_page_title": {
+                "page": "legal_privacy",
+                "order": 8,
+                "label": "Privacy Page — Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "privacy_phone_label": {
+                "page": "legal_privacy",
+                "order": 9,
+                "label": "Privacy Page — Phone Label in Contact block",
+                "group": "Pages",
+                "renderer": "backend/resources/views/privacy.blade.php (unrouted publicly)"
+            },
+            "legal_terms_body": {
+                "page": "legal_terms",
+                "order": 1,
+                "label": "Terms & Conditions — Body Override (plain text)",
+                "group": "Legal",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_email_label": {
+                "page": "legal_terms",
+                "order": 2,
+                "label": "Terms Page — Email Label in Corporate Box",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_last_updated_label": {
+                "page": "legal_terms",
+                "order": 3,
+                "label": "Terms Page — \"Last updated\" prefix",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_meta_title": {
+                "page": "legal_terms",
+                "order": 4,
+                "label": "Terms Page — Browser Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_page_corporate_service_text": {
+                "page": "legal_terms",
+                "order": 5,
+                "label": "Terms Page — Corporate Box Service Line",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_page_subtitle": {
+                "page": "legal_terms",
+                "order": 6,
+                "label": "Terms Page — Subtitle",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_page_title": {
+                "page": "legal_terms",
+                "order": 7,
+                "label": "Terms Page — Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "terms_phone_label": {
+                "page": "legal_terms",
+                "order": 8,
+                "label": "Terms Page — Phone Label in Corporate Box",
+                "group": "Pages",
+                "renderer": "backend/resources/views/terms.blade.php"
+            },
+            "legal_refund_body": {
+                "page": "legal_refund",
+                "order": 1,
+                "label": "Refund Policy — Body Override (plain text)",
+                "group": "Legal",
+                "renderer": "backend/resources/views/refund.blade.php"
+            },
+            "refund_last_updated_label": {
+                "page": "legal_refund",
+                "order": 2,
+                "label": "Refund Page — \"Last updated\" prefix",
+                "group": "Pages",
+                "renderer": "backend/resources/views/refund.blade.php"
+            },
+            "refund_meta_title": {
+                "page": "legal_refund",
+                "order": 3,
+                "label": "Refund Page — Browser Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/refund.blade.php"
+            },
+            "refund_page_subtitle": {
+                "page": "legal_refund",
+                "order": 4,
+                "label": "Refund Page — Subtitle",
+                "group": "Pages",
+                "renderer": "backend/resources/views/refund.blade.php"
+            },
+            "refund_page_title": {
+                "page": "legal_refund",
+                "order": 5,
+                "label": "Refund Page — Title",
+                "group": "Pages",
+                "renderer": "backend/resources/views/refund.blade.php"
+            },
+            "business_website": {
+                "page": "reads_nowhere",
+                "order": 1,
+                "label": "Business Website",
+                "group": "Contact",
+                "renderer": "n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides"
+            },
+            "menu_new_days": {
+                "page": "reads_nowhere",
+                "order": 2,
+                "label": "New items window (days)",
+                "group": "Menu",
+                "renderer": "n/a — no website Blade; Order App /view + Signage"
+            }
+        }
+    },
+    "order_app": {
+        "page_count_keys": 88,
+        "pages": {
+            "everywhere": {
+                "title": "Everywhere (shell chrome)",
+                "route": "AppShell / TopNav / Analytics / language gate",
+                "template": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                "keys": [
+                    "language_switcher_enabled",
+                    "site_name",
+                    "site_tagline",
+                    "logo",
+                    "logo_dark",
+                    "favicon",
+                    "primary_color",
+                    "google_analytics_id",
+                    "google_tag_manager_id",
+                    "announcement_enabled",
+                    "announcement_style",
+                    "announcement_text",
+                    "announcement_url",
+                    "business_phone",
+                    "business_email",
+                    "business_address",
+                    "business_landmark",
+                    "business_maps_url",
+                    "business_whatsapp",
+                    "business_viber",
+                    "footer_contact_heading",
+                    "footer_delivery_text",
+                    "footer_hours_heading",
+                    "footer_links",
+                    "footer_location_heading",
+                    "footer_payments_text",
+                    "footer_quick_links_heading",
+                    "footer_rights_suffix",
+                    "footer_text",
+                    "footer_thanks",
+                    "show_social_links",
+                    "social_facebook",
+                    "social_instagram",
+                    "social_tiktok",
+                    "nav_order_cta_text",
+                    "home_chat_label"
+                ],
+                "renderers": {
+                    "language_switcher_enabled": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "site_name": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "site_tagline": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "logo": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "logo_dark": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "favicon": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "primary_color": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "google_analytics_id": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "google_tag_manager_id": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "announcement_enabled": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "announcement_style": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "announcement_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "announcement_url": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_phone": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_email": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_address": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_landmark": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_maps_url": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_whatsapp": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "business_viber": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_contact_heading": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_delivery_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_hours_heading": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_links": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_location_heading": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_payments_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_quick_links_heading": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_rights_suffix": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "footer_thanks": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "show_social_links": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "social_facebook": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "social_instagram": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "social_tiktok": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "nav_order_cta_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "home_chat_label": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+                }
+            },
+            "home": {
+                "title": "Home",
+                "route": "/order/ (index)",
+                "template": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                "keys": [
+                    "hero_slides",
+                    "homepage_categories",
+                    "trust_items",
+                    "home_categories_eyebrow",
+                    "home_categories_title",
+                    "home_delivery_tagline",
+                    "home_hero_fallback_subtitle",
+                    "home_hero_fallback_title",
+                    "home_proof_eyebrow",
+                    "home_specials_eyebrow",
+                    "home_specials_title",
+                    "offers_headline",
+                    "offers_subtext",
+                    "office_orders_enabled",
+                    "office_orders_headline",
+                    "office_orders_subtext",
+                    "order_home_reviews_title",
+                    "order_home_greeting_hello",
+                    "order_home_greeting_named",
+                    "order_home_greeting_sub",
+                    "order_mode_delivery_hint",
+                    "order_mode_pickup_hint",
+                    "order_mode_dine_in_hint",
+                    "order_mode_delivery_info",
+                    "order_mode_pickup_info",
+                    "order_mode_dine_in_info",
+                    "order_mode_status_available",
+                    "order_mode_status_unavailable",
+                    "order_mode_status_unavailable_opens",
+                    "order_mode_learn_more",
+                    "delivery_threshold",
+                    "delivery_time",
+                    "order_hours_closed",
+                    "order_hours_closed_opens",
+                    "order_hours_open",
+                    "order_hours_open_closes"
+                ],
+                "notes": "Composable via page_blocks (PageBlocksContext). Order from surfaceBlocks.ts. Opening Ordering is Home mode_cards → /menu → /checkout (no /ordering route).",
+                "renderers": {
+                    "hero_slides": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "homepage_categories": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "trust_items": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_categories_eyebrow": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_categories_title": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_delivery_tagline": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_hero_fallback_subtitle": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_hero_fallback_title": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_proof_eyebrow": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_specials_eyebrow": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "home_specials_title": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "offers_headline": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "offers_subtext": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "office_orders_enabled": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "office_orders_headline": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "office_orders_subtext": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_home_reviews_title": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_home_greeting_hello": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_home_greeting_named": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_home_greeting_sub": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_delivery_hint": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_pickup_hint": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_dine_in_hint": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_delivery_info": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_pickup_info": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_dine_in_info": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_status_available": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_status_unavailable": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_status_unavailable_opens": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_learn_more": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "delivery_threshold": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "delivery_time": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_hours_closed": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_hours_closed_opens": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_hours_open": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_hours_open_closes": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+                }
+            },
+            "menu": {
+                "title": "Menu",
+                "route": "/order/menu",
+                "template": "apps/online-order-web/src/pages/MenuPage.tsx",
+                "keys": [
+                    "menu_page_title",
+                    "default_item_image",
+                    "menu_new_days"
+                ],
+                "notes": "menu_new_days is read on MenuViewPage (/view) and Signage, not MenuPage itself — still assigned to Menu as the product surface.",
+                "renderers": {
+                    "menu_page_title": "apps/online-order-web/src/pages/MenuPage.tsx",
+                    "default_item_image": "apps/online-order-web/src/pages/MenuPage.tsx",
+                    "menu_new_days": "apps/online-order-web/src/pages/MenuPage.tsx"
+                }
+            },
+            "ordering": {
+                "title": "Ordering (checkout + auth)",
+                "route": "/order/checkout (+ AuthBlock); mode entry on Home",
+                "template": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)",
+                "keys": [
+                    "order_checkout_title",
+                    "order_checkout_subtitle",
+                    "order_payment_compliance",
+                    "order_auth_privacy_line"
+                ],
+                "renderers": {
+                    "order_checkout_title": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)",
+                    "order_checkout_subtitle": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)",
+                    "order_payment_compliance": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)",
+                    "order_auth_privacy_line": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)"
+                }
+            },
+            "order_history": {
+                "title": "Order history",
+                "route": "/order/order-history",
+                "template": "OrderHistoryPage.tsx",
+                "keys": [],
+                "notes": "Uses i18n only — no content.php keys.",
+                "renderers": []
+            },
+            "gift_cards": {
+                "title": "Gift cards",
+                "route": "/order/gift-cards*",
+                "template": "GiftCardsPage.tsx / BuyGiftCardPage / GiftCardPurchaseSuccessPage",
+                "keys": [],
+                "notes": "Success page reads business_whatsapp (inventoried under Everywhere contact). No gift-card-specific registry keys.",
+                "renderers": []
+            },
+            "about": {
+                "title": "About (extra SPA page)",
+                "route": "/order/about (exists in SPA)",
+                "template": "About page components",
+                "keys": [
+                    "about_page_story",
+                    "about_page_title",
+                    "about_values"
+                ],
+                "renderers": {
+                    "about_page_story": "About page components",
+                    "about_page_title": "About page components",
+                    "about_values": "About page components"
+                }
+            },
+            "contact": {
+                "title": "Contact (extra SPA page)",
+                "route": "/order/contact",
+                "template": "Contact page",
+                "keys": [
+                    "contact_page_title",
+                    "contact_page_subtitle"
+                ],
+                "renderers": {
+                    "contact_page_title": "Contact page",
+                    "contact_page_subtitle": "Contact page"
+                }
+            },
+            "hours": {
+                "title": "Hours (extra SPA page)",
+                "route": "/order/hours",
+                "template": "HoursPage.tsx",
+                "keys": [
+                    "hours_page_title"
+                ],
+                "renderers": {
+                    "hours_page_title": "HoursPage.tsx"
+                }
+            },
+            "privacy": {
+                "title": "Privacy (extra SPA page)",
+                "route": "/order/privacy",
+                "template": "Privacy page",
+                "keys": [
+                    "privacy_page_title",
+                    "legal_privacy_body"
+                ],
+                "renderers": {
+                    "privacy_page_title": "Privacy page",
+                    "legal_privacy_body": "Privacy page"
+                }
+            },
+            "reads_nowhere": {
+                "title": "Reads nowhere I could find (order app)",
+                "route": "n/a",
+                "template": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)",
+                "keys": [
+                    "business_website"
+                ],
+                "notes": "business_website appears typed for Signage TV path in audit notes; not found on customer Order App pages. Do not delete.",
+                "renderers": {
+                    "business_website": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)"
+                }
+            }
+        },
+        "key_index": {
+            "language_switcher_enabled": {
+                "page": "everywhere",
+                "order": 1,
+                "label": "Show language switcher (EN / ދވ)",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "site_name": {
+                "page": "everywhere",
+                "order": 2,
+                "label": "Site Name",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "site_tagline": {
+                "page": "everywhere",
+                "order": 3,
+                "label": "Tagline",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "logo": {
+                "page": "everywhere",
+                "order": 4,
+                "label": "Logo (Light)",
+                "group": "Branding",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "logo_dark": {
+                "page": "everywhere",
+                "order": 5,
+                "label": "Logo (Dark)",
+                "group": "Branding",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "favicon": {
+                "page": "everywhere",
+                "order": 6,
+                "label": "Favicon",
+                "group": "Branding",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "primary_color": {
+                "page": "everywhere",
+                "order": 7,
+                "label": "Primary Color",
+                "group": "Branding",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "google_analytics_id": {
+                "page": "everywhere",
+                "order": 8,
+                "label": "Google Analytics ID",
+                "group": "SEO",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "google_tag_manager_id": {
+                "page": "everywhere",
+                "order": 9,
+                "label": "Google Tag Manager ID",
+                "group": "SEO",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "announcement_enabled": {
+                "page": "everywhere",
+                "order": 10,
+                "label": "Show Announcement Banner",
+                "group": "Announcements",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "announcement_style": {
+                "page": "everywhere",
+                "order": 11,
+                "label": "Announcement — Style",
+                "group": "Announcements",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "announcement_text": {
+                "page": "everywhere",
+                "order": 12,
+                "label": "Announcement — Text",
+                "group": "Announcements",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "announcement_url": {
+                "page": "everywhere",
+                "order": 13,
+                "label": "Announcement — Link URL (optional)",
+                "group": "Announcements",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_phone": {
+                "page": "everywhere",
+                "order": 14,
+                "label": "Business Phone",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_email": {
+                "page": "everywhere",
+                "order": 15,
+                "label": "Business Email",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_address": {
+                "page": "everywhere",
+                "order": 16,
+                "label": "Business Address",
+                "group": "General",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_landmark": {
+                "page": "everywhere",
+                "order": 17,
+                "label": "Landmark / Direction Hint",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_maps_url": {
+                "page": "everywhere",
+                "order": 18,
+                "label": "Google Maps URL",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_whatsapp": {
+                "page": "everywhere",
+                "order": 19,
+                "label": "WhatsApp Link",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "business_viber": {
+                "page": "everywhere",
+                "order": 20,
+                "label": "Viber Link",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_contact_heading": {
+                "page": "everywhere",
+                "order": 21,
+                "label": "Footer — Contact Heading",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_delivery_text": {
+                "page": "everywhere",
+                "order": 22,
+                "label": "Footer — Delivery line",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_hours_heading": {
+                "page": "everywhere",
+                "order": 23,
+                "label": "Footer — Hours Heading",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_links": {
+                "page": "everywhere",
+                "order": 24,
+                "label": "Footer Links",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_location_heading": {
+                "page": "everywhere",
+                "order": 25,
+                "label": "Footer — Location Heading",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_payments_text": {
+                "page": "everywhere",
+                "order": 26,
+                "label": "Footer — Payments line",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_quick_links_heading": {
+                "page": "everywhere",
+                "order": 27,
+                "label": "Footer — Quick Links Heading",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_rights_suffix": {
+                "page": "everywhere",
+                "order": 28,
+                "label": "Footer — Rights Suffix",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_text": {
+                "page": "everywhere",
+                "order": 29,
+                "label": "Footer blurb",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "footer_thanks": {
+                "page": "everywhere",
+                "order": 30,
+                "label": "Footer thanks",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "show_social_links": {
+                "page": "everywhere",
+                "order": 31,
+                "label": "Show social links",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "social_facebook": {
+                "page": "everywhere",
+                "order": 32,
+                "label": "Facebook URL",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "social_instagram": {
+                "page": "everywhere",
+                "order": 33,
+                "label": "Instagram URL",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "social_tiktok": {
+                "page": "everywhere",
+                "order": 34,
+                "label": "TikTok URL",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "nav_order_cta_text": {
+                "page": "everywhere",
+                "order": 35,
+                "label": "Nav — Order CTA Button",
+                "group": "Footer",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "home_chat_label": {
+                "page": "everywhere",
+                "order": 36,
+                "label": "Home — Chat label",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+            },
+            "hero_slides": {
+                "page": "home",
+                "order": 1,
+                "label": "Hero Slides",
+                "group": "Hero",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "homepage_categories": {
+                "page": "home",
+                "order": 2,
+                "label": "Hedhikaa",
+                "group": "Pages",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "trust_items": {
+                "page": "home",
+                "order": 3,
+                "label": "Trust Items",
+                "group": "Pages",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_categories_eyebrow": {
+                "page": "home",
+                "order": 4,
+                "label": "Categories Section — Eyebrow",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_categories_title": {
+                "page": "home",
+                "order": 5,
+                "label": "Categories Section — Title",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_delivery_tagline": {
+                "page": "home",
+                "order": 6,
+                "label": "Delivery Card — Tagline",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_hero_fallback_subtitle": {
+                "page": "home",
+                "order": 7,
+                "label": "Hero Fallback — Subtitle",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_hero_fallback_title": {
+                "page": "home",
+                "order": 8,
+                "label": "Hero Fallback — Title",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_proof_eyebrow": {
+                "page": "home",
+                "order": 9,
+                "label": "Social Proof — Eyebrow",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_specials_eyebrow": {
+                "page": "home",
+                "order": 10,
+                "label": "Specials eyebrow",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "home_specials_title": {
+                "page": "home",
+                "order": 11,
+                "label": "Specials title",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "offers_headline": {
+                "page": "home",
+                "order": 12,
+                "label": "Offers rail headline",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "offers_subtext": {
+                "page": "home",
+                "order": 13,
+                "label": "Offers rail subtext",
+                "group": "Homepage",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "office_orders_enabled": {
+                "page": "home",
+                "order": 14,
+                "label": "Office Orders Enabled",
+                "group": "Pages",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "office_orders_headline": {
+                "page": "home",
+                "order": 15,
+                "label": "Office Orders Headline",
+                "group": "Pages",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "office_orders_subtext": {
+                "page": "home",
+                "order": 16,
+                "label": "Office Orders Subtext",
+                "group": "Pages",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_home_reviews_title": {
+                "page": "home",
+                "order": 17,
+                "label": "Order home reviews title",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_home_greeting_hello": {
+                "page": "home",
+                "order": 18,
+                "label": "Home greeting — Hello",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_home_greeting_named": {
+                "page": "home",
+                "order": 19,
+                "label": "Home greeting — with name",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_home_greeting_sub": {
+                "page": "home",
+                "order": 20,
+                "label": "Home greeting — subtitle",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_delivery_hint": {
+                "page": "home",
+                "order": 21,
+                "label": "Delivery mode hint",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_pickup_hint": {
+                "page": "home",
+                "order": 22,
+                "label": "Pickup mode hint",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_dine_in_hint": {
+                "page": "home",
+                "order": 23,
+                "label": "Eat here mode hint",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_delivery_info": {
+                "page": "home",
+                "order": 24,
+                "label": "Delivery — info sheet",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_pickup_info": {
+                "page": "home",
+                "order": 25,
+                "label": "Pickup — info sheet",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_dine_in_info": {
+                "page": "home",
+                "order": 26,
+                "label": "Eat here — info sheet",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_status_available": {
+                "page": "home",
+                "order": 27,
+                "label": "Mode status — available",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_status_unavailable": {
+                "page": "home",
+                "order": 28,
+                "label": "Mode status — unavailable",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_status_unavailable_opens": {
+                "page": "home",
+                "order": 29,
+                "label": "Mode status — closed until",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_learn_more": {
+                "page": "home",
+                "order": 30,
+                "label": "Mode card — Learn more",
+                "group": "Order App",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "delivery_threshold": {
+                "page": "home",
+                "order": 31,
+                "label": "Free Delivery Threshold",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "delivery_time": {
+                "page": "home",
+                "order": 32,
+                "label": "Delivery Time Promise",
+                "group": "Contact",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_hours_closed": {
+                "page": "home",
+                "order": 33,
+                "label": "Hours badge — Closed",
+                "group": "Status banners",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_hours_closed_opens": {
+                "page": "home",
+                "order": 34,
+                "label": "Hours badge — Closed · Opens {time}",
+                "group": "Status banners",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_hours_open": {
+                "page": "home",
+                "order": 35,
+                "label": "Hours badge — Open",
+                "group": "Status banners",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_hours_open_closes": {
+                "page": "home",
+                "order": 36,
+                "label": "Hours badge — Open · Closes {time}",
+                "group": "Status banners",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "menu_page_title": {
+                "page": "menu",
+                "order": 1,
+                "label": "Menu Page — Title",
+                "group": "Menu",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "default_item_image": {
+                "page": "menu",
+                "order": 2,
+                "label": "Default item photo",
+                "group": "Branding",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "menu_new_days": {
+                "page": "menu",
+                "order": 3,
+                "label": "New items window (days)",
+                "group": "Menu",
+                "renderer": "apps/online-order-web/src/pages/MenuPage.tsx"
+            },
+            "order_checkout_title": {
+                "page": "ordering",
+                "order": 1,
+                "label": "Checkout — Title",
+                "group": "Order App",
+                "renderer": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)"
+            },
+            "order_checkout_subtitle": {
+                "page": "ordering",
+                "order": 2,
+                "label": "Checkout — Subtitle",
+                "group": "Order App",
+                "renderer": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)"
+            },
+            "order_payment_compliance": {
+                "page": "ordering",
+                "order": 3,
+                "label": "Checkout — Payment Compliance Text",
+                "group": "Order App",
+                "renderer": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)"
+            },
+            "order_auth_privacy_line": {
+                "page": "ordering",
+                "order": 4,
+                "label": "Login — Privacy Line",
+                "group": "Order App",
+                "renderer": "CheckoutPage.tsx, AuthBlock.tsx (mode copy lives on Home)"
+            },
+            "about_page_story": {
+                "page": "about",
+                "order": 1,
+                "label": "About Page — Our Story",
+                "group": "About",
+                "renderer": "About page components"
+            },
+            "about_page_title": {
+                "page": "about",
+                "order": 2,
+                "label": "About Page — Title",
+                "group": "About",
+                "renderer": "About page components"
+            },
+            "about_values": {
+                "page": "about",
+                "order": 3,
+                "label": "About Values",
+                "group": "Pages",
+                "renderer": "About page components"
+            },
+            "contact_page_title": {
+                "page": "contact",
+                "order": 1,
+                "label": "Contact Page — Hero Title",
+                "group": "Pages",
+                "renderer": "Contact page"
+            },
+            "contact_page_subtitle": {
+                "page": "contact",
+                "order": 2,
+                "label": "Contact Page — Hero Subtitle",
+                "group": "Pages",
+                "renderer": "Contact page"
+            },
+            "hours_page_title": {
+                "page": "hours",
+                "order": 1,
+                "label": "Hours Page — Hero Title",
+                "group": "Pages",
+                "renderer": "HoursPage.tsx"
+            },
+            "privacy_page_title": {
+                "page": "privacy",
+                "order": 1,
+                "label": "Privacy Page — Title",
+                "group": "Pages",
+                "renderer": "Privacy page"
+            },
+            "legal_privacy_body": {
+                "page": "privacy",
+                "order": 2,
+                "label": "Privacy Policy — Body Override (plain text)",
+                "group": "Legal",
+                "renderer": "Privacy page"
+            },
+            "business_website": {
+                "page": "reads_nowhere",
+                "order": 1,
+                "label": "Business Website",
+                "group": "Contact",
+                "renderer": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)"
+            }
+        }
+    },
+    "structural_surfaces": [
+        {
+            "id": "website.desktop.header",
+            "app": "website",
+            "device": "desktop",
+            "slot": "header",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "website.desktop.home",
+            "app": "website",
+            "device": "desktop",
+            "slot": "home",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "website.desktop.footer",
+            "app": "website",
+            "device": "desktop",
+            "slot": "footer",
+            "distinct_from": "Website global footer (site_footer) — NOT bottom nav"
+        },
+        {
+            "id": "website.mobile.header",
+            "app": "website",
+            "device": "mobile",
+            "slot": "header",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "website.mobile.home",
+            "app": "website",
+            "device": "mobile",
+            "slot": "home",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "website.mobile.footer",
+            "app": "website",
+            "device": "mobile",
+            "slot": "footer",
+            "distinct_from": "Website global footer — NOT bottom_navigation"
+        },
+        {
+            "id": "website.mobile.bottom_navigation",
+            "app": "website",
+            "device": "mobile",
+            "slot": "bottom_navigation",
+            "distinct_from": "Mobile bottom navigation — NOT footer"
+        },
+        {
+            "id": "order_app.desktop.header",
+            "app": "order_app",
+            "device": "desktop",
+            "slot": "header",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "order_app.desktop.home",
+            "app": "order_app",
+            "device": "desktop",
+            "slot": "home",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "order_app.desktop.footer",
+            "app": "order_app",
+            "device": "desktop",
+            "slot": "footer",
+            "distinct_from": "Order App footer (BrandFooter/site_footer) — NOT bottom nav"
+        },
+        {
+            "id": "order_app.mobile.header",
+            "app": "order_app",
+            "device": "mobile",
+            "slot": "header",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "order_app.mobile.home",
+            "app": "order_app",
+            "device": "mobile",
+            "slot": "home",
+            "distinct_from": "n/a"
+        },
+        {
+            "id": "order_app.mobile.footer",
+            "app": "order_app",
+            "device": "mobile",
+            "slot": "footer",
+            "distinct_from": "Order App footer — NOT bottom_navigation"
+        },
+        {
+            "id": "order_app.mobile.bottom_navigation",
+            "app": "order_app",
+            "device": "mobile",
+            "slot": "bottom_navigation",
+            "distinct_from": "Mobile bottom navigation — NOT footer"
+        }
+    ]
+}

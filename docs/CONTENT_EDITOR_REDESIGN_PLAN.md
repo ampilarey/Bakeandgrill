@@ -102,9 +102,12 @@ slide.
    The file is getting bigger while being restructured, which is the wrong direction.
 5. ~~**The surface-count label wording diverges from the agreed spec.**~~ Closed in Stage 1 —
    label is now `N components · M hidden`.
-6. **No audited page inventory.** `SurfaceCatalog` covers 4 slots × 2 devices × 2 apps
-   (`header`, `home`, `footer`, `bottom_navigation`; mobile gets all four, desktop three). Real
-   customer pages — contact, hours, menu, legal, events — are not in the surface model at all.
+6. ~~**No audited page inventory.**~~ **Closed (Stage 2).** Verified inventory from Blade /
+   Order App renderers (not `group` labels): [`docs/CONTENT_SURFACE_INVENTORY.md`](./CONTENT_SURFACE_INVENTORY.md)
+   + machine index [`docs/content_surface_inventory.json`](./content_surface_inventory.json).
+   `SurfaceCatalog` still models only 4 slots × 2 devices × 2 apps; real pages are inventoried
+   for Stage 4 regroup. Coverage test: every non-deprecated app-targeted registry key appears
+   exactly once per app in the inventory.
 7. **Admin breakpoints are thin.** 29 media queries, dominated by `max-width: 767px` (11
    occurrences). There is one compact band (`768–1199`) and a `min-width: 1200px`. The
    414 / 1366 behaviours in the target spec are untested.
@@ -187,15 +190,42 @@ is one.
 `surfaceRegistry.ts` already distinguishes "Website legal footer" from the Brand footer home
 component. That distinction must survive the regroup.
 
-### 4.2 Real pages (not yet modelled)
+### 4.2 Real pages (verified — Stage 2)
 
-Website: Home, Menu, Contact, Hours, Events & Catering, Legal (privacy, terms, refund).
-Order App: Home, Menu, Ordering, Order history, Gift cards.
+Audited from Blade / Order App **renderers**, not `group` labels. Full per-key tables and
+re-run commands: [`docs/CONTENT_SURFACE_INVENTORY.md`](./CONTENT_SURFACE_INVENTORY.md).
+Machine index for the coverage test: [`docs/content_surface_inventory.json`](./content_surface_inventory.json).
 
-Only Home is composable today via `page_blocks`. The rest are registry blocks rendered by
-hand-written templates. **The audit must record, per page, which blocks render on it and in what
-order** — from the templates, not from the `group` field, because the `group` field is exactly
-what has proven unreliable.
+**Keep distinct (never one “footer”):** Website global footer ≠ Order App footer ≠ Mobile
+bottom navigation. Structural matrix: app × device × slot in the inventory doc.
+
+**Website (149 non-deprecated registry keys, each exactly once in inventory)**
+
+| Page | Route(s) | Primary template(s) |
+|------|----------|---------------------|
+| Home | `/` | `home.blade.php` + `partials/home/*` (+ `page_blocks` by position) |
+| Menu | `/menu`, `/menu/{category}` | `menu.blade.php`, `menu-category.blade.php` |
+| Contact | `/contact` | `contact.blade.php` |
+| Hours | `/hours` | `hours.blade.php` |
+| Events & Catering | `/events`, `/catering` | `events.blade.php`, `catering.blade.php` |
+| Legal | `/privacy`, `/terms`, `/refund` | `privacy.blade.php`, `terms.blade.php`, `refund.blade.php` |
+| Everywhere (layout chrome) | all pages via layout | `layout.blade.php`, site footer / overlays |
+| Reads nowhere found | — | `business_website`, `menu_new_days` (do not delete) |
+
+**Order App (88 non-deprecated registry keys, each exactly once in inventory)**
+
+| Page | Route(s) | Primary component(s) |
+|------|----------|----------------------|
+| Home | `/` | `pages/Home.tsx` + home sections (+ `page_blocks`) |
+| Menu | `/menu`, `/menu/:categoryId` | `pages/Menu.tsx` |
+| Ordering | cart / checkout flows | `App.tsx`, CartDrawer, Checkout*, banners |
+| Order history | `/orders`, `/orders/:orderId` | `Orders.tsx`, `OrderDetail.tsx` (API UI; 0 content keys) |
+| Gift cards | `/gift-cards` | `pages/GiftCards.tsx` (0 content keys) |
+| Everywhere (shell chrome) | all routes | Header, Footer, overlays, auth chrome |
+| Reads nowhere found | — | `business_website` (do not delete) |
+
+Only Home is composable via `page_blocks`. Stage 4 regroups by these verified pages. Do not
+trust `group` alone — see inventory §4.4 (e.g. all ten `order_mode_*` keys).
 
 ---
 
@@ -390,9 +420,11 @@ keep/hide resolve (never auto-delete); card and editor share `listConfiguredOnSu
 backend singleton 422 + deliberate multi/singleton classification test; matrix rows 1–7, 9–12
 and 16 covered. Correctness only — no IA/regroup/restyle.
 
-**Stage 2 — Audited surface and page inventory.**
-Document every page and surface per app from routes and renderers. Deliverable is the verified
-inventory table for §4.2. No UI change. Stage 3 does not start without it.
+**Stage 2 — Audited surface and page inventory. Done on this branch.**
+Document every page and surface per app from routes and renderers (not `group`). Deliverables:
+verified §4.2 + `docs/CONTENT_SURFACE_INVENTORY.md` + `docs/content_surface_inventory.json`;
+`ContentSurfaceInventoryTest` (matrix row 8 early). No UI / config / migration change.
+Stage 3 does not start without it.
 
 **Stage 3 — Split `ContentHubPage.tsx`.** Pure refactor, no visible change.
 
@@ -421,7 +453,7 @@ the relief the owner actually asked for.
 | 5 | Hidden instances are excluded from the count and labelled `N components · M hidden` | 1 |
 | 6 | Legacy duplicates raise an admin warning and nothing is deleted automatically | 1 |
 | 7 | A block placed on Website never appears in any Order App surface, list, count or preview, and the reverse | 1, 4 |
-| 8 | Every non-deprecated registry key targeting an app appears **exactly once** in that app's new grouping | 4 |
+| 8 | Every non-deprecated registry key targeting an app appears **exactly once** in that app's inventory / new grouping | 2 (inventory coverage test), 4 (UI regroup) |
 | 9 | No ops-owned key (`OpsOwnedContent`) is writable through the content API; each renders read-only with an owner link | 1 |
 | 10 | Website publish does not alter any Order App value, draft or publish state, and the reverse | 1 |
 | 11 | Publish does not clear a local draft until the server confirms | 1 |
