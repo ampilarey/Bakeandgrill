@@ -39,11 +39,11 @@ import { MediaPicker } from '../../components/MediaPicker';
 import { DraftPublishStatus } from '../../components/DraftPublishStatus';
 import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
-import { PreviewPane } from './PreviewPane';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
 import { HubSectionContent, type UploadContextRef } from './HubSectionContent';
 import { HubEditorSheets } from './HubEditorSheets';
+import { HubPreviewHost } from './HubPreviewHost';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -1334,8 +1334,8 @@ export function ContentHubPage() {
               />
             </div>
 
-            <PreviewPane
-              variant="sheet"
+            <HubPreviewHost
+              mode="mobile-sheet"
               lockedApp={hubApp}
               websiteUrl={previewState.website}
               orderAppUrl={previewState.orderApp}
@@ -1343,7 +1343,6 @@ export function ContentHubPage() {
               open={previewSheetOpen}
               onClose={() => setPreviewSheetOpen(false)}
               draftStatus={draftStatusNode}
-              layer={3}
             />
           </div>
         ) : (
@@ -1390,8 +1389,8 @@ export function ContentHubPage() {
             {/* Wide desktop (≥1200): optional sticky preview column.
                 Compact Admin (768–1199): never reserve 400px — use sheet instead. */}
             {desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
-              <PreviewPane
-                variant="column"
+              <HubPreviewHost
+                mode="desktop-column"
                 lockedApp={hubApp}
                 websiteUrl={previewState.website}
                 orderAppUrl={previewState.orderApp}
@@ -1403,8 +1402,8 @@ export function ContentHubPage() {
 
         {/* Compact Admin preview sheet (also reused when column is unavailable). */}
         {!isMobile && (isCompactAdmin || !isWideDesktop) ? (
-          <PreviewPane
-            variant="sheet"
+          <HubPreviewHost
+            mode="compact-sheet"
             lockedApp={hubApp}
             websiteUrl={previewState.website}
             orderAppUrl={previewState.orderApp}
@@ -1417,7 +1416,6 @@ export function ContentHubPage() {
               }
             }}
             draftStatus={draftStatusNode}
-            layer={3}
           />
         ) : null}
 
