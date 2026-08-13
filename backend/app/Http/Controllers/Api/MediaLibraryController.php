@@ -296,11 +296,11 @@ class MediaLibraryController extends Controller
 
         return response()->json([
             'message' => match ($key) {
-                'default_item_image' => 'Set as default item image.',
-                'logo' => 'Set as logo.',
-                'logo_dark' => 'Set as dark logo.',
-                'favicon' => 'Set as favicon.',
-                'og_image' => 'Set as OG image.',
+                'default_item_image' => 'Set as default item image (menu).',
+                'logo' => 'Set as document logo (Business Details).',
+                'logo_dark' => 'Set as document logo (dark) (Business Details).',
+                'favicon' => 'Set as document favicon (Business Details).',
+                'og_image' => 'Set as OG image (Business Details).',
                 default => 'Setting updated.',
             },
             'key' => $key,

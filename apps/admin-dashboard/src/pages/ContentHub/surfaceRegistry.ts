@@ -20,8 +20,7 @@ export type SurfacePlacement =
   | 'Order App contact'
   | 'Order App hours'
   | 'Order App privacy'
-  | 'Order App status banners'
-  | 'Both products (shared)';
+  | 'Order App status banners';
 
 export type SurfaceKind =
   | 'reorderable_block'
@@ -44,7 +43,7 @@ export type ContentSurface = {
   managedBy?: { label: string; href: string };
   note?: string;
   blockType?: string;
-  statusHint?: 'Showing' | 'Hidden' | 'Fixed' | 'Shared' | 'Managed elsewhere';
+  statusHint?: 'Showing' | 'Hidden' | 'Fixed' | 'Website only' | 'Order App only' | 'Managed elsewhere';
 };
 
 /** Site-wide chrome that is not a Home component (legal footer, etc.). */

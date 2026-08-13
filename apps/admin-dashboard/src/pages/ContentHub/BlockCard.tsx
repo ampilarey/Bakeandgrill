@@ -200,7 +200,7 @@ export function BlockCard({
 }
 
 export function scopesLabelFor(scopes: ContentScope[]): string {
-  if (scopes.includes('shared') && scopes.length === 1) return 'Both apps (shared)';
+  if (scopes.includes('shared') && scopes.length === 1) return 'Business record';
   if (scopes.includes('website') && scopes.includes('order_app')) return 'Website + Order app';
   if (scopes.includes('order_app')) return 'Order app';
   return 'Website';

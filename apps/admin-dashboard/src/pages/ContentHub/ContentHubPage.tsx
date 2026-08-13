@@ -182,17 +182,17 @@ function uploadAppFor(scope: ContentScope): ContentApp {
 function labelForScope(scope: ContentScope): string {
   if (scope === 'order_app') return 'Order app';
   if (scope === 'website') return 'Website';
-  return 'Both';
+  return 'Business record';
 }
 
 function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
   if (scope === 'shared') {
-    return block.shared ?? block.resolved_website ?? block.resolved_order_app ?? block.default ?? '';
+    return block.shared ?? block.default ?? '';
   }
   if (scope === 'website') {
-    return block.website ?? block.resolved_website ?? block.shared ?? block.default ?? '';
+    return block.website ?? block.resolved_website ?? block.default ?? '';
   }
-  return block.order_app ?? block.resolved_order_app ?? block.shared ?? block.default ?? '';
+  return block.order_app ?? block.resolved_order_app ?? block.default ?? '';
 }
 
 function valueForScope(block: ContentBlock, scope: ContentScope, drafts: DraftMap): string {
@@ -205,7 +205,7 @@ function editorScopesForBlock(block: ContentBlock, app: ContentApp): ContentScop
   if (isDualAppBlock(block) || block.apps.includes(app)) return [app];
   if (block.apps.includes('order_app')) return ['order_app'];
   if (block.apps.includes('website')) return ['website'];
-  return ['shared'];
+  return [app];
 }
 
 function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): ContentScope {
@@ -335,23 +335,15 @@ export function ContentHubPage() {
     const gen = ++loadGen.current;
     setLoading(true);
     try {
-      const [blockRes, scheduleRes, sharedDrafts, websiteDrafts, orderDrafts] = await Promise.all([
+      const [blockRes, scheduleRes, appDrafts] = await Promise.all([
         getContentBlocks(loc),
         getContentSchedules('pending'),
-        getContentDrafts('shared', loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
-        getContentDrafts('website', loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
-        getContentDrafts('order_app', loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
+        getContentDrafts(hubApp, loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
       ]);
       if (gen !== loadGen.current) return;
       const restored: DraftMap = {};
-      for (const [key, value] of Object.entries(sharedDrafts.drafts || {})) {
-        restored[draftKey('shared', key)] = value;
-      }
-      for (const [key, value] of Object.entries(websiteDrafts.drafts || {})) {
-        restored[draftKey('website', key)] = value;
-      }
-      for (const [key, value] of Object.entries(orderDrafts.drafts || {})) {
-        restored[draftKey('order_app', key)] = value;
+      for (const [key, value] of Object.entries(appDrafts.drafts || {})) {
+        restored[draftKey(hubApp, key)] = value;
       }
       const hadUnsyncedLocal = serverDraftSyncedByLocaleRef.current[loc] === false;
       const nextDrafts = hadUnsyncedLocal
@@ -361,7 +353,7 @@ export function ContentHubPage() {
       setMismatches(blockRes.mismatches ?? []);
       setSchedules(scheduleRes.schedules);
       replaceLocaleDrafts(loc, nextDrafts);
-      setLocaleLastSavedAt(loc, latestIso([sharedDrafts.saved_at, websiteDrafts.saved_at, orderDrafts.saved_at]));
+      setLocaleLastSavedAt(loc, appDrafts.saved_at);
       setLocaleSynced(loc, !hadUnsyncedLocal);
     } catch (e) {
       if (gen !== loadGen.current) return;
@@ -375,7 +367,7 @@ export function ContentHubPage() {
     void load(locale);
     return () => { loadGen.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]);
+  }, [locale, hubApp]);
 
   // Surface component counts for the landing tree.
   useEffect(() => {
@@ -1176,9 +1168,7 @@ export function ContentHubPage() {
         >
           {scopes.map((scope) => {
             const val = valueForScope(block, scope, drafts);
-            const switchLabel = scope === 'shared'
-              ? 'Show this section'
-              : labelForScope(scope);
+            const switchLabel = labelForScope(scope);
             return (
               <label
                 key={`${scope}-${block.key}`}
