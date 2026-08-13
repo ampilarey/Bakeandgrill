@@ -68,7 +68,7 @@ export function BusinessDetailsPage() {
       <PageHeader
         title="Business Details"
         subtitle="Invoice & receipt record"
-        actions={(
+        action={(
           <Btn variant="primary" onClick={() => void save()} disabled={saving || dirty.length === 0}>
             {saving ? 'Saving…' : dirty.length ? `Save ${dirty.length}` : 'Saved'}
           </Btn>
