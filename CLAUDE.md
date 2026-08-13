@@ -37,17 +37,13 @@ To regenerate the hex-in-style baseline after migrating a page:
 cd apps/admin-dashboard && node scripts/generate-hex-style-baseline.mjs
 ```
 
-## Local database: MySQL/MariaDB, not PostgreSQL
+## Local database: MySQL/MariaDB preferred
 
-Although `README.md`, `docker-compose.yml`, and `backend/.env.example` default to
-`DB_CONNECTION=pgsql`, a **fresh `php artisan migrate` fails on PostgreSQL**:
-migration `2026_07_22_150000_add_scope_to_site_settings` uses a `HAVING` clause on
-a SELECT alias (`having "c" > 1`), which MySQL/MariaDB and SQLite accept but
-PostgreSQL rejects (`column "c" does not exist`). The migrations already branch on
-`mysql`/`mariadb` vs `pgsql` drivers, and `.env.example` documents MySQL as a
-supported local option. Use **MySQL/MariaDB** for local/dev. Do not switch dev to
-`pgsql` without first fixing that migration. Automated tests are unaffected —
-`phpunit.xml` forces SQLite in-memory.
+Although `README.md` / `docker-compose.yml` may mention `pgsql`, local/dev on this
+project uses **MySQL/MariaDB** (see `AGENTS.md`). CI also runs a PostgreSQL
+compatibility suite; site_settings migrations collapse duplicates with
+`havingRaw('COUNT(*) > 1')` so PostgreSQL accepts them (aliases in `HAVING` are
+rejected). Automated default tests use SQLite in-memory via `phpunit.xml`.
 
 ## Queue worker vs synchronous SMS
 

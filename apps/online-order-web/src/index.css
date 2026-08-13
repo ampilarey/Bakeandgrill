@@ -1459,6 +1459,13 @@ textarea.field-input {
   filter: brightness(1.4);
   display: block;
 }
+.brand-footer__name {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
 .brand-footer__blurb,
 .brand-footer__thanks {
   margin: 0;

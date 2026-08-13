@@ -114,6 +114,31 @@
     $footerTodayLabel        = ($footerTodayHours && !($footerTodayHours['closed'] ?? false))
         ? ($footerTodayHours['open'] . ' – ' . $footerTodayHours['close'])
         : 'Closed';
+    $homeChatLabel           = trim((string) content('home_chat_label', 'Chat with us'));
+    // Compact mobile footer legal links — shared with Order App BrandFooter.
+    $footerLinksRaw = content('footer_links', '[]');
+    $footerLinksDecoded = is_string($footerLinksRaw) ? json_decode($footerLinksRaw, true) : $footerLinksRaw;
+    $footerLegalLinks = [];
+    if (is_array($footerLinksDecoded)) {
+        foreach ($footerLinksDecoded as $link) {
+            if (! is_array($link)) {
+                continue;
+            }
+            $url = safe_public_url((string) ($link['url'] ?? '')) ?? '';
+            $label = trim((string) ($link['label'] ?? ''));
+            if ($url === '' || $label === '') {
+                continue;
+            }
+            $footerLegalLinks[] = ['label' => $label, 'url' => $url];
+        }
+    }
+    if ($footerLegalLinks === []) {
+        $footerLegalLinks = [
+            ['label' => 'Privacy Policy', 'url' => '/order/privacy'],
+            ['label' => 'Terms & Conditions', 'url' => '/terms'],
+            ['label' => 'Refund Policy', 'url' => '/refund'],
+        ];
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $contentLocale }}" dir="{{ $contentDir }}">
@@ -871,6 +896,109 @@
             padding: 4rem 2rem 2rem;
             margin-top: 5rem;
         }
+        /* Compact mobile footer — keep in sync with order-app .brand-footer */
+        .brand-footer--website { display: none; }
+        .brand-footer--website .brand-footer__inner {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+        .brand-footer--website .brand-footer__brand {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .brand-footer--website .brand-footer__logo-link {
+            display: block;
+            margin: 0 auto 0.875rem;
+            width: fit-content;
+            text-decoration: none;
+        }
+        .brand-footer--website .brand-footer__logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+            opacity: 0.9;
+            filter: brightness(1.4);
+            display: block;
+            border-radius: 8px;
+        }
+        .brand-footer--website .brand-footer__name {
+            margin: 0 0 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+        .brand-footer--website .brand-footer__blurb,
+        .brand-footer--website .brand-footer__thanks {
+            margin: 0;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.6);
+            max-width: 28rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .brand-footer--website .brand-footer__blurb { margin-bottom: 0.5rem; }
+        .brand-footer--website .brand-footer__chat {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1.75rem;
+            flex-wrap: wrap;
+        }
+        .brand-footer--website .brand-footer__chat-label {
+            width: 100%;
+            text-align: center;
+            margin: 0 0 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        .brand-footer--website .brand-footer__wa,
+        .brand-footer--website .brand-footer__viber {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 44px;
+            padding: 0.55rem 1.125rem;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.875rem;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .brand-footer--website .brand-footer__wa { background: #25D366; }
+        .brand-footer--website .brand-footer__viber { background: #7360F2; }
+        .brand-footer--website .brand-footer__legal {
+            display: flex;
+            justify-content: center;
+            gap: 0.35rem 1.25rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+        .brand-footer--website .brand-footer__legal-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px;
+            font-size: 0.8125rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+        }
+        .brand-footer--website .brand-footer__legal-link:hover { color: #fff; }
+        .brand-footer--website .brand-footer__bottom {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
         .footer-grid {
             max-width: 1280px;
             margin: 0 auto;
@@ -1334,62 +1462,21 @@
             .mobile-header { display: block; }
             .mobile-bottom-nav { display: flex; }
             .order-status-bar-mob { display: flex; }
+            /* Mobile: compact BrandFooter twin (same stack as Order App). */
             .site-footer {
-                padding: 2.5rem 1.25rem calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+                padding: 0;
                 margin-top: 3rem;
+                background: transparent;
             }
-            .footer-grid {
-                grid-template-columns: 1fr;
-                gap: 1.75rem;
-                padding-bottom: 2rem;
+            .footer-desktop {
+                display: none !important;
             }
-            .footer-brand { grid-column: 1 / -1; text-align: center; }
-            .footer-brand p,
-            .footer-thanks { max-width: 28rem; margin-left: auto; margin-right: auto; }
-            .footer-chat-btns,
-            .footer-trust { justify-content: center; }
-            .footer-order-cta {
-                width: 100%;
-                max-width: 320px;
-                margin-left: auto;
-                margin-right: auto;
+            .brand-footer--website {
+                display: block;
+                background: var(--inverse-section-bg, #1C1408);
+                color: #fff8f0;
+                padding: 2rem 1.25rem calc(2.5rem + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
             }
-            /* Brand + CTAs centered; text blocks start-aligned for calmer reading. */
-            .footer-col { text-align: start; }
-            .footer-col h4 { margin-bottom: 0.75rem; }
-            .footer-col a,
-            .footer-col p {
-                min-height: 0;
-                padding: 0.4rem 0;
-                margin-bottom: 0.15rem;
-            }
-            .footer-col--hours,
-            .footer-col:has(h4) { text-align: start; }
-            .footer-hours-list--week { display: none; }
-            .footer-hours-today { display: block; }
-            .footer-hours-row {
-                justify-content: space-between;
-                gap: 1rem;
-                padding: 0.65rem 0.85rem;
-                border-radius: 10px;
-                background: rgba(255,255,255,0.06);
-            }
-            .footer-legal {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 0.25rem 1rem;
-            }
-            .footer-legal a {
-                min-height: 44px;
-                display: inline-flex;
-                align-items: center;
-            }
-            .footer-col--links a {
-                display: inline-flex;
-                width: fit-content;
-            }
-            .footer-bottom { flex-direction: column; text-align: center; }
-            .footer-trust { justify-content: center; text-align: center; }
         }
         @media (max-width: 480px) {
             .mob-logo span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1633,6 +1720,9 @@
 {{-- ─── Footer (site_footer surface — not bottom navigation) ──────── --}}
 @if($showSiteFooterDesktop || $showSiteFooterMobile)
 <footer class="site-footer{{ $showSiteFooterDesktop ? '' : ' site-footer--mobile-only' }}{{ $showSiteFooterMobile ? '' : ' site-footer--desktop-only' }}" data-block="site_footer">
+    {{-- Desktop / tablet: full multi-column footer --}}
+    @if($showSiteFooterDesktop)
+    <div class="footer-desktop">
     <div class="footer-grid">
         <div class="footer-brand">
             <a href="/" class="footer-brand-logo">
@@ -1741,6 +1831,50 @@
         <span>© {{ date('Y') }} {{ $siteName }}. {{ $footerRightsSuffix }}</span>
         <span>Malé, Maldives</span>
     </div>
+    </div>{{-- /.footer-desktop --}}
+    @endif
+
+    {{-- Mobile: identical compact stack to Order App BrandFooter --}}
+    @if($showSiteFooterMobile)
+    <div class="brand-footer brand-footer--website" data-testid="brand-footer-mobile">
+        <div class="brand-footer__inner">
+            <div class="brand-footer__brand">
+                <a href="/" class="brand-footer__logo-link" aria-label="{{ $siteName }}">
+                    <img src="{{ $logoDarkUrl }}" alt="" class="brand-footer__logo" loading="lazy" decoding="async">
+                </a>
+                <p class="brand-footer__name">{{ $siteName }}</p>
+                @if($footerBlurb !== '')
+                    <p class="brand-footer__blurb">{{ $footerBlurb }}</p>
+                @endif
+                <p class="brand-footer__thanks">{{ $footerThanks }}</p>
+            </div>
+            <div class="brand-footer__chat">
+                @if($homeChatLabel !== '')
+                    <p class="brand-footer__chat-label">{{ $homeChatLabel }}</p>
+                @endif
+                <a href="{{ $waLink }}" target="_blank" rel="noopener" class="brand-footer__wa" aria-label="WhatsApp">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WhatsApp
+                </a>
+                @if($viberLink !== '')
+                    <a href="{{ $viberLink }}" class="brand-footer__viber" aria-label="Viber">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.4 0C5.7.3 1.2 4.8.9 10.5c-.2 3.4.8 6.5 2.7 8.9L2.2 24l4.8-1.4c1.4.7 3 1.1 4.7 1.1 6.1 0 11.1-5 11.1-11.1S17.9 0 11.8 0h-.4zm.5 2c5.1 0 9.1 4 9.1 9.1s-4 9.1-9.1 9.1c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .9.9-2.9-.2-.3C3.7 15.2 3.1 13.1 3.1 11 3.1 5.9 7.2 2 12.1 2h-.2zm-.8 3.2c-.3 0-.8.1-1.2.5C9.5 6.3 8.8 7 8.8 8.5s1 3 1.2 3.2c.2.2 2 3 4.8 4.2.7.3 1.2.4 1.6.5.7.2 1.3.1 1.8-.1.5-.3 1.6-1.5 1.8-2.3.2-.7.1-1.3-.1-1.5-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.6-1.2c-.3-.1-.6-.2-.8.2-.2.3-.9 1.1-1.1 1.3-.2.2-.4.2-.7.1-.3-.1-1.3-.5-2.5-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6.2-.2.4-.4.5-.6.2-.2.2-.4.3-.6.1-.2 0-.4-.1-.6-.1-.1-.8-1.9-1.1-2.7-.2-.5-.5-.5-.7-.5z"/></svg>
+                        Viber
+                    </a>
+                @endif
+            </div>
+            <nav class="brand-footer__legal" aria-label="Legal">
+                @foreach($footerLegalLinks as $legalLink)
+                    <a href="{{ $legalLink['url'] }}" class="brand-footer__legal-link">{{ $legalLink['label'] }}</a>
+                @endforeach
+            </nav>
+            <div class="brand-footer__bottom">
+                <span>© {{ date('Y') }} {{ $siteName }}. {{ $footerRightsSuffix }}</span>
+                <span>Malé, Maldives</span>
+            </div>
+        </div>
+    </div>
+    @endif
 </footer>
 @endif
 

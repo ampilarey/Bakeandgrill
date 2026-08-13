@@ -28,10 +28,11 @@ return new class extends Migration
 
         $this->dropKeyScopeUnique();
 
+        // Use HAVING COUNT(*) (not an alias): PostgreSQL rejects HAVING on SELECT aliases.
         $dupes = DB::table('site_settings')
-            ->select('key', 'scope', 'locale', DB::raw('MIN(id) as keep_id'), DB::raw('COUNT(*) as c'))
+            ->select('key', 'scope', 'locale', DB::raw('MIN(id) as keep_id'))
             ->groupBy('key', 'scope', 'locale')
-            ->having('c', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
         foreach ($dupes as $d) {
             DB::table('site_settings')
