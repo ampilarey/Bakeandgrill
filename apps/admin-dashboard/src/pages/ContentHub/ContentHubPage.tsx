@@ -60,10 +60,10 @@ import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
 import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
-import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
+import { HubSectionList, buildHubRailSections } from './HubSectionList';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -995,16 +995,12 @@ export function ContentHubPage() {
 
   // ── Section dirty map ──────────────────────────────────────────────────────
 
-  const railSections = useMemo(() => {
-    return orderedSectionNames.map((name) => {
-      const viewBlocks = blocksForContentView(name, contentBlocks);
-      return {
-        name,
-        count: viewBlocks.length,
-        dirty: isGroupDirty(name, contentBlocks, Object.keys(drafts), parseDraftKey),
-      };
-    });
-  }, [orderedSectionNames, contentBlocks, drafts]);
+  const draftKeys = useMemo(() => Object.keys(drafts), [drafts]);
+
+  const railSections = useMemo(
+    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey),
+    [orderedSectionNames, contentBlocks, draftKeys],
+  );
 
   const dirtyGroups = useMemo(
     () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
@@ -2133,9 +2129,11 @@ export function ContentHubPage() {
             data-preview={desktopPreviewOpen ? 'on' : 'off'}
             data-rail={railCollapsed ? 'collapsed' : 'expanded'}
           >
-            <SectionRail
-              variant="rail"
-              sections={railSections}
+            <HubSectionList
+              orderedSectionNames={orderedSectionNames}
+              contentBlocks={contentBlocks}
+              draftKeys={draftKeys}
+              parseDraftKey={parseDraftKey}
               active={activeGroup}
               onSelect={handleSectionSelect}
               collapsed={railCollapsed}
