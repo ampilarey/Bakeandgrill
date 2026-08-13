@@ -1,4 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import type { ContentApp } from '../../api/content';
 import { clusterSections, sectionMeta } from './hubLayoutConfig';
 
 export type SectionRailItem = {
@@ -13,6 +14,8 @@ type Props = {
   onSelect: (name: string) => void;
   /** Desktop sticky rail vs mobile 2-column card grid. */
   variant: 'rail' | 'grid';
+  /** Hub app — keeps Pages / Site-wide rail order aligned with the landing. */
+  app?: ContentApp;
   /** Desktop only — icon strip (~56px). Ignored for grid. */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -30,12 +33,13 @@ export function SectionRail({
   active,
   onSelect,
   variant,
+  app = 'website',
   collapsed = false,
   onToggleCollapsed,
 }: Props) {
   const names = sections.map((s) => s.name);
   const byName = new Map(sections.map((s) => [s.name, s]));
-  const clusters = clusterSections(names);
+  const clusters = clusterSections(names, app);
 
   if (variant === 'grid') {
     return (
@@ -109,13 +113,13 @@ export function SectionRail({
         type="button"
         data-testid="section-rail-tasks-home"
         className={`hub-section-rail-row${!active ? ' hub-section-rail-row--active' : ''}`}
-        aria-label="All tasks"
+        aria-label="Overview"
         aria-pressed={!active}
         onClick={() => onSelect('')}
         style={{ marginBottom: 6 }}
       >
         {!collapsed ? (
-          <span className="hub-section-rail-row-name" aria-hidden="true">All tasks</span>
+          <span className="hub-section-rail-row-name" aria-hidden="true">Overview</span>
         ) : (
           <span className="hub-section-rail-row-name" aria-hidden="true">∗</span>
         )}

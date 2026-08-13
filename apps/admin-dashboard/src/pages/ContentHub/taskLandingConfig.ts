@@ -62,6 +62,11 @@ export type ContentTask = {
   homeAppHint?: 'website' | 'order_app';
   /** Surface Builder deep link (`?surface=app.device.slot`) — opens the Homepage layout editor pre-filtered. */
   surface?: string;
+  /**
+   * After opening `group`, focus this content block (scroll + compact sheet).
+   * Stage 7 — Hero primary CTA uses `hero_slides`.
+   */
+  focusBlockKey?: string;
   advancedAction?: 'history' | 'schedule' | 'import_export';
   /** Placement chips shown on the landing card. */
   placements?: string[];
@@ -316,6 +321,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     description: 'Slideshow photos and titles used by Website Home and Order App Home',
     icon: Image,
     group: 'Home',
+    focusBlockKey: 'hero_slides',
     placements: ['Website home', 'Order App phone home', 'Order App desktop home'],
   },
   {
@@ -482,6 +488,66 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     advancedAction: 'import_export',
   },
 ];
+
+/** Landing band classification for Stage 7 hybrid IA (excludes hero — primary CTA). */
+export const LANDING_PAGE_TASK_IDS: ContentTaskId[] = [
+  'contact_map',
+  'opening_hours',
+  'catering_events',
+  'legal',
+  'order_menu',
+  'order_wording',
+  'order_about',
+  'order_contact',
+  'order_hours',
+  'order_privacy',
+  'status_banners',
+];
+
+export const LANDING_SITEWIDE_TASK_IDS: ContentTaskId[] = [
+  'brand_profile',
+  'announcement',
+  'website_header',
+  'website_footer',
+  'order_nav',
+  'seo',
+];
+
+export const LANDING_TOOL_TASK_IDS: ContentTaskId[] = [
+  'history',
+  'schedule',
+  'import_export',
+];
+
+export function landingHeroTask(): ContentTask {
+  const hero = BRAND_PAGE_TASKS.find((t) => t.id === 'hero');
+  if (!hero) {
+    throw new Error('hero task missing from BRAND_PAGE_TASKS');
+  }
+  return { ...hero, focusBlockKey: hero.focusBlockKey ?? 'hero_slides' };
+}
+
+export function taskVisibleForApp(task: ContentTask, app: 'website' | 'order_app'): boolean {
+  if (task.homeAppHint) return task.homeAppHint === app;
+  if (app === 'website') {
+    return !['order_nav', 'order_home', 'order_menu', 'order_wording', 'order_about',
+      'order_contact', 'order_hours', 'order_privacy', 'status_banners'].includes(task.id);
+  }
+  return !['website_header', 'website_home', 'website_footer', 'catering_events', 'seo', 'legal'].includes(task.id);
+}
+
+export function landingTasksInBand(
+  band: 'page' | 'sitewide' | 'tools',
+  app: 'website' | 'order_app',
+): ContentTask[] {
+  const ids = band === 'page'
+    ? LANDING_PAGE_TASK_IDS
+    : band === 'sitewide'
+      ? LANDING_SITEWIDE_TASK_IDS
+      : LANDING_TOOL_TASK_IDS;
+  const idSet = new Set<ContentTaskId>(ids);
+  return BRAND_PAGE_TASKS.filter((t) => idSet.has(t.id) && taskVisibleForApp(t, app));
+}
 
 /** Map a Content Hub section name → preferred landing cluster. */
 export function clusterIdForSection(sectionName: string): ContentTaskCluster['id'] {

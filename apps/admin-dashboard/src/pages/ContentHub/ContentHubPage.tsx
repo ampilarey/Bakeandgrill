@@ -302,6 +302,16 @@ export function ContentHubPage() {
     handleSectionSelect('Home', surface.app, surface.id);
   };
 
+  const focusContentBlock = (blockKey: string) => {
+    window.setTimeout(() => {
+      setMobileBlockEditorKey(blockKey);
+      const el = document.querySelector(`[data-block-key="${blockKey}"]`);
+      if (el && typeof (el as HTMLElement).scrollIntoView === 'function') {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 160);
+  };
+
   const handleTaskSelect = (task: ContentTask) => {
     if (task.advancedAction === 'history') {
       handleSectionSelect('Everywhere');
@@ -314,6 +324,13 @@ export function ContentHubPage() {
     }
     if (!task.group) return;
     handleSectionSelect(task.group, task.homeAppHint, task.surface);
+    if (task.focusBlockKey) {
+      focusContentBlock(task.focusBlockKey);
+    }
+  };
+
+  const handlePageSelect = (sectionName: string) => {
+    handleSectionSelect(sectionName);
   };
 
   const homeLayoutApp =
@@ -357,6 +374,19 @@ export function ContentHubPage() {
     () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
     [railSections],
   );
+
+  const pageRows = useMemo(
+    () => orderedSectionNames
+      .filter((name) => name !== 'Home' && name !== 'Everywhere')
+      .map((name) => ({
+        name,
+        dirty: dirtyGroups.has(name),
+        count: contentBlocks.filter((b) => contentViewForKey(b.key, hubApp) === name).length,
+      })),
+    [orderedSectionNames, dirtyGroups, contentBlocks, hubApp],
+  );
+
+  const preferredDevice = isMobile ? 'mobile' as const : 'desktop' as const;
 
   const searchResults = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -596,6 +626,9 @@ export function ContentHubPage() {
                 loading={loading}
                 skeleton={skeleton}
                 appFilter={hubApp}
+                preferredDevice={preferredDevice}
+                pageRows={pageRows}
+                onSelectPage={handlePageSelect}
                 surfaceCounts={surfaceCounts}
                 dirtyGroups={dirtyGroups}
                 onSelectSurface={handleSurfaceSelect}
@@ -649,6 +682,9 @@ export function ContentHubPage() {
                     loading={loading}
                     skeleton={skeleton}
                     appFilter={hubApp}
+                    preferredDevice={preferredDevice}
+                    pageRows={pageRows}
+                    onSelectPage={handlePageSelect}
                     surfaceCounts={surfaceCounts}
                     dirtyGroups={dirtyGroups}
                     onSelectSurface={handleSurfaceSelect}

@@ -23,6 +23,7 @@ export type HubSectionMeta = {
 
 export const HUB_CLUSTER_ORDER: HubClusterId[] = ['pages', 'sitewide'];
 
+/** Matches Stage 7 landing band labels (Pages / Site-wide). */
 export const HUB_CLUSTER_LABELS: Record<HubClusterId, string> = {
   pages: 'Pages',
   sitewide: 'Site-wide',

@@ -78,7 +78,7 @@ export function SectionEditor({
               aria-label="Back to all tasks"
             >
               <ArrowLeft size={18} />
-              <span className="hub-section-editor-back-label">All tasks</span>
+              <span className="hub-section-editor-back-label">Overview</span>
             </button>
           ) : null}
           <div style={{ minWidth: 0, flex: 1 }}>

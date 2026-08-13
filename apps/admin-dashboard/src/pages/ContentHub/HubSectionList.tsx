@@ -56,6 +56,7 @@ export function HubSectionList({
   return (
     <SectionRail
       variant="rail"
+      app={app}
       sections={sections}
       active={active}
       onSelect={onSelect}
