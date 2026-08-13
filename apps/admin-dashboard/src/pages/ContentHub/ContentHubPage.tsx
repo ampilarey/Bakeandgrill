@@ -63,7 +63,7 @@ import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal }
 import { SectionRail } from './SectionRail';
 import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
-import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
+import { HubSurfaceLanding } from './HubSurfaceLanding';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -1009,16 +1009,6 @@ export function ContentHubPage() {
   const dirtyGroups = useMemo(
     () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
     [railSections],
-  );
-
-  const taskLanding = (
-    <SurfaceBuilderLanding
-      appFilter={hubApp}
-      surfaceCounts={surfaceCounts}
-      dirtyGroups={dirtyGroups}
-      onSelectSurface={handleSurfaceSelect}
-      onSelectTask={handleTaskSelect}
-    />
   );
 
   // ── Search (label only) ────────────────────────────────────────────────────
@@ -2038,7 +2028,15 @@ export function ContentHubPage() {
           /* ── Mobile layout ──────────────────────────────────────────────── */
           <div className="hub-mobile-shell">
             <div className="hub-mobile-overview">
-              {loading ? skeleton : taskLanding}
+              <HubSurfaceLanding
+                loading={loading}
+                skeleton={skeleton}
+                appFilter={hubApp}
+                surfaceCounts={surfaceCounts}
+                dirtyGroups={dirtyGroups}
+                onSelectSurface={handleSurfaceSelect}
+                onSelectTask={handleTaskSelect}
+              />
             </div>
 
             {/* Section editor — full-screen sheet (not an inline push) */}
@@ -2145,11 +2143,19 @@ export function ContentHubPage() {
             />
 
             <div className="hub-editor-area" data-testid="hub-editor-area">
-              {loading
-                ? skeleton
-                : activeGroup
-                  ? buildSectionContent(activeGroup, true)
-                  : taskLanding}
+              {activeGroup && !loading
+                ? buildSectionContent(activeGroup, true)
+                : (
+                  <HubSurfaceLanding
+                    loading={loading}
+                    skeleton={skeleton}
+                    appFilter={hubApp}
+                    surfaceCounts={surfaceCounts}
+                    dirtyGroups={dirtyGroups}
+                    onSelectSurface={handleSurfaceSelect}
+                    onSelectTask={handleTaskSelect}
+                  />
+                )}
             </div>
 
             {/* Wide desktop (≥1200): optional sticky preview column.
