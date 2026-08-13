@@ -58,6 +58,15 @@
     gap: 1.5rem;
 }
 @media (max-width: 800px) { .contact-section { grid-template-columns: 1fr; padding: 2.5rem 1rem; } }
+@media (min-width: 769px) {
+    .contact-section {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 
 .contact-card {
     background: var(--surface);
@@ -128,6 +137,34 @@
     padding: 0 2rem 5rem;
 }
 @media (max-width: 800px) { .map-section { padding: 0 1rem 3rem; } }
+@media (min-width: 769px) {
+    .map-section {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
+
+.contact-events-cta {
+    max-width: 1100px;
+    margin: 0 auto 2rem;
+    padding: 0 2rem;
+}
+@media (max-width: 800px) {
+    .contact-events-cta { padding: 0 1rem; }
+}
+@media (min-width: 769px) {
+    .contact-events-cta {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        margin-bottom: 2rem;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 
 .map-section h2 {
     font-size: 1.35rem; font-weight: 700;
@@ -220,7 +257,7 @@
     $contactEventsHeadline = content('contact_events_cta_headline', 'Planning an event?');
     $contactEventsText = content('contact_events_cta_text', 'Build a draft order with catering trays and custom lines — we will send a quote.');
 @endphp
-<section style="max-width:1100px; margin:0 auto 2rem; padding:0 2rem;">
+<section class="contact-events-cta">
     <div style="background:var(--amber-light); border:1px solid var(--border); border-radius:16px; padding:1.75rem 2rem; text-align:center;">
         <h2 style="font-size:1.35rem; font-weight:800; color:var(--dark); margin:0 0 0.5rem;">{{ $contactEventsHeadline }}</h2>
         <p style="margin:0 0 1rem; color:var(--muted); font-size:0.95rem;">{{ $contactEventsText }}</p>

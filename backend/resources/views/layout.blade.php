@@ -239,6 +239,16 @@
             /* Dark bars with light text (hero, proof) — not the same as --dark heading text */
             --inverse-section-bg: #1C1408;
             --surface-alt:  #f7f3ec;
+            /* Desktop content rail tokens — applied at min-width 769px only */
+            --desktop-content-max: 1280px;
+            --desktop-page-gutter: 2rem;
+        }
+
+        @media (min-width: 769px) {
+            :root {
+                --desktop-content-max: 1280px;
+                --desktop-page-gutter: clamp(1.25rem, 2.5vw, 2rem);
+            }
         }
 
         [data-theme="dark"] {
@@ -471,7 +481,11 @@
         @media (min-width: 769px) {
             .site-header .header-inner {
                 min-height: 64px;
-                padding: 0.45rem clamp(1.25rem, 2.5vw, 2.25rem);
+                max-width: var(--desktop-content-max);
+                width: 100%;
+                margin-inline: auto;
+                padding: 0.45rem var(--desktop-page-gutter);
+                box-sizing: border-box;
                 gap: 0.75rem;
             }
             .site-header.scrolled .header-inner {
@@ -1540,6 +1554,40 @@
         /* ─── Shared Utility ─────────────────────────────────────── */
         .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
         @media (max-width: 768px) { .container { padding: 0 1rem; } }
+
+        /*
+         * Desktop-only centred content rail (Website).
+         * max-width 1280px + equal side gutters; backgrounds may still span the viewport.
+         * Mobile (≤768px) rules above are left untouched.
+         */
+        @media (min-width: 769px) {
+            .container {
+                max-width: var(--desktop-content-max);
+                width: 100%;
+                margin-inline: auto;
+                padding-inline: var(--desktop-page-gutter);
+                box-sizing: border-box;
+            }
+
+            /* Move horizontal gutters onto the rail so header / sections / footer share one left edge */
+            .site-footer {
+                padding-left: 0;
+                padding-right: 0;
+            }
+            .footer-grid,
+            .footer-bottom,
+            .footer-trust,
+            .brand-footer--website .brand-footer__inner {
+                max-width: var(--desktop-content-max);
+                width: 100%;
+                margin-inline: auto;
+                padding-inline: var(--desktop-page-gutter);
+                box-sizing: border-box;
+            }
+            .footer-trust {
+                margin-bottom: 1.25rem;
+            }
+        }
     </style>
     @endverbatim
 
