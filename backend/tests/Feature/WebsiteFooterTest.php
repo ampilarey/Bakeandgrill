@@ -133,11 +133,13 @@ class WebsiteFooterTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression(
-            '/data-testid="brand-footer-mobile".*brand-footer__name.*brand-footer__thanks.*brand-footer__chat-label.*brand-footer__legal.*brand-footer__bottom/s',
+            '/data-testid="brand-footer-mobile".*brand-footer__grid.*brand-footer__name.*brand-footer__thanks.*brand-footer__chat-label.*brand-footer__heading.*brand-footer__trust.*brand-footer__legal.*brand-footer__bottom/s',
             $html,
         );
         $this->assertStringContainsString('Malé, Maldives', $html);
         $this->assertStringContainsString('Chat with us', $html);
+        $this->assertStringContainsString('Get directions', $html);
+        $this->assertStringContainsString('data-footer-trust-mobile', $html);
     }
 
     public function test_footer_blurb_ignores_legacy_copyright_footer_text(): void

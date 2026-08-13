@@ -1432,36 +1432,49 @@ textarea.field-input {
 /* ════════════════════════════════════════════════════════════
    FOOTER
 ════════════════════════════════════════════════════════════ */
-/* Home BrandFooter — fills under bottom nav / cart chrome (no light gap). */
+/* BrandFooter — enhanced compact footer (order app all viewports).
+   Keep in sync with website mobile twin `.brand-footer--website`. */
 .brand-footer {
   background: var(--color-footer-bg);
   color: #fff8f0;
-  padding: 2rem var(--page-gutter) 2.5rem;
+  padding: 2.75rem var(--page-gutter) 2.5rem;
   margin-top: 0;
 }
 .brand-footer__inner {
   max-width: var(--layout-max);
   margin: 0 auto;
 }
+.brand-footer__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 .brand-footer__brand {
-  margin-bottom: 1.5rem;
-  text-align: center;
+  text-align: left;
 }
 .brand-footer__logo-link {
-  display: block;
-  margin: 0 auto 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0 0 1rem;
   width: fit-content;
+  text-decoration: none;
+  color: inherit;
 }
 .brand-footer__logo {
   height: 40px;
+  width: auto;
   object-fit: contain;
-  opacity: 0.9;
-  filter: brightness(1.4);
+  opacity: 0.95;
+  filter: brightness(1.35);
   display: block;
+  border-radius: 8px;
 }
 .brand-footer__name {
-  margin: 0 0 0.75rem;
-  font-size: 1.125rem;
+  margin: 0;
+  font-size: 1.2rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #fff;
@@ -1469,27 +1482,43 @@ textarea.field-input {
 .brand-footer__blurb,
 .brand-footer__thanks {
   margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 28rem;
 }
-.brand-footer__blurb { margin-bottom: 0.5rem; }
-.brand-footer__chat {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 1.75rem;
-  flex-wrap: wrap;
-}
+.brand-footer__blurb { margin-bottom: 0.65rem; }
+.brand-footer__thanks { margin-bottom: 1.15rem; }
+.brand-footer__chat { margin: 0; }
 .brand-footer__chat-label {
-  width: 100%;
-  text-align: center;
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.35);
+}
+.brand-footer__chat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.brand-footer__social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+}
+.brand-footer__social:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 .brand-footer__wa,
 .brand-footer__viber {
@@ -1505,35 +1534,88 @@ textarea.field-input {
   text-decoration: none;
   font-family: inherit;
   box-sizing: border-box;
+  transition: transform 0.15s, filter 0.15s;
 }
+.brand-footer__wa:hover,
+.brand-footer__viber:hover { transform: translateY(-1px); filter: brightness(1.05); }
 .brand-footer__wa { background: #25D366; }
 .brand-footer__viber { background: #7360F2; }
+.brand-footer__col {
+  min-width: 0;
+}
+.brand-footer__heading {
+  margin: 0 0 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+.brand-footer__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.875rem;
+  text-decoration: none;
+  line-height: 1.35;
+  transition: color 0.15s;
+}
+.brand-footer__link:hover { color: #fff; }
+.brand-footer__meta {
+  margin: 0 0 0.45rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.brand-footer__meta--muted {
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 0.65rem;
+}
+.brand-footer__trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.35rem;
+  padding: 1.1rem 0 0.35rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+}
 .brand-footer__legal {
   display: flex;
-  justify-content: center;
-  gap: 0.35rem 1.25rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  gap: 0.25rem 1.15rem;
+  margin: 0.5rem 0 0;
 }
 .brand-footer__legal-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
 }
 .brand-footer__legal-link:hover { color: #fff; }
 .brand-footer__bottom {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.8rem;
-  padding-top: 1rem;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+  padding-top: 1.15rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.8rem;
+}
+@media (min-width: 768px) {
+  .brand-footer {
+    padding: 3.5rem var(--page-gutter) 2.5rem;
+  }
+  .brand-footer__grid {
+    grid-template-columns: 1.55fr 1fr 1.15fr;
+    gap: 2.25rem;
+    padding-bottom: 2.25rem;
+  }
 }
 
 @media (max-width: 767.98px) {
