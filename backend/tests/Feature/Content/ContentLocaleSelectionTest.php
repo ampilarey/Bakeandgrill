@@ -24,6 +24,7 @@ class ContentLocaleSelectionTest extends TestCase
     public function test_website_query_locale_renders_localized_content_and_sets_cookie(): void
     {
         SiteSetting::set('language_switcher_enabled', 'true', 'shared', 'en');
+        SiteSetting::set('language_switcher_enabled', 'true', 'website', 'en');
         SiteSetting::set('site_name', 'Bake English', 'website', 'en');
         SiteSetting::set('site_name', 'ބޭކް ދިވެހި', 'website', 'dv');
 
@@ -44,6 +45,7 @@ class ContentLocaleSelectionTest extends TestCase
     public function test_language_switcher_off_forces_english_and_hides_toggle(): void
     {
         SiteSetting::set('language_switcher_enabled', 'false', 'shared', 'en');
+        SiteSetting::set('language_switcher_enabled', 'false', 'website', 'en');
         SiteSetting::set('site_name', 'Bake English', 'website', 'en');
         SiteSetting::set('site_name', 'ބޭކް ދިވެހި', 'website', 'dv');
 
