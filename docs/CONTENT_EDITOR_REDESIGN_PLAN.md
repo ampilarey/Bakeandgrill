@@ -116,9 +116,10 @@ slide.
    `SurfaceCatalog` still models only 4 slots × 2 devices × 2 apps; real pages are inventoried
    for Stage 4 regroup. Coverage test: every non-deprecated app-targeted registry key appears
    exactly once per app in the inventory.
-7. **Admin breakpoints are thin.** 29 media queries, dominated by `max-width: 767px` (11
-   occurrences). There is one compact band (`768–1199`) and a `min-width: 1200px`. The
-   414 / 1366 behaviours in the target spec are untested.
+7. ~~**Admin breakpoints are thin.**~~ **Closed (Stage 5).** Three Content Hub bands are wired
+   (`≤767` / `768–1199` / `≥1200`) with hooks + CSS. Matrix rows 14–15 covered by Playwright
+   (`09-content-hub-mobile-layout.spec.ts` includes 414 + 767; `09b-content-hub-responsive-bands.spec.ts`
+   covers compact no-dock + desktop optional dock at 1200 / 1366) plus vitest band/hook tests.
 
 
 ---
@@ -380,8 +381,9 @@ Three admin layouts, with the breakpoints that must be tested:
 | **Tablet / compact** | 768, 1024, 1199 | Compact selector plus editor. **No permanently docked squeezed preview** — a 300px preview beside a 400px editor helps nobody. |
 | **Desktop** | 1200, 1366 and above | Main editor plus optional preview pane. Preview follows the selected app and the selected Desktop/Mobile surface. |
 
-Current state to close: 29 media queries, 11 of them `max-width: 767px`, one compact band at
-`768–1199`, one `min-width: 1200px`. 414 and 1366 are untested.
+Bands are enforced by `useIsMobile` / `useIsCompactAdmin` / `useIsWideDesktop` and matching
+`hub-*` CSS in `index.css`. Compact CSS hides `.hub-preview-pane--column`. Playwright asserts
+real layout at every plan width (Stage 5).
 
 ### 7.3 Drafts, previews and publishing
 
@@ -448,7 +450,10 @@ Everywhere; Home layout editor binds to `Home` (legacy `Homepage` aliased). Matr
 `contentHubGroupMap.test.ts` (fail-proved). Events band keys stay on Home per Stage 2 inventory
 (no empty Events & Catering section).
 
-**Stage 5 — Responsive bands.** §7.2, including 414 and 1366.
+**Stage 5 — Responsive bands. Done on this branch.** §7.2 three layouts: mobile overflow at
+320 / 375 / 390 / 414 / 767 (Playwright); compact 768 / 1024 / 1199 never docks preview column
+(sheet only); desktop 1200 / 1366 optional docked column. Vitest band + hook coverage; matrix
+rows 14–15.
 
 **Stage 6 — Visual block previews and preview-beside-editor.** §6.4 and §7.1. Highest cost,
 highest payoff, last.

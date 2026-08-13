@@ -2,8 +2,8 @@
  * Content Hub mobile layout — real Chromium layout engine.
  * LOCAL project only. Does not inject CSS; asserts against shipped admin styles.
  *
- * Overview uses the Customer Surface Builder landing.
- * Overflow must stay green at 320 / 375 / 390 — do not accept known overflow.
+ * Matrix row 14 (Stage 5): no horizontal overflow at 320, 375, 390, 414, 767.
+ * Overview uses the Customer Surface Builder landing on Website Content.
  */
 import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
@@ -16,17 +16,17 @@ import {
   expectTextWrapsNotScrollsX,
 } from '../../helpers/mobileLayout';
 
-const WIDTHS = [320, 375, 390] as const;
+/** Plan §7.2 mobile band — every width must stay green. */
+const WIDTHS = [320, 375, 390, 414, 767] as const;
 const FIXTURE_PNG = path.resolve(__dirname, '../../fixtures/mobile-layout-hero.png');
 
 async function openContentHub(page: Page): Promise<void> {
-  await gotoAdminAuthenticated(page, '/admin/content');
+  await gotoAdminAuthenticated(page, '/admin/content/website');
   await expect(page.getByTestId('surface-builder-landing')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('task-cluster-brand_pages')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('task-card-hero')).toBeVisible();
   await expect(page.getByTestId('task-card-announcement')).toBeVisible();
   await expect(page.getByTestId('task-card-website_footer')).toBeVisible();
-  await expect(page.getByTestId('task-card-order_menu')).toBeVisible();
 }
 
 async function openHeroSheet(page: Page): Promise<void> {
@@ -34,7 +34,7 @@ async function openHeroSheet(page: Page): Promise<void> {
   if (await heroCard.isVisible().catch(() => false)) {
     await heroCard.click();
   } else {
-    await page.goto('/admin/content?group=Hero', { waitUntil: 'domcontentloaded' });
+    await page.goto('/admin/content/website?group=Home', { waitUntil: 'domcontentloaded' });
   }
   await expect(page.getByTestId('content-editor-sheet')).toBeVisible({ timeout: 15_000 });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -63,16 +63,19 @@ const block: ContentBlock = {
 function mockViewport(width: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   window.matchMedia = vi.fn().mockImplementation((query: string) => {
-    const matches =
-      (query === MOBILE_MEDIA_QUERY && width <= 767)
-      || (query === COMPACT_ADMIN_MEDIA_QUERY && width >= 768 && width <= 1199)
-      || (query === WIDE_DESKTOP_MEDIA_QUERY && width >= 1200)
-      || (query.includes('max-width') && /max-width:\s*(\d+)/.test(query)
-        && width <= Number(query.match(/max-width:\s*(\d+)/)?.[1]))
-      || (query.includes('min-width') && /min-width:\s*(\d+)/.test(query)
-        && width >= Number(query.match(/min-width:\s*(\d+)/)?.[1]));
+    // Prefer exact band queries; for others require min AND max when both present
+    // so compact `(min-width: 768px) and (max-width: 1199px)` is never true at 1200+.
+    const max = /max-width:\s*(\d+)/.exec(query);
+    const min = /min-width:\s*(\d+)/.exec(query);
+    let matches = false;
+    if (query === MOBILE_MEDIA_QUERY) matches = width <= 767;
+    else if (query === COMPACT_ADMIN_MEDIA_QUERY) matches = width >= 768 && width <= 1199;
+    else if (query === WIDE_DESKTOP_MEDIA_QUERY) matches = width >= 1200;
+    else if (max && min) matches = width >= Number(min[1]) && width <= Number(max[1]);
+    else if (max) matches = width <= Number(max[1]);
+    else if (min) matches = width >= Number(min[1]);
     return {
-      matches: Boolean(matches),
+      matches,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -131,4 +134,46 @@ describe('Content Hub responsive bands', () => {
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
     }
   });
+
+  it.each([768, 1024, 1199] as const)(
+    'compact Admin preview toggle opens a sheet, never a docked column @ %ipx',
+    async (width) => {
+      mockViewport(width);
+      window.localStorage.setItem('bg_hub_preview_open', '0');
+      render(
+        <MemoryRouter initialEntries={['/content/website?group=Home']}>
+          <ContentHubPage />
+        </MemoryRouter>,
+      );
+      await screen.findByTestId('hub-desktop-shell');
+      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+
+      fireEvent.click(screen.getByTestId('preview-toggle'));
+      await waitFor(() => {
+        expect(screen.getByTestId('preview-sheet')).toBeTruthy();
+      });
+      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+    },
+  );
+
+  it.each([1200, 1366] as const)(
+    'wide desktop preview toggle docks a column @ %ipx',
+    async (width) => {
+      mockViewport(width);
+      window.localStorage.setItem('bg_hub_preview_open', '0');
+      render(
+        <MemoryRouter initialEntries={['/content/website?group=Home']}>
+          <ContentHubPage />
+        </MemoryRouter>,
+      );
+      await screen.findByTestId('hub-desktop-shell');
+      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+
+      fireEvent.click(screen.getByTestId('preview-toggle'));
+      await waitFor(() => {
+        expect(document.querySelector('.hub-preview-pane--column')).toBeTruthy();
+      });
+      expect(screen.queryByTestId('preview-sheet')).toBeNull();
+    },
+  );
 });
