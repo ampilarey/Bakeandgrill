@@ -4538,9 +4538,119 @@ textarea.field-input {
   cursor: wait;
 }
 
+/* Order App home — Delivery / Pickup / Eat here mode cards.
+   Equal-height row; fixed media frame; body grows; CTA pinned to bottom. */
+.mode-entry-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.875rem;
+}
+
+.mode-entry-card {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: var(--color-surface);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  min-height: 44px;
+  color: inherit;
+}
+
+.mode-entry-card--unavailable {
+  border-color: var(--color-border-strong, var(--color-border));
+  opacity: 0.88;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.mode-entry-card__media {
+  flex: 0 0 auto;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(145deg, var(--color-surface-alt) 0%, var(--color-primary-light) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-entry-card[data-testid="mode-entry-delivery"] .mode-entry-card__media {
+  background: linear-gradient(145deg, var(--color-primary-light) 0%, var(--color-surface-alt) 100%);
+}
+
+.mode-entry-card--unavailable .mode-entry-card__media {
+  filter: grayscale(0.35);
+}
+
+.mode-entry-card__img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.mode-entry-card__icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.mode-entry-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0.875rem 1rem 1rem;
+}
+
+.mode-entry-card__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mode-entry-card__label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-dark);
+  overflow-wrap: anywhere;
+}
+
+.mode-entry-card__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  /* Never clip meaningful copy — grow the card downward instead. */
+  white-space: normal;
+}
+
+.mode-entry-card__cta {
+  margin-top: auto;
+  padding-top: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.mode-entry-card--unavailable .mode-entry-card__cta {
+  color: var(--color-text-secondary, var(--color-text-muted));
+}
+
+/* Narrow phones: stack full-width. From 360px keep the three-card row. */
 @media (max-width: 359px) {
-  .mode-entry-cards > * {
-    flex: 1 1 100% !important;
+  .mode-entry-card {
+    flex: 1 1 100%;
   }
 }
 

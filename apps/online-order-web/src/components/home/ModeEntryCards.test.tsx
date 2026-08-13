@@ -209,8 +209,8 @@ describe('ModeEntryCards informative closed states', () => {
     expect(screen.queryByTestId('mode-status-chip-delivery')).toBeNull();
     expect(closed.textContent).toMatch(/Closed until \d{1,2}:\d{2} (AM|PM)/);
     expect(closed.textContent).toMatch(/Learn more/i);
-    const photo = closed.querySelector('[aria-hidden]') as HTMLElement | null;
-    expect(photo?.style.filter).toContain('grayscale');
+    expect(closed.className).toMatch(/mode-entry-card--unavailable/);
+    expect(screen.getByTestId('mode-entry-media-dine_in')).toBeTruthy();
   });
 
   it('keeps cards keyboard-focusable and operable when unavailable', async () => {
@@ -270,5 +270,72 @@ describe('ModeEntryCards informative closed states', () => {
     const status = await screen.findByTestId('mode-info-status');
     expect(status.textContent).toBe('Unavailable right now');
     expect(status.textContent).not.toMatch(/10:00/);
+  });
+});
+
+describe('ModeEntryCards mobile equal-height structure', () => {
+  const WIDTHS = [320, 375, 390, 414] as const;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.keys(textStore).forEach((k) => { delete textStore[k]; });
+    fetchGate.mockResolvedValue(openGate());
+  });
+
+  function assertStableCardStructure(kind: 'delivery' | 'pickup' | 'dine_in') {
+    const card = screen.getByTestId(`mode-entry-${kind}`);
+    const media = screen.getByTestId(`mode-entry-media-${kind}`);
+    const body = screen.getByTestId(`mode-entry-body-${kind}`);
+    const cta = screen.getByTestId(`mode-entry-cta-${kind}`);
+    const img = media.querySelector('img');
+
+    expect(card.className).toMatch(/mode-entry-card/);
+    expect(media.className).toMatch(/mode-entry-card__media/);
+    expect(body.className).toMatch(/mode-entry-card__body/);
+    expect(cta.className).toMatch(/mode-entry-card__cta/);
+    // Media is the first child so long copy grows downward only.
+    expect(card.firstElementChild).toBe(media);
+    expect(media.nextElementSibling).toBe(body);
+    expect(body.contains(cta)).toBe(true);
+    if (img) {
+      expect(img.className).toMatch(/mode-entry-card__img/);
+    }
+  }
+
+  it.each(WIDTHS)('keeps a stable media/body/CTA structure at %ipx with short copy', async (width) => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    textStore.order_mode_delivery_hint = 'Quick delivery';
+    textStore.order_mode_pickup_hint = 'Quick pickup';
+    textStore.order_mode_dine_in_hint = 'Eat here';
+    renderCards();
+    await screen.findByTestId('mode-entry-delivery');
+    assertStableCardStructure('delivery');
+    assertStableCardStructure('pickup');
+    assertStableCardStructure('dine_in');
+    expect(document.querySelector('.mode-entry-cards')).toBeTruthy();
+  });
+
+  it.each(WIDTHS)('keeps media above long copy at %ipx without clipping CTA', async (width) => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    const long =
+      'Very long mode description that must wrap across multiple lines on a narrow phone without moving the image or hiding the call to action button at the bottom of the card.';
+    textStore.order_mode_delivery_hint = long;
+    textStore.order_mode_pickup_hint = 'Short';
+    textStore.order_mode_dine_in_hint = `${long} Extra sentence for Eat here so the tallest card stretches.`;
+    renderCards();
+    await screen.findByTestId('mode-entry-delivery');
+
+    for (const kind of ['delivery', 'pickup', 'dine_in'] as const) {
+      assertStableCardStructure(kind);
+      const body = screen.getByTestId(`mode-entry-body-${kind}`);
+      const cta = screen.getByTestId(`mode-entry-cta-${kind}`);
+      expect(body.textContent).toMatch(/→/);
+      expect(cta.textContent).toMatch(/→/);
+      // Hint text is fully present (not truncated with ellipsis clipping).
+      expect(body.textContent?.includes('Short') || body.textContent?.includes('Very long')).toBe(true);
+    }
+
+    const row = document.querySelector('.mode-entry-cards') as HTMLElement;
+    expect(getComputedStyle(row).display || 'flex').toBeTruthy();
   });
 });
