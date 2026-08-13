@@ -36,14 +36,14 @@ import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
-import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { DraftPublishStatus } from '../../components/DraftPublishStatus';
 import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
 import { PreviewPane } from './PreviewPane';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
-import { HubSectionContent, HubFocusedBlockBody, type UploadContextRef } from './HubSectionContent';
+import { HubSectionContent, type UploadContextRef } from './HubSectionContent';
+import { HubEditorSheets } from './HubEditorSheets';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -1334,75 +1334,6 @@ export function ContentHubPage() {
               />
             </div>
 
-            {/* Section editor — full-screen sheet (not an inline push) */}
-            <ContentEditorSheet
-              open={!loading && mobileEditorOpen && Boolean(activeGroup)}
-              title={activeEditorTitle}
-              onClose={handleMobileBack}
-              status={draftStatusNode}
-              layer={0}
-              testId="content-editor-sheet"
-              headerActions={(
-                <div className="hub-sheet-header-actions">
-                  <div className="hub-locale-seg" role="group" aria-label="Language">
-                    {(['en', 'dv'] as const).map((loc) => (
-                      <button
-                        key={loc}
-                        type="button"
-                        aria-pressed={locale === loc}
-                        onClick={() => setLocale(loc)}
-                        className={`hub-locale-btn${locale === loc ? ' hub-locale-btn--active' : ''}`}
-                      >
-                        {loc === 'en' ? 'EN' : 'DV'}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="preview-sheet-btn"
-                    className="hub-sheet-preview-btn"
-                    onClick={() => setPreviewSheetOpen(true)}
-                  >
-                    <Eye size={16} /> Preview
-                  </button>
-                  <button
-                    type="button"
-                    className="hub-more-trigger"
-                    data-testid="hub-sheet-more-btn"
-                    onClick={() => setMoreMenuOpen(true)}
-                    aria-expanded={moreMenuOpen}
-                    aria-label="More actions"
-                  >
-                    <MoreHorizontal size={16} />
-                  </button>
-                </div>
-              )}
-              footer={effectiveDirtyCount > 0 ? (
-                <Btn
-                  onClick={() => void publish()}
-                  disabled={saving}
-                  style={{ width: '100%' }}
-                  data-testid="publish-live-btn-sheet"
-                  className="content-studio-publish-sticky"
-                >
-                  <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : `Publish ${hubLabel}`}
-                </Btn>
-              ) : undefined}
-            >
-              {dirtyCount > 0 ? (
-                <div style={{ marginBottom: 12 }} data-testid="content-editor-schedule-slot">
-                  {schedulePublishPanel}
-                </div>
-              ) : null}
-              {activeGroup ? (
-                <HubSectionContent
-                  sectionName={activeGroup}
-                  withBack={false}
-                  {...hubSectionContentProps}
-                />
-              ) : null}
-            </ContentEditorSheet>
-
             <PreviewPane
               variant="sheet"
               lockedApp={hubApp}
@@ -1414,17 +1345,6 @@ export function ContentHubPage() {
               draftStatus={draftStatusNode}
               layer={3}
             />
-
-            <ContentEditorSheet
-              open={searchOverlayOpen}
-              title="Search"
-              onClose={() => setSearchOverlayOpen(false)}
-              layer={4}
-              testId="hub-search-overlay"
-              returnFocusTo={searchToggleRef.current}
-            >
-              {searchField}
-            </ContentEditorSheet>
           </div>
         ) : (
           /* ── Desktop layout ─────────────────────────────────────────────── */
@@ -1501,52 +1421,45 @@ export function ContentHubPage() {
           />
         ) : null}
 
-        {/* Focused block editor — Overview → Edit (mobile sheet / desktop drawer) */}
-        {(() => {
-          const editBlock = mobileBlockEditorKey
-            ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
-            : null;
-          if (!editBlock) return null;
-          const isHero = editBlock.editor === 'hero';
-          return (
-            <ContentEditorSheet
-              open
-              title={`Edit ${editBlock.label}`}
-              onClose={() => setMobileBlockEditorKey(null)}
-              status={draftStatusNode}
-              layer={1}
-              testId={isHero ? 'hero-editor-sheet' : `block-editor-sheet-${editBlock.key}`}
-              footer={effectiveDirtyCount > 0 ? (
-                <Btn
-                  onClick={() => void publish()}
-                  disabled={saving || autosaveFailed}
-                  style={{ width: '100%' }}
-                  data-testid="publish-live-btn-block-sheet"
-                >
-                  <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
-                </Btn>
-              ) : undefined}
-            >
-              <HubFocusedBlockBody
-                block={editBlock}
-                hubApp={hubApp}
-                drafts={drafts}
-                locale={locale}
-                contentBlocks={contentBlocks}
-                blockScopeTab={blockScopeTab}
-                setBlockScopeTab={setBlockScopeTab}
-                setDraft={setDraft}
-                makeTriggerUpload={makeTriggerUpload}
-                onUpload={onUpload}
-                uploadCtx={uploadCtx}
-                setMediaOpen={setMediaOpen}
-                draftStatusNode={draftStatusNode}
-                dirtyCount={dirtyCount}
-                schedulePublishPanel={schedulePublishPanel}
-              />
-            </ContentEditorSheet>
-          );
-        })()}
+        <HubEditorSheets
+          isMobile={isMobile}
+          loading={loading}
+          mobileEditorOpen={mobileEditorOpen}
+          activeGroup={activeGroup}
+          activeEditorTitle={activeEditorTitle}
+          onCloseSection={handleMobileBack}
+          draftStatusNode={draftStatusNode}
+          locale={locale}
+          setLocale={setLocale}
+          onOpenPreview={() => setPreviewSheetOpen(true)}
+          moreMenuOpen={moreMenuOpen}
+          setMoreMenuOpen={setMoreMenuOpen}
+          effectiveDirtyCount={effectiveDirtyCount}
+          dirtyCount={dirtyCount}
+          saving={saving}
+          autosaveFailed={autosaveFailed}
+          publishFailed={publishFailed}
+          hubLabel={hubLabel}
+          onPublish={() => { void publish(); }}
+          schedulePublishPanel={schedulePublishPanel}
+          sectionContentProps={hubSectionContentProps}
+          searchOverlayOpen={searchOverlayOpen}
+          setSearchOverlayOpen={setSearchOverlayOpen}
+          searchToggleRef={searchToggleRef}
+          searchField={searchField}
+          mobileBlockEditorKey={mobileBlockEditorKey}
+          setMobileBlockEditorKey={setMobileBlockEditorKey}
+          contentBlocks={contentBlocks}
+          hubApp={hubApp}
+          drafts={drafts}
+          blockScopeTab={blockScopeTab}
+          setBlockScopeTab={setBlockScopeTab}
+          setDraft={setDraft}
+          makeTriggerUpload={makeTriggerUpload}
+          onUpload={onUpload}
+          uploadCtx={uploadCtx}
+          setMediaOpen={setMediaOpen}
+        />
 
         {/* Sticky mobile publish bar */}
         {effectiveDirtyCount > 0 && isMobile ? (
