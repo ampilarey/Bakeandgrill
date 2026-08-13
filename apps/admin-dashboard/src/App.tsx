@@ -40,6 +40,7 @@ const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklis
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const ContentHubPage          = lazyWithRetry(() => import('./pages/ContentHub/ContentHubPage'));
 const ContentHubChooser       = lazyWithRetry(() => import('./pages/ContentHub/ContentHubChooser').then((m) => ({ default: m.ContentHubChooser })));
+const BusinessDetailsPage     = lazyWithRetry(() => import('./pages/BusinessDetailsPage'));
 const GiftCardsPage           = lazyWithRetry(() => import('./pages/GiftCardsPage'));
 const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCardsPage'));
 const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
@@ -381,6 +382,11 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="content-studio" element={<Navigate to="/content/website" replace />} />
+                <Route path="business-details" element={
+                  <PermissionGuard user={user} permission="website.manage">
+                    <BusinessDetailsPage />
+                  </PermissionGuard>
+                } />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permissions={['website.manage', 'settings.update', 'roles_permissions.manage']}>
