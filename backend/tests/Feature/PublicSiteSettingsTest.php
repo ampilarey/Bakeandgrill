@@ -33,11 +33,15 @@ class PublicSiteSettingsTest extends TestCase
             'home_categories_eyebrow',
             'legal_privacy_body',
             'contact_page_title',
+            // Shared with website for enhanced BrandFooter (order app + website mobile).
+            'footer_quick_links_heading',
+            'footer_location_heading',
+            'footer_payments_text',
+            'footer_delivery_text',
         ];
 
         $websiteOnlyKeys = [
             'nav_order_cta_text',
-            'footer_quick_links_heading',
             'cta_band_headline',
             'hours_page_note',
         ];
