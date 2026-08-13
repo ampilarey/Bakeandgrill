@@ -110,10 +110,11 @@ final class PageBlockValidator
         // event handlers die here, before anything reaches the database.
         $settings = GenericBlockPresenter::sanitizeSettings($type, $settings);
 
-        $mode = (string) ($data['content_mode'] ?? 'shared');
-        if ($mode === 'shared' && ! $def->supportsSharedContent) {
-            // Own-only types still accept "shared" as a no-op flag — coerce to own.
-            $mode = 'own';
+        $mode = (string) ($data['content_mode'] ?? 'own');
+        if ($mode === 'shared') {
+            throw ValidationException::withMessages([
+                'content_mode' => 'Shared content mode is no longer supported.',
+            ]);
         }
 
         return [

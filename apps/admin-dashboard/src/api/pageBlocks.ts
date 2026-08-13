@@ -26,7 +26,7 @@ export type PageBlockRow = {
   block_type: string;
   position: number;
   is_enabled: boolean;
-  content_mode: 'shared' | 'own';
+  content_mode: 'own';
   shared_content_id?: number | null;
   shared_content_uuid?: string | null;
   settings: Record<string, unknown>;
@@ -80,7 +80,7 @@ export async function createPageBlock(payload: {
   page?: string;
   version: number;
   block_type: string;
-  content_mode?: 'shared' | 'own';
+  content_mode?: 'own';
   settings?: Record<string, unknown>;
 }): Promise<{ block: PageBlockRow; version: number; draft: boolean }> {
   return req('/admin/page-blocks', {
@@ -94,9 +94,8 @@ export async function updatePageBlock(
   payload: Partial<{
     position: number;
     is_enabled: boolean;
-    content_mode: 'shared' | 'own';
+    content_mode: 'own';
     settings: Record<string, unknown>;
-    share_source: 'website' | 'order_app' | 'shared';
     app: PageBlockApp;
     page: string;
     version: number;

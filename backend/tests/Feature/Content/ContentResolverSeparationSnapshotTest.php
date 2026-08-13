@@ -21,16 +21,16 @@ class ContentResolverSeparationSnapshotTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_resolver_snapshot_matches_committed_fixture_for_all_620_combinations(): void
+    public function test_resolver_snapshot_matches_committed_fixture_for_all_680_combinations(): void
     {
         $keys = ContentResolverSnapshot::nonDeprecatedKeys();
-        $this->assertCount(169, $keys, 'Expected 169 non-deprecated content.php keys');
+        $this->assertCount(170, $keys, 'Expected 170 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(
             ContentResolverSnapshot::EXPECTED_COMBINATIONS,
             $actual['meta']['combinations'],
-            'Expected 169 keys × 2 apps × 2 locales = 676 combinations',
+            'Expected 170 keys × 2 apps × 2 locales = 680 combinations',
         );
 
         $path = ContentResolverSnapshot::fixturePath();

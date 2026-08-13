@@ -32,6 +32,8 @@ final class DraftPageBlockHydrator
             $row = is_array($row) ? $row : [];
             $block = new PageBlock;
             $row['shared_content_id'] = null;
+            $row['shared_content_uuid'] = null;
+            $row['content_mode'] = PageBlock::MODE_OWN;
             $block->forceFill($row);
             $block->exists = false;
 

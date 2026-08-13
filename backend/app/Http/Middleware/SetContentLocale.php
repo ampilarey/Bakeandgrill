@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\SiteSetting;
+use App\Domains\Content\ContentResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,8 +17,10 @@ class SetContentLocale
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Website Blade routes use the website content scope. Order App / API
+        // clients gate the switcher themselves via order_app public content.
         $switcherOn = filter_var(
-            SiteSetting::get('language_switcher_enabled', 'false'),
+            ContentResolver::for('website')->get('language_switcher_enabled', 'false'),
             FILTER_VALIDATE_BOOLEAN,
         );
 
@@ -71,7 +73,7 @@ class SetContentLocale
 
     private function normalizeLocale(mixed $locale): ?string
     {
-        if (!is_string($locale)) {
+        if (! is_string($locale)) {
             return null;
         }
 

@@ -600,5 +600,5 @@ export function brandKitWriteScope(block: ContentBlock, app: ContentApp): Conten
   if (block.apps.includes(app)) return app;
   if (block.apps.includes('website')) return 'website';
   if (block.apps.includes('order_app')) return 'order_app';
-  return 'shared';
+  return app;
 }

@@ -52,7 +52,7 @@ import { blocksForSurface } from '../utils/surfaceBlocks';
  */
 const REQUIRED_BLOCKS: PageBlockRow[] = [
   { id: -1, app: 'order_app', page: 'home', block_type: 'mode_cards', position: 0, is_enabled: true, content_mode: 'own', settings: {} },
-  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'shared', settings: { placement_desktop: 'footer', placement_mobile: 'footer' } },
+  { id: -2, app: 'order_app', page: 'home', block_type: 'brand_footer', position: 1, is_enabled: true, content_mode: 'own', settings: { placement_desktop: 'footer', placement_mobile: 'footer' } },
 ];
 
 export function HomePage() {

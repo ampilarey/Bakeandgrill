@@ -45,32 +45,32 @@ class ContentBacklogTest extends TestCase
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'business_phone', 'scope' => 'shared', 'value' => '111'],
+                ['key' => 'business_phone', 'scope' => 'website', 'value' => '111'],
             ],
         ])->assertOk();
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'business_phone', 'scope' => 'shared', 'value' => '222'],
+                ['key' => 'business_phone', 'scope' => 'website', 'value' => '222'],
             ],
         ])->assertOk();
 
-        $this->assertSame('222', SiteSetting::getScoped('business_phone', 'shared', 'en'));
+        $this->assertSame('222', SiteSetting::getScoped('business_phone', 'website', 'en'));
         $this->assertDatabaseHas('content_revisions', [
             'key' => 'business_phone',
-            'scope' => 'shared',
+            'scope' => 'website',
             'locale' => 'en',
             'value' => '111',
         ]);
 
-        $rev = ContentRevision::query()->where('key', 'business_phone')->latest('id')->first();
+        $rev = ContentRevision::query()->where('key', 'business_phone')->where('scope', 'website')->latest('id')->first();
         $this->assertNotNull($rev);
 
         $this->postJson("/api/admin/content/business_phone/revisions/{$rev->id}/restore")
             ->assertOk();
 
-        $this->assertSame('111', SiteSetting::getScoped('business_phone', 'shared', 'en'));
+        $this->assertSame('111', SiteSetting::getScoped('business_phone', 'website', 'en'));
     }
 
     public function test_scheduled_publish_applies_via_command(): void
@@ -81,7 +81,7 @@ class ContentBacklogTest extends TestCase
             'publish_at' => now()->addHour()->toIso8601String(),
             'locale' => 'en',
             'changes' => [
-                ['key' => 'site_tagline', 'scope' => 'shared', 'value' => 'Scheduled tagline'],
+                ['key' => 'site_tagline', 'scope' => 'website', 'value' => 'Scheduled tagline'],
             ],
         ])->assertCreated();
 
@@ -96,7 +96,7 @@ class ContentBacklogTest extends TestCase
 
         Artisan::call('content:publish-scheduled');
 
-        $this->assertSame('Scheduled tagline', SiteSetting::getScoped('site_tagline', 'shared', 'en'));
+        $this->assertSame('Scheduled tagline', SiteSetting::getScoped('site_tagline', 'website', 'en'));
         $this->assertSame('published', ContentSchedule::query()->where('key', 'site_tagline')->value('status'));
     }
 
@@ -104,13 +104,6 @@ class ContentBacklogTest extends TestCase
     {
         $this->actingAsOwner();
 
-        // Shared first (clears app overrides), then plant order_app rows for Stage 3.
-        $this->putJson('/api/admin/content', [
-            'locale' => 'en',
-            'changes' => [
-                ['key' => 'site_name', 'scope' => 'shared', 'value' => 'Bake EN'],
-            ],
-        ])->assertOk();
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
@@ -121,18 +114,9 @@ class ContentBacklogTest extends TestCase
         $this->putJson('/api/admin/content', [
             'locale' => 'dv',
             'changes' => [
-                ['key' => 'site_name', 'scope' => 'shared', 'locale' => 'dv', 'value' => 'Bake DV'],
-            ],
-        ])->assertOk();
-        $this->putJson('/api/admin/content', [
-            'locale' => 'dv',
-            'changes' => [
                 ['key' => 'site_name', 'scope' => 'order_app', 'locale' => 'dv', 'value' => 'Bake DV'],
             ],
         ])->assertOk();
-
-        $this->assertSame('Bake EN', SiteSetting::getScoped('site_name', 'shared', 'en'));
-        $this->assertSame('Bake DV', SiteSetting::getScoped('site_name', 'shared', 'dv'));
 
         $en = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
         $dv = $this->getJson('/api/content?app=order_app&locale=dv')->assertOk()->json('content');
@@ -146,7 +130,7 @@ class ContentBacklogTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'business_email', 'scope' => 'shared', 'value' => 'a@test.mv'],
+                ['key' => 'business_email', 'scope' => 'website', 'value' => 'a@test.mv'],
             ],
         ])->assertOk();
 
@@ -155,11 +139,11 @@ class ContentBacklogTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'business_email', 'scope' => 'shared', 'value' => 'changed@test.mv'],
+                ['key' => 'business_email', 'scope' => 'website', 'value' => 'changed@test.mv'],
             ],
         ])->assertOk();
 
         $this->postJson('/api/admin/content/import', $bundle)->assertOk();
-        $this->assertSame('a@test.mv', SiteSetting::getScoped('business_email', 'shared', 'en'));
+        $this->assertSame('a@test.mv', SiteSetting::getScoped('business_email', 'website', 'en'));
     }
 }

@@ -1,7 +1,9 @@
 # Separating Website and Order App Content — Plan
 
-Status: **Stages 1–6 shipped** on `claude/service-availability-maintenance-zj4whc`
-(2026-08-13). Shared scope and `SiteSetting::get()` were not modified.
+Status: **Stages 1–6 shipped**; **customer-facing page-block / Home / branding
+independence completed** on `cursor/complete-content-app-separation-d038` (2026-08-13).
+Shared scope remains the operational/document business record only — Website and Order
+App never fall back to it for customer-facing presentation.
 
 Owner's ask: *"I have tried many time to make the content settings in admin app. Its really
 confusing and complicated since it controls main app and order app combined. I need to totally
@@ -245,7 +247,17 @@ apps). Snapshot still 0 diffs. Five non-app consumers covered by
 `ContentScopeMismatch` covers the 13 business facts + 6 brand assets on Website Content, Order
 App Content, and Business Details. No sync control.
 
-Stages 1 to 3 deliver the separation. Stages 4 to 6 deliver the *simplicity*, which is the thing
+**Stage 7 — Page blocks + Home editor + remaining leaks.** ✅ Shipped on
+`cursor/complete-content-app-separation-d038`:
+- Page blocks are own-only; `content_mode=shared` → 422; migration
+  `2026_08_13_090000_materialize_shared_page_blocks_to_own.php` materializes shared settings.
+- `HomeLayoutEditor` loads/publishes/discards **one app only**.
+- Offers API, specials logo, HomeChrome announcement, `SetContentLocale`, unregistered
+  `content()` keys, and Content Hub shared drafts/export all stop using shared as a
+  customer-facing source. Media Library “Use as” clarified as document/business-record.
+- Content Hub publish/draft/import/export restricted to `website` | `order_app`.
+
+Stages 1 to 3 deliver the separation. Stages 4 to 7 deliver the *simplicity*, which is the thing
 actually being asked for — the owner's complaint was never that the apps were linked, it was that
 the screen made him decide about it on every block.
 

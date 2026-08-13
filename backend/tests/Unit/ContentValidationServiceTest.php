@@ -32,10 +32,10 @@ class ContentValidationServiceTest extends TestCase
     {
         $validator = app(ContentValidationService::class);
 
-        $this->assertSame('#AABBCC', $validator->normalizeForWrite('primary_color', 'shared', '#abc'));
+        $this->assertSame('#AABBCC', $validator->normalizeForWrite('primary_color', 'website', '#abc'));
         $this->assertSame('#D4813A', $validator->normalizeForWrite('primary_color', 'shared', '#d4813a'));
 
-        $slides = $validator->normalizeForWrite('hero_slides', 'shared', [[
+        $slides = $validator->normalizeForWrite('hero_slides', 'website', [[
             'title' => 'Lunch',
             'showing' => true,
             'cta_url' => ' /order/menu ',
@@ -57,6 +57,6 @@ class ContentValidationServiceTest extends TestCase
         $validator = app(ContentValidationService::class);
 
         $this->expectException(ValidationException::class);
-        $validator->normalizeForWrite('hero_slides', 'shared', '{"title":"Not a list"}');
+        $validator->normalizeForWrite('hero_slides', 'website', '{"title":"Not a list"}');
     }
 }

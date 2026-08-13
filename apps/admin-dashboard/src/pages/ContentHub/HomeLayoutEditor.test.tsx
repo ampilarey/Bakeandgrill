@@ -52,7 +52,7 @@ function blocksFor(app: string) {
         label: 'Prayer Time Banner',
         description: 'Prayer banner',
         removable: true,
-        supports_shared_content: true,
+        supports_shared_content: false,
       },
     ];
   }
@@ -64,12 +64,12 @@ function blocksFor(app: string) {
       block_type: 'hero',
       position: 0,
       is_enabled: true,
-      content_mode: 'shared',
+      content_mode: 'own',
       settings: {},
       label: 'Hero banner',
       description: 'Top slideshow',
       removable: true,
-      supports_shared_content: true,
+      supports_shared_content: false,
     },
     {
       id: 11,
@@ -78,12 +78,12 @@ function blocksFor(app: string) {
       block_type: 'trust_strip',
       position: 1,
       is_enabled: true,
-      content_mode: 'shared',
+      content_mode: 'own',
       settings: {},
       label: 'Trust strip',
       description: 'Trust signals',
       removable: true,
-      supports_shared_content: true,
+      supports_shared_content: false,
     },
   ];
 }
@@ -102,7 +102,7 @@ describe('HomeLayoutEditor', () => {
           description: 'A heading and a paragraph',
           apps: ['website', 'order_app'],
           removable: true,
-          supports_shared_content: true,
+          supports_shared_content: false,
           allows_multiple: true,
         },
         {
@@ -111,7 +111,7 @@ describe('HomeLayoutEditor', () => {
           description: 'Prayer banner',
           apps: ['website', 'order_app'],
           removable: true,
-          supports_shared_content: true,
+          supports_shared_content: false,
         },
         {
           type: 'featured',
@@ -119,7 +119,7 @@ describe('HomeLayoutEditor', () => {
           description: 'Featured',
           apps: ['website', 'order_app'],
           removable: true,
-          supports_shared_content: true,
+          supports_shared_content: false,
         },
       ],
       unknown_types: [],
@@ -136,14 +136,16 @@ describe('HomeLayoutEditor', () => {
     deletePageBlock.mockResolvedValue({ blocks: [], draft: true, version: 1 });
   });
 
-  it('shows dual-app overview cards without Up/Down/Hide/Remove on each card', async () => {
-    render(<HomeLayoutEditor />);
+  it('loads only the initial app and shows single-app overview cards', async () => {
+    render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
 
+    expect(fetchAdminPageBlocks).toHaveBeenCalledTimes(1);
+    expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website');
+
     expect(screen.getByTestId('home-layout-block-hero')).toBeTruthy();
-    expect(screen.getByTestId('home-layout-block-prayer_bar')).toBeTruthy();
-    expect(screen.getByTestId('home-comp-website-status-hero').textContent).toMatch(/Website: Added/);
-    expect(screen.getByTestId('home-comp-order-status-prayer_bar').textContent).toMatch(/Order App: Added/);
+    expect(screen.getByTestId('home-comp-status-hero').textContent).toMatch(/Added/);
+    expect(screen.getByTestId('home-comp-status-prayer_bar').textContent).toMatch(/Not added/);
 
     expect(screen.queryByTestId('home-layout-move-up-10')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Hide$/i })).toBeNull();
@@ -151,40 +153,41 @@ describe('HomeLayoutEditor', () => {
     expect(screen.queryByTestId('home-layout-fixed-modules')).toBeNull();
   });
 
-  it('shows prayer banner in the library for both apps', async () => {
-    render(<HomeLayoutEditor />);
+  it('loads order_app when initialApp is order_app', async () => {
+    render(<HomeLayoutEditor initialApp="order_app" />);
     await waitFor(() => expect(screen.getByTestId('home-layout-block-prayer_bar')).toBeInTheDocument());
-    expect(screen.getByTestId('home-comp-website-status-prayer_bar').textContent).toMatch(/Not added|Hidden|Added/);
-    expect(screen.getByTestId('home-comp-order-status-prayer_bar').textContent).toMatch(/Added/);
+
+    expect(fetchAdminPageBlocks).toHaveBeenCalledWith('order_app');
+    expect(screen.getByTestId('home-comp-status-prayer_bar').textContent).toMatch(/Added/);
+    expect(screen.getByTestId('home-comp-status-hero').textContent).toMatch(/Not added/);
   });
 
-  it('opens editor with independent Website and Order App controls', async () => {
-    render(<HomeLayoutEditor />);
+  it('opens editor with controls for the active app only', async () => {
+    render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-layout-block-hero')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('home-layout-edit-10'));
     const sheet = await screen.findByTestId('home-layout-section-editor');
     expect(within(sheet).getByTestId('home-comp-editor-website')).toBeTruthy();
-    expect(within(sheet).getByTestId('home-comp-editor-order_app')).toBeTruthy();
-    expect(within(sheet).getByTestId('home-comp-add-order_app')).toBeTruthy();
+    expect(within(sheet).queryByTestId('home-comp-editor-order_app')).toBeNull();
     expect(within(sheet).getByTestId('home-layout-visibility-switch-10')).toBeTruthy();
   });
 
   it('shows move controls only in Reorder mode', async () => {
-    render(<HomeLayoutEditor />);
+    render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('home-layout-reorder-toggle'));
     expect(screen.getByTestId('home-layout-editor').getAttribute('data-reorder')).toBe('true');
     expect(screen.getByTestId('home-layout-move-up-10')).toBeTruthy();
   });
 
-  it('can add featured items to Order App from the editor', async () => {
-    render(<HomeLayoutEditor />);
+  it('can add featured items from the editor', async () => {
+    render(<HomeLayoutEditor initialApp="order_app" />);
     await waitFor(() => expect(screen.getByTestId('home-layout-block-featured')).toBeInTheDocument());
     fireEvent.click(within(screen.getByTestId('home-layout-block-featured')).getByRole('button'));
     const sheet = await screen.findByTestId('home-layout-section-editor');
     fireEvent.click(within(sheet).getByTestId('home-comp-add-order_app'));
     await waitFor(() => expect(createPageBlock).toHaveBeenCalledWith(
-      expect.objectContaining({ app: 'order_app', block_type: 'featured' }),
+      expect.objectContaining({ app: 'order_app', block_type: 'featured', content_mode: 'own' }),
     ));
   });
 
@@ -196,11 +199,12 @@ describe('HomeLayoutEditor', () => {
     );
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
 
+    expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website');
     expect(screen.getByTestId('home-layout-surface-breadcrumb').textContent).toMatch(/Website · Mobile · Header/);
     expect(screen.getByTestId('home-layout-block-prayer_bar')).toBeTruthy();
     expect(screen.getByTestId('home-layout-block-announcement')).toBeTruthy();
     expect(screen.queryByTestId('home-layout-block-mode_cards')).toBeNull();
     expect(screen.queryByTestId('home-layout-tab-website')).toBeNull();
-    expect(screen.getByTestId('home-layout-surface-app-lock')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-app-label').textContent).toMatch(/Website/);
   });
 });

@@ -37,11 +37,11 @@ import {
 const RESIZE_PRESETS = [1200, 800, 512, 256];
 
 const USE_AS_OPTIONS: { key: MediaUseAsKey; label: string }[] = [
-  { key: 'default_item_image', label: 'Default item image' },
-  { key: 'logo', label: 'Logo' },
-  { key: 'logo_dark', label: 'Logo (dark)' },
-  { key: 'favicon', label: 'Favicon' },
-  { key: 'og_image', label: 'OG image' },
+  { key: 'default_item_image', label: 'Default item image (menu)' },
+  { key: 'logo', label: 'Document logo' },
+  { key: 'logo_dark', label: 'Document logo (dark)' },
+  { key: 'favicon', label: 'Document favicon' },
+  { key: 'og_image', label: 'Document OG image' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1463,7 +1463,7 @@ export function MediaLibraryPage() {
 
             {selected.media_type === 'image' && canUseAs && (
               <div data-testid="media-use-as" style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Use as</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>Set on business record</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select
                     value={useAsKey}

@@ -85,9 +85,7 @@ final class SharedHomeComponentsMigrator
                     'block_type' => $type,
                     'position' => $i,
                     'is_enabled' => $row['is_enabled'],
-                    'content_mode' => $def->supportsSharedContent
-                        ? PageBlock::MODE_SHARED
-                        : PageBlock::MODE_OWN,
+                    'content_mode' => PageBlock::MODE_OWN,
                     'settings' => $settings,
                 ]);
                 $keepIds[] = $created->id;
@@ -261,9 +259,7 @@ final class SharedHomeComponentsMigrator
                 'block_type' => $type,
                 'position' => 0,
                 'is_enabled' => $enabled,
-                'content_mode' => ($def?->supportsSharedContent ?? false)
-                    ? PageBlock::MODE_SHARED
-                    : PageBlock::MODE_OWN,
+                'content_mode' => PageBlock::MODE_OWN,
                 'shared_content_id' => null,
                 'settings' => array_merge($defaults, $settings),
             ];

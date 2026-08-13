@@ -202,7 +202,7 @@ class ContentDraftPublishTest extends TestCase
             'locale' => 'en',
             'changes' => [
                 ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Draft website'],
-                ['key' => 'cta_band_headline', 'scope' => 'shared', 'value' => 'Draft shared'],
+                ['key' => 'menu_page_title', 'scope' => 'order_app', 'value' => 'Draft order'],
             ],
         ])->assertOk();
         $this->putJson('/api/admin/content/drafts', [
@@ -230,7 +230,7 @@ class ContentDraftPublishTest extends TestCase
             'locale' => 'en',
             'changes' => [
                 ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Draft website'],
-                ['key' => 'cta_band_headline', 'scope' => 'shared', 'value' => 'Draft shared'],
+                ['key' => 'menu_page_title', 'scope' => 'order_app', 'value' => 'Draft order'],
             ],
         ])->assertOk();
 
@@ -246,7 +246,7 @@ class ContentDraftPublishTest extends TestCase
         ]);
         $this->assertDatabaseHas('content_drafts', [
             'user_id' => $user->id,
-            'scope' => 'shared',
+            'scope' => 'order_app',
             'locale' => 'en',
         ]);
     }
@@ -281,7 +281,7 @@ class ContentDraftPublishTest extends TestCase
             'locale' => 'en',
             'changes' => [
                 ['key' => 'cta_band_headline', 'scope' => 'website', 'value' => 'Scheduled draft'],
-                ['key' => 'site_tagline', 'scope' => 'shared', 'value' => 'Keep this draft'],
+                ['key' => 'menu_page_title', 'scope' => 'order_app', 'value' => 'Keep this draft'],
             ],
         ])->assertOk();
 
@@ -304,8 +304,8 @@ class ContentDraftPublishTest extends TestCase
         // Unrelated draft stays until publish/discard.
         $this->assertDatabaseHas('content_drafts', [
             'user_id' => $user->id,
-            'key' => 'site_tagline',
-            'scope' => 'shared',
+            'key' => 'menu_page_title',
+            'scope' => 'order_app',
             'locale' => 'en',
         ]);
         $this->assertSame(1, ContentSchedule::query()->where('key', 'cta_band_headline')->count());

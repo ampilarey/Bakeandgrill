@@ -76,7 +76,7 @@ class SharedHomeComponentsMigratorTest extends TestCase
             'block_type' => 'promo_carousel',
             'position' => 2,
             'is_enabled' => true,
-            'content_mode' => 'shared',
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => [],
         ]);
 
@@ -107,8 +107,8 @@ class SharedHomeComponentsMigratorTest extends TestCase
         $this->assertNotNull($webTrust);
         $this->assertNotNull($orderTrust);
 
-        $webTrust->update(['is_enabled' => false, 'content_mode' => 'shared']);
-        $orderTrust->update(['is_enabled' => true, 'content_mode' => 'shared']);
+        $webTrust->update(['is_enabled' => false, 'content_mode' => PageBlock::MODE_OWN]);
+        $orderTrust->update(['is_enabled' => true, 'content_mode' => PageBlock::MODE_OWN]);
 
         $this->assertFalse((bool) $webTrust->fresh()->is_enabled);
         $this->assertTrue((bool) $orderTrust->fresh()->is_enabled);

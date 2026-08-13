@@ -1,6 +1,6 @@
 {
     "meta": {
-        "key_count": 169,
+        "key_count": 170,
         "apps": [
             "website",
             "order_app"
@@ -9,7 +9,7 @@
             "en",
             "dv"
         ],
-        "combinations": 676
+        "combinations": 680
     },
     "values": {
         "website": {
@@ -23,6 +23,7 @@
                 "announcement_url": "",
                 "business_address": "Kalaafaanu Hingun, Malé, Maldives",
                 "business_email": "admin@bakeandgrill.mv",
+                "business_hours": null,
                 "business_landmark": "Near H. Sahara",
                 "business_maps_url": "https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives",
                 "business_phone": "+960 912 0011",
@@ -194,6 +195,7 @@
                 "announcement_url": "",
                 "business_address": "Kalaafaanu Hingun, Malé, Maldives",
                 "business_email": "admin@bakeandgrill.mv",
+                "business_hours": null,
                 "business_landmark": "Near H. Sahara",
                 "business_maps_url": "https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives",
                 "business_phone": "+960 912 0011",
@@ -367,6 +369,7 @@
                 "announcement_url": "",
                 "business_address": "Kalaafaanu Hingun, Malé, Maldives",
                 "business_email": "admin@bakeandgrill.mv",
+                "business_hours": null,
                 "business_landmark": "Near H. Sahara",
                 "business_maps_url": "https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives",
                 "business_phone": "+960 912 0011",
@@ -538,6 +541,7 @@
                 "announcement_url": "",
                 "business_address": "Kalaafaanu Hingun, Malé, Maldives",
                 "business_email": "admin@bakeandgrill.mv",
+                "business_hours": null,
                 "business_landmark": "Near H. Sahara",
                 "business_maps_url": "https://maps.google.com/?q=Kalaafaanu+Hingun+Male+Maldives",
                 "business_phone": "+960 912 0011",

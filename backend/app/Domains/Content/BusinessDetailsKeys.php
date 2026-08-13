@@ -7,26 +7,19 @@ namespace App\Domains\Content;
 /**
  * Shared-scope keys edited on the Business Details screen.
  *
- * Derived by intersecting SiteSetting::get('…') call sites under backend/app
- * with ContentRegistry content blocks (php artisan / script). Non-app consumers
- * (invoices, signage, SMS, complaints, offers, locale middleware, home chrome)
- * read these via SiteSetting::get() → shared only.
+ * Document / operations record only (invoices, receipts, signage, SMS).
+ * Not Website or Order App branding — those apps have their own Content Hub.
  */
 final class BusinessDetailsKeys
 {
     /** @var list<string> */
     public const KEYS = [
-        'announcement_enabled',
         'business_address',
         'business_email',
         'business_phone',
         'business_website',
         'business_whatsapp',
-        'language_switcher_enabled',
         'logo',
-        'menu_new_days',
-        'offers_headline',
-        'offers_subtext',
         'primary_color',
         'site_name',
         'site_tagline',

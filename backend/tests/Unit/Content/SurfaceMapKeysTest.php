@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\Content;
 
 use App\Domains\Content\ContentRegistry;
-use App\Http\Controllers\Api\PageBlockController;
-use ReflectionClass;
 use Tests\TestCase;
 
 class SurfaceMapKeysTest extends TestCase
@@ -30,20 +28,13 @@ class SurfaceMapKeysTest extends TestCase
         }
     }
 
-    public function test_brand_footer_shared_keys_are_all_registered(): void
+    public function test_brand_footer_content_keys_are_registered(): void
     {
-        $registry = app(ContentRegistry::class);
-        $controller = app(PageBlockController::class);
-        $ref = new ReflectionClass($controller);
-        $method = $ref->getMethod('namedSharedKeys');
-        $method->setAccessible(true);
-        /** @var list<string> $keys */
-        $keys = $method->invoke($controller, 'brand_footer');
-
-        $this->assertContains('home_chat_label', $keys);
-        foreach ($keys as $key) {
-            $this->assertTrue($registry->has($key), "brand_footer shared key [{$key}] must be registered");
+        // Named page-block sharing is retired; brand footer still has registry keys.
+        foreach (['footer_text', 'footer_thanks', 'home_chat_label'] as $key) {
+            $this->assertTrue(ContentRegistry::has($key), "brand_footer key [{$key}] must be registered");
         }
+        $this->assertTrue(ContentRegistry::isPublic('home_chat_label'));
     }
 
     public function test_home_chat_label_is_public(): void

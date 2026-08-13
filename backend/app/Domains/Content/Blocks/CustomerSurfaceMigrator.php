@@ -128,9 +128,7 @@ final class CustomerSurfaceMigrator
             'block_type' => $type,
             'position' => $pos,
             'is_enabled' => $enabled,
-            'content_mode' => BlockTypeRegistry::get($type)?->supportsSharedContent
-                ? PageBlock::MODE_SHARED
-                : PageBlock::MODE_OWN,
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => $settings,
         ]);
     }
