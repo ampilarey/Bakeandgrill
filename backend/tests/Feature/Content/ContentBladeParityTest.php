@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
- * After Stage 3, content() reads the website app scope; SiteSetting::get() stays on shared.
+ * Marketing content() keys read website scope; Business Details identity keys
+ * resolve from shared even when website leftovers exist.
  */
 class ContentBladeParityTest extends TestCase
 {
@@ -23,7 +24,7 @@ class ContentBladeParityTest extends TestCase
         Cache::flush();
     }
 
-    public function test_content_helper_reads_website_scope_not_shared(): void
+    public function test_content_helper_reads_website_scope_not_shared_for_marketing(): void
     {
         SiteSetting::query()->whereIn('key', [
             'business_phone', 'cta_band_headline', 'proof_stat', 'meta_title', 'site_name',
@@ -37,13 +38,15 @@ class ContentBladeParityTest extends TestCase
         SiteSetting::set('cta_band_headline', 'Web CTA', 'website');
 
         $this->assertSame('+960 SHARED ONLY', SiteSetting::get('business_phone'));
-        $this->assertSame('+960 WEB', content('business_phone'));
+        // Identity — Business Details (shared) wins over leftover website rows.
+        $this->assertSame('+960 SHARED ONLY', content('business_phone'));
+        // Marketing — website app scope still wins.
         $this->assertSame('Web CTA', content('cta_band_headline'));
     }
 
     public function test_home_view_renders_website_scoped_values(): void
     {
-        SiteSetting::set('business_phone', '+960 912 0011', 'website');
+        SiteSetting::set('business_phone', '+960 912 0011', 'shared');
         SiteSetting::set('cta_band_headline', 'Hungry? <em>Order now.</em>', 'website');
         SiteSetting::set('hero_slides', json_encode([[
             'image' => '',

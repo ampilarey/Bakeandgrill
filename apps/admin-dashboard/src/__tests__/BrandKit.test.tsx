@@ -64,6 +64,12 @@ const phoneBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared' as const,
+  managed_by: {
+    owner_label: 'Business Details',
+    owner_path: '/admin/business-details',
+    note: 'Shared operational business profile used on receipts, invoices, signage and public contact.',
+    current_value: '+960 912 0011',
+  },
 };
 
 const brandingBlocks = [
@@ -105,9 +111,12 @@ describe('Brand Kit UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Contact & map' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    const phoneSheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(phoneSheet).queryByTestId('content-mode-business_phone')).toBeNull();
+    // Business Details owned — read-only summary, no editor sheet / Save path.
+    expect(screen.getByTestId('ops-owned-business_phone')).toBeTruthy();
+    expect(screen.getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
+    expect(screen.getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');
+    expect(screen.queryByTestId('edit-business_phone')).toBeNull();
+    expect(screen.queryByTestId('block-editor-sheet-business_phone')).toBeNull();
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {

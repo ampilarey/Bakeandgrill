@@ -177,10 +177,14 @@ class BusinessDetailsTest extends TestCase
         $this->assertSame('/images/web-logo.png', SiteSetting::getScoped('logo', 'website'));
         $this->assertSame('/images/order-logo.png', SiteSetting::getScoped('logo', 'order_app'));
 
-        $this->assertSame('+960 WEB BEFORE', ContentResolver::for('website')->get('business_phone'));
-        $this->assertSame('+960 ORDER BEFORE', ContentResolver::for('order_app')->get('business_phone'));
-        $this->assertSame('Web Café', ContentResolver::for('website')->get('site_name'));
-        $this->assertSame('Order Café', ContentResolver::for('order_app')->get('site_name'));
+        // Identity keys resolve from Business Details (shared) for both customer apps.
+        $this->assertSame('+960 700 9999', ContentResolver::for('website')->get('business_phone'));
+        $this->assertSame('+960 700 9999', ContentResolver::for('order_app')->get('business_phone'));
+        $this->assertSame('Invoice Brand Name', ContentResolver::for('website')->get('site_name'));
+        $this->assertSame('Invoice Brand Name', ContentResolver::for('order_app')->get('site_name'));
+        // Website / Order App branding assets remain independently scoped.
+        $this->assertSame('/images/web-logo.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/images/order-logo.png', ContentResolver::for('order_app')->get('logo'));
 
         $brand = DocumentBrandView::variables();
         $this->assertSame('Invoice Brand Name', $brand['brandSiteName']);

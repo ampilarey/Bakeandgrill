@@ -61,18 +61,18 @@ const heroOrder = JSON.stringify({
 
 function phoneBlock(): ContentBlock {
   return {
-    key: 'business_phone',
+    key: 'delivery_time',
     label: 'Phone number',
     group: 'Contact',
     type: 'text',
     apps: ['website', 'order_app'],
     shareable: true,
     public: true,
-    shared: '+960 912 0011',
+    shared: '30–45 min',
     website: null,
     order_app: null,
-    resolved_website: '+960 912 0011',
-    resolved_order_app: '+960 912 0011',
+    resolved_website: '30–45 min',
+    resolved_order_app: '30–45 min',
     state: 'shared',
   };
 }
@@ -133,18 +133,18 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('edit-business_phone');
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    await screen.findByTestId('edit-delivery_time');
+    fireEvent.click(screen.getByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     await waitFor(
       () => {
-        expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
+        expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
       },
       { timeout: 8000 },
     );
 
-    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
-      target: { value: '+960 WEB EDIT' },
+    fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
+      target: { value: 'WEB ETA EDIT' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
@@ -155,7 +155,7 @@ describe('Content Hub dual-app editing', () => {
     const [changes, locale] = vi.mocked(contentApi.updateContent).mock.calls[0];
     expect(locale).toBe('en');
     expect(changes).toEqual([
-      { key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' },
+      { key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' },
     ]);
   }, 15000);
 
@@ -231,31 +231,31 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    let sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    let sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
     });
 
-    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
-      target: { value: '+960 EN DRAFT' },
+    fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
+      target: { value: 'EN DRAFT ETA' },
     });
-    expect(within(sheet).getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+    expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('+960 DV LIVE')).toBeTruthy();
     });
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByRole('button', { name: /^EN$/i }));
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 EN DRAFT')).toBeTruthy();
+      expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
     });
   });
 });

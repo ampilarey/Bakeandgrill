@@ -24,6 +24,13 @@ export type ContentScopeMismatch = {
   order_app?: string;
 };
 
+export type ContentManagedBy = {
+  owner_label: string;
+  owner_path: string;
+  note: string;
+  current_value?: string | null;
+};
+
 export type ContentBlock = {
   key: string;
   label: string;
@@ -46,6 +53,8 @@ export type ContentBlock = {
   state: 'shared' | 'split';
   section_enable?: boolean;
   deprecated?: boolean;
+  /** When set, Content Hub must not edit — show read-only summary + link. */
+  managed_by?: ContentManagedBy | null;
 };
 
 export type ContentRevision = {

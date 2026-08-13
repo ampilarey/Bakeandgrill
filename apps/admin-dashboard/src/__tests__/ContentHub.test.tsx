@@ -32,18 +32,18 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const phoneBlock = {
-  key: 'business_phone',
+  key: 'delivery_time',
   label: 'Phone number',
   group: 'Contact',
   type: 'text',
   apps: ['website', 'order_app'],
   shareable: true,
   public: true,
-  shared: '+960 912 0011',
+  shared: '30–45 min',
   website: null,
   order_app: null,
-  resolved_website: '+960 912 0011',
-  resolved_order_app: '+960 912 0011',
+  resolved_website: '30–45 min',
+  resolved_order_app: '30–45 min',
   state: 'shared' as const,
 };
 
@@ -96,20 +96,20 @@ describe('ContentHubPage', () => {
     );
 
     await screen.findByText('Phone number');
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(sheet).queryByTestId('content-mode-business_phone')).toBeNull();
-    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
-    expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    expect(within(sheet).queryByTestId('content-mode-delivery_time')).toBeNull();
+    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
 
-    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
-      target: { value: '+960 WEB EDIT' },
+    fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
+      target: { value: 'WEB ETA EDIT' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
     await waitFor(() => {
       expect(contentApi.updateContent).toHaveBeenCalledWith(
-        [{ key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' }],
+        [{ key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
         'en',
       );
     });

@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
+use App\Domains\Settings\OpsOwnedContent;
 use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -64,6 +65,7 @@ class ContentBlockResource extends JsonResource
             'resolved_website' => ContentResolver::for('website', $locale)->get($key),
             'resolved_order_app' => ContentResolver::for('order_app', $locale)->get($key),
             'state' => $state,
+            'managed_by' => OpsOwnedContent::managedByMeta($key),
         ];
     }
 

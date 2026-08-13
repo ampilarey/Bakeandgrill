@@ -444,6 +444,7 @@ return [
             'rich' => false,
             'validate' => 'nullable|string|max:5000',
             'default' => 'MVR 200',
+            'description' => 'Read-only mirror of Ordering Control → Delivery → Free delivery from (MVR). Not editable in Content & Branding.',
         ],
         'delivery_time' => [
             'label' => 'Delivery Time Promise',

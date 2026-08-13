@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Content;
 
+use App\Domains\Settings\OpsOwnedContent;
 use App\Models\SiteSetting;
 use App\Support\ResilientCache;
 
@@ -60,8 +61,35 @@ final class ContentResolver
             return $default;
         }
 
-        if (!ContentRegistry::targetsApp($key, $this->app)) {
+        // Ordering Control mirrors (e.g. free-delivery label) — never content copies.
+        $derived = OpsOwnedContent::deriveResolvedValue($key);
+        if ($derived !== null) {
+            return $derived;
+        }
+
+        if (! ContentRegistry::targetsApp($key, $this->app)
+            && ! OpsOwnedContent::resolvesFromBusinessDetails($key)) {
             return $default ?? ContentRegistry::default($key);
+        }
+
+        // Business Details identity/contact — shared is authoritative for both apps.
+        if (OpsOwnedContent::resolvesFromBusinessDetails($key)) {
+            foreach ([$this->locale, 'en'] as $locale) {
+                $shared = SiteSetting::getScoped($key, 'shared', $locale);
+                if ($this->isPresentScopedValue($shared)) {
+                    return $shared;
+                }
+            }
+            $legacy = SiteSetting::get($key);
+            if ($this->isPresentScopedValue($legacy)) {
+                return $legacy;
+            }
+            $registryDefault = ContentRegistry::default($key);
+            if ($registryDefault !== null) {
+                return $registryDefault;
+            }
+
+            return $default;
         }
 
         foreach ($this->lookupChain($key) as [$scope, $locale]) {

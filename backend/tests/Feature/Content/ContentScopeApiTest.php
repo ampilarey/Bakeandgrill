@@ -31,8 +31,9 @@ class ContentScopeApiTest extends TestCase
         $order = $this->getJson('/api/content?app=order_app')->assertOk()->json('content');
         $web = $this->getJson('/api/content?app=website')->assertOk()->json('content');
 
-        $this->assertSame('+960 ORDER', $order['business_phone'] ?? null);
-        $this->assertSame('+960 WEB', $web['business_phone'] ?? null);
+        // Business Details owns phone — leftover app rows must not win.
+        $this->assertSame('+960 SHARED', $order['business_phone'] ?? null);
+        $this->assertSame('+960 SHARED', $web['business_phone'] ?? null);
         $this->assertArrayNotHasKey('home_open_badge_text', $order);
         $this->assertSame('Open now', $web['home_open_badge_text'] ?? null);
     }

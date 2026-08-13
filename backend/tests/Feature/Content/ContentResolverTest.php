@@ -14,7 +14,7 @@ class ContentResolverTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_override_beats_shared_beats_default_per_app(): void
+    public function test_business_details_keys_resolve_from_shared_not_app_overrides(): void
     {
         $this->assertTrue(ContentRegistry::has('business_phone'));
 
@@ -22,13 +22,27 @@ class ContentResolverTest extends TestCase
         SiteSetting::set('business_phone', '+960 WEB', 'website');
         SiteSetting::set('business_phone', '+960 ORDER', 'order_app');
 
-        $this->assertSame('+960 WEB', ContentResolver::for('website')->get('business_phone'));
-        $this->assertSame('+960 ORDER', ContentResolver::for('order_app')->get('business_phone'));
-        // Operational / unscoped read still uses shared only.
+        // Leftover app-scoped rows must not override Business Details.
+        $this->assertSame('+960 SHARED', ContentResolver::for('website')->get('business_phone'));
+        $this->assertSame('+960 SHARED', ContentResolver::for('order_app')->get('business_phone'));
         $this->assertSame('+960 SHARED', SiteSetting::get('business_phone'));
     }
 
-    public function test_apps_do_not_fall_back_to_shared(): void
+    public function test_apps_do_not_fall_back_to_shared_for_marketing_keys(): void
+    {
+        SiteSetting::query()->where('key', 'home_delivery_tagline')->delete();
+        SiteSetting::bust();
+        ContentResolver::bust();
+
+        SiteSetting::set('home_delivery_tagline', '+960 SHARED ONLY', 'shared');
+
+        $default = ContentRegistry::default('home_delivery_tagline');
+        $this->assertSame($default, ContentResolver::for('website')->get('home_delivery_tagline'));
+        $this->assertSame($default, ContentResolver::for('order_app')->get('home_delivery_tagline'));
+        $this->assertSame('+960 SHARED ONLY', SiteSetting::getScoped('home_delivery_tagline', 'shared'));
+    }
+
+    public function test_business_details_keys_do_read_shared(): void
     {
         SiteSetting::query()->where('key', 'business_phone')->whereIn('scope', ['website', 'order_app'])->delete();
         SiteSetting::bust();
@@ -36,10 +50,8 @@ class ContentResolverTest extends TestCase
 
         SiteSetting::set('business_phone', '+960 SHARED ONLY', 'shared');
 
-        $default = ContentRegistry::default('business_phone');
-        $this->assertSame($default, ContentResolver::for('website')->get('business_phone'));
-        $this->assertSame($default, ContentResolver::for('order_app')->get('business_phone'));
-        $this->assertSame('+960 SHARED ONLY', SiteSetting::get('business_phone'));
+        $this->assertSame('+960 SHARED ONLY', ContentResolver::for('website')->get('business_phone'));
+        $this->assertSame('+960 SHARED ONLY', ContentResolver::for('order_app')->get('business_phone'));
     }
 
     public function test_split_isolates_apps_without_shared_fallback(): void
@@ -67,7 +79,7 @@ class ContentResolverTest extends TestCase
     {
         $default = ContentRegistry::default('site_name');
         $this->assertNotEmpty($default);
-        SiteSetting::query()->where('key', 'site_name')->where('scope', 'order_app')->delete();
+        SiteSetting::query()->where('key', 'site_name')->delete();
         SiteSetting::bust();
         ContentResolver::bust();
         $this->assertSame($default, ContentResolver::for('order_app')->get('site_name'));
@@ -75,7 +87,7 @@ class ContentResolverTest extends TestCase
 
     public function test_all_public_only_emits_public_registry_blocks(): void
     {
-        SiteSetting::set('business_phone', '+960 1', 'order_app');
+        SiteSetting::set('business_phone', '+960 1', 'shared');
         $map = ContentResolver::for('order_app')->allPublic();
         $this->assertArrayHasKey('business_phone', $map);
         foreach (array_keys($map) as $key) {

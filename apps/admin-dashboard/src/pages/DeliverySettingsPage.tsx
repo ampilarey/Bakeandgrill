@@ -267,7 +267,7 @@ export default function DeliverySettingsPage() {
               style={S.input}
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-              Used at checkout for fee math. Website marketing text (“MVR 200”) is edited separately in Content Hub → delivery threshold.
+              Authoritative free-delivery threshold for checkout, invoices, receipts, Website and Order App messaging. Content & Branding cannot edit a separate copy.
             </p>
           </div>
         </div>

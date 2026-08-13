@@ -235,7 +235,7 @@ final class ModeEntryCardsPresenter
             return $custom;
         }
 
-        // Delivery meta often lives on website/shared — fall back through website resolver.
+        // ETA promise copy may still be Content Hub wording; free-delivery label is ops-owned.
         $website = $copy;
         $eta = self::trimmedOr((string) $website->get('delivery_time', ''), '')
             ?: self::trimmedOr((string) $website->get('delivery_eta', ''), '');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Content;
 
+use App\Domains\Settings\OpsOwnedContent;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +37,11 @@ final class ContentValidationService
     public function normalizeForWrite(string $key, string $scope, mixed $value): string
     {
         $this->assertScopeAllowed($key, $scope);
+
+        // Operational / Business Details ownership — Content Hub must not write.
+        if (in_array($scope, ContentRegistry::APPS, true) && OpsOwnedContent::isWriteForbidden($key)) {
+            $this->fail('key', OpsOwnedContent::writeForbiddenMessage($key));
+        }
 
         $value = $this->stringify($value);
         $this->validateRegistryRule($key, $value);
