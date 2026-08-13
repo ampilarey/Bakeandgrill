@@ -15,8 +15,8 @@ import { BRAND_PAGE_TASKS, type ContentTask, type ContentTaskId } from './taskLa
 export type SurfaceBuilderLandingProps = {
   /** When set, only show this app's surfaces and relevant brand/page tasks. */
   appFilter?: SurfaceApp;
-  /** Optional component counts keyed by surface id (e.g. website.mobile.header). */
-  surfaceCounts?: Record<string, number>;
+  /** Optional count labels keyed by surface id (e.g. "2 components" or "2 showing · 1 hidden"). */
+  surfaceCounts?: Record<string, number | string>;
   /** Dirty section names for unpublished-edit dots on brand/page cards. */
   dirtyGroups?: Set<string>;
   onSelectSurface: (surface: SurfaceRecord) => void;
@@ -90,6 +90,9 @@ export function SurfaceBuilderLanding({
                       {slots.map((slot) => {
                         const id = surfaceId(app.id, device.id, slot);
                         const count = surfaceCounts[id];
+                        const countText = typeof count === 'number'
+                          ? `${count} component${count === 1 ? '' : 's'}`
+                          : count;
                         const surface: SurfaceRecord = {
                           id,
                           app: app.id,
@@ -116,13 +119,10 @@ export function SurfaceBuilderLanding({
                                 {' · '}
                                 {deviceLabel(device.id)}
                               </span>
-                              {count !== undefined ? (
+                              {countText !== undefined ? (
                                 <span className="hub-task-card-meta" data-testid={`surface-count-${id}`}>
                                   <span className="hub-placement-chip">
-                                    {count}
-                                    {' '}
-                                    component
-                                    {count === 1 ? '' : 's'}
+                                    {countText}
                                   </span>
                                 </span>
                               ) : null}

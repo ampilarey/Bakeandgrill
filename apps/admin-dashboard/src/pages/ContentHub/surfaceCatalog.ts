@@ -186,7 +186,7 @@ export function listBlocksOnSurface(
   );
 }
 
-/** Count enabled blocks on one surface for one app. */
+/** Count enabled (showing) blocks on one surface for one app. */
 export function countBlocksOnSurface(
   blocks: BlockLike[],
   device: SurfaceDevice,
@@ -194,3 +194,5 @@ export function countBlocksOnSurface(
 ): number {
   return listBlocksOnSurface(blocks, device, slot).length;
 }
+
+/** Prefer importing surfaceCountLabel from canonicalCatalog for card chips. */

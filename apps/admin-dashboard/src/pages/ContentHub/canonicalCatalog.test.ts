@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   addableTypesOnSurface,
   countComponentsOnSurface,
-  findDuplicateIdentities,
-  listComponentsOnSurface,
+  findSingletonDuplicatesOnSurface,
+  listConfiguredOnSurface,
+  listHiddenOnSurface,
   placementSettingsForSurface,
+  surfaceCountLabel,
 } from './canonicalCatalog';
 import { countBlocksOnSurface } from './surfaceCatalog';
 
@@ -46,8 +48,8 @@ const headerBlocks = [
 describe('canonicalCatalog', () => {
   const filter = { app: 'website' as const, device: 'mobile' as const, slot: 'header' as const };
 
-  it('lists only enabled components on the surface', () => {
-    const list = listComponentsOnSurface(headerBlocks, filter);
+  it('lists only enabled configured components on the surface', () => {
+    const list = listConfiguredOnSurface(headerBlocks, filter);
     expect(list.map((c) => c.component_id)).toEqual([
       'website.mobile.header.1',
       'website.mobile.header.2',
@@ -57,21 +59,44 @@ describe('canonicalCatalog', () => {
   });
 
   it('keeps card count and listed IDs in set equality', () => {
-    const list = listComponentsOnSurface(headerBlocks, filter);
+    const list = listConfiguredOnSurface(headerBlocks, filter);
     const ids = new Set(list.map((c) => c.component_id));
     expect(ids.size).toBe(list.length);
     expect(list.length).toBe(countComponentsOnSurface(headerBlocks, filter));
-    for (const c of list) {
-      expect(c.app).toBe('website');
-      expect(c.surface).toBe('header');
-      expect(c.viewport).toBe('mobile');
-      expect(c.owner).toBe('content_branding');
-    }
+    expect(surfaceCountLabel(headerBlocks, filter).label).toBe('2 showing · 1 hidden');
   });
 
-  it('suggests addable types not already on the surface', () => {
-    expect(addableTypesOnSurface(headerBlocks, filter, ['prayer_bar', 'announcement', 'greeting', 'opening_status']))
-      .toEqual(['greeting', 'opening_status']);
+  it('lists hidden separately and never in the live count', () => {
+    const hidden = listHiddenOnSurface(headerBlocks, filter);
+    expect(hidden.map((c) => c.block_id)).toEqual([4]);
+    expect(countComponentsOnSurface(headerBlocks, filter)).toBe(2);
+  });
+
+  it('suggests addable types excluding configured and hidden singletons', () => {
+    expect(
+      addableTypesOnSurface(
+        headerBlocks,
+        filter,
+        ['prayer_bar', 'announcement', 'greeting', 'opening_status', 'stat_chips'],
+      ),
+    ).toEqual(['opening_status', 'stat_chips']);
+  });
+
+  it('keeps multi-instance types addable on footer when already present', () => {
+    const footerFilter = { app: 'website' as const, device: 'mobile' as const, slot: 'footer' as const };
+    const footerBlocks = [
+      {
+        id: 5,
+        block_type: 'rich_text',
+        is_enabled: true,
+        position: 0,
+        label: 'Text',
+        settings: { show_mobile: true, placement_mobile: 'footer' },
+      },
+    ];
+    expect(
+      addableTypesOnSurface(footerBlocks, footerFilter, ['rich_text', 'site_footer'], (t) => t === 'rich_text'),
+    ).toEqual(['rich_text', 'site_footer']);
   });
 
   it('builds placement settings for the selected surface only', () => {
@@ -83,8 +108,8 @@ describe('canonicalCatalog', () => {
     });
   });
 
-  it('flags duplicate active identities', () => {
-    const list = listComponentsOnSurface([
+  it('reports singleton duplicates on a surface for admin review', () => {
+    const dupes = findSingletonDuplicatesOnSurface([
       ...headerBlocks,
       {
         id: 9,
@@ -95,7 +120,58 @@ describe('canonicalCatalog', () => {
         settings: { show_mobile: true, placement_mobile: 'header' },
       },
     ], filter);
-    const dupes = findDuplicateIdentities(list);
-    expect(dupes.length).toBeGreaterThan(0);
+    expect(dupes).toEqual([
+      { type: 'prayer_bar', component_ids: ['website.mobile.header.1', 'website.mobile.header.9'] },
+    ]);
+  });
+
+  it('does not place home-only blocks on header', () => {
+    const ids = listConfiguredOnSurface(headerBlocks, filter).map((c) => c.component_type);
+    expect(ids).not.toContain('hero');
+  });
+
+  it('keeps Website and Order App lists independent for the same slot', () => {
+    const websiteHeader = listConfiguredOnSurface(headerBlocks, filter);
+    const orderHeader = listConfiguredOnSurface(
+      [
+        {
+          id: 50,
+          block_type: 'prayer_bar',
+          is_enabled: true,
+          position: 0,
+          label: 'Order prayer',
+          settings: { show_mobile: true, placement_mobile: 'header' },
+        },
+      ],
+      { app: 'order_app', device: 'mobile', slot: 'header' },
+    );
+    expect(websiteHeader.map((c) => c.block_id)).toEqual([1, 2]);
+    expect(orderHeader.map((c) => c.block_id)).toEqual([50]);
+    expect(orderHeader[0]?.component_id).toBe('order_app.mobile.header.50');
+  });
+
+  it('does not list a mobile-header block on desktop header without desktop placement', () => {
+    const mobileOnly = [
+      {
+        id: 7,
+        block_type: 'announcement',
+        is_enabled: true,
+        position: 0,
+        label: 'Announcement',
+        settings: {
+          show_desktop: false,
+          show_mobile: true,
+          placement_desktop: 'home',
+          placement_mobile: 'header',
+        },
+      },
+    ];
+    expect(countComponentsOnSurface(mobileOnly, filter)).toBe(1);
+    expect(
+      countComponentsOnSurface(mobileOnly, { app: 'website', device: 'desktop', slot: 'header' }),
+    ).toBe(0);
+    expect(
+      countComponentsOnSurface(mobileOnly, { app: 'website', device: 'mobile', slot: 'home' }),
+    ).toBe(0);
   });
 });

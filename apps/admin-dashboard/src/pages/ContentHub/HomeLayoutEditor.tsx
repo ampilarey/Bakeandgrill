@@ -33,7 +33,10 @@ import {
 import { heroPromoConflict } from './surfaceRegistry';
 import {
   addableTypesOnSurface,
-  listComponentsOnSurface,
+  findSingletonDuplicatesOnSurface,
+  isSingletonSurfaceType,
+  listConfiguredOnSurface,
+  listHiddenOnSurface,
   placementSettingsForSurface,
   type CanonicalComponent,
 } from './canonicalCatalog';
@@ -187,11 +190,28 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     return map;
   }, [library]);
 
-  /** Canonical instances for the open surface — card count and editor must match. */
+  /** Configured (showing) instances — must match the surface-card count exactly. */
   const surfaceComponents = useMemo((): CanonicalComponent[] => {
     if (!surfaceFilter) return [];
-    return listComponentsOnSurface(appState.blocks, surfaceFilter);
+    return listConfiguredOnSurface(appState.blocks, surfaceFilter);
   }, [appState.blocks, surfaceFilter]);
+
+  const hiddenComponents = useMemo((): CanonicalComponent[] => {
+    if (!surfaceFilter) return [];
+    return listHiddenOnSurface(appState.blocks, surfaceFilter);
+  }, [appState.blocks, surfaceFilter]);
+
+  const singletonDupes = useMemo(() => {
+    if (!surfaceFilter) return [];
+    return findSingletonDuplicatesOnSurface(appState.blocks, surfaceFilter);
+  }, [appState.blocks, surfaceFilter]);
+
+  const allowsMultipleFn = useMemo(() => {
+    const multi = new Set(
+      appState.types.filter((t) => t.allows_multiple).map((t) => t.type),
+    );
+    return (type: string) => multi.has(type) || !isSingletonSurfaceType(type);
+  }, [appState.types]);
 
   const addableTypes = useMemo(() => {
     if (!surfaceFilter) return [];
@@ -201,15 +221,16 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       appState.blocks,
       surfaceFilter,
       available.length > 0 ? available : fallback,
+      allowsMultipleFn,
     );
-  }, [appState.blocks, appState.types, surfaceFilter]);
+  }, [appState.blocks, appState.types, surfaceFilter, allowsMultipleFn]);
 
   const conflict = heroPromoConflict(
     appState.blocks.filter((b) => b.is_enabled).map((b) => b.block_type),
   );
 
   const overviewRows = useMemo((): OverviewRow[] => {
-    // Surface card → editor: only the declared surface instances (exact count match).
+    // Surface mode: configured instances only — never the type library / Not added.
     if (surfaceFilter) {
       return surfaceComponents.map((c) => {
         const instance = appState.blocks.find((b) => b.id === c.block_id);
@@ -227,6 +248,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       });
     }
 
+    // Unscoped mode (tests / legacy): library overview. Hub always passes surfaceFilter.
     const rows: OverviewRow[] = [];
     for (const comp of library) {
       if (!comp.allowsMultiple) {
@@ -256,6 +278,14 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   }, [surfaceFilter, surfaceComponents, library, libraryByType, appState.blocks]);
 
   const addBlock = async (type: string): Promise<PageBlockRow | null> => {
+    if (surfaceFilter && isSingletonSurfaceType(type)) {
+      const placed = listConfiguredOnSurface(appState.blocks, surfaceFilter)
+        .concat(listHiddenOnSurface(appState.blocks, surfaceFilter));
+      if (placed.some((c) => c.component_type === type)) {
+        setError(`“${libraryByType.get(type)?.name ?? type}” is already on this surface.`);
+        return null;
+      }
+    }
     setBusy(true);
     setError('');
     try {
@@ -484,7 +514,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
             </div>
           ) : null}
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)' }}>
-            {surfaceFilter ? 'Surface components' : 'Home Components'}
+            {surfaceFilter ? 'Configured components' : 'Home Components'}
             {surfaceFilter ? (
               <span
                 data-testid="home-layout-surface-count"
@@ -492,14 +522,16 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               >
                 {surfaceComponents.length}
                 {' '}
-                component
-                {surfaceComponents.length === 1 ? '' : 's'}
+                configured
+                {hiddenComponents.length > 0
+                  ? ` · ${hiddenComponents.length} hidden`
+                  : ''}
               </span>
             ) : null}
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 560 }}>
             {surfaceFilter
-              ? 'Only components on this surface. Add new ones with “Add component”; edits stay in this app.'
+              ? 'Only components currently on this surface. Use “Add component” for the library — never mixed into this list.'
               : `${appLabel(activeApp)} home layout — choose components, placement, and visibility.`}
           </div>
           <div
@@ -515,17 +547,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {surfaceFilter ? (
-            <button
-              type="button"
-              data-testid="home-layout-add-component"
-              disabled={busy || loading || addableTypes.length === 0}
-              onClick={() => setAddPickerOpen(true)}
-              style={btnPrimary}
-            >
-              Add component
-            </button>
-          ) : null}
           <button
             type="button"
             data-testid="home-layout-reorder-toggle"
@@ -592,7 +613,11 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       ) : reorderMode ? (
         <ReorderList
           app={activeApp}
-          blocks={[...appState.blocks].sort((a, b) => a.position - b.position)}
+          blocks={(surfaceFilter
+            ? appState.blocks.filter((b) => surfaceComponents.some((c) => c.block_id === b.id)
+              || hiddenComponents.some((c) => c.block_id === b.id))
+            : appState.blocks
+          ).slice().sort((a, b) => a.position - b.position)}
           busy={busy}
           onMove={move}
         />
@@ -602,6 +627,26 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           data-surface-component-count={surfaceFilter ? String(surfaceComponents.length) : undefined}
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
+          {singletonDupes.length > 0 ? (
+            <div
+              role="alert"
+              data-testid="home-layout-singleton-warning"
+              style={{
+                padding: 12,
+                borderRadius: 10,
+                border: '1px solid var(--color-warning)',
+                background: 'var(--color-border-light)',
+                fontSize: 12,
+                color: 'var(--color-text)',
+              }}
+            >
+              <strong>Duplicate components need review.</strong>
+              {' '}
+              {singletonDupes.map((d) => `${d.type}: ${d.component_ids.join(', ')}`).join(' · ')}
+              {' '}
+              Only one of each should render until resolved. Further duplicates cannot be added.
+            </div>
+          ) : null}
           {surfaceFilter && overviewRows.length === 0 ? (
             <div
               data-testid="home-layout-surface-empty"
@@ -614,13 +659,13 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                 textAlign: 'center',
               }}
             >
-              No components on this surface yet.
-              {addableTypes.length > 0 ? ' Use “Add component” to place one.' : ''}
+              No configured components on this surface yet.
+              {addableTypes.length > 0 ? ' Use “Add component” below to place one.' : ''}
             </div>
           ) : null}
           {overviewRows.map((row) => {
             const { comp, rowKey, isAddSlot, instance } = row;
-            const status = instanceStatus(instance);
+            const status = surfaceFilter ? 'Configured' : instanceStatus(instance);
             const editId = instance?.id ?? comp.type;
             return (
               <div
@@ -671,7 +716,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                     <span
                       data-testid={`home-comp-status-${rowKey}`}
                       className="hub-placement-chip hub-placement-chip--status"
-                      style={badgeStyle(status === 'Added')}
+                      style={badgeStyle(status === 'Added' || status === 'Configured')}
                     >
                       {status}
                     </span>
@@ -686,6 +731,66 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               </div>
             );
           })}
+          {surfaceFilter && hiddenComponents.length > 0 ? (
+            <div data-testid="home-layout-hidden-section" style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-secondary)' }}>
+                Hidden (
+                {hiddenComponents.length}
+                )
+              </div>
+              {hiddenComponents.map((c) => {
+                const comp = libraryByType.get(c.component_type);
+                return (
+                  <button
+                    key={c.component_id}
+                    type="button"
+                    data-testid={`home-layout-hidden-${c.component_id}`}
+                    onClick={() => setEditingSession({
+                      type: c.component_type,
+                      blockId: c.block_id,
+                      isAddSlot: false,
+                    })}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px',
+                      borderRadius: 10,
+                      border: '1px dashed var(--color-border)',
+                      background: 'var(--color-surface)',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span>
+                      <span style={{ display: 'block', fontWeight: 700, fontSize: 13 }}>{comp?.name ?? c.label}</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Hidden on this surface — open to show again</span>
+                    </span>
+                    <ChevronRight size={18} aria-hidden style={{ color: 'var(--color-text-muted)' }} />
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {surfaceFilter ? (
+            <button
+              type="button"
+              data-testid="home-layout-add-component"
+              disabled={busy || loading || addableTypes.length === 0}
+              onClick={() => setAddPickerOpen(true)}
+              style={{
+                ...btnPrimary,
+                marginTop: 4,
+                width: '100%',
+                justifyContent: 'center',
+                minHeight: 44,
+              }}
+            >
+              + Add component
+            </button>
+          ) : null}
         </div>
       )}
 

@@ -33,16 +33,21 @@ final class ContentIntegrityReport
         $surfaces = [];
 
         foreach (SurfaceCatalog::all() as $surface) {
-            $blocks = PageBlockRepository::forSurface(
+            // Include hidden for duplicate/orphan review — never silently drop data.
+            // Count enabled rows before public-path singleton dedupe so Admin card
+            // counts stay equal to configured instances (extras still flagged below).
+            $placed = PageBlockRepository::forSurface(
                 $surface['app'],
                 $surface['device'],
                 $surface['slot'],
+                enabledOnly: false,
             );
-            $count = $blocks->count();
+            $count = $placed->where('is_enabled', true)->count();
             $surfaces[] = ['id' => $surface['id'], 'count' => $count];
 
             $byTypePos = [];
-            foreach ($blocks as $block) {
+            $singletonIdsByType = [];
+            foreach ($placed as $block) {
                 /** @var PageBlock $block */
                 if (! BlockTypeRegistry::isKnown($block->block_type)) {
                     $needsReview[] = [
@@ -58,8 +63,14 @@ final class ContentIntegrityReport
                     ];
                 }
 
-                $key = $block->block_type.'@'.$block->position;
-                $byTypePos[$key] = ($byTypePos[$key] ?? 0) + 1;
+                if ($block->is_enabled) {
+                    $key = $block->block_type.'@'.$block->position;
+                    $byTypePos[$key] = ($byTypePos[$key] ?? 0) + 1;
+                }
+
+                if (! BlockTypeRegistry::allowsMultiple($block->block_type)) {
+                    $singletonIdsByType[$block->block_type][] = (int) $block->id;
+                }
             }
 
             foreach ($byTypePos as $key => $n) {
@@ -71,6 +82,32 @@ final class ContentIntegrityReport
                         'meta' => ['surface' => $surface['id'], 'key' => $key, 'count' => $n],
                     ];
                 }
+            }
+
+            foreach ($singletonIdsByType as $type => $ids) {
+                if (count($ids) < 2) {
+                    continue;
+                }
+                $issues[] = [
+                    'severity' => 'warning',
+                    'code' => 'singleton_duplicate_surface',
+                    'message' => "Duplicate components need review on {$surface['id']}: {$type} × ".count($ids).' (IDs: '.implode(', ', $ids).'). Only one renders until resolved.',
+                    'meta' => [
+                        'surface' => $surface['id'],
+                        'block_type' => $type,
+                        'block_ids' => $ids,
+                        'placements' => [
+                            'app' => $surface['app'],
+                            'device' => $surface['device'],
+                            'slot' => $surface['slot'],
+                        ],
+                    ],
+                ];
+                $needsReview[] = [
+                    'kind' => 'singleton_duplicate',
+                    'identifier' => $surface['id'].'.'.$type,
+                    'detail' => "Duplicate {$type} on {$surface['id']}: block IDs ".implode(', ', $ids),
+                ];
             }
         }
 
