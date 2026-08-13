@@ -33,7 +33,7 @@ return new class extends Migration
                 continue;
             }
 
-            foreach (['website', 'order_app'] as $app) {
+            foreach (['website'] as $app) {
                 $existing = SiteSetting::getScoped('business_hours', $app, $locale);
                 if ($existing !== null && $existing !== '') {
                     continue;

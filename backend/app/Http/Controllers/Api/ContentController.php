@@ -473,8 +473,9 @@ class ContentController extends Controller
 
         $entries = [];
         foreach (ContentRegistry::blocks() as $key => $block) {
-            foreach (ContentRegistry::SCOPES as $scope) {
-                if ($scope !== 'shared' && !in_array($scope, $block['apps'] ?? [], true)) {
+            // Content Hub export is Website / Order App only — never the business record.
+            foreach (ContentRegistry::APPS as $scope) {
+                if (! in_array($scope, $block['apps'] ?? [], true)) {
                     continue;
                 }
                 $value = SiteSetting::getScoped((string) $key, $scope, $locale);
