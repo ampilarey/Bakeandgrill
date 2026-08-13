@@ -12,29 +12,123 @@ namespace App\Domains\Content;
  */
 final class BusinessDetailsKeys
 {
-    /** @var list<string> */
-    public const KEYS = [
-        'business_address',
-        'business_email',
-        'business_phone',
-        'business_website',
-        'business_whatsapp',
-        'logo',
-        'primary_color',
-        'site_name',
-        'site_tagline',
+    /**
+     * Section → editable shared keys (order preserved in the Admin UI).
+     * A key may appear in more than one section for display; {@see all()} is unique.
+     *
+     * @var array<string, list<string>>
+     */
+    public const SECTIONS = [
+        'identity' => [
+            'site_name',
+            'business_website',
+            'business_phone',
+            'business_email',
+        ],
+        'address' => [
+            'business_address',
+            'business_address_line1',
+            'business_address_city',
+            'business_address_country',
+            'business_landmark',
+            'business_maps_url',
+            'maps_embed_url',
+        ],
+        'contact' => [
+            'business_phone',
+            'business_email',
+            'business_whatsapp',
+            'business_viber',
+        ],
+        'documents' => [
+            'site_tagline',
+            'logo',
+            'primary_color',
+        ],
     ];
+
+    /**
+     * Read-only “Used by” hints for owners (shared record consumers).
+     *
+     * @var array<string, list<string>>
+     */
+    public const USED_BY = [
+        'site_name' => [
+            'Receipts & invoices',
+            'TV signage',
+            'Website / Order App (only when not overridden in Content & Branding)',
+        ],
+        'business_website' => [
+            'Operational reference',
+            'Customer SMS footers (when used)',
+        ],
+        'business_address' => [
+            'Receipts & invoices',
+            'TV signage',
+            'Order App pickup address (when not overridden)',
+            'Website contact/footer (when not overridden)',
+        ],
+        'business_address_line1' => ['Structured address (shared record)'],
+        'business_address_city' => ['Structured address (shared record)'],
+        'business_address_country' => ['Structured address (shared record)'],
+        'business_landmark' => [
+            'Pickup / directions',
+            'Website contact (when not overridden)',
+        ],
+        'business_maps_url' => [
+            'Google Maps buttons',
+            'Website contact / Order App directions (when not overridden)',
+        ],
+        'maps_embed_url' => [
+            'Website contact map embed (when not overridden)',
+        ],
+        'business_phone' => [
+            'Receipts & invoices',
+            'TV signage',
+            'Operational / customer SMS',
+            'Website contact/footer (when not overridden)',
+            'Order App contact (when not overridden)',
+        ],
+        'business_email' => [
+            'Receipts & invoices',
+            'Operational SMS',
+            'Website contact/footer (when not overridden)',
+            'Order App contact (when not overridden)',
+        ],
+        'business_whatsapp' => [
+            'Customer contact channels',
+            'Website contact (when not overridden)',
+        ],
+        'business_viber' => [
+            'Customer contact channels',
+            'Website contact (when not overridden)',
+        ],
+        'site_tagline' => ['Receipts & invoices', 'TV signage'],
+        'logo' => ['Receipts & invoices', 'TV signage'],
+        'primary_color' => ['Receipts & invoices', 'TV signage'],
+    ];
+
+    /** @return list<string> */
+    public static function all(): array
+    {
+        $keys = [];
+        foreach (self::SECTIONS as $sectionKeys) {
+            foreach ($sectionKeys as $key) {
+                $keys[$key] = true;
+            }
+        }
+
+        return array_keys($keys);
+    }
 
     public static function isAllowed(string $key): bool
     {
-        return in_array($key, self::KEYS, true);
+        return in_array($key, self::all(), true);
     }
 
-    /**
-     * @return list<string>
-     */
-    public static function all(): array
+    /** @return list<string> */
+    public static function usedBy(string $key): array
     {
-        return self::KEYS;
+        return self::USED_BY[$key] ?? [];
     }
 }
