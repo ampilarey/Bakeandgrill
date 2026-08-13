@@ -32,7 +32,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
-vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsCompactAdmin: () => false, useIsWideDesktop: () => true }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -139,6 +139,44 @@ describe('Content Hub autosave + WYSIWYG', () => {
     expect(addSpy.mock.calls.some((c) => c[0] === 'beforeunload')).toBe(true);
     addSpy.mockRestore();
   });
+
+  it('shows Draft not saved with Retry when autosave fails and keeps local edits', async () => {
+    vi.mocked(contentApi.saveContentDrafts).mockRejectedValueOnce(new Error('Network down'));
+
+    render(
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    const sheet = await openCtaEditor();
+    const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
+    editor.innerHTML = 'Keep me locally';
+    fireEvent.input(editor);
+
+    await waitFor(
+      () => {
+        expect(contentApi.saveContentDrafts).toHaveBeenCalled();
+        expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft not saved/);
+      },
+      { timeout: 5000 },
+    );
+
+    const retryBtns = screen.getAllByTestId('draft-retry-save');
+    expect(retryBtns.length).toBeGreaterThan(0);
+    expect(within(sheet).getAllByTestId('rich-text-editor')[0].innerHTML).toMatch(/Keep me locally/);
+    expect(contentApi.updateContent).not.toHaveBeenCalled();
+
+    vi.mocked(contentApi.saveContentDrafts).mockResolvedValueOnce({
+      drafts: { cta_band_headline: 'Keep me locally' },
+      saved_at: '2026-07-23T12:30:00Z',
+    });
+    fireEvent.click(retryBtns[0]);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved/);
+    });
+  }, 10000);
 
   it('ignores stale autosave responses after a newer draft change', async () => {
     let resolveFirst: (value: { drafts: Record<string, string>; saved_at: string }) => void = () => {};

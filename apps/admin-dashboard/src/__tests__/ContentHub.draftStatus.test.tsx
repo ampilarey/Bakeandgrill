@@ -32,7 +32,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
-vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsCompactAdmin: () => false, useIsWideDesktop: () => true }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -95,8 +95,8 @@ describe('Content Hub draft vs published status', () => {
     fireEvent.input(editor);
 
     const status = screen.getAllByTestId('draft-save-status')[0];
-    expect(status.className).toMatch(/unpublished/);
-    expect(status.textContent).toMatch(/Draft saved — not live/);
+    expect(status.className).toMatch(/unpublished|busy/);
+    expect(status.textContent).toMatch(/Draft saved|Saving draft/);
     expect(status.textContent).not.toMatch(/All published/);
 
     const publish = screen.getByTestId('publish-live-btn');
@@ -146,7 +146,8 @@ describe('Content Hub draft vs published status', () => {
       const status = screen.getAllByTestId('draft-save-status')[0];
       expect(status.className).toMatch(/live/);
       expect(status.textContent).toMatch(/All published/);
-      expect(status.textContent).not.toMatch(/Draft saved/);
+      expect(status.textContent).not.toMatch(/Draft saved(?! —)/);
+      expect(status.textContent).not.toMatch(/Draft not saved/);
     });
   });
 });

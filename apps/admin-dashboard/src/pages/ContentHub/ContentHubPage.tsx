@@ -32,6 +32,7 @@ import {
   fetchAdminPageBlocks,
   publishPageBlocks,
 } from '../../api/pageBlocks';
+import { ApiRequestError } from '@shared/api';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
 import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import {
@@ -73,7 +74,7 @@ import {
   visibleContentGroups,
   websitePageTaskByGroup,
 } from './websitePageTasks';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
 type DraftMap = Record<string, string>;
@@ -106,8 +107,8 @@ const NULL_BY_LOCALE: LocaleMetaMap<string | null> = { en: null, dv: null };
 /** Desktop layout prefs — Content Hub only. */
 const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
 const LS_RAIL_COLLAPSED = 'bg_hub_rail_collapsed';
-/** Open the docked preview by default on typical desktop widths. */
-const PREVIEW_DEFAULT_MIN_WIDTH = 1280;
+/** Open the docked preview column by default only on wide desktop (≥1200). */
+const PREVIEW_DEFAULT_MIN_WIDTH = 1200;
 
 function readStoredBool(key: string): boolean | null {
   try {
@@ -161,14 +162,39 @@ function parseDraftKey(composite: string): { scope: ContentScope; key: string } 
   return { scope: scope as ContentScope, key };
 }
 
-function collectChanges(drafts: DraftMap, locale: ContentLocale): DraftChange[] {
+function collectChanges(drafts: DraftMap, locale: ContentLocale, app?: ContentApp): DraftChange[] {
   return Object.entries(drafts)
     .map(([composite, value]) => {
       const parsed = parseDraftKey(composite);
       if (!parsed) return null;
+      // Content Hub never persists or publishes shared / cross-app drafts for the other app.
+      if (app && parsed.scope !== app) return null;
       return { key: parsed.key, scope: parsed.scope, value, locale };
     })
     .filter((change): change is DraftChange => Boolean(change));
+}
+
+/** Surface useful API / network errors for Publish without leaking stack traces. */
+function formatContentActionError(err: unknown, fallback: string): string {
+  if (err instanceof ApiRequestError) {
+    if (err.status === 401 || err.status === 403) {
+      return err.message || 'You do not have permission to publish this content.';
+    }
+    if (err.status === 422) {
+      return err.message || 'Validation failed — check the highlighted fields and try again.';
+    }
+    if (err.status >= 500) {
+      return err.message || 'Server error — try again in a moment.';
+    }
+    return err.message || fallback;
+  }
+  if (err instanceof TypeError) {
+    return 'Network error — check your connection and try again. Drafts are still on this device.';
+  }
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return fallback;
 }
 
 function isDualAppBlock(block: ContentBlock): boolean {
@@ -234,6 +260,8 @@ export function ContentHubPage() {
   usePageTitle(hubTitle);
   const { success, error } = useToast();
   const isMobile = useIsMobile();
+  const isCompactAdmin = useIsCompactAdmin();
+  const isWideDesktop = useIsWideDesktop();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
 
@@ -259,6 +287,8 @@ export function ContentHubPage() {
   const [blockScopeTab, setBlockScopeTab] = useState<Record<string, ContentScope>>({});
   const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...NULL_BY_LOCALE }));
   const [autosaving, setAutosaving] = useState(false);
+  const [autosaveFailed, setAutosaveFailed] = useState(false);
+  const [publishFailed, setPublishFailed] = useState(false);
   const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   const [mediaOpen, setMediaOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -293,6 +323,8 @@ export function ContentHubPage() {
   const serverDraftSyncedByLocaleRef = useRef<LocaleMetaMap<boolean>>({ ...TRUE_BY_LOCALE });
   const loadGen = useRef(0);
   const saveGeneration = useRef(0);
+  const publishInFlight = useRef(false);
+  const autosaveInFlight = useRef(false);
 
   const drafts = draftsByLocale[locale] ?? {};
   const lastSavedAt = lastSavedAtByLocale[locale] ?? null;
@@ -331,7 +363,10 @@ export function ContentHubPage() {
       const [blockRes, scheduleRes, appDrafts] = await Promise.all([
         getContentBlocks(loc),
         getContentSchedules('pending'),
-        getContentDrafts(hubApp, loc).catch(() => ({ drafts: {} as Record<string, string>, saved_at: null })),
+        getContentDrafts(hubApp, loc).catch((e) => {
+          error(e instanceof Error ? e.message : 'Could not load saved drafts for this app');
+          return { drafts: {} as Record<string, string>, saved_at: null };
+        }),
       ]);
       if (gen !== loadGen.current) return;
       const restored: DraftMap = {};
@@ -348,6 +383,8 @@ export function ContentHubPage() {
       replaceLocaleDrafts(loc, nextDrafts);
       setLocaleLastSavedAt(loc, appDrafts.saved_at);
       setLocaleSynced(loc, !hadUnsyncedLocal);
+      setAutosaveFailed(false);
+      setPublishFailed(false);
     } catch (e) {
       if (gen !== loadGen.current) return;
       error(e instanceof Error ? e.message : 'Failed to load content');
@@ -372,7 +409,8 @@ export function ContentHubPage() {
           fetchAdminPageBlocks('order_app'),
         ]);
         if (cancelled) return;
-        setLayoutDraft(Boolean(w.draft) || Boolean(o.draft));
+        // Only the current hub app's layout draft counts toward this hub's Publish bar.
+        setLayoutDraft(Boolean(hubApp === 'website' ? w.draft : o.draft));
         const counts: Record<string, number> = {};
         for (const app of ['website', 'order_app'] as const) {
           const blocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
@@ -389,7 +427,14 @@ export function ContentHubPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [hubApp]);
+
+  // Compact Admin (768–1199): keep the section rail collapsed so the editor stays usable.
+  useEffect(() => {
+    if (isCompactAdmin && !railCollapsed) {
+      setRailCollapsed(true);
+    }
+  }, [isCompactAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync URL group param → activeGroup (landing when cleared).
   // Legacy ?group=Pages must never open the mixed 48-block editor.
@@ -476,7 +521,10 @@ export function ContentHubPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, urlGroup, orderedSectionNames]);
 
-  const dirtyCount = useMemo(() => Object.keys(drafts).length, [drafts]);
+  const dirtyCount = useMemo(
+    () => collectChanges(drafts, locale, hubApp).length,
+    [drafts, locale, hubApp],
+  );
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
 
   const setDraft = (scope: ContentScope, key: string, value: string) => {
@@ -484,6 +532,8 @@ export function ContentHubPage() {
     saveGeneration.current += 1;
     updateLocaleDrafts(loc, (prev) => ({ ...prev, [draftKey(scope, key)]: value }));
     setLocaleSynced(loc, false);
+    setAutosaveFailed(false);
+    setPublishFailed(false);
   };
 
   // Preview tokens — one per app so website/order drafts overlay correctly.
@@ -534,28 +584,50 @@ export function ContentHubPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision]);
 
-  // Autosave
+  const persistDrafts = async (loc: ContentLocale = locale): Promise<boolean> => {
+    const gen = saveGeneration.current;
+    const changes = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc, hubApp);
+    if (changes.length === 0) {
+      setAutosaveFailed(false);
+      setLocaleSynced(loc, true);
+      return true;
+    }
+    autosaveInFlight.current = true;
+    setAutosaving(true);
+    setAutosaveFailed(false);
+    try {
+      const res = await saveContentDrafts(changes, loc);
+      if (gen !== saveGeneration.current) return false;
+      if (res == null || typeof res !== 'object') {
+        throw new Error('Malformed draft save response from server.');
+      }
+      if (typeof res.saved_at === 'string') {
+        setLocaleLastSavedAt(loc, res.saved_at);
+      }
+      setLocaleSynced(loc, true);
+      setAutosaveFailed(false);
+      return true;
+    } catch {
+      if (gen === saveGeneration.current) {
+        setAutosaveFailed(true);
+        setLocaleSynced(loc, false);
+      }
+      return false;
+    } finally {
+      autosaveInFlight.current = false;
+      const stillHasDrafts = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc, hubApp).length > 0;
+      if (gen === saveGeneration.current || !stillHasDrafts) setAutosaving(false);
+    }
+  };
+
+  // Autosave — failures stay visible until retry succeeds (never silently ignored).
   useEffect(() => {
     if (dirtyCount === 0 || serverDraftSynced) return;
     const t = window.setTimeout(() => {
-      const loc = locale;
-      const gen = saveGeneration.current;
-      const changes = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc);
-      if (changes.length === 0) return;
-      setAutosaving(true);
-      void saveContentDrafts(changes, loc)
-        .then((res) => {
-          if (gen !== saveGeneration.current) return;
-          setLocaleLastSavedAt(loc, res.saved_at);
-          setLocaleSynced(loc, true);
-        })
-        .catch(() => { /* keep local changes */ })
-        .finally(() => {
-          const stillHasDrafts = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc).length > 0;
-          if (gen === saveGeneration.current || !stillHasDrafts) setAutosaving(false);
-        });
+      void persistDrafts(locale);
     }, 2500);
     return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drafts, dirtyCount, serverDraftSynced, locale]);
 
   useEffect(() => {
@@ -658,14 +730,13 @@ export function ContentHubPage() {
   };
 
   /**
-   * Publish layout drafts from a fresh server read. Do not trust the mounted
-   * HomeLayoutEditor's in-memory hasDraft — it can still be loading when the
-   * hub Publish bar is already enabled from the landing fetch.
+   * Publish layout drafts for THIS hub app only. Website and Order App never
+   * publish each other's page-block drafts from a single Publish click.
    */
   const publishLayoutDraftsViaApi = async () => {
-    for (const app of ['website', 'order_app'] as const) {
-      const res = await fetchAdminPageBlocks(app);
-      if (!res.draft) continue;
+    const app = hubApp;
+    const res = await fetchAdminPageBlocks(app);
+    if (res.draft) {
       await publishPageBlocks({ app, version: res.version ?? 0 });
     }
     setLayoutDraft(false);
@@ -673,43 +744,73 @@ export function ContentHubPage() {
   };
 
   const discardLayoutDraftsViaApi = async () => {
-    for (const app of ['website', 'order_app'] as const) {
-      const res = await fetchAdminPageBlocks(app);
-      if (!res.draft) continue;
+    const app = hubApp;
+    const res = await fetchAdminPageBlocks(app);
+    if (res.draft) {
       await discardPageBlockDraft({ app });
     }
     setLayoutDraft(false);
     await homeLayoutEditorRef.current?.reload?.();
   };
 
-  // Unified publish — content keys and the Homepage layout draft are two
-  // separate backends, but staff think of "Publish" as one button.
+  // Unified publish — content keys + layout draft for the current hub app only.
   const publish = async () => {
-    const changes = collectChanges(drafts, locale);
+    if (publishInFlight.current || saving) return;
+    const changes = collectChanges(drafts, locale, hubApp);
     if (changes.length === 0 && !layoutDraft) return;
+
+    publishInFlight.current = true;
     setSaving(true);
+    setPublishFailed(false);
     try {
+      // Finish any in-flight / pending autosave so we don't race the draft store.
+      if (autosaveInFlight.current || (changes.length > 0 && !serverDraftSynced)) {
+        const saved = await persistDrafts(locale);
+        if (!saved && changes.length > 0) {
+          throw new Error('Draft not saved — fix the save error, then publish again.');
+        }
+      }
+
+      let nextBlocks = contentBlocks;
       if (changes.length > 0) {
-        const { blocks: nextBlocks } = await updateContent(changes, locale);
-        setBlocks(nextBlocks);
-        saveGeneration.current += 1;
-        replaceLocaleDrafts(locale, {});
-        setLocaleSynced(locale, true);
-        setLocaleLastSavedAt(locale, new Date().toISOString());
+        const res = await updateContent(changes, locale);
+        if (!res || !Array.isArray(res.blocks)) {
+          throw new Error('Malformed publish response from server — drafts were not cleared.');
+        }
+        nextBlocks = res.blocks;
       }
       if (layoutDraft) {
         await publishLayoutDraftsViaApi();
       }
-      success('Content published');
+
+      // Clear local drafts only after the server confirmed every step.
+      if (changes.length > 0) {
+        setBlocks(nextBlocks);
+        saveGeneration.current += 1;
+        // Drop only this hub app's draft keys so the other app's local map is untouched if present.
+        const remaining: DraftMap = {};
+        for (const [composite, value] of Object.entries(draftsByLocaleRef.current[locale] ?? {})) {
+          const parsed = parseDraftKey(composite);
+          if (parsed && parsed.scope !== hubApp) remaining[composite] = value;
+        }
+        replaceLocaleDrafts(locale, remaining);
+        setLocaleSynced(locale, true);
+        setLocaleLastSavedAt(locale, new Date().toISOString());
+        setAutosaveFailed(false);
+      }
+      setPublishFailed(false);
+      success(hubApp === 'website' ? 'Website published' : 'Order App published');
     } catch (e) {
-      error(e instanceof Error ? e.message : 'Save failed');
+      setPublishFailed(true);
+      error(formatContentActionError(e, 'Publish failed'));
     } finally {
+      publishInFlight.current = false;
       setSaving(false);
     }
   };
 
   const schedulePublish = async () => {
-    const changes = collectChanges(drafts, locale);
+    const changes = collectChanges(drafts, locale, hubApp);
     if (changes.length === 0 || !scheduleAt) {
       error('Set a future time and make some edits first');
       return;
@@ -939,34 +1040,41 @@ export function ContentHubPage() {
     <DraftPublishStatus
       dirtyCount={effectiveDirtyCount}
       autosaving={autosaving}
+      saveFailed={autosaveFailed}
+      savePending={hasUnsaved && !autosaveFailed}
+      publishing={saving}
+      publishFailed={publishFailed}
       lastSavedAt={lastSavedAt}
       compact={isMobile}
+      onRetrySave={() => { void persistDrafts(locale); }}
+      onRetryPublish={() => { void publish(); }}
     />
   );
 
-  // Unified discard — mirrors publish() by clearing both the content drafts
-  // (server + local) and the Homepage layout draft (via the editor's ref).
+  // Unified discard — current hub app only (never the other app's drafts).
   const discardAllContentDrafts = async () => {
     const hasContentDrafts = dirtyCount > 0;
     if (!hasContentDrafts && !layoutDraft) return;
     const confirmMessage = hasContentDrafts && layoutDraft
-      ? 'Discard unpublished content and layout drafts for this language?'
+      ? 'Discard unpublished content and layout drafts for this language in this app only?'
       : layoutDraft
-        ? 'Discard unpublished Home layout drafts?'
-        : 'Discard unpublished content drafts for this language?';
+        ? 'Discard unpublished Home layout drafts for this app?'
+        : 'Discard unpublished content drafts for this language in this app only?';
     if (!window.confirm(confirmMessage)) return;
     setSaving(true);
     try {
       if (hasContentDrafts) {
-        await discardContentDrafts(locale);
+        await discardContentDrafts(locale, hubApp);
       }
       saveGeneration.current += 1;
       replaceLocaleDrafts(locale, {});
       setLocaleSynced(locale, true);
+      setAutosaveFailed(false);
+      setPublishFailed(false);
       if (layoutDraft) {
         await discardLayoutDraftsViaApi();
       }
-      success('Draft discarded');
+      success(hubApp === 'website' ? 'Website draft discarded' : 'Order App draft discarded');
     } catch (e) {
       error(e instanceof Error ? e.message : 'Could not discard drafts');
     } finally {
@@ -1560,11 +1668,11 @@ export function ContentHubPage() {
   );
 
   const pendingOverwriteKeys = useMemo(() => {
-    const changes = collectChanges(drafts, locale);
+    const changes = collectChanges(drafts, locale, hubApp);
     if (changes.length === 0 || schedules.length === 0) return [] as ContentScheduleRow[];
     const changeKeys = new Set(changes.map((c) => `${c.key}::${c.scope}::${c.locale ?? locale}`));
     return schedules.filter((s) => changeKeys.has(`${s.key}::${s.scope}::${s.locale}`));
-  }, [drafts, locale, schedules]);
+  }, [drafts, locale, schedules, hubApp]);
 
   const schedulePublishPanel = (
     <div className="hub-more-schedule" data-testid="hub-schedule-publish">
@@ -1703,9 +1811,15 @@ export function ContentHubPage() {
         <button
           type="button"
           data-testid="preview-toggle"
-          aria-pressed={desktopPreviewOpen}
-          className={`hub-preview-toggle${desktopPreviewOpen ? ' hub-preview-toggle--on' : ''}`}
-          onClick={() => setDesktopPreviewOpenPersisted(!desktopPreviewOpen)}
+          aria-pressed={isCompactAdmin ? previewSheetOpen : desktopPreviewOpen}
+          className={`hub-preview-toggle${(isCompactAdmin ? previewSheetOpen : desktopPreviewOpen) ? ' hub-preview-toggle--on' : ''}`}
+          onClick={() => {
+            if (isCompactAdmin) {
+              setPreviewSheetOpen((o) => !o);
+              return;
+            }
+            setDesktopPreviewOpenPersisted(!desktopPreviewOpen);
+          }}
         >
           <Eye size={14} /> Preview
         </button>
@@ -1714,15 +1828,17 @@ export function ContentHubPage() {
       {effectiveDirtyCount > 0 ? (
         <Btn
           onClick={() => void publish()}
-          disabled={saving || effectiveDirtyCount === 0}
+          disabled={saving || effectiveDirtyCount === 0 || autosaveFailed}
           className="content-studio-publish-desktop content-studio-publish-desktop--needed"
           data-testid="publish-live-btn"
-          title={layoutDraft && dirtyCount === 0
-            ? 'Publishes unpublished Home page layout changes'
-            : undefined}
+          title={autosaveFailed
+            ? 'Retry draft save before publishing'
+            : layoutDraft && dirtyCount === 0
+              ? `Publishes unpublished ${hubApp === 'website' ? 'Website' : 'Order App'} Home layout changes`
+              : undefined}
         >
           <Save size={16} />
-          {saving ? 'Publishing…' : 'Publish changes'}
+          {saving ? 'Publishing…' : publishFailed ? 'Publish failed — Try again' : 'Publish changes'}
         </Btn>
       ) : null}
 
@@ -1928,7 +2044,9 @@ export function ContentHubPage() {
                   : taskLanding}
             </div>
 
-            {desktopPreviewOpen ? (
+            {/* Wide desktop (≥1200): optional sticky preview column.
+                Compact Admin (768–1199): never reserve 400px — use sheet instead. */}
+            {desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
               <PreviewPane
                 variant="column"
                 websiteUrl={previewState.website}
@@ -1938,6 +2056,25 @@ export function ContentHubPage() {
             ) : null}
           </div>
         )}
+
+        {/* Compact Admin preview sheet (also reused when column is unavailable). */}
+        {!isMobile && (isCompactAdmin || !isWideDesktop) ? (
+          <PreviewPane
+            variant="sheet"
+            websiteUrl={previewState.website}
+            orderAppUrl={previewState.orderApp}
+            loading={previewLoading}
+            open={previewSheetOpen || (desktopPreviewOpen && isCompactAdmin)}
+            onClose={() => {
+              setPreviewSheetOpen(false);
+              if (desktopPreviewOpen && isCompactAdmin) {
+                setDesktopPreviewOpenPersisted(false);
+              }
+            }}
+            draftStatus={draftStatusNode}
+            layer={3}
+          />
+        ) : null}
 
         {/* Focused block editor — Overview → Edit (mobile sheet / desktop drawer) */}
         {(() => {
@@ -1966,11 +2103,11 @@ export function ContentHubPage() {
               footer={effectiveDirtyCount > 0 ? (
                 <Btn
                   onClick={() => void publish()}
-                  disabled={saving}
+                  disabled={saving || autosaveFailed}
                   style={{ width: '100%' }}
                   data-testid="publish-live-btn-block-sheet"
                 >
-                  <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
+                  <Save size={16} /> {saving ? 'Publishing…' : publishFailed ? 'Publish failed — Try again' : 'Publish changes'}
                 </Btn>
               ) : undefined}
             >
@@ -1990,13 +2127,35 @@ export function ContentHubPage() {
 
         {/* Sticky mobile publish bar */}
         {effectiveDirtyCount > 0 && isMobile ? (
-          <div className="content-studio-sticky-bar" role="region" aria-label="Draft saved — not live">
-            <span className="content-studio-sticky-bar-label">
-              Draft saved — not live
+          <div
+            className="content-studio-sticky-bar"
+            role="region"
+            aria-label={autosaveFailed ? 'Draft not saved' : saving ? 'Publishing' : 'Draft status'}
+          >
+            <span className="content-studio-sticky-bar-label" data-testid="sticky-draft-status">
+              {saving
+                ? 'Publishing…'
+                : publishFailed
+                  ? 'Publish failed — Try again'
+                  : autosaveFailed
+                    ? 'Draft not saved — Retry'
+                    : hasUnsaved
+                      ? 'Saving draft…'
+                      : 'Draft saved'}
             </span>
+            {autosaveFailed ? (
+              <Btn
+                onClick={() => void persistDrafts(locale)}
+                style={{ flex: '0 0 auto' }}
+                data-testid="retry-save-btn-mobile"
+                variant="secondary"
+              >
+                Retry
+              </Btn>
+            ) : null}
             <Btn
               onClick={() => void publish()}
-              disabled={saving}
+              disabled={saving || autosaveFailed}
               style={{ flex: 1 }}
               data-testid="publish-live-btn-mobile"
               className="content-studio-publish-sticky"

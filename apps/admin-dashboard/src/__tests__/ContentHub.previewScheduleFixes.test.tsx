@@ -12,6 +12,8 @@ let layoutSignalHandler: ((signal: LayoutDraftSignal) => void) | null = null;
 
 vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => false,
+  useIsCompactAdmin: () => false,
+  useIsWideDesktop: () => true,
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));

@@ -3439,6 +3439,69 @@ a { text-decoration: none; color: inherit; }
 .hub-draft-status--live .hub-draft-status-icon {
   color: var(--color-success);
 }
+.hub-draft-status--error {
+  color: var(--color-danger);
+}
+.hub-draft-status--error .hub-draft-status-icon {
+  color: var(--color-danger);
+}
+.hub-draft-status--busy {
+  color: var(--color-text-secondary);
+}
+.hub-draft-status-icon--spin {
+  animation: hub-spin 0.8s linear infinite;
+}
+@keyframes hub-spin {
+  to { transform: rotate(360deg); }
+}
+.hub-draft-status-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hub-draft-status-retry:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Compact Admin (768–1199): no permanent 400px preview column; rail stays narrow. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .hub-desktop-shell {
+    gap: 12px;
+  }
+  .hub-section-rail:not(.hub-section-rail--collapsed) {
+    width: min(200px, 28vw);
+  }
+  .hub-preview-pane--column {
+    display: none !important;
+  }
+  .hub-editor-area {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .hub-desktop-shell .content-item-editor--drawer {
+    max-width: min(100vw - 24px, 640px);
+  }
+}
+
+/* Wide desktop: keep a comfortable editor minimum beside an optional preview. */
+@media (min-width: 1200px) {
+  .hub-editor-area {
+    min-width: min(480px, 40vw);
+  }
+}
 .content-studio-publish-desktop--needed {
   box-shadow: 0 0 0 2px var(--color-warning);
   font-weight: 700;

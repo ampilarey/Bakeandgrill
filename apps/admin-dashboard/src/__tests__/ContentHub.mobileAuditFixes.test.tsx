@@ -8,6 +8,8 @@ import type { ContentBlock } from '../api/content';
 
 vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => true,
+  useIsCompactAdmin: () => false,
+  useIsWideDesktop: () => false,
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));

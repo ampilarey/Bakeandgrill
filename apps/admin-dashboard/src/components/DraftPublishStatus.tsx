@@ -1,59 +1,124 @@
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
 export type DraftPublishStatusProps = {
   dirtyCount: number;
   autosaving?: boolean;
+  /** Local edits exist that failed to reach the server. */
+  saveFailed?: boolean;
+  /** Edits exist and autosave has not confirmed yet (not a hard failure). */
+  savePending?: boolean;
+  publishing?: boolean;
+  publishFailed?: boolean;
   lastSavedAt?: string | null;
   /** Compact single-line for tight mobile chrome. */
   compact?: boolean;
   className?: string;
   testId?: string;
+  onRetrySave?: () => void;
+  onRetryPublish?: () => void;
 };
 
 /**
  * Truthful publish-state label for Content Hub.
- * - No changes: All published
- * - Draft exists: Draft saved — not live
+ * Required states: Saving draft… / Draft saved / Draft not saved — Retry /
+ * Publishing… / Published / Publish failed — Try again.
  */
 export function DraftPublishStatus({
   dirtyCount,
   autosaving = false,
+  saveFailed = false,
+  savePending = false,
+  publishing = false,
+  publishFailed = false,
   lastSavedAt = null,
   compact = false,
   className = '',
   testId = 'draft-save-status',
+  onRetrySave,
+  onRetryPublish,
 }: DraftPublishStatusProps) {
   const unpublished = dirtyCount > 0;
+  const failed = saveFailed && unpublished && !autosaving;
+  const showPublishFailed = publishFailed && !publishing;
+
+  let primary = 'All published';
+  let secondary: string | null = null;
+  let tone: 'live' | 'unpublished' | 'error' | 'busy' = 'live';
+  let showRetrySave = false;
+  let showRetryPublish = false;
+
+  if (publishing) {
+    primary = 'Publishing…';
+    secondary = compact ? null : 'Please wait — do not close this page';
+    tone = 'busy';
+  } else if (showPublishFailed) {
+    primary = 'Publish failed — Try again';
+    secondary = compact ? null : 'Your drafts are still here. Nothing went live.';
+    tone = 'error';
+    showRetryPublish = Boolean(onRetryPublish);
+  } else if (autosaving || (savePending && unpublished)) {
+    primary = 'Saving draft…';
+    secondary = compact ? null : 'Customers still see the published version';
+    tone = 'busy';
+  } else if (failed) {
+    primary = 'Draft not saved — Retry';
+    secondary = compact
+      ? null
+      : 'Changes are only on this device until saved. They will be lost if you leave without retrying.';
+    tone = 'error';
+    showRetrySave = Boolean(onRetrySave);
+  } else if (unpublished) {
+    primary = 'Draft saved';
+    secondary = compact
+      ? null
+      : lastSavedAt
+        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()} — not live until you publish`
+        : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} waiting to publish`;
+    tone = 'unpublished';
+  }
+
   return (
     <span
       data-testid={testId}
-      className={`hub-draft-status${unpublished ? ' hub-draft-status--unpublished' : ' hub-draft-status--live'}${compact ? ' hub-draft-status--compact' : ''}${className ? ` ${className}` : ''}`}
+      className={`hub-draft-status hub-draft-status--${tone}${compact ? ' hub-draft-status--compact' : ''}${className ? ` ${className}` : ''}`}
       role="status"
+      aria-live="polite"
     >
-      {unpublished ? (
-        <>
-          <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
-          <span className="hub-draft-status-text">
-            <span className="hub-draft-status-primary">Draft saved — not live</span>
-            {!compact ? (
-              <span className="hub-draft-status-secondary">
-                {autosaving
-                  ? 'Saving… customers still see the old version'
-                  : lastSavedAt
-                    ? `Autosaved ${new Date(lastSavedAt).toLocaleTimeString()}`
-                    : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} waiting to publish`}
-              </span>
-            ) : null}
-          </span>
-        </>
+      {tone === 'busy' ? (
+        <Loader2 size={14} aria-hidden className="hub-draft-status-icon hub-draft-status-icon--spin" />
+      ) : tone === 'error' ? (
+        <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
+      ) : unpublished ? (
+        <AlertCircle size={14} aria-hidden className="hub-draft-status-icon" />
       ) : (
-        <>
-          <CheckCircle2 size={14} aria-hidden className="hub-draft-status-icon" />
-          <span className="hub-draft-status-text">
-            <span className="hub-draft-status-primary">All published</span>
-          </span>
-        </>
+        <CheckCircle2 size={14} aria-hidden className="hub-draft-status-icon" />
       )}
+      <span className="hub-draft-status-text">
+        <span className="hub-draft-status-primary">{primary}</span>
+        {secondary ? (
+          <span className="hub-draft-status-secondary">{secondary}</span>
+        ) : null}
+      </span>
+      {showRetrySave ? (
+        <button
+          type="button"
+          className="hub-draft-status-retry"
+          data-testid="draft-retry-save"
+          onClick={onRetrySave}
+        >
+          <RefreshCw size={14} aria-hidden /> Retry save
+        </button>
+      ) : null}
+      {showRetryPublish ? (
+        <button
+          type="button"
+          className="hub-draft-status-retry"
+          data-testid="draft-retry-publish"
+          onClick={onRetryPublish}
+        >
+          <RefreshCw size={14} aria-hidden /> Try again
+        </button>
+      ) : null}
     </span>
   );
 }
