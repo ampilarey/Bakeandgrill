@@ -1935,9 +1935,9 @@
                     <h4 class="brand-footer__heading">{{ $footerQuickLinksHeading }}</h4>
                     <a href="/" class="brand-footer__link">Home</a>
                     <a href="/order/menu" class="brand-footer__link">Order Online</a>
+                    <a href="/order/events" class="brand-footer__link">Catering &amp; Events</a>
                     <a href="/hours" class="brand-footer__link">Opening Hours</a>
                     <a href="/contact" class="brand-footer__link">Contact Us</a>
-                    <a href="/order/events" class="brand-footer__link">Catering &amp; Events</a>
                 </div>
                 <div class="brand-footer__col">
                     <h4 class="brand-footer__heading">{{ $footerLocationHeading }}</h4>
