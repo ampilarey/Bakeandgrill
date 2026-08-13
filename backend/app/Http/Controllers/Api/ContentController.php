@@ -178,6 +178,12 @@ class ContentController extends Controller
             foreach ($data['changes'] as $change) {
                 $key = (string) $change['key'];
                 $scope = (string) $change['scope'];
+                if (\App\Domains\Settings\OpsOwnedContent::isWriteForbidden($key)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'changes' => [\App\Domains\Settings\OpsOwnedContent::writeForbiddenMessage($key)],
+                        $key => [\App\Domains\Settings\OpsOwnedContent::writeForbiddenMessage($key)],
+                    ]);
+                }
                 $changeLocale = (string) ($change['locale'] ?? $locale);
                 $value = $change['value'] ?? '';
                 if (is_array($value) || is_object($value)) {

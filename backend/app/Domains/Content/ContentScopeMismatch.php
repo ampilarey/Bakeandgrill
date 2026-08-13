@@ -26,7 +26,7 @@ final class ContentScopeMismatch
         'site_name',
         'site_tagline',
         'delivery_time',
-        'delivery_threshold',
+        // delivery_threshold is Ordering Control owned — not a content mismatch key.
         'menu_new_days',
         // Brand assets (6)
         'logo',

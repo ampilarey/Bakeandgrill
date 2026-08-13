@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domains\Delivery\Services;
 
+use App\Domains\Content\ContentResolver;
 use App\Models\SiteSetting;
+use App\Services\AuditLogService;
 
 /**
  * Resolves delivery fees and thresholds from site_settings with config fallback.
  */
 class DeliverySettingsService
 {
+    public function __construct(
+        private readonly AuditLogService $audit,
+    ) {}
+
     /**
      * @return array{
      *     default_fee: float,
@@ -142,6 +148,8 @@ class DeliverySettingsService
      */
     public function update(array $data): array
     {
+        $before = $this->resolve();
+
         SiteSetting::set('delivery_default_fee', (string) max(0, (float) $data['default_fee']));
         SiteSetting::set('delivery_free_threshold', (string) max(0, (float) $data['free_threshold']));
 
@@ -175,8 +183,25 @@ class DeliverySettingsService
         }
 
         SiteSetting::bust();
+        // Public Website / Order App mirror delivery_threshold from free_threshold.
+        ContentResolver::bust();
 
-        return $this->resolve();
+        $after = $this->resolve();
+        $this->audit->log(
+            'delivery_settings.updated',
+            SiteSetting::class,
+            null,
+            [
+                'default_fee' => $before['default_fee'],
+                'free_threshold' => $before['free_threshold'],
+            ],
+            [
+                'default_fee' => $after['default_fee'],
+                'free_threshold' => $after['free_threshold'],
+            ],
+        );
+
+        return $after;
     }
 
     private function usesDatabaseSettings(): bool

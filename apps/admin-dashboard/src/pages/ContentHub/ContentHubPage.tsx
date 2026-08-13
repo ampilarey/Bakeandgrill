@@ -55,6 +55,7 @@ import { MediaPicker } from '../../components/MediaPicker';
 import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { DraftPublishStatus } from '../../components/DraftPublishStatus';
 import { MobileActionSheet } from '../../components/MobileActionSheet';
+import { OpsOwnedSummary } from '../../components/OpsOwnedSummary';
 import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { BlockCard, scopesLabelFor } from './BlockCard';
@@ -74,6 +75,7 @@ import {
   visibleContentGroups,
   websitePageTaskByGroup,
 } from './websitePageTasks';
+import { isOpsOwnedContentKey } from './opsOwnedContentKeys';
 import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
@@ -169,6 +171,8 @@ function collectChanges(drafts: DraftMap, locale: ContentLocale, app?: ContentAp
       if (!parsed) return null;
       // Content Hub never persists or publishes shared / cross-app drafts for the other app.
       if (app && parsed.scope !== app) return null;
+      // Operational / Business Details ownership — never draft or publish competing copies.
+      if (isOpsOwnedContentKey(parsed.key)) return null;
       return { key: parsed.key, scope: parsed.scope, value, locale };
     })
     .filter((change): change is DraftChange => Boolean(change));
@@ -534,6 +538,7 @@ export function ContentHubPage() {
   const hasUnsaved = dirtyCount > 0 && !serverDraftSynced;
 
   const setDraft = (scope: ContentScope, key: string, value: string) => {
+    if (isOpsOwnedContentKey(key)) return;
     const loc = locale;
     saveGeneration.current += 1;
     updateLocaleDrafts(loc, (prev) => ({ ...prev, [draftKey(scope, key)]: value }));
@@ -1361,6 +1366,39 @@ export function ContentHubPage() {
         ? 'meta_title'
         : block.key.replace(/_meta_description$/, '_meta_title');
       if (contentBlocks.some((c) => c.key === titleKey)) return null;
+    }
+
+    // Operational / Business Details ownership — never show an editable Save path.
+    if (block.managed_by) {
+      const display =
+        block.managed_by.current_value
+        ?? (hubApp === 'order_app' ? block.resolved_order_app : block.resolved_website)
+        ?? '';
+      return (
+        <BlockCard
+          key={`${block.key}-${locale}`}
+          block={block}
+          locale={locale}
+          editor={(
+            <OpsOwnedSummary
+              managedBy={block.managed_by}
+              testId={`ops-owned-${block.key}`}
+            />
+          )}
+          onOpenHistory={() => undefined}
+          historyOpen={false}
+          historyPanel={null}
+          technicalScopesLabel="Managed elsewhere"
+          rawValuePreview={String(display).slice(0, 80)}
+          compact={false}
+          compactSummary={(
+            <span className="hub-block-value-summary" data-testid={`ops-owned-summary-value-${block.key}`}>
+              {String(display).trim() || 'Not set yet'}
+            </span>
+          )}
+          visibilityLabel="Managed elsewhere"
+        />
+      );
     }
 
     const scopes = editorScopesForBlock(block, hubApp);
