@@ -59,7 +59,6 @@ const richBlock: ContentBlock = {
   resolved_website: 'Hello',
   resolved_order_app: 'Hello',
   state: 'split',
-  link_state: 'different',
 };
 
 describe('Content Hub draft vs published status', () => {

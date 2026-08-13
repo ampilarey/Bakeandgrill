@@ -52,7 +52,6 @@ const heroBlock: ContentBlock = {
   resolved_website: '[]',
   resolved_order_app: JSON.stringify([{ title: 'Shared', image: '/shared.jpg' }]),
   state: 'split',
-  link_state: 'different',
 };
 
 describe('Content Hub empty JSON array overrides', () => {

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Content\BusinessDetailsKeys;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
+use App\Domains\Content\ContentScopeMismatch;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,7 @@ class BusinessDetailsController extends Controller
             'scope' => 'shared',
             'fields' => $fields,
             'notice' => 'These values appear on invoices, printed receipts, signage and SMS — not on the website or order app. Edit Website Content or Order App Content to change what customers see there.',
+            'mismatches' => ContentScopeMismatch::collect('en'),
         ]);
     }
 

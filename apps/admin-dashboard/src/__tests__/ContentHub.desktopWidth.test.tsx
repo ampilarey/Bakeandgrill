@@ -51,14 +51,11 @@ const sharedPhone = {
   resolved_website: '+960 SHARED',
   resolved_order_app: '+960 SHARED',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const splitPhone = {
   ...sharedPhone,
   state: 'split' as const,
-  link_state: 'different' as const,
   shared: null,
   website: '+960 WEB',
   order_app: '+960 ORDER',
@@ -80,8 +77,6 @@ const splitBoolean = {
   resolved_website: 'true',
   resolved_order_app: 'false',
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
 };
 
 function mockBlocks(blocks: unknown[]) {

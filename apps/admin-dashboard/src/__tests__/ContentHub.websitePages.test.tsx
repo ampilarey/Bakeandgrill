@@ -65,7 +65,6 @@ function blk(key: string, group: string, label = key) {
     resolved_website: 'value',
     resolved_order_app: 'value',
     state: 'shared' as const,
-    link_state: 'same' as const,
   };
 }
 

@@ -50,7 +50,6 @@ const heroBlock: ContentBlock = {
   resolved_website: JSON.stringify([{ title: 'Welcome', image: '/a.jpg', eyebrow: 'Hi' }]),
   resolved_order_app: JSON.stringify([{ title: 'Welcome', image: '/a.jpg', eyebrow: 'Hi' }]),
   state: 'shared',
-  link_state: 'same',
 };
 
 const phoneBlock: ContentBlock = {
@@ -67,7 +66,6 @@ const phoneBlock: ContentBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared',
-  link_state: 'same',
 };
 
 function setViewport(width: number) {

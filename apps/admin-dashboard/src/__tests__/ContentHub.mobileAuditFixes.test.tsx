@@ -72,7 +72,6 @@ const block: ContentBlock = {
   resolved_website: 'Hi',
   resolved_order_app: 'Hi',
   state: 'shared',
-  link_state: 'same',
 };
 
 describe('ContentHub mobile audit fixes', () => {

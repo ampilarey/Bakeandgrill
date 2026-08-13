@@ -25,6 +25,7 @@ import {
   type ContentRevision,
   type ContentScheduleRow,
   type ContentScope,
+  type ContentScopeMismatch,
 } from '../../api/content';
 import {
   discardPageBlockDraft,
@@ -32,6 +33,7 @@ import {
   publishPageBlocks,
 } from '../../api/pageBlocks';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
+import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import {
   AboutValuesEditor,
   BusinessHoursEditor,
@@ -243,6 +245,7 @@ export function ContentHubPage() {
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
 
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [mismatches, setMismatches] = useState<ContentScopeMismatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(() => urlGroup || null);
@@ -355,6 +358,7 @@ export function ContentHubPage() {
         ? { ...restored, ...(draftsByLocaleRef.current[loc] ?? {}) }
         : restored;
       setBlocks(blockRes.blocks);
+      setMismatches(blockRes.mismatches ?? []);
       setSchedules(scheduleRes.schedules);
       replaceLocaleDrafts(loc, nextDrafts);
       setLocaleLastSavedAt(loc, latestIso([sharedDrafts.saved_at, websiteDrafts.saved_at, orderDrafts.saved_at]));
@@ -1818,6 +1822,8 @@ export function ContentHubPage() {
         <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
 
         {schedulesBanner}
+
+        {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
 
         {isMobile ? (
           /* ── Mobile layout ──────────────────────────────────────────────── */

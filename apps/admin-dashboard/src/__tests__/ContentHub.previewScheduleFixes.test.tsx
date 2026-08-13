@@ -99,7 +99,6 @@ const block: ContentBlock = {
   resolved_website: 'Hello',
   resolved_order_app: 'Hello',
   state: 'split',
-  link_state: 'different',
 };
 
 function openHub(path: string) {

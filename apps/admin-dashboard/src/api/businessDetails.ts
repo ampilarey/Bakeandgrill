@@ -1,4 +1,5 @@
 import { req } from './client';
+import type { ScopeMismatch } from '../components/ScopeMismatchNotices';
 
 export type BusinessDetailsField = {
   key: string;
@@ -14,6 +15,7 @@ export type BusinessDetailsResponse = {
   scope: 'shared';
   fields: BusinessDetailsField[];
   notice: string;
+  mismatches?: ScopeMismatch[];
 };
 
 export function getBusinessDetails(): Promise<BusinessDetailsResponse> {

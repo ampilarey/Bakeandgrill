@@ -89,8 +89,6 @@ const heroEnable = {
   resolved_website: 'true',
   resolved_order_app: 'true',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const heroSlides = {
@@ -108,8 +106,6 @@ const heroSlides = {
   resolved_website: '[]',
   resolved_order_app: '[]',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Carousel slides for the top of the homepage with image title and CTAs.',
 };
 
@@ -128,8 +124,6 @@ const homeEnable = {
   resolved_website: 'true',
   resolved_order_app: 'true',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const proofStat = {
@@ -146,8 +140,6 @@ const proofStat = {
   resolved_website: '500+',
   resolved_order_app: null,
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
   description: 'Large number shown in the social proof band on the homepage.',
 };
 
@@ -166,8 +158,6 @@ const footerEnable = {
   resolved_website: 'true',
   resolved_order_app: 'false',
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
 };
 
 const footerText = {
@@ -184,8 +174,6 @@ const footerText = {
   resolved_website: 'Fresh every day',
   resolved_order_app: 'Fresh every day',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Short line under the logo in the site footer across pages.',
 };
 
@@ -203,8 +191,6 @@ const logoBlock = {
   resolved_website: '/logo.png',
   resolved_order_app: '/logo.png',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: true,
 };
 
 const phoneBlock = {
@@ -221,8 +207,6 @@ const phoneBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Primary phone number shown on contact pages and the footer.',
 };
 

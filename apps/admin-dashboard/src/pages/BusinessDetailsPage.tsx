@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { getBusinessDetails, updateBusinessDetails, type BusinessDetailsField } from '../api/businessDetails';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
+import { ScopeMismatchNotices, type ScopeMismatch } from '../components/ScopeMismatchNotices';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
 
@@ -9,6 +10,7 @@ export function BusinessDetailsPage() {
   const { success, error } = useToast();
   const [fields, setFields] = useState<BusinessDetailsField[]>([]);
   const [notice, setNotice] = useState('');
+  const [mismatches, setMismatches] = useState<ScopeMismatch[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,6 +21,7 @@ export function BusinessDetailsPage() {
       const res = await getBusinessDetails();
       setFields(res.fields);
       setNotice(res.notice);
+      setMismatches(res.mismatches ?? []);
       const next: Record<string, string> = {};
       for (const f of res.fields) {
         next[f.key] = f.value ?? '';
@@ -46,6 +49,7 @@ export function BusinessDetailsPage() {
       );
       setFields(res.fields);
       setNotice(res.notice);
+      setMismatches(res.mismatches ?? []);
       const next: Record<string, string> = {};
       for (const f of res.fields) {
         next[f.key] = f.value ?? '';
@@ -87,6 +91,8 @@ export function BusinessDetailsPage() {
         {notice || 'These values appear on invoices, printed receipts, signage and SMS — not on the website or order app.'}
       </div>
 
+      {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
+
       {loading ? (
         <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
       ) : (
@@ -121,6 +127,7 @@ export function BusinessDetailsPage() {
                   style={inputStyle}
                 />
               )}
+              <ScopeMismatchNotices mismatches={mismatches} onlyKey={field.key} />
             </label>
           ))}
         </div>

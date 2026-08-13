@@ -47,8 +47,6 @@ function brandBlock(key: string, label: string, type: string, shared: string | n
     resolved_website: shared ?? '',
     resolved_order_app: shared ?? '',
     state: 'shared' as const,
-    link_state: 'same' as const,
-    brand_synced: true,
   };
 }
 
@@ -66,8 +64,6 @@ const phoneBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const brandingBlocks = [

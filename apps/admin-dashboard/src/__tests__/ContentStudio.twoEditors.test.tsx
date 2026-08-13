@@ -74,7 +74,6 @@ function phoneBlock(): ContentBlock {
     resolved_website: '+960 912 0011',
     resolved_order_app: '+960 912 0011',
     state: 'shared',
-    link_state: 'same',
   };
 }
 
@@ -96,7 +95,6 @@ function heroBlock(): ContentBlock {
     resolved_website: websiteArr,
     resolved_order_app: orderArr,
     state: 'split',
-    link_state: 'different',
   };
 }
 

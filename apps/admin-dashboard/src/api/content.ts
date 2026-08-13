@@ -15,6 +15,15 @@ export type ContentEditorHint =
   | 'footer_links'
   | 'business_hours';
 
+export type ContentScopeMismatch = {
+  key: string;
+  label: string;
+  message: string;
+  shared?: string;
+  website?: string;
+  order_app?: string;
+};
+
 export type ContentBlock = {
   key: string;
   label: string;
@@ -35,8 +44,6 @@ export type ContentBlock = {
   resolved_website: string | null;
   resolved_order_app: string | null;
   state: 'shared' | 'split';
-  link_state?: 'same' | 'different';
-  brand_synced?: boolean;
   section_enable?: boolean;
   deprecated?: boolean;
 };
@@ -75,6 +82,7 @@ export async function getContentBlocks(locale: ContentLocale = 'en'): Promise<{
   blocks: ContentBlock[];
   locale: string;
   locales: string[];
+  mismatches?: ContentScopeMismatch[];
 }> {
   return req(`/admin/content?locale=${encodeURIComponent(locale)}`);
 }

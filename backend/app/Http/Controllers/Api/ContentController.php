@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
+use App\Domains\Content\ContentScopeMismatch;
 use App\Domains\Content\ContentValidationService;
 use App\Domains\Content\ContentWriter;
 use App\Domains\Media\Services\MediaLibraryService;
@@ -77,6 +78,7 @@ class ContentController extends Controller
             'locale' => $locale,
             'locales' => ContentRegistry::LOCALES,
             'blocks' => ContentBlockResource::collectionFromRegistry($locale),
+            'mismatches' => ContentScopeMismatch::collect($locale),
         ]);
     }
 

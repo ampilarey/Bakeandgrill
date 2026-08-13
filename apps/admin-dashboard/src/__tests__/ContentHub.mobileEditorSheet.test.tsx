@@ -76,8 +76,6 @@ const heroEnable = {
   resolved_website: 'true',
   resolved_order_app: 'true',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const slidePayload = JSON.stringify([
@@ -120,8 +118,6 @@ const heroSlides = {
   resolved_website: slidePayload,
   resolved_order_app: slidePayload,
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Carousel slides for the top of the homepage with image title and CTAs.',
 };
 
