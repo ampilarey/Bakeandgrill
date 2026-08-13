@@ -254,11 +254,13 @@ export function SurfaceBuilderLanding({
     >
       <header className="hub-landing-desk-header">
         {desktopLayout ? (
-          <h2 className="hub-landing-desk-title">{appTitle} content</h2>
-        ) : null}
-        <p className="hub-task-landing-intro">
-          {intro}
-        </p>
+          <div className="hub-landing-desk-masthead">
+            <h2 className="hub-landing-desk-title">{appTitle} content</h2>
+            <p className="hub-task-landing-intro">{intro}</p>
+          </div>
+        ) : (
+          <p className="hub-task-landing-intro">{intro}</p>
+        )}
       </header>
 
       {/* 1. Primary — Hero + Home */}
@@ -266,7 +268,7 @@ export function SurfaceBuilderLanding({
         {!desktopLayout ? (
           <h2 className="hub-task-cluster-label">Start here</h2>
         ) : (
-          <h2 className="hub-task-cluster-label">Most used</h2>
+          <h2 className="hub-task-cluster-label">Start here</h2>
         )}
         <div className="hub-landing-primary-actions">
           <button
@@ -279,7 +281,7 @@ export function SurfaceBuilderLanding({
               <Image size={22} />
             </span>
             <span className="hub-landing-primary-body">
-              <span className="hub-landing-primary-kicker">Primary</span>
+              <span className="hub-landing-primary-kicker">Most common</span>
               <span className="hub-landing-primary-title">
                 Edit hero
                 {dirtyGroups.has('Home') ? (
@@ -287,7 +289,7 @@ export function SurfaceBuilderLanding({
                 ) : null}
               </span>
               <span className="hub-landing-primary-desc">
-                Slideshow photos and titles — the most common edit
+                Slideshow photos and titles
               </span>
             </span>
             <ChevronRight size={20} className="hub-task-card-chevron" aria-hidden />
@@ -303,7 +305,7 @@ export function SurfaceBuilderLanding({
               <Home size={22} />
             </span>
             <span className="hub-landing-primary-body">
-              <span className="hub-landing-primary-kicker">Layout</span>
+              <span className="hub-landing-primary-kicker">Home layout</span>
               <span className="hub-landing-primary-title">
                 Edit Home
                 {dirtyGroups.has('Home') ? (
@@ -314,7 +316,6 @@ export function SurfaceBuilderLanding({
                 {appLabel(primaryApp)}
                 {' · '}
                 {deviceLabel(preferredDevice)}
-                {' home'}
                 {homeCountText ? ` · ${homeCountText}` : ''}
               </span>
             </span>
@@ -340,13 +341,14 @@ export function SurfaceBuilderLanding({
       {/* 4. Site-wide + tools */}
       <section className="hub-task-cluster hub-landing-panel hub-landing-panel--sitewide" data-testid="task-cluster-brand_pages">
         <h2 className="hub-task-cluster-label">Site-wide</h2>
-        <div className="hub-landing-list hub-task-grid hub-landing-sitewide-grid">
+        <div className={`hub-landing-list hub-landing-sitewide-grid${desktopLayout ? '' : ' hub-task-grid'}`}>
           {sitewideTasks.map((task) => (
             <BrandPageCard
               key={task.id}
               task={task}
               dirty={Boolean(task.group && dirtyGroups.has(task.group))}
               onSelect={() => onSelectTask(task)}
+              row={desktopLayout}
             />
           ))}
         </div>

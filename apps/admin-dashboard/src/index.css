@@ -2632,10 +2632,83 @@ a { text-decoration: none; color: inherit; }
   min-height: calc(100vh - 168px);
   box-sizing: border-box;
 }
+/* Landing: open canvas — no nested “card in a card” */
+.hub-editor-area--landing {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 4px 28px;
+  min-height: 0;
+  box-shadow: none;
+}
 @media (min-width: 1200px) {
-  .hub-editor-area {
+  .hub-editor-area:not(.hub-editor-area--landing) {
     padding: 28px 32px 36px;
   }
+  .hub-editor-area--landing {
+    padding: 0 0 32px;
+  }
+}
+
+/* Content Hub — collapsed drift summary (keeps landing above the fold) */
+.hub-mismatch-summary {
+  margin: 0 0 16px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-bg));
+  max-width: 100%;
+  min-width: 0;
+}
+.hub-mismatch-summary-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--color-text);
+}
+.hub-mismatch-summary-chevron {
+  display: inline-flex;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+.hub-mismatch-summary-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.hub-mismatch-summary-hint {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.hub-mismatch-summary-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+}
+.hub-mismatch-summary-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+.hub-mismatch-summary-label {
+  font-weight: 700;
+  margin-bottom: 2px;
 }
 
 /* ── Per-app scope tabs (split blocks) ───────────────────────── */
@@ -4294,12 +4367,17 @@ a { text-decoration: none; color: inherit; }
   gap: 6px;
   font-size: 1.05rem;
   font-weight: 800;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hub-landing-primary-desc {
   font-size: 0.82rem;
   color: var(--color-text-muted);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hub-landing-desk-split {
   display: flex;
@@ -4401,11 +4479,16 @@ a { text-decoration: none; color: inherit; }
   color: var(--color-text);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text) 8%, transparent);
 }
-.hub-landing-slot-list.hub-surface-slots {
-  grid-template-columns: 1fr;
+/* Landing slots must stay a single column — never 2-col squeeze (letter-stack bug) */
+.hub-landing-v7 .hub-landing-slot-list.hub-surface-slots,
+.hub-landing-v7 .hub-surface-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  grid-template-columns: none;
 }
 .hub-landing-surfaces .hub-surface-card {
-  min-height: 52px;
+  min-height: 48px;
 }
 
 /* Mobile: keep stacked Stage 7 — panels are invisible chrome */
@@ -4425,107 +4508,160 @@ a { text-decoration: none; color: inherit; }
   }
 }
 
-/* Desktop workspace — first viewport reads as one composition */
+/* Desktop workspace — open composition (no nested panel boxes) */
 @media (min-width: 768px) {
   .hub-landing-v7--desktop {
     gap: 1.75rem;
   }
+  .hub-landing-v7--desktop .hub-landing-desk-masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-width: 36rem;
+    padding-bottom: 0.25rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-desk-title {
+    font-size: clamp(1.5rem, 2.2vw, 1.85rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
   .hub-landing-v7--desktop .hub-task-landing-intro {
-    max-width: 40rem;
+    max-width: 34rem;
     font-size: 0.95rem;
+    line-height: 1.5;
   }
   .hub-landing-v7--desktop .hub-landing-primary-kicker {
     display: block;
   }
   .hub-landing-v7--desktop .hub-landing-primary-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+  /* Preview dock squeezes the canvas — stack Start here so titles stay readable */
+  .hub-desktop-shell:not(.hub-desktop-shell--preview-off) .hub-landing-v7--desktop .hub-landing-primary-actions {
+    grid-template-columns: 1fr;
   }
   .hub-landing-v7--desktop .hub-landing-primary-btn {
-    min-height: 132px;
+    min-height: 96px;
+    align-items: center;
+    padding: 1.1rem 1.25rem;
+    border-radius: 16px;
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-text) 4%, transparent);
+  }
+  .hub-desktop-shell--preview-off .hub-landing-v7--desktop .hub-landing-primary-btn {
+    min-height: 118px;
     align-items: flex-start;
-    padding: 1.25rem 1.35rem;
-    border-radius: 18px;
   }
   .hub-landing-v7--desktop .hub-landing-primary-btn--hero {
     background:
       linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--color-primary) 14%, var(--color-bg)) 0%,
-        var(--color-bg) 55%
+        125deg,
+        color-mix(in srgb, var(--color-primary) 16%, var(--color-surface)) 0%,
+        var(--color-surface) 62%
       );
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-btn:hover {
+    transform: translateY(-1px);
   }
   .hub-landing-v7--desktop .hub-landing-primary-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     margin-top: 2px;
+    background: var(--color-bg);
   }
   .hub-landing-v7--desktop .hub-landing-primary-title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
   .hub-landing-v7--desktop .hub-landing-desk-split {
     display: grid;
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    gap: 1.1rem;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 2rem 2.25rem;
+    align-items: start;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-border);
   }
+  /* Open columns — no nested beige panels */
   .hub-landing-v7--desktop .hub-landing-panel {
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 16px 18px 18px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
-    min-height: 100%;
-  }
-  .hub-landing-v7--desktop .hub-landing-panel--sitewide,
-  .hub-landing-v7--desktop .hub-landing-panel--tools {
+    gap: 0.7rem;
     min-height: 0;
   }
   .hub-landing-v7--desktop .hub-landing-row {
     background: var(--color-surface);
-    min-height: 48px;
+    min-height: 46px;
+    padding: 0.6rem 0.85rem;
   }
-  .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
+  .hub-landing-v7--desktop .hub-landing-row-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .hub-landing-v7--desktop .hub-landing-row-meta {
+    max-width: 38%;
+  }
+  .hub-landing-v7--desktop .hub-landing-sitewide-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
   }
-  .hub-landing-v7--desktop .hub-landing-sitewide-grid .hub-task-card {
-    min-height: 108px;
-    background: var(--color-surface);
+  .hub-landing-v7--desktop .hub-landing-panel--sitewide {
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--color-border);
+  }
+  .hub-landing-v7--desktop .hub-landing-panel--tools {
+    padding-top: 0.25rem;
   }
   .hub-landing-v7--desktop .hub-landing-tools-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.65rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-tools-row .hub-landing-row {
+    flex: 1 1 180px;
+    max-width: 280px;
   }
   .hub-landing-v7--desktop .hub-landing-tools-row .hub-landing-row-meta {
     display: none;
   }
+  .hub-landing-v7--desktop .hub-integrity-panel {
+    margin: 0;
+  }
 }
 @media (min-width: 1280px) {
   .hub-landing-v7--desktop .hub-landing-desk-split {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    gap: 1.25rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 2rem 2.75rem;
   }
-  .hub-desktop-shell--preview-off .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .hub-desktop-shell--preview-off .hub-landing-v7--desktop .hub-landing-sitewide-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-/* Compact admin: single-column split so pages/layout don't crush */
+/* Compact admin width: stack Pages / Layout */
 @media (min-width: 768px) and (max-width: 1199px) {
   .hub-landing-v7--desktop .hub-landing-desk-split {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
-  .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .hub-landing-v7--desktop .hub-landing-primary-actions {
+    grid-template-columns: 1fr 1fr;
   }
-  .hub-landing-v7--desktop .hub-landing-tools-row {
+  .hub-landing-v7--desktop .hub-landing-sitewide-grid {
     grid-template-columns: 1fr;
+  }
+  .hub-landing-v7--desktop .hub-landing-tools-row .hub-landing-row {
+    max-width: none;
   }
 }
 .hub-integrity-panel {
@@ -4639,10 +4775,11 @@ a { text-decoration: none; color: inherit; }
   }
 }
 @media (min-width: 1200px) {
-  .hub-surface-slots {
+  /* Non-landing surface grids only — landing forces flex column above */
+  .hub-surface-tree .hub-surface-slots {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .hub-desktop-shell--preview-off .hub-surface-slots {
+  .hub-desktop-shell--preview-off .hub-surface-tree .hub-surface-slots {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
