@@ -75,7 +75,7 @@ import {
   visibleContentGroups,
   websitePageTaskByGroup,
 } from './websitePageTasks';
-import { isOpsOwnedContentKey } from './opsOwnedContentKeys';
+import { fallbackManagedBy, isOpsOwnedContentKey } from './opsOwnedContentKeys';
 import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
@@ -1369,11 +1369,12 @@ export function ContentHubPage() {
     }
 
     // Operational / Business Details ownership — never show an editable Save path.
-    if (block.managed_by) {
-      const display =
-        block.managed_by.current_value
-        ?? (hubApp === 'order_app' ? block.resolved_order_app : block.resolved_website)
-        ?? '';
+    const resolvedDisplay =
+      (hubApp === 'order_app' ? block.resolved_order_app : block.resolved_website) ?? '';
+    const managedBy = block.managed_by
+      ?? fallbackManagedBy(block.key, resolvedDisplay);
+    if (managedBy) {
+      const display = managedBy.current_value ?? resolvedDisplay ?? '';
       return (
         <BlockCard
           key={`${block.key}-${locale}`}
@@ -1381,7 +1382,7 @@ export function ContentHubPage() {
           locale={locale}
           editor={(
             <OpsOwnedSummary
-              managedBy={block.managed_by}
+              managedBy={managedBy}
               testId={`ops-owned-${block.key}`}
             />
           )}
