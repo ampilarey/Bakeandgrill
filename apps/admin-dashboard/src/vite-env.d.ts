@@ -16,6 +16,13 @@ declare module 'node:fs' {
 declare module 'node:path' {
   export function dirname(path: string): string;
   export function join(...paths: string[]): string;
+  export function relative(from: string, to: string): string;
+  const path: {
+    dirname(path: string): string;
+    join(...paths: string[]): string;
+    relative(from: string, to: string): string;
+  };
+  export default path;
 }
 declare module 'node:url' {
   export function fileURLToPath(url: string | URL): string;

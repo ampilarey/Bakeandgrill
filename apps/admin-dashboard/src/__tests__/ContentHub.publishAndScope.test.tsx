@@ -143,6 +143,11 @@ describe('Content Hub publish reliability + app scope', () => {
   });
 
   it('successful publish clears drafts only after server blocks return', async () => {
+    let resolvePublish: (value: { blocks: ContentBlock[] }) => void = () => {};
+    vi.mocked(contentApi.updateContent).mockImplementationOnce(
+      () => new Promise((resolve) => { resolvePublish = resolve; }),
+    );
+
     render(
       <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
@@ -157,6 +162,11 @@ describe('Content Hub publish reliability + app scope', () => {
     fireEvent.click(screen.getByTestId('publish-live-btn'));
 
     await waitFor(() => expect(contentApi.updateContent).toHaveBeenCalled());
+    // Local draft must still be present until the server confirms (matrix row 11).
+    expect(within(sheet).getAllByTestId('rich-text-editor')[0].innerHTML).toMatch(/Go live now/);
+
+    resolvePublish({ blocks: [{ ...websiteBlock, website: 'Go live now' }] });
+
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Website published');
       expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Website published/);

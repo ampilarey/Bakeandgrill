@@ -634,7 +634,9 @@ class PageBlockController extends Controller
         if (collect($blocks)->contains(fn (array $block): bool => ($block['block_type'] ?? null) === $type)) {
             $def = BlockTypeRegistry::get($type);
             throw ValidationException::withMessages([
-                'block_type' => ($def?->label ?? $type).' already exists on this home page.',
+                'block_type' => ($def?->label ?? $type)
+                    .' is a singleton and already exists on this app home page'
+                    .' (cannot add a second instance on any device or surface).',
             ]);
         }
     }

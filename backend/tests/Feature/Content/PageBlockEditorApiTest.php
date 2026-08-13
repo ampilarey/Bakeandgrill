@@ -206,12 +206,40 @@ class PageBlockEditorApiTest extends TestCase
 
     public function test_duplicate_singleton_store_returns_422(): void
     {
-        $this->postJson('/api/admin/page-blocks', [
+        $res = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
             'version' => 0,
             'block_type' => 'hero',
+            'settings' => [
+                'show_mobile' => true,
+                'placement_mobile' => 'header',
+                'show_desktop' => false,
+                'placement_desktop' => 'home',
+            ],
         ])->assertStatus(422);
+
+        $message = (string) data_get($res->json(), 'errors.block_type.0', '');
+        $this->assertStringContainsString('singleton', strtolower($message));
+    }
+
+    public function test_duplicate_prayer_bar_on_same_surface_via_api_is_rejected(): void
+    {
+        // prayer_bar already seeded on website home — a second create must 422
+        // even when placement settings target a specific device/surface.
+        $this->postJson('/api/admin/page-blocks', [
+            'app' => 'website',
+            'page' => 'home',
+            'version' => 0,
+            'block_type' => 'prayer_bar',
+            'settings' => [
+                'show_mobile' => true,
+                'placement_mobile' => 'header',
+                'show_desktop' => true,
+                'placement_desktop' => 'header',
+            ],
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['block_type']);
     }
 
     public function test_second_user_cannot_overwrite_first_users_private_draft(): void

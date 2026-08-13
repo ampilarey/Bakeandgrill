@@ -638,13 +638,88 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                 background: 'var(--color-border-light)',
                 fontSize: 12,
                 color: 'var(--color-text)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
               }}
             >
-              <strong>Duplicate components need review.</strong>
-              {' '}
-              {singletonDupes.map((d) => `${d.type}: ${d.component_ids.join(', ')}`).join(' · ')}
-              {' '}
-              Only one of each should render until resolved. Further duplicates cannot be added.
+              <div>
+                <strong>Duplicate components need review.</strong>
+                {' '}
+                Choose which instance to keep. The others are hidden (never deleted).
+                Only one of each renders until resolved. Further duplicates cannot be added.
+              </div>
+              {singletonDupes.map((d) => (
+                <div
+                  key={d.type}
+                  data-testid={`home-layout-singleton-dupe-${d.type}`}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                >
+                  <div style={{ fontWeight: 700 }}>
+                    {libraryByType.get(d.type)?.name ?? d.type}
+                    {' · '}
+                    {surfaceFilter ? surfaceBreadcrumb(surfaceFilter) : activeApp}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>
+                    IDs:
+                    {' '}
+                    {d.component_ids.join(', ')}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {d.component_ids.map((cid) => {
+                      const blockId = Number(cid.split('.').pop());
+                      return (
+                        <button
+                          key={cid}
+                          type="button"
+                          data-testid={`home-layout-keep-singleton-${blockId}`}
+                          disabled={busy || !Number.isFinite(blockId)}
+                          onClick={() => {
+                            void (async () => {
+                              const hideIds = d.component_ids
+                                .map((id) => Number(id.split('.').pop()))
+                                .filter((id) => id !== blockId && Number.isFinite(id));
+                              setBusy(true);
+                              setError('');
+                              try {
+                                let version = appState.version;
+                                let nextBlocks = appState.blocks;
+                                for (const id of hideIds) {
+                                  const res = await updatePageBlock(id, {
+                                    app: activeApp,
+                                    page: 'home',
+                                    version,
+                                    is_enabled: false,
+                                  });
+                                  version = res.version;
+                                  nextBlocks = nextBlocks.map((b) => (
+                                    b.id === id ? { ...b, ...res.block, is_enabled: false } : b
+                                  ));
+                                }
+                                setAppState({
+                                  ...appState,
+                                  blocks: nextBlocks,
+                                  version,
+                                  hasDraft: true,
+                                });
+                              } catch (e) {
+                                setError((e as Error).message || 'Could not hide duplicate instances.');
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                          style={btnSecondary}
+                        >
+                          Keep #
+                          {blockId}
+                          {' · hide others'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
           {surfaceFilter && overviewRows.length === 0 ? (

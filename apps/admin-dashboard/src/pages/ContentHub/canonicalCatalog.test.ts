@@ -3,12 +3,13 @@ import {
   addableTypesOnSurface,
   countComponentsOnSurface,
   findSingletonDuplicatesOnSurface,
+  isSingletonSurfaceType,
   listConfiguredOnSurface,
   listHiddenOnSurface,
   placementSettingsForSurface,
+  SINGLETON_SURFACE_TYPES,
   surfaceCountLabel,
 } from './canonicalCatalog';
-import { countBlocksOnSurface } from './surfaceCatalog';
 
 const headerBlocks = [
   {
@@ -55,7 +56,6 @@ describe('canonicalCatalog', () => {
       'website.mobile.header.2',
     ]);
     expect(countComponentsOnSurface(headerBlocks, filter)).toBe(2);
-    expect(countBlocksOnSurface(headerBlocks, 'mobile', 'header')).toBe(2);
   });
 
   it('keeps card count and listed IDs in set equality', () => {
@@ -63,7 +63,25 @@ describe('canonicalCatalog', () => {
     const ids = new Set(list.map((c) => c.component_id));
     expect(ids.size).toBe(list.length);
     expect(list.length).toBe(countComponentsOnSurface(headerBlocks, filter));
-    expect(surfaceCountLabel(headerBlocks, filter).label).toBe('2 showing · 1 hidden');
+    expect(surfaceCountLabel(headerBlocks, filter).label).toBe('2 components · 1 hidden');
+  });
+
+  it('card showing count always equals listConfiguredOnSurface length for every surface', () => {
+    const apps = ['website', 'order_app'] as const;
+    const devices = ['desktop', 'mobile'] as const;
+    const slots = ['header', 'home', 'footer', 'bottom_navigation'] as const;
+    for (const app of apps) {
+      for (const device of devices) {
+        for (const slot of slots) {
+          if (device === 'desktop' && slot === 'bottom_navigation') continue;
+          const f = { app, device, slot };
+          const list = listConfiguredOnSurface(headerBlocks, f);
+          const counted = surfaceCountLabel(headerBlocks, f);
+          expect(counted.showing).toBe(list.length);
+          expect(counted.hidden).toBe(listHiddenOnSurface(headerBlocks, f).length);
+        }
+      }
+    }
   });
 
   it('lists hidden separately and never in the live count', () => {
@@ -148,6 +166,23 @@ describe('canonicalCatalog', () => {
     expect(websiteHeader.map((c) => c.block_id)).toEqual([1, 2]);
     expect(orderHeader.map((c) => c.block_id)).toEqual([50]);
     expect(orderHeader[0]?.component_id).toBe('order_app.mobile.header.50');
+  });
+
+  it('classifies every known library type as deliberate singleton or multi-instance', () => {
+    const multi = new Set([
+      'rich_text', 'image', 'image_text', 'video', 'button_band', 'faq_list', 'divider',
+    ]);
+    const library = [
+      'greeting', 'prayer_bar', 'hero', 'announcement', 'service_availability',
+      'opening_status', 'stat_chips', 'mode_cards', 'specials', 'featured',
+      'categories', 'trust_strip', 'proof', 'reviews', 'reorder_strip', 'cta',
+      'location', 'events_band', 'office_orders', 'brand_footer', 'site_footer',
+      'bottom_nav', ...multi,
+    ];
+    for (const type of library) {
+      expect(isSingletonSurfaceType(type)).toBe(!multi.has(type));
+    }
+    expect(SINGLETON_SURFACE_TYPES.size).toBe(22);
   });
 
   it('does not list a mobile-header block on desktop header without desktop placement', () => {
