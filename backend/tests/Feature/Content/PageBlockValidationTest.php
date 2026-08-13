@@ -90,7 +90,7 @@ class PageBlockValidationTest extends TestCase
             'block_type' => 'brand_footer',
             'position' => 99,
             'is_enabled' => true,
-            'content_mode' => 'shared',
+            'content_mode' => 'own',
             'settings' => [],
         ]);
 

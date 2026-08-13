@@ -60,28 +60,16 @@ final class PageLayoutDraftBlocks
                 'block_type' => $type,
                 'position' => (int) ($row['position'] ?? 0),
                 'is_enabled' => (bool) ($row['is_enabled'] ?? true),
-                'content_mode' => (string) ($row['content_mode'] ?? PageBlock::MODE_SHARED),
-                'shared_content_id' => isset($row['shared_content_id']) ? (int) $row['shared_content_id'] : null,
-                'shared_content_uuid' => isset($row['shared_content_uuid']) ? (string) $row['shared_content_uuid'] : null,
+                'content_mode' => PageBlock::MODE_OWN,
                 'settings' => $settings,
                 'media' => $media,
                 'label' => $def?->label ?? $type,
                 'description' => $def?->description ?? '',
                 'removable' => $def?->removable ?? true,
                 'non_removable_reason' => $def?->nonRemovableReason,
-                'supports_shared_content' => $def?->supportsSharedContent ?? false,
+                'supports_shared_content' => false,
                 'allows_multiple' => $def?->allowsMultiple ?? false,
                 'unknown' => $def === null,
-                ...(
-                    isset($row['share_source'])
-                        ? ['share_source' => (string) $row['share_source']]
-                        : []
-                ),
-                ...(
-                    isset($row['clear_app_overrides'])
-                        ? ['clear_app_overrides' => (bool) $row['clear_app_overrides']]
-                        : []
-                ),
             ];
         }
 

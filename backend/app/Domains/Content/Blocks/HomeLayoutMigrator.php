@@ -62,7 +62,7 @@ final class HomeLayoutMigrator
                 'block_type' => $type,
                 'position' => $position,
                 'is_enabled' => (bool) $row['enabled'],
-                'content_mode' => $def->supportsSharedContent ? PageBlock::MODE_SHARED : PageBlock::MODE_OWN,
+                'content_mode' => PageBlock::MODE_OWN,
                 'settings' => [],
             ]);
             $position++;

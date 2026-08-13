@@ -101,7 +101,7 @@ class PageBlockEditorApiTest extends TestCase
         $this->assertNotContains($block->block_type, $types);
     }
 
-    public function test_shared_generic_block_settings_publish_to_both_apps(): void
+    public function test_shared_content_mode_rejected_on_create(): void
     {
         $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
@@ -110,31 +110,21 @@ class PageBlockEditorApiTest extends TestCase
             'block_type' => 'rich_text',
             'content_mode' => 'shared',
             'settings' => ['heading' => 'Shared story', 'body' => 'One story for both.'],
-        ])->assertCreated()->assertJsonPath('version', 1);
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['content_mode']);
+    }
 
-        $this->postJson('/api/admin/page-blocks/publish', [
+    public function test_create_without_content_mode_defaults_to_own(): void
+    {
+        $response = $this->postJson('/api/admin/page-blocks', [
             'app' => 'website',
             'page' => 'home',
-            'version' => 1,
-        ])->assertOk();
+            'version' => 0,
+            'block_type' => 'rich_text',
+            'settings' => ['heading' => 'Default own', 'body' => 'Own by default.'],
+        ])->assertCreated();
 
-        $website = collect($this->getJson('/api/page-blocks?app=website')->assertOk()->json('blocks'))
-            ->firstWhere('block_type', 'rich_text');
-        $this->assertSame('Shared story', $website['settings']['heading'] ?? null);
-
-        // The twin block on the other app is created disabled — staff must
-        // opt in from that app before it becomes publicly visible there.
-        $order = collect($this->getJson('/api/page-blocks?app=order_app')->assertOk()->json('blocks'))
-            ->firstWhere('block_type', 'rich_text');
-        $this->assertNull($order);
-
-        $orderTwin = PageBlock::query()
-            ->where('app', 'order_app')
-            ->where('block_type', 'rich_text')
-            ->first();
-        $this->assertNotNull($orderTwin);
-        $this->assertFalse((bool) $orderTwin->is_enabled);
-        $this->assertSame($website['shared_content_id'], $orderTwin->shared_content_id);
+        $this->assertSame('own', $response->json('block.content_mode'));
     }
 
     public function test_own_generic_block_only_publishes_to_one_app(): void

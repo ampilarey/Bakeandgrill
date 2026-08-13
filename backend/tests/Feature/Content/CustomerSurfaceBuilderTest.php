@@ -104,7 +104,7 @@ class CustomerSurfaceBuilderTest extends TestCase
         $this->assertTrue($order['enabled']);
     }
 
-    public function test_shared_content_mode_does_not_force_shared_visibility(): void
+    public function test_own_mode_visibility_is_independent_per_app(): void
     {
         $websitePrayer = PageBlock::query()
             ->where('app', 'website')
@@ -116,17 +116,17 @@ class CustomerSurfaceBuilderTest extends TestCase
             ->firstOrFail();
 
         $websitePrayer->update([
-            'content_mode' => PageBlock::MODE_SHARED,
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => array_merge($websitePrayer->resolvedSettings(), ['show_mobile' => false]),
         ]);
-        $orderPrayer->update(['content_mode' => PageBlock::MODE_SHARED]);
+        $orderPrayer->update(['content_mode' => PageBlock::MODE_OWN]);
         PageBlockRepository::bustAll();
 
         $website = HomeChromeResolver::resolve('website', 'prayer_bar');
         $order = HomeChromeResolver::resolve('order_app', 'prayer_bar');
 
         $this->assertTrue($website['show_desktop']);
-        $this->assertFalse($website['show_mobile'], 'Website mobile visibility is independent of shared content mode.');
+        $this->assertFalse($website['show_mobile'], 'Website mobile visibility is independent per app.');
         $this->assertTrue($order['show_mobile']);
     }
 
@@ -212,7 +212,7 @@ class CustomerSurfaceBuilderTest extends TestCase
                 'block_type' => $type,
                 'position' => 0,
                 'is_enabled' => true,
-                'content_mode' => $def->supportsSharedContent ? PageBlock::MODE_SHARED : PageBlock::MODE_OWN,
+                'content_mode' => PageBlock::MODE_OWN,
                 'settings' => $settings,
             ]);
 

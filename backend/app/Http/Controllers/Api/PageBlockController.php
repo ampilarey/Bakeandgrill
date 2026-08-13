@@ -11,11 +11,8 @@ use App\Domains\Content\Blocks\PageBlockRepository;
 use App\Domains\Content\Blocks\PageBlockValidator;
 use App\Domains\Content\Blocks\PageLayoutDraftBlocks;
 use App\Domains\Content\ContentDraftStore;
-use App\Domains\Content\ContentResolver;
-use App\Domains\Content\ContentWriter;
 use App\Http\Controllers\Controller;
 use App\Models\PageBlock;
-use App\Models\PageBlockSharedContent;
 use App\Models\PageLayoutDraft;
 use App\Models\PageLayoutRevision;
 use App\Models\User;
@@ -23,16 +20,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class PageBlockController extends Controller
 {
-    public function __construct(
-        private readonly ContentWriter $writer,
-    ) {}
-
     /** Admin: list editable working-copy blocks + available types for an app. */
     public function index(Request $request): JsonResponse
     {
@@ -119,6 +111,12 @@ class PageBlockController extends Controller
             'settings' => ['nullable', 'array'],
         ]);
 
+        if (($payload['content_mode'] ?? null) === PageBlock::MODE_SHARED) {
+            throw ValidationException::withMessages([
+                'content_mode' => 'Shared content mode is no longer supported.',
+            ]);
+        }
+
         $app = (string) $payload['app'];
         $page = (string) ($payload['page'] ?? PageBlock::PAGE_HOME);
         $this->assertNoOtherDraft($request, $app, $page);
@@ -132,15 +130,12 @@ class PageBlockController extends Controller
                 'block_type' => $payload['block_type'],
                 'position' => $payload['position'] ?? count($blocks),
                 'is_enabled' => $payload['is_enabled'] ?? true,
-                'content_mode' => $payload['content_mode'] ?? PageBlock::MODE_SHARED,
+                'content_mode' => $payload['content_mode'] ?? PageBlock::MODE_OWN,
                 'settings' => $payload['settings'] ?? [],
             ]);
             $this->assertSingletonAvailable($blocks, $data['block_type']);
 
             $block = $this->draftRowFromData($data, $this->nextDraftId($blocks));
-            if ($block['content_mode'] === PageBlock::MODE_SHARED && GenericBlockPresenter::isGeneric($block['block_type'])) {
-                $block['shared_content_uuid'] = (string) Str::uuid();
-            }
 
             array_splice($blocks, min((int) $block['position'], count($blocks)), 0, [$block]);
             $blocks = $this->normalizePositions($blocks);
@@ -170,9 +165,13 @@ class PageBlockController extends Controller
             'is_enabled' => ['nullable', 'boolean'],
             'content_mode' => ['nullable', 'string', Rule::in([PageBlock::MODE_SHARED, PageBlock::MODE_OWN])],
             'settings' => ['nullable', 'array'],
-            'share_source' => ['nullable', 'string', Rule::in(['website', 'order_app', 'shared'])],
-            'clear_app_overrides' => ['nullable', 'boolean'],
         ]);
+
+        if (($payload['content_mode'] ?? null) === PageBlock::MODE_SHARED) {
+            throw ValidationException::withMessages([
+                'content_mode' => 'Shared content mode is no longer supported.',
+            ]);
+        }
 
         [$app, $page] = $this->appPageForBlockRequest($id, $payload);
         $this->assertNoOtherDraft($request, $app, $page);
@@ -181,39 +180,6 @@ class PageBlockController extends Controller
             [$draft, $blocks] = $this->draftForMutation($request, $app, $page, (int) $payload['version']);
             $index = $this->findDraftBlockIndex($blocks, $id);
             $block = $blocks[$index];
-            $originalMode = (string) ($block['content_mode'] ?? PageBlock::MODE_SHARED);
-
-            if (array_key_exists('content_mode', $payload)) {
-                $nextMode = (string) $payload['content_mode'];
-                if ($nextMode === PageBlock::MODE_SHARED && $originalMode === PageBlock::MODE_OWN) {
-                    $source = (string) ($payload['share_source'] ?? '');
-                    if (! in_array($source, ['website', 'order_app', 'shared'], true)) {
-                        throw ValidationException::withMessages([
-                            'share_source' => 'Choose Website, Order app, or Shared as the source before sharing this block.',
-                        ]);
-                    }
-                    $block['share_source'] = $source;
-                    // Explicit opt-in only — publishing a named-shared block must not
-                    // silently blank the other app's own content unless staff asked for it.
-                    $block['clear_app_overrides'] = (bool) ($payload['clear_app_overrides'] ?? false);
-                    if (GenericBlockPresenter::isGeneric((string) $block['block_type'])) {
-                        $block['settings'] = $this->sourceSettingsForGeneric($block, $source);
-                        $block['shared_content_uuid'] = (string) ($block['shared_content_uuid'] ?? Str::uuid());
-                    }
-                }
-
-                if ($nextMode === PageBlock::MODE_OWN && $originalMode === PageBlock::MODE_SHARED) {
-                    $block['settings'] = array_merge(
-                        $this->resolvedSettingsForDraftBlock($block),
-                        is_array($payload['settings'] ?? null) ? $payload['settings'] : [],
-                    );
-                    $block['shared_content_id'] = null;
-                    $block['shared_content_uuid'] = null;
-                    unset($block['share_source'], $block['clear_app_overrides']);
-                }
-
-                $block['content_mode'] = $nextMode;
-            }
 
             if (array_key_exists('position', $payload)) {
                 $block['position'] = (int) $payload['position'];
@@ -221,11 +187,11 @@ class PageBlockController extends Controller
             if (array_key_exists('is_enabled', $payload)) {
                 $block['is_enabled'] = (bool) $payload['is_enabled'];
             }
-            if (array_key_exists('settings', $payload) && ! (
-                ($payload['content_mode'] ?? null) === PageBlock::MODE_OWN
-                && $originalMode === PageBlock::MODE_SHARED
-            )) {
+            if (array_key_exists('settings', $payload)) {
                 $block['settings'] = $payload['settings'] ?? [];
+            }
+            if (array_key_exists('content_mode', $payload)) {
+                $block['content_mode'] = (string) $payload['content_mode'];
             }
 
             $data = PageBlockValidator::validateInstance([
@@ -452,7 +418,7 @@ class PageBlockController extends Controller
                 ->delete();
 
             foreach ($this->normalizePositions($blocks) as $block) {
-                $this->publishBlock($request, $app, $page, $block);
+                $this->publishBlock($app, $page, $block);
             }
 
             $draft->delete();
@@ -572,9 +538,6 @@ class PageBlockController extends Controller
         $def = BlockTypeRegistry::get($block->block_type);
         $settings = $block->resolvedSettings();
         $media = GenericBlockPresenter::resolveMedia($block->block_type, $settings);
-        $shared = $block->shared_content_id !== null
-            ? ($block->relationLoaded('sharedContent') ? $block->sharedContent : $block->sharedContent()->first())
-            : null;
 
         return [
             'id' => $block->id,
@@ -583,16 +546,14 @@ class PageBlockController extends Controller
             'block_type' => $block->block_type,
             'position' => (int) $block->position,
             'is_enabled' => (bool) $block->is_enabled,
-            'content_mode' => $block->content_mode,
-            'shared_content_id' => $block->shared_content_id,
-            'shared_content_uuid' => $shared instanceof PageBlockSharedContent ? $shared->uuid : null,
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => $settings,
             'media' => $media,
             'label' => $def?->label ?? $block->block_type,
             'description' => $def?->description ?? '',
             'removable' => $def?->removable ?? true,
             'non_removable_reason' => $def?->nonRemovableReason,
-            'supports_shared_content' => $def?->supportsSharedContent ?? false,
+            'supports_shared_content' => false,
             'allows_multiple' => $def?->allowsMultiple ?? false,
             'flow_warning' => $def?->flowWarning,
             'dynamic_source' => $def?->dynamicSource,
@@ -610,7 +571,7 @@ class PageBlockController extends Controller
             'apps' => $d->apps,
             'removable' => $d->removable,
             'non_removable_reason' => $d->nonRemovableReason,
-            'supports_shared_content' => $d->supportsSharedContent,
+            'supports_shared_content' => false,
             'allows_multiple' => $d->allowsMultiple,
             'settings_schema' => $d->settingsSchema,
             'settings_defaults' => $d->settingsDefaults,
@@ -632,42 +593,23 @@ class PageBlockController extends Controller
             'block_type' => $data['block_type'],
             'position' => $data['position'],
             'is_enabled' => $data['is_enabled'],
-            'content_mode' => $data['content_mode'],
-            'shared_content_id' => null,
-            'shared_content_uuid' => null,
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => $data['settings'],
             'media' => GenericBlockPresenter::resolveMedia((string) $data['block_type'], $data['settings']),
             'label' => $def?->label ?? $data['block_type'],
             'description' => $def?->description ?? '',
             'removable' => $def?->removable ?? true,
             'non_removable_reason' => $def?->nonRemovableReason,
-            'supports_shared_content' => $def?->supportsSharedContent ?? false,
+            'supports_shared_content' => false,
             'allows_multiple' => $def?->allowsMultiple ?? false,
             'unknown' => $def === null,
         ];
     }
 
-    private function publishBlock(Request $request, string $app, string $page, array $block): PageBlock
+    private function publishBlock(string $app, string $page, array $block): PageBlock
     {
         $type = (string) $block['block_type'];
         $settings = is_array($block['settings'] ?? null) ? $block['settings'] : [];
-        $mode = (string) ($block['content_mode'] ?? PageBlock::MODE_SHARED);
-        $sharedContentId = null;
-
-        if ($mode === PageBlock::MODE_SHARED && GenericBlockPresenter::isGeneric($type)) {
-            $shared = $this->sharedContentForPublish($block, $type, $settings);
-            $sharedContentId = $shared->id;
-            $settings = [];
-        }
-
-        if ($mode === PageBlock::MODE_SHARED && ! GenericBlockPresenter::isGeneric($type) && isset($block['share_source'])) {
-            $this->publishNamedSharedContent(
-                $request,
-                $type,
-                (string) $block['share_source'],
-                (bool) ($block['clear_app_overrides'] ?? false),
-            );
-        }
 
         $data = PageBlockValidator::validateInstance([
             'app' => $app,
@@ -675,170 +617,11 @@ class PageBlockController extends Controller
             'block_type' => $type,
             'position' => $block['position'],
             'is_enabled' => $block['is_enabled'],
-            'content_mode' => $mode,
+            'content_mode' => PageBlock::MODE_OWN,
             'settings' => $settings,
         ]);
 
-        $created = PageBlock::query()->create([
-            ...$data,
-            'shared_content_id' => $sharedContentId,
-        ]);
-
-        if ($sharedContentId !== null) {
-            $this->ensureSharedCounterpart($created, $sharedContentId);
-        }
-
-        return $created;
-    }
-
-    private function sharedContentForPublish(array $block, string $type, array $settings): PageBlockSharedContent
-    {
-        $shared = null;
-        if (! empty($block['shared_content_id'])) {
-            $shared = PageBlockSharedContent::query()
-                ->where('id', (int) $block['shared_content_id'])
-                ->lockForUpdate()
-                ->first();
-        }
-        if (! $shared instanceof PageBlockSharedContent && ! empty($block['shared_content_uuid'])) {
-            $shared = PageBlockSharedContent::query()
-                ->where('uuid', (string) $block['shared_content_uuid'])
-                ->lockForUpdate()
-                ->first();
-        }
-
-        if (! $shared instanceof PageBlockSharedContent) {
-            $shared = new PageBlockSharedContent([
-                'uuid' => (string) ($block['shared_content_uuid'] ?? Str::uuid()),
-                'block_type' => $type,
-            ]);
-        }
-
-        $shared->block_type = $type;
-        $shared->settings = GenericBlockPresenter::sanitizeSettings($type, $settings);
-        $shared->save();
-
-        return $shared;
-    }
-
-    private function ensureSharedCounterpart(PageBlock $block, int $sharedContentId): void
-    {
-        $otherApp = $this->otherApp($block->app);
-        $def = BlockTypeRegistry::get($block->block_type);
-        if ($def === null || ! $def->allowsApp($otherApp)) {
-            return;
-        }
-
-        $exists = PageBlock::query()
-            ->where('app', $otherApp)
-            ->where('page', $block->page)
-            ->where('shared_content_id', $sharedContentId)
-            ->exists();
-        if ($exists) {
-            return;
-        }
-
-        $position = ((int) PageBlock::query()
-            ->where('app', $otherApp)
-            ->where('page', $block->page)
-            ->max('position')) + 1;
-
-        PageBlock::query()->create([
-            'app' => $otherApp,
-            'page' => $block->page,
-            'block_type' => $block->block_type,
-            'position' => $position,
-            // Not auto-visible on the other app — staff must opt in from there too.
-            'is_enabled' => false,
-            'content_mode' => PageBlock::MODE_SHARED,
-            'shared_content_id' => $sharedContentId,
-            'settings' => [],
-        ]);
-    }
-
-    /**
-     * Publish a named-shared block's underlying content keys to the `shared`
-     * scope. By default this does NOT clear the other app's own overrides —
-     * staff must explicitly opt in via `clear_app_overrides` so publishing a
-     * shared source cannot silently blank content the other app already has.
-     */
-    private function publishNamedSharedContent(
-        Request $request,
-        string $type,
-        string $source,
-        bool $clearAppOverrides = false,
-    ): void {
-        foreach ($this->namedSharedKeys($type) as $key) {
-            $value = $source === 'shared'
-                ? ContentResolver::for(PageBlock::APP_WEBSITE)->get($key)
-                : ContentResolver::for($source)->get($key);
-            if ($value === null) {
-                continue;
-            }
-            $writtenValue = is_scalar($value)
-                ? (string) $value
-                : (json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '');
-            $this->writer->write(
-                $key,
-                'shared',
-                $writtenValue,
-                'en',
-                $request,
-                'content.page_block_shared',
-                ['block_type' => $type, 'source' => $source, 'clear_app_overrides' => $clearAppOverrides],
-                $clearAppOverrides,
-            );
-        }
-    }
-
-    /** @return list<string> */
-    private function namedSharedKeys(string $type): array
-    {
-        return match ($type) {
-            'hero', 'promo_carousel' => ['hero_slides'],
-            'specials' => ['offers_headline', 'offers_subtext'],
-            'categories' => ['homepage_categories', 'home_categories_eyebrow', 'home_categories_title'],
-            // home_chat_label is registered in config/content.php and may be
-            // published when sharing brand_footer — keep the list registry-backed.
-            'brand_footer' => ['footer_text', 'footer_thanks', 'home_chat_label'],
-            default => [],
-        };
-    }
-
-    /** @return array<string, mixed> */
-    private function sourceSettingsForGeneric(array $block, string $source): array
-    {
-        if ($source === 'shared') {
-            return $this->resolvedSettingsForDraftBlock($block);
-        }
-
-        if (($block['app'] ?? null) === $source) {
-            return is_array($block['settings'] ?? null) ? $block['settings'] : [];
-        }
-
-        $candidate = PageBlock::query()
-            ->where('app', $source)
-            ->where('page', (string) ($block['page'] ?? PageBlock::PAGE_HOME))
-            ->where('block_type', (string) $block['block_type'])
-            ->where('content_mode', PageBlock::MODE_SHARED)
-            ->whereNotNull('shared_content_id')
-            ->orderBy('position')
-            ->first();
-
-        return $candidate instanceof PageBlock ? $candidate->resolvedSettings() : $this->resolvedSettingsForDraftBlock($block);
-    }
-
-    /** @return array<string, mixed> */
-    private function resolvedSettingsForDraftBlock(array $block): array
-    {
-        if (! empty($block['shared_content_id'])) {
-            $shared = PageBlockSharedContent::query()->find((int) $block['shared_content_id']);
-            if ($shared instanceof PageBlockSharedContent && is_array($shared->settings)) {
-                return $shared->settings;
-            }
-        }
-
-        return is_array($block['settings'] ?? null) ? $block['settings'] : [];
+        return PageBlock::query()->create($data);
     }
 
     /** @param list<array<string, mixed>> $blocks */

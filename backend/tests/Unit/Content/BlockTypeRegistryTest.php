@@ -61,9 +61,9 @@ class BlockTypeRegistryTest extends TestCase
         $this->assertFalse(BlockTypeRegistry::allowsMultiple('prayer_bar'));
     }
 
-    public function test_faq_supports_shared_content_on_both_apps(): void
+    public function test_faq_is_available_on_both_apps_without_shared_mode(): void
     {
-        $this->assertTrue(BlockTypeRegistry::get('faq_list')?->supportsSharedContent);
+        $this->assertFalse(BlockTypeRegistry::get('faq_list')?->supportsSharedContent);
         $this->assertTrue(BlockTypeRegistry::get('faq_list')?->allowsApp('order_app'));
     }
 }
