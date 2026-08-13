@@ -222,13 +222,6 @@ function isDeprecatedBlock(block: ContentBlock): boolean {
   return Boolean(block.deprecated) || /^hero_slide_[123]$/.test(block.key);
 }
 
-function latestIso(values: Array<string | null | undefined>): string | null {
-  const sorted = values
-    .filter((value): value is string => Boolean(value))
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  return sorted[0] ?? null;
-}
-
 function contentAppFromPath(pathname: string): ContentApp {
   if (pathname.includes('/content/order-app')) return 'order_app';
   return 'website';
