@@ -1,10 +1,16 @@
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
+export type DraftPublishApp = 'website' | 'order_app';
+
 export type DraftPublishStatusProps = {
   dirtyCount: number;
+  /** Current Content Hub destination — drives publish/published wording. */
+  app?: DraftPublishApp;
   autosaving?: boolean;
   /** Local edits exist that failed to reach the server. */
   saveFailed?: boolean;
+  /** Optional API/network detail shown under Draft not saved. */
+  saveErrorDetail?: string | null;
   /** Edits exist and autosave has not confirmed yet (not a hard failure). */
   savePending?: boolean;
   publishing?: boolean;
@@ -18,15 +24,22 @@ export type DraftPublishStatusProps = {
   onRetryPublish?: () => void;
 };
 
+function appNoun(app?: DraftPublishApp): string {
+  return app === 'order_app' ? 'Order App' : 'Website';
+}
+
 /**
  * Truthful publish-state label for Content Hub.
  * Required states: Saving draft… / Draft saved / Draft not saved — Retry /
- * Publishing… / Published / Publish failed — Try again.
+ * Publishing Website|Order App… / Website|Order App published /
+ * Publish failed — Try again.
  */
 export function DraftPublishStatus({
   dirtyCount,
+  app = 'website',
   autosaving = false,
   saveFailed = false,
+  saveErrorDetail = null,
   savePending = false,
   publishing = false,
   publishFailed = false,
@@ -37,34 +50,38 @@ export function DraftPublishStatus({
   onRetrySave,
   onRetryPublish,
 }: DraftPublishStatusProps) {
+  const noun = appNoun(app);
   const unpublished = dirtyCount > 0;
   const failed = saveFailed && unpublished && !autosaving;
   const showPublishFailed = publishFailed && !publishing;
 
-  let primary = 'All published';
+  let primary = `${noun} published`;
   let secondary: string | null = null;
   let tone: 'live' | 'unpublished' | 'error' | 'busy' = 'live';
   let showRetrySave = false;
   let showRetryPublish = false;
 
   if (publishing) {
-    primary = 'Publishing…';
+    primary = `Publishing ${noun}…`;
     secondary = compact ? null : 'Please wait — do not close this page';
     tone = 'busy';
   } else if (showPublishFailed) {
     primary = 'Publish failed — Try again';
-    secondary = compact ? null : 'Your drafts are still here. Nothing went live.';
+    secondary = compact ? null : `${noun} drafts are still here. Nothing went live.`;
     tone = 'error';
     showRetryPublish = Boolean(onRetryPublish);
   } else if (autosaving || (savePending && unpublished)) {
     primary = 'Saving draft…';
-    secondary = compact ? null : 'Customers still see the published version';
+    secondary = compact ? null : `Customers still see the published ${noun}`;
     tone = 'busy';
   } else if (failed) {
     primary = 'Draft not saved — Retry';
     secondary = compact
       ? null
-      : 'Changes are only on this device until saved. They will be lost if you leave without retrying.';
+      : [
+        saveErrorDetail?.trim() || null,
+        'Changes are only on this device until saved. They will be lost if you leave without retrying.',
+      ].filter(Boolean).join(' ');
     tone = 'error';
     showRetrySave = Boolean(onRetrySave);
   } else if (unpublished) {
@@ -72,8 +89,8 @@ export function DraftPublishStatus({
     secondary = compact
       ? null
       : lastSavedAt
-        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()} — not live until you publish`
-        : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} waiting to publish`;
+        ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()} — not live on ${noun} until you publish`
+        : `${dirtyCount} change${dirtyCount === 1 ? '' : 's'} waiting to publish to ${noun}`;
     tone = 'unpublished';
   }
 

@@ -152,7 +152,8 @@ describe('Content Hub publish reliability + app scope', () => {
     await waitFor(() => expect(contentApi.updateContent).toHaveBeenCalled());
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Website published');
-      expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/All published/);
+      expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Website published/);
+      expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/All published/);
     });
   });
 

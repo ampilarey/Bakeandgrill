@@ -20,11 +20,16 @@ type Props = {
    * section (0) and block (1) editor sheets.
    */
   layer?: number;
+  /**
+   * When set, preview is locked to this Content Hub destination.
+   * Cross-app toggle is hidden so Website and Order App never mix.
+   */
+  lockedApp?: PreviewApp;
 };
 
 /**
- * Wraps LivePreviewFrame with Website / Order app toggle.
- * Device toggle lives inside LivePreviewFrame (Desktop / Mobile).
+ * Live preview for the current Content Hub app.
+ * When `lockedApp` is set (always in Content Hub), only that app is shown.
  */
 export function PreviewPane({
   websiteUrl,
@@ -35,35 +40,51 @@ export function PreviewPane({
   onClose,
   draftStatus,
   layer = 3,
+  lockedApp,
 }: Props) {
-  const [app, setApp] = useState<PreviewApp>('website');
+  const [app, setApp] = useState<PreviewApp>(lockedApp ?? 'website');
+
+  useEffect(() => {
+    if (lockedApp) setApp(lockedApp);
+  }, [lockedApp]);
 
   useEffect(() => {
     if (variant === 'sheet' && !open) return;
   }, [variant, open]);
 
   const url = app === 'order_app' ? orderAppUrl : websiteUrl;
+  const appLabel = app === 'order_app' ? 'Order App' : 'Website';
 
   const body = (
     <div data-testid="preview-pane" className={`hub-preview-pane hub-preview-pane--${variant}`}>
       <div className="hub-preview-pane-toolbar">
-        <div className="hub-preview-app-toggle" role="group" aria-label="Preview app">
-          {([
-            ['website', 'Website'],
-            ['order_app', 'Order app'],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              data-testid={`preview-app-${id}`}
-              aria-pressed={app === id}
-              onClick={() => setApp(id)}
-              className={`hub-preview-seg${app === id ? ' hub-preview-seg--active' : ''}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {lockedApp ? (
+          <div
+            className="hub-preview-app-locked"
+            data-testid={`preview-app-locked-${lockedApp}`}
+            aria-label={`Previewing ${appLabel}`}
+          >
+            Previewing {appLabel}
+          </div>
+        ) : (
+          <div className="hub-preview-app-toggle" role="group" aria-label="Preview app">
+            {([
+              ['website', 'Website'],
+              ['order_app', 'Order App'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                data-testid={`preview-app-${id}`}
+                aria-pressed={app === id}
+                onClick={() => setApp(id)}
+                className={`hub-preview-seg${app === id ? ' hub-preview-seg--active' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         {variant === 'sheet' && onClose ? (
           <button
             type="button"
@@ -104,7 +125,7 @@ export function PreviewPane({
         className="hub-preview-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="Live preview"
+        aria-label={`${appLabel} live preview`}
         style={{ zIndex: 50 + layer * 2 }}
       >
         <div className="hub-preview-sheet-backdrop" onClick={onClose} />

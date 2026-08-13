@@ -200,8 +200,10 @@ export function BlockCard({
 }
 
 export function scopesLabelFor(scopes: ContentScope[]): string {
+  // Content Hub editors are single-app; never label customer content as combined.
   if (scopes.includes('shared') && scopes.length === 1) return 'Business record';
-  if (scopes.includes('website') && scopes.includes('order_app')) return 'Website + Order app';
-  if (scopes.includes('order_app')) return 'Order app';
+  if (scopes.includes('order_app') && !scopes.includes('website')) return 'Order App';
+  if (scopes.includes('website') && !scopes.includes('order_app')) return 'Website';
+  if (scopes.includes('order_app')) return 'Order App';
   return 'Website';
 }

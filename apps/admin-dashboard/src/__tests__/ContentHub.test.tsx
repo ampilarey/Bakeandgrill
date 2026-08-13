@@ -83,7 +83,7 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Website Content' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Editing Website/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Branding' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Contact & map' })).toBeTruthy();
   });

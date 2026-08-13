@@ -206,9 +206,13 @@ function uploadAppFor(scope: ContentScope): ContentApp {
 }
 
 function labelForScope(scope: ContentScope): string {
-  if (scope === 'order_app') return 'Order app';
+  if (scope === 'order_app') return 'Order App';
   if (scope === 'website') return 'Website';
   return 'Business record';
+}
+
+function hubAppLabel(app: ContentApp): string {
+  return app === 'order_app' ? 'Order App' : 'Website';
 }
 
 function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
@@ -256,7 +260,8 @@ function contentAppFromPath(pathname: string): ContentApp {
 export function ContentHubPage() {
   const location = useLocation();
   const hubApp = contentAppFromPath(location.pathname);
-  const hubTitle = hubApp === 'order_app' ? 'Order App Content' : 'Website Content';
+  const hubLabel = hubAppLabel(hubApp);
+  const hubTitle = `Editing ${hubLabel}`;
   usePageTitle(hubTitle);
   const { success, error } = useToast();
   const isMobile = useIsMobile();
@@ -288,6 +293,7 @@ export function ContentHubPage() {
   const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...NULL_BY_LOCALE }));
   const [autosaving, setAutosaving] = useState(false);
   const [autosaveFailed, setAutosaveFailed] = useState(false);
+  const [autosaveErrorDetail, setAutosaveErrorDetail] = useState<string | null>(null);
   const [publishFailed, setPublishFailed] = useState(false);
   const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   const [mediaOpen, setMediaOpen] = useState(false);
@@ -533,68 +539,54 @@ export function ContentHubPage() {
     updateLocaleDrafts(loc, (prev) => ({ ...prev, [draftKey(scope, key)]: value }));
     setLocaleSynced(loc, false);
     setAutosaveFailed(false);
+    setAutosaveErrorDetail(null);
     setPublishFailed(false);
   };
 
-  // Preview tokens — one per app so website/order drafts overlay correctly.
+  // Preview token for THIS hub app only — never mint/cross-load the other app.
   // include_layout is always on; layoutRevision remints when page-block drafts change.
   useEffect(() => {
     const t = window.setTimeout(() => {
-      const websiteOverrides: Record<string, string> = {};
-      const orderOverrides: Record<string, string> = {};
+      const overrides: Record<string, string> = {};
       for (const block of contentBlocks) {
-        if (block.apps.includes('website')) {
-          websiteOverrides[block.key] = valueForScope(block, 'website', drafts);
-        }
-        if (block.apps.includes('order_app')) {
-          orderOverrides[block.key] = valueForScope(block, 'order_app', drafts);
-        }
+        if (!block.apps.includes(hubApp)) continue;
+        overrides[block.key] = valueForScope(block, hubApp, drafts);
       }
       // Layout-only drafts still need a token (empty overrides + include_layout).
-      if (
-        Object.keys(websiteOverrides).length === 0
-        && Object.keys(orderOverrides).length === 0
-        && !layoutDraft
-      ) {
+      if (Object.keys(overrides).length === 0 && !layoutDraft) {
         return;
       }
       setPreviewLoading(true);
-      const wantWebsite = Object.keys(websiteOverrides).length > 0 || layoutDraft;
-      const wantOrder = Object.keys(orderOverrides).length > 0 || layoutDraft;
-      const websiteReq = wantWebsite
-        ? createContentPreviewToken('website', websiteOverrides, locale, true)
-        : Promise.resolve(null);
-      const orderReq = wantOrder
-        ? createContentPreviewToken('order_app', orderOverrides, locale, true)
-        : Promise.resolve(null);
-      void Promise.all([websiteReq, orderReq])
-        .then(([websiteRes, orderRes]) => {
+      void createContentPreviewToken(hubApp, overrides, locale, true)
+        .then((res) => {
           setPreviewState({
-            website: websiteRes?.website_url || null,
-            orderApp: orderRes?.order_app_url || null,
+            website: hubApp === 'website' ? (res.website_url || null) : null,
+            orderApp: hubApp === 'order_app' ? (res.order_app_url || null) : null,
           });
         })
         .catch(() => {
           setPreviewState({ website: null, orderApp: null });
-          error('Could not load live preview. Try again.');
+          error(`Could not load ${hubLabel} live preview. Try again.`);
         })
         .finally(() => setPreviewLoading(false));
     }, 600);
     return () => window.clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision]);
+  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision, hubApp]);
 
   const persistDrafts = async (loc: ContentLocale = locale): Promise<boolean> => {
     const gen = saveGeneration.current;
     const changes = collectChanges(draftsByLocaleRef.current[loc] ?? {}, loc, hubApp);
     if (changes.length === 0) {
       setAutosaveFailed(false);
+      setAutosaveErrorDetail(null);
       setLocaleSynced(loc, true);
       return true;
     }
     autosaveInFlight.current = true;
     setAutosaving(true);
     setAutosaveFailed(false);
+    setAutosaveErrorDetail(null);
     try {
       const res = await saveContentDrafts(changes, loc);
       if (gen !== saveGeneration.current) return false;
@@ -606,10 +598,12 @@ export function ContentHubPage() {
       }
       setLocaleSynced(loc, true);
       setAutosaveFailed(false);
+      setAutosaveErrorDetail(null);
       return true;
-    } catch {
+    } catch (e) {
       if (gen === saveGeneration.current) {
         setAutosaveFailed(true);
+        setAutosaveErrorDetail(formatContentActionError(e, 'Draft save failed'));
         setLocaleSynced(loc, false);
       }
       return false;
@@ -900,15 +894,15 @@ export function ContentHubPage() {
 
   const doExport = async () => {
     try {
-      const bundle = await exportContent(locale);
+      const bundle = await exportContent(locale, hubApp);
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `content-hub-${locale}-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `content-hub-${hubApp}-${locale}-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      success('Export downloaded');
+      success(`${hubLabel} export downloaded`);
     } catch (e) {
       error(e instanceof Error ? e.message : 'Export failed');
     }
@@ -920,11 +914,33 @@ export function ContentHubPage() {
     if (!file) return;
     try {
       const text = await file.text();
-      const bundle = JSON.parse(text);
+      const bundle = JSON.parse(text) as {
+        version?: number;
+        exported_at?: string;
+        locale?: string;
+        entries?: Array<{ key: string; scope: ContentScope; locale: string; value: string }>;
+      };
       if (!bundle?.entries) throw new Error('Invalid bundle');
-      const { blocks: nextBlocks, applied } = await importContent(bundle);
+      const forThisApp = bundle.entries.filter((entry) => entry.scope === hubApp);
+      const skipped = bundle.entries.length - forThisApp.length;
+      if (forThisApp.length === 0) {
+        throw new Error(`No ${hubLabel} entries in this file. Import only applies to the app you are editing.`);
+      }
+      if (skipped > 0) {
+        const proceed = window.confirm(
+          `This file has ${skipped} entr${skipped === 1 ? 'y' : 'ies'} for the other app. `
+          + `Only ${forThisApp.length} ${hubLabel} entr${forThisApp.length === 1 ? 'y' : 'ies'} will be imported. Continue?`,
+        );
+        if (!proceed) return;
+      }
+      const { blocks: nextBlocks, applied } = await importContent({
+        version: bundle.version ?? 1,
+        exported_at: bundle.exported_at ?? new Date().toISOString(),
+        locale: bundle.locale ?? locale,
+        entries: forThisApp,
+      });
       setBlocks(nextBlocks);
-      success(`Imported ${applied} entries`);
+      success(`Imported ${applied} ${hubLabel} entries`);
     } catch (err) {
       error(err instanceof Error ? err.message : 'Import failed');
     }
@@ -1004,14 +1020,16 @@ export function ContentHubPage() {
     if (!historyTarget || historyTarget.key !== block.key || historyTarget.scope !== scope) return null;
     return (
       <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }} data-testid="revision-history-heading">
           History · {historyTarget.label} · {locale}
         </div>
         {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No revisions yet.</p> : null}
         {revisions.map((revision) => (
           <div key={revision.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>{new Date(revision.created_at).toLocaleString()}</div>
+              <div style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>
+                {labelForScope(revision.scope || historyTarget.scope)} · {new Date(revision.created_at).toLocaleString()}
+              </div>
               <RevisionDiff before={revision.value || ''} after={currentValue} />
             </div>
             <button
@@ -1039,8 +1057,10 @@ export function ContentHubPage() {
   const draftStatusNode = (
     <DraftPublishStatus
       dirtyCount={effectiveDirtyCount}
+      app={hubApp}
       autosaving={autosaving}
       saveFailed={autosaveFailed}
+      saveErrorDetail={autosaveErrorDetail}
       savePending={hasUnsaved && !autosaveFailed}
       publishing={saving}
       publishFailed={publishFailed}
@@ -1056,10 +1076,10 @@ export function ContentHubPage() {
     const hasContentDrafts = dirtyCount > 0;
     if (!hasContentDrafts && !layoutDraft) return;
     const confirmMessage = hasContentDrafts && layoutDraft
-      ? 'Discard unpublished content and layout drafts for this language in this app only?'
+      ? `Discard unpublished ${hubLabel} content and layout drafts for this language? The other app is not affected.`
       : layoutDraft
-        ? 'Discard unpublished Home layout drafts for this app?'
-        : 'Discard unpublished content drafts for this language in this app only?';
+        ? `Discard unpublished ${hubLabel} Home layout drafts?`
+        : `Discard unpublished ${hubLabel} content drafts for this language? The other app is not affected.`;
     if (!window.confirm(confirmMessage)) return;
     setSaving(true);
     try {
@@ -1070,6 +1090,7 @@ export function ContentHubPage() {
       replaceLocaleDrafts(locale, {});
       setLocaleSynced(locale, true);
       setAutosaveFailed(false);
+      setAutosaveErrorDetail(null);
       setPublishFailed(false);
       if (layoutDraft) {
         await discardLayoutDraftsViaApi();
@@ -1515,19 +1536,19 @@ export function ContentHubPage() {
         data-testid="announcement-dual-gate-banner"
         role="note"
       >
-        <strong>Two switches control the banner</strong>
+        <strong>Two switches control the {hubLabel} banner</strong>
         <p>
-          The Announcement content toggle below must be on, and the Announcement
-          component must be placed/enabled on the Website or Order App surface
-          (Surface Builder → Header or Home). Both are required or nothing shows.
+          The Announcement content toggle below must be on for {hubLabel}, and the
+          Announcement component must be placed/enabled on this app’s Header or Home
+          surface (Surface Builder). Both are required or nothing shows on {hubLabel}.
         </p>
         <button
           type="button"
           data-testid="announcement-open-surface-link"
           onClick={() => handleSectionSelect(
             'Homepage',
-            'website',
-            isMobile ? 'website.mobile.header' : 'website.desktop.header',
+            hubApp,
+            isMobile ? `${hubApp}.mobile.header` : `${hubApp}.desktop.header`,
           )}
           style={{
             fontSize: 13,
@@ -1540,7 +1561,7 @@ export function ContentHubPage() {
             fontFamily: 'inherit',
           }}
         >
-          Open Website header placement →
+          Open {hubLabel} header placement →
         </button>
       </div>
     ) : null;
@@ -1676,7 +1697,7 @@ export function ContentHubPage() {
 
   const schedulePublishPanel = (
     <div className="hub-more-schedule" data-testid="hub-schedule-publish">
-      <div className="hub-more-schedule-label">Schedule publish</div>
+      <div className="hub-more-schedule-label">Schedule {hubLabel} publish</div>
       {pendingOverwriteKeys.length > 0 ? (
         <p
           data-testid="hub-schedule-overwrite-warning"
@@ -1742,7 +1763,7 @@ export function ContentHubPage() {
             void discardAllContentDrafts();
           }}
         >
-          Discard draft
+          Discard {hubLabel} draft
         </button>
       ) : null}
       <button
@@ -1751,7 +1772,7 @@ export function ContentHubPage() {
         className="hub-more-item"
         onClick={() => { void doExport(); setMoreMenuOpen(false); }}
       >
-        <Download size={14} /> Export
+        <Download size={14} /> Export {hubLabel}
       </button>
       <button
         type="button"
@@ -1759,7 +1780,7 @@ export function ContentHubPage() {
         className="hub-more-item"
         onClick={() => { importInputRef.current?.click(); setMoreMenuOpen(false); }}
       >
-        <UploadIcon size={14} /> Import
+        <UploadIcon size={14} /> Import {hubLabel}
       </button>
       {schedulePublishPanel}
       <button
@@ -1838,7 +1859,7 @@ export function ContentHubPage() {
               : undefined}
         >
           <Save size={16} />
-          {saving ? 'Publishing…' : publishFailed ? 'Publish failed — Try again' : 'Publish changes'}
+          {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
         </Btn>
       ) : null}
 
@@ -1877,11 +1898,12 @@ export function ContentHubPage() {
 
   // ── Schedules banner ───────────────────────────────────────────────────────
 
-  const schedulesBanner = schedules.length > 0 ? (
-    <div className="hub-schedules-banner">
-      <strong>{schedules.length}</strong> pending schedule{schedules.length === 1 ? '' : 's'}
+  const hubSchedules = schedules.filter((s) => s.scope === hubApp);
+  const schedulesBanner = hubSchedules.length > 0 ? (
+    <div className="hub-schedules-banner" data-testid="hub-schedules-banner">
+      <strong>{hubSchedules.length}</strong> pending {hubLabel} schedule{hubSchedules.length === 1 ? '' : 's'}
       <ul style={{ margin: '8px 0 0', paddingLeft: 18, wordBreak: 'break-word' }}>
-        {schedules.slice(0, 5).map((schedule) => (
+        {hubSchedules.slice(0, 5).map((schedule) => (
           <li key={schedule.id} style={{ marginBottom: 4 }}>
             {schedule.key} · {labelForScope(schedule.scope)} · {schedule.locale} → {new Date(schedule.publish_at).toLocaleString()}
             {' '}
@@ -1916,7 +1938,11 @@ export function ContentHubPage() {
         <PageHeader
           section="System"
           title={hubTitle}
-          subtitle="Edit what customers see — hero, brand, pages, and order app"
+          subtitle={
+            hubApp === 'website'
+              ? 'Website-only content — hero, brand, pages, SEO, and layout. Does not change the Order App.'
+              : 'Order App-only content — home, branding, navigation, and banners. Does not change the Website.'
+          }
           action={headerActions}
         />
 
@@ -1985,7 +2011,7 @@ export function ContentHubPage() {
                   data-testid="publish-live-btn-sheet"
                   className="content-studio-publish-sticky"
                 >
-                  <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
+                  <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : `Publish ${hubLabel}`}
                 </Btn>
               ) : undefined}
             >
@@ -1999,6 +2025,7 @@ export function ContentHubPage() {
 
             <PreviewPane
               variant="sheet"
+              lockedApp={hubApp}
               websiteUrl={previewState.website}
               orderAppUrl={previewState.orderApp}
               loading={previewLoading}
@@ -2049,6 +2076,7 @@ export function ContentHubPage() {
             {desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
               <PreviewPane
                 variant="column"
+                lockedApp={hubApp}
                 websiteUrl={previewState.website}
                 orderAppUrl={previewState.orderApp}
                 loading={previewLoading}
@@ -2061,6 +2089,7 @@ export function ContentHubPage() {
         {!isMobile && (isCompactAdmin || !isWideDesktop) ? (
           <PreviewPane
             variant="sheet"
+            lockedApp={hubApp}
             websiteUrl={previewState.website}
             orderAppUrl={previewState.orderApp}
             loading={previewLoading}
@@ -2107,7 +2136,7 @@ export function ContentHubPage() {
                   style={{ width: '100%' }}
                   data-testid="publish-live-btn-block-sheet"
                 >
-                  <Save size={16} /> {saving ? 'Publishing…' : publishFailed ? 'Publish failed — Try again' : 'Publish changes'}
+                  <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
                 </Btn>
               ) : undefined}
             >
@@ -2130,11 +2159,11 @@ export function ContentHubPage() {
           <div
             className="content-studio-sticky-bar"
             role="region"
-            aria-label={autosaveFailed ? 'Draft not saved' : saving ? 'Publishing' : 'Draft status'}
+            aria-label={autosaveFailed ? 'Draft not saved' : saving ? `Publishing ${hubLabel}` : 'Draft status'}
           >
             <span className="content-studio-sticky-bar-label" data-testid="sticky-draft-status">
               {saving
-                ? 'Publishing…'
+                ? `Publishing ${hubLabel}…`
                 : publishFailed
                   ? 'Publish failed — Try again'
                   : autosaveFailed
@@ -2160,7 +2189,7 @@ export function ContentHubPage() {
               data-testid="publish-live-btn-mobile"
               className="content-studio-publish-sticky"
             >
-              <Save size={16} /> {saving ? 'Publishing…' : 'Publish changes'}
+              <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : `Publish ${hubLabel}`}
             </Btn>
           </div>
         ) : null}

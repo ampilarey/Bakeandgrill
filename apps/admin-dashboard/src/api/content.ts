@@ -229,8 +229,13 @@ export async function cancelContentSchedule(id: number): Promise<{ schedule: Con
   return req(`/admin/content/schedules/${id}`, { method: 'DELETE' });
 }
 
-export async function exportContent(locale: ContentLocale = 'en'): Promise<ContentExportBundle> {
-  return req(`/admin/content/export?locale=${encodeURIComponent(locale)}`);
+export async function exportContent(
+  locale: ContentLocale = 'en',
+  scope?: ContentApp,
+): Promise<ContentExportBundle> {
+  const q = new URLSearchParams({ locale });
+  if (scope) q.set('scope', scope);
+  return req(`/admin/content/export?${q}`);
 }
 
 export async function importContent(bundle: ContentExportBundle): Promise<{ applied: number; blocks: ContentBlock[] }> {

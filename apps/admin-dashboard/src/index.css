@@ -2692,6 +2692,19 @@ a { text-decoration: none; color: inherit; }
   gap: 4px;
   flex: 1;
 }
+.hub-preview-app-locked {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .hub-preview-seg {
   flex: 1;
   height: 32px;
