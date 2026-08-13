@@ -126,3 +126,59 @@ describe('HomePage with no page_blocks', () => {
     await expectRequiredChromeOnly();
   });
 });
+
+describe('HomePage footer chrome', () => {
+  beforeEach(() => {
+    fetchPageBlocksMock.mockReset();
+  });
+
+  it('renders BrandFooter once when site_footer and brand_footer both exist', async () => {
+    fetchPageBlocksMock.mockResolvedValue({
+      app: 'order_app',
+      page: 'home',
+      blocks: [
+        {
+          id: 1,
+          app: 'order_app',
+          page: 'home',
+          block_type: 'mode_cards',
+          position: 0,
+          is_enabled: true,
+          content_mode: 'own',
+          settings: {},
+        },
+        {
+          id: 2,
+          app: 'order_app',
+          page: 'home',
+          block_type: 'brand_footer',
+          position: 1,
+          is_enabled: true,
+          content_mode: 'shared',
+          settings: { placement_desktop: 'home', placement_mobile: 'home' },
+        },
+        {
+          id: 3,
+          app: 'order_app',
+          page: 'home',
+          block_type: 'site_footer',
+          position: 2,
+          is_enabled: true,
+          content_mode: 'shared',
+          settings: { placement_desktop: 'footer', placement_mobile: 'footer' },
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <PageBlocksProvider>
+          <HomePage />
+        </PageBlocksProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('mode-cards')).toBeTruthy());
+    expect(screen.getAllByTestId('brand-footer')).toHaveLength(1);
+  });
+});
