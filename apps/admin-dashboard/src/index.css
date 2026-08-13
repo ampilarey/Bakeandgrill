@@ -2345,35 +2345,55 @@ a { text-decoration: none; color: inherit; }
    Content Hub — new layout (hub-* classes)
 ══════════════════════════════════════════════════════════════ */
 
-/* ── Desktop shell ─────────────────────────────────────────── */
+/* ── Desktop shell — workspace grid (rail | canvas | preview) ─ */
 .hub-desktop-shell {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px 24px;
+  align-items: start;
   width: 100%;
   min-width: 0;
+}
+.hub-desktop-shell--rail-collapsed {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+.hub-desktop-shell:not(.hub-desktop-shell--preview-off):not(.hub-desktop-shell--rail-collapsed) {
+  grid-template-columns: 220px minmax(0, 1fr) minmax(300px, 380px);
+}
+.hub-desktop-shell--rail-collapsed:not(.hub-desktop-shell--preview-off) {
+  grid-template-columns: 56px minmax(0, 1fr) minmax(300px, 380px);
 }
 .hub-desktop-shell--preview-off .hub-editor-area {
   max-width: none;
 }
+@media (min-width: 1200px) {
+  .hub-desktop-shell {
+    gap: 24px 28px;
+  }
+  .hub-desktop-shell:not(.hub-desktop-shell--preview-off):not(.hub-desktop-shell--rail-collapsed) {
+    grid-template-columns: 232px minmax(0, 1fr) minmax(340px, 420px);
+  }
+}
 
-/* ── Section Rail — desktop 240px sticky (56px when collapsed) ─ */
+/* ── Section Rail — desktop sticky ───────────────────────────── */
 .hub-section-rail {
-  width: 240px;
+  width: 100%;
   flex-shrink: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 14px 12px;
   position: sticky;
   top: 12px;
-  max-height: calc(100vh - 80px);
+  max-height: calc(100vh - 88px);
   overflow-y: auto;
   transition: width 0.15s ease;
 }
 .hub-section-rail--collapsed {
   width: 56px;
+  max-width: 56px;
   padding: 8px 6px;
+  justify-self: start;
 }
 .hub-section-rail-header {
   display: flex;
@@ -2452,7 +2472,7 @@ a { text-decoration: none; color: inherit; }
 }
 .hub-section-rail-row--active,
 .hub-section-rail-row[aria-pressed="true"] {
-  background: #F5E6D3;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
   color: var(--color-text);
   font-weight: 700;
 }
@@ -2462,7 +2482,7 @@ a { text-decoration: none; color: inherit; }
   font-size: 11px;
   font-weight: 700;
   color: var(--color-text-muted);
-  background: #F0EBE4;
+  background: var(--color-border-light);
   border-radius: 999px;
   padding: 1px 6px;
   flex-shrink: 0;
@@ -2598,13 +2618,24 @@ a { text-decoration: none; color: inherit; }
   gap: 10px;
 }
 
-/* ── Editor area (desktop center col) ─────────────────────────── */
+/* ── Editor area (desktop center canvas) ──────────────────────── */
 .hub-editor-area {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 22px 24px 28px;
+  min-height: calc(100vh - 168px);
+  box-sizing: border-box;
+}
+@media (min-width: 1200px) {
+  .hub-editor-area {
+    padding: 28px 32px 36px;
+  }
 }
 
 /* ── Per-app scope tabs (split blocks) ───────────────────────── */
@@ -2701,36 +2732,27 @@ a { text-decoration: none; color: inherit; }
   color: var(--color-text);
 }
 
-/* ── Preview pane — desktop sticky column (wider on large screens) ─ */
+/* ── Preview pane — desktop sticky column (grid sets column width) ─ */
 .hub-preview-pane--column {
-  width: min(480px, 34vw);
+  width: 100%;
+  min-width: 0;
   flex-shrink: 0;
   position: sticky;
   top: 12px;
-  max-height: calc(100vh - 80px);
+  max-height: calc(100vh - 88px);
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-}
-@media (min-width: 1440px) {
-  .hub-preview-pane--column {
-    width: min(560px, 32vw);
-  }
-}
-@media (min-width: 1680px) {
-  .hub-preview-pane--column {
-    width: min(640px, 30vw);
-  }
 }
 .hub-preview-pane-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-bottom: 1px solid #F0EBE4;
+  border-bottom: 1px solid var(--color-border-light);
   flex-shrink: 0;
 }
 .hub-preview-app-toggle {
@@ -4186,9 +4208,22 @@ a { text-decoration: none; color: inherit; }
   max-width: none;
 }
 
-/* Stage 7 — hybrid task-first landing */
+/* Stage 7 — hybrid task-first landing (mobile stack + desktop workspace) */
 .hub-landing-v7 {
   gap: 1.5rem;
+}
+.hub-landing-desk-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.hub-landing-desk-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
 }
 .hub-landing-primary {
   display: flex;
@@ -4212,12 +4247,12 @@ a { text-decoration: none; color: inherit; }
   padding: 1rem 1.1rem;
   border-radius: 16px;
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-bg);
   text-align: left;
   cursor: pointer;
   font-family: inherit;
   color: var(--color-text);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
 }
 .hub-landing-primary-btn:hover {
   border-color: var(--color-primary);
@@ -4225,7 +4260,7 @@ a { text-decoration: none; color: inherit; }
 }
 .hub-landing-primary-btn--hero {
   border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-bg));
 }
 .hub-landing-primary-icon {
   display: inline-flex;
@@ -4234,7 +4269,7 @@ a { text-decoration: none; color: inherit; }
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-primary);
   flex-shrink: 0;
 }
@@ -4244,6 +4279,14 @@ a { text-decoration: none; color: inherit; }
   gap: 3px;
   min-width: 0;
   flex: 1;
+}
+.hub-landing-primary-kicker {
+  display: none;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
 }
 .hub-landing-primary-title {
   display: inline-flex;
@@ -4257,6 +4300,15 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.82rem;
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
+}
+.hub-landing-desk-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.hub-landing-panel {
+  min-width: 0;
 }
 .hub-landing-list {
   display: flex;
@@ -4355,24 +4407,8 @@ a { text-decoration: none; color: inherit; }
 .hub-landing-surfaces .hub-surface-card {
   min-height: 52px;
 }
-@media (min-width: 900px) {
-  .hub-landing-primary-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
-  }
-  .hub-landing-primary-btn {
-    min-height: 104px;
-    align-items: flex-start;
-  }
-  .hub-landing-primary-icon {
-    margin-top: 2px;
-  }
-  .hub-landing-sitewide-grid.hub-task-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+
+/* Mobile: keep stacked Stage 7 — panels are invisible chrome */
 @media (max-width: 767px) {
   .hub-landing-primary-btn,
   .hub-landing-row {
@@ -4380,6 +4416,116 @@ a { text-decoration: none; color: inherit; }
   }
   .hub-landing-row-meta {
     max-width: 36%;
+  }
+  .hub-landing-v7 .hub-landing-panel {
+    background: transparent;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+  }
+}
+
+/* Desktop workspace — first viewport reads as one composition */
+@media (min-width: 768px) {
+  .hub-landing-v7--desktop {
+    gap: 1.75rem;
+  }
+  .hub-landing-v7--desktop .hub-task-landing-intro {
+    max-width: 40rem;
+    font-size: 0.95rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-kicker {
+    display: block;
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-btn {
+    min-height: 132px;
+    align-items: flex-start;
+    padding: 1.25rem 1.35rem;
+    border-radius: 18px;
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-btn--hero {
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-primary) 14%, var(--color-bg)) 0%,
+        var(--color-bg) 55%
+      );
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    margin-top: 2px;
+  }
+  .hub-landing-v7--desktop .hub-landing-primary-title {
+    font-size: 1.25rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-desk-split {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 1.1rem;
+    align-items: stretch;
+  }
+  .hub-landing-v7--desktop .hub-landing-panel {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 16px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-height: 100%;
+  }
+  .hub-landing-v7--desktop .hub-landing-panel--sitewide,
+  .hub-landing-v7--desktop .hub-landing-panel--tools {
+    min-height: 0;
+  }
+  .hub-landing-v7--desktop .hub-landing-row {
+    background: var(--color-surface);
+    min-height: 48px;
+  }
+  .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-sitewide-grid .hub-task-card {
+    min-height: 108px;
+    background: var(--color-surface);
+  }
+  .hub-landing-v7--desktop .hub-landing-tools-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .hub-landing-v7--desktop .hub-landing-tools-row .hub-landing-row-meta {
+    display: none;
+  }
+}
+@media (min-width: 1280px) {
+  .hub-landing-v7--desktop .hub-landing-desk-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 1.25rem;
+  }
+  .hub-desktop-shell--preview-off .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* Compact admin: single-column split so pages/layout don't crush */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .hub-landing-v7--desktop .hub-landing-desk-split {
+    grid-template-columns: 1fr;
+  }
+  .hub-landing-v7--desktop .hub-landing-sitewide-grid.hub-task-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hub-landing-v7--desktop .hub-landing-tools-row {
+    grid-template-columns: 1fr;
   }
 }
 .hub-integrity-panel {

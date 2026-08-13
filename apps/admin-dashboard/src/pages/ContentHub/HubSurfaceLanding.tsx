@@ -8,6 +8,8 @@ export type HubSurfaceLandingProps = {
   skeleton: ReactNode;
   appFilter: SurfaceApp;
   preferredDevice?: SurfaceDevice;
+  /** Desktop workspace composition — leave false on mobile shell. */
+  desktopLayout?: boolean;
   pageRows?: LandingPageRow[];
   onSelectPage?: (sectionName: string) => void;
   surfaceCounts: Record<string, number | string>;
@@ -25,6 +27,7 @@ export function HubSurfaceLanding({
   skeleton,
   appFilter,
   preferredDevice,
+  desktopLayout = false,
   pageRows,
   onSelectPage,
   surfaceCounts,
@@ -37,6 +40,7 @@ export function HubSurfaceLanding({
     <SurfaceBuilderLanding
       appFilter={appFilter}
       preferredDevice={preferredDevice}
+      desktopLayout={desktopLayout}
       pageRows={pageRows}
       onSelectPage={onSelectPage}
       surfaceCounts={surfaceCounts}

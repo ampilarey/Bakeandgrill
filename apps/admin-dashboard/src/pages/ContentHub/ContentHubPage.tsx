@@ -683,6 +683,7 @@ export function ContentHubPage() {
                     skeleton={skeleton}
                     appFilter={hubApp}
                     preferredDevice={preferredDevice}
+                    desktopLayout
                     pageRows={pageRows}
                     onSelectPage={handlePageSelect}
                     surfaceCounts={surfaceCounts}
