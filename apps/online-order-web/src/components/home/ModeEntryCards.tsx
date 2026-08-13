@@ -63,10 +63,6 @@ function formatWindowTime(iso: string | null | undefined): string {
 function ModeCard({ kind, label, hint, statusLine, available, cta, onClick }: CardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const icon = kind === 'delivery' ? '🛵' : kind === 'dine_in' ? '🍽️' : '🏪';
-  const gradient =
-    kind === 'delivery'
-      ? 'linear-gradient(145deg, var(--color-primary-light) 0%, var(--color-surface-alt) 100%)'
-      : 'linear-gradient(145deg, var(--color-surface-alt) 0%, var(--color-primary-light) 100%)';
 
   return (
     <button
@@ -75,76 +71,32 @@ function ModeCard({ kind, label, hint, statusLine, available, cta, onClick }: Ca
       data-testid={`mode-entry-${kind}`}
       data-available={available ? 'true' : 'false'}
       aria-label={statusLine ? `${label}. ${statusLine}` : label}
-      style={{
-        flex: '1 1 0',
-        minWidth: 0,
-        border: available
-          ? '1.5px solid var(--color-border)'
-          : '1.5px solid var(--color-border-strong, var(--color-border))',
-        borderRadius: 'var(--radius-2xl)',
-        overflow: 'hidden',
-        background: 'var(--color-surface)',
-        cursor: 'pointer',
-        padding: 0,
-        textAlign: 'left',
-        fontFamily: 'inherit',
-        minHeight: 44,
-        opacity: available ? 1 : 0.88,
-        boxShadow: available ? undefined : 'inset 0 0 0 1px rgba(0,0,0,0.04)',
-      }}
+      className={`mode-entry-card${available ? '' : ' mode-entry-card--unavailable'}`}
     >
       <div
+        className="mode-entry-card__media"
+        data-testid={`mode-entry-media-${kind}`}
         aria-hidden
-        style={{
-          height: 120,
-          overflow: 'hidden',
-          background: gradient,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 48,
-          position: 'relative',
-          filter: available ? undefined : 'grayscale(0.35)',
-        }}
       >
-        {!imgFailed && (
+        {!imgFailed ? (
           <img
+            className="mode-entry-card__img"
             src={MODE_IMAGES[kind]}
             alt=""
             onError={() => setImgFailed(true)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
           />
+        ) : (
+          <span className="mode-entry-card__icon">{icon}</span>
         )}
-        {imgFailed && icon}
       </div>
-      <div style={{ padding: '0.875rem 1rem 1rem' }}>
-        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--color-dark)' }}>
-          {label}
-        </p>
-        <p
-          style={{
-            margin: '0.25rem 0 0',
-            fontSize: '0.8125rem',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.4,
-          }}
-        >
-          {available ? hint : (statusLine ?? hint)}
-        </p>
-        <div
-          style={{
-            marginTop: '0.625rem',
-            fontSize: '0.8125rem',
-            fontWeight: 700,
-            color: available ? 'var(--color-primary)' : 'var(--color-text-secondary, var(--color-text-muted))',
-          }}
-        >
+      <div className="mode-entry-card__body" data-testid={`mode-entry-body-${kind}`}>
+        <div className="mode-entry-card__copy">
+          <p className="mode-entry-card__label">{label}</p>
+          <p className="mode-entry-card__hint">
+            {available ? hint : (statusLine ?? hint)}
+          </p>
+        </div>
+        <div className="mode-entry-card__cta" data-testid={`mode-entry-cta-${kind}`}>
           {cta}
         </div>
       </div>
@@ -300,10 +252,7 @@ export function ModeEntryCards() {
         margin: '0 auto',
       }}
     >
-      <div
-        className="mode-entry-cards"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: '0.875rem' }}
-      >
+      <div className="mode-entry-cards">
         {(['delivery', 'pickup', 'dine_in'] as ModeKind[]).map((kind) => {
           const state = modeStates[kind];
           const statusLine = state.available ? null : statusFor(state);
