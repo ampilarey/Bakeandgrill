@@ -265,7 +265,7 @@ describe('ContentHub mobile editor sheet', () => {
     await screen.findByTestId('draft-save-status');
 
     expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy();
-    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/All published|not yet live/i);
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Website published|Draft saved|not yet live/i);
 
     const searchToggle = screen.getByTestId('hub-search-toggle');
     fireEvent.click(searchToggle);

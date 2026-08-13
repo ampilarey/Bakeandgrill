@@ -4,44 +4,60 @@ import { DraftPublishStatus } from '../components/DraftPublishStatus';
 
 describe('DraftPublishStatus', () => {
   it('shows Saving draft while autosaving', () => {
-    render(<DraftPublishStatus dirtyCount={1} autosaving />);
+    render(<DraftPublishStatus dirtyCount={1} app="website" autosaving />);
     expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Saving draft/);
   });
 
   it('shows Draft saved when unpublished and synced', () => {
-    render(<DraftPublishStatus dirtyCount={2} lastSavedAt="2026-07-23T12:00:00Z" />);
+    render(<DraftPublishStatus dirtyCount={2} app="website" lastSavedAt="2026-07-23T12:00:00Z" />);
     expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Draft saved/);
     expect(screen.getByTestId('draft-save-status').textContent).not.toMatch(/Draft not saved/);
   });
 
-  it('shows Draft not saved with Retry and keeps error tone', () => {
+  it('shows Draft not saved with Retry, detail, and error tone', () => {
     const onRetrySave = vi.fn();
     render(
-      <DraftPublishStatus dirtyCount={1} saveFailed onRetrySave={onRetrySave} />,
+      <DraftPublishStatus
+        dirtyCount={1}
+        app="order_app"
+        saveFailed
+        saveErrorDetail="Network error"
+        onRetrySave={onRetrySave}
+      />,
     );
     const status = screen.getByTestId('draft-save-status');
     expect(status.textContent).toMatch(/Draft not saved/);
+    expect(status.textContent).toMatch(/Network error/);
     expect(status.className).toMatch(/error/);
     expect(status.textContent).toMatch(/only on this device/);
     fireEvent.click(screen.getByTestId('draft-retry-save'));
     expect(onRetrySave).toHaveBeenCalled();
   });
 
-  it('shows Publishing and Publish failed states', () => {
-    const { rerender } = render(<DraftPublishStatus dirtyCount={1} publishing />);
-    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Publishing/);
+  it('shows app-specific Publishing and published states', () => {
+    const { rerender } = render(
+      <DraftPublishStatus dirtyCount={1} app="website" publishing />,
+    );
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Publishing Website/);
+
+    rerender(<DraftPublishStatus dirtyCount={1} app="order_app" publishing />);
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Publishing Order App/);
 
     const onRetryPublish = vi.fn();
     rerender(
-      <DraftPublishStatus dirtyCount={1} publishFailed onRetryPublish={onRetryPublish} />,
+      <DraftPublishStatus dirtyCount={1} app="website" publishFailed onRetryPublish={onRetryPublish} />,
     );
     expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Publish failed/);
     fireEvent.click(screen.getByTestId('draft-retry-publish'));
     expect(onRetryPublish).toHaveBeenCalled();
   });
 
-  it('shows All published when clean', () => {
-    render(<DraftPublishStatus dirtyCount={0} />);
-    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/All published/);
+  it('shows Website published / Order App published when clean', () => {
+    const { rerender } = render(<DraftPublishStatus dirtyCount={0} app="website" />);
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Website published/);
+    expect(screen.getByTestId('draft-save-status').textContent).not.toMatch(/All published/);
+
+    rerender(<DraftPublishStatus dirtyCount={0} app="order_app" />);
+    expect(screen.getByTestId('draft-save-status').textContent).toMatch(/Order App published/);
   });
 });

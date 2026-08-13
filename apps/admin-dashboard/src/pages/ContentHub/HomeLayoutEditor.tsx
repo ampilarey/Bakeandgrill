@@ -461,7 +461,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               color: hasDraft ? 'var(--color-warning-strong)' : 'var(--color-success)',
             }}
           >
-            {hasDraft ? 'Draft saved — not live' : 'All published'}
+            {hasDraft ? 'Draft saved' : `${appLabel(activeApp)} published`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

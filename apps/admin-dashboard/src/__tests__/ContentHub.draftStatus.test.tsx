@@ -101,7 +101,7 @@ describe('Content Hub draft vs published status', () => {
 
     const publish = screen.getByTestId('publish-live-btn');
     expect(publish).toBeTruthy();
-    expect(publish.textContent).toMatch(/Publish changes/i);
+    expect(publish.textContent).toMatch(/Publish Website/i);
     expect(publish.className).toMatch(/needed/);
   });
 
@@ -145,7 +145,8 @@ describe('Content Hub draft vs published status', () => {
     await waitFor(() => {
       const status = screen.getAllByTestId('draft-save-status')[0];
       expect(status.className).toMatch(/live/);
-      expect(status.textContent).toMatch(/All published/);
+      expect(status.textContent).toMatch(/Website published/);
+      expect(status.textContent).not.toMatch(/All published/);
       expect(status.textContent).not.toMatch(/Draft saved(?! —)/);
       expect(status.textContent).not.toMatch(/Draft not saved/);
     });

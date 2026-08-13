@@ -471,10 +471,19 @@ class ContentController extends Controller
             return response()->json(['message' => 'Invalid locale.'], 422);
         }
 
+        $scopeFilter = $request->query('scope');
+        if ($scopeFilter !== null && $scopeFilter !== '' && ! in_array((string) $scopeFilter, ContentRegistry::APPS, true)) {
+            return response()->json(['message' => 'Invalid scope. Use website or order_app.'], 422);
+        }
+        $scopeFilter = $scopeFilter !== null && $scopeFilter !== '' ? (string) $scopeFilter : null;
+
         $entries = [];
         foreach (ContentRegistry::blocks() as $key => $block) {
             // Content Hub export is Website / Order App only — never the business record.
             foreach (ContentRegistry::APPS as $scope) {
+                if ($scopeFilter !== null && $scope !== $scopeFilter) {
+                    continue;
+                }
                 if (! in_array($scope, $block['apps'] ?? [], true)) {
                     continue;
                 }

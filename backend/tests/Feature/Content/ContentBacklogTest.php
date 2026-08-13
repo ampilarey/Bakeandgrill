@@ -146,4 +146,35 @@ class ContentBacklogTest extends TestCase
         $this->postJson('/api/admin/content/import', $bundle)->assertOk();
         $this->assertSame('a@test.mv', SiteSetting::getScoped('business_email', 'website', 'en'));
     }
+
+    public function test_export_can_filter_to_one_app_scope(): void
+    {
+        $this->actingAsOwner();
+
+        $this->putJson('/api/admin/content', [
+            'changes' => [
+                ['key' => 'site_name', 'scope' => 'website', 'value' => 'Website Name'],
+                ['key' => 'site_name', 'scope' => 'order_app', 'value' => 'Order Name'],
+            ],
+        ])->assertOk();
+
+        $website = $this->getJson('/api/admin/content/export?locale=en&scope=website')->assertOk()->json();
+        $this->assertNotEmpty($website['entries']);
+        foreach ($website['entries'] as $entry) {
+            $this->assertSame('website', $entry['scope']);
+        }
+        $this->assertTrue(collect($website['entries'])->contains(
+            fn (array $e): bool => $e['key'] === 'site_name' && $e['value'] === 'Website Name',
+        ));
+
+        $order = $this->getJson('/api/admin/content/export?locale=en&scope=order_app')->assertOk()->json();
+        foreach ($order['entries'] as $entry) {
+            $this->assertSame('order_app', $entry['scope']);
+        }
+        $this->assertTrue(collect($order['entries'])->contains(
+            fn (array $e): bool => $e['key'] === 'site_name' && $e['value'] === 'Order Name',
+        ));
+
+        $this->getJson('/api/admin/content/export?locale=en&scope=shared')->assertStatus(422);
+    }
 }

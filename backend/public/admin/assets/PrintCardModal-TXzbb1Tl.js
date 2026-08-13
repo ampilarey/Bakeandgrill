@@ -1,0 +1,28 @@
+import{j as e}from"./index-DjLB_L5b.js";import{b as m}from"./vendor-Ctri9DC6.js";import{Q as y}from"./index-BVNEm44H.js";import{M as u,S as p,k as v,B as x}from"./SharedUI-BX2SON3u.js";const g=[{label:"CR80 (Credit Card)",widthMm:85.6,heightMm:54,description:"Standard credit card size"},{label:"CR79",widthMm:84,heightMm:53.5,description:"Slightly smaller than CR80"},{label:"Half Card",widthMm:85.6,heightMm:27,description:"Half credit card height"},{label:"Business Card",widthMm:89,heightMm:51,description:"Standard business card"},{label:"Square (63mm)",widthMm:63,heightMm:63,description:"Square format"}],f=3.78;function b({data:i,size:l}){const a=l.widthMm*f,r=l.heightMm*f,o=i.type==="gift_card",h=i.type==="discount_card",s=o?"var(--color-primary)":h?"#2A1E0C":"#1C5F3A",n=Math.min(r*.45,72),c=i.expiry?new Date(i.expiry).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):null;return e.jsxs("div",{style:{width:a,height:r,background:"var(--color-surface)",borderRadius:8,overflow:"hidden",position:"relative",fontFamily:"system-ui, -apple-system, sans-serif",boxShadow:"0 2px 12px rgba(0,0,0,0.15)",display:"flex",flexDirection:"column"},children:[e.jsxs("div",{style:{background:s,height:r*.32,padding:"8px 12px",display:"flex",flexDirection:"column",justifyContent:"center"},children:[e.jsx("div",{style:{color:"rgba(255,255,255,0.75)",fontSize:Math.max(7,r*.09),fontWeight:600,letterSpacing:1,textTransform:"uppercase"},children:i.logoText??"Bake & Grill"}),e.jsx("div",{style:{color:"#fff",fontSize:Math.max(9,r*.13),fontWeight:800,lineHeight:1.1,marginTop:2},children:i.title})]}),e.jsxs("div",{style:{flex:1,display:"flex",gap:8,padding:"8px 12px",alignItems:"center"},children:[e.jsxs("div",{style:{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:4,minWidth:0},children:[i.subtitle&&e.jsx("div",{style:{color:s,fontSize:Math.max(11,r*.18),fontWeight:900,lineHeight:1,letterSpacing:-.5},children:i.subtitle}),e.jsx("div",{style:{background:"#F5F0EB",borderRadius:4,padding:"3px 7px",display:"inline-block",width:"fit-content"},children:e.jsx("span",{style:{fontSize:Math.max(8,r*.11),fontWeight:700,letterSpacing:2,color:"var(--color-text)",fontFamily:"monospace"},children:i.code})}),i.note&&e.jsx("div",{style:{fontSize:Math.max(6,r*.09),color:"var(--color-text-muted)",lineHeight:1.2},children:i.note}),c&&e.jsxs("div",{style:{fontSize:Math.max(6,r*.09),color:"var(--color-text-muted)"},children:["Expires: ",c]})]}),e.jsxs("div",{style:{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:2},children:[e.jsx("div",{style:{background:"var(--color-surface)",padding:3,borderRadius:4,border:"1px solid var(--color-border)"},children:e.jsx(y,{value:i.code,size:n,level:"M"})}),e.jsx("div",{style:{fontSize:Math.max(5,r*.08),color:"#C0B4A8"},children:"Scan or enter code"})]})]})]})}function C({data:i,onClose:l}){const[a,r]=m.useState(0),[o,h]=m.useState(1),s=m.useRef(null),n=g[a],c=()=>{const t=s.current;if(!t)return;const d=window.open("","_blank","width=800,height=600");d&&(d.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Print Card — ${i.code}</title>
+        <style>
+          @page { margin: 10mm; size: A4; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: system-ui, -apple-system, sans-serif; background: #fff; }
+          .card-wrap {
+            display: inline-block;
+            margin: 4mm;
+            width: ${n.widthMm}mm;
+            height: ${n.heightMm}mm;
+            break-inside: avoid;
+          }
+          .card-wrap > div { width: ${n.widthMm}mm !important; height: ${n.heightMm}mm !important; }
+          .print-grid { display: flex; flex-wrap: wrap; align-items: flex-start; }
+        </style>
+      </head>
+      <body>
+        <div class="print-grid">
+          ${Array.from({length:o}).map(()=>`<div class="card-wrap">${t.innerHTML}</div>`).join("")}
+        </div>
+        <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
+      </body>
+      </html>
+    `),d.document.close())};return e.jsxs(u,{title:"Print Card",onClose:l,maxWidth:560,children:[e.jsxs("div",{style:{display:"flex",flexDirection:"column",gap:20},children:[e.jsxs("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12},children:[e.jsxs("div",{children:[e.jsx("label",{style:{display:"block",fontSize:12,fontWeight:600,color:"#475569",marginBottom:4},children:"Card Size"}),e.jsx(p,{value:String(a),onChange:t=>r(Number(t)),options:g.map((t,d)=>({value:String(d),label:`${t.label} (${t.widthMm}×${t.heightMm}mm)`}))}),e.jsx("div",{style:{fontSize:11,color:"var(--color-text-muted)",marginTop:3},children:n.description})]}),e.jsxs("div",{children:[e.jsx("label",{style:{display:"block",fontSize:12,fontWeight:600,color:"#475569",marginBottom:4},children:"Copies"}),e.jsx(p,{value:String(o),onChange:t=>h(Number(t)),options:[1,2,3,4,5,6,8,10,20].map(t=>({value:String(t),label:`${t} cop${t===1?"y":"ies"}`}))})]})]}),e.jsxs("div",{children:[e.jsx("div",{style:{fontSize:12,fontWeight:600,color:"#475569",marginBottom:8},children:"Preview"}),e.jsx("div",{style:{background:"#F5F0EB",borderRadius:10,padding:20,display:"flex",justifyContent:"center",alignItems:"center",minHeight:140},children:e.jsx("div",{ref:s,children:e.jsx(b,{data:i,size:n})})}),e.jsxs("div",{style:{textAlign:"center",fontSize:11,color:"var(--color-text-muted)",marginTop:6},children:[n.widthMm," × ",n.heightMm," mm — actual print size"]})]})]}),e.jsxs(v,{children:[e.jsx(x,{variant:"ghost",onClick:l,children:"Cancel"}),e.jsxs(x,{onClick:c,children:["🖨️ Print ",o>1?`${o} Copies`:"Card"]})]})]})}export{C as P};
