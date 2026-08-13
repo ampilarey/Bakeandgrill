@@ -88,19 +88,19 @@ class ContentAdminTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'primary_color', 'scope' => 'shared', 'value' => '#d8a'],
+                ['key' => 'primary_color', 'scope' => 'website', 'value' => '#d8a'],
             ],
         ])->assertOk();
 
-        $this->assertSame('#DD88AA', SiteSetting::getScoped('primary_color', 'shared'));
+        $this->assertSame('#DD88AA', SiteSetting::getScoped('primary_color', 'website'));
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => 'javascript:alert(1)'],
+                ['key' => 'announcement_url', 'scope' => 'website', 'value' => 'javascript:alert(1)'],
             ],
         ])->assertUnprocessable();
 
-        $this->assertNotSame('javascript:alert(1)', SiteSetting::getScoped('announcement_url', 'shared'));
+        $this->assertNotSame('javascript:alert(1)', SiteSetting::getScoped('announcement_url', 'website'));
     }
 
     public function test_content_validation_rejects_invalid_hero_json_and_bad_hero_urls(): void
@@ -109,7 +109,7 @@ class ContentAdminTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'hero_slides', 'scope' => 'shared', 'value' => ['title' => 'Not a list']],
+                ['key' => 'hero_slides', 'scope' => 'website', 'value' => ['title' => 'Not a list']],
             ],
         ])->assertUnprocessable();
 
@@ -117,7 +117,7 @@ class ContentAdminTest extends TestCase
             'changes' => [
                 [
                     'key' => 'hero_slides',
-                    'scope' => 'shared',
+                    'scope' => 'website',
                     'value' => [[
                         'title' => 'Unsafe',
                         'cta_text' => 'Tap',
@@ -131,7 +131,7 @@ class ContentAdminTest extends TestCase
             'changes' => [
                 [
                     'key' => 'hero_slides',
-                    'scope' => 'shared',
+                    'scope' => 'website',
                     'value' => [[
                         'title' => 'Safe',
                         'showing' => false,
@@ -142,7 +142,7 @@ class ContentAdminTest extends TestCase
             ],
         ])->assertOk();
 
-        $slides = json_decode((string) SiteSetting::getScoped('hero_slides', 'shared'), true);
+        $slides = json_decode((string) SiteSetting::getScoped('hero_slides', 'website'), true);
         $this->assertFalse($slides[0]['showing']);
         $this->assertSame('mailto:hello@example.test', $slides[0]['cta_url']);
     }
@@ -165,13 +165,12 @@ class ContentAdminTest extends TestCase
             ],
         ])->assertUnprocessable();
 
-        // Shared remains the seed/default layer even for website-targeted keys.
+        // Content Hub rejects shared scope — use Business Details for shared writes.
         $this->putJson('/api/admin/content', [
             'changes' => [
                 ['key' => 'meta_title', 'scope' => 'shared', 'value' => 'Shared seed title'],
             ],
-        ])->assertOk();
-        $this->assertSame('Shared seed title', SiteSetting::getScoped('meta_title', 'shared'));
+        ])->assertUnprocessable();
     }
 
     public function test_schedule_and_import_use_content_validator(): void
@@ -181,7 +180,7 @@ class ContentAdminTest extends TestCase
         $this->postJson('/api/admin/content/schedule', [
             'publish_at' => now()->addHour()->toIso8601String(),
             'changes' => [
-                ['key' => 'primary_color', 'scope' => 'shared', 'value' => '#abc'],
+                ['key' => 'primary_color', 'scope' => 'website', 'value' => '#abc'],
             ],
         ])->assertCreated();
 
@@ -190,13 +189,13 @@ class ContentAdminTest extends TestCase
         $this->postJson('/api/admin/content/schedule', [
             'publish_at' => now()->addHour()->toIso8601String(),
             'changes' => [
-                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => '//evil.example'],
+                ['key' => 'announcement_url', 'scope' => 'website', 'value' => '//evil.example'],
             ],
         ])->assertUnprocessable();
 
         $this->postJson('/api/admin/content/import', [
             'entries' => [
-                ['key' => 'announcement_url', 'scope' => 'shared', 'value' => 'data:text/html,<svg>'],
+                ['key' => 'announcement_url', 'scope' => 'website', 'value' => 'data:text/html,<svg>'],
             ],
         ])->assertUnprocessable();
     }

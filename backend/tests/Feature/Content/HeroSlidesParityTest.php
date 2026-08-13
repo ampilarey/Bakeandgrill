@@ -299,7 +299,8 @@ class HeroSlidesParityTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('{}', SiteSetting::getScoped('hero_slide_1', 'website', 'en'));
-        $this->assertSame('{}', SiteSetting::getScoped('hero_slide_1', 'shared', 'en'));
+        // Shared legacy slots are not cleared by website-scoped Content Hub publish.
+        $this->assertSame('{"title":"Legacy Ghost"}', SiteSetting::getScoped('hero_slide_1', 'shared', 'en'));
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('Fresh Slide', $html);
@@ -344,7 +345,7 @@ class HeroSlidesParityTest extends TestCase
         $this->assertStringNotContainsString('old-override.jpg', $html);
     }
 
-    public function test_publishing_hero_slides_to_shared_does_not_clear_app_rows(): void
+    public function test_content_hub_rejects_shared_scope_hero_publish(): void
     {
         $this->actingAsOwner();
 
@@ -363,13 +364,9 @@ class HeroSlidesParityTest extends TestCase
                     'cta_url' => '/order/',
                 ]]),
             ]],
-        ])->assertOk();
+        ])->assertUnprocessable();
 
         $this->assertStringContainsString('Web Hero', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
         $this->assertStringContainsString('Order Hero', (string) SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
-        $this->assertStringContainsString(
-            'Shared Fresh Photo',
-            (string) SiteSetting::getScoped('hero_slides', 'shared', 'en'),
-        );
     }
 }

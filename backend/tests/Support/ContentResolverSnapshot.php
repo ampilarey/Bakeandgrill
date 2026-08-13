@@ -13,8 +13,8 @@ use App\Domains\Content\ContentResolver;
  */
 final class ContentResolverSnapshot
 {
-    /** 169 non-deprecated keys × 2 apps × 2 locales (updated when content.php grows). */
-    public const EXPECTED_COMBINATIONS = 676;
+    /** 170 non-deprecated keys × 2 apps × 2 locales (updated when content.php grows). */
+    public const EXPECTED_COMBINATIONS = 680;
 
     public static function fixturePath(): string
     {
