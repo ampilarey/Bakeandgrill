@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
@@ -18,8 +18,6 @@ import {
   scheduleContent,
   updateContent,
   uploadContentImage,
-  uploadContentVideo,
-  type ContentApp,
   type ContentBlock,
   type ContentLocale,
   type ContentRevision,
@@ -35,35 +33,17 @@ import {
 import { ApiRequestError } from '@shared/api';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
 import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
-import {
-  AboutValuesEditor,
-  BusinessHoursEditor,
-  CategoriesEditor,
-  FooterLinksEditor,
-  HeroSlidesEditor,
-  isHeroSlideShowing,
-  PreorderStepsEditor,
-  ProofDetailsEditor,
-  RevisionDiff,
-  RichTextEditor,
-  SeoSnippetPreview,
-  TrustItemsEditor,
-} from '../../components/content-editors';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
 import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { DraftPublishStatus } from '../../components/DraftPublishStatus';
 import { MobileActionSheet } from '../../components/MobileActionSheet';
-import { OpsOwnedSummary } from '../../components/OpsOwnedSummary';
-import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
-import { BRAND_KIT_KEYS } from './brandKitConfig';
-import { BlockCard, scopesLabelFor } from './BlockCard';
-import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
-import { SectionEditor } from './SectionEditor';
+import { type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
 import { PreviewPane } from './PreviewPane';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
+import { HubSectionContent, HubFocusedBlockBody, type UploadContextRef } from './HubSectionContent';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -75,42 +55,33 @@ import {
 import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
-  blocksForContentView,
   contentViewForKey,
-  isGroupDirty,
   visibleContentGroups,
   websitePageTaskByGroup,
 } from './websitePageTasks';
-import { fallbackManagedBy, isOpsOwnedContentKey } from './opsOwnedContentKeys';
+import { isOpsOwnedContentKey } from './opsOwnedContentKeys';
 import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 
-type DraftMap = Record<string, string>;
-type DraftsByLocale = Record<ContentLocale, DraftMap>;
-type LocaleMetaMap<T> = Record<ContentLocale, T>;
-
-type DraftChange = {
-  key: string;
-  scope: ContentScope;
-  value: string;
-  locale: ContentLocale;
-};
-
-type HistoryTarget = {
-  key: string;
-  scope: ContentScope;
-  label: string;
-} | null;
-
-type PreviewState = {
-  website: string | null;
-  orderApp: string | null;
-};
-
-const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
-const EMPTY_DRAFTS_BY_LOCALE: DraftsByLocale = { en: {}, dv: {} };
-const TRUE_BY_LOCALE: LocaleMetaMap<boolean> = { en: true, dv: true };
-const NULL_BY_LOCALE: LocaleMetaMap<string | null> = { en: null, dv: null };
+import {
+  EMPTY_DRAFTS_BY_LOCALE,
+  TRUE_BY_LOCALE,
+  FALSE_BY_LOCALE,
+  type DraftMap,
+  type DraftsByLocale,
+  type LocaleMetaMap,
+  type HistoryTarget,
+  type PreviewState,
+  draftKey,
+  parseDraftKey,
+  collectChanges,
+  uploadAppFor,
+  labelForScope,
+  hubAppLabel,
+  valueForScope,
+  isDeprecatedBlock,
+  contentAppFromPath,
+} from './hubDraftUtils';
 
 /** Desktop layout prefs — Content Hub only. */
 const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
@@ -147,43 +118,6 @@ function defaultRailCollapsed(): boolean {
   return readStoredBool(LS_RAIL_COLLAPSED) === true;
 }
 
-function seoDescriptionKey(titleKey: string): string | null {
-  if (titleKey === 'meta_title') return 'meta_description';
-  if (titleKey.endsWith('_meta_title')) return titleKey.replace(/_meta_title$/, '_meta_description');
-  return null;
-}
-
-function isSeoDescriptionKey(key: string): boolean {
-  return key === 'meta_description' || key.endsWith('_meta_description');
-}
-
-function draftKey(scope: ContentScope, key: string): string {
-  return `${scope}::${key}`;
-}
-
-function parseDraftKey(composite: string): { scope: ContentScope; key: string } | null {
-  const idx = composite.indexOf('::');
-  if (idx <= 0) return null;
-  const scope = composite.slice(0, idx);
-  const key = composite.slice(idx + 2);
-  if (!ALL_SCOPES.includes(scope as ContentScope) || key.length === 0) return null;
-  return { scope: scope as ContentScope, key };
-}
-
-function collectChanges(drafts: DraftMap, locale: ContentLocale, app?: ContentApp): DraftChange[] {
-  return Object.entries(drafts)
-    .map(([composite, value]) => {
-      const parsed = parseDraftKey(composite);
-      if (!parsed) return null;
-      // Content Hub never persists or publishes shared / cross-app drafts for the other app.
-      if (app && parsed.scope !== app) return null;
-      // Operational / Business Details ownership — never draft or publish competing copies.
-      if (isOpsOwnedContentKey(parsed.key)) return null;
-      return { key: parsed.key, scope: parsed.scope, value, locale };
-    })
-    .filter((change): change is DraftChange => Boolean(change));
-}
-
 /** Surface useful API / network errors for Publish without leaking stack traces. */
 function formatContentActionError(err: unknown, fallback: string): string {
   if (err instanceof ApiRequestError) {
@@ -207,65 +141,6 @@ function formatContentActionError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-function isDualAppBlock(block: ContentBlock): boolean {
-  return block.apps.includes('website') && block.apps.includes('order_app');
-}
-
-function uploadAppFor(scope: ContentScope): ContentApp {
-  return scope === 'order_app' ? 'order_app' : 'website';
-}
-
-function labelForScope(scope: ContentScope): string {
-  if (scope === 'order_app') return 'Order App';
-  if (scope === 'website') return 'Website';
-  return 'Business record';
-}
-
-function hubAppLabel(app: ContentApp): string {
-  return app === 'order_app' ? 'Order App' : 'Website';
-}
-
-function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
-  if (scope === 'shared') {
-    return block.shared ?? block.default ?? '';
-  }
-  if (scope === 'website') {
-    return block.website ?? block.resolved_website ?? block.default ?? '';
-  }
-  return block.order_app ?? block.resolved_order_app ?? block.default ?? '';
-}
-
-function valueForScope(block: ContentBlock, scope: ContentScope, drafts: DraftMap): string {
-  const key = draftKey(scope, block.key);
-  if (drafts[key] !== undefined) return drafts[key];
-  return baseValueForScope(block, scope);
-}
-
-function editorScopesForBlock(block: ContentBlock, app: ContentApp): ContentScope[] {
-  if (isDualAppBlock(block) || block.apps.includes(app)) return [app];
-  if (block.apps.includes('order_app')) return ['order_app'];
-  if (block.apps.includes('website')) return ['website'];
-  return [app];
-}
-
-function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): ContentScope {
-  if (preferred && scopes.includes(preferred)) return preferred;
-  if (scopes.includes('website')) return 'website';
-  return scopes[0];
-}
-
-function scopeHasDraft(scope: ContentScope, key: string, drafts: DraftMap): boolean {
-  return drafts[draftKey(scope, key)] !== undefined;
-}
-
-function isDeprecatedBlock(block: ContentBlock): boolean {
-  return Boolean(block.deprecated) || /^hero_slide_[123]$/.test(block.key);
-}
-
-function contentAppFromPath(pathname: string): ContentApp {
-  if (pathname.includes('/content/order-app')) return 'order_app';
-  return 'website';
-}
 
 export function ContentHubPage() {
   const location = useLocation();
@@ -300,7 +175,7 @@ export function ContentHubPage() {
   const [railCollapsed, setRailCollapsed] = useState(defaultRailCollapsed);
   /** Per-block active scope tab for split editors (resets on section change). */
   const [blockScopeTab, setBlockScopeTab] = useState<Record<string, ContentScope>>({});
-  const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...NULL_BY_LOCALE }));
+  const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...FALSE_BY_LOCALE }));
   const [autosaving, setAutosaving] = useState(false);
   const [autosaveFailed, setAutosaveFailed] = useState(false);
   const [autosaveErrorDetail, setAutosaveErrorDetail] = useState<string | null>(null);
@@ -331,11 +206,7 @@ export function ContentHubPage() {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
-  const uploadCtx = useRef<{
-    blockKey: string;
-    scope: ContentScope;
-    onDone: (url: string) => void;
-  } | null>(null);
+  const uploadCtx: UploadContextRef = useRef(null);
   const homeLayoutEditorRef = useRef<HomeLayoutEditorHandle | null>(null);
   const draftsByLocaleRef = useRef<DraftsByLocale>({ ...EMPTY_DRAFTS_BY_LOCALE });
   const serverDraftSyncedByLocaleRef = useRef<LocaleMetaMap<boolean>>({ ...TRUE_BY_LOCALE });
@@ -1049,42 +920,6 @@ export function ContentHubPage() {
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const renderHistoryPanel = (block: ContentBlock, scope: ContentScope, currentValue: string) => {
-    if (!historyTarget || historyTarget.key !== block.key || historyTarget.scope !== scope) return null;
-    return (
-      <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }} data-testid="revision-history-heading">
-          History · {historyTarget.label} · {locale}
-        </div>
-        {revisions.length === 0 ? <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No revisions yet.</p> : null}
-        {revisions.map((revision) => (
-          <div key={revision.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>
-                {labelForScope(revision.scope || historyTarget.scope)} · {new Date(revision.created_at).toLocaleString()}
-              </div>
-              <RevisionDiff before={revision.value || ''} after={currentValue} />
-            </div>
-            <button
-              type="button"
-              onClick={() => void restore(revision.id)}
-              style={{ height: 32, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}
-            >
-              Restore
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => setHistoryTarget(null)}
-          style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
-        >
-          Close
-        </button>
-      </div>
-    );
-  };
-
   const effectiveDirtyCount = dirtyCount + (layoutDraft ? 1 : 0);
 
   const draftStatusNode = (
@@ -1136,576 +971,40 @@ export function ContentHubPage() {
     }
   };
 
-  const renderVisualEditor = (
-    block: ContentBlock,
-    scope: ContentScope,
-    val: string,
-    opts?: { mobileMode?: boolean; scheduleSlot?: ReactNode },
-  ) => {
-    const onChange = (next: string) => setDraft(scope, block.key, next);
-    const triggerUpload = makeTriggerUpload(block, scope);
-    const common = { label: block.label, description: block.description || undefined, value: val, onChange };
-
-    switch (block.editor) {
-      case 'hero':
-        return (
-          <HeroSlidesEditor
-            {...common}
-            triggerUpload={triggerUpload}
-            uploadImage={(cropped, original) => uploadContentImage(block.key, uploadAppFor(scope), cropped, original, locale)}
-            uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, locale, posterUrl)}
-            mobileMode={Boolean(opts?.mobileMode)}
-            draftStatus={draftStatusNode}
-            scheduleSlot={opts?.scheduleSlot}
-          />
-        );
-      case 'categories':
-        return <CategoriesEditor {...common} triggerUpload={triggerUpload} />;
-      case 'trust':
-        return <TrustItemsEditor {...common} />;
-      case 'proof':
-        return <ProofDetailsEditor {...common} />;
-      case 'about_values':
-        return <AboutValuesEditor {...common} />;
-      case 'preorder_steps':
-        return <PreorderStepsEditor {...common} />;
-      case 'footer_links':
-        return <FooterLinksEditor {...common} />;
-      case 'business_hours':
-        return <BusinessHoursEditor {...common} />;
-      default:
-        return null;
-    }
-  };
-
-  const renderPlainEditor = (block: ContentBlock, scope: ContentScope, val: string) => {
-    if (block.rich) {
-      return (
-        <RichTextEditor
-          key={`${scope}-${block.key}-${locale}`}
-          label=""
-          value={val}
-          onChange={(next) => setDraft(scope, block.key, next)}
-        />
-      );
-    }
-    if (block.type === 'boolean') {
-      return (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-          <input
-            type="checkbox"
-            checked={val === 'true' || val === '1'}
-            onChange={(e) => setDraft(scope, block.key, e.target.checked ? 'true' : 'false')}
-          />
-          Enabled
-        </label>
-      );
-    }
-    if (block.type === 'image') {
-      return (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          {val ? (
-            <img
-              src={val}
-              alt={block.label}
-              style={{
-                width: 72,
-                height: 72,
-                objectFit: 'cover',
-                borderRadius: block.key === 'default_item_image' ? '50%' : 10,
-              }}
-            />
-          ) : null}
-          <input
-            type="file"
-            accept="image/*,.heic,.heif"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) void onUpload(block, scope, file);
-            }}
-          />
-          <Btn
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              uploadCtx.current = { blockKey: block.key, scope, onDone: (url) => setDraft(scope, block.key, url) };
-              setMediaOpen(true);
-            }}
-          >
-            Library
-          </Btn>
-          <input
-            value={val}
-            onChange={(e) => setDraft(scope, block.key, e.target.value)}
-            placeholder="/storage/…"
-            style={{ flex: 1, minWidth: 180, height: 40, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }}
-          />
-        </div>
-      );
-    }
-    if (block.type === 'textarea' || block.type === 'json') {
-      return (
-        <textarea
-          value={val}
-          onChange={(e) => setDraft(scope, block.key, e.target.value)}
-          rows={block.type === 'json' ? 6 : 4}
-          dir={locale === 'dv' ? 'rtl' : 'ltr'}
-          style={{
-            width: '100%',
-            borderRadius: 10,
-            border: '1px solid var(--color-border)',
-            padding: 10,
-            fontFamily: block.type === 'json' ? 'ui-monospace, monospace' : 'inherit',
-            fontSize: 13,
-          }}
-        />
-      );
-    }
-    return (
-      <input
-        value={val}
-        onChange={(e) => setDraft(scope, block.key, e.target.value)}
-        dir={locale === 'dv' ? 'rtl' : 'ltr'}
-        style={{
-          width: '100%',
-          height: 44,
-          borderRadius: 10,
-          border: '1px solid var(--color-border)',
-          padding: '0 12px',
-          fontFamily: 'inherit',
-          fontSize: 14,
-        }}
-      />
-    );
-  };
-
-  const renderEditorForScope = (block: ContentBlock, scope: ContentScope) => {
-    const val = valueForScope(block, scope, drafts);
-    const visual = block.editor ? renderVisualEditor(block, scope, val) : null;
-    const descKey = seoDescriptionKey(block.key);
-    const descBlock = descKey ? contentBlocks.find((candidate) => candidate.key === descKey) : undefined;
-    const isSeoTitle = Boolean(descKey);
-
-    if (visual) return visual;
-
-    if (isSeoTitle && descBlock) {
-      return (
-        <SeoSnippetPreview
-          title={val}
-          description={valueForScope(descBlock, scope, drafts)}
-          onTitleChange={(next) => setDraft(scope, block.key, next)}
-          onDescriptionChange={(next) => setDraft(scope, descBlock.key, next)}
-          titleLabel={block.label}
-          descriptionLabel={descBlock.label}
-        />
-      );
-    }
-
-    return renderPlainEditor(block, scope, val);
-  };
-
-  const renderSectionEnable = (block: ContentBlock) => {
-    const scopes = editorScopesForBlock(block, hubApp);
-    const split = scopes.length > 1;
-    return (
-      <div
-        key={block.key}
-        className="hub-section-enable"
-        data-testid={`section-enable-${block.key}`}
-        data-block-key={block.key}
-      >
-        <div className="hub-section-enable-face">
-          <div className="hub-section-enable-label">{block.label}</div>
-        </div>
-        <div
-          className={`hub-section-enable-switches${split ? ' hub-section-enable-switches--split' : ''}`}
-        >
-          {scopes.map((scope) => {
-            const val = valueForScope(block, scope, drafts);
-            const switchLabel = labelForScope(scope);
-            return (
-              <label
-                key={`${scope}-${block.key}`}
-                className="hub-section-enable-switch"
-                data-testid={`section-enable-switch-${block.key}-${scope}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={val === 'true' || val === '1'}
-                  onChange={(e) => setDraft(scope, block.key, e.target.checked ? 'true' : 'false')}
-                />
-                {switchLabel}
-              </label>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderScopeTabs = (
-    blockKey: string,
-    scopes: ContentScope[],
-    activeScope: ContentScope,
-    panel: ReactNode,
-  ) => (
-    <div className="hub-scope-tabs" data-testid={`scope-tabs-${blockKey}`}>
-      <div className="hub-scope-tablist" role="tablist" aria-label="App scope">
-        {scopes.map((scope) => {
-          const selected = scope === activeScope;
-          const dirty = scopeHasDraft(scope, blockKey, drafts);
-          return (
-            <button
-              key={scope}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              data-testid={`scope-tab-${blockKey}-${scope}`}
-              className={`hub-scope-tab${selected ? ' hub-scope-tab--active' : ''}`}
-              onClick={() => setBlockScopeTab((prev) => ({ ...prev, [blockKey]: scope }))}
-            >
-              {labelForScope(scope)}
-              {dirty && !selected ? (
-                <span
-                  className="hub-scope-tab-dot"
-                  data-testid={`scope-tab-dirty-${blockKey}-${scope}`}
-                  title="Unpublished edits"
-                  aria-hidden="true"
-                />
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-      <div
-        role="tabpanel"
-        data-testid={`scope-panel-${blockKey}-${activeScope}`}
-        className="hub-scope-tabpanel"
-      >
-        {panel}
-      </div>
-    </div>
-  );
-
-  const renderBlock = (block: ContentBlock): ReactNode => {
-    if (isSeoDescriptionKey(block.key)) {
-      const titleKey = block.key === 'meta_description'
-        ? 'meta_title'
-        : block.key.replace(/_meta_description$/, '_meta_title');
-      if (contentBlocks.some((c) => c.key === titleKey)) return null;
-    }
-
-    // Operational / Business Details ownership — never show an editable Save path.
-    const resolvedDisplay =
-      (hubApp === 'order_app' ? block.resolved_order_app : block.resolved_website) ?? '';
-    const managedBy = block.managed_by
-      ?? fallbackManagedBy(block.key, resolvedDisplay);
-    if (managedBy) {
-      const display = managedBy.current_value ?? resolvedDisplay ?? '';
-      return (
-        <BlockCard
-          key={`${block.key}-${locale}`}
-          block={block}
-          locale={locale}
-          editor={(
-            <OpsOwnedSummary
-              managedBy={managedBy}
-              testId={`ops-owned-${block.key}`}
-            />
-          )}
-          onOpenHistory={() => undefined}
-          historyOpen={false}
-          historyPanel={null}
-          technicalScopesLabel="Managed elsewhere"
-          rawValuePreview={String(display).slice(0, 80)}
-          compact={false}
-          compactSummary={(
-            <span className="hub-block-value-summary" data-testid={`ops-owned-summary-value-${block.key}`}>
-              {String(display).trim() || 'Not set yet'}
-            </span>
-          )}
-          visibilityLabel="Managed elsewhere"
-        />
-      );
-    }
-
-    const scopes = editorScopesForBlock(block, hubApp);
-    const isSplitEditors = scopes.length > 1;
-    const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
-    const activeValue = valueForScope(block, activeScope, drafts);
-    const historyOpen =
-      historyTarget?.key === block.key && historyTarget?.scope === activeScope;
-
-    const isBoolean = block.type === 'boolean';
-
-    let editorContent: ReactNode = null;
-    let booleanControl: ReactNode = undefined;
-
-    if (isBoolean && !isSplitEditors) {
-      booleanControl = (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 32, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={activeValue === 'true' || activeValue === '1'}
-            onChange={(e) => setDraft(activeScope, block.key, e.target.checked ? 'true' : 'false')}
-          />
-          Enabled
-        </label>
-      );
-    } else if (isBoolean && isSplitEditors) {
-      // Compact dual switches — never tab a boolean.
-      editorContent = (
-        <div className="hub-boolean-scopes" data-testid={`boolean-scopes-${block.key}`}>
-          {scopes.map((scope) => {
-            const val = valueForScope(block, scope, drafts);
-            return (
-              <label key={scope} className="hub-boolean-scope">
-                <input
-                  type="checkbox"
-                  checked={val === 'true' || val === '1'}
-                  onChange={(e) => setDraft(scope, block.key, e.target.checked ? 'true' : 'false')}
-                />
-                {labelForScope(scope)}
-              </label>
-            );
-          })}
-        </div>
-      );
-    } else if (isSplitEditors) {
-      editorContent = renderScopeTabs(
-        block.key,
-        scopes,
-        activeScope,
-        renderEditorForScope(block, activeScope),
-      );
-    } else {
-      editorContent = renderEditorForScope(block, activeScope);
-    }
-
-    // Overview → Edit on every device: forms live in the focused sheet, not on cards.
-    const useCompact = !isBoolean;
-    let compactSummary: ReactNode = null;
-    let visibilityLabel: string | undefined;
-    if (useCompact && block.editor === 'hero') {
-      let slides: Array<{ image?: string; title?: string; showing?: boolean }> = [];
-      try {
-        const parsed = JSON.parse(activeValue || '[]');
-        slides = Array.isArray(parsed) ? parsed : [];
-      } catch { /* empty */ }
-      const showingCount = slides.filter((s) => isHeroSlideShowing(s)).length;
-      const hiddenCount = slides.length - showingCount;
-      const thumb = slides.find((s) => s.image)?.image;
-      compactSummary = (
-        <div className="hub-block-hero-summary">
-          {thumb ? <img src={thumb} alt="" className="hub-block-hero-summary-thumb" /> : null}
-          <span>
-            {slides.length} slide{slides.length === 1 ? '' : 's'}
-            {hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
-            {showingCount === 0 && slides.length > 0 ? ' · none showing' : ''}
-          </span>
-        </div>
-      );
-      visibilityLabel = showingCount > 0 ? 'Showing' : 'Hidden';
-    } else if (useCompact) {
-      const trimmed = activeValue.trim();
-      let oneLine = trimmed.replace(/\s+/g, ' ');
-      if (oneLine.startsWith('[') || oneLine.startsWith('{')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (Array.isArray(parsed)) {
-            oneLine = `${parsed.length} item${parsed.length === 1 ? '' : 's'}`;
-            visibilityLabel = parsed.length > 0 ? 'Showing' : 'Hidden';
-          } else if (parsed && typeof parsed === 'object') {
-            oneLine = 'Configured';
-            visibilityLabel = 'Showing';
-          }
-        } catch {
-          oneLine = oneLine.slice(0, 72);
-        }
-      } else if (oneLine.length > 72) {
-        oneLine = `${oneLine.slice(0, 69)}…`;
-      }
-      compactSummary = (
-        <span className="hub-block-value-summary">
-          {oneLine || 'Not set yet'}
-        </span>
-      );
-      if (!visibilityLabel) {
-        visibilityLabel = trimmed ? 'Showing' : 'Hidden';
-      }
-    }
-
-    return (
-      <BlockCard
-        key={`${block.key}-${locale}`}
-        block={block}
-        locale={locale}
-        editor={editorContent}
-        booleanControl={booleanControl}
-        onOpenHistory={() => void openHistory(block, activeScope)}
-        historyOpen={historyOpen}
-        historyPanel={renderHistoryPanel(block, activeScope, activeValue)}
-        technicalScopesLabel={scopesLabelFor(scopes)}
-        rawValuePreview={activeValue.slice(0, 80)}
-        compact={useCompact}
-        onEdit={useCompact ? () => setMobileBlockEditorKey(block.key) : undefined}
-        compactSummary={compactSummary}
-        visibilityLabel={visibilityLabel}
-      />
-    );
-  };
-
-  // ── Build section editor content ───────────────────────────────────────────
-
-  const buildSectionContent = (sectionName: string, withBack: boolean) => {
-    const sectionBlocks = blocksForContentView(sectionName, contentBlocks);
-    const sectionEnableBlocks = sectionBlocks.filter((b) => b.section_enable);
-    const regularBlocks = sectionBlocks.filter((b) => !b.section_enable);
-    const isBrandKit = sectionName === 'Branding';
-    const pageTask = websitePageTaskByGroup(sectionName);
-    const editorTitle = pageTask?.title ?? sectionName;
-
-    const brandBlocksByKey = new Map(
-      regularBlocks.filter((b) => BRAND_KIT_KEYS.includes(b.key)).map((b) => [b.key, b] as const),
-    );
-    const leftoverBrandBlocks = isBrandKit
-      ? regularBlocks.filter((b) => !BRAND_KIT_KEYS.includes(b.key))
-      : regularBlocks;
-
-    const siteNameBlock = contentBlocks.find((b) => b.key === 'site_name');
-    const siteName = siteNameBlock
-      ? (valueForScope(siteNameBlock, hubApp, drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
-      : 'Bake & Grill';
-    const brandScope = (block: ContentBlock) => brandKitWriteScope(block, hubApp);
-
-    const hoursOpsBanner = sectionName === 'Opening hours' ? (
-      <div className="hub-hours-ops-banner" data-testid="hours-ops-banner">
-        <strong>Page wording vs real opening times</strong>
-        <p>
-          Fields below only change the Hours page copy (titles, notes, CTAs).
-          They do not open or close the café or online ordering. Manage the real
-          schedule in Online Ordering.
-        </p>
-        <a
-          href="/admin/online-ordering"
-          data-testid="hours-manage-ops-link"
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}
-        >
-          Manage operating hours →
-        </a>
-      </div>
-    ) : null;
-
-    const announcementDualGateBanner = sectionName === 'Announcements' ? (
-      <div
-        className="hub-hours-ops-banner"
-        data-testid="announcement-dual-gate-banner"
-        role="note"
-      >
-        <strong>Two switches control the {hubLabel} banner</strong>
-        <p>
-          The Announcement content toggle below must be on for {hubLabel}, and the
-          Announcement component must be placed/enabled on this app’s Header or Home
-          surface (Surface Builder). Both are required or nothing shows on {hubLabel}.
-        </p>
-        <button
-          type="button"
-          data-testid="announcement-open-surface-link"
-          onClick={() => handleSectionSelect(
-            'Homepage',
-            hubApp,
-            isMobile ? `${hubApp}.mobile.header` : `${hubApp}.desktop.header`,
-          )}
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: 'var(--color-primary)',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          Open {hubLabel} header placement →
-        </button>
-      </div>
-    ) : null;
-
-    // Homepage: page_blocks layout editor. Off Homepage it unmounts — unified
-    // Publish/Discard use publishLayoutDraftsViaApi / discardLayoutDraftsViaApi.
-    const chrome: ReactNode =
-      sectionName === 'Homepage' ? (
-        <HomeLayoutEditor
-          ref={homeLayoutEditorRef}
-          initialApp={homeLayoutApp}
-          surfaceFilter={surfaceFilter ?? undefined}
-          onLayoutDraftChange={handleLayoutDraftChange}
-        />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {hoursOpsBanner}
-          {announcementDualGateBanner}
-          {sectionEnableBlocks.map(renderSectionEnable)}
-        </div>
-      );
-
-    const brandKit: ReactNode =
-      isBrandKit && brandBlocksByKey.size > 0 ? (
-        <BrandKitCards
-          draftStatus={draftStatusNode}
-          blocksByKey={brandBlocksByKey}
-          siteName={siteName}
-          scopeLabel={labelForScope(hubApp)}
-          valueOf={(block) => valueForScope(block, brandScope(block), drafts)}
-          onSetValue={(block, value) => setDraft(brandScope(block), block.key, value)}
-          onUploadFile={(block, file) => onUpload(block, brandScope(block), file)}
-          onOpenLibrary={(block) => {
-            const scope = brandScope(block);
-            uploadCtx.current = { blockKey: block.key, scope, onDone: (url) => setDraft(scope, block.key, url) };
-            setMediaOpen(true);
-          }}
-          onOpenHistory={(block) => void openHistory(block, brandScope(block))}
-          historyPanel={(block) =>
-            renderHistoryPanel(block, brandScope(block), valueForScope(block, brandScope(block), drafts))
-          }
-        />
-      ) : null;
-
-    const visibleRegularCount = leftoverBrandBlocks.filter((b) => {
-      if (!isSeoDescriptionKey(b.key)) return true;
-      const titleKey = b.key === 'meta_description'
-        ? 'meta_title'
-        : b.key.replace(/_meta_description$/, '_meta_title');
-      return !contentBlocks.some((c) => c.key === titleKey);
-    }).length;
-    const brandCardCount = isBrandKit ? brandBlocksByKey.size : 0;
-    // The Homepage layout editor replaces per-section enable cards.
-    const isHomeLayout = sectionName === 'Homepage';
-    const cardCount = brandCardCount
-      + visibleRegularCount
-      + (isHomeLayout ? 0 : sectionEnableBlocks.length);
-
-    return (
-      <SectionEditor
-        sectionName={sectionName}
-        title={editorTitle}
-        blocks={leftoverBrandBlocks}
-        chrome={chrome}
-        brandKit={brandKit}
-        renderBlock={renderBlock}
-        onBack={withBack ? handleMobileBack : undefined}
-        isBrandKit={isBrandKit}
-        cardCount={cardCount}
-        showHeader={withBack}
-      />
-    );
-  };
-
   const activeEditorTitle = activeGroup
     ? (websitePageTaskByGroup(activeGroup)?.title ?? activeGroup)
     : 'Section';
+
+  // Shared props for the active section's block-list / brand-kit host — only
+  // `sectionName` / `withBack` differ between the mobile sheet and desktop rail.
+  const hubSectionContentProps = {
+    contentBlocks,
+    drafts,
+    locale,
+    hubApp,
+    hubLabel,
+    blockScopeTab,
+    setBlockScopeTab,
+    setDraft,
+    historyTarget,
+    setHistoryTarget,
+    revisions,
+    restore,
+    openHistory,
+    draftStatusNode,
+    makeTriggerUpload,
+    onUpload,
+    uploadCtx,
+    setMediaOpen,
+    setMobileBlockEditorKey,
+    homeLayoutEditorRef,
+    homeLayoutApp,
+    surfaceFilter,
+    onLayoutDraftChange: handleLayoutDraftChange,
+    onSectionSelectForAnnouncement: handleSectionSelect,
+    isMobile,
+    onBack: handleMobileBack,
+  };
 
   // ── Header actions ─────────────────────────────────────────────────────────
 
@@ -2095,7 +1394,13 @@ export function ContentHubPage() {
                   {schedulePublishPanel}
                 </div>
               ) : null}
-              {activeGroup ? buildSectionContent(activeGroup, false) : null}
+              {activeGroup ? (
+                <HubSectionContent
+                  sectionName={activeGroup}
+                  withBack={false}
+                  {...hubSectionContentProps}
+                />
+              ) : null}
             </ContentEditorSheet>
 
             <PreviewPane
@@ -2142,7 +1447,13 @@ export function ContentHubPage() {
 
             <div className="hub-editor-area" data-testid="hub-editor-area">
               {activeGroup && !loading
-                ? buildSectionContent(activeGroup, true)
+                ? (
+                  <HubSectionContent
+                    sectionName={activeGroup}
+                    withBack
+                    {...hubSectionContentProps}
+                  />
+                )
                 : (
                   <HubSurfaceLanding
                     loading={loading}
@@ -2196,16 +1507,7 @@ export function ContentHubPage() {
             ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
             : null;
           if (!editBlock) return null;
-          const scopes = editorScopesForBlock(editBlock, hubApp);
-          const activeScope = preferredScopeTab(scopes, blockScopeTab[editBlock.key]);
-          const val = valueForScope(editBlock, activeScope, drafts);
           const isHero = editBlock.editor === 'hero';
-          const editorBody = isHero
-            ? renderVisualEditor(editBlock, activeScope, val, {
-              mobileMode: true,
-              scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
-            })
-            : renderEditorForScope(editBlock, activeScope);
           return (
             <ContentEditorSheet
               open
@@ -2225,16 +1527,23 @@ export function ContentHubPage() {
                 </Btn>
               ) : undefined}
             >
-              <>
-                {dirtyCount > 0 ? (
-                  <div style={{ marginBottom: 12 }} data-testid="block-editor-schedule-slot">
-                    {schedulePublishPanel}
-                  </div>
-                ) : null}
-                {scopes.length > 1
-                  ? renderScopeTabs(editBlock.key, scopes, activeScope, editorBody)
-                  : editorBody}
-              </>
+              <HubFocusedBlockBody
+                block={editBlock}
+                hubApp={hubApp}
+                drafts={drafts}
+                locale={locale}
+                contentBlocks={contentBlocks}
+                blockScopeTab={blockScopeTab}
+                setBlockScopeTab={setBlockScopeTab}
+                setDraft={setDraft}
+                makeTriggerUpload={makeTriggerUpload}
+                onUpload={onUpload}
+                uploadCtx={uploadCtx}
+                setMediaOpen={setMediaOpen}
+                draftStatusNode={draftStatusNode}
+                dirtyCount={dirtyCount}
+                schedulePublishPanel={schedulePublishPanel}
+              />
             </ContentEditorSheet>
           );
         })()}
