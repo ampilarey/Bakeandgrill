@@ -97,9 +97,13 @@ slide.
    blocks that legitimately render on the website's homepage mode cards but are named after the
    wrong thing.
 3. **Groups still carry engineering names** — "General", "Pages", "Status banners".
-4. **`ContentHubPage.tsx` has grown to 2,301 lines** (was 2,046 in revision 1). The ContentHub
-   directory is 8,947 lines. `HomeLayoutEditor.tsx` is 1,177 and `HeroSlidesEditor.tsx` is 1,143.
-   The file is getting bigger while being restructured, which is the wrong direction.
+4. ~~**`ContentHubPage.tsx` has grown to 2,301 lines.**~~ **Closed (Stage 3 pure refactor).**
+   Split into host components (`HubSurfaceLanding`, `HubSectionList`, `HubSectionContent`,
+   `HubEditorSheets`, `HubPreviewHost`, `HubPublishBar` + `hubDraftUtils`).
+   `ContentHubPage.tsx` is now **1,340 lines** (composition + state/effects/handlers). Below the
+   aspirational 600-line target would require moving autosave/publish/load orchestration into a
+   controller hook; that was deferred as unsafe for this stage (state stays in the page; no
+   context/reducer). `HomeLayoutEditor` / `HeroSlidesEditor` were not touched.
 5. ~~**The surface-count label wording diverges from the agreed spec.**~~ Closed in Stage 1 —
    label is now `N components · M hidden`.
 6. ~~**No audited page inventory.**~~ **Closed (Stage 2).** Verified inventory from Blade /
@@ -428,7 +432,10 @@ verified §4.2 + `docs/CONTENT_SURFACE_INVENTORY.md` + `docs/content_surface_inv
 `ContentSurfaceInventoryTest` (matrix row 8 early). No UI / config / migration change.
 Stage 3 does not start without it.
 
-**Stage 3 — Split `ContentHubPage.tsx`.** Pure refactor, no visible change.
+**Stage 3 — Split `ContentHubPage.tsx`. Done on this branch.**
+Pure refactor, six commits, no visible/behaviour/data change. Hosts: surface landing, section
+list, block/section content, editor sheets, preview, publish bar. Admin suite green after each
+commit; zero existing tests edited. Residual page size 1,340 lines (see §1.3 gap 4).
 
 **Stage 4 — Regroup and rename.** §6.1 and §6.3 together, never apart — regrouping without
 renaming leaves "Order App" inside Website Content and is worse than doing neither. Guarded by the
