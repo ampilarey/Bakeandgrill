@@ -23,8 +23,10 @@ const FIXTURE_PNG = path.resolve(__dirname, '../../fixtures/mobile-layout-hero.p
 async function openContentHub(page: Page): Promise<void> {
   await gotoAdminAuthenticated(page, '/admin/content/website');
   await expect(page.getByTestId('surface-builder-landing')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('task-cluster-brand_pages')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('hub-landing-primary')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('task-card-hero')).toBeVisible();
+  await expect(page.getByTestId('hub-landing-home-cta')).toBeVisible();
+  await expect(page.getByTestId('task-cluster-brand_pages')).toBeVisible();
   await expect(page.getByTestId('task-card-announcement')).toBeVisible();
   await expect(page.getByTestId('task-card-website_footer')).toBeVisible();
 }
