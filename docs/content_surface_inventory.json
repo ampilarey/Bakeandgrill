@@ -1,5 +1,5 @@
 {
-    "generated_for_commit": "0febcd83f",
+    "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
         "page_count_keys": 149,
@@ -381,12 +381,12 @@
             "reads_nowhere": {
                 "title": "Reads nowhere I could find (website)",
                 "route": "n/a",
-                "template": "n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides",
+                "template": "n/a — searched content() in Blade + ModeEntryCardsPresenter + HeroSlides; no website settings JSON path",
                 "keys": [
                     "business_website",
                     "menu_new_days"
                 ],
-                "notes": "Do not delete. business_website may be intended for Contact/Signage; menu_new_days is an Order/Signage concern still registered for website.",
+                "notes": "Confirmed: no content('business_website') or content('menu_new_days') in any Blade under backend/resources/views; website is server-rendered with content() only (no settings JSON blob). Both keys are public and used on Order App / SignageResolver — do not delete.",
                 "renderers": {
                     "business_website": "n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides",
                     "menu_new_days": "n/a — no website Blade; Order App /view + Signage"
@@ -1709,14 +1709,22 @@
             "reads_nowhere": {
                 "title": "Reads nowhere I could find (order app)",
                 "route": "n/a",
-                "template": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)",
+                "template": "n/a — searched text(), settings.<key> / useSiteSettingsContext, excluding tests",
+                "keys": [],
+                "notes": "After adding the settings-context read path, no order_app registry keys remain unread. Do not delete keys solely because this bucket was empty at audit time.",
+                "renderers": {}
+            },
+            "signage": {
+                "title": "Signage (TV /view boards)",
+                "route": "/order/tv, /order/tv/:screen (also uses context on idle/boot)",
+                "template": "apps/online-order-web/src/pages/SignagePage.tsx",
                 "keys": [
                     "business_website"
                 ],
-                "notes": "business_website appears typed for Signage TV path in audit notes; not found on customer Order App pages. Do not delete.",
                 "renderers": {
-                    "business_website": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)"
-                }
+                    "business_website": "SignagePage.tsx:606 and :640 — settings.business_website via useSiteSettingsContext (ContentResolver::for(order_app)->allPublic())"
+                },
+                "notes": "Public order_app settings via useSiteSettingsContext → settings.*; not customer ordering chrome."
             }
         },
         "key_index": {
@@ -2330,11 +2338,11 @@
                 "renderer": "Privacy page"
             },
             "business_website": {
-                "page": "reads_nowhere",
+                "page": "signage",
                 "order": 1,
                 "label": "Business Website",
                 "group": "Contact",
-                "renderer": "n/a — searched apps/online-order-web/src text()/settings (excluding tests)"
+                "renderer": "SignagePage.tsx:606 and :640 — settings.business_website via useSiteSettingsContext (ContentResolver::for(order_app)->allPublic())"
             }
         }
     },
@@ -2437,5 +2445,6 @@
             "slot": "bottom_navigation",
             "distinct_from": "Mobile bottom navigation — NOT footer"
         }
-    ]
+    ],
+    "correction_note": "Stage 2 correction: order_app business_website moved from reads_nowhere to signage after settings-context read-path audit."
 }

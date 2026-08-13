@@ -224,7 +224,7 @@ bottom navigation. Structural matrix: app × device × slot in the inventory doc
 | Gift cards | `/gift-cards*` | `GiftCardsPage.tsx` (+ buy/success/view) | 0 content keys |
 | About / Contact / Hours / Privacy | `/about`, `/contact`, `/hours`, `/privacy` | matching `*Page.tsx` | Extra SPA pages holding registry keys |
 | Everywhere (shell chrome) | all routes via `AppShell` | TopNav, BrandFooter, overlays | Order App footer ≠ bottom nav |
-| Reads nowhere found | — | — | `business_website` (do not delete) |
+| Reads nowhere found | — | — | _(none after settings-context correction; do not delete keys from empty bucket)_ |
 
 Only Home is composable via `page_blocks`. Stage 4 regroups by these verified pages. Do not
 trust `group` alone — see inventory §4.4 (e.g. all ten `order_mode_*` keys).

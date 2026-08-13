@@ -5,38 +5,62 @@ Audited from **renderers** (Blade templates and Order App components), not from 
 
 | Field | Value |
 |---|---|
-| Audited at | 2026-08-13 |
-| Commit | `9af4350fa` |
+| Audited at | 2026-08-13 (settings-context correction same day) |
+| Commit | `a377ebc37` + this correction |
 | Machine index | `docs/content_surface_inventory.json` (source of truth for the coverage test) |
 | Website keys inventoried | 149 non-deprecated registry keys targeting `website` |
 | Order App keys inventoried | 88 non-deprecated registry keys targeting `order_app` |
 
 **Structural surfaces stay distinct:** Website global footer ≠ Order App footer ≠ Mobile bottom navigation. They are never one “footer”.
 
+> **“Reads nowhere I could find” means the documented searches below found nothing — not that the key is unused.** Keys may be read dynamically, via Signage APIs, or on paths this audit missed. **No key may be deleted on the strength of this bucket.**
+
 ---
 
 ## How to re-run
 
+Three Order App read paths must all be checked. Path 3 was the Stage 2 blind spot: public keys flow through `ContentResolver::for('order_app')->allPublic()` → `useSiteSettingsContext()` → `settings.<key>` without ever calling `text('key')`.
+
 ```bash
-# Registry keys per app (non-deprecated)
+# Registry keys per app (non-deprecated) + public flag
 php -r '$c=include "backend/config/content.php";
 foreach(["website","order_app"] as $app){
   foreach($c["blocks"] as $k=>$m){
     if(empty($m["deprecated"]) && in_array($app,$m["apps"]??[],true))
-      echo "$app\t".($m["group"]??"")."\t$k\n";
+      echo "$app\t".(!empty($m["public"])?"public":"private")."\t".($m["group"]??"")."\t$k\n";
   }
 }'
 
-# Website Blade content() reads
+# --- Website ---
+# Path W1: Blade content() reads
 rg -n -o "content\(\s*['\"]([^'\"]+)['\"]" -r '$1' backend/resources/views --glob '*.blade.php' | sort -u
 
 # Website presenter reads (mode cards)
 rg -n "order_mode_|get\('order_mode_" backend/app/Domains/Content/ModeEntryCardsPresenter.php
 
-# Order App text() / settings reads (exclude tests)
+# Confirm a website key is unread (example)
+rg -n "content\(\s*['\"]business_website|content\(\s*['\"]menu_new_days" backend/resources/views --glob '*.blade.php'
+
+# --- Order App (exclude tests) ---
+# Path 1: text('key') helper
 rg -n -g '!**/*.{test,spec}.{ts,tsx}' -g '!**/__tests__/**' \
-  -e "text\(\s*['\"][^'\"]+['\"]" -e "settings\.[a-z_]+" \
+  -o "text\(\s*['\"]([^'\"]+)['\"]" -r '$1' apps/online-order-web/src | sort -u
+
+# Path 2: literal settings.<key> (and aliases) — consumer files
+rg -n -g '!**/*.{test,spec}.{ts,tsx}' -g '!**/__tests__/**' \
+  -e '\bsettings\.[a-zA-Z_][a-zA-Z0-9_]*' \
+  -e '\bsiteSettings\.[a-zA-Z_][a-zA-Z0-9_]*' \
   apps/online-order-web/src
+
+# Path 3: useSiteSettingsContext + aliased settings: s → s.<key>
+# (only public: true registry keys reach allPublic() into this context)
+rg -n -g '!**/*.{test,spec}.{ts,tsx}' -g '!**/__tests__/**' \
+  -e 'useSiteSettingsContext' -e 'settings:\s*s\b' -e '\bs\.[a-zA-Z_][a-zA-Z0-9_]*' \
+  apps/online-order-web/src
+
+# Cross-check: which public order_app keys appear only via settings/s, not text()
+# (re-run the Python/php comparison in the Stage 2 correction notes, or:
+rg -n 'business_website|menu_new_days' apps/online-order-web/src --glob '!**/*.{test,spec}.*'
 
 # Routes
 rg -n "Route::get|name\('(home|contact|hours|terms|refund|menu|privacy)" backend/routes/web.php
@@ -287,7 +311,7 @@ These come from `SurfaceCatalog` / live `page_blocks` placement. **Three footers
 
 - **Route:** GET /menu → 301 /order/menu
 - **Template / component:** (no website blade — Order App owns Menu)
-- **Notes:** No website Menu page renderer. menu_new_days is listed under reads_nowhere for website.
+- **Notes:** No website Menu page renderer. `menu_new_days` stays under website reads_nowhere (no Blade `content()`); Order App reads it on `/order/view` via settings context.
 
 _No registry keys uniquely assigned to this page bucket._
 
@@ -302,13 +326,13 @@ _No registry keys uniquely assigned to this page bucket._
 ### 2.reads_nowhere — Reads nowhere I could find (website)
 
 - **Route:** n/a
-- **Template / component:** n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides
-- **Notes:** Do not delete. business_website may be intended for Contact/Signage; menu_new_days is an Order/Signage concern still registered for website.
+- **Template / component:** n/a — searched `content()` in all `backend/resources/views/**/*.blade.php` + ModeEntryCardsPresenter + HeroSlides
+- **Notes:** Website is server-rendered Blade with `content('…')` only — there is **no** settings JSON blob on the website. Confirmed: `rg content\('business_website'|content\('menu_new_days'` over Blade returns nothing. Both keys are `public: true` and **are** consumed on the Order App / SignageResolver (`SiteSetting::get`); they remain unread on the **website** app’s templates. **Do not delete.**
 
 | Order | Key | Label | Config `group` | Renders in |
 |---|---|---|---|---|
-| 1 | `business_website` | Business Website | Contact | n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides |
-| 2 | `menu_new_days` | New items window (days) | Menu | n/a — searched Blade content() + ModeEntryCardsPresenter + HeroSlides |
+| 1 | `business_website` | Business Website | Contact | n/a on website Blade (Order App Signage uses settings context) |
+| 2 | `menu_new_days` | New items window (days) | Menu | n/a on website Blade (Order App `MenuViewPage.tsx:90` `s.menu_new_days` + SignageResolver) |
 
 ## 3. Order App pages
 
@@ -483,27 +507,38 @@ _No registry keys uniquely assigned to this page bucket._
 | 1 | `privacy_page_title` | Privacy Page — Title | Pages | Privacy page |
 | 2 | `legal_privacy_body` | Privacy Policy — Body Override (plain text) | Legal | Privacy page |
 
-### 3.reads_nowhere — Reads nowhere I could find (order app)
+### 3.signage — Signage (TV boards)
 
-- **Route:** n/a
-- **Template / component:** n/a — searched apps/online-order-web/src text()/settings (excluding tests)
-- **Notes:** business_website appears typed for Signage TV path in audit notes; not found on customer Order App pages. Do not delete.
+- **Route:** `/order/tv`, `/order/tv/:screen` (`SignagePage.tsx`; basename `/order`)
+- **Template / component:** `apps/online-order-web/src/pages/SignagePage.tsx`
+- **Notes:** Reads public order_app settings via `useSiteSettingsContext()` → `settings.*` (API: `ContentResolver::for('order_app')->allPublic()`). Not customer ordering chrome; still part of the Order App surface.
 
 | Order | Key | Label | Config `group` | Renders in |
 |---|---|---|---|---|
-| 1 | `business_website` | Business Website | Contact | n/a — searched apps/online-order-web/src text()/settings (excluding tests) |
+| 1 | `business_website` | Business Website | Contact | `SignagePage.tsx:606` and `:640` — `settings.business_website` |
+
+### 3.reads_nowhere — Reads nowhere I could find (order app)
+
+- **Route:** n/a
+- **Template / component:** n/a — searched path 1 `text()`, path 2 `settings.<key>`, path 3 `useSiteSettingsContext` / `s.<key>` (excluding tests)
+- **Notes:** After the settings-context correction, **no** order_app registry keys remain in this bucket. Empty on purpose. **Do not delete keys** if this list grows again later — “reads nowhere” ≠ unused.
+
+_No registry keys in this bucket._
 
 ## 4. Honest reporting
 
 ### 4.1 Registry keys that read nowhere I could find
 
-Do **not** delete these. They may be read dynamically, on Signage, or reserved.
+**Means the documented searches found nothing — not that the key is unused. No key may be deleted on the strength of this list.**
 
-| App | Key | Config `group` | Search run |
+| App | Key | Config `group` | Search run / confirmation |
 |---|---|---|---|
-| website | `business_website` | Contact | `rg content\('…'\)` over `backend/resources/views/**/*.blade.php` + ModeEntryCardsPresenter + HeroSlides |
-| website | `menu_new_days` | Menu | same (no website Menu blade; Order App `/view` + Signage read it) |
-| order_app | `business_website` | Contact | `rg text\('…'\)` over `apps/online-order-web/src` excluding tests |
+| website | `business_website` | Contact | No `content('business_website')` in any Blade; website has no settings JSON. Used on Order App Signage via settings context (not website). |
+| website | `menu_new_days` | Menu | No `content('menu_new_days')` in any Blade. Used on Order App `MenuViewPage.tsx:90` (`s.menu_new_days`) + `SignageResolver`. |
+
+~~order_app `business_website`~~ — **corrected:** renders on Signage (`SignagePage.tsx:606`, `:640`) via settings context. See §3.signage.
+
+**Settings-context blind spot (correction note):** `text()` alone misses **21** public `order_app` registry keys that are read as `settings.<key>` / `s.<key>` (including `business_website`, `menu_new_days`, `logo`, `announcement_*`, `office_orders_*`, …). Most were already page-assigned in the inventory by other means; **1** (`business_website`) had been wrongly listed under reads nowhere and is moved to Signage.
 
 ### 4.2 Keys a template reads that are NOT in that app’s registry
 
