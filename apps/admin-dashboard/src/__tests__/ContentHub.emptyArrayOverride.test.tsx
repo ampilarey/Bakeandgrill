@@ -11,10 +11,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
-  shareContentBlock: vi.fn(),
-  splitContentBlock: vi.fn(),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -59,7 +55,7 @@ const heroBlock: ContentBlock = {
   link_state: 'different',
 };
 
-describe('Content Hub empty JSON array override warning', () => {
+describe('Content Hub empty JSON array overrides', () => {
   beforeEach(() => {
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
@@ -72,7 +68,7 @@ describe('Content Hub empty JSON array override warning', () => {
     vi.clearAllMocks();
   });
 
-  it('warns when website holds [] while shared still has slides', async () => {
+  it('does not show the old shared-mask warning when an app holds []', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
@@ -83,9 +79,7 @@ describe('Content Hub empty JSON array override warning', () => {
     expect(screen.queryByTestId('empty-array-override-hero_slides')).toBeNull();
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
     const sheet = await screen.findByTestId('hero-editor-sheet');
-    const banner = within(sheet).getByTestId('empty-array-override-hero_slides');
-    expect(banner.textContent).toMatch(/show nothing/i);
-    expect(banner.textContent).toMatch(/Website/);
-    expect(banner.textContent).toMatch(/shared/i);
+    expect(within(sheet).queryByTestId('empty-array-override-hero_slides')).toBeNull();
+    expect(sheet.textContent).not.toMatch(/shared content/i);
   });
 });

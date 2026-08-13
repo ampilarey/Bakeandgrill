@@ -2841,83 +2841,6 @@ a { text-decoration: none; color: inherit; }
   margin-top: 2px;
 }
 
-/* Content mode (Same / Different) — shared by blocks, section enable, section order */
-.hub-content-mode {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 230px;
-}
-.hub-content-mode-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
-}
-.hub-content-mode-hint {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  line-height: 1.35;
-  max-width: 260px;
-}
-.hub-content-mode--hero {
-  min-width: 260px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1.5px solid var(--color-primary);
-  background: var(--color-warning-bg);
-}
-.hub-content-mode--hero .hub-content-mode-label {
-  color: var(--color-text);
-  font-size: 13px;
-}
-.hub-content-mode-options {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.hub-content-mode-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 9px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text);
-}
-.hub-content-mode-option:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.hub-content-mode-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface);
-  flex-shrink: 0;
-}
-.hub-content-mode-option--active {
-  border: 1.5px solid var(--color-primary);
-  background: var(--color-warning-bg);
-  font-weight: 700;
-}
-.hub-content-mode-option--active .hub-content-mode-dot {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  box-shadow: inset 0 0 0 3px var(--color-surface);
-}
-.hub-content-mode--hero .hub-content-mode-option--active {
-  background: var(--color-surface);
-}
-
 /* Section-enable chrome card */
 .hub-section-enable {
   display: flex;
@@ -3751,11 +3674,6 @@ a { text-decoration: none; color: inherit; }
     flex-wrap: wrap;
     justify-content: space-between;
   }
-  .hub-content-mode {
-    min-width: 0;
-    width: 100%;
-  }
-
   .hub-section-enable {
     flex-direction: column;
     align-items: stretch;

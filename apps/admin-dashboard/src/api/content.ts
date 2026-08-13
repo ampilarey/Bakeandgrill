@@ -4,7 +4,6 @@ export type ContentScope = 'shared' | 'website' | 'order_app';
 /** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
 export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
-export type ContentDraftAction = 'publish' | 'discard' | 'migrate';
 
 export type ContentEditorHint =
   | 'hero'
@@ -118,55 +117,6 @@ export async function discardContentDrafts(
   const q = new URLSearchParams({ locale });
   if (scope) q.set('scope', scope);
   return req(`/admin/content/drafts?${q}`, { method: 'DELETE' });
-}
-
-export async function shareContentBlock(
-  key: string,
-  locale: ContentLocale = 'en',
-  options: { source: ContentScope; draft_action?: ContentDraftAction },
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/share`, {
-    method: 'POST',
-    body: JSON.stringify({ locale, ...options }),
-  });
-}
-
-export async function splitContentBlock(
-  key: string,
-  locale: ContentLocale = 'en',
-  options: { draft_action?: ContentDraftAction } = {},
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/split`, {
-    method: 'POST',
-    body: JSON.stringify({ locale, ...options }),
-  });
-}
-
-export async function copyContentBlock(
-  key: string,
-  from: ContentScope,
-  to: ContentScope,
-  locale: ContentLocale = 'en',
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/copy`, {
-    method: 'POST',
-    body: JSON.stringify({ from, to, locale }),
-  });
-}
-
-/** Client-side section copy — loops per-block copy (no batch endpoint). */
-export async function copyContentSection(
-  keys: string[],
-  from: ContentScope,
-  to: ContentScope,
-  locale: ContentLocale = 'en',
-): Promise<{ blocks: ContentBlock[] }> {
-  let blocks: ContentBlock[] = [];
-  for (const key of keys) {
-    const res = await copyContentBlock(key, from, to, locale);
-    blocks = res.blocks;
-  }
-  return { blocks };
 }
 
 export async function uploadContentImage(

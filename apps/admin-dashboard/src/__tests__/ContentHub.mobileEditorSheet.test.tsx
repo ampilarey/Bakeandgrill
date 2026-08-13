@@ -16,10 +16,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -220,7 +216,7 @@ describe('ContentHub mobile editor sheet', () => {
     expect(document.body.contains(heroSheet)).toBe(true);
     expect(heroSheet.getAttribute('role')).toBe('dialog');
     expect(within(heroSheet).getByTestId('draft-save-status')).toBeTruthy();
-    expect(within(heroSheet).getByTestId('content-mode-hero_slides')).toBeTruthy();
+    expect(within(heroSheet).queryByTestId('content-mode-hero_slides')).toBeNull();
     expect(within(heroSheet).getByTestId('hero-slide-overview-0')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1').textContent).toMatch(/Hidden/);

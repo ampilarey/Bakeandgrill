@@ -11,10 +11,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -101,23 +97,21 @@ describe('Brand Kit UI', () => {
     );
 
     expect(await screen.findByTestId('brand-kit')).toBeTruthy();
-    expect(screen.getByTestId('brand-kit-banner')).toHaveTextContent(
-      /Branding is always identical on the website and the order app/i,
-    );
+    expect(screen.queryByTestId('brand-kit-banner')).toBeNull();
     for (const card of BRAND_KIT_CARDS) {
       const el = screen.getByTestId(`brand-kit-card-${card.key}`);
       expect(el).toBeTruthy();
       expect(el).toHaveTextContent(card.title);
     }
     expect(screen.queryByText('Phone number')).toBeNull();
-    expect(screen.queryByLabelText(/Customise for Website and Order App/i)).toBeNull();
+    expect(screen.queryByTestId(/content-mode-/)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Contact & map' }));
     expect(await screen.findByText('Phone number')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit')).toBeNull();
     fireEvent.click(screen.getByTestId('edit-business_phone'));
     const phoneSheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(phoneSheet).getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
+    expect(within(phoneSheet).queryByTestId('content-mode-business_phone')).toBeNull();
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {
@@ -143,7 +137,7 @@ describe('Brand Kit UI', () => {
     await waitFor(() => {
       expect(within(sheet).getByPlaceholderText('/storage/…')).toBeTruthy();
     });
-    expect(sheet).toHaveTextContent(/logo · image · en · Website \+ Order app/i);
+    expect(sheet).toHaveTextContent(/logo · image · en · Website/i);
   });
 
   it('empty asset shows Not set on overview and default copy in editor', async () => {

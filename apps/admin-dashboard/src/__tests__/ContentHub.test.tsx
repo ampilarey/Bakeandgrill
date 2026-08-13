@@ -10,10 +10,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -79,15 +75,9 @@ describe('ContentHubPage', () => {
       locales: ['en', 'dv'],
       blocks: [phoneBlock, logoBlock],
     });
-    vi.mocked(contentApi.shareContentBlock).mockImplementation(async () => ({
+    vi.mocked(contentApi.updateContent).mockResolvedValue({
       blocks: [phoneBlock, logoBlock],
-    }));
-    vi.mocked(contentApi.splitContentBlock).mockImplementation(async () => ({
-      blocks: [
-        { ...phoneBlock, state: 'split', link_state: 'different', website: '+960 111', order_app: '+960 222' },
-        logoBlock,
-      ],
-    }));
+    });
   });
 
   it('renders Content & Branding hub sections', async () => {
@@ -102,7 +92,7 @@ describe('ContentHubPage', () => {
     expect(screen.getByRole('button', { name: 'Contact & map' })).toBeTruthy();
   });
 
-  it('shows Same/Different control and splits into scoped tabs', async () => {
+  it('edits dual-app content in the current destination scope without mode controls', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
@@ -112,57 +102,21 @@ describe('ContentHubPage', () => {
     await screen.findByText('Phone number');
     fireEvent.click(screen.getByTestId('edit-business_phone'));
     const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(sheet).getByTestId('content-mode-business_phone')).toBeTruthy();
-    expect(within(sheet).getByLabelText(/Customise for Website and Order App/i)).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/[◉○]/);
+    expect(within(sheet).queryByTestId('content-mode-business_phone')).toBeNull();
+    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
+    expect(within(sheet).getByDisplayValue('+960 912 0011')).toBeTruthy();
 
-    fireEvent.click(within(sheet).getByLabelText(/Customise for Website and Order App/i));
-
-    await waitFor(() => {
-      expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en');
-    });
-
-    await waitFor(() => {
-      expect(within(sheet).getByTestId('scope-tabs-business_phone')).toBeTruthy();
-      expect(within(sheet).getByDisplayValue('+960 111')).toBeTruthy();
-      expect(within(sheet).queryByDisplayValue('+960 222')).toBeNull();
-    });
-
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
-    await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 222')).toBeTruthy();
-      expect(within(sheet).queryByDisplayValue('+960 111')).toBeNull();
-    });
-
-    fireEvent.click(within(sheet).getByLabelText(/Shared with Website and Order App/i));
-    const shareModal = await screen.findByTestId('share-source-modal');
-    fireEvent.click(within(shareModal).getByTestId('share-source-confirm'));
-    await waitFor(() => {
-      expect(contentApi.shareContentBlock).toHaveBeenCalledWith('business_phone', 'en', { source: 'website' });
-    });
-  });
-
-  it('passes discard draft_action after confirmation when mode changes with dirty drafts', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await within(sheet).findByDisplayValue('+960 912 0011');
     fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
-      target: { value: '+960 DRAFT' },
+      target: { value: '+960 WEB EDIT' },
     });
-    fireEvent.click(within(sheet).getByLabelText(/Customise for Website and Order App/i));
+    fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
     await waitFor(() => {
-      expect(contentApi.splitContentBlock).toHaveBeenCalledWith('business_phone', 'en', { draft_action: 'discard' });
+      expect(contentApi.updateContent).toHaveBeenCalledWith(
+        [{ key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' }],
+        'en',
+      );
     });
-    expect(confirmSpy).toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   it('branding block has no link control', async () => {
@@ -174,8 +128,7 @@ describe('ContentHubPage', () => {
 
     await screen.findByText('Logo — for light backgrounds');
     expect(screen.queryByText('Phone number')).toBeNull();
-    expect(screen.queryByLabelText(/Customise for Website and Order App/i)).toBeNull();
-    expect(screen.queryByLabelText(/Shared with Website and Order App/i)).toBeNull();
+    expect(screen.queryByTestId(/content-mode-/)).toBeNull();
   });
 
   it('opens Branding from ?group= deep link', async () => {
@@ -192,90 +145,6 @@ describe('ContentHubPage', () => {
     expect(screen.queryByText('Phone number')).toBeNull();
   });
 
-  it('copy-from-other-app appears only on split blocks and calls the copy endpoint', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
-      locale: 'en',
-      locales: ['en', 'dv'],
-      blocks: [
-        {
-          ...phoneBlock,
-          state: 'split',
-          link_state: 'different',
-          shared: null,
-          website: '+960 WEB',
-          order_app: '+960 ORDER',
-          resolved_website: '+960 WEB',
-          resolved_order_app: '+960 ORDER',
-        },
-        logoBlock,
-      ],
-    });
-    vi.mocked(contentApi.copyContentBlock).mockResolvedValue({
-      blocks: [
-        {
-          ...phoneBlock,
-          state: 'split',
-          link_state: 'different',
-          shared: null,
-          website: '+960 ORDER',
-          order_app: '+960 ORDER',
-          resolved_website: '+960 ORDER',
-          resolved_order_app: '+960 ORDER',
-        },
-        logoBlock,
-      ],
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await screen.findByText('Phone number');
-    fireEvent.click(screen.getByTestId('block-more-business_phone'));
-    expect(screen.getByTestId('copy-from-order-business_phone')).toBeTruthy();
-    expect(screen.queryByTestId('copy-from-website-business_phone')).toBeNull();
-
-    fireEvent.click(screen.getByTestId('copy-from-order-business_phone'));
-    await waitFor(() => {
-      expect(contentApi.copyContentBlock).toHaveBeenCalledWith(
-        'business_phone',
-        'order_app',
-        'website',
-        'en',
-      );
-    });
-    expect(confirmSpy).toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await waitFor(() => {
-      expect(within(sheet).getAllByDisplayValue('+960 ORDER').length).toBeGreaterThanOrEqual(1);
-    });
-
-    confirmSpy.mockRestore();
-  });
-
-  it('copy-from-other-app is hidden for Same-in-both and branding blocks', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await screen.findByText('Phone number');
-    fireEvent.click(screen.getByTestId('block-more-business_phone'));
-    expect(screen.queryByTestId('copy-from-website-business_phone')).toBeNull();
-    expect(screen.queryByTestId('copy-from-order-business_phone')).toBeNull();
-
-    // Branding has no Same/Different control and no copy actions in the hub.
-    fireEvent.click(screen.getByRole('button', { name: 'Branding' }));
-    await screen.findByText('Logo — for light backgrounds');
-    expect(screen.queryByTestId('copy-from-website-logo')).toBeNull();
-    expect(screen.queryByTestId('copy-from-order-logo')).toBeNull();
-    expect(screen.queryByTestId('block-more-logo')).toBeNull();
-  });
 });
 
 describe('content hub destinations', () => {

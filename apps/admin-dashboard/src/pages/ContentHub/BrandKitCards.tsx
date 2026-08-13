@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { Check, ChevronDown, ChevronRight, History, ImagePlus, Pencil } from 'lucide-react';
-import type { ContentBlock, ContentScope } from '../../api/content';
+import type { ContentApp, ContentBlock, ContentScope } from '../../api/content';
 import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { BRAND_KIT_CARDS, type BrandKitCardMeta, type BrandKitPreviewKind } from './brandKitConfig';
 
@@ -14,6 +14,7 @@ export type BrandKitCardsProps = {
   historyPanel: (block: ContentBlock) => ReactNode;
   siteName?: string;
   draftStatus?: ReactNode;
+  scopeLabel?: string;
 };
 
 function isSet(value: string): boolean {
@@ -404,6 +405,7 @@ function BrandKitEditorBody({
   onOpenHistory,
   historyPanel,
   siteName,
+  scopeLabel,
 }: {
   meta: BrandKitCardMeta;
   block: ContentBlock;
@@ -414,6 +416,7 @@ function BrandKitEditorBody({
   onOpenHistory: () => void;
   historyPanel: ReactNode;
   siteName: string;
+  scopeLabel: string;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -490,7 +493,7 @@ function BrandKitEditorBody({
         {advancedOpen ? (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-              {block.key} · {block.type} · en · Website + Order app
+              {block.key} · {block.type} · en · {scopeLabel}
             </div>
             <input
               value={value}
@@ -542,6 +545,7 @@ export function BrandKitCards({
   historyPanel,
   siteName = 'Bake & Grill',
   draftStatus,
+  scopeLabel = 'Website',
 }: BrandKitCardsProps) {
   const cards = BRAND_KIT_CARDS.filter((meta) => blocksByKey.has(meta.key));
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -550,23 +554,6 @@ export function BrandKitCards({
 
   return (
     <div data-testid="brand-kit" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div
-        data-testid="brand-kit-banner"
-        style={{
-          background: '#FEF3E8',
-          border: '1px solid #F0D9B8',
-          borderRadius: 12,
-          padding: '12px 14px',
-          fontSize: 13,
-          color: 'var(--color-text-secondary)',
-          lineHeight: 1.45,
-        }}
-      >
-        <strong style={{ color: 'var(--color-text)' }}>Branding is always identical on the website and the order app.</strong>
-        {' '}
-        Change it once — both surfaces update together.
-      </div>
-
       <div className="hub-brand-kit-grid" data-testid="brand-kit-cards-grid" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {cards.map((meta) => {
           const block = blocksByKey.get(meta.key)!;
@@ -600,6 +587,7 @@ export function BrandKitCards({
             onOpenHistory={() => onOpenHistory(editingBlock)}
             historyPanel={historyPanel(editingBlock)}
             siteName={siteName}
+            scopeLabel={scopeLabel}
           />
         </ContentEditorSheet>
       ) : null}
@@ -607,10 +595,10 @@ export function BrandKitCards({
   );
 }
 
-/** Scope used for always-synced brand writes (shared). */
-export function brandKitWriteScope(block: ContentBlock): ContentScope {
-  if (block.apps.includes('website') || block.apps.includes('order_app')) {
-    return 'shared';
-  }
+/** Scope used for destination-specific brand writes in Content Hub. */
+export function brandKitWriteScope(block: ContentBlock, app: ContentApp): ContentScope {
+  if (block.apps.includes(app)) return app;
+  if (block.apps.includes('website')) return 'website';
+  if (block.apps.includes('order_app')) return 'order_app';
   return 'shared';
 }

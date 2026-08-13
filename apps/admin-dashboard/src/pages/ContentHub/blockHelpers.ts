@@ -22,7 +22,7 @@ const KEY_HELPERS: Record<string, string> = {
   og_image: 'Image used when someone shares your site link on social apps.',
   primary_color: 'Brand accent colour for buttons and highlights on both apps.',
   default_item_image: 'Photo shown for menu items that do not have their own image.',
-  hero_slides: 'Full-width banners at the top of the home page (image or muted video). Use “Same in both” / “Different per app” above if the website and order app need different slides.',
+  hero_slides: 'Full-width banners at the top of the home page (image or muted video). Edit the current destination from its own Content Hub.',
   homepage_categories: 'Four category shortcuts on the home page.',
   trust_items: 'Trust strip icons and short lines on the home page.',
   proof_details: 'Small stats next to the social-proof section.',
