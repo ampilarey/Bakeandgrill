@@ -25,7 +25,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
-vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsCompactAdmin: () => false, useIsWideDesktop: () => true }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {

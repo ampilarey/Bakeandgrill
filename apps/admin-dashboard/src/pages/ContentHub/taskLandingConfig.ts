@@ -91,7 +91,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'announcement',
         title: 'Announcement',
-        description: 'Banner message across Website and Order App',
+        description: 'Banner message for this app only',
         icon: Bell,
         group: 'Announcements',
         placements: ['Website header', 'Order App desktop header', 'Order App phone home'],
@@ -321,7 +321,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
   {
     id: 'announcement',
     title: 'Announcement',
-    description: 'Banner message across Website and Order App',
+    description: 'Banner message for this app only',
     icon: Bell,
     group: 'Announcements',
     placements: ['Website header', 'Order App desktop header', 'Order App phone home'],

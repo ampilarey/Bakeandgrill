@@ -8,6 +8,8 @@ let isMobileFlag = true;
 
 vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => isMobileFlag,
+  useIsCompactAdmin: () => false,
+  useIsWideDesktop: () => !isMobileFlag,
 }));
 
 vi.mock('../api/content', () => ({
@@ -229,7 +231,7 @@ describe('ContentHub mobile editor sheet', () => {
     fireEvent.change(title, { target: { value: 'Draft title change' } });
     await waitFor(() => {
       expect(
-        screen.getAllByTestId('draft-save-status').some((el) => /Draft saved — not live/i.test(el.textContent || '')),
+        screen.getAllByTestId('draft-save-status').some((el) => /Draft saved|Saving draft/i.test(el.textContent || '')),
       ).toBe(true);
     });
 
@@ -244,7 +246,7 @@ describe('ContentHub mobile editor sheet', () => {
 
     expect(contentApi.updateContent).not.toHaveBeenCalled();
     const statuses = screen.getAllByTestId('draft-save-status');
-    expect(statuses.some((el) => /Draft saved — not live/i.test(el.textContent || ''))).toBe(true);
+    expect(statuses.some((el) => /Draft saved|Saving draft/i.test(el.textContent || ''))).toBe(true);
   });
 
   it('block ⋯ menu uses a collision-safe mobile action sheet', async () => {

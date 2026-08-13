@@ -9,6 +9,8 @@ let isMobileFlag = true;
 
 vi.mock('../hooks/useIsMobile', () => ({
   useIsMobile: () => isMobileFlag,
+  useIsCompactAdmin: () => false,
+  useIsWideDesktop: () => !isMobileFlag,
 }));
 
 vi.mock('../api/content', () => ({

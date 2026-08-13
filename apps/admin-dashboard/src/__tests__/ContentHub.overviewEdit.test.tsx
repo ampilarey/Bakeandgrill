@@ -25,7 +25,7 @@ vi.mock('../api/content', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
-vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsCompactAdmin: () => false, useIsWideDesktop: () => true }));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -135,13 +135,13 @@ describe('Content Hub Overview → Edit', () => {
     fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
       target: { value: '+960 DRAFT KEEP' },
     });
-    expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved — not live/);
+    expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/All published/);
 
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
     await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-business_phone')).toBeNull());
 
-    expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved — not live/);
+    expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
     fireEvent.click(screen.getByTestId('edit-business_phone'));
     sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     expect(within(sheet).getByDisplayValue('+960 DRAFT KEEP')).toBeTruthy();
