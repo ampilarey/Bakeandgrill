@@ -90,13 +90,17 @@ slide.
 
 ### 1.3 Remaining gaps — this is what the plan is for
 
-1. **The information architecture is unchanged.** Still 12 storage groups on the website side,
-   with "Pages" holding 44 blocks. Homepage wording is still spread across Homepage, Hero,
-   Announcements, Footer, General and Branding.
-2. **A group labelled "Order App" still appears inside Website Content** — 10 `order_mode_*`
-   blocks that legitimately render on the website's homepage mode cards but are named after the
-   wrong thing.
-3. **Groups still carry engineering names** — "General", "Pages", "Status banners".
+1. ~~**The information architecture is unchanged.**~~ **Closed (Stage 4).** Hub sections are
+   page-first from the Stage 2 inventory (`contentHubGroupMap.ts` + `backend/config/content.php`
+   `group` labels). Website: Home / Menu page / Contact page / Hours page / Legal / Everywhere.
+   Order App: Home / Menu / Ordering / Order history / Gift cards / About / Contact page /
+   Hours page / Privacy / Signage / Everywhere. Empty sections omit from the rail.
+2. ~~**A group labelled "Order App" still appears inside Website Content.**~~ **Closed (Stage 4).**
+   Website `order_mode_*` keys live under **Home** with an **Order buttons** rail subgroup
+   (not an "Order App" section inside Website Content).
+3. ~~**Groups still carry engineering names.**~~ **Closed (Stage 4).** `General`, `Pages`,
+   `Status banners`, `Homepage`, `Branding`, `Footer`, `SEO`, `Contact & map`, etc. are hidden
+   or aliased to Stage 4 names; landing tasks and deep links redirect accordingly.
 4. ~~**`ContentHubPage.tsx` has grown to 2,301 lines.**~~ **Closed (Stage 3 pure refactor).**
    Split into host components (`HubSurfaceLanding`, `HubSectionList`, `HubSectionContent`,
    `HubEditorSheets`, `HubPreviewHost`, `HubPublishBar` + `hubDraftUtils`).
@@ -307,7 +311,7 @@ Two consequences that would not otherwise be in this plan:
 | Menu page | menu page copy |
 | Contact page | contact copy, form labels, map |
 | Hours page | hours page copy |
-| Events & Catering | catering copy and CTAs |
+| Events & Catering | *(inventory: no standalone keys — `events_section_*` under Home; contact CTAs under Contact page; landing task deep-links Home)* |
 | Legal | privacy, terms, refund |
 | Everywhere | Website header, Website footer, announcement bar, Website branding, Website SEO |
 
@@ -437,9 +441,12 @@ Pure refactor, six commits, no visible/behaviour/data change. Hosts: surface lan
 list, block/section content, editor sheets, preview, publish bar. Admin suite green after each
 commit; zero existing tests edited. Residual page size 1,340 lines (see §1.3 gap 4).
 
-**Stage 4 — Regroup and rename.** §6.1 and §6.3 together, never apart — regrouping without
-renaming leaves "Order App" inside Website Content and is worse than doing neither. Guarded by the
-every-key-appears-exactly-once test.
+**Stage 4 — Regroup and rename. Done on this branch.** §6.1 and §6.3 together: inventory-derived
+`contentHubGroupMap.ts` drives hub membership; `content.php` `group` labels aligned; Website
+"Order App" / Status banners / Pages / General dissolved; Brand Kit + announcements under
+Everywhere; Home layout editor binds to `Home` (legacy `Homepage` aliased). Matrix row 8 UI half:
+`contentHubGroupMap.test.ts` (fail-proved). Events band keys stay on Home per Stage 2 inventory
+(no empty Events & Catering section).
 
 **Stage 5 — Responsive bands.** §7.2, including 414 and 1366.
 

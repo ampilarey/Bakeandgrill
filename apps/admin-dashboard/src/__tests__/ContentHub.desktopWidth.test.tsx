@@ -49,7 +49,7 @@ vi.mock('../components/MediaPicker', () => ({
 const sharedPhone = {
   key: 'delivery_time',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Home',
   type: 'text' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -73,9 +73,9 @@ const splitPhone = {
 };
 
 const splitBoolean = {
-  key: 'show_hours',
-  label: 'Show hours',
-  group: 'Contact',
+  key: 'announcement_enabled',
+  label: 'Show announcement',
+  group: 'Everywhere',
   type: 'boolean' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -107,7 +107,7 @@ describe('ContentHub desktop width', () => {
   it('dual-app blocks render one current-destination editor with no tabs', async () => {
     mockBlocks([splitPhone]);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -124,7 +124,7 @@ describe('ContentHub desktop width', () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.updateContent).mockResolvedValue({ blocks: [splitPhone] });
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -146,7 +146,7 @@ describe('ContentHub desktop width', () => {
   it('shared backend state still renders one current-destination editor with no tabs', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -160,21 +160,21 @@ describe('ContentHub desktop width', () => {
   it('boolean dual-app block stays compact and untabbed', async () => {
     mockBlocks([splitBoolean]);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('block-card-show_hours');
-    expect(screen.queryByTestId('boolean-scopes-show_hours')).toBeNull();
-    expect(screen.queryByTestId('scope-tabs-show_hours')).toBeNull();
+    await screen.findByTestId('block-card-announcement_enabled');
+    expect(screen.queryByTestId('boolean-scopes-announcement_enabled')).toBeNull();
+    expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
   });
 
   it('History opens for the current destination scope', async () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.getContentRevisions).mockResolvedValue({ revisions: [] });
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -195,7 +195,7 @@ describe('ContentHub desktop width', () => {
     window.localStorage.setItem('bg_hub_preview_open', '1');
 
     const { unmount } = render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -213,7 +213,7 @@ describe('ContentHub desktop width', () => {
 
     unmount();
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -227,7 +227,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
     const wide = render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -238,7 +238,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -250,7 +250,7 @@ describe('ContentHub desktop width', () => {
   it('rail collapse toggles icon strip and persists', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -274,7 +274,7 @@ describe('ContentHub desktop width — mobile unchanged', () => {
 
   it('keeps section grid, no preview column, sheet still works', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

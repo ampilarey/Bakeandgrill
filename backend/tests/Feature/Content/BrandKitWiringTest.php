@@ -79,7 +79,7 @@ class BrandKitWiringTest extends TestCase
     public function test_menu_new_days_and_og_image_groups(): void
     {
         $this->assertSame('Menu', ContentRegistry::block('menu_new_days')['group'] ?? null);
-        $this->assertSame('Branding', ContentRegistry::block('og_image')['group'] ?? null);
+        $this->assertSame('Everywhere', ContentRegistry::block('og_image')['group'] ?? null);
         $this->assertSame('Link preview image', ContentRegistry::block('og_image')['label'] ?? null);
     }
 }

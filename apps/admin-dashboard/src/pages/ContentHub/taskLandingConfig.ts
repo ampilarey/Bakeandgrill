@@ -84,7 +84,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Business profile & language',
         description: 'Logo, colours, site name, and language-facing brand assets',
         icon: Palette,
-        group: 'Branding',
+        group: 'Everywhere',
         placements: ['Website header', 'Order App phone home'],
         statusHint: 'Website only',
       },
@@ -93,7 +93,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Announcement',
         description: 'Banner message for this app only',
         icon: Bell,
-        group: 'Announcements',
+        group: 'Everywhere',
         placements: ['Website header', 'Order App desktop header', 'Order App phone home'],
       },
       {
@@ -101,7 +101,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Website header',
         description: 'Header chrome — components placed on the Website header surface',
         icon: PanelTop,
-        group: 'Homepage',
+        group: 'Home',
         homeAppHint: 'website',
         surface: 'website.mobile.header',
         placements: ['Website header'],
@@ -112,7 +112,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Website footer',
         description: 'Website footer copy, links, and socials',
         icon: PanelBottom,
-        group: 'Footer',
+        group: 'Everywhere',
         placements: ['Website footer'],
         statusHint: 'Website only',
       },
@@ -121,7 +121,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Order App navigation',
         description: 'Bottom navigation tabs in the ordering app',
         icon: Navigation,
-        group: 'Homepage',
+        group: 'Home',
         homeAppHint: 'order_app',
         surface: 'order_app.mobile.bottom_navigation',
         placements: ['Order App bottom navigation'],
@@ -131,7 +131,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Hero banners',
         description: 'Slideshow photos and titles used by Website Home and Order App Home',
         icon: Image,
-        group: 'Hero',
+        group: 'Home',
         placements: ['Website home', 'Order App phone home', 'Order App desktop home'],
       },
     ],
@@ -145,16 +145,16 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Home',
         description: 'Reorderable sections plus fixed trust strip, events band, and footer',
         icon: Home,
-        group: 'Homepage',
+        group: 'Home',
         homeAppHint: 'website',
         placements: ['Website home'],
       },
       {
         id: 'contact_map',
-        title: 'Contact & map',
+        title: 'Contact page',
         description: 'Phone, messaging, address, and map on the Website',
         icon: Contact,
-        group: 'Contact & map',
+        group: 'Contact page',
         placements: ['Website contact'],
         statusHint: 'Website only',
       },
@@ -163,16 +163,16 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Operating hours',
         description: 'Hours page wording — real café schedule is managed in Online Ordering',
         icon: Clock,
-        group: 'Opening hours',
+        group: 'Hours page',
         placements: ['Website hours', 'Order App hours'],
         statusHint: 'Website only',
       },
       {
         id: 'catering_events',
-        title: 'Catering & events',
+        title: 'Events & Catering',
         description: 'Website home band and contact CTAs — not a standalone full page builder',
         icon: LayoutTemplate,
-        group: 'Catering & events',
+        group: 'Home',
         placements: ['Website home', 'Website contact'],
         statusHint: 'Fixed',
       },
@@ -189,7 +189,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'SEO & analytics',
         description: 'Search titles, descriptions, and tracking IDs',
         icon: Search,
-        group: 'SEO',
+        group: 'Everywhere',
         placements: ['Website header'],
       },
     ],
@@ -203,7 +203,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Home',
         description: 'Phone & desktop home layout — prayer phone block vs desktop header ownership',
         icon: ShoppingBag,
-        group: 'Homepage',
+        group: 'Home',
         homeAppHint: 'order_app',
         placements: ['Order App phone home', 'Order App desktop home'],
       },
@@ -218,9 +218,9 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'order_wording',
         title: 'Checkout & sign-in wording',
-        description: 'Greeting, modes, checkout, and account copy',
+        description: 'Checkout titles, payment note, and login privacy line',
         icon: Sparkles,
-        group: 'Order App',
+        group: 'Ordering',
         placements: ['Order App checkout', 'Order App phone home'],
       },
       {
@@ -236,7 +236,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Contact',
         description: 'Contact details on the Order App',
         icon: Contact,
-        group: 'Contact & map',
+        group: 'Contact page',
         placements: ['Order App contact'],
         statusHint: 'Order App only',
       },
@@ -245,7 +245,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Hours',
         description: 'Hours page wording — schedule itself lives in Online Ordering',
         icon: Clock,
-        group: 'Opening hours',
+        group: 'Hours page',
         placements: ['Order App hours'],
         statusHint: 'Order App only',
       },
@@ -254,7 +254,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Privacy',
         description: 'Order App privacy copy (legal pages)',
         icon: FileText,
-        group: 'Legal',
+        group: 'Privacy',
         placements: ['Order App privacy'],
       },
       {
@@ -262,7 +262,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
         title: 'Ordering status banners',
         description: 'Open/closed and service messages customers see while ordering',
         icon: MessageSquare,
-        group: 'Status banners',
+        group: 'Home',
         placements: ['Order App status banners'],
       },
     ],
@@ -306,7 +306,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Brand Kit',
     description: 'Logo, colours, site name, and language-facing brand assets',
     icon: Palette,
-    group: 'Branding',
+    group: 'Everywhere',
     placements: ['Website header', 'Order App phone home'],
     statusHint: 'Website only',
   },
@@ -315,7 +315,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Hero banners',
     description: 'Slideshow photos and titles used by Website Home and Order App Home',
     icon: Image,
-    group: 'Hero',
+    group: 'Home',
     placements: ['Website home', 'Order App phone home', 'Order App desktop home'],
   },
   {
@@ -323,7 +323,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Announcement',
     description: 'Banner message for this app only',
     icon: Bell,
-    group: 'Announcements',
+    group: 'Everywhere',
     placements: ['Website header', 'Order App desktop header', 'Order App phone home'],
   },
   {
@@ -331,7 +331,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Website footer',
     description: 'Website footer copy, links, and socials',
     icon: PanelBottom,
-    group: 'Footer',
+    group: 'Everywhere',
     placements: ['Website footer'],
     statusHint: 'Website only',
   },
@@ -340,7 +340,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Website header',
     description: 'Header chrome — components placed on the Website header surface',
     icon: PanelTop,
-    group: 'Homepage',
+    group: 'Home',
     homeAppHint: 'website',
     surface: 'website.mobile.header',
     placements: ['Website header'],
@@ -351,7 +351,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Order App navigation',
     description: 'Bottom navigation tabs in the ordering app',
     icon: Navigation,
-    group: 'Homepage',
+    group: 'Home',
     homeAppHint: 'order_app',
     surface: 'order_app.mobile.bottom_navigation',
     placements: ['Order App bottom navigation'],
@@ -361,7 +361,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'SEO & analytics',
     description: 'Search titles, descriptions, and tracking IDs',
     icon: Search,
-    group: 'SEO',
+    group: 'Everywhere',
     placements: ['Website header'],
   },
   {
@@ -377,25 +377,25 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Operating hours',
     description: 'Hours page wording — real café schedule is managed in Online Ordering',
     icon: Clock,
-    group: 'Opening hours',
+    group: 'Hours page',
     placements: ['Website hours', 'Order App hours'],
     statusHint: 'Website only',
   },
   {
     id: 'contact_map',
-    title: 'Contact & map',
+    title: 'Contact page',
     description: 'Phone, messaging, address, and map on the Website',
     icon: Contact,
-    group: 'Contact & map',
+    group: 'Contact page',
     placements: ['Website contact'],
     statusHint: 'Website only',
   },
   {
     id: 'catering_events',
-    title: 'Catering & events',
+    title: 'Events & Catering',
     description: 'Website home band and contact CTAs — not a standalone full page builder',
     icon: LayoutTemplate,
-    group: 'Catering & events',
+    group: 'Home',
     placements: ['Website home', 'Website contact'],
     statusHint: 'Fixed',
   },
@@ -410,9 +410,9 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
   {
     id: 'order_wording',
     title: 'Checkout & sign-in wording',
-    description: 'Greeting, modes, checkout, and account copy',
+    description: 'Checkout titles, payment note, and login privacy line',
     icon: Sparkles,
-    group: 'Order App',
+    group: 'Ordering',
     placements: ['Order App checkout', 'Order App phone home'],
   },
   {
@@ -428,7 +428,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Contact',
     description: 'Contact details on the Order App',
     icon: Contact,
-    group: 'Contact & map',
+    group: 'Contact page',
     placements: ['Order App contact'],
     statusHint: 'Order App only',
   },
@@ -437,7 +437,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Hours',
     description: 'Hours page wording — schedule itself lives in Online Ordering',
     icon: Clock,
-    group: 'Opening hours',
+    group: 'Hours page',
     placements: ['Order App hours'],
     statusHint: 'Order App only',
   },
@@ -446,7 +446,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Privacy',
     description: 'Order App privacy copy (legal pages)',
     icon: FileText,
-    group: 'Legal',
+    group: 'Privacy',
     placements: ['Order App privacy'],
   },
   {
@@ -454,7 +454,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
     title: 'Ordering status banners',
     description: 'Open/closed and service messages customers see while ordering',
     icon: MessageSquare,
-    group: 'Status banners',
+    group: 'Home',
     placements: ['Order App status banners'],
   },
   {
@@ -490,23 +490,27 @@ export function clusterIdForSection(sectionName: string): ContentTaskCluster['id
       if (task.group === sectionName) return cluster.id;
     }
   }
-  if (sectionName === 'Menu' || sectionName === 'Status banners' || sectionName === 'Pre-Order' || sectionName === 'Order App') {
+  if (
+    sectionName === 'Menu'
+    || sectionName === 'Ordering'
+    || sectionName === 'Order history'
+    || sectionName === 'Gift cards'
+    || sectionName === 'About'
+    || sectionName === 'Privacy'
+    || sectionName === 'Signage'
+  ) {
     return 'order_app';
   }
-  if (sectionName === 'General' || sectionName === 'Store' || sectionName === 'SEO' || sectionName === 'Legal') {
-    return sectionName === 'SEO' || sectionName === 'Legal' ? 'website' : 'tools';
-  }
   if (
-    sectionName === 'Homepage'
-    || sectionName === 'Contact & map'
-    || sectionName === 'Opening hours'
-    || sectionName === 'Catering & events'
-    || sectionName === 'Footer'
-    || sectionName === 'About'
+    sectionName === 'Home'
+    || sectionName === 'Menu page'
+    || sectionName === 'Contact page'
+    || sectionName === 'Hours page'
+    || sectionName === 'Legal'
   ) {
-    return sectionName === 'About' ? 'order_app' : 'website';
+    return 'website';
   }
-  if (sectionName === 'Hero' || sectionName === 'Announcements' || sectionName === 'Branding') {
+  if (sectionName === 'Everywhere') {
     return 'global';
   }
   return 'tools';

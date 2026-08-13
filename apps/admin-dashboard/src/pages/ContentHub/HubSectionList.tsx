@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import type { ContentBlock, ContentScope } from '../../api/content';
+import type { ContentApp, ContentBlock, ContentScope } from '../../api/content';
 import { SectionRail, type SectionRailItem } from './SectionRail';
 import { blocksForContentView, isGroupDirty } from './websitePageTasks';
 
 export type HubSectionListProps = {
+  app: ContentApp;
   orderedSectionNames: string[];
   contentBlocks: ContentBlock[];
   draftKeys: string[];
@@ -20,13 +21,14 @@ export function buildHubRailSections(
   contentBlocks: ContentBlock[],
   draftKeys: string[],
   parseDraftKey: (composite: string) => { scope: ContentScope; key: string } | null,
+  app: ContentApp,
 ): SectionRailItem[] {
   return orderedSectionNames.map((name) => {
-    const viewBlocks = blocksForContentView(name, contentBlocks);
+    const viewBlocks = blocksForContentView(name, contentBlocks, app);
     return {
       name,
       count: viewBlocks.length,
-      dirty: isGroupDirty(name, contentBlocks, draftKeys, parseDraftKey),
+      dirty: isGroupDirty(name, contentBlocks, draftKeys, parseDraftKey, app),
     };
   });
 }
@@ -36,6 +38,7 @@ export function buildHubRailSections(
  * Owns rail section row derivation; selection state stays in ContentHubPage.
  */
 export function HubSectionList({
+  app,
   orderedSectionNames,
   contentBlocks,
   draftKeys,
@@ -46,8 +49,8 @@ export function HubSectionList({
   onToggleCollapsed,
 }: HubSectionListProps) {
   const sections = useMemo(
-    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey),
-    [orderedSectionNames, contentBlocks, draftKeys, parseDraftKey],
+    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey, app),
+    [app, orderedSectionNames, contentBlocks, draftKeys, parseDraftKey],
   );
 
   return (

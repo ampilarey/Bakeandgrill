@@ -143,15 +143,15 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
   });
 
-  it('Contact & map sheet shows only contact fields', async () => {
+  it('Contact page sheet shows only contact fields', async () => {
     openHub('/content/website');
     await screen.findByTestId('task-card-contact_map');
     fireEvent.click(screen.getByTestId('task-card-contact_map'));
 
     const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(sheet.textContent).toMatch(/Contact & map/);
+    expect(sheet.textContent).toMatch(/Contact page/);
     const editor = within(sheet).getByTestId('section-editor');
-    expect(editor.getAttribute('data-section')).toBe('Contact & map');
+    expect(editor.getAttribute('data-section')).toBe('Contact page');
 
     expect(within(sheet).getByTestId('block-card-contact_page_title')).toBeTruthy();
     expect(within(sheet).getByTestId('block-card-maps_embed_url')).toBeTruthy();
@@ -161,33 +161,35 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(within(sheet).queryByTestId('block-card-homepage_categories')).toBeNull();
     expect(within(sheet).queryByTestId('block-card-events_section_headline')).toBeNull();
     expect(within(sheet).queryByTestId('block-card-about_values')).toBeNull();
+    expect(within(sheet).getByTestId('block-card-contact_events_cta_headline')).toBeTruthy();
   });
 
-  it('Opening hours sheet shows only hours fields', async () => {
-    openHub('/content/website?group=Opening%20hours');
+  it('Hours page sheet shows only hours fields', async () => {
+    openHub('/content/website?group=Hours%20page');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-hours_page_title')).toBeTruthy();
     expect(within(sheet).queryByTestId('block-card-contact_page_title')).toBeNull();
   });
 
-  it('About sheet shows only about fields', async () => {
-    openHub('/content/website?group=About');
+  it('About sheet shows only about fields on Order App', async () => {
+    openHub('/content/order-app?group=About');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-about_values')).toBeTruthy();
     expect(within(sheet).getByTestId('block-card-about_page_title')).toBeTruthy();
     expect(within(sheet).queryByTestId('block-card-hours_page_title')).toBeNull();
   });
 
-  it('Catering & events sheet shows only events fields', async () => {
-    openHub('/content/website?group=Catering%20%26%20events');
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('block-card-events_section_headline')).toBeTruthy();
-    expect(within(sheet).getByTestId('block-card-contact_events_cta_headline')).toBeTruthy();
-    expect(within(sheet).queryByTestId('block-card-contact_page_title')).toBeNull();
+  it('Home sheet includes events band fields', async () => {
+    isMobileFlag = false;
+    window.localStorage.setItem('bg_hub_preview_open', '0');
+    openHub('/content/website?group=Home');
+    await screen.findByTestId('section-editor');
+    expect(screen.getByTestId('block-card-events_section_headline')).toBeTruthy();
+    expect(screen.queryByTestId('block-card-contact_page_title')).toBeNull();
   });
 
-  it('Footer sheet shows only footer fields', async () => {
-    openHub('/content/website?group=Footer');
+  it('Everywhere sheet includes footer fields', async () => {
+    openHub('/content/website?group=Everywhere');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-footer_text')).toBeTruthy();
     expect(within(sheet).queryByTestId('block-card-privacy_page_title')).toBeNull();
@@ -203,19 +205,27 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(screen.queryByTestId('block-card-contact_page_title')).toBeNull();
   });
 
-  it('Order App receives office_orders fields', async () => {
+  it('Order App Home receives office_orders fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
-    openHub('/content/order-app?group=Order%20App');
+    openHub('/content/order-app?group=Home');
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-office_orders_headline')).toBeTruthy();
+    expect(screen.queryByTestId('block-card-order_checkout_title')).toBeNull();
+  });
+
+  it('Order App Ordering receives checkout fields', async () => {
+    isMobileFlag = false;
+    window.localStorage.setItem('bg_hub_preview_open', '0');
+    openHub('/content/order-app?group=Ordering');
+    await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-order_checkout_title')).toBeTruthy();
   });
 
-  it('Homepage receives remapped home content fields', async () => {
+  it('Home receives remapped home content fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
-    openHub('/content/website?group=Homepage');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-homepage_categories')).toBeTruthy();
     expect(screen.getByTestId('block-card-trust_items')).toBeTruthy();
@@ -235,7 +245,7 @@ describe('ContentHub Website pages focused tasks', () => {
       saved_at: null,
     }));
 
-    openHub('/content/website?group=Homepage');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('section-editor');
 
     // No content key drafts exist — Publish should still appear because the
@@ -269,7 +279,7 @@ describe('ContentHub Website pages focused tasks', () => {
     }));
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    openHub('/content/website?group=Homepage');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('section-editor');
     await screen.findByTestId('publish-live-btn');
 
@@ -285,7 +295,7 @@ describe('ContentHub Website pages focused tasks', () => {
     confirmSpy.mockRestore();
   });
 
-  it.each([320, 375, 390] as const)('Contact & map sheet does not overflow at %ipx', async (width) => {
+  it.each([320, 375, 390] as const)('Contact page sheet does not overflow at %ipx', async (width) => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
     Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: width });
 

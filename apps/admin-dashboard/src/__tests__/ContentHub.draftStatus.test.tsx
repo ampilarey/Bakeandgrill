@@ -54,7 +54,7 @@ vi.mock('../components/MediaPicker', () => ({
 const richBlock: ContentBlock = {
   key: 'cta_band_headline',
   label: 'CTA headline',
-  group: 'Homepage',
+  group: 'Home',
   type: 'textarea',
   rich: true,
   apps: ['website', 'order_app'],
@@ -91,7 +91,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('shows not-yet-live wording and a reachable publish action while unpublished', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -114,7 +114,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('autosave does not call updateContent; publish does', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -136,7 +136,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('reads as published after publish clears dirty state', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

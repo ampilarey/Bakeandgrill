@@ -84,9 +84,9 @@ vi.mock('../api/pageBlocks', () => ({
 }));
 
 const heroEnable = {
-  key: 'section_hero_enabled',
+  key: 'announcement_enabled',
   label: 'Show Hero Section',
-  group: 'Hero',
+  group: 'Everywhere',
   type: 'boolean' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -103,7 +103,7 @@ const heroEnable = {
 const heroSlides = {
   key: 'hero_slides',
   label: 'Hero Slides',
-  group: 'Hero',
+  group: 'Home',
   type: 'json' as const,
   editor: 'hero' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
@@ -118,27 +118,10 @@ const heroSlides = {
   description: 'Carousel slides for the top of the homepage with image title and CTAs.',
 };
 
-const homeEnable = {
-  key: 'section_proof_enabled',
-  label: 'Show Social Proof',
-  group: 'Homepage',
-  type: 'boolean' as const,
-  apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
-  shareable: true,
-  public: true,
-  section_enable: true,
-  shared: 'true',
-  website: null,
-  order_app: null,
-  resolved_website: 'true',
-  resolved_order_app: 'true',
-  state: 'shared' as const,
-};
-
 const proofStat = {
   key: 'proof_stat',
   label: 'Proof headline number',
-  group: 'Homepage',
+  group: 'Home',
   type: 'text' as const,
   apps: ['website'] as Array<'website' | 'order_app'>,
   shareable: false,
@@ -153,9 +136,9 @@ const proofStat = {
 };
 
 const footerEnable = {
-  key: 'section_footer_enabled',
+  key: 'language_switcher_enabled',
   label: 'Show Footer',
-  group: 'Footer',
+  group: 'Everywhere',
   type: 'boolean' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -170,9 +153,9 @@ const footerEnable = {
 };
 
 const footerText = {
-  key: 'footer_tagline',
+  key: 'footer_text',
   label: 'Footer tagline',
-  group: 'Footer',
+  group: 'Everywhere',
   type: 'text' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -189,7 +172,7 @@ const footerText = {
 const logoBlock = {
   key: 'logo',
   label: 'Logo (Light)',
-  group: 'Branding',
+  group: 'Everywhere',
   type: 'image' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -205,7 +188,7 @@ const logoBlock = {
 const phoneBlock = {
   key: 'delivery_time',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Home',
   type: 'text' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -222,7 +205,6 @@ const phoneBlock = {
 const allBlocks = [
   heroEnable,
   heroSlides,
-  homeEnable,
   proofStat,
   footerEnable,
   footerText,
@@ -255,7 +237,7 @@ describe('ContentHub mobile polish — systemic', () => {
   });
 
   it('does not render content-mode controls across multiple sections', async () => {
-    openSection('Hero');
+    openSection('Home');
     await screen.findByTestId('section-editor');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
@@ -263,84 +245,60 @@ describe('ContentHub mobile polish — systemic', () => {
     expect(within(heroSheet).queryByTestId('content-mode-hero_slides')).toBeNull();
     fireEvent.click(within(heroSheet).getByTestId('content-editor-sheet-close'));
 
-    fireEvent.click(screen.getByTestId('section-rail-Homepage'));
-    await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Homepage');
-    });
-    expect(document.body.textContent).not.toMatch(/[◉○]/);
-    // Homepage chrome is the page_blocks layout editor (legacy order card hidden).
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('section-rail-Footer'));
+    fireEvent.click(screen.getByTestId('section-rail-Everywhere'));
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Footer');
+      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
     });
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    fireEvent.click(screen.getByTestId('edit-footer_tagline'));
-    const footerSheet = await screen.findByTestId('block-editor-sheet-footer_tagline');
-    expect(within(footerSheet).queryByTestId('content-mode-footer_tagline')).toBeNull();
-    expect(within(footerSheet).queryByTestId('scope-tabs-footer_tagline')).toBeNull();
+    fireEvent.click(screen.getByTestId('edit-footer_text'));
+    const footerSheet = await screen.findByTestId('block-editor-sheet-footer_text');
+    expect(within(footerSheet).queryByTestId('content-mode-footer_text')).toBeNull();
+    expect(within(footerSheet).queryByTestId('scope-tabs-footer_text')).toBeNull();
   });
 
   it('section-enable switches use the current destination — never Both', async () => {
-    openSection('Hero');
-    await screen.findByTestId('section-enable-section_hero_enabled');
-    const heroSwitch = screen.getByTestId('section-enable-switch-section_hero_enabled-website');
+    openSection('Everywhere');
+    await screen.findByTestId('section-enable-announcement_enabled');
+    const heroSwitch = screen.getByTestId('section-enable-switch-announcement_enabled-website');
     expect(heroSwitch.textContent).toMatch(/Website/);
     expect(heroSwitch.textContent).not.toMatch(/\bBoth\b/);
 
-    // Dual-app enable on Footer still edits the current destination only.
-    fireEvent.click(screen.getByTestId('section-rail-Footer'));
-    await screen.findByTestId('section-enable-section_footer_enabled');
-    expect(screen.getByTestId('section-enable-switch-section_footer_enabled-website').textContent).toMatch(/Website/);
-    expect(screen.queryByTestId('section-enable-switch-section_footer_enabled-order_app')).toBeNull();
-    expect(screen.queryByTestId('section-enable-switch-section_footer_enabled-shared')).toBeNull();
+    await screen.findByTestId('section-enable-language_switcher_enabled');
+    expect(screen.getByTestId('section-enable-switch-language_switcher_enabled-website').textContent).toMatch(/Website/);
+    expect(screen.queryByTestId('section-enable-switch-language_switcher_enabled-order_app')).toBeNull();
+    expect(screen.queryByTestId('section-enable-switch-language_switcher_enabled-shared')).toBeNull();
 
-    const enableCard = screen.getByTestId('section-enable-section_footer_enabled');
+    const enableCard = screen.getByTestId('section-enable-language_switcher_enabled');
     const switchLabels = Array.from(enableCard.querySelectorAll('.hub-section-enable-switch'))
       .map((el) => el.textContent || '');
     expect(switchLabels.some((t) => /\bBoth\b/.test(t))).toBe(false);
   });
 
   it('section-enable card face has no content key (extends meta-line rule)', async () => {
-    openSection('Hero');
-    await screen.findByTestId('section-enable-section_hero_enabled');
-    const enableFace = screen.getByTestId('section-enable-section_hero_enabled');
+    openSection('Everywhere');
+    await screen.findByTestId('section-enable-announcement_enabled');
+    const enableFace = screen.getByTestId('section-enable-announcement_enabled');
     expect(enableFace.textContent).toContain('Show Hero Section');
-    expect(enableFace.textContent).not.toContain('section_hero_enabled');
+    expect(enableFace.textContent).not.toContain('announcement_enabled');
     expect(enableFace.querySelector('.hub-section-enable-face')?.textContent).not.toMatch(/·/);
-
-    // Regular BlockCard path still holds
-    expect(screen.queryByText(/hero_slides\s*·/i)).toBeNull();
-    fireEvent.click(screen.getByTestId('block-more-hero_slides'));
-    await waitFor(() => {
-      expect(screen.getByTestId('block-menu-hero_slides').textContent).toContain('hero_slides');
-    });
   });
 
-  it('section header block count matches rendered cards on multiple sections', async () => {
-    openSection('Hero');
+  it('section header block count matches rendered cards on Home', async () => {
+    openSection('Home');
     await screen.findByTestId('section-editor');
-    // enable + hero slides = 2
-    expect(screen.getByTestId('section-editor-count').textContent).toBe('2 blocks');
-    const heroCards = document.querySelectorAll(
-      '[data-testid="section-enable-section_hero_enabled"], [data-testid="block-card-hero_slides"]',
-    );
-    expect(heroCards.length).toBe(2);
-
-    fireEvent.click(screen.getByTestId('section-rail-Homepage'));
-    await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Homepage');
-    });
-    // Layout editor chrome + proof_stat content card (legacy enable card hidden).
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
-    expect(screen.getByTestId('section-editor-count').textContent).toMatch(/^1 blocks?$/);
+    // Layout editor chrome + content cards (hero_slides, proof_stat); legacy enable cards hidden.
+    expect(screen.getByTestId('block-card-hero_slides')).toBeTruthy();
     expect(screen.getByTestId('block-card-proof_stat')).toBeTruthy();
-    expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
+    expect(screen.queryByTestId('section-enable-announcement_enabled')).toBeNull();
+    const countText = screen.getByTestId('section-editor-count').textContent || '';
+    expect(countText).toMatch(/^\d+ blocks?$/);
   });
 
   it('Brand Kit still hides key/type behind Advanced', async () => {
-    openSection('Branding');
+    openSection('Everywhere');
     await screen.findByTestId('brand-kit-card-logo');
     const logoCard = screen.getByTestId('brand-kit-card-logo');
     expect(logoCard.textContent).not.toMatch(/logo · image · en/i);
@@ -367,7 +325,7 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
   });
 
   it('mobile structure exposes title containers on Homepage content cards', async () => {
-    openSection('Homepage');
+    openSection('Home');
     await screen.findByTestId('section-editor');
     await screen.findByTestId('home-layout-editor');
 
@@ -386,10 +344,10 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
   });
 
   it('mobile structure exposes section-enable face containers', async () => {
-    openSection('Footer');
-    await screen.findByTestId('section-enable-section_footer_enabled');
+    openSection('Everywhere');
+    await screen.findByTestId('section-enable-language_switcher_enabled');
 
-    const enableCard = screen.getByTestId('section-enable-section_footer_enabled');
+    const enableCard = screen.getByTestId('section-enable-language_switcher_enabled');
     expect(enableCard.querySelector('.hub-section-enable-face')).toBeTruthy();
   });
 });

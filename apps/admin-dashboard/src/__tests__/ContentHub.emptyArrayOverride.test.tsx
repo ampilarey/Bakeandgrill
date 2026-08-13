@@ -47,7 +47,7 @@ vi.mock('../components/MediaPicker', () => ({
 const heroBlock: ContentBlock = {
   key: 'hero_slides',
   label: 'Hero slides',
-  group: 'Hero',
+  group: 'Home',
   type: 'json',
   editor: 'hero',
   apps: ['website', 'order_app'],
@@ -76,7 +76,7 @@ describe('Content Hub empty JSON array overrides', () => {
 
   it('does not show the old shared-mask warning when an app holds []', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

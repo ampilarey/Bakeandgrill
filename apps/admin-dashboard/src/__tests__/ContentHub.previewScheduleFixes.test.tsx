@@ -96,7 +96,7 @@ vi.mock('../api/pageBlocks', () => ({
 const block: ContentBlock = {
   key: 'cta_band_headline',
   label: 'CTA headline',
-  group: 'Homepage',
+  group: 'Home',
   type: 'textarea',
   rich: true,
   apps: ['website', 'order_app'],
@@ -144,7 +144,7 @@ describe('ContentHub preview + schedule fixes', () => {
   });
 
   it('remints docked preview tokens when the Home layout draft revision changes', async () => {
-    openHub('/content/website?group=Homepage');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('home-layout-editor-stub');
 
     await waitFor(() => {
@@ -174,7 +174,7 @@ describe('ContentHub preview + schedule fixes', () => {
       return { drafts: {} as Record<string, string>, saved_at: null };
     });
 
-    openHub('/content/website?group=Homepage');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('publish-live-btn');
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;

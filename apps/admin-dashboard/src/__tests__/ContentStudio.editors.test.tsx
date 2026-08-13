@@ -68,7 +68,7 @@ function heroBlock(): ContentBlock {
   return {
     key: 'hero_slides',
     label: 'Hero Slides',
-    group: 'Hero',
+    group: 'Home',
     type: 'json',
     editor: 'hero',
     apps: ['website', 'order_app'],
@@ -87,7 +87,7 @@ function categoriesBlock(): ContentBlock {
   return {
     key: 'homepage_categories',
     label: 'Hedhikaa',
-    group: 'Homepage',
+    group: 'Home',
     type: 'json',
     editor: 'categories',
     apps: ['website', 'order_app'],
@@ -119,7 +119,7 @@ describe('Content Hub visual editors', () => {
 
   it('hero editor edits a slide field into the active draft', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -144,7 +144,7 @@ describe('Content Hub visual editors', () => {
 
   it('category image upload sets the draft image_url via crop endpoint', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -195,7 +195,7 @@ describe('Content Hub visual editors', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

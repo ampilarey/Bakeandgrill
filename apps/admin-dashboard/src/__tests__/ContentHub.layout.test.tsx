@@ -50,7 +50,7 @@ vi.mock('../components/MediaPicker', () => ({
 const phoneBlock = {
   key: 'delivery_time',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Home',
   type: 'text',
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -66,7 +66,7 @@ const phoneBlock = {
 const logoBlock = {
   key: 'logo',
   label: 'Logo (Light)',
-  group: 'Branding',
+  group: 'Everywhere',
   type: 'image',
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -99,7 +99,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('shows section rail, editor, and preview pane', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -109,28 +109,28 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(screen.getByTestId('preview-pane')).toBeTruthy();
   });
 
-  it('?group=Branding deep link activates Branding in rail', async () => {
+  it('?group=Branding deep link activates Everywhere in rail', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-rail-Branding').getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByTestId('section-rail-Everywhere').getAttribute('aria-pressed')).toBe('true');
     });
-    expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Branding');
+    expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
   });
 
   it('dirty dot appears when section has unsaved drafts', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     await screen.findByTestId('section-editor');
-    expect(screen.queryByTestId('section-dirty-Contact & map')).toBeNull();
+    expect(screen.queryByTestId('section-dirty-Home')).toBeNull();
 
     fireEvent.click(screen.getByTestId('edit-delivery_time'));
     const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
@@ -138,13 +138,13 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     fireEvent.change(phoneInput, { target: { value: '25–40 min' } });
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-dirty-Contact & map')).toBeTruthy();
+      expect(screen.getByTestId('section-dirty-Home')).toBeTruthy();
     });
   });
 
   it('label search shows dropdown and clicking result navigates to section', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -167,15 +167,15 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(resultBtn).toBeTruthy();
     fireEvent.click(resultBtn!);
 
-    // Editor should switch to Contact & map
+    // Editor should switch to Home (delivery_time)
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Contact & map');
+      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Home');
     });
   });
 
   it('block face has no key·type meta line; ⋯ menu has History and key', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -204,9 +204,10 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       locales: ['en', 'dv'],
       blocks: [
         {
-          ...phoneBlock,
-          key: 'section_contact_enabled',
+          ...logoBlock,
+          key: 'announcement_enabled',
           label: 'Show Contact Section',
+          group: 'Everywhere',
           section_enable: true,
           type: 'boolean',
           shared: 'true',
@@ -219,14 +220,14 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    const enable = await screen.findByTestId('section-enable-section_contact_enabled');
+    const enable = await screen.findByTestId('section-enable-announcement_enabled');
     expect(enable.textContent).toContain('Show Contact Section');
-    expect(enable.textContent).not.toContain('section_contact_enabled');
+    expect(enable.textContent).not.toContain('announcement_enabled');
     expect(enable.querySelector('.hub-section-enable-face')?.textContent).not.toMatch(/·/);
   });
 });
@@ -240,7 +241,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
 
   it('shows section grid and no preview column on mobile', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -265,7 +266,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     fireEvent.click(screen.getByTestId('task-card-brand_profile'));
 
     const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Branding');
+    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
     expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
 
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
@@ -278,7 +279,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
 
   it('preview sheet opens and closes via sheet header Preview button', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

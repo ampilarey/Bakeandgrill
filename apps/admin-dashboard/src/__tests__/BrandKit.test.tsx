@@ -43,7 +43,7 @@ function brandBlock(key: string, label: string, type: string, shared: string | n
   return {
     key,
     label,
-    group: 'Branding',
+    group: 'Everywhere',
     type,
     apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
     shareable: true,
@@ -60,7 +60,7 @@ function brandBlock(key: string, label: string, type: string, shared: string | n
 const phoneBlock = {
   key: 'business_phone',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Everywhere',
   type: 'text',
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -107,18 +107,15 @@ describe('Brand Kit UI', () => {
 
     expect(await screen.findByTestId('brand-kit')).toBeTruthy();
     expect(screen.queryByTestId('brand-kit-banner')).toBeNull();
-    for (const card of BRAND_KIT_CARDS) {
+    // default_item_image is inventory-mapped to Home (not Everywhere Brand Kit).
+    for (const card of BRAND_KIT_CARDS.filter((c) => c.key !== 'default_item_image')) {
       const el = screen.getByTestId(`brand-kit-card-${card.key}`);
       expect(el).toBeTruthy();
       expect(el).toHaveTextContent(card.title);
     }
-    expect(screen.queryByText('Phone number')).toBeNull();
+    expect(screen.queryByTestId('brand-kit-card-default_item_image')).toBeNull();
     expect(screen.queryByTestId(/content-mode-/)).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Contact & map' }));
-    expect(await screen.findByText('Phone number')).toBeTruthy();
-    expect(screen.queryByTestId('brand-kit')).toBeNull();
-    // Business Details owned — read-only summary, no editor sheet / Save path.
+    // Ops-owned phone lives in Everywhere alongside Brand Kit cards.
     expect(screen.getByTestId('ops-owned-business_phone')).toBeTruthy();
     expect(screen.getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
     expect(screen.getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');

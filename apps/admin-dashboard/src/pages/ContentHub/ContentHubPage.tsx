@@ -53,6 +53,8 @@ import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
   contentViewForKey,
+  isHomeSection,
+  LEGACY_GROUP_ALIASES,
   visibleContentGroups,
   websitePageTaskByGroup,
 } from './websitePageTasks';
@@ -325,10 +327,14 @@ export function ContentHubPage() {
   }, [isCompactAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync URL group param → activeGroup (landing when cleared).
-  // Legacy ?group=Pages must never open the mixed 48-block editor.
-  // Legacy ?group=Contact opens the focused Contact & map page.
+  // Legacy ?group= aliases redirect to Stage 4 section names.
   useEffect(() => {
-    if (urlGroup === LEGACY_PAGES_GROUP) {
+    if (!urlGroup) {
+      setActiveGroup(null);
+      setMobileEditorOpen(false);
+      return;
+    }
+    if (urlGroup === LEGACY_PAGES_GROUP || LEGACY_GROUP_ALIASES[urlGroup] === '') {
       setActiveGroup(null);
       setMobileEditorOpen(false);
       setSearchParams((prev) => {
@@ -339,22 +345,18 @@ export function ContentHubPage() {
       }, { replace: true });
       return;
     }
-    if (urlGroup === 'Contact') {
+    const alias = LEGACY_GROUP_ALIASES[urlGroup];
+    if (alias && alias !== urlGroup) {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
         p.delete('section');
-        p.set('group', 'Contact & map');
+        p.set('group', alias);
         return p;
       }, { replace: true });
       return;
     }
-    if (urlGroup) {
-      setActiveGroup(urlGroup);
-      setMobileEditorOpen(true);
-    } else {
-      setActiveGroup(null);
-      setMobileEditorOpen(false);
-    }
+    setActiveGroup(urlGroup);
+    setMobileEditorOpen(true);
   }, [urlGroup, setSearchParams]);
 
   // Per-block scope tabs reset when the active section changes.
@@ -380,14 +382,14 @@ export function ContentHubPage() {
   );
 
   const orderedSectionNames = useMemo(() => {
-    return orderSectionNames(visibleContentGroups(contentBlocks));
-  }, [contentBlocks]);
+    return orderSectionNames(visibleContentGroups(contentBlocks, hubApp), hubApp);
+  }, [contentBlocks, hubApp]);
 
   // Reject unknown ?group= deep links once sections have loaded — legacy/typo
   // values must not silently open a blank or wrong editor.
   useEffect(() => {
     if (loading || !urlGroup) return;
-    if (urlGroup === LEGACY_PAGES_GROUP || urlGroup === 'Contact') return;
+    if (urlGroup === LEGACY_PAGES_GROUP || urlGroup in LEGACY_GROUP_ALIASES) return;
     if (orderedSectionNames.length === 0) return;
     if (orderedSectionNames.includes(urlGroup)) return;
     // Defer by a tick — `orderedSectionNames` can briefly lag one render
@@ -551,9 +553,10 @@ export function ContentHubPage() {
       return;
     }
     setActiveGroup(next);
-    // Homepage always resolves to exactly one surface — never the full type library.
-    let resolvedSurface = next === 'Homepage' ? (surface ?? null) : null;
-    if (next === 'Homepage' && !resolvedSurface) {
+    // Home always resolves to exactly one surface — never the full type library.
+    const home = isHomeSection(next);
+    let resolvedSurface = home ? (surface ?? null) : null;
+    if (home && !resolvedSurface) {
       const app = homeAppHint ?? hubApp;
       const device = isMobile ? 'mobile' : 'desktop';
       resolvedSurface = surfaceId(app, device, 'home');
@@ -564,14 +567,14 @@ export function ContentHubPage() {
       const p = new URLSearchParams(prev);
       p.delete('section');
       p.set('group', next);
-      if (next === 'Homepage' && homeAppHint) {
+      if (home && homeAppHint) {
         p.set('homeApp', homeAppHint);
-      } else if (next === 'Homepage' && parsed) {
+      } else if (home && parsed) {
         p.set('homeApp', parsed.app);
       } else {
         p.delete('homeApp');
       }
-      if (next === 'Homepage' && resolvedSurface) {
+      if (home && resolvedSurface) {
         p.set('surface', resolvedSurface);
       } else {
         p.delete('surface');
@@ -590,13 +593,13 @@ export function ContentHubPage() {
   };
 
   const handleSurfaceSelect = (surface: SurfaceRecord) => {
-    handleSectionSelect('Homepage', surface.app, surface.id);
+    handleSectionSelect('Home', surface.app, surface.id);
   };
 
   const handleTaskSelect = (task: ContentTask) => {
     if (task.advancedAction === 'history') {
-      // History lives on each field's ⋯ menu — open Branding as a concrete destination.
-      handleSectionSelect('Branding');
+      // History lives on each field's ⋯ menu — open Everywhere as a concrete destination.
+      handleSectionSelect('Everywhere');
       success('Open ⋯ on any field to view and restore History.');
       return;
     }
@@ -613,10 +616,10 @@ export function ContentHubPage() {
       : searchParams.get('homeApp') === 'website' ? 'website' as const
         : hubApp;
   const urlSurface = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
-  // Prefer synchronous selection; fall back to URL; Homepage never opens unscoped.
+  // Prefer synchronous selection; fall back to URL; Home never opens unscoped.
   const surfaceFilter: SurfaceFilter | null = activeSurface
     ?? urlSurface
-    ?? (activeGroup === 'Homepage' ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
+    ?? (isHomeSection(activeGroup) ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
 
   // Keep activeSurface aligned when deep-linking via URL only.
   useEffect(() => {
@@ -866,8 +869,8 @@ export function ContentHubPage() {
   const draftKeys = useMemo(() => Object.keys(drafts), [drafts]);
 
   const railSections = useMemo(
-    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey),
-    [orderedSectionNames, contentBlocks, draftKeys],
+    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey, hubApp),
+    [orderedSectionNames, contentBlocks, draftKeys, hubApp],
   );
 
   const dirtyGroups = useMemo(
@@ -885,18 +888,12 @@ export function ContentHubPage() {
       .slice(0, 12)
       .map((b) => ({
         block: b,
-        sectionName: contentViewForKey(b.key) ?? (
-          b.group === LEGACY_PAGES_GROUP || b.group === 'Contact' ? 'Website' : b.group
-        ),
+        sectionName: contentViewForKey(b.key, hubApp) ?? b.group,
       }));
-  }, [contentBlocks, q]);
+  }, [contentBlocks, q, hubApp]);
 
   const handleSearchSelect = (block: ContentBlock) => {
-    const view = contentViewForKey(block.key) ?? (
-      block.group === LEGACY_PAGES_GROUP || block.group === 'Contact'
-        ? null
-        : block.group
-    );
+    const view = contentViewForKey(block.key, hubApp);
     if (!view) {
       // Remapped away from navigation — stay on landing rather than opening Pages.
       setQ('');
@@ -1196,6 +1193,7 @@ export function ContentHubPage() {
             data-rail={railCollapsed ? 'collapsed' : 'expanded'}
           >
             <HubSectionList
+              app={hubApp}
               orderedSectionNames={orderedSectionNames}
               contentBlocks={contentBlocks}
               draftKeys={draftKeys}

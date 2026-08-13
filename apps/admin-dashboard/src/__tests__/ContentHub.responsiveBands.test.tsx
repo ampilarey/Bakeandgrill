@@ -46,7 +46,7 @@ vi.mock('../components/MediaPicker', () => ({ MediaPicker: () => null }));
 const block: ContentBlock = {
   key: 'cta_band_headline',
   label: 'CTA headline',
-  group: 'Homepage',
+  group: 'Home',
   type: 'textarea',
   rich: true,
   apps: ['website'],

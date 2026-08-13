@@ -1,28 +1,91 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  CalendarDays,
   Clock,
   Contact,
-  Info,
+  Home,
   LayoutTemplate,
+  Menu,
+  ShoppingBag,
+  Gift,
+  History,
+  Info,
+  Shield,
+  Tv,
 } from 'lucide-react';
-import type { ContentBlock } from '../../api/content';
+import type { ContentApp, ContentBlock } from '../../api/content';
+import {
+  hubGroupForKey,
+  ORDER_APP_HUB_SECTION_ORDER,
+  WEBSITE_HUB_SECTION_ORDER,
+} from './contentHubGroupMap';
 
 /**
- * Focused Website page editors — routing by key ownership, not the legacy
- * mixed `Pages` backend group. Stored keys/values stay unchanged.
+ * Stage 4 — page-first Content Hub sections.
+ * Membership comes from contentHubGroupMap (inventory-derived), not legacy
+ * registry group names like Pages / General / Order App.
  */
 
+/** Legacy deep link that must never open a mixed dump. */
+export const LEGACY_PAGES_GROUP = 'Pages';
+
+/** Old backend / URL group names no longer shown in the rail. */
+export const HIDDEN_CONTENT_GROUPS = new Set([
+  'Pages',
+  'Contact',
+  'General',
+  'Branding',
+  'Announcements',
+  'Hero',
+  'Footer',
+  'SEO',
+  'Homepage',
+  'Order App',
+  'Status banners',
+  'Pre-Order',
+  'Store',
+  'Business Details',
+  'Contact & map',
+  'Opening hours',
+  'Catering & events',
+  'Events & Catering',
+]);
+
+/** Legacy ?group= → Stage 4 section. */
+export const LEGACY_GROUP_ALIASES: Record<string, string> = {
+  Pages: '',
+  Contact: 'Contact page',
+  'Contact & map': 'Contact page',
+  'Opening hours': 'Hours page',
+  'Catering & events': 'Home',
+  'Events & Catering': 'Home',
+  Homepage: 'Home',
+  Hero: 'Home',
+  Branding: 'Everywhere',
+  Announcements: 'Everywhere',
+  Footer: 'Everywhere',
+  SEO: 'Everywhere',
+  General: 'Everywhere',
+  'Order App': 'Home',
+  'Status banners': 'Home',
+  Menu: 'Menu', // order app; website empty Menu page also ok
+  Legal: 'Legal',
+  About: 'About',
+};
+
+/** Home section (Stage 4 name) plus legacy Homepage deep links. */
+export function isHomeSection(sectionName: string | null | undefined): boolean {
+  return sectionName === 'Home' || sectionName === 'Homepage';
+}
+
 export type WebsitePageTaskId =
-  | 'contact_map'
-  | 'opening_hours'
-  | 'about'
-  | 'catering_events'
-  | 'footer';
+  | 'home'
+  | 'contact_page'
+  | 'hours_page'
+  | 'legal'
+  | 'everywhere';
 
 export type WebsitePageTask = {
   id: WebsitePageTaskId;
-  /** URL `?group=` value and editor title. */
   group: string;
   title: string;
   description: string;
@@ -30,91 +93,47 @@ export type WebsitePageTask = {
   matchesKey: (key: string) => boolean;
 };
 
-/** Backend groups hidden from normal owner navigation (replaced by focused pages). */
-export const HIDDEN_CONTENT_GROUPS = new Set(['Pages', 'Contact']);
-
-/** Legacy deep link that must never open the mixed 48-block list. */
-export const LEGACY_PAGES_GROUP = 'Pages';
-
-const CONTACT_BUSINESS_KEYS = new Set([
-  'business_phone',
-  'business_email',
-  'business_address',
-  'business_whatsapp',
-  'business_viber',
-  'business_maps_url',
-  'business_landmark',
-  'business_website',
-  'delivery_threshold',
-  'delivery_time',
-]);
-
-const HOMEPAGE_OWNED_KEYS = new Set([
-  'homepage_categories',
-  'trust_items',
-  'proof_details',
-  'home_chat_label',
-  'home_visit_card_title',
-  'home_delivery_card_title',
-  'home_directions_cta',
-  'home_call_cta',
-  'home_order_via_app_label',
-]);
-
-const FOOTER_EXTRA_KEYS = new Set([
-  'show_social_links',
-  'social_instagram',
-  'social_facebook',
-  'social_tiktok',
-  'nav_order_cta_text',
-]);
-
+/** Landing / deep-link tasks for Website Content (Stage 4 names). */
 export const WEBSITE_PAGE_TASKS: WebsitePageTask[] = [
   {
-    id: 'contact_map',
-    group: 'Contact & map',
-    title: 'Contact & map',
-    description: 'Phone, messaging, address, and map',
-    icon: Contact,
-    matchesKey: (key) =>
-      key === 'maps_embed_url'
-      || CONTACT_BUSINESS_KEYS.has(key)
-      || (/^contact_/i.test(key) && !/^contact_events_cta_/i.test(key)),
+    id: 'home',
+    group: 'Home',
+    title: 'Home',
+    description: 'Homepage blocks in the order customers see them',
+    icon: Home,
+    matchesKey: (key) => hubGroupForKey(key, 'website') === 'Home',
   },
   {
-    id: 'opening_hours',
-    group: 'Opening hours',
-    title: 'Operating hours',
+    id: 'contact_page',
+    group: 'Contact page',
+    title: 'Contact page',
+    description: 'Contact copy, labels, and map',
+    icon: Contact,
+    matchesKey: (key) => hubGroupForKey(key, 'website') === 'Contact page',
+  },
+  {
+    id: 'hours_page',
+    group: 'Hours page',
+    title: 'Hours page',
     description: 'Hours page wording — schedule is managed in Online Ordering',
     icon: Clock,
-    matchesKey: (key) => /^hours_/i.test(key),
+    matchesKey: (key) => hubGroupForKey(key, 'website') === 'Hours page',
   },
   {
-    id: 'about',
-    group: 'About',
-    title: 'About',
-    description: 'Order App About page — story, title, and values',
-    icon: Info,
-    matchesKey: (key) => /^about_/i.test(key),
+    id: 'legal',
+    group: 'Legal',
+    title: 'Legal',
+    description: 'Privacy, terms, and refund pages',
+    icon: Shield,
+    matchesKey: (key) => hubGroupForKey(key, 'website') === 'Legal',
   },
   {
-    id: 'catering_events',
-    group: 'Catering & events',
-    title: 'Catering & events',
-    description: 'Website home band + contact CTAs (not a full standalone page)',
-    icon: CalendarDays,
-    matchesKey: (key) => /^events_/i.test(key) || /^contact_events_cta_/i.test(key),
-  },
-  {
-    id: 'footer',
-    group: 'Footer',
-    title: 'Footer',
-    description: 'Website footer + Order App brand footer text and nav links',
+    id: 'everywhere',
+    group: 'Everywhere',
+    title: 'Everywhere',
+    description: 'Header, footer, branding, SEO, and site-wide chrome',
     icon: LayoutTemplate,
-    matchesKey: (key) =>
-      /^footer_/i.test(key)
-      || FOOTER_EXTRA_KEYS.has(key)
-      || /^social_/i.test(key),
+    matchesKey: (key) => hubGroupForKey(key, 'website') === 'Everywhere',
   },
 ];
 
@@ -128,116 +147,52 @@ export function isWebsitePageGroup(group: string): boolean {
   return PAGE_BY_GROUP.has(group);
 }
 
+/** @deprecated use hubGroupForKey — kept for older call sites during Stage 4. */
+export function contentViewForKey(key: string, app: ContentApp = 'website'): string | null {
+  return hubGroupForKey(key, app);
+}
+
 export function isLegalOwnedKey(key: string): boolean {
-  return /^privacy_/i.test(key) || /^terms_/i.test(key) || /^refund_/i.test(key);
+  return hubGroupForKey(key, 'website') === 'Legal';
 }
 
 export function isHomepageOwnedKey(key: string): boolean {
-  return HOMEPAGE_OWNED_KEYS.has(key);
+  return hubGroupForKey(key, 'website') === 'Home';
 }
 
 export function isOrderAppOwnedKey(key: string): boolean {
   return /^office_orders_/i.test(key);
 }
 
-/**
- * Resolve which Content Hub view owns a content key (for search + dirty dots).
- * Returns null when the key is not shown in normal owner navigation.
- */
-export function contentViewForKey(key: string): string | null {
-  if (isLegalOwnedKey(key)) return 'Legal';
-  if (isHomepageOwnedKey(key)) return 'Homepage';
-  if (isOrderAppOwnedKey(key)) return 'Order App';
-  for (const page of WEBSITE_PAGE_TASKS) {
-    if (page.matchesKey(key)) return page.group;
-  }
-  return null;
-}
-
-/** Backend groups whose remaining rows fold into a focused Website page. */
-function legacyBackendGroupForPage(pageId: WebsitePageTaskId): string | null {
-  if (pageId === 'contact_map') return 'Contact';
-  if (pageId === 'about') return 'About';
-  if (pageId === 'footer') return 'Footer';
-  return null;
-}
-
-/** Blocks shown in a focused Website page / remapped section editor. */
+/** Blocks shown in a hub section for the active app. */
 export function blocksForContentView(
   sectionName: string,
   blocks: ContentBlock[],
+  app: ContentApp = 'website',
 ): ContentBlock[] {
   if (sectionName === LEGACY_PAGES_GROUP) {
     return [];
   }
+  const alias = LEGACY_GROUP_ALIASES[sectionName];
+  const resolved = alias === '' ? null : (alias ?? sectionName);
+  if (!resolved) return [];
 
-  const page = websitePageTaskByGroup(sectionName);
-  if (page) {
-    const legacyGroup = legacyBackendGroupForPage(page.id);
-    return blocks.filter((b) => {
-      if (page.matchesKey(b.key)) return true;
-      // Fold leftover Contact/About/Footer registry rows (e.g. section_enable toggles).
-      if (legacyGroup && b.group === legacyGroup) {
-        // Keys remapped out of Contact must not reappear here.
-        if (isLegalOwnedKey(b.key) || isHomepageOwnedKey(b.key) || isOrderAppOwnedKey(b.key)) {
-          return false;
-        }
-        if (WEBSITE_PAGE_TASKS.some((other) => other.id !== page.id && other.matchesKey(b.key))) {
-          return false;
-        }
-        return true;
-      }
-      return false;
-    });
-  }
-
-  if (sectionName === 'Homepage') {
-    return blocks.filter(
-      (b) => b.group === 'Homepage' || isHomepageOwnedKey(b.key),
-    );
-  }
-
-  if (sectionName === 'Legal') {
-    return blocks.filter(
-      (b) => b.group === 'Legal' || isLegalOwnedKey(b.key),
-    );
-  }
-
-  if (sectionName === 'Order App') {
-    return blocks.filter(
-      (b) => b.group === 'Order App' || isOrderAppOwnedKey(b.key),
-    );
-  }
-
-  // Never fall back to the mixed Pages dump for any other view.
-  return blocks.filter(
-    (b) => b.group === sectionName && !HIDDEN_CONTENT_GROUPS.has(b.group),
-  );
+  return blocks.filter((b) => {
+    if (!b.apps.includes(app)) return false;
+    return hubGroupForKey(b.key, app) === resolved;
+  });
 }
 
-/** Section names available in rail / landing after remapping. */
-export function visibleContentGroups(blocks: ContentBlock[]): string[] {
+/** Section names available in rail / landing for this app's blocks. */
+export function visibleContentGroups(blocks: ContentBlock[], app: ContentApp = 'website'): string[] {
   const names = new Set<string>();
   for (const block of blocks) {
-    // Check remapping before the hidden-group skip — a key can live in a
-    // legacy group (e.g. `Pages`) but still route to a real, visible view
-    // (e.g. `Homepage`) via contentViewForKey.
-    const view = contentViewForKey(block.key);
-    if (view) {
-      names.add(view);
-      continue;
-    }
-    if (HIDDEN_CONTENT_GROUPS.has(block.group)) continue;
-    names.add(block.group);
+    if (!block.apps.includes(app)) continue;
+    const view = hubGroupForKey(block.key, app);
+    if (view) names.add(view);
   }
-  for (const page of WEBSITE_PAGE_TASKS) {
-    if (blocks.some((b) => page.matchesKey(b.key))) {
-      names.add(page.group);
-    }
-  }
-  names.delete(LEGACY_PAGES_GROUP);
-  names.delete('Contact');
-  return Array.from(names);
+  const order = app === 'order_app' ? ORDER_APP_HUB_SECTION_ORDER : WEBSITE_HUB_SECTION_ORDER;
+  return order.filter((name) => names.has(name));
 }
 
 export function isGroupDirty(
@@ -245,10 +200,28 @@ export function isGroupDirty(
   blocks: ContentBlock[],
   draftKeys: string[],
   parseDraftKey: (dk: string) => { key: string } | null,
+  app: ContentApp = 'website',
 ): boolean {
-  const sectionKeys = new Set(blocksForContentView(sectionName, blocks).map((b) => b.key));
+  const sectionKeys = new Set(blocksForContentView(sectionName, blocks, app).map((b) => b.key));
   return draftKeys.some((dk) => {
     const parsed = parseDraftKey(dk);
     return Boolean(parsed && sectionKeys.has(parsed.key));
   });
 }
+
+/** Icons for Stage 4 sections (rail). */
+export const HUB_SECTION_ICONS: Record<string, LucideIcon> = {
+  Home,
+  'Menu page': Menu,
+  Menu,
+  'Contact page': Contact,
+  'Hours page': Clock,
+  Legal: Shield,
+  Everywhere: LayoutTemplate,
+  Ordering: ShoppingBag,
+  'Order history': History,
+  'Gift cards': Gift,
+  About: Info,
+  Privacy: Shield,
+  Signage: Tv,
+};

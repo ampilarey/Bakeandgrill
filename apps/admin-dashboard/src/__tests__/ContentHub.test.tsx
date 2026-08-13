@@ -41,7 +41,7 @@ vi.mock('../components/MediaPicker', () => ({
 const phoneBlock = {
   key: 'delivery_time',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Home',
   type: 'text',
   apps: ['website', 'order_app'],
   shareable: true,
@@ -57,7 +57,7 @@ const phoneBlock = {
 const logoBlock = {
   key: 'logo',
   label: 'Logo (Light)',
-  group: 'Branding',
+  group: 'Everywhere',
   type: 'image',
   apps: ['website', 'order_app'],
   shareable: true,
@@ -91,13 +91,13 @@ describe('ContentHubPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /Editing Website/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Branding' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Contact & map' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Everywhere' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Home' })).toBeTruthy();
   });
 
   it('edits dual-app content in the current destination scope without mode controls', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -124,7 +124,7 @@ describe('ContentHubPage', () => {
 
   it('branding block has no link control', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -134,15 +134,15 @@ describe('ContentHubPage', () => {
     expect(screen.queryByTestId(/content-mode-/)).toBeNull();
   });
 
-  it('opens Branding from ?group= deep link', async () => {
+  it('opens Everywhere from ?group=Branding deep link alias', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Branding' }).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByRole('button', { name: 'Everywhere' }).getAttribute('aria-pressed')).toBe('true');
     });
     expect(screen.getByText('Logo — for light backgrounds')).toBeTruthy();
     expect(screen.queryByText('Phone number')).toBeNull();

@@ -70,7 +70,7 @@ vi.mock('../api/pageBlocks', () => ({
 const block: ContentBlock = {
   key: 'footer_text',
   label: 'Footer text',
-  group: 'Footer',
+  group: 'Everywhere',
   type: 'text',
   apps: ['website', 'order_app'],
   shareable: true,
@@ -110,7 +110,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('layout-only draft enables Publish in the section sheet footer', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -128,7 +128,7 @@ describe('ContentHub mobile audit fixes', () => {
   it('More menu stays open for Discard after mousedown outside the trigger', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -150,7 +150,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('preview sheet portals above the editor (higher stacking root)', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

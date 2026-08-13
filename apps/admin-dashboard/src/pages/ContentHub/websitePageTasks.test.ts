@@ -8,13 +8,13 @@ import {
   visibleContentGroups,
 } from './websitePageTasks';
 
-function block(key: string, group: string): ContentBlock {
+function block(key: string, group: string, apps: Array<'website' | 'order_app'> = ['website']): ContentBlock {
   return {
     key,
     label: key,
     group,
     type: 'text',
-    apps: ['website'],
+    apps,
     shareable: true,
     public: true,
     rich: false,
@@ -34,8 +34,8 @@ const sample: ContentBlock[] = [
   block('maps_embed_url', 'Pages'),
   block('business_whatsapp', 'Contact'),
   block('hours_page_title', 'Pages'),
-  block('about_values', 'Pages'),
-  block('about_page_title', 'About'),
+  block('about_values', 'Pages', ['order_app']),
+  block('about_page_title', 'About', ['order_app']),
   block('events_section_headline', 'Pages'),
   block('contact_events_cta_headline', 'Pages'),
   block('footer_text', 'Footer'),
@@ -46,104 +46,105 @@ const sample: ContentBlock[] = [
   block('homepage_categories', 'Pages'),
   block('trust_items', 'Pages'),
   block('proof_details', 'Pages'),
-  block('proof_stat', 'Homepage'),
-  block('office_orders_headline', 'Pages'),
-  block('order_checkout_title', 'Order App'),
+  block('proof_stat', 'Home'),
+  block('office_orders_headline', 'Pages', ['order_app']),
+  block('order_checkout_title', 'Order App', ['order_app']),
   block('delivery_threshold', 'Contact'),
-  block('show_hours', 'Contact'),
-  block('section_footer_enabled', 'Footer'),
+  block('site_name', 'General'),
 ];
 
-describe('websitePageTasks ownership', () => {
-  it('routes keys to focused Website pages (not mixed Pages)', () => {
-    expect(contentViewForKey('contact_page_title')).toBe('Contact & map');
-    expect(contentViewForKey('maps_embed_url')).toBe('Contact & map');
-    expect(contentViewForKey('hours_page_title')).toBe('Opening hours');
-    expect(contentViewForKey('about_values')).toBe('About');
-    expect(contentViewForKey('events_section_headline')).toBe('Catering & events');
-    expect(contentViewForKey('contact_events_cta_text')).toBe('Catering & events');
-    expect(contentViewForKey('footer_links')).toBe('Footer');
+describe('websitePageTasks ownership (Stage 4 inventory map)', () => {
+  it('routes keys to page-first Website sections', () => {
+    expect(contentViewForKey('contact_page_title')).toBe('Contact page');
+    expect(contentViewForKey('maps_embed_url')).toBe('Contact page');
+    expect(contentViewForKey('hours_page_title')).toBe('Hours page');
+    expect(contentViewForKey('events_section_headline')).toBe('Home');
+    expect(contentViewForKey('contact_events_cta_text')).toBe('Contact page');
+    expect(contentViewForKey('footer_links')).toBe('Everywhere');
+    expect(contentViewForKey('about_values', 'order_app')).toBe('About');
   });
 
-  it('keeps Legal, Homepage, and Order App ownership out of Website pages', () => {
+  it('keeps Legal and Home ownership out of Contact / Hours', () => {
     expect(contentViewForKey('privacy_page_title')).toBe('Legal');
     expect(contentViewForKey('terms_page_title')).toBe('Legal');
     expect(contentViewForKey('refund_page_title')).toBe('Legal');
-    expect(contentViewForKey('homepage_categories')).toBe('Homepage');
-    expect(contentViewForKey('trust_items')).toBe('Homepage');
-    expect(contentViewForKey('proof_details')).toBe('Homepage');
-    expect(contentViewForKey('office_orders_headline')).toBe('Order App');
+    expect(contentViewForKey('homepage_categories')).toBe('Home');
+    expect(contentViewForKey('trust_items')).toBe('Home');
+    expect(contentViewForKey('proof_details')).toBe('Home');
+    expect(contentViewForKey('office_orders_headline', 'order_app')).toBe('Home');
   });
 
   it('each page task returns only its assigned fields', () => {
     for (const page of WEBSITE_PAGE_TASKS) {
-      const keys = blocksForContentView(page.group, sample).map((b) => b.key);
+      const keys = blocksForContentView(page.group, sample, 'website').map((b) => b.key);
       expect(keys.length).toBeGreaterThan(0);
-      expect(keys).not.toContain('privacy_page_title');
-      expect(keys).not.toContain('homepage_categories');
-      expect(keys).not.toContain('office_orders_headline');
-      // Foreign website pages must not leak in.
       for (const other of WEBSITE_PAGE_TASKS) {
         if (other.id === page.id) continue;
         for (const key of keys) {
-          if (page.matchesKey(key)) continue; // owned by this page
-          // Legacy fold-in (Contact/About/Footer registry leftovers) is OK.
           expect(other.matchesKey(key)).toBe(false);
         }
       }
     }
   });
 
-  it('Contact & map never includes hours, legal, office, or home fields', () => {
-    const keys = blocksForContentView('Contact & map', sample).map((b) => b.key);
+  it('Contact page never includes hours, legal, or home fields', () => {
+    const keys = blocksForContentView('Contact page', sample, 'website').map((b) => b.key);
     expect(keys).toEqual(expect.arrayContaining([
       'contact_page_title',
       'maps_embed_url',
-      'business_whatsapp',
-      'delivery_threshold',
-      'show_hours',
+      'contact_events_cta_headline',
     ]));
-    expect(blocksForContentView('Footer', sample).map((b) => b.key)).toEqual(
-      expect.arrayContaining(['footer_text', 'section_footer_enabled']),
+    expect(blocksForContentView('Everywhere', sample, 'website').map((b) => b.key)).toEqual(
+      expect.arrayContaining(['business_whatsapp']),
+    );
+    expect(blocksForContentView('Everywhere', sample, 'website').map((b) => b.key)).toEqual(
+      expect.arrayContaining(['footer_text', 'site_name']),
     );
     expect(keys).not.toEqual(expect.arrayContaining([
       'hours_page_title',
-      'about_values',
       'privacy_page_title',
-      'office_orders_headline',
       'homepage_categories',
       'events_section_headline',
     ]));
   });
 
   it('legacy Pages view exposes no mixed list', () => {
-    expect(blocksForContentView(LEGACY_PAGES_GROUP, sample)).toEqual([]);
+    expect(blocksForContentView(LEGACY_PAGES_GROUP, sample, 'website')).toEqual([]);
   });
 
-  it('hides Pages/Contact from visible groups and surfaces focused pages', () => {
-    const names = visibleContentGroups(sample);
+  it('hides legacy groups and surfaces Stage 4 sections', () => {
+    const names = visibleContentGroups(sample, 'website');
     expect(names).not.toContain('Pages');
     expect(names).not.toContain('Contact');
+    expect(names).not.toContain('Order App');
+    expect(names).not.toContain('Footer');
     expect(names).toEqual(expect.arrayContaining([
-      'Contact & map',
-      'Opening hours',
-      'About',
-      'Catering & events',
-      'Footer',
-      'Homepage',
+      'Contact page',
+      'Hours page',
+      'Home',
       'Legal',
-      'Order App',
+      'Everywhere',
     ]));
   });
 
-  it('Homepage and Order App receive remapped fields', () => {
-    expect(blocksForContentView('Homepage', sample).map((b) => b.key)).toEqual(
-      expect.arrayContaining(['homepage_categories', 'trust_items', 'proof_details', 'proof_stat']),
+  it('Home and Legal receive remapped fields; order checkout is Order App only', () => {
+    expect(blocksForContentView('Home', sample, 'website').map((b) => b.key)).toEqual(
+      expect.arrayContaining([
+        'homepage_categories',
+        'trust_items',
+        'proof_details',
+        'proof_stat',
+        'events_section_headline',
+        'delivery_threshold',
+      ]),
     );
-    expect(blocksForContentView('Order App', sample).map((b) => b.key)).toEqual(
-      expect.arrayContaining(['office_orders_headline', 'order_checkout_title']),
+    expect(blocksForContentView('Home', sample, 'order_app').map((b) => b.key)).toEqual(
+      expect.arrayContaining(['office_orders_headline']),
     );
-    expect(blocksForContentView('Legal', sample).map((b) => b.key)).toEqual(
+    expect(blocksForContentView('Ordering', sample, 'order_app').map((b) => b.key)).toEqual(
+      expect.arrayContaining(['order_checkout_title']),
+    );
+    expect(blocksForContentView('Legal', sample, 'website').map((b) => b.key)).toEqual(
       expect.arrayContaining(['privacy_page_title', 'legal_privacy_body']),
     );
   });

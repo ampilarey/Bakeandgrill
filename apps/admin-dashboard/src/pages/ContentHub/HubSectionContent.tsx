@@ -29,7 +29,7 @@ import { BrandKitCards, brandKitWriteScope } from './BrandKitCards';
 import { BRAND_KIT_KEYS } from './brandKitConfig';
 import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
 import { SectionEditor } from './SectionEditor';
-import { blocksForContentView, websitePageTaskByGroup } from './websitePageTasks';
+import { blocksForContentView, isHomeSection, websitePageTaskByGroup } from './websitePageTasks';
 import { fallbackManagedBy } from './opsOwnedContentKeys';
 import type { SurfaceFilter } from './surfaceCatalog';
 import {
@@ -613,10 +613,10 @@ export function HubSectionContent({
 
   // ── Build section editor content ───────────────────────────────────────────
 
-  const sectionBlocks = blocksForContentView(sectionName, contentBlocks);
+  const sectionBlocks = blocksForContentView(sectionName, contentBlocks, hubApp);
   const sectionEnableBlocks = sectionBlocks.filter((b) => b.section_enable);
   const regularBlocks = sectionBlocks.filter((b) => !b.section_enable);
-  const isBrandKit = sectionName === 'Branding';
+  const isBrandKit = sectionName === 'Everywhere' || sectionName === 'Branding';
   const pageTask = websitePageTaskByGroup(sectionName);
   const editorTitle = pageTask?.title ?? sectionName;
 
@@ -633,7 +633,7 @@ export function HubSectionContent({
     : 'Bake & Grill';
   const brandScope = (block: ContentBlock) => brandKitWriteScope(block, hubApp);
 
-  const hoursOpsBanner = sectionName === 'Opening hours' ? (
+  const hoursOpsBanner = sectionName === 'Hours page' ? (
     <div className="hub-hours-ops-banner" data-testid="hours-ops-banner">
       <strong>Page wording vs real opening times</strong>
       <p>
@@ -651,7 +651,9 @@ export function HubSectionContent({
     </div>
   ) : null;
 
-  const announcementDualGateBanner = sectionName === 'Announcements' ? (
+  const announcementDualGateBanner = (
+    sectionName === 'Everywhere' || sectionName === 'Announcements'
+  ) ? (
     <div
       className="hub-hours-ops-banner"
       data-testid="announcement-dual-gate-banner"
@@ -667,7 +669,7 @@ export function HubSectionContent({
         type="button"
         data-testid="announcement-open-surface-link"
         onClick={() => onSectionSelectForAnnouncement(
-          'Homepage',
+          'Home',
           hubApp,
           isMobile ? `${hubApp}.mobile.header` : `${hubApp}.desktop.header`,
         )}
@@ -687,10 +689,10 @@ export function HubSectionContent({
     </div>
   ) : null;
 
-  // Homepage: page_blocks layout editor. Off Homepage it unmounts — unified
+  // Home: page_blocks layout editor. Off Home it unmounts — unified
   // Publish/Discard use publishLayoutDraftsViaApi / discardLayoutDraftsViaApi.
   const chrome: ReactNode =
-    sectionName === 'Homepage' ? (
+    isHomeSection(sectionName) ? (
       <HomeLayoutEditor
         ref={homeLayoutEditorRef}
         initialApp={homeLayoutApp}
@@ -735,8 +737,8 @@ export function HubSectionContent({
     return !contentBlocks.some((c) => c.key === titleKey);
   }).length;
   const brandCardCount = isBrandKit ? brandBlocksByKey.size : 0;
-  // The Homepage layout editor replaces per-section enable cards.
-  const isHomeLayout = sectionName === 'Homepage';
+  // The Home layout editor replaces per-section enable cards.
+  const isHomeLayout = isHomeSection(sectionName);
   const cardCount = brandCardCount
     + visibleRegularCount
     + (isHomeLayout ? 0 : sectionEnableBlocks.length);

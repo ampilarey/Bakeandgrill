@@ -7,8 +7,8 @@ import * as contentApi from '../api/content';
 import { ApiRequestError } from '@shared/api';
 
 async function openCtaEditor() {
-  fireEvent.click(await screen.findByTestId('edit-cta_band_headline'));
-  const sheet = await screen.findByTestId('block-editor-sheet-cta_band_headline');
+  fireEvent.click(await screen.findByTestId('edit-offers_headline'));
+  const sheet = await screen.findByTestId('block-editor-sheet-offers_headline');
   await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
   return sheet;
 }
@@ -58,9 +58,9 @@ vi.mock('../components/ui', async () => {
 vi.mock('../components/MediaPicker', () => ({ MediaPicker: () => null }));
 
 const websiteBlock: ContentBlock = {
-  key: 'cta_band_headline',
-  label: 'CTA headline',
-  group: 'Homepage',
+  key: 'offers_headline',
+  label: 'Offers headline',
+  group: 'Home',
   type: 'textarea',
   rich: true,
   apps: ['website', 'order_app'],
@@ -77,7 +77,7 @@ const websiteBlock: ContentBlock = {
 const heroBlock: ContentBlock = {
   key: 'hero_slides',
   label: 'Hero Slides',
-  group: 'Hero',
+  group: 'Home',
   type: 'json',
   editor: 'hero',
   apps: ['website', 'order_app'],
@@ -102,7 +102,7 @@ describe('Content Hub publish reliability + app scope', () => {
     });
     vi.mocked(contentApi.getContentDrafts).mockResolvedValue({ drafts: {}, saved_at: null });
     vi.mocked(contentApi.saveContentDrafts).mockResolvedValue({
-      drafts: { cta_band_headline: 'Edited' },
+      drafts: { offers_headline: 'Edited' },
       saved_at: '2026-07-23T12:00:00Z',
     });
     vi.mocked(contentApi.updateContent).mockResolvedValue({
@@ -120,7 +120,7 @@ describe('Content Hub publish reliability + app scope', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -149,7 +149,7 @@ describe('Content Hub publish reliability + app scope', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -181,7 +181,7 @@ describe('Content Hub publish reliability + app scope', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -203,7 +203,7 @@ describe('Content Hub publish reliability + app scope', () => {
 
   it('Website edits save and publish only website scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -229,7 +229,7 @@ describe('Content Hub publish reliability + app scope', () => {
 
   it('Order App edits save and publish only order_app scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -254,7 +254,7 @@ describe('Content Hub publish reliability + app scope', () => {
 
   it('Website hero editor does not write order_app scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -275,7 +275,7 @@ describe('Content Hub publish reliability + app scope', () => {
 
   it('does not offer combined Website + Order App publish wording', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
