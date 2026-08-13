@@ -57,6 +57,16 @@
     max-width: 960px;
     margin: 0 auto;
 }
+/* Desktop: same 1280 rail as header / sections (not the narrower 960 card column) */
+@media (min-width: 769px) {
+    .home-mode-cards {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 .home-mode-cards__row {
     display: flex;
     flex-wrap: wrap;
