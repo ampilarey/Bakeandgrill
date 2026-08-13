@@ -39,7 +39,7 @@ class ContentBackfillTest extends TestCase
     public function test_public_backfill_fixes_divergence_without_changing_values(): void
     {
         SiteSetting::query()->updateOrCreate(
-            ['key' => 'home_categories_title', 'scope' => 'shared'],
+            ['key' => 'home_categories_title', 'scope' => 'shared', 'locale' => 'en'],
             [
                 'value' => 'Our favourites',
                 'type' => 'text',
@@ -48,6 +48,8 @@ class ContentBackfillTest extends TestCase
                 'is_public' => false,
             ],
         );
+        // Stage 3: order_app no longer falls back to shared — plant the app row.
+        SiteSetting::set('home_categories_title', 'Our favourites', 'order_app');
 
         $publicKeys = ContentRegistry::publicKeys();
         $this->assertContains('home_categories_title', $publicKeys);

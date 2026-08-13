@@ -37,11 +37,19 @@ class CmsContentTest extends TestCase
 
     private function seedSetting(string $key, string $value, string $group = 'Homepage', string $type = 'text', bool $isPublic = false): void
     {
-        SiteSetting::updateOrCreate(
-            ['key' => $key],
-            ['value' => $value, 'type' => $type, 'group' => $group, 'label' => $key, 'description' => '', 'is_public' => $isPublic],
-        );
-        Cache::forget("site_setting.{$key}");
+        // Write shared (SiteSetting::get / invoices) and both app scopes (ContentResolver).
+        // Stage 2 materializes app rows from shared seed — updating only shared would leave
+        // a stale website override winning the resolver chain.
+        foreach (['shared', 'website', 'order_app'] as $scope) {
+            SiteSetting::set($key, $value, $scope);
+        }
+        SiteSetting::query()->where('key', $key)->update([
+            'type' => $type,
+            'group' => $group,
+            'label' => $key,
+            'is_public' => $isPublic,
+        ]);
+        SiteSetting::bust();
     }
 
     private function ownerUser(): User

@@ -104,10 +104,17 @@ class ContentBacklogTest extends TestCase
     {
         $this->actingAsOwner();
 
+        // Shared first (clears app overrides), then plant order_app rows for Stage 3.
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
                 ['key' => 'site_name', 'scope' => 'shared', 'value' => 'Bake EN'],
+            ],
+        ])->assertOk();
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'site_name', 'scope' => 'order_app', 'value' => 'Bake EN'],
             ],
         ])->assertOk();
 
@@ -115,6 +122,12 @@ class ContentBacklogTest extends TestCase
             'locale' => 'dv',
             'changes' => [
                 ['key' => 'site_name', 'scope' => 'shared', 'locale' => 'dv', 'value' => 'Bake DV'],
+            ],
+        ])->assertOk();
+        $this->putJson('/api/admin/content', [
+            'locale' => 'dv',
+            'changes' => [
+                ['key' => 'site_name', 'scope' => 'order_app', 'locale' => 'dv', 'value' => 'Bake DV'],
             ],
         ])->assertOk();
 

@@ -45,10 +45,15 @@ class MenuNewDaysTest extends TestCase
 
     public function test_menu_new_days_appears_in_public_settings(): void
     {
+        SiteSetting::set('menu_new_days', '21', 'order_app');
         SiteSetting::set('menu_new_days', '21', 'shared');
-        $row = SiteSetting::query()->where('key', 'menu_new_days')->first();
-        $row?->update(['is_public' => true, 'group' => 'Branding', 'type' => 'text']);
+        SiteSetting::query()->where('key', 'menu_new_days')->update([
+            'is_public' => true,
+            'group' => 'Branding',
+            'type' => 'text',
+        ]);
         SiteSetting::bust();
+        \App\Domains\Content\ContentResolver::bust();
 
         $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
         $this->assertArrayHasKey('menu_new_days', $public);
