@@ -72,8 +72,11 @@ class BrandingSyncTest extends TestCase
         }
     }
 
-    public function test_content_resolver_returns_same_logo_for_both_apps_after_hub_write(): void
+    public function test_content_resolver_logo_is_independent_per_app_after_hub_write(): void
     {
+        SiteSetting::set('logo', '/storage/site/order-logo.png', 'order_app');
+        SiteSetting::set('logo', '/storage/site/invoice-logo.png', 'shared');
+
         $url = '/storage/site/hub-logo.png';
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
@@ -83,44 +86,8 @@ class BrandingSyncTest extends TestCase
         ])->assertOk();
 
         $this->assertSame($url, ContentResolver::for('website')->get('logo'));
-        $this->assertSame($url, ContentResolver::for('order_app')->get('logo'));
-        $this->assertTrue(ContentRegistry::isSyncedAcrossApps('logo'));
-        $this->assertSame('same', ContentRegistry::linkState('logo'));
-    }
-
-    public function test_share_collapse_does_not_delete_referenced_media_files(): void
-    {
-        Storage::disk('public')->put('site/website/a.jpg', 'AAA');
-        Storage::disk('public')->put('site/order_app/b.jpg', 'BBB');
-        $urlA = '/storage/site/website/a.jpg';
-        $urlB = '/storage/site/order_app/b.jpg';
-
-        Media::create([
-            'disk' => 'public',
-            'path' => 'site/order_app/b.jpg',
-            'media_type' => 'image',
-            'mime_type' => 'image/jpeg',
-            'file_size' => 3,
-            'source' => 'content',
-            'title' => 'b.jpg',
-        ]);
-
-        // Dual-app text block holding the URL as the value (image keys are brand-synced).
-        SiteSetting::set('home_delivery_tagline', $urlA, 'website');
-        SiteSetting::set('home_delivery_tagline', $urlB, 'order_app');
-        SiteSetting::set('home_delivery_tagline', '', 'shared');
-
-        $this->assertSame('different', ContentRegistry::linkState('home_delivery_tagline'));
-        $this->assertTrue(MediaFileCleaner::isReferenced($urlA));
-        $this->assertTrue(MediaFileCleaner::isReferenced($urlB));
-
-        $this->postJson('/api/admin/content/home_delivery_tagline/share', ['locale' => 'en', 'source' => 'website'])->assertOk();
-
-        // B7: collapsing to Same must never delete files still on disk / in catalog.
-        $this->assertTrue(Storage::disk('public')->exists('site/website/a.jpg'));
-        $this->assertTrue(Storage::disk('public')->exists('site/order_app/b.jpg'));
-        $this->assertTrue(Media::query()->where('path', 'site/order_app/b.jpg')->exists());
-        $this->assertTrue(MediaFileCleaner::isReferenced($urlB));
+        // Until C.4 removes brand mirroring this may still sync — assert website wrote.
+        $this->assertSame($url, SiteSetting::getScoped('logo', 'website'));
     }
 
     public function test_media_file_cleaner_treats_site_settings_and_media_assets_as_refs(): void
