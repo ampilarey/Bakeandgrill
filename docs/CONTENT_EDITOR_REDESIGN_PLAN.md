@@ -455,8 +455,13 @@ Everywhere; Home layout editor binds to `Home` (legacy `Homepage` aliased). Matr
 (sheet only); desktop 1200 / 1366 optional docked column. Vitest band + hook coverage; matrix
 rows 14–15.
 
-**Stage 6 — Visual block previews and preview-beside-editor.** §6.4 and §7.1. Highest cost,
-highest payoff, last.
+**Stage 6 — Visual block previews and preview-beside-editor. Done on this branch.** §6.4 and
+§7.1: `VisualBlockPreview` resurrected (hero-first fidelity: showing slide, poster/video,
+focal point, photo/scrim, text position) and wired into the focused block editor; plain-text
+keys render value-as-seen. Live preview beside the editor follows the selected app + surface
+device (matrix row 13 — device toggle locks to canonical surface). Vitest:
+`VisualBlockPreview.test.tsx`, `ContentHub.previewDeviceParity.test.tsx`,
+`LivePreviewFrame` lock coverage.
 
 Stages 1 and 4 carry most of the value. Stage 1 is correctness and cannot be deferred; Stage 4 is
 the relief the owner actually asked for.
@@ -479,7 +484,7 @@ the relief the owner actually asked for.
 | 10 | Website publish does not alter any Order App value, draft or publish state, and the reverse | 1 |
 | 11 | Publish does not clear a local draft until the server confirms | 1 |
 | 12 | An autosave failure stays visible, retains the change, offers retry, and blocks Publish | 1 |
-| 13 | Preview resolves the same app, device, surface and component list as the editor | 6 |
+| 13 | Preview resolves the same app, device, surface and component list as the editor | 6 (device + app lock + `include_layout`; vitest parity) |
 | 14 | No horizontal overflow at 320, 375, 390, 414, 767 | 5 |
 | 15 | No permanently docked preview between 768 and 1199 | 5 |
 | 16 | The 620-combination resolver snapshot is unchanged at every stage | all |

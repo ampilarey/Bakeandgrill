@@ -12,6 +12,7 @@ import {
   RichTextEditor,
   SeoSnippetPreview,
   TrustItemsEditor,
+  VisualBlockPreview,
 } from '../../components/content-editors';
 import { Btn } from '../../components/SharedUI';
 import { OpsOwnedSummary } from '../../components/OpsOwnedSummary';
@@ -822,12 +823,31 @@ export function HubFocusedBlockBody({
     })
     : renderEditorForScope(editorDeps, block, activeScope);
 
+  const appLabel = scopesLabelFor([activeScope]);
+  // §6.4 — show the thing, not its key. Hero first; other visual editors + plain text follow.
+  // Skip SEO pairs — SeoSnippetPreview already renders the customer-facing snippet.
+  const previewEditor = block.editor
+    || (block.type === 'text' || block.type === 'textarea' || block.rich ? 'text' : '');
+  const showVisualPreview = Boolean(previewEditor)
+    && block.type !== 'boolean'
+    && block.type !== 'image'
+    && !seoDescriptionKey(block.key)
+    && !isSeoDescriptionKey(block.key);
+
   return (
     <>
       {dirtyCount > 0 ? (
         <div style={{ marginBottom: 12 }} data-testid="block-editor-schedule-slot">
           {schedulePublishPanel}
         </div>
+      ) : null}
+      {showVisualPreview ? (
+        <VisualBlockPreview
+          editor={previewEditor}
+          value={val}
+          appLabel={appLabel}
+          fallbackLabel={previewEditor === 'text' ? block.label : undefined}
+        />
       ) : null}
       {scopes.length > 1
         ? renderScopeTabs(scopeTabsDeps, block.key, scopes, activeScope, editorBody)

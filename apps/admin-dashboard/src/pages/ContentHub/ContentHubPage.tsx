@@ -620,6 +620,11 @@ export function ContentHubPage() {
   const surfaceFilter: SurfaceFilter | null = activeSurface
     ?? urlSurface
     ?? (isHomeSection(activeGroup) ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
+  // Matrix row 13 / §7.2–§7.3: when a surface is selected, preview device locks to it.
+  const previewEditorDevice = surfaceFilter?.device ?? null;
+  const previewEditorSurfaceId = surfaceFilter
+    ? surfaceId(surfaceFilter.app, surfaceFilter.device, surfaceFilter.slot)
+    : null;
 
   // Keep activeSurface aligned when deep-linking via URL only.
   useEffect(() => {
@@ -1182,6 +1187,8 @@ export function ContentHubPage() {
               open={previewSheetOpen}
               onClose={() => setPreviewSheetOpen(false)}
               draftStatus={draftStatusNode}
+              editorDevice={previewEditorDevice}
+              editorSurfaceId={previewEditorSurfaceId}
             />
           </div>
         ) : (
@@ -1235,6 +1242,8 @@ export function ContentHubPage() {
                 websiteUrl={previewState.website}
                 orderAppUrl={previewState.orderApp}
                 loading={previewLoading}
+                editorDevice={previewEditorDevice}
+                editorSurfaceId={previewEditorSurfaceId}
               />
             ) : null}
           </div>
@@ -1256,6 +1265,8 @@ export function ContentHubPage() {
               }
             }}
             draftStatus={draftStatusNode}
+            editorDevice={previewEditorDevice}
+            editorSurfaceId={previewEditorSurfaceId}
           />
         ) : null}
 

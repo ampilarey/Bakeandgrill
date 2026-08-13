@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Monitor, Smartphone } from 'lucide-react';
 
-type Device = 'desktop' | 'mobile';
+export type PreviewDevice = 'desktop' | 'mobile';
 
 type Props = {
   url: string | null;
   loading?: boolean;
   /** Prefer mobile when opened from a phone preview sheet. */
-  defaultDevice?: Device;
+  defaultDevice?: PreviewDevice;
+  /**
+   * Matrix row 13 / §7.2–§7.3: when set, preview device follows the editor's
+   * selected Desktop/Mobile surface (canonical selector). Toggle is locked.
+   */
+  editorDevice?: PreviewDevice | null;
 };
 
-const WIDTHS: Record<Device, number> = {
+const WIDTHS: Record<PreviewDevice, number> = {
   desktop: 1280,
   mobile: 390,
 };
@@ -23,11 +28,21 @@ const FRAME_HEIGHT = 560;
  * container is narrower, the frame is visually scaled down — never silently
  * constrained via max-width:100% (which made “Mobile 390” lie on phones).
  */
-export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Props) {
-  const [device, setDevice] = useState<Device>(defaultDevice);
+export function LivePreviewFrame({
+  url,
+  loading,
+  defaultDevice = 'desktop',
+  editorDevice = null,
+}: Props) {
+  const locked = editorDevice === 'desktop' || editorDevice === 'mobile';
+  const [device, setDevice] = useState<PreviewDevice>(editorDevice ?? defaultDevice);
   const [tick, setTick] = useState(0);
   const [scale, setScale] = useState(1);
   const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (locked) setDevice(editorDevice);
+  }, [locked, editorDevice]);
 
   useEffect(() => {
     setTick((t) => t + 1);
@@ -53,6 +68,8 @@ export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Pr
     <div
       data-testid="live-preview-frame"
       data-device={device}
+      data-editor-device={locked ? editorDevice : undefined}
+      data-device-locked={locked ? '1' : '0'}
       data-logical-width={logicalWidth}
       data-scale={scale.toFixed(3)}
       style={{
@@ -67,7 +84,7 @@ export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Pr
     >
       <div style={{
         display: 'flex', gap: 8, padding: 10, alignItems: 'center',
-        borderBottom: '1px solid #3a2f24', flexWrap: 'wrap',
+        borderBottom: '1px solid var(--color-signage-canvas-border)', flexWrap: 'wrap',
       }}
       >
         <span style={{
@@ -79,6 +96,7 @@ export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Pr
           <span style={{ marginLeft: 8, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
             {logicalWidth}px
             {scale < 0.999 ? ` · scaled ${Math.round(scale * 100)}%` : ''}
+            {locked ? ' · follows editor surface' : ''}
           </span>
         </span>
         {(['desktop', 'mobile'] as const).map((d) => (
@@ -86,12 +104,18 @@ export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Pr
             key={d}
             type="button"
             data-testid={`preview-device-${d}`}
-            onClick={() => setDevice(d)}
+            onClick={() => { if (!locked) setDevice(d); }}
+            disabled={locked}
+            aria-pressed={device === d}
             style={{
               height: 32, padding: '0 10px', borderRadius: 8,
-              background: device === d ? 'var(--color-primary)' : '#2a2118', color: '#fff',
-              cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+              background: device === d ? 'var(--color-primary)' : 'var(--color-signage-canvas-bg)',
+              color: 'var(--color-bg)',
+              cursor: locked ? 'default' : 'pointer',
+              opacity: locked && device !== d ? 0.45 : 1,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
               display: 'inline-flex', alignItems: 'center', gap: 6,
+              border: 'none',
             }}
           >
             {d === 'desktop' ? <Monitor size={14} /> : <Smartphone size={14} />}
@@ -107,7 +131,7 @@ export function LivePreviewFrame({ url, loading, defaultDevice = 'desktop' }: Pr
           justifyContent: 'center',
           alignItems: 'flex-start',
           padding: 12,
-          background: '#2a2118',
+          background: 'var(--color-signage-canvas-bg)',
           overflow: 'auto',
           minWidth: 0,
         }}

@@ -45,4 +45,21 @@ describe('LivePreviewFrame', () => {
     expect(screen.getByTestId('live-preview-frame').getAttribute('data-logical-width')).toBe('1280');
     expect((screen.getByTestId('preview-iframe') as HTMLIFrameElement).style.width).toBe('1280px');
   });
+
+  it('locks device to editorDevice (matrix 13) and ignores toggle clicks', () => {
+    render(
+      <LivePreviewFrame
+        url="https://example.test/preview"
+        defaultDevice="desktop"
+        editorDevice="mobile"
+      />,
+    );
+    const frame = screen.getByTestId('live-preview-frame');
+    expect(frame.getAttribute('data-device')).toBe('mobile');
+    expect(frame.getAttribute('data-device-locked')).toBe('1');
+    expect(frame.getAttribute('data-editor-device')).toBe('mobile');
+    fireEvent.click(screen.getByTestId('preview-device-desktop'));
+    expect(frame.getAttribute('data-device')).toBe('mobile');
+    expect(frame.getAttribute('data-logical-width')).toBe('390');
+  });
 });

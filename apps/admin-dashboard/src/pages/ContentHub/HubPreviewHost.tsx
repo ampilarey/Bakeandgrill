@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ContentApp } from '../../api/content';
 import { PreviewPane } from './PreviewPane';
+import type { PreviewDevice } from './LivePreviewFrame';
 
 type Common = {
   lockedApp: ContentApp;
@@ -8,6 +9,9 @@ type Common = {
   orderAppUrl: string | null;
   loading: boolean;
   draftStatus?: ReactNode;
+  /** Matrix row 13 — device from the editor's selected surface. */
+  editorDevice?: PreviewDevice | null;
+  editorSurfaceId?: string | null;
 };
 
 export type HubPreviewHostProps =
@@ -31,16 +35,29 @@ export type HubPreviewHostProps =
  * (mobile sheet inside mobile shell, column inside desktop shell, compact sheet as sibling).
  */
 export function HubPreviewHost(props: HubPreviewHostProps) {
-  const { lockedApp, websiteUrl, orderAppUrl, loading } = props;
+  const {
+    lockedApp,
+    websiteUrl,
+    orderAppUrl,
+    loading,
+    editorDevice = null,
+    editorSurfaceId = null,
+  } = props;
+
+  const shared = {
+    lockedApp,
+    websiteUrl,
+    orderAppUrl,
+    loading,
+    editorDevice,
+    editorSurfaceId,
+  };
 
   if (props.mode === 'mobile-sheet') {
     return (
       <PreviewPane
         variant="sheet"
-        lockedApp={lockedApp}
-        websiteUrl={websiteUrl}
-        orderAppUrl={orderAppUrl}
-        loading={loading}
+        {...shared}
         open={props.open}
         onClose={props.onClose}
         draftStatus={props.draftStatus}
@@ -53,10 +70,7 @@ export function HubPreviewHost(props: HubPreviewHostProps) {
     return (
       <PreviewPane
         variant="column"
-        lockedApp={lockedApp}
-        websiteUrl={websiteUrl}
-        orderAppUrl={orderAppUrl}
-        loading={loading}
+        {...shared}
       />
     );
   }
@@ -64,10 +78,7 @@ export function HubPreviewHost(props: HubPreviewHostProps) {
   return (
     <PreviewPane
       variant="sheet"
-      lockedApp={lockedApp}
-      websiteUrl={websiteUrl}
-      orderAppUrl={orderAppUrl}
-      loading={loading}
+      {...shared}
       open={props.open}
       onClose={props.onClose}
       draftStatus={props.draftStatus}

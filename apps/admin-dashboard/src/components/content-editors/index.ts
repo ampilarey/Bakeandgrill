@@ -9,6 +9,7 @@ export { ProofDetailsEditor } from './ProofDetailsEditor';
 export { TrustItemsEditor } from './TrustItemsEditor';
 export { RichTextEditor } from './RichTextEditor';
 export { SeoSnippetPreview } from './SeoSnippetPreview';
+export { VisualBlockPreview } from './VisualBlockPreview';
 export { RevisionDiff } from './RevisionDiff';
 export { RepeaterShell } from './RepeaterShell';
 export type {
