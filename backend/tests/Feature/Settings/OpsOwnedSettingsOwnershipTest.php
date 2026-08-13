@@ -154,6 +154,52 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
         $this->assertSame('/admin/business-details', $phone['managed_by']['owner_path']);
     }
 
+    public function test_every_ops_owned_key_is_unwritable_via_content_api_and_exposes_owner_link(): void
+    {
+        $this->actingAsOwner();
+        SiteSetting::set('delivery_free_threshold', '210');
+        ContentResolver::bust();
+
+        $keys = array_values(array_unique(array_merge(
+            array_keys(OpsOwnedContent::DELIVERY_OPS),
+            OpsOwnedContent::BUSINESS_DETAILS_KEYS,
+        )));
+        // 1 delivery ops mirror + 13 Business Details identity keys.
+        $this->assertCount(14, $keys);
+
+        $blocks = collect($this->getJson('/api/admin/content')->assertOk()->json('blocks'));
+
+        foreach ($keys as $key) {
+            // Must never succeed as a content write — rejection key may be
+            // changes.0.key (ops-owned) or changes.0.scope (not on that app).
+            $this->putJson('/api/admin/content', [
+                'changes' => [
+                    ['key' => $key, 'scope' => 'website', 'value' => 'SHOULD_NOT_WRITE'],
+                ],
+            ])->assertUnprocessable();
+
+            $this->putJson('/api/admin/content/drafts', [
+                'changes' => [
+                    ['key' => $key, 'scope' => 'order_app', 'value' => 'SHOULD_NOT_WRITE'],
+                ],
+            ])->assertUnprocessable();
+
+            $block = $blocks->firstWhere('key', $key);
+            if (! is_array($block)) {
+                // Structured address keys may be Business Details-only, not hub blocks.
+                $this->assertTrue(
+                    OpsOwnedContent::isWriteForbidden($key),
+                    "ops-owned key [{$key}] must remain write-forbidden even if absent from hub blocks",
+                );
+
+                continue;
+            }
+            $this->assertNotNull($block['managed_by'] ?? null, "ops-owned key [{$key}] must expose managed_by");
+            $this->assertNotEmpty($block['managed_by']['owner_label'] ?? null);
+            $this->assertNotEmpty($block['managed_by']['owner_path'] ?? null);
+        }
+    }
+
     public function test_fee_preview_uses_delivery_settings_threshold(): void
     {
         $this->actingAsOwner();

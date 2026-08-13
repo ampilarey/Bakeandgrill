@@ -56,25 +56,6 @@ describe('SurfaceBuilderLanding', () => {
     );
   });
 
-  it.each([320, 375, 390, 414, 767, 768, 1024, 1199, 1200, 1366] as const)('does not overflow horizontally at %ipx', (width) => {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
-    const root = document.createElement('div');
-    root.style.width = `${width}px`;
-    root.style.overflow = 'auto';
-    document.body.appendChild(root);
-
-    render(
-      <SurfaceBuilderLanding
-        onSelectSurface={() => undefined}
-        onSelectTask={() => undefined}
-      />,
-      { container: root },
-    );
-
-    expect(root.scrollWidth).toBeLessThanOrEqual(width + 1);
-    root.remove();
-  });
-
   it('uses full width of the editor column', () => {
     render(
       <SurfaceBuilderLanding

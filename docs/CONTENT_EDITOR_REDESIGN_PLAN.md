@@ -47,31 +47,46 @@ publish status are locked per app (`1299ff4a5`). `HomeLayoutEditor` edits one ap
 (`15675b59b`); shared page-block mode is retired (`ded01821a`).
 
 **Operational ownership is enforced in code.** `backend/app/Domains/Settings/OpsOwnedContent.php`
-plus its frontend mirror `opsOwnedContentKeys.ts` mark 15 keys as owned elsewhere and render them
+plus its frontend mirror `opsOwnedContentKeys.ts` mark 14 keys as owned elsewhere and render them
 read-only in the hub with an owner label and link. `delivery_threshold` points at Ordering Control
 Center → Delivery Settings; the rest point at Business Details. There is a client-side fallback so
-a stale API payload cannot make them editable again (`9c5acd001`).
+a stale API payload cannot make them editable again (`9c5acd001`). Exhaustive API write-block +
+`managed_by` coverage is in `OpsOwnedSettingsOwnershipTest`.
 
 **Business Details exists** as the shared operational profile at `/business-details`, writing the
 `shared` scope only, including structured address keys (`b44cd97f6`, `971eca16f`).
 
-**The canonical component catalog exists.** `ContentHub/canonicalCatalog.ts` (285 lines) is the
-single source for surface counts, the configured list, the Add picker and duplicate detection. Its
-own docblock forbids independent counters. It provides `listPlacedOnSurface`,
-`listConfiguredOnSurface`, `listHiddenOnSurface`, `surfaceCountLabel`, `addableTypesOnSurface`,
+**The canonical component catalog exists.** `ContentHub/canonicalCatalog.ts` is the single source
+for surface counts, the configured list, the Add picker and duplicate detection. Its own docblock
+forbids independent counters. It provides `listPlacedOnSurface`, `listConfiguredOnSurface`,
+`listHiddenOnSurface`, `surfaceCountLabel`, `addableTypesOnSurface`,
 `findSingletonDuplicatesOnSurface`, `findDuplicateIdentities`, and a 22-entry
-`SINGLETON_SURFACE_TYPES` set.
+`SINGLETON_SURFACE_TYPES` set. Card label wording is `N components · M hidden`. Parallel
+`countBlocksOnSurface` / `listBlocksOnSurface` helpers were removed from `surfaceCatalog.ts`;
+`canonicalCatalog.ssot.test.ts` fails if they (or a second surface lister) reappear outside the
+canonical module.
 
-**A read-only integrity report exists.** `ContentIntegrityReport.php` reports duplicates, orphan
-block types, ops-ownership leaks and needs-review rows without mutating anything, exposed at
-`GET /admin/content/integrity`.
+**Integrity report + admin warning + safe resolve.** `ContentIntegrityReport.php` reports
+duplicates, orphan block types, ops-ownership leaks and needs-review rows without mutating
+anything (`GET /admin/content/integrity`). The Content Hub landing shows a persistent
+`singleton_duplicate_surface` banner (surface, type, block ids). Opening the surface offers
+**Keep #id · hide others** — hides non-kept instances via draft `is_enabled=false`, never
+deletes. Live `PageBlockRepository::forSurface` still dedupes singletons for customers.
+
+**Backend singleton enforcement.** `PageBlockController::assertSingletonAvailable` rejects a
+second non-`allowsMultiple` type on the same app home page (stricter than surface scope) with a
+clear 422. `BlockTypeSingletonClassificationTest` asserts every library type is deliberately
+singleton or multi-instance.
 
 **Autosave failure handling exists.** `autosaveFailed` / `autosaveErrorDetail` state, an explicit
-`onRetrySave`, and Publish disabled while a draft save is failing.
+`onRetrySave`, and Publish disabled while a draft save is failing — covered by
+`ContentStudio.autosave` and `ContentHub.publishAndScope` tests (rows 11–12).
 
 **Hero depth was already reduced.** The separate `hero-editor-sheet` and `hero-slide-editor-sheet`
 are gone; the hero now renders an inline slide-overview list and one `ContentEditorSheet` for the
 slide.
+
+**Stage 1 (§5 remainder) is shipped** on this branch — see §9.
 
 ### 1.3 Remaining gaps — this is what the plan is for
 
@@ -85,14 +100,15 @@ slide.
 4. **`ContentHubPage.tsx` has grown to 2,301 lines** (was 2,046 in revision 1). The ContentHub
    directory is 8,947 lines. `HomeLayoutEditor.tsx` is 1,177 and `HeroSlidesEditor.tsx` is 1,143.
    The file is getting bigger while being restructured, which is the wrong direction.
-5. **The surface-count label wording diverges from the agreed spec.** `surfaceCountLabel()`
-   renders `"2 showing · 1 hidden"`. The agreed wording is `"2 components · 1 hidden"`.
+5. ~~**The surface-count label wording diverges from the agreed spec.**~~ Closed in Stage 1 —
+   label is now `N components · M hidden`.
 6. **No audited page inventory.** `SurfaceCatalog` covers 4 slots × 2 devices × 2 apps
    (`header`, `home`, `footer`, `bottom_navigation`; mobile gets all four, desktop three). Real
    customer pages — contact, hours, menu, legal, events — are not in the surface model at all.
 7. **Admin breakpoints are thin.** 29 media queries, dominated by `max-width: 767px` (11
    occurrences). There is one compact band (`768–1199`) and a `min-width: 1200px`. The
    414 / 1366 behaviours in the target spec are untested.
+
 
 ---
 
@@ -214,12 +230,11 @@ complete specification; Stage 1 is closing the remainder and proving all of it.
    default, so **the singleton set is the thing to keep correct**; a new type defaults to
    multi-instance and that must be a conscious choice, asserted by a test.
 8. **Hidden components are labelled, never folded into an ambiguous number.** Required wording:
-   `2 components · 1 hidden`. `surfaceCountLabel()` currently emits `2 showing · 1 hidden` —
-   change the label, keep the structure.
-9. **Legacy true duplicates are never silently deleted.** `ContentIntegrityReport` already detects
-   them read-only. Stage 1 surfaces them in the admin as a warning with the offending
-   `component_id`s and a safe resolution flow — the owner chooses which instance to keep; nothing
-   is removed automatically.
+   `2 components · 1 hidden`. `surfaceCountLabel()` emits that string (structure unchanged).
+9. **Legacy true duplicates are never silently deleted.** `ContentIntegrityReport` detects them
+   read-only. The admin shows a warning with the offending `component_id`s and a keep/hide
+   resolution flow — the owner chooses which instance to keep; nothing is removed automatically.
+
 10. **Tests are part of the fix, not follow-up.** See §10.
 
 Component identity, for anything that has to be addressed unambiguously:
@@ -368,11 +383,12 @@ prevents the original bug from returning.
 
 ## 9. Staged implementation
 
-**Stage 1 — Count and duplicate correctness. Ships first.**
-Close the remainder of §5: label wording to `N components · M hidden`; admin-visible integrity
-warning for legacy duplicates with a safe resolution flow; assert card and editor share one
-selector; assert the Add picker is separate and slot-filtered. Correctness, not cosmetics — it
-does not wait behind visual work.
+**Stage 1 — Count and duplicate correctness. Shipped.**
+Closed the remainder of §5: label wording `N components · M hidden`; integrity banner +
+keep/hide resolve (never auto-delete); card and editor share `listConfiguredOnSurface` /
+`surfaceCountLabel` with an SSOT structural test; Add picker stays separate and slot-filtered;
+backend singleton 422 + deliberate multi/singleton classification test; matrix rows 1–7, 9–12
+and 16 covered. Correctness only — no IA/regroup/restyle.
 
 **Stage 2 — Audited surface and page inventory.**
 Document every page and surface per app from routes and renderers. Deliverable is the verified

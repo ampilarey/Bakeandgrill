@@ -174,6 +174,13 @@ describe('Content Hub autosave + WYSIWYG', () => {
     expect(within(sheet).getAllByTestId('rich-text-editor')[0].innerHTML).toMatch(/Keep me locally/);
     expect(contentApi.updateContent).not.toHaveBeenCalled();
 
+    // Publish must stay blocked while the draft save is failing (matrix row 12).
+    const publishBtns = screen.queryAllByTestId(/publish-live-btn/);
+    expect(publishBtns.length).toBeGreaterThan(0);
+    for (const btn of publishBtns) {
+      expect(btn).toBeDisabled();
+    }
+
     vi.mocked(contentApi.saveContentDrafts).mockResolvedValueOnce({
       drafts: { cta_band_headline: 'Keep me locally' },
       saved_at: '2026-07-23T12:30:00Z',

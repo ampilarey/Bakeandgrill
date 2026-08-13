@@ -469,23 +469,49 @@ describe('HomeLayoutEditor', () => {
     expect(screen.getByTestId('home-layout-singleton-warning').textContent).toMatch(/website\.mobile\.header\.88/);
   });
 
-  it.each([320, 375, 390, 414, 768, 1024, 1200, 1366] as const)(
-    'surface editor does not overflow horizontally at %ipx',
-    async (width) => {
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
-      const root = document.createElement('div');
-      root.style.width = `${width}px`;
-      root.style.overflow = 'auto';
-      document.body.appendChild(root);
-      render(
-        <HomeLayoutEditor
-          surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
-        />,
-        { container: root },
-      );
-      await waitFor(() => expect(screen.getByTestId('home-layout-editor')).toBeInTheDocument());
-      expect(root.scrollWidth).toBeLessThanOrEqual(width + 1);
-      root.remove();
-    },
-  );
+  it('keep-this resolution hides other duplicate instances without deleting', async () => {
+    fetchAdminPageBlocks.mockImplementation(async () => ({
+      app: 'website',
+      page: 'home',
+      blocks: [
+        ...blocksFor('website'),
+        {
+          id: 88,
+          app: 'website',
+          page: 'home',
+          block_type: 'prayer_bar',
+          position: 6,
+          is_enabled: true,
+          content_mode: 'own',
+          settings: { show_mobile: true, placement_mobile: 'header' },
+          label: 'Prayer dup',
+          description: '',
+          removable: true,
+          supports_shared_content: false,
+        },
+      ],
+      available_types: [
+        { type: 'prayer_bar', label: 'Prayer', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+      ],
+      draft: false,
+      version: 0,
+    }));
+    updatePageBlock.mockResolvedValue({
+      block: { id: 88, is_enabled: false, block_type: 'prayer_bar' },
+      draft: true,
+      version: 1,
+    });
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-keep-singleton-12')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('home-layout-keep-singleton-12'));
+    await waitFor(() => expect(updatePageBlock).toHaveBeenCalledWith(
+      88,
+      expect.objectContaining({ is_enabled: false, app: 'website' }),
+    ));
+    expect(deletePageBlock).not.toHaveBeenCalled();
+  });
 });

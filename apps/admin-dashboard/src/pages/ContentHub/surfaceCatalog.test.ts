@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { countComponentsOnSurface } from './canonicalCatalog';
 import {
   allSurfaces,
-  countBlocksOnSurface,
   parseSurfaceId,
   slotsFor,
   typesForSlot,
@@ -33,20 +33,22 @@ describe('surfaceCatalog', () => {
     expect(typesForSlot('bottom_navigation')).toEqual(['bottom_nav']);
   });
 
-  it('countBlocksOnSurface respects placement settings', () => {
+  it('canonical count respects placement settings (single source of truth)', () => {
     const blocks = [
       {
+        id: 1,
         block_type: 'prayer_bar',
         is_enabled: true,
         settings: { placement_mobile: 'header', show_mobile: true, show_desktop: false },
       },
       {
+        id: 2,
         block_type: 'hero',
         is_enabled: true,
         settings: { placement_mobile: 'home', show_mobile: true },
       },
     ];
-    expect(countBlocksOnSurface(blocks, 'mobile', 'header')).toBe(1);
-    expect(countBlocksOnSurface(blocks, 'mobile', 'home')).toBe(1);
+    expect(countComponentsOnSurface(blocks, { app: 'website', device: 'mobile', slot: 'header' })).toBe(1);
+    expect(countComponentsOnSurface(blocks, { app: 'website', device: 'mobile', slot: 'home' })).toBe(1);
   });
 });

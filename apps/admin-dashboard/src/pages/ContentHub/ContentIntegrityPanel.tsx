@@ -6,9 +6,36 @@ type Props = {
   appFilter?: 'website' | 'order_app';
 };
 
+type SingletonDupeIssue = {
+  surface: string;
+  block_type: string;
+  block_ids: number[];
+  message: string;
+};
+
+function parseSingletonDupes(report: ContentIntegrityReport | null, appFilter?: Props['appFilter']): SingletonDupeIssue[] {
+  if (!report) return [];
+  return (report.issues ?? [])
+    .filter((issue) => issue.code === 'singleton_duplicate_surface')
+    .map((issue) => {
+      const meta = issue.meta ?? {};
+      const surface = String(meta.surface ?? '');
+      const block_type = String(meta.block_type ?? '');
+      const rawIds = Array.isArray(meta.block_ids) ? meta.block_ids : [];
+      const block_ids = rawIds.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+      return { surface, block_type, block_ids, message: issue.message };
+    })
+    .filter((row) => {
+      if (!appFilter) return true;
+      return row.surface.startsWith(`${appFilter}.`);
+    });
+}
+
 /**
  * Admin-only integrity summary for Content & Branding.
  * Surfaces duplicates, legacy ops rows, and needs-review items — does not mutate data.
+ * Singleton duplicates get a persistent warning banner; resolution (hide others) lives
+ * on the surface editor so the owner chooses which instance to keep.
  */
 export function ContentIntegrityPanel({ appFilter }: Props) {
   const [report, setReport] = useState<ContentIntegrityReport | null>(null);
@@ -33,10 +60,51 @@ export function ContentIntegrityPanel({ appFilter }: Props) {
     if (!scoped) return true;
     return row.identifier.includes(appFilter);
   });
-  const issues = report?.issues ?? [];
+  const issues = (report?.issues ?? []).filter((issue) => {
+    if (!appFilter) return true;
+    const surface = String(issue.meta?.surface ?? '');
+    if (surface) return surface.startsWith(`${appFilter}.`);
+    return true;
+  });
+  const singletonDupes = parseSingletonDupes(report, appFilter);
 
   return (
     <section className="hub-integrity-panel" data-testid="content-integrity-panel">
+      {singletonDupes.length > 0 ? (
+        <div
+          role="alert"
+          data-testid="content-integrity-singleton-banner"
+          className="hub-integrity-singleton-banner"
+          style={{
+            marginBottom: 10,
+            padding: 12,
+            borderRadius: 10,
+            border: '1px solid var(--color-warning)',
+            background: 'var(--color-border-light)',
+            fontSize: 13,
+            color: 'var(--color-text)',
+          }}
+        >
+          <strong>Duplicate components need review.</strong>
+          {' '}
+          Nothing was deleted. Open the affected surface and choose which instance to keep — others are hidden.
+          <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+            {singletonDupes.map((d) => (
+              <li
+                key={`${d.surface}-${d.block_type}`}
+                data-testid={`content-integrity-dupe-${d.surface}-${d.block_type}`}
+              >
+                <strong>{d.surface}</strong>
+                {' · '}
+                {d.block_type}
+                {' · IDs '}
+                {d.block_ids.join(', ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <button
         type="button"
         className="hub-integrity-toggle"
@@ -69,6 +137,13 @@ export function ContentIntegrityPanel({ appFilter }: Props) {
             <div key={`${issue.code}-${issue.message}`} className="hub-integrity-row" data-severity={issue.severity}>
               <strong>{issue.code}</strong>
               <span>{issue.message}</span>
+              {issue.code === 'singleton_duplicate_surface' && Array.isArray(issue.meta?.block_ids) ? (
+                <span data-testid="content-integrity-issue-block-ids">
+                  component_ids:
+                  {' '}
+                  {(issue.meta?.block_ids as number[]).join(', ')}
+                </span>
+              ) : null}
             </div>
           ))}
           {review.slice(0, 12).map((row) => (

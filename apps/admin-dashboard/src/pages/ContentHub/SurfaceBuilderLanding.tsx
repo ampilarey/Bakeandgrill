@@ -15,7 +15,7 @@ import { BRAND_PAGE_TASKS, type ContentTask, type ContentTaskId } from './taskLa
 export type SurfaceBuilderLandingProps = {
   /** When set, only show this app's surfaces and relevant brand/page tasks. */
   appFilter?: SurfaceApp;
-  /** Optional count labels keyed by surface id (e.g. "2 components" or "2 showing · 1 hidden"). */
+  /** Optional count labels keyed by surface id (e.g. "2 components" or "2 components · 1 hidden"). */
   surfaceCounts?: Record<string, number | string>;
   /** Dirty section names for unpublished-edit dots on brand/page cards. */
   dirtyGroups?: Set<string>;

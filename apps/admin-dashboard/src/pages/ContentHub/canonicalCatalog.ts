@@ -165,7 +165,7 @@ export function countHiddenOnSurface(
 export type SurfaceCountLabel = {
   showing: number;
   hidden: number;
-  /** Card chip text, e.g. "2 components" or "2 showing · 1 hidden". */
+  /** Card chip text, e.g. "2 components" or "2 components · 1 hidden". */
   label: string;
 };
 
@@ -179,7 +179,7 @@ export function surfaceCountLabel(
     return {
       showing,
       hidden,
-      label: `${showing} showing · ${hidden} hidden`,
+      label: `${showing} component${showing === 1 ? '' : 's'} · ${hidden} hidden`,
     };
   }
   return {

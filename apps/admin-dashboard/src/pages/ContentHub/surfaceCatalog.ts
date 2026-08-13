@@ -175,24 +175,7 @@ export type BlockLike = {
   settings?: Record<string, unknown>;
 };
 
-/** Enabled blocks placed on one surface (canonical card-count source). */
-export function listBlocksOnSurface(
-  blocks: BlockLike[],
-  device: SurfaceDevice,
-  slot: SurfaceSlot,
-): BlockLike[] {
-  return blocks.filter(
-    (b) => b.is_enabled && blockOnSurface(b.settings, device, slot),
-  );
-}
-
-/** Count enabled (showing) blocks on one surface for one app. */
-export function countBlocksOnSurface(
-  blocks: BlockLike[],
-  device: SurfaceDevice,
-  slot: SurfaceSlot,
-): number {
-  return listBlocksOnSurface(blocks, device, slot).length;
-}
-
-/** Prefer importing surfaceCountLabel from canonicalCatalog for card chips. */
+/**
+ * Placement/visibility primitive only. Do NOT count or list configured components
+ * here — use listConfiguredOnSurface / surfaceCountLabel from canonicalCatalog.ts.
+ */
