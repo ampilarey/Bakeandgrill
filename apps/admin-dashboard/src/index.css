@@ -3962,6 +3962,54 @@ a { text-decoration: none; color: inherit; }
 .hub-surface-landing {
   max-width: none;
 }
+.hub-integrity-panel {
+  margin: 0 0 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-border-light);
+  min-width: 0;
+}
+.hub-integrity-toggle {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+.hub-integrity-toggle span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.hub-integrity-body {
+  padding: 0 14px 14px;
+  display: grid;
+  gap: 8px;
+}
+.hub-integrity-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+.hub-integrity-row strong {
+  color: var(--color-text);
+  font-size: 12px;
+}
 .hub-surface-tree {
   display: flex;
   flex-direction: column;
@@ -3995,15 +4043,36 @@ a { text-decoration: none; color: inherit; }
 .hub-surface-card {
   min-height: 72px;
 }
-@media (max-width: 720px) {
+/* Mobile Admin Content Hub: single column, no horizontal overflow */
+@media (max-width: 767px) {
   .hub-surface-devices {
     grid-template-columns: 1fr;
   }
   .hub-surface-slots {
     grid-template-columns: 1fr;
   }
+  .hub-surface-landing,
+  .hub-task-landing,
+  .hub-surface-card,
+  .hub-task-card {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .hub-task-card-title,
+  .hub-task-card-desc {
+    overflow-wrap: anywhere;
+  }
 }
-@media (min-width: 1100px) {
+/* Tablet: compact two-column slots, no forced three-column squeeze */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .hub-surface-devices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hub-surface-slots {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 1200px) {
   .hub-surface-slots {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

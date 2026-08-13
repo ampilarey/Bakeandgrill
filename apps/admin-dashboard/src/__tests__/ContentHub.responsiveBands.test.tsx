@@ -26,6 +26,13 @@ vi.mock('../api/content', () => ({
   createContentPreviewToken: vi.fn(async () => ({
     token: 't', website_url: '/p', order_app_url: '/o', expires_in: 900,
   })),
+  getContentIntegrity: vi.fn(async () => ({
+    generated_at: '2026-08-13T00:00:00Z',
+    surfaces: [],
+    issues: [],
+    needs_review: [],
+    summary: { issue_count: 0, needs_review_count: 0, surface_count: 14 },
+  })),
   uploadContentVideo: vi.fn(),
 }));
 

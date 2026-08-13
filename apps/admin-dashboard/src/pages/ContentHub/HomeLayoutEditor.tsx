@@ -32,7 +32,12 @@ import {
 } from './homeComponentLibrary';
 import { heroPromoConflict } from './surfaceRegistry';
 import {
-  blockOnSurface,
+  addableTypesOnSurface,
+  listComponentsOnSurface,
+  placementSettingsForSurface,
+  type CanonicalComponent,
+} from './canonicalCatalog';
+import {
   surfaceBreadcrumb,
   typesForSlot,
   type SurfaceFilter,
@@ -108,6 +113,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   const [previewMsg, setPreviewMsg] = useState('');
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
 
   const hasDraft = appState.hasDraft;
   const layoutRevision = appState.version * 1_000_000 + (hasDraft ? 1 : 0);
@@ -144,7 +150,8 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   useEffect(() => {
     setReorderMode(false);
     setEditingSession(null);
-  }, [activeApp]);
+    setAddPickerOpen(false);
+  }, [activeApp, surfaceFilter?.app, surfaceFilter?.device, surfaceFilter?.slot]);
 
   /** Find a specific instance by id, or (legacy) the first instance of a type. */
   const findInstance = (type: string, id?: number) => {
@@ -164,7 +171,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           type: t.type,
           name: t.label,
           summary: t.description,
-          supportsSharedContent: t.supports_shared_content,
+          supportsSharedContent: false,
           allowsMultiple: t.allows_multiple,
           flowWarning: t.flow_warning ?? undefined,
           dynamicSource: t.dynamic_source ?? undefined,
@@ -174,24 +181,54 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     return Array.from(byType.values());
   }, [appState.types]);
 
-  const visibleLibrary = useMemo(() => {
-    if (!surfaceFilter) return library;
-    const slotTypes = new Set(typesForSlot(surfaceFilter.slot));
-    return library.filter((comp) => {
-      if (slotTypes.has(comp.type)) return true;
-      const inst = appState.blocks.find((b) => b.block_type === comp.type);
-      if (!inst) return false;
-      return blockOnSurface(inst.settings, surfaceFilter.device, surfaceFilter.slot);
-    });
-  }, [library, surfaceFilter, appState.blocks]);
+  const libraryByType = useMemo(() => {
+    const map = new Map<string, LibraryComponent>();
+    for (const c of library) map.set(c.type, c);
+    return map;
+  }, [library]);
+
+  /** Canonical instances for the open surface — card count and editor must match. */
+  const surfaceComponents = useMemo((): CanonicalComponent[] => {
+    if (!surfaceFilter) return [];
+    return listComponentsOnSurface(appState.blocks, surfaceFilter);
+  }, [appState.blocks, surfaceFilter]);
+
+  const addableTypes = useMemo(() => {
+    if (!surfaceFilter) return [];
+    const available = appState.types.filter((t) => !t.deprecated).map((t) => t.type);
+    const fallback = typesForSlot(surfaceFilter.slot);
+    return addableTypesOnSurface(
+      appState.blocks,
+      surfaceFilter,
+      available.length > 0 ? available : fallback,
+    );
+  }, [appState.blocks, appState.types, surfaceFilter]);
 
   const conflict = heroPromoConflict(
     appState.blocks.filter((b) => b.is_enabled).map((b) => b.block_type),
   );
 
   const overviewRows = useMemo((): OverviewRow[] => {
+    // Surface card → editor: only the declared surface instances (exact count match).
+    if (surfaceFilter) {
+      return surfaceComponents.map((c) => {
+        const instance = appState.blocks.find((b) => b.id === c.block_id);
+        const comp = libraryByType.get(c.component_type) ?? {
+          type: c.component_type,
+          name: c.label,
+          summary: '',
+          supportsSharedContent: false,
+        };
+        return {
+          rowKey: c.component_id,
+          comp,
+          instance,
+        };
+      });
+    }
+
     const rows: OverviewRow[] = [];
-    for (const comp of visibleLibrary) {
+    for (const comp of library) {
       if (!comp.allowsMultiple) {
         rows.push({
           rowKey: comp.type,
@@ -216,18 +253,19 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
     return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleLibrary, appState.blocks]);
+  }, [surfaceFilter, surfaceComponents, library, libraryByType, appState.blocks]);
 
   const addBlock = async (type: string): Promise<PageBlockRow | null> => {
     setBusy(true);
     setError('');
     try {
+      const settings = surfaceFilter ? placementSettingsForSurface(surfaceFilter) : {};
       const res = await createPageBlock({
         app: activeApp,
         version: appState.version,
         block_type: type,
         content_mode: 'own',
-        settings: {},
+        settings,
       });
       const refreshed = await fetchAdminPageBlocks(activeApp);
       setAppState({
@@ -236,6 +274,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
         version: refreshed.version ?? res.version,
         hasDraft: true,
       });
+      setAddPickerOpen(false);
       return res.block;
     } catch (e) {
       setError((e as Error).message || `Could not add to ${appLabel(activeApp)}.`);
@@ -446,10 +485,21 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           ) : null}
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)' }}>
             {surfaceFilter ? 'Surface components' : 'Home Components'}
+            {surfaceFilter ? (
+              <span
+                data-testid="home-layout-surface-count"
+                style={{ marginLeft: 8, fontWeight: 700, fontSize: 13, color: 'var(--color-text-secondary)' }}
+              >
+                {surfaceComponents.length}
+                {' '}
+                component
+                {surfaceComponents.length === 1 ? '' : 's'}
+              </span>
+            ) : null}
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 560 }}>
             {surfaceFilter
-              ? 'Components you can place on this surface. Edit to adjust visibility, order, and content.'
+              ? 'Only components on this surface. Add new ones with “Add component”; edits stay in this app.'
               : `${appLabel(activeApp)} home layout — choose components, placement, and visibility.`}
           </div>
           <div
@@ -465,6 +515,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {surfaceFilter ? (
+            <button
+              type="button"
+              data-testid="home-layout-add-component"
+              disabled={busy || loading || addableTypes.length === 0}
+              onClick={() => setAddPickerOpen(true)}
+              style={btnPrimary}
+            >
+              Add component
+            </button>
+          ) : null}
           <button
             type="button"
             data-testid="home-layout-reorder-toggle"
@@ -538,8 +599,25 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       ) : (
         <div
           data-testid="home-components-overview"
+          data-surface-component-count={surfaceFilter ? String(surfaceComponents.length) : undefined}
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
+          {surfaceFilter && overviewRows.length === 0 ? (
+            <div
+              data-testid="home-layout-surface-empty"
+              style={{
+                padding: 20,
+                borderRadius: 10,
+                border: '1px dashed var(--color-border)',
+                color: 'var(--color-text-muted)',
+                fontSize: 13,
+                textAlign: 'center',
+              }}
+            >
+              No components on this surface yet.
+              {addableTypes.length > 0 ? ' Use “Add component” to place one.' : ''}
+            </div>
+          ) : null}
           {overviewRows.map((row) => {
             const { comp, rowKey, isAddSlot, instance } = row;
             const status = instanceStatus(instance);
@@ -610,6 +688,59 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           })}
         </div>
       )}
+
+      {addPickerOpen && surfaceFilter ? (
+        <ContentEditorSheet
+          open
+          title={`Add component · ${surfaceBreadcrumb(surfaceFilter)}`}
+          onClose={() => setAddPickerOpen(false)}
+          layer={1}
+          testId="home-layout-add-picker"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="home-layout-add-picker-list">
+            {addableTypes.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
+                Every available component type is already on this surface.
+              </p>
+            ) : (
+              addableTypes.map((type) => {
+                const comp = libraryByType.get(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    data-testid={`home-layout-add-type-${type}`}
+                    disabled={busy}
+                    onClick={() => {
+                      void addBlock(type).then((block) => {
+                        if (block) {
+                          setEditingSession({ type, blockId: block.id, isAddSlot: false });
+                        }
+                      });
+                    }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      gap: 4,
+                      padding: 12,
+                      borderRadius: 10,
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-bg)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{comp?.name ?? type}</span>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{comp?.summary ?? ''}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </ContentEditorSheet>
+      ) : null}
 
       {editingComp ? (
         <ContentEditorSheet

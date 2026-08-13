@@ -216,6 +216,7 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
 
         Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
+        Route::get('/admin/content/integrity', [App\Http\Controllers\Api\ContentController::class, 'integrity']);
         Route::get('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'drafts']);
         Route::put('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'saveDrafts']);
         Route::delete('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'discardDrafts']);

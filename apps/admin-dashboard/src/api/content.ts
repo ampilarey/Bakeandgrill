@@ -87,6 +87,18 @@ export type ContentExportBundle = {
   entries: Array<{ key: string; scope: ContentScope; locale: string; value: string }>;
 };
 
+export type ContentIntegrityReport = {
+  generated_at: string;
+  surfaces: Array<{ id: string; count: number }>;
+  issues: Array<{ severity: string; code: string; message: string; meta?: Record<string, unknown> }>;
+  needs_review: Array<{ kind: string; identifier: string; detail: string }>;
+  summary: { issue_count: number; needs_review_count: number; surface_count: number };
+};
+
+export async function getContentIntegrity(): Promise<ContentIntegrityReport> {
+  return req('/admin/content/integrity');
+}
+
 export async function getContentBlocks(locale: ContentLocale = 'en'): Promise<{
   blocks: ContentBlock[];
   locale: string;
