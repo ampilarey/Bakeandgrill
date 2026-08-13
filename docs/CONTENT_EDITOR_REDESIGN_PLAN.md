@@ -1,214 +1,443 @@
-# Content Editor Redesign — Website Content and Order App Content
+# Content & Branding Redesign — Website Content and Order App Content
 
-Status: proposed, nothing built.
+**Revision 2.** Rewritten after auditing the current branch. The previous revision said
+"proposed, nothing built" — that is no longer true, and several of its counts were stale.
 
-Scope: the two admin destinations `/content/website` and `/content/order-app`, and everything
-they are built from. **Nothing else in the admin.** The wider navigation audit is in
-`docs/LAYOUT_REDESIGN_PLAN.md` and is explicitly out of scope here.
-
-Owner's ask, after the website/order-app separation shipped: *"inside the admin app 2 parts,
-website content and order app content, all related to these two."*
-
-Separating the two apps removed the *decisions* (Same in both / Different per app). It did not
-make either screen smaller. This is about the screens themselves.
+Scope: the two admin destinations `/content/website` and `/content/order-app` and the components
+they are built from. Nothing else in the admin. The wider navigation audit lives in
+`docs/LAYOUT_REDESIGN_PLAN.md`; the data separation history lives in
+`docs/SEPARATE_WEBSITE_AND_ORDER_APP_PLAN.md`. Neither is superseded by this document.
 
 ---
 
-## 1. What is on those two screens
+## 1. Current verified state
 
-| | Website Content | Order App Content |
+**Audited against:** `origin/main` at `a23d51683` ("Merge pull request #92 from
+ampilarey/cursor/surface-count-configured-only-d038"). Every number below was re-measured on that
+commit. Figures from revision 1 that did not survive re-measurement have been replaced, not
+carried forward.
+
+### 1.1 Registry, re-counted
+
+| | Revision 1 said | Verified on `main` |
 |---|---|---|
-| Blocks shown | **148** | **88** |
-| Groups | 12 | 14 |
-| Largest group | Pages — **44** | Order App — 18 |
+| Non-deprecated blocks | 169 | **173** |
+| Blocks targeting both apps | 67 | **67** |
+| Website Content blocks | 148 | **149** |
+| Order App Content blocks | 88 | **88** |
+| Website groups | 12 | **12** |
+| Order App groups | 14 | **14** |
 
-Website Content, by group: Pages 44, Homepage 32, Contact 19, Footer 16, Order App 10, General 6,
+Website Content by group: Pages 44, Homepage 32, Contact 19, Footer 16, Order App 10, General 7,
 Branding 6, SEO 5, Announcements 4, Legal 4, Hero 1, Menu 1.
 
-Order App Content, by group: Order App 18, Footer 15, Homepage 11, Pages 10, Contact 7, General 6,
+Order App Content by group: Order App 18, Footer 15, Homepage 11, Pages 10, Contact 7, General 6,
 Branding 5, Announcements 4, Status banners 4, About 2, Menu 2, SEO 2, Hero 1, Legal 1.
 
-Registry totals: **169 non-deprecated blocks**, of which **67 appear in both destinations** (up
-from 155 and 41 before the separation work — the registry grew during it).
+Editors: **166 of 173 blocks use the plain editor.** Seven have a purpose-built one — hero,
+categories, proof, trust, about values, footer links, business hours (the last is new since
+revision 1). Field types: `text` 139, `textarea` 17, `json` 7, `image` 5, `boolean` 4, `color` 1.
 
-What kind of thing each block is:
+### 1.2 Already shipped — do not re-plan these
 
-| | Count |
+**App separation is complete and enforced.** `ContentResolver`'s chain is `app+locale → app+en →
+registry default`. No shared fallback for customer-facing content. `share()`, `split()`,
+copy-between-apps, `linkState()` and `BRAND_SYNCED_KEYS` mirroring are all removed. Preview and
+publish status are locked per app (`1299ff4a5`). `HomeLayoutEditor` edits one app only
+(`15675b59b`); shared page-block mode is retired (`ded01821a`).
+
+**Operational ownership is enforced in code.** `backend/app/Domains/Settings/OpsOwnedContent.php`
+plus its frontend mirror `opsOwnedContentKeys.ts` mark 15 keys as owned elsewhere and render them
+read-only in the hub with an owner label and link. `delivery_threshold` points at Ordering Control
+Center → Delivery Settings; the rest point at Business Details. There is a client-side fallback so
+a stale API payload cannot make them editable again (`9c5acd001`).
+
+**Business Details exists** as the shared operational profile at `/business-details`, writing the
+`shared` scope only, including structured address keys (`b44cd97f6`, `971eca16f`).
+
+**The canonical component catalog exists.** `ContentHub/canonicalCatalog.ts` (285 lines) is the
+single source for surface counts, the configured list, the Add picker and duplicate detection. Its
+own docblock forbids independent counters. It provides `listPlacedOnSurface`,
+`listConfiguredOnSurface`, `listHiddenOnSurface`, `surfaceCountLabel`, `addableTypesOnSurface`,
+`findSingletonDuplicatesOnSurface`, `findDuplicateIdentities`, and a 22-entry
+`SINGLETON_SURFACE_TYPES` set.
+
+**A read-only integrity report exists.** `ContentIntegrityReport.php` reports duplicates, orphan
+block types, ops-ownership leaks and needs-review rows without mutating anything, exposed at
+`GET /admin/content/integrity`.
+
+**Autosave failure handling exists.** `autosaveFailed` / `autosaveErrorDetail` state, an explicit
+`onRetrySave`, and Publish disabled while a draft save is failing.
+
+**Hero depth was already reduced.** The separate `hero-editor-sheet` and `hero-slide-editor-sheet`
+are gone; the hero now renders an inline slide-overview list and one `ContentEditorSheet` for the
+slide.
+
+### 1.3 Remaining gaps — this is what the plan is for
+
+1. **The information architecture is unchanged.** Still 12 storage groups on the website side,
+   with "Pages" holding 44 blocks. Homepage wording is still spread across Homepage, Hero,
+   Announcements, Footer, General and Branding.
+2. **A group labelled "Order App" still appears inside Website Content** — 10 `order_mode_*`
+   blocks that legitimately render on the website's homepage mode cards but are named after the
+   wrong thing.
+3. **Groups still carry engineering names** — "General", "Pages", "Status banners".
+4. **`ContentHubPage.tsx` has grown to 2,301 lines** (was 2,046 in revision 1). The ContentHub
+   directory is 8,947 lines. `HomeLayoutEditor.tsx` is 1,177 and `HeroSlidesEditor.tsx` is 1,143.
+   The file is getting bigger while being restructured, which is the wrong direction.
+5. **The surface-count label wording diverges from the agreed spec.** `surfaceCountLabel()`
+   renders `"2 showing · 1 hidden"`. The agreed wording is `"2 components · 1 hidden"`.
+6. **No audited page inventory.** `SurfaceCatalog` covers 4 slots × 2 devices × 2 apps
+   (`header`, `home`, `footer`, `bottom_navigation`; mobile gets all four, desktop three). Real
+   customer pages — contact, hours, menu, legal, events — are not in the surface model at all.
+7. **Admin breakpoints are thin.** 29 media queries, dominated by `max-width: 767px` (11
+   occurrences). There is one compact band (`768–1199`) and a `min-width: 1200px`. The
+   414 / 1366 behaviours in the target spec are untested.
+
+---
+
+## 2. Goals and non-goals
+
+### Goals
+
+- An owner opening Website Content can find the thing they want to change by thinking about
+  **where it appears on the site**, not where it is stored.
+- A surface card's count is **exactly** the configured instances behind it, and opening it shows
+  exactly those.
+- Website and Order App never leak into one another, in data, preview, draft, publish or UI.
+- One editable owner per operational value; everywhere else shows it read-only with a link.
+- Editing works at 320px and at 1366px without a separate mental model.
+
+### Non-goals
+
+- Any change to public customer layout or business workflow.
+- Merging the two destinations, or reintroducing any form of "Same in both".
+- A second page builder or a WYSIWYG editor.
+- Renaming block keys, changing values, or changing scopes for presentation reasons.
+- Deleting content because it looks unused.
+
+---
+
+## 3. Ownership model
+
+Content & Branding **must not** offer a second editable field for anything below. It may show the
+current value read-only with a "Managed in …" link.
+
+| Value | Sole owner | Content & Branding may |
+|---|---|---|
+| Free delivery threshold | Ordering Control Center → Delivery Settings | show read-only + link |
+| Delivery fee, zones, delivery rules | Ordering Control Center → Delivery Settings | show read-only + link |
+| Tax / GST, service charge, packaging fee, invoices | Finance / ordering controls | show read-only + link |
+| Menu items, prices, availability, stock | Menu / Inventory | show read-only + link |
+| Business phone, email, address, maps, business identity | Business Details | show read-only + link |
+| Operating hours and closures | the operating-hours system | show read-only + link |
+| Logo, favicon, OG image, brand colour **per app** | Content & Branding (per app) | edit |
+| Hero, page copy, footer copy, announcements **per app** | Content & Branding (per app) | edit |
+
+**Business Details is a shared *operational profile*, not shared customer content.** It feeds
+invoices, receipts, signage and SMS. It is not the website's branding and it is not the order
+app's branding. Those are separate, per-app, and independently editable. The mismatch notice
+(`ContentScopeMismatch`) reports disagreement between the three; it never synchronises them.
+
+The enforcement already exists (`OpsOwnedContent.php` + `opsOwnedContentKeys.ts`). What this plan
+adds is that **the ownership table above becomes the acceptance criterion**: any new field added
+to Content & Branding must be checked against it, and a test must assert that no ops-owned key is
+writable through the content API.
+
+---
+
+## 4. Customer surface inventory
+
+**This must be audited from actual routes and renderers before any regrouping begins.** The list
+below is the starting point derived from `SurfaceCatalog`, `surfaceRegistry.ts`, the Blade views
+and the order-app routes — it is not yet a verified inventory, and Stage 2 does not start until it
+is one.
+
+### 4.1 Structural surfaces (already modelled)
+
+`SurfaceCatalog` = app × device × slot:
+
+| App | Desktop slots | Mobile slots |
+|---|---|---|
+| Website | header, home, footer | header, home, footer, bottom_navigation |
+| Order App | header, home, footer | header, home, footer, bottom_navigation |
+
+**These are distinct surfaces and must never be collapsed into one "footer":**
+
+- **Website global footer** — site-wide legal/links chrome on every website page.
+- **Order App footer** — the order app's own footer content.
+- **Mobile bottom navigation** — a fixed nav bar, not a footer, and mobile-only.
+
+`surfaceRegistry.ts` already distinguishes "Website legal footer" from the Brand footer home
+component. That distinction must survive the regroup.
+
+### 4.2 Real pages (not yet modelled)
+
+Website: Home, Menu, Contact, Hours, Events & Catering, Legal (privacy, terms, refund).
+Order App: Home, Menu, Ordering, Order history, Gift cards.
+
+Only Home is composable today via `page_blocks`. The rest are registry blocks rendered by
+hand-written templates. **The audit must record, per page, which blocks render on it and in what
+order** — from the templates, not from the `group` field, because the `group` field is exactly
+what has proven unreliable.
+
+---
+
+## 5. Surface cards, exact component counts, and duplicate prevention
+
+**Treated as a correctness and data-integrity fix, not cosmetic work.** It ships in Stage 1,
+before any visual redesign, and is not postponed behind it.
+
+The bug: a card reads `Website · Mobile · Header · 2 components`, and opening it shows every
+component type allowed on a header. The count and the list disagree, the admin looks duplicated,
+and the count is not trustworthy.
+
+Much of this is already fixed by `canonicalCatalog.ts` and `921e15ab4`. The rules below are the
+complete specification; Stage 1 is closing the remainder and proving all of it.
+
+1. **A surface card count means configured component instances** for that exact
+   `app · page · device · surface slot`. Nothing else.
+2. **The card and the opened editor use the same canonical selector.** Both call
+   `listConfiguredOnSurface()`. No independent counter, no regex, no second list.
+3. **If the card says 2, opening it shows exactly those 2 configured instances** — never the type
+   library.
+4. **Available types appear only in a separate "Add component" picker**, never mixed into the
+   configured list.
+5. **The Add picker shows only types valid for that slot** — `typesForSlot()` /
+   `addableTypesOnSurface()`.
+6. **Singletons cannot be added twice** to the same app × device × surface. `SINGLETON_SURFACE_TYPES`
+   currently holds 22 types including `prayer_bar`, `announcement`, `bottom_nav`, `site_footer`,
+   `brand_footer`, `opening_status`, `hero`. The picker excludes an already-placed singleton
+   whether it is showing or hidden.
+7. **Multiple instances are allowed only for deliberate types** — custom text, image, image with
+   text, video, FAQ, button band, divider. Anything not in the singleton set is multi-instance by
+   default, so **the singleton set is the thing to keep correct**; a new type defaults to
+   multi-instance and that must be a conscious choice, asserted by a test.
+8. **Hidden components are labelled, never folded into an ambiguous number.** Required wording:
+   `2 components · 1 hidden`. `surfaceCountLabel()` currently emits `2 showing · 1 hidden` —
+   change the label, keep the structure.
+9. **Legacy true duplicates are never silently deleted.** `ContentIntegrityReport` already detects
+   them read-only. Stage 1 surfaces them in the admin as a warning with the offending
+   `component_id`s and a safe resolution flow — the owner chooses which instance to keep; nothing
+   is removed automatically.
+10. **Tests are part of the fix, not follow-up.** See §10.
+
+Component identity, for anything that has to be addressed unambiguously:
+`app · page · surface · viewport · component_id · type` — already the shape of
+`CanonicalComponent`.
+
+---
+
+## 6. Page-first content architecture
+
+### 6.1 Group by what the customer sees, in render order
+
+**Website Content**
+
+| Group | Contains |
 |---|---|
-| Plain editor — a label and a box | **163 of 169** |
-| Purpose-built editor | 6 (hero, categories, proof, trust, about values, footer links) |
-| Field type `text` (one line) | 136 |
-| `textarea` | 17 · `json` 6 · `image` 5 · `boolean` 4 · `color` 1 |
+| Home | every block rendering on the homepage, in `page_blocks` order |
+| Menu page | menu page copy |
+| Contact page | contact copy, form labels, map |
+| Hours page | hours page copy |
+| Events & Catering | catering copy and CTAs |
+| Legal | privacy, terms, refund |
+| Everywhere | Website header, Website footer, announcement bar, Website branding, Website SEO |
 
-Code behind it: `ContentHubPage.tsx` is **2,046 lines**; the whole content editing surface is
-**7,405 lines** across ~30 components. `HeroSlidesEditor.tsx` alone is **1,143 lines**.
+**Order App Content**
 
----
+| Group | Contains |
+|---|---|
+| Home | order app homepage blocks, in `page_blocks` order |
+| Menu | menu browsing copy |
+| Ordering | mode cards, ordering hours, status banners |
+| Order history | order history copy |
+| Gift cards | gift card copy |
+| Everywhere | Order App header, Order App footer, bottom navigation, Order App branding |
 
-## 2. Why it is difficult — four findings
+Note that "Everywhere" lists **Website header** and **Order App header** as different things, and
+lists **Order App footer** and **bottom navigation** separately. That is deliberate — see §4.1.
 
-### 2.1 It is organised by where a setting is *stored*, not by what the customer *sees*
+### 6.2 Reuse the render order that already exists
 
-This is the main one.
+The homepage order lives in `page_blocks`. The content editor must read it rather than invent an
+alphabetical one, so the list on screen matches the page in the browser and moving a block in the
+layout editor moves it here too. One truth, two views.
 
-The groups are storage categories. To change the words on the homepage, the wording is spread
-across **six different groups**: Homepage (32), Hero (1), Announcements (4), Footer (16),
-General (6), Branding (6). Nothing tells you that. You have to already know.
+### 6.3 Rename groups named after the code
 
-The owner's mental model is a page. The screen's model is a filing cabinet.
+- `Order App` inside Website Content → **Order buttons** (or **Ordering section**) — it is the
+  homepage mode-card area, and calling it "Order App" inside Website Content is simply wrong.
+- `Status banners` → the customer-facing place they appear.
+- `General`, `Pages` → dissolved into the page groups above.
 
-### 2.2 "Pages" is a dumping ground — 44 blocks with nothing in common
+Rule: a group name answers *"where on my site is this?"*, never *"which part of the system stores
+it?"*
 
-44 of the website's 148 blocks are in one group called Pages. Contact page copy, hours page copy,
-privacy titles, homepage categories, the trust strip. They are grouped by *not being clearly
-something else*.
+### 6.4 Show the thing, not its key
 
-### 2.3 A group called "Order App" appears inside Website Content
-
-Ten blocks — `order_mode_delivery_hint`, `order_mode_pickup_info`, `order_mode_status_available`
-and seven more — are tagged `group: "Order App"` but target both apps, because the website's
-homepage mode-cards use them.
-
-They are on the right screen. The **label** is wrong: inside Website Content, a section headed
-"Order App" reads as a mistake. Anyone would skip it, then wonder why the delivery hint on their
-homepage will not change.
-
-### 2.4 148 text boxes, and no picture of what any of them changes
-
-163 of 169 blocks render as a label and an input. There is a `VisualBlockPreview` component and a
-`PreviewPane`, so the raw material exists — but the primary experience is still a long list of
-named boxes. `home_proof_eyebrow` is not a thing anyone can picture.
-
-And on a phone it is deep. To change one line of hero text: section card → editor sheet → hero
-editor sheet → slide overview → slide editor sheet. **Five levels.** The preview is a sixth sheet.
+`VisualBlockPreview` exists — extend it. Where a picture is impractical, render the current value
+as the customer sees it. `home_proof_eyebrow` is not something anyone can picture.
 
 ---
 
-## 3. The redesign
+## 7. Editing flows
 
-One idea, applied consistently: **organise by page, in the order the page renders, and show what
-each thing looks like.**
+### 7.1 The four levels, and only four
 
-### 3.1 Replace 12 storage groups with the pages that actually exist
+| Level | Shows | Never shows |
+|---|---|---|
+| **Overview** | page / surface cards with exact counts | any component fields |
+| **Surface** | the configured component list for that surface | the type library |
+| **Component** | one focused edit sheet or drawer | sibling components |
+| **Add** | a separate picker of valid, addable types | configured instances |
 
-For Website Content:
+Reorder is an **explicit separate mode**, not drag-by-accident inside the list. Delete lives under
+the More menu and requires confirmation.
 
-- **Home** — every block that appears on the homepage, top to bottom
-- **Menu page**
-- **Contact page**
-- **Hours page**
-- **Events & Catering**
-- **Legal** — privacy, terms, refund
-- **Everywhere** — header, footer, announcement bar, branding, SEO
+Hero is the benchmark: component overview plus **one** focused slide editor. The nested
+hero-editor / slide-editor sheets are already gone; the remaining work is keeping it that way as
+the hero editor is broken up (it is 1,143 lines).
 
-For Order App Content: **Home**, **Menu**, **Ordering** (the mode cards, hours and status
-banners), **Order history**, **Gift cards**, **Everywhere**.
+### 7.2 Responsive behaviour
 
-Same blocks, same keys, same values. Only the shelving changes.
+Three admin layouts, with the breakpoints that must be tested:
 
-**The homepage ordering already exists and should be reused.** The `page_blocks` table plus
-`HomeLayoutMigrator` already know the real top-to-bottom order of the 28 homepage partials. The
-content editor should read that order rather than inventing an alphabetical one, so the list on
-screen matches the page in the browser. When a block moves in the page builder, its position in
-the content editor moves with it. Two screens, one truth.
+| Layout | Widths | Behaviour |
+|---|---|---|
+| **Mobile** | 320, 375, 390, 414, 767 | Full-screen sheets, one-column cards, **no horizontal overflow at any width**. Preview is one tap and is a preview, not another editing layer. |
+| **Tablet / compact** | 768, 1024, 1199 | Compact selector plus editor. **No permanently docked squeezed preview** — a 300px preview beside a 400px editor helps nobody. |
+| **Desktop** | 1200, 1366 and above | Main editor plus optional preview pane. Preview follows the selected app and the selected Desktop/Mobile surface. |
 
-### 3.2 Rename the groups that are named after the code
+Current state to close: 29 media queries, 11 of them `max-width: 767px`, one compact band at
+`768–1199`, one `min-width: 1200px`. 414 and 1366 are untested.
 
-`Order App` inside Website Content becomes **Order buttons** or **Ordering section** — whatever
-describes where it appears on the homepage. Same for `Status banners`, `General` and `Pages`,
-which are all engineering words.
+### 7.3 Drafts, previews and publishing
 
-Rule: a group name should answer *"where on my site is this?"* — never *"what part of the system
-stores it?"*
-
-### 3.3 Show what the block is, not what it is called
-
-Every block should carry a small picture or a real example. `VisualBlockPreview` already exists —
-extend it rather than starting over. Where an image is impractical, show the current value in
-context: not `home_proof_eyebrow`, but the words as they appear, in the style they appear in.
-
-### 3.4 Cut the depth on a phone from five levels to two
-
-Target: **section → edit**. Everything else collapses.
-
-The hero is the worst case and the right test — it is currently five deep and its editor is 1,143
-lines. A slide should be editable in one sheet with the fields grouped and collapsed, not in three
-nested sheets.
-
-### 3.5 Preview beside the editor, not behind a sixth sheet
-
-`PreviewPane`, `LivePreviewFrame` and `createContentPreviewToken` already exist. On desktop the
-preview should be permanently visible next to the fields. On a phone it should be one tap, and
-tapping a thing *in* the preview should open that block's editor — the shortest path there is,
-and the machinery for it is largely built.
-
-This is the most valuable item and the most work. It is Stage 4 for that reason, not Stage 1.
+- Website draft / save / preview / publish / discard affects **Website only**.
+- Order App draft / save / preview / publish / discard affects **Order App only**.
+- Autosave failures stay visible, retain the local change, and offer retry. Publish stays disabled
+  while a draft save is failing. *(Already implemented — must not regress.)*
+- **Publish must not clear local drafts until the server confirms success.**
+- Preview must use the same app, device, surface and component list as the editor — the same
+  canonical selector from §5, not a parallel query.
 
 ---
 
-## 4. What not to do
+## 8. Safe technical approach
 
-- **Do not change any block key, value or scope.** The separation work just moved 620
-  key/app/locale combinations with a test proving nothing changed. This redesign must not touch
-  data at all — it is presentation only, and that is what keeps it safe.
-- **Do not merge the two destinations back together.** They were just separated, deliberately.
-- **Do not delete blocks** because a group looks too long. If a setting is genuinely unused, that
-  is a separate decision with the owner, not a side effect of tidying.
-- **Do not rebuild the six custom editors** (hero, categories, proof, trust, about values, footer
-  links). They work. Only the hero needs restructuring, and for depth, not for function.
-- **Do not add a WYSIWYG page editor.** The page builder already exists (`page_blocks`,
-  `HomeLayoutEditor`). Reuse its ordering; do not build a second one.
-- **Do not start before go-live.** Same reason as the wider layout plan: the go-live checklist
-  covers these screens.
+**Refactor boundaries.** `ContentHubPage.tsx` at 2,301 lines is the main hazard. Split it before
+restructuring it, in its own commit, with no behaviour change: surface landing, section/group
+list, block list, editor sheet host, preview host, publish bar. A regression then bisects to the
+split rather than to the redesign.
+
+**No data migration.** This is presentation. No key renamed, no value rewritten, no scope changed.
+The separation work moved 620 key/app/locale combinations under a snapshot test; that test must
+still pass untouched at every stage. If a stage needs a migration, the stage is wrong.
+
+**Registry content and page blocks stay one experience.** Two systems exist — registry blocks
+(`content.php`, 173 keys) and page blocks (`page_blocks`, composable homepage). The owner must not
+have to know which is which. Page groups in §6.1 mix both: a homepage group shows page-block
+components and registry copy in one render-ordered list, each labelled by what it does, not by
+which table it lives in.
+
+**No second page builder.** `HomeLayoutEditor` is the layout editor. Reuse its ordering and its
+`page_blocks` writes. Do not add a parallel drag-and-drop surface and do not add a WYSIWYG editor.
+
+**Canonical selector is mandatory.** Any new code that counts, lists or previews components calls
+`canonicalCatalog.ts`. A lint rule or a test asserting no other module counts blocks is cheap and
+prevents the original bug from returning.
 
 ---
 
-## 5. Risks
+## 9. Staged implementation
 
-1. **Losing a block during regrouping.** 148 + 88 blocks moved by hand will lose one. The test
-   that prevents it: assert every non-deprecated registry key targeting an app appears exactly
-   once in that app's new grouping. Mechanical, and it cannot be argued with.
-2. **The 2,046-line page file.** `ContentHubPage.tsx` is large enough that a regroup risks
-   unrelated breakage. Split it before restructuring it, not after — and split it in its own
-   commit so a regression bisects to the split rather than to the redesign.
-3. **Drafts and autosave.** There is a draft store, an autosave path and a publish path, and the
-   difference between "saved draft" and "live" was a real bug once already. Any restructuring must
-   keep the draft status visible at every level, including inside sheets.
-4. **Permissions.** Both destinations sit behind `website.manage`. Regrouping must not create a
+**Stage 1 — Count and duplicate correctness. Ships first.**
+Close the remainder of §5: label wording to `N components · M hidden`; admin-visible integrity
+warning for legacy duplicates with a safe resolution flow; assert card and editor share one
+selector; assert the Add picker is separate and slot-filtered. Correctness, not cosmetics — it
+does not wait behind visual work.
+
+**Stage 2 — Audited surface and page inventory.**
+Document every page and surface per app from routes and renderers. Deliverable is the verified
+inventory table for §4.2. No UI change. Stage 3 does not start without it.
+
+**Stage 3 — Split `ContentHubPage.tsx`.** Pure refactor, no visible change.
+
+**Stage 4 — Regroup and rename.** §6.1 and §6.3 together, never apart — regrouping without
+renaming leaves "Order App" inside Website Content and is worse than doing neither. Guarded by the
+every-key-appears-exactly-once test.
+
+**Stage 5 — Responsive bands.** §7.2, including 414 and 1366.
+
+**Stage 6 — Visual block previews and preview-beside-editor.** §6.4 and §7.1. Highest cost,
+highest payoff, last.
+
+Stages 1 and 4 carry most of the value. Stage 1 is correctness and cannot be deferred; Stage 4 is
+the relief the owner actually asked for.
+
+---
+
+## 10. Test matrix and acceptance criteria
+
+| # | Assertion | Stage |
+|---|---|---|
+| 1 | Surface card count equals the length of the opened configured list, for every app × device × slot | 1 |
+| 2 | The opened editor contains no type that is not a configured instance — no "Not added" rows | 1 |
+| 3 | Add picker contains only types valid for the slot, and excludes already-placed singletons (showing or hidden) | 1 |
+| 4 | Creating a second instance of a singleton on the same app × device × surface is rejected | 1 |
+| 5 | Hidden instances are excluded from the count and labelled `N components · M hidden` | 1 |
+| 6 | Legacy duplicates raise an admin warning and nothing is deleted automatically | 1 |
+| 7 | A block placed on Website never appears in any Order App surface, list, count or preview, and the reverse | 1, 4 |
+| 8 | Every non-deprecated registry key targeting an app appears **exactly once** in that app's new grouping | 4 |
+| 9 | No ops-owned key (`OpsOwnedContent`) is writable through the content API; each renders read-only with an owner link | 1 |
+| 10 | Website publish does not alter any Order App value, draft or publish state, and the reverse | 1 |
+| 11 | Publish does not clear a local draft until the server confirms | 1 |
+| 12 | An autosave failure stays visible, retains the change, offers retry, and blocks Publish | 1 |
+| 13 | Preview resolves the same app, device, surface and component list as the editor | 6 |
+| 14 | No horizontal overflow at 320, 375, 390, 414, 767 | 5 |
+| 15 | No permanently docked preview between 768 and 1199 | 5 |
+| 16 | The 620-combination resolver snapshot is unchanged at every stage | all |
+
+**Layout assertions (14, 15) must be Playwright at real viewports.** jsdom has no layout engine;
+a vitest test that injects CSS and then measures it cannot fail. That mistake was made in this
+repo once and had to be undone — do not repeat it.
+
+Every stage must demonstrate its tests can fail: break the change, confirm the right test goes
+red, restore, confirm green, and report what was broken.
+
+---
+
+## 11. Risks, rollout, rollback
+
+1. **Losing a block during regrouping.** 149 + 88 blocks moved by hand will lose one. Test 8 is
+   the guard and it is mechanical.
+2. **Half of Stage 4.** Regrouping without renaming moves things without making them findable.
+   Ship both or neither.
+3. **`ContentHubPage.tsx` growing during the work.** It went from 2,046 to 2,301 lines while being
+   improved. Stage 3 must land before Stage 4, and Stage 4 must not add net lines to it.
+4. **A parallel counter reappearing.** The original bug was two sources of truth. Any new count
+   must go through `canonicalCatalog.ts`; enforce it with a test.
+5. **Permissions.** Both destinations sit behind `website.manage`. Regrouping must not create a
    path to a block a user could not previously reach.
-5. **Regrouping without renaming.** Doing §3.1 but skipping §3.2 leaves a section called "Order
-   App" inside Website Content. Half the change is worse than none — it moves things without
-   making them findable.
+6. **Go-live timing.** The go-live checklist covers these screens. Stage 1 is a correctness fix and
+   is safe to ship whenever it is ready. Stages 3 to 6 are visual restructuring and should wait
+   until the checklist is complete, or they invalidate testing already done.
+
+**Rollout:** one stage per deployment, each independently revertible. Stage 4 one group at a time
+so a mistake bisects to a group, not to the redesign.
+
+**Rollback:** because no data migrates, every stage rolls back by reverting its commits. The one
+thing that would break that property is a stage that writes to `site_settings` or `page_blocks` —
+none is planned, and any proposal to add one should be treated as a redesign of this plan rather
+than a detail of it.
 
 ---
 
-## 6. Stages
+## 12. Open question for the owner
 
-**Stage 0 — Go live first.**
+**When you open Website Content, what are you usually trying to change?**
 
-**Stage 1 — Split `ContentHubPage.tsx`.** Pure refactor, no visible change. Makes everything after
-it safe. Ship alone.
-
-**Stage 2 — Regroup and rename.** §3.1 and §3.2 together, never apart. Reuse the `page_blocks`
-order for the homepage. Guarded by the every-key-appears-once test. This is most of the relief and
-carries almost no risk, because no data moves.
-
-**Stage 3 — Cut the phone depth to two levels.** §3.4, starting with the hero because it is the
-worst and the most used.
-
-**Stage 4 — Preview beside the editor, click-to-edit.** §3.5 and §3.3 together. The biggest change
-and the biggest payoff. Only after 1–3 have settled.
-
-Stages 1 and 2 are worth more than 3 and 4 combined for the effort involved. If only one stage
-ever happens, make it Stage 2.
-
----
-
-## 7. What I need from you before Stage 2
-
-**When you open Website Content, what are you usually trying to change?** If it is nearly always
-the hero and the homepage words, the grouping should put those first and push Legal and SEO to the
-bottom. If you spend your time on the contact page, that changes.
-
-I can group these 148 blocks in a way that is *logical*. Grouping them in the order **you** reach
-for them needs one sentence from you.
+The §6.1 grouping is logical. Ordering it by what you reach for most — hero and homepage words
+first, Legal and SEO last, or something else entirely — needs one sentence from you, and it
+changes Stage 4.
