@@ -293,10 +293,11 @@ describe('BusinessDetailsPage', () => {
     'does not horizontally overflow at %ipx',
     async (width) => {
       mockViewport(width);
-      const { container } = renderPage();
+      renderPage();
       const page = await screen.findByTestId('business-details-page');
+      // Wait for async load — form is absent while the skeleton shows.
+      await screen.findByTestId('business-details-form');
       expect(page.scrollWidth).toBeLessThanOrEqual(Math.max(page.clientWidth + 1, width + 1));
-      expect(container.querySelector('[data-testid="business-details-form"]')).toBeTruthy();
     },
   );
 });

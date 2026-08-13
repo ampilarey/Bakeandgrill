@@ -50,10 +50,10 @@ describe('surfaceRegistry', () => {
 });
 
 describe('Content task surface map IA', () => {
-  it('exposes Menu and Status banners on Order App landing (desktop + mobile)', () => {
+  it('exposes Menu and status banners under Order App Home/Menu', () => {
     const order = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'order_app')!;
     expect(order.tasks.some((t) => t.id === 'order_menu' && t.group === 'Menu')).toBe(true);
-    expect(order.tasks.some((t) => t.id === 'status_banners' && t.group === 'Status banners')).toBe(true);
+    expect(order.tasks.some((t) => t.id === 'status_banners' && t.group === 'Home')).toBe(true);
   });
 
   it('renames technical details to Business profile & language under Global', () => {

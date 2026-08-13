@@ -56,15 +56,21 @@ async function walkTsFiles(dir: string): Promise<string[]> {
 }
 
 describe('canonicalCatalog single source of truth', () => {
-  it('ContentHubPage and HomeLayoutEditor import listConfiguredOnSurface / surfaceCountLabel from canonicalCatalog', async () => {
+  it('hub controller and HomeLayoutEditor import listConfiguredOnSurface / surfaceCountLabel from canonicalCatalog', async () => {
     const fs = await loadFs();
     const page = fs.readFileSync(path.join(HUB_DIR, 'ContentHubPage.tsx'), 'utf8');
+    const controller = fs.readFileSync(path.join(HUB_DIR, 'useContentHubController.ts'), 'utf8');
     const editor = fs.readFileSync(path.join(HUB_DIR, 'HomeLayoutEditor.tsx'), 'utf8');
 
+    // Page keeps a catalog import for surface defaults; counts live in the controller hook.
     expect(page).toMatch(/from ['"]\.\/canonicalCatalog['"]/);
-    expect(page).toMatch(/surfaceCountLabel/);
     expect(page).not.toMatch(/countBlocksOnSurface/);
     expect(page).not.toMatch(/listBlocksOnSurface/);
+
+    expect(controller).toMatch(/from ['"]\.\/canonicalCatalog['"]/);
+    expect(controller).toMatch(/surfaceCountLabel/);
+    expect(controller).not.toMatch(/countBlocksOnSurface/);
+    expect(controller).not.toMatch(/listBlocksOnSurface/);
 
     expect(editor).toMatch(/from ['"]\.\/canonicalCatalog['"]/);
     expect(editor).toMatch(/listConfiguredOnSurface/);

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Monitor, Smartphone, X } from 'lucide-react';
-import { LivePreviewFrame } from './LivePreviewFrame';
+import { LivePreviewFrame, type PreviewDevice } from './LivePreviewFrame';
 
 export type PreviewApp = 'website' | 'order_app';
 
@@ -25,6 +25,13 @@ type Props = {
    * Cross-app toggle is hidden so Website and Order App never mix.
    */
   lockedApp?: PreviewApp;
+  /**
+   * Matrix row 13: Desktop/Mobile from the editor's selected surface
+   * (canonical selector). When set, LivePreviewFrame locks to this device.
+   */
+  editorDevice?: PreviewDevice | null;
+  /** Optional surface id for test assertions (`website.desktop.home`). */
+  editorSurfaceId?: string | null;
 };
 
 /**
@@ -41,6 +48,8 @@ export function PreviewPane({
   draftStatus,
   layer = 3,
   lockedApp,
+  editorDevice = null,
+  editorSurfaceId = null,
 }: Props) {
   const [app, setApp] = useState<PreviewApp>(lockedApp ?? 'website');
 
@@ -56,7 +65,13 @@ export function PreviewPane({
   const appLabel = app === 'order_app' ? 'Order App' : 'Website';
 
   const body = (
-    <div data-testid="preview-pane" className={`hub-preview-pane hub-preview-pane--${variant}`}>
+    <div
+      data-testid="preview-pane"
+      className={`hub-preview-pane hub-preview-pane--${variant}`}
+      data-editor-app={lockedApp ?? app}
+      data-editor-device={editorDevice ?? undefined}
+      data-editor-surface={editorSurfaceId ?? undefined}
+    >
       <div className="hub-preview-pane-toolbar">
         {lockedApp ? (
           <div
@@ -107,11 +122,22 @@ export function PreviewPane({
           url={url}
           loading={loading}
           defaultDevice={variant === 'sheet' ? 'mobile' : 'desktop'}
+          editorDevice={editorDevice}
         />
       </div>
       {variant === 'column' ? (
-        <div className="hub-preview-hint">
-          <Monitor size={12} /> / <Smartphone size={12} /> use the device toggle on the preview
+        <div className="hub-preview-hint" data-testid="preview-follows-editor-hint">
+          {editorDevice ? (
+            <>
+              <Monitor size={12} /> / <Smartphone size={12} />
+              {' '}follows the selected {editorDevice} surface
+              {editorSurfaceId ? ` (${editorSurfaceId})` : ''}
+            </>
+          ) : (
+            <>
+              <Monitor size={12} /> / <Smartphone size={12} /> use the device toggle on the preview
+            </>
+          )}
         </div>
       ) : null}
     </div>

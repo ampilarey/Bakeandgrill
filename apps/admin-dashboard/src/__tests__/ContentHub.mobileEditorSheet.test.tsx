@@ -71,9 +71,9 @@ vi.mock('../api/pageBlocks', () => ({
 }));
 
 const heroEnable = {
-  key: 'section_hero_enabled',
+  key: 'announcement_enabled',
   label: 'Show Hero Section',
-  group: 'Hero',
+  group: 'Home',
   type: 'boolean' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
@@ -115,7 +115,7 @@ const slidePayload = JSON.stringify([
 const heroSlides = {
   key: 'hero_slides',
   label: 'Hero Slides',
-  group: 'Hero',
+  group: 'Home',
   type: 'json' as const,
   editor: 'hero' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
@@ -163,14 +163,14 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('opens Hero in a portaled dialog sheet with draft status and compact overview', async () => {
     // Surface Builder landing no longer has a Hero task card — open Hero via deep link.
-    openHub('/content/website?group=Hero');
+    openHub('/content/website?group=Home');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(sheet.getAttribute('role')).toBe('dialog');
     expect(sheet.getAttribute('aria-modal')).toBe('true');
     expect(document.body.contains(sheet)).toBe(true);
 
-    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Hero');
+    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Home');
     expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
 
     // Compact hero overview — full inline editor must not be expanded
@@ -182,7 +182,7 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('locks body scroll while the sheet is open and restores it on close', async () => {
     document.body.style.overflow = 'auto';
-    openHub('/content/website?group=Hero');
+    openHub('/content/website?group=Home');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     await waitFor(() => {
@@ -197,7 +197,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('moves focus to the close control on open and returns it to the surface landing on close', async () => {
-    openHub('/content/website?group=Hero');
+    openHub('/content/website?group=Home');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     const closeBtn = within(sheet).getByTestId('content-editor-sheet-close');
@@ -213,7 +213,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('Edit Hero opens slide overview sheet; slide tap opens slide editor; draft state preserved', async () => {
-    openHub('/content/website?group=Hero');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
@@ -257,7 +257,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('block ⋯ menu uses a collision-safe mobile action sheet', async () => {
-    openHub('/content/website?group=Hero');
+    openHub('/content/website?group=Home');
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('block-more-hero_slides'));

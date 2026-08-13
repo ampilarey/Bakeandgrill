@@ -45,7 +45,7 @@ vi.mock('../components/MediaPicker', () => ({ MediaPicker: () => null }));
 const heroBlock: ContentBlock = {
   key: 'hero_slides',
   label: 'Hero Slides',
-  group: 'Hero',
+  group: 'Home',
   type: 'json',
   editor: 'hero',
   apps: ['website', 'order_app'],
@@ -62,7 +62,7 @@ const heroBlock: ContentBlock = {
 const phoneBlock: ContentBlock = {
   key: 'delivery_time',
   label: 'Phone number',
-  group: 'Contact',
+  group: 'Home',
   type: 'text',
   apps: ['website', 'order_app'],
   shareable: true,
@@ -96,7 +96,7 @@ describe('Content Hub Overview → Edit', () => {
     async (width) => {
       setViewport(width);
       render(
-        <MemoryRouter initialEntries={['/content/website?group=Hero']}>
+        <MemoryRouter initialEntries={['/content/website?group=Home']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
@@ -132,7 +132,7 @@ describe('Content Hub Overview → Edit', () => {
   it('preserves draft after closing the focused editor', async () => {
     setViewport(1280);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

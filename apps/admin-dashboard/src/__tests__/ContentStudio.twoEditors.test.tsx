@@ -70,7 +70,7 @@ function phoneBlock(): ContentBlock {
   return {
     key: 'delivery_time',
     label: 'Phone number',
-    group: 'Contact',
+    group: 'Home',
     type: 'text',
     apps: ['website', 'order_app'],
     shareable: true,
@@ -90,7 +90,7 @@ function heroBlock(): ContentBlock {
   return {
     key: 'hero_slides',
     label: 'Hero Slides',
-    group: 'Hero',
+    group: 'Home',
     type: 'json',
     editor: 'hero',
     apps: ['website', 'order_app'],
@@ -135,7 +135,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('editing a dual-app field publishes to the current destination scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -168,7 +168,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('hero visual editor drafts persist to the order_app scope in the order app hub', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -200,7 +200,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('locale switch reloads blocks for that locale', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -233,7 +233,7 @@ describe('Content Hub dual-app editing', () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

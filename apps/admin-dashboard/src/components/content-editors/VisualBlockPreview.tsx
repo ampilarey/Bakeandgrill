@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
+import { resolveHeroSlidePresentation } from '../../utils/heroSlidePresentation';
+
+function isShowing(slide: { showing?: boolean }): boolean {
+  return slide.showing !== false;
+}
 
 type PreviewProps = {
   editor: string;
   value: string;
   appLabel: string;
+  /**
+   * Plain / textarea keys with no `editor` — render the customer-facing string
+   * (§6.4: `home_proof_eyebrow` is not something anyone can picture from its key).
+   */
+  fallbackLabel?: string;
 };
 
 function safeParse<T>(raw: string, fallback: T): T {
@@ -14,8 +24,12 @@ function safeParse<T>(raw: string, fallback: T): T {
   }
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /** Read-only live preview for visual Content Studio blocks (active draft). */
-export function VisualBlockPreview({ editor, value, appLabel }: PreviewProps) {
+export function VisualBlockPreview({ editor, value, appLabel, fallbackLabel }: PreviewProps) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(value), 200);
@@ -24,57 +38,31 @@ export function VisualBlockPreview({ editor, value, appLabel }: PreviewProps) {
 
   return (
     <div
+      className="visual-block-preview"
       data-testid="content-live-preview"
-      style={{
-        marginTop: 12, padding: 12, borderRadius: 12, background: 'var(--color-text)', color: 'var(--color-bg)',
-        fontSize: 13, lineHeight: 1.4,
-      }}
+      data-editor={editor || 'text'}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 10 }}>
+      <div className="visual-block-preview__eyebrow">
         Live preview · {appLabel}
       </div>
-      {renderPreview(editor, debounced)}
+      {renderPreview(editor, debounced, fallbackLabel)}
     </div>
   );
 }
 
-function renderPreview(editor: string, value: string) {
+function renderPreview(editor: string, value: string, fallbackLabel?: string) {
   switch (editor) {
-    case 'hero': {
-      const parsed = safeParse<unknown>(value, []);
-      const slides = Array.isArray(parsed)
-        ? (parsed as Record<string, string>[])
-        : parsed && typeof parsed === 'object'
-          ? [parsed as Record<string, string>]
-          : [];
-      const slide = slides[0] || {};
-      return (
-        <div style={{ position: 'relative', minHeight: 120, borderRadius: 10, overflow: 'hidden', background: '#2a2118' }}>
-          {slide.image ? (
-            <img src={slide.image} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45 }} />
-          ) : null}
-          <div style={{ position: 'relative', padding: 16 }}>
-            <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 6 }}>{slides.length} slide{slides.length === 1 ? '' : 's'}</div>
-            {slide.eyebrow ? <div style={{ fontSize: 11, color: 'var(--color-primary)', fontWeight: 600, marginBottom: 4 }}>{slide.eyebrow}</div> : null}
-            <div style={{ fontSize: 18, fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: slide.title || 'Hero title' }} />
-            {slide.subtitle ? <p style={{ margin: '6px 0 0', color: 'var(--color-border)', fontSize: 12 }}>{slide.subtitle}</p> : null}
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {slide.cta_text ? <span style={{ background: 'var(--color-primary)', color: '#fff', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta_text}</span> : null}
-              {slide.cta2_text ? <span style={{ border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: 8, fontSize: 11 }}>{slide.cta2_text}</span> : null}
-            </div>
-          </div>
-        </div>
-      );
-    }
+    case 'hero':
+      return <HeroVisualPreview value={value} />;
     case 'trust': {
       const items = safeParse<{ icon: string; heading: string; subtext: string }[]>(value, []);
       return (
-        <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="visual-block-preview__grid visual-block-preview__grid--2">
           {items.map((item, i) => (
-            <div key={i} style={{ background: '#2a2118', borderRadius: 8, padding: 10 }}>
-              <div style={{ fontSize: 16 }}>{item.icon || '·'}</div>
-              <div style={{ fontWeight: 700, marginTop: 4 }}>{item.heading || '—'}</div>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.subtext}</div>
+            <div key={i} className="visual-block-preview__card">
+              <div className="visual-block-preview__icon">{item.icon || '·'}</div>
+              <div className="visual-block-preview__heading">{item.heading || '—'}</div>
+              <div className="visual-block-preview__muted">{item.subtext}</div>
             </div>
           ))}
         </div>
@@ -83,17 +71,17 @@ function renderPreview(editor: string, value: string) {
     case 'categories': {
       const items = safeParse<{ icon: string; name: string; hook: string; image_url: string }[]>(value, []);
       return (
-        <div className="content-preview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="visual-block-preview__grid visual-block-preview__grid--2">
           {items.map((item, i) => (
-            <div key={i} style={{ background: '#2a2118', borderRadius: 8, overflow: 'hidden' }}>
+            <div key={i} className="visual-block-preview__card visual-block-preview__card--flush">
               {item.image_url ? (
-                <img src={item.image_url} alt="" style={{ width: '100%', height: 56, objectFit: 'cover' }} />
+                <img src={item.image_url} alt="" className="visual-block-preview__cat-img" />
               ) : (
-                <div style={{ height: 56, background: '#3a2f24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{item.icon || '?'}</div>
+                <div className="visual-block-preview__cat-fallback">{item.icon || '?'}</div>
               )}
-              <div style={{ padding: 8 }}>
-                <div style={{ fontWeight: 700 }}>{item.name || 'Category'}</div>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.hook}</div>
+              <div className="visual-block-preview__pad">
+                <div className="visual-block-preview__heading">{item.name || 'Category'}</div>
+                <div className="visual-block-preview__muted">{item.hook}</div>
               </div>
             </div>
           ))}
@@ -103,11 +91,11 @@ function renderPreview(editor: string, value: string) {
     case 'proof': {
       const items = safeParse<{ value: string; label: string }[]>(value, []);
       return (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div className="visual-block-preview__proof-row">
           {items.map((item, i) => (
-            <div key={i} style={{ textAlign: 'center', minWidth: 72 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-primary)' }}>{item.value || '—'}</div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.label}</div>
+            <div key={i} className="visual-block-preview__proof">
+              <div className="visual-block-preview__proof-value">{item.value || '—'}</div>
+              <div className="visual-block-preview__muted">{item.label}</div>
             </div>
           ))}
         </div>
@@ -116,13 +104,13 @@ function renderPreview(editor: string, value: string) {
     case 'about_values': {
       const items = safeParse<{ initial: string; title: string; description: string }[]>(value, []);
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="visual-block-preview__stack">
           {items.map((item, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{item.initial || '?'}</div>
+            <div key={i} className="visual-block-preview__value-row">
+              <div className="visual-block-preview__initial">{item.initial || '?'}</div>
               <div>
-                <div style={{ fontWeight: 700 }}>{item.title || '—'}</div>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.description}</div>
+                <div className="visual-block-preview__heading">{item.title || '—'}</div>
+                <div className="visual-block-preview__muted">{item.description}</div>
               </div>
             </div>
           ))}
@@ -132,9 +120,9 @@ function renderPreview(editor: string, value: string) {
     case 'preorder_steps': {
       const items = safeParse<{ text: string }[]>(value, []);
       return (
-        <ol style={{ margin: 0, paddingLeft: 18 }}>
+        <ol className="visual-block-preview__steps">
           {items.map((item, i) => (
-            <li key={i} style={{ marginBottom: 6 }}>{item.text || '—'}</li>
+            <li key={i}>{item.text || '—'}</li>
           ))}
         </ol>
       );
@@ -142,9 +130,13 @@ function renderPreview(editor: string, value: string) {
     case 'footer_links': {
       const items = safeParse<{ label: string; url: string }[]>(value, []);
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="visual-block-preview__stack">
           {items.map((item, i) => (
-            <div key={i} style={{ color: 'var(--color-primary)' }}>{item.label || 'Link'} <span style={{ color: 'var(--color-text-muted)' }}>{item.url}</span></div>
+            <div key={i}>
+              <span className="visual-block-preview__link">{item.label || 'Link'}</span>
+              {' '}
+              <span className="visual-block-preview__muted">{item.url}</span>
+            </div>
           ))}
         </div>
       );
@@ -152,17 +144,126 @@ function renderPreview(editor: string, value: string) {
     case 'business_hours': {
       const parsed = safeParse<Record<string, string>>(value, {});
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px 10px', fontSize: 12 }}>
+        <div className="visual-block-preview__hours">
           {Object.entries(parsed).map(([day, hours]) => (
-            <div key={day} style={{ display: 'contents' }}>
-              <span style={{ color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{day}</span>
+            <div key={day} className="visual-block-preview__hours-row">
+              <span className="visual-block-preview__muted visual-block-preview__day">{day}</span>
               <span>{hours}</span>
             </div>
           ))}
         </div>
       );
     }
+    case 'text':
+    case '': {
+      const trimmed = value.trim();
+      const display = trimmed.includes('<') ? stripHtml(trimmed) : trimmed;
+      return (
+        <div className="visual-block-preview__as-seen" data-testid="content-value-as-seen">
+          {fallbackLabel ? (
+            <div className="visual-block-preview__muted visual-block-preview__as-seen-label">{fallbackLabel}</div>
+          ) : null}
+          <div className="visual-block-preview__as-seen-value">
+            {display || 'Not set yet'}
+          </div>
+        </div>
+      );
+    }
     default:
-      return <div style={{ color: 'var(--color-text-muted)' }}>No preview for this block.</div>;
+      return <div className="visual-block-preview__muted">No preview for this block.</div>;
   }
+}
+
+type HeroSlide = Record<string, unknown> & {
+  image?: string;
+  video?: string;
+  video_poster?: string;
+  image_focal_x?: number | string;
+  image_focal_y?: number | string;
+  eyebrow?: string;
+  title?: string;
+  subtitle?: string;
+  cta_text?: string;
+  cta2_text?: string;
+  showing?: boolean;
+};
+
+function HeroVisualPreview({ value }: { value: string }) {
+  const parsed = safeParse<unknown>(value, []);
+  const slides = (Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === 'object'
+      ? [parsed]
+      : []) as HeroSlide[];
+
+  const showing = slides.filter((s) => isShowing(s));
+  const slide = showing[0] || slides[0] || {};
+  const presentation = resolveHeroSlidePresentation(slide);
+  const media = String(slide.video_poster || slide.image || '').trim();
+  const hasVideo = Boolean(String(slide.video || '').trim());
+  const fx = Number(slide.image_focal_x);
+  const fy = Number(slide.image_focal_y);
+  const objectPosition = Number.isFinite(fx) && Number.isFinite(fy)
+    ? `${fx}% ${fy}%`
+    : '50% 50%';
+
+  return (
+    <div
+      className={`visual-block-preview__hero visual-block-preview__hero--${presentation.text_position}`}
+      data-testid="hero-visual-preview"
+      data-showing-count={showing.length}
+      data-slide-count={slides.length}
+      data-has-video={hasVideo ? '1' : '0'}
+    >
+      {media ? (
+        <img
+          src={media}
+          alt=""
+          className="visual-block-preview__hero-media"
+          style={{
+            opacity: Math.max(0.15, presentation.photo),
+            objectPosition,
+          }}
+        />
+      ) : (
+        <div className="visual-block-preview__hero-media visual-block-preview__hero-media--empty" />
+      )}
+      {presentation.scrim > 0.02 ? (
+        <div
+          className="visual-block-preview__hero-scrim"
+          style={{ opacity: presentation.scrim }}
+          aria-hidden
+        />
+      ) : null}
+      <div className="visual-block-preview__hero-copy">
+        <div className="visual-block-preview__muted visual-block-preview__hero-meta">
+          {showing.length} showing
+          {slides.length !== showing.length ? ` · ${slides.length} total` : ''}
+          {hasVideo ? ' · video' : ''}
+        </div>
+        {slide.eyebrow ? (
+          <div className="visual-block-preview__hero-eyebrow">{String(slide.eyebrow)}</div>
+        ) : null}
+        <div
+          className="visual-block-preview__hero-title"
+          dangerouslySetInnerHTML={{ __html: String(slide.title || 'Hero title') }}
+        />
+        {slide.subtitle ? (
+          <p className="visual-block-preview__hero-subtitle">{String(slide.subtitle)}</p>
+        ) : null}
+        <div className="visual-block-preview__hero-ctas">
+          {slide.cta_text ? (
+            <span className="visual-block-preview__cta visual-block-preview__cta--primary">
+              {String(slide.cta_text)}
+            </span>
+          ) : null}
+          {slide.cta2_text ? (
+            <span className="visual-block-preview__cta visual-block-preview__cta--ghost">
+              {String(slide.cta2_text)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }

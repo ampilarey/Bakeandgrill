@@ -19,7 +19,7 @@ describe('SurfaceBuilderLanding', () => {
     render(
       <SurfaceBuilderLanding
         surfaceCounts={{ 'website.mobile.header': 2, 'order_app.mobile.home': 5 }}
-        dirtyGroups={new Set(['Branding'])}
+        dirtyGroups={new Set(['Everywhere'])}
         onSelectSurface={onSelectSurface}
         onSelectTask={onSelectTask}
       />,
@@ -52,7 +52,7 @@ describe('SurfaceBuilderLanding', () => {
 
     fireEvent.click(screen.getByTestId('task-card-seo'));
     expect(onSelectTask).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'seo', group: 'SEO' }),
+      expect.objectContaining({ id: 'seo', group: 'Everywhere' }),
     );
   });
 

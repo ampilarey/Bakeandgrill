@@ -50,7 +50,7 @@ vi.mock('../components/MediaPicker', () => ({ MediaPicker: () => null }));
 const dualBlock: ContentBlock = {
   key: 'cta_band_headline',
   label: 'CTA headline',
-  group: 'Homepage',
+  group: 'Home',
   type: 'textarea',
   rich: true,
   apps: ['website', 'order_app'],

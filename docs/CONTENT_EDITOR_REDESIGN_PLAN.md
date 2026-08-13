@@ -90,24 +90,36 @@ slide.
 
 ### 1.3 Remaining gaps — this is what the plan is for
 
-1. **The information architecture is unchanged.** Still 12 storage groups on the website side,
-   with "Pages" holding 44 blocks. Homepage wording is still spread across Homepage, Hero,
-   Announcements, Footer, General and Branding.
-2. **A group labelled "Order App" still appears inside Website Content** — 10 `order_mode_*`
-   blocks that legitimately render on the website's homepage mode cards but are named after the
-   wrong thing.
-3. **Groups still carry engineering names** — "General", "Pages", "Status banners".
-4. **`ContentHubPage.tsx` has grown to 2,301 lines** (was 2,046 in revision 1). The ContentHub
-   directory is 8,947 lines. `HomeLayoutEditor.tsx` is 1,177 and `HeroSlidesEditor.tsx` is 1,143.
-   The file is getting bigger while being restructured, which is the wrong direction.
+1. ~~**The information architecture is unchanged.**~~ **Closed (Stage 4).** Hub sections are
+   page-first from the Stage 2 inventory (`contentHubGroupMap.ts` + `backend/config/content.php`
+   `group` labels). Website: Home / Menu page / Contact page / Hours page / Legal / Everywhere.
+   Order App: Home / Menu / Ordering / Order history / Gift cards / About / Contact page /
+   Hours page / Privacy / Signage / Everywhere. Empty sections omit from the rail.
+2. ~~**A group labelled "Order App" still appears inside Website Content.**~~ **Closed (Stage 4).**
+   Website `order_mode_*` keys live under **Home** with an **Order buttons** rail subgroup
+   (not an "Order App" section inside Website Content).
+3. ~~**Groups still carry engineering names.**~~ **Closed (Stage 4).** `General`, `Pages`,
+   `Status banners`, `Homepage`, `Branding`, `Footer`, `SEO`, `Contact & map`, etc. are hidden
+   or aliased to Stage 4 names; landing tasks and deep links redirect accordingly.
+4. ~~**`ContentHubPage.tsx` has grown to 2,301 lines.**~~ **Closed (Stage 3 pure refactor).**
+   Split into host components (`HubSurfaceLanding`, `HubSectionList`, `HubSectionContent`,
+   `HubEditorSheets`, `HubPreviewHost`, `HubPublishBar` + `hubDraftUtils`).
+   `ContentHubPage.tsx` is now **1,340 lines** (composition + state/effects/handlers). Below the
+   aspirational 600-line target would require moving autosave/publish/load orchestration into a
+   controller hook; that was deferred as unsafe for this stage (state stays in the page; no
+   context/reducer). `HomeLayoutEditor` / `HeroSlidesEditor` were not touched.
 5. ~~**The surface-count label wording diverges from the agreed spec.**~~ Closed in Stage 1 —
    label is now `N components · M hidden`.
-6. **No audited page inventory.** `SurfaceCatalog` covers 4 slots × 2 devices × 2 apps
-   (`header`, `home`, `footer`, `bottom_navigation`; mobile gets all four, desktop three). Real
-   customer pages — contact, hours, menu, legal, events — are not in the surface model at all.
-7. **Admin breakpoints are thin.** 29 media queries, dominated by `max-width: 767px` (11
-   occurrences). There is one compact band (`768–1199`) and a `min-width: 1200px`. The
-   414 / 1366 behaviours in the target spec are untested.
+6. ~~**No audited page inventory.**~~ **Closed (Stage 2).** Verified inventory from Blade /
+   Order App renderers (not `group` labels): [`docs/CONTENT_SURFACE_INVENTORY.md`](./CONTENT_SURFACE_INVENTORY.md)
+   + machine index [`docs/content_surface_inventory.json`](./content_surface_inventory.json).
+   `SurfaceCatalog` still models only 4 slots × 2 devices × 2 apps; real pages are inventoried
+   for Stage 4 regroup. Coverage test: every non-deprecated app-targeted registry key appears
+   exactly once per app in the inventory.
+7. ~~**Admin breakpoints are thin.**~~ **Closed (Stage 5).** Three Content Hub bands are wired
+   (`≤767` / `768–1199` / `≥1200`) with hooks + CSS. Matrix rows 14–15 covered by Playwright
+   (`09-content-hub-mobile-layout.spec.ts` includes 414 + 767; `09b-content-hub-responsive-bands.spec.ts`
+   covers compact no-dock + desktop optional dock at 1200 / 1366) plus vitest band/hook tests.
 
 
 ---
@@ -187,15 +199,44 @@ is one.
 `surfaceRegistry.ts` already distinguishes "Website legal footer" from the Brand footer home
 component. That distinction must survive the regroup.
 
-### 4.2 Real pages (not yet modelled)
+### 4.2 Real pages (verified — Stage 2)
 
-Website: Home, Menu, Contact, Hours, Events & Catering, Legal (privacy, terms, refund).
-Order App: Home, Menu, Ordering, Order history, Gift cards.
+Audited from Blade / Order App **renderers**, not `group` labels. Full per-key tables and
+re-run commands: [`docs/CONTENT_SURFACE_INVENTORY.md`](./CONTENT_SURFACE_INVENTORY.md).
+Machine index for the coverage test: [`docs/content_surface_inventory.json`](./content_surface_inventory.json).
 
-Only Home is composable today via `page_blocks`. The rest are registry blocks rendered by
-hand-written templates. **The audit must record, per page, which blocks render on it and in what
-order** — from the templates, not from the `group` field, because the `group` field is exactly
-what has proven unreliable.
+**Keep distinct (never one “footer”):** Website global footer ≠ Order App footer ≠ Mobile
+bottom navigation. Structural matrix: app × device × slot in the inventory doc.
+
+**Website (149 non-deprecated registry keys, each exactly once in inventory)**
+
+| Page | Route(s) | Primary template(s) | Notes |
+|------|----------|---------------------|-------|
+| Home | `GET /` | `home.blade.php` + `partials/home/*` (+ `page_blocks`) | Includes `order_mode_*`, `events_section_*` |
+| Contact | `GET /contact` | `contact.blade.php` | |
+| Hours | `GET /hours` | `hours.blade.php` | |
+| Legal — Terms / Refund | `GET /terms`, `GET /refund` | `terms.blade.php`, `refund.blade.php` | |
+| Legal — Privacy | `GET /privacy` → 301 `/order/privacy` | `privacy.blade.php` exists; public URL is Order App | Keys still inventoried under website |
+| Menu | `GET /menu` → 301 `/order/menu` | **No website blade** | 0 unique keys; Order App owns Menu |
+| Events & Catering | `/pre-order` → `/order/events` | **No website page**; home `events-band` only | `events_section_*` under Home |
+| Everywhere (layout chrome) | all pages via layout | `layout.blade.php` + site footer / overlays | Website global footer lives here |
+| Reads nowhere found | — | — | `business_website`, `menu_new_days` (do not delete) |
+
+**Order App (88 non-deprecated registry keys, each exactly once in inventory)**
+
+| Page | Route(s) under `/order` | Primary component(s) | Notes |
+|------|-------------------------|----------------------|-------|
+| Home | `/` (index) | `HomePage.tsx` + `components/home/*` (+ `page_blocks`) | Mode cards / ordering entry |
+| Menu | `/menu` | `MenuPage.tsx` | |
+| Ordering | `/checkout` (+ auth) | `CheckoutPage.tsx`, `AuthBlock.tsx` | No `/ordering` route |
+| Order history | `/order-history` | `OrderHistoryPage.tsx` | 0 content keys (API UI) |
+| Gift cards | `/gift-cards*` | `GiftCardsPage.tsx` (+ buy/success/view) | 0 content keys |
+| About / Contact / Hours / Privacy | `/about`, `/contact`, `/hours`, `/privacy` | matching `*Page.tsx` | Extra SPA pages holding registry keys |
+| Everywhere (shell chrome) | all routes via `AppShell` | TopNav, BrandFooter, overlays | Order App footer ≠ bottom nav |
+| Reads nowhere found | — | — | _(none after settings-context correction; do not delete keys from empty bucket)_ |
+
+Only Home is composable via `page_blocks`. Stage 4 regroups by these verified pages. Do not
+trust `group` alone — see inventory §4.4 (e.g. all ten `order_mode_*` keys).
 
 ---
 
@@ -271,7 +312,7 @@ Two consequences that would not otherwise be in this plan:
 | Menu page | menu page copy |
 | Contact page | contact copy, form labels, map |
 | Hours page | hours page copy |
-| Events & Catering | catering copy and CTAs |
+| Events & Catering | *(inventory: no standalone keys — `events_section_*` under Home; contact CTAs under Contact page; landing task deep-links Home)* |
 | Legal | privacy, terms, refund |
 | Everywhere | Website header, Website footer, announcement bar, Website branding, Website SEO |
 
@@ -340,8 +381,9 @@ Three admin layouts, with the breakpoints that must be tested:
 | **Tablet / compact** | 768, 1024, 1199 | Compact selector plus editor. **No permanently docked squeezed preview** — a 300px preview beside a 400px editor helps nobody. |
 | **Desktop** | 1200, 1366 and above | Main editor plus optional preview pane. Preview follows the selected app and the selected Desktop/Mobile surface. |
 
-Current state to close: 29 media queries, 11 of them `max-width: 767px`, one compact band at
-`768–1199`, one `min-width: 1200px`. 414 and 1366 are untested.
+Bands are enforced by `useIsMobile` / `useIsCompactAdmin` / `useIsWideDesktop` and matching
+`hub-*` CSS in `index.css`. Compact CSS hides `.hub-preview-pane--column`. Playwright asserts
+real layout at every plan width (Stage 5).
 
 ### 7.3 Drafts, previews and publishing
 
@@ -390,20 +432,36 @@ keep/hide resolve (never auto-delete); card and editor share `listConfiguredOnSu
 backend singleton 422 + deliberate multi/singleton classification test; matrix rows 1–7, 9–12
 and 16 covered. Correctness only — no IA/regroup/restyle.
 
-**Stage 2 — Audited surface and page inventory.**
-Document every page and surface per app from routes and renderers. Deliverable is the verified
-inventory table for §4.2. No UI change. Stage 3 does not start without it.
+**Stage 2 — Audited surface and page inventory. Done on this branch.**
+Document every page and surface per app from routes and renderers (not `group`). Deliverables:
+verified §4.2 + `docs/CONTENT_SURFACE_INVENTORY.md` + `docs/content_surface_inventory.json`;
+`ContentSurfaceInventoryTest` (matrix row 8 early). No UI / config / migration change.
+Stage 3 does not start without it.
 
-**Stage 3 — Split `ContentHubPage.tsx`.** Pure refactor, no visible change.
+**Stage 3 — Split `ContentHubPage.tsx`. Done on this branch.**
+Pure refactor, six commits, no visible/behaviour/data change. Hosts: surface landing, section
+list, block/section content, editor sheets, preview, publish bar. Admin suite green after each
+commit; zero existing tests edited. Residual page size 1,340 lines (see §1.3 gap 4).
 
-**Stage 4 — Regroup and rename.** §6.1 and §6.3 together, never apart — regrouping without
-renaming leaves "Order App" inside Website Content and is worse than doing neither. Guarded by the
-every-key-appears-exactly-once test.
+**Stage 4 — Regroup and rename. Done on this branch.** §6.1 and §6.3 together: inventory-derived
+`contentHubGroupMap.ts` drives hub membership; `content.php` `group` labels aligned; Website
+"Order App" / Status banners / Pages / General dissolved; Brand Kit + announcements under
+Everywhere; Home layout editor binds to `Home` (legacy `Homepage` aliased). Matrix row 8 UI half:
+`contentHubGroupMap.test.ts` (fail-proved). Events band keys stay on Home per Stage 2 inventory
+(no empty Events & Catering section).
 
-**Stage 5 — Responsive bands.** §7.2, including 414 and 1366.
+**Stage 5 — Responsive bands. Done on this branch.** §7.2 three layouts: mobile overflow at
+320 / 375 / 390 / 414 / 767 (Playwright); compact 768 / 1024 / 1199 never docks preview column
+(sheet only); desktop 1200 / 1366 optional docked column. Vitest band + hook coverage; matrix
+rows 14–15.
 
-**Stage 6 — Visual block previews and preview-beside-editor.** §6.4 and §7.1. Highest cost,
-highest payoff, last.
+**Stage 6 — Visual block previews and preview-beside-editor. Done on this branch.** §6.4 and
+§7.1: `VisualBlockPreview` resurrected (hero-first fidelity: showing slide, poster/video,
+focal point, photo/scrim, text position) and wired into the focused block editor; plain-text
+keys render value-as-seen. Live preview beside the editor follows the selected app + surface
+device (matrix row 13 — device toggle locks to canonical surface). Vitest:
+`VisualBlockPreview.test.tsx`, `ContentHub.previewDeviceParity.test.tsx`,
+`LivePreviewFrame` lock coverage.
 
 Stages 1 and 4 carry most of the value. Stage 1 is correctness and cannot be deferred; Stage 4 is
 the relief the owner actually asked for.
@@ -421,12 +479,12 @@ the relief the owner actually asked for.
 | 5 | Hidden instances are excluded from the count and labelled `N components · M hidden` | 1 |
 | 6 | Legacy duplicates raise an admin warning and nothing is deleted automatically | 1 |
 | 7 | A block placed on Website never appears in any Order App surface, list, count or preview, and the reverse | 1, 4 |
-| 8 | Every non-deprecated registry key targeting an app appears **exactly once** in that app's new grouping | 4 |
+| 8 | Every non-deprecated registry key targeting an app appears **exactly once** in that app's inventory / new grouping | 2 (inventory coverage test), 4 (UI regroup) |
 | 9 | No ops-owned key (`OpsOwnedContent`) is writable through the content API; each renders read-only with an owner link | 1 |
 | 10 | Website publish does not alter any Order App value, draft or publish state, and the reverse | 1 |
 | 11 | Publish does not clear a local draft until the server confirms | 1 |
 | 12 | An autosave failure stays visible, retains the change, offers retry, and blocks Publish | 1 |
-| 13 | Preview resolves the same app, device, surface and component list as the editor | 6 |
+| 13 | Preview resolves the same app, device, surface and component list as the editor | 6 (device + app lock + `include_layout`; vitest parity) |
 | 14 | No horizontal overflow at 320, 375, 390, 414, 767 | 5 |
 | 15 | No permanently docked preview between 768 and 1199 | 5 |
 | 16 | The 620-combination resolver snapshot is unchanged at every stage | all |

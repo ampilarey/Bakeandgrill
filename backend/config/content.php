@@ -35,7 +35,7 @@ return [
         'about_values' => [
             'editor' => 'about_values',
             'label' => 'About Values',
-            'group' => 'Pages',
+            'group' => 'About',
             'type' => 'json',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -46,7 +46,7 @@ return [
         ],
         'announcement_enabled' => [
             'label' => 'Show Announcement Banner',
-            'group' => 'Announcements',
+            'group' => 'Everywhere',
             'type' => 'boolean',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -57,7 +57,7 @@ return [
         ],
         'announcement_style' => [
             'label' => 'Announcement — Style',
-            'group' => 'Announcements',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -68,7 +68,7 @@ return [
         ],
         'announcement_text' => [
             'label' => 'Announcement — Text',
-            'group' => 'Announcements',
+            'group' => 'Everywhere',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -79,7 +79,7 @@ return [
         ],
         'announcement_url' => [
             'label' => 'Announcement — Link URL (optional)',
-            'group' => 'Announcements',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -90,7 +90,7 @@ return [
         ],
         'business_address' => [
             'label' => 'Business Address',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -102,7 +102,7 @@ return [
         ],
         'business_address_line1' => [
             'label' => 'Address line 1',
-            'group' => 'General',
+            'group' => 'Business Details',
             'type' => 'text',
             // Shared Business Details only — not Website/Order App Content Hub fields.
             'apps' => [],
@@ -115,7 +115,7 @@ return [
         ],
         'business_address_city' => [
             'label' => 'City / island',
-            'group' => 'General',
+            'group' => 'Business Details',
             'type' => 'text',
             'apps' => [],
             'shareable' => true,
@@ -126,7 +126,7 @@ return [
         ],
         'business_address_country' => [
             'label' => 'Country',
-            'group' => 'General',
+            'group' => 'Business Details',
             'type' => 'text',
             'apps' => [],
             'shareable' => true,
@@ -137,7 +137,7 @@ return [
         ],
         'business_email' => [
             'label' => 'Business Email',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -148,7 +148,7 @@ return [
         ],
         'business_landmark' => [
             'label' => 'Landmark / Direction Hint',
-            'group' => 'Contact',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -159,7 +159,7 @@ return [
         ],
         'business_maps_url' => [
             'label' => 'Google Maps URL',
-            'group' => 'Contact',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -170,7 +170,7 @@ return [
         ],
         'business_phone' => [
             'label' => 'Business Phone',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -181,7 +181,7 @@ return [
         ],
         'business_hours' => [
             'label' => 'Business Hours (display)',
-            'group' => 'General',
+            'group' => 'Contact page',
             'type' => 'json',
             'editor' => 'business_hours',
             'apps' => ['website'],
@@ -194,7 +194,7 @@ return [
         ],
         'business_website' => [
             'label' => 'Business Website',
-            'group' => 'Contact',
+            'group' => 'Signage',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -205,7 +205,7 @@ return [
         ],
         'business_viber' => [
             'label' => 'Viber Link',
-            'group' => 'Contact',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -216,7 +216,7 @@ return [
         ],
         'business_whatsapp' => [
             'label' => 'WhatsApp Link',
-            'group' => 'Contact',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -227,7 +227,7 @@ return [
         ],
         'contact_email_label' => [
             'label' => 'Contact Page — Email Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -238,7 +238,7 @@ return [
         ],
         'contact_events_cta_headline' => [
             'label' => 'Contact Events Cta Headline',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -249,7 +249,7 @@ return [
         ],
         'contact_events_cta_text' => [
             'label' => 'Contact Events Cta Text',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -260,7 +260,7 @@ return [
         ],
         'contact_hours_fallback' => [
             'label' => 'Contact Page — Hours Fallback Text',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'textarea',
             'apps' => ['website'],
             'shareable' => false,
@@ -271,7 +271,7 @@ return [
         ],
         'contact_hours_heading' => [
             'label' => 'Contact Page — Hours Card Heading',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -282,7 +282,7 @@ return [
         ],
         'contact_location_heading' => [
             'label' => 'Contact Page — Location Card Heading',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -293,7 +293,7 @@ return [
         ],
         'contact_location_maps_label' => [
             'label' => 'Contact Page — Maps Link Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -304,7 +304,7 @@ return [
         ],
         'contact_map_heading' => [
             'label' => 'Contact Page — Map Section Heading',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -315,7 +315,7 @@ return [
         ],
         'contact_meta_title' => [
             'label' => 'Contact Page — Browser Title',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -326,7 +326,7 @@ return [
         ],
         'contact_page_eyebrow' => [
             'label' => 'Contact Page — Hero Eyebrow',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -337,7 +337,7 @@ return [
         ],
         'contact_page_subtitle' => [
             'label' => 'Contact Page — Hero Subtitle',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -348,7 +348,7 @@ return [
         ],
         'contact_page_title' => [
             'label' => 'Contact Page — Hero Title',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -359,7 +359,7 @@ return [
         ],
         'contact_phone_label' => [
             'label' => 'Contact Page — Phone Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -370,7 +370,7 @@ return [
         ],
         'contact_schedule_label' => [
             'label' => 'Contact Page — Schedule Link Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -381,7 +381,7 @@ return [
         ],
         'contact_touch_heading' => [
             'label' => 'Contact Page — Contact Card Heading',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -392,7 +392,7 @@ return [
         ],
         'contact_viber_label' => [
             'label' => 'Contact Page — Viber Button Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -403,7 +403,7 @@ return [
         ],
         'contact_whatsapp_label' => [
             'label' => 'Contact Page — WhatsApp Button Label',
-            'group' => 'Contact',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -414,7 +414,7 @@ return [
         ],
         'cta_band_headline' => [
             'label' => 'CTA Band — Headline',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['website'],
             'shareable' => true,
@@ -425,7 +425,7 @@ return [
         ],
         'cta_band_subtext' => [
             'label' => 'CTA Band — Subtext',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['website'],
             'shareable' => true,
@@ -436,7 +436,7 @@ return [
         ],
         'delivery_threshold' => [
             'label' => 'Free Delivery Threshold',
-            'group' => 'Contact',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -448,7 +448,7 @@ return [
         ],
         'delivery_time' => [
             'label' => 'Delivery Time Promise',
-            'group' => 'Contact',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -459,7 +459,7 @@ return [
         ],
         'events_section_blurb' => [
             'label' => 'Events Section Blurb',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -470,7 +470,7 @@ return [
         ],
         'events_section_browse_cta' => [
             'label' => 'Events Section Browse Cta',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -481,7 +481,7 @@ return [
         ],
         'events_section_headline' => [
             'label' => 'Events Section Headline',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -492,7 +492,7 @@ return [
         ],
         'events_section_plan_cta' => [
             'label' => 'Events Section Plan Cta',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -503,7 +503,7 @@ return [
         ],
         'favicon' => [
             'label' => 'Favicon',
-            'group' => 'Branding',
+            'group' => 'Everywhere',
             'type' => 'image',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -514,7 +514,7 @@ return [
         ],
         'footer_contact_heading' => [
             'label' => 'Footer — Contact Heading',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -526,7 +526,7 @@ return [
         'footer_links' => [
             'editor' => 'footer_links',
             'label' => 'Footer Links',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -538,7 +538,7 @@ return [
         ],
         'footer_location_heading' => [
             'label' => 'Footer — Location Heading',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -549,7 +549,7 @@ return [
         ],
         'footer_quick_links_heading' => [
             'label' => 'Footer — Quick Links Heading',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -560,7 +560,7 @@ return [
         ],
         'footer_rights_suffix' => [
             'label' => 'Footer — Rights Suffix',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -571,7 +571,7 @@ return [
         ],
         'footer_text' => [
             'label' => 'Footer blurb',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -583,7 +583,7 @@ return [
         ],
         'footer_thanks' => [
             'label' => 'Footer thanks',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -594,7 +594,7 @@ return [
         ],
         'footer_hours_heading' => [
             'label' => 'Footer — Hours Heading',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -605,7 +605,7 @@ return [
         ],
         'footer_payments_text' => [
             'label' => 'Footer — Payments line',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -616,7 +616,7 @@ return [
         ],
         'footer_delivery_text' => [
             'label' => 'Footer — Delivery line',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -627,7 +627,7 @@ return [
         ],
         'footer_ramadan_note' => [
             'label' => 'Footer — Ramadan note',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -638,7 +638,7 @@ return [
         ],
         'show_social_links' => [
             'label' => 'Show social links',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'boolean',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -649,7 +649,7 @@ return [
         ],
         'social_instagram' => [
             'label' => 'Instagram URL',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -660,7 +660,7 @@ return [
         ],
         'social_facebook' => [
             'label' => 'Facebook URL',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -671,7 +671,7 @@ return [
         ],
         'social_tiktok' => [
             'label' => 'TikTok URL',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -683,7 +683,7 @@ return [
         'hero_slides' => [
             'editor' => 'hero',
             'label' => 'Hero Slides',
-            'group' => 'Hero',
+            'group' => 'Home',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -732,7 +732,7 @@ return [
         ],
         'home_categories_eyebrow' => [
             'label' => 'Categories Section — Eyebrow',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -743,7 +743,7 @@ return [
         ],
         'home_categories_subtitle' => [
             'label' => 'Categories Section — Subtitle',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -754,7 +754,7 @@ return [
         ],
         'home_categories_title' => [
             'label' => 'Categories Section — Title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -765,7 +765,7 @@ return [
         ],
         'home_closed_badge_text' => [
             'label' => 'Home — Closed Badge Text',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -776,7 +776,7 @@ return [
         ],
         'home_delivery_payment_line' => [
             'label' => 'Delivery Card — Payment Line',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -787,7 +787,7 @@ return [
         ],
         'home_delivery_quality_line' => [
             'label' => 'Delivery Card — Quality Line',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -798,7 +798,7 @@ return [
         ],
         'home_delivery_subtitle' => [
             'label' => 'Delivery Card — Subtitle',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -809,7 +809,7 @@ return [
         ],
         'home_delivery_tagline' => [
             'label' => 'Delivery Card — Tagline',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -820,7 +820,7 @@ return [
         ],
         'home_featured_eyebrow_bestseller' => [
             'label' => 'Featured Items — Eyebrow (has sales data)',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -831,7 +831,7 @@ return [
         ],
         'home_featured_eyebrow_handpicked' => [
             'label' => 'Featured Items — Eyebrow (no sales data)',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -842,7 +842,7 @@ return [
         ],
         'home_featured_subtitle' => [
             'label' => 'Featured Items — Subtitle',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -853,7 +853,7 @@ return [
         ],
         'home_featured_title_bestseller' => [
             'label' => 'Featured Items — Title (has sales data)',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -864,7 +864,7 @@ return [
         ],
         'home_featured_title_handpicked' => [
             'label' => 'Featured Items — Title (no sales data)',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -875,7 +875,7 @@ return [
         ],
         'home_hero_fallback_subtitle' => [
             'label' => 'Hero Fallback — Subtitle',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -886,7 +886,7 @@ return [
         ],
         'home_hero_fallback_title' => [
             'label' => 'Hero Fallback — Title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -897,7 +897,7 @@ return [
         ],
         'home_location_eyebrow' => [
             'label' => 'Location Section — Eyebrow',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -908,7 +908,7 @@ return [
         ],
         'home_location_subtitle' => [
             'label' => 'Location Section — Subtitle',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -919,7 +919,7 @@ return [
         ],
         'home_location_title' => [
             'label' => 'Location Section — Title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -930,7 +930,7 @@ return [
         ],
         'home_open_badge_text' => [
             'label' => 'Home — Open Badge Text',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -941,7 +941,7 @@ return [
         ],
         'home_proof_eyebrow' => [
             'label' => 'Social Proof — Eyebrow',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -956,7 +956,7 @@ return [
         // 'home_section_order' => …
         'home_specials_eyebrow' => [
             'label' => 'Specials eyebrow',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -967,7 +967,7 @@ return [
         ],
         'home_specials_title' => [
             'label' => 'Specials title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -978,7 +978,7 @@ return [
         ],
         'offers_headline' => [
             'label' => 'Offers rail headline',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -989,7 +989,7 @@ return [
         ],
         'offers_subtext' => [
             'label' => 'Offers rail subtext',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1001,7 +1001,7 @@ return [
         'homepage_categories' => [
             'editor' => 'categories',
             'label' => 'Hedhikaa',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1012,7 +1012,7 @@ return [
         ],
         'hours_call_confirm_label' => [
             'label' => 'Hours Page — Footer "Call to confirm" prefix',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1023,7 +1023,7 @@ return [
         ],
         'hours_closed_status_text' => [
             'label' => 'Hours Page — Closed Status Badge',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1034,7 +1034,7 @@ return [
         ],
         'hours_contact_page_label' => [
             'label' => 'Hours Page — Footer contact-page link label',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1045,7 +1045,7 @@ return [
         ],
         'hours_meta_description' => [
             'label' => 'Hours Page — Meta Description',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1056,7 +1056,7 @@ return [
         ],
         'hours_meta_title' => [
             'label' => 'Hours Page — Browser Title',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1067,7 +1067,7 @@ return [
         ],
         'hours_open_status_text' => [
             'label' => 'Hours Page — Open Status Badge',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1078,7 +1078,7 @@ return [
         ],
         'hours_order_btn_label' => [
             'label' => 'Hours Page — CTA Button Label',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1089,7 +1089,7 @@ return [
         ],
         'hours_page_cta_subtitle' => [
             'label' => 'Hours Page — CTA Subtitle',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1100,7 +1100,7 @@ return [
         ],
         'hours_page_cta_title' => [
             'label' => 'Hours Page — CTA Title',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1111,7 +1111,7 @@ return [
         ],
         'hours_page_eyebrow' => [
             'label' => 'Hours Page — Hero Eyebrow',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1122,7 +1122,7 @@ return [
         ],
         'hours_page_note' => [
             'label' => 'Hours Page — Holiday Note',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1133,7 +1133,7 @@ return [
         ],
         'hours_page_title' => [
             'label' => 'Hours Page — Hero Title',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1144,7 +1144,7 @@ return [
         ],
         'hours_special_closure_label' => [
             'label' => 'Hours Page — Special Closure Prefix',
-            'group' => 'Pages',
+            'group' => 'Hours page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1188,7 +1188,7 @@ return [
         ],
         'logo' => [
             'label' => 'Logo (Light)',
-            'group' => 'Branding',
+            'group' => 'Everywhere',
             'type' => 'image',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1199,7 +1199,7 @@ return [
         ],
         'logo_dark' => [
             'label' => 'Logo (Dark)',
-            'group' => 'Branding',
+            'group' => 'Everywhere',
             'type' => 'image',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1210,7 +1210,7 @@ return [
         ],
         'default_item_image' => [
             'label' => 'Default item photo',
-            'group' => 'Branding',
+            'group' => 'Home',
             'type' => 'image',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1234,7 +1234,7 @@ return [
         ],
         'maps_embed_url' => [
             'label' => 'Google Maps embed URL',
-            'group' => 'Pages',
+            'group' => 'Contact page',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1257,7 +1257,7 @@ return [
         ],
         'meta_description' => [
             'label' => 'Meta Description',
-            'group' => 'SEO',
+            'group' => 'Everywhere',
             'type' => 'textarea',
             'apps' => ['website'],
             'shareable' => true,
@@ -1268,7 +1268,7 @@ return [
         ],
         'meta_title' => [
             'label' => 'Meta Title',
-            'group' => 'SEO',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1279,7 +1279,7 @@ return [
         ],
         'nav_order_cta_text' => [
             'label' => 'Nav — Order CTA Button',
-            'group' => 'Footer',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1290,7 +1290,7 @@ return [
         ],
         'office_orders_enabled' => [
             'label' => 'Office Orders Enabled',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'boolean',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1301,7 +1301,7 @@ return [
         ],
         'office_orders_headline' => [
             'label' => 'Office Orders Headline',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1312,7 +1312,7 @@ return [
         ],
         'office_orders_subtext' => [
             'label' => 'Office Orders Subtext',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1323,7 +1323,7 @@ return [
         ],
         'og_image' => [
             'label' => 'Link preview image',
-            'group' => 'Branding',
+            'group' => 'Everywhere',
             'type' => 'image',
             'apps' => ['website'],
             'shareable' => true,
@@ -1335,7 +1335,7 @@ return [
         ],
         'order_auth_privacy_line' => [
             'label' => 'Login — Privacy Line',
-            'group' => 'Order App',
+            'group' => 'Ordering',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1346,7 +1346,7 @@ return [
         ],
         'order_checkout_subtitle' => [
             'label' => 'Checkout — Subtitle',
-            'group' => 'Order App',
+            'group' => 'Ordering',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1357,7 +1357,7 @@ return [
         ],
         'order_checkout_title' => [
             'label' => 'Checkout — Title',
-            'group' => 'Order App',
+            'group' => 'Ordering',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1368,7 +1368,7 @@ return [
         ],
         'order_home_reviews_title' => [
             'label' => 'Order home reviews title',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1379,7 +1379,7 @@ return [
         ],
         'order_home_greeting_hello' => [
             'label' => 'Home greeting — Hello',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1391,7 +1391,7 @@ return [
         ],
         'order_home_greeting_named' => [
             'label' => 'Home greeting — with name',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1403,7 +1403,7 @@ return [
         ],
         'order_home_greeting_sub' => [
             'label' => 'Home greeting — subtitle',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1415,7 +1415,7 @@ return [
         ],
         'order_mode_delivery_hint' => [
             'label' => 'Delivery mode hint',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1427,7 +1427,7 @@ return [
         ],
         'order_mode_pickup_hint' => [
             'label' => 'Pickup mode hint',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1439,7 +1439,7 @@ return [
         ],
         'order_mode_dine_in_hint' => [
             'label' => 'Eat here mode hint',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1451,7 +1451,7 @@ return [
         ],
         'order_mode_delivery_info' => [
             'label' => 'Delivery — info sheet',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1463,7 +1463,7 @@ return [
         ],
         'order_mode_pickup_info' => [
             'label' => 'Pickup — info sheet',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1475,7 +1475,7 @@ return [
         ],
         'order_mode_dine_in_info' => [
             'label' => 'Eat here — info sheet',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'textarea',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1487,7 +1487,7 @@ return [
         ],
         'order_mode_status_available' => [
             'label' => 'Mode status — available',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1499,7 +1499,7 @@ return [
         ],
         'order_mode_status_unavailable' => [
             'label' => 'Mode status — unavailable',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1511,7 +1511,7 @@ return [
         ],
         'order_mode_status_unavailable_opens' => [
             'label' => 'Mode status — closed until',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1523,7 +1523,7 @@ return [
         ],
         'order_mode_learn_more' => [
             'label' => 'Mode card — Learn more',
-            'group' => 'Order App',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1535,7 +1535,7 @@ return [
         ],
         'order_payment_compliance' => [
             'label' => 'Checkout — Payment Compliance Text',
-            'group' => 'Order App',
+            'group' => 'Ordering',
             'type' => 'textarea',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1546,7 +1546,7 @@ return [
         ],
         'order_hours_closed' => [
             'label' => 'Hours badge — Closed',
-            'group' => 'Status banners',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1557,7 +1557,7 @@ return [
         ],
         'order_hours_closed_opens' => [
             'label' => 'Hours badge — Closed · Opens {time}',
-            'group' => 'Status banners',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1568,7 +1568,7 @@ return [
         ],
         'order_hours_open' => [
             'label' => 'Hours badge — Open',
-            'group' => 'Status banners',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1579,7 +1579,7 @@ return [
         ],
         'order_hours_open_closes' => [
             'label' => 'Hours badge — Open · Closes {time}',
-            'group' => 'Status banners',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['order_app'],
             'shareable' => false,
@@ -1594,7 +1594,7 @@ return [
 
         'primary_color' => [
             'label' => 'Primary Color',
-            'group' => 'Branding',
+            'group' => 'Everywhere',
             'type' => 'color',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1606,7 +1606,7 @@ return [
         ],
         'privacy_address_label' => [
             'label' => 'Privacy Page — Address Label in Contact block',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1617,7 +1617,7 @@ return [
         ],
         'privacy_email' => [
             'label' => 'Privacy Page — Privacy Contact Email',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1628,7 +1628,7 @@ return [
         ],
         'privacy_email_label' => [
             'label' => 'Privacy Page — Email Label in Contact block',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1639,7 +1639,7 @@ return [
         ],
         'privacy_last_updated_label' => [
             'label' => 'Privacy Page — "Last updated" prefix',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1650,7 +1650,7 @@ return [
         ],
         'privacy_meta_title' => [
             'label' => 'Privacy Page — Browser Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1661,7 +1661,7 @@ return [
         ],
         'privacy_page_title' => [
             'label' => 'Privacy Page — Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1672,7 +1672,7 @@ return [
         ],
         'privacy_phone_label' => [
             'label' => 'Privacy Page — Phone Label in Contact block',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1686,7 +1686,7 @@ return [
         'proof_details' => [
             'editor' => 'proof',
             'label' => 'Baking starts',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'json',
             'apps' => ['website'],
             'shareable' => true,
@@ -1697,7 +1697,7 @@ return [
         ],
         'proof_label' => [
             'label' => 'Social Proof — Label',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1708,7 +1708,7 @@ return [
         ],
         'proof_stat' => [
             'label' => 'Social Proof — Main Stat',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1719,7 +1719,7 @@ return [
         ],
         'refund_last_updated_label' => [
             'label' => 'Refund Page — "Last updated" prefix',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1730,7 +1730,7 @@ return [
         ],
         'refund_meta_title' => [
             'label' => 'Refund Page — Browser Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1741,7 +1741,7 @@ return [
         ],
         'refund_page_subtitle' => [
             'label' => 'Refund Page — Subtitle',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1752,7 +1752,7 @@ return [
         ],
         'refund_page_title' => [
             'label' => 'Refund Page — Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1770,7 +1770,7 @@ return [
         // 'section_location_enabled', 'section_reviews_enabled' => …
         'language_switcher_enabled' => [
             'label' => 'Show language switcher (EN / ދވ)',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'boolean',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1781,7 +1781,7 @@ return [
         ],
         'site_name' => [
             'label' => 'Site Name',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1792,7 +1792,7 @@ return [
         ],
         'site_tagline' => [
             'label' => 'Tagline',
-            'group' => 'General',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1803,7 +1803,7 @@ return [
         ],
         'terms_email_label' => [
             'label' => 'Terms Page — Email Label in Corporate Box',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1814,7 +1814,7 @@ return [
         ],
         'terms_last_updated_label' => [
             'label' => 'Terms Page — "Last updated" prefix',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1825,7 +1825,7 @@ return [
         ],
         'terms_meta_title' => [
             'label' => 'Terms Page — Browser Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1836,7 +1836,7 @@ return [
         ],
         'terms_page_corporate_service_text' => [
             'label' => 'Terms Page — Corporate Box Service Line',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1847,7 +1847,7 @@ return [
         ],
         'terms_page_subtitle' => [
             'label' => 'Terms Page — Subtitle',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1858,7 +1858,7 @@ return [
         ],
         'terms_page_title' => [
             'label' => 'Terms Page — Title',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1869,7 +1869,7 @@ return [
         ],
         'terms_phone_label' => [
             'label' => 'Terms Page — Phone Label in Corporate Box',
-            'group' => 'Pages',
+            'group' => 'Legal',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1881,7 +1881,7 @@ return [
         'trust_items' => [
             'editor' => 'trust',
             'label' => 'Trust Items',
-            'group' => 'Pages',
+            'group' => 'Home',
             'type' => 'json',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1894,7 +1894,7 @@ return [
         // ── Location / visit CTAs (Website home location block) ───────────────
         'home_chat_label' => [
             'label' => 'Home — Chat label',
-            'group' => 'Homepage',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1906,7 +1906,7 @@ return [
         ],
         'home_visit_card_title' => [
             'label' => 'Home — Visit card title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1917,7 +1917,7 @@ return [
         ],
         'home_delivery_card_title' => [
             'label' => 'Home — Delivery card title',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1928,7 +1928,7 @@ return [
         ],
         'home_directions_cta' => [
             'label' => 'Home — Directions CTA',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1939,7 +1939,7 @@ return [
         ],
         'home_call_cta' => [
             'label' => 'Home — Call CTA',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1950,7 +1950,7 @@ return [
         ],
         'home_order_via_app_label' => [
             'label' => 'Home — Order via app label',
-            'group' => 'Homepage',
+            'group' => 'Home',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => true,
@@ -1973,7 +1973,7 @@ return [
         ],
         'meta_keywords' => [
             'label' => 'SEO — Meta keywords',
-            'group' => 'SEO',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website'],
             'shareable' => false,
@@ -1984,7 +1984,7 @@ return [
         ],
         'google_analytics_id' => [
             'label' => 'Google Analytics ID',
-            'group' => 'SEO',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,
@@ -1996,7 +1996,7 @@ return [
         ],
         'google_tag_manager_id' => [
             'label' => 'Google Tag Manager ID',
-            'group' => 'SEO',
+            'group' => 'Everywhere',
             'type' => 'text',
             'apps' => ['website', 'order_app'],
             'shareable' => true,

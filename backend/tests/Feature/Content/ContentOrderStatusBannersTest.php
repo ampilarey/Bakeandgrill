@@ -48,7 +48,7 @@ class ContentOrderStatusBannersTest extends TestCase
             $this->assertTrue(ContentRegistry::targetsApp($key, 'order_app'));
             $this->assertFalse(ContentRegistry::targetsApp($key, 'website'));
             $block = ContentRegistry::block($key);
-            $this->assertSame('Status banners', $block['group'] ?? null);
+            $this->assertSame('Home', $block['group'] ?? null);
             $this->assertSame(self::EXPECTED_DEFAULTS[$key], ContentRegistry::default($key));
         }
     }
