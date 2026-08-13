@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import {
-  Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
-} from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import {
   cancelContentSchedule,
   createContentPreviewToken,
@@ -31,19 +29,18 @@ import {
   publishPageBlocks,
 } from '../../api/pageBlocks';
 import { ApiRequestError } from '@shared/api';
-import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
+import { PageHeader, PageShell } from '../../components/SharedUI';
 import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
-import { DraftPublishStatus } from '../../components/DraftPublishStatus';
-import { MobileActionSheet } from '../../components/MobileActionSheet';
 import { type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
 import { HubSectionContent, type UploadContextRef } from './HubSectionContent';
 import { HubEditorSheets } from './HubEditorSheets';
 import { HubPreviewHost } from './HubPreviewHost';
+import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
 import {
@@ -923,17 +920,17 @@ export function ContentHubPage() {
   const effectiveDirtyCount = dirtyCount + (layoutDraft ? 1 : 0);
 
   const draftStatusNode = (
-    <DraftPublishStatus
-      dirtyCount={effectiveDirtyCount}
-      app={hubApp}
+    <HubDraftStatus
+      effectiveDirtyCount={effectiveDirtyCount}
+      hubApp={hubApp}
       autosaving={autosaving}
-      saveFailed={autosaveFailed}
-      saveErrorDetail={autosaveErrorDetail}
-      savePending={hasUnsaved && !autosaveFailed}
-      publishing={saving}
+      autosaveFailed={autosaveFailed}
+      autosaveErrorDetail={autosaveErrorDetail}
+      hasUnsaved={hasUnsaved}
+      saving={saving}
       publishFailed={publishFailed}
       lastSavedAt={lastSavedAt}
-      compact={isMobile}
+      isMobile={isMobile}
       onRetrySave={() => { void persistDrafts(locale); }}
       onRetryPublish={() => { void publish(); }}
     />
@@ -1054,212 +1051,57 @@ export function ContentHubPage() {
     </div>
   );
 
-  const pendingOverwriteKeys = useMemo(() => {
-    const changes = collectChanges(drafts, locale, hubApp);
-    if (changes.length === 0 || schedules.length === 0) return [] as ContentScheduleRow[];
-    const changeKeys = new Set(changes.map((c) => `${c.key}::${c.scope}::${c.locale ?? locale}`));
-    return schedules.filter((s) => changeKeys.has(`${s.key}::${s.scope}::${s.locale}`));
-  }, [drafts, locale, schedules, hubApp]);
-
   const schedulePublishPanel = (
-    <div className="hub-more-schedule" data-testid="hub-schedule-publish">
-      <div className="hub-more-schedule-label">Schedule {hubLabel} publish</div>
-      {pendingOverwriteKeys.length > 0 ? (
-        <p
-          data-testid="hub-schedule-overwrite-warning"
-          role="alert"
-          style={{
-            margin: '0 0 8px',
-            fontSize: 12,
-            lineHeight: 1.4,
-            color: 'var(--color-warning-strong)',
-            background: 'var(--color-warning-bg)',
-            border: '1px solid var(--color-warning)',
-            borderRadius: 8,
-            padding: '8px 10px',
-          }}
-        >
-          A pending schedule already exists for{' '}
-          {pendingOverwriteKeys.map((s) => s.key).filter((k, i, a) => a.indexOf(k) === i).join(', ')}.
-          Scheduling again will overwrite that whole value when the later one publishes.
-        </p>
-      ) : null}
-      {layoutDraft ? (
-        <p
-          data-testid="hub-schedule-layout-note"
-          style={{
-            margin: '0 0 8px',
-            fontSize: 12,
-            lineHeight: 1.4,
-            color: 'var(--color-text-secondary)',
-          }}
-        >
-          Homepage layout drafts are not scheduled. Publish or discard them separately.
-        </p>
-      ) : null}
-      <input
-        type="datetime-local"
-        value={scheduleAt}
-        onChange={(e) => setScheduleAt(e.target.value)}
-        className="hub-more-schedule-input"
-        data-testid="hub-schedule-at"
-      />
-      <button
-        type="button"
-        onClick={() => { void schedulePublish(); setMoreMenuOpen(false); }}
-        disabled={saving || dirtyCount === 0 || !scheduleAt}
-        className="hub-more-schedule-btn"
-        data-testid="hub-schedule-submit"
-      >
-        Schedule
-      </button>
-    </div>
-  );
-
-  const moreMenuItems = (
-    <>
-      {effectiveDirtyCount > 0 ? (
-        <button
-          type="button"
-          role="menuitem"
-          className="hub-more-item"
-          data-testid="hub-discard-draft"
-          onClick={() => {
-            setMoreMenuOpen(false);
-            void discardAllContentDrafts();
-          }}
-        >
-          Discard {hubLabel} draft
-        </button>
-      ) : null}
-      <button
-        type="button"
-        role="menuitem"
-        className="hub-more-item"
-        onClick={() => { void doExport(); setMoreMenuOpen(false); }}
-      >
-        <Download size={14} /> Export {hubLabel}
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        className="hub-more-item"
-        onClick={() => { importInputRef.current?.click(); setMoreMenuOpen(false); }}
-      >
-        <UploadIcon size={14} /> Import {hubLabel}
-      </button>
-      {schedulePublishPanel}
-      <button
-        type="button"
-        role="menuitem"
-        className="hub-more-item"
-        onClick={() => { setMediaOpen(true); setMoreMenuOpen(false); }}
-      >
-        Media library
-      </button>
-    </>
+    <HubSchedulePublishPanel
+      hubLabel={hubLabel}
+      drafts={drafts}
+      locale={locale}
+      hubApp={hubApp}
+      schedules={schedules}
+      layoutDraft={layoutDraft}
+      scheduleAt={scheduleAt}
+      setScheduleAt={setScheduleAt}
+      saving={saving}
+      dirtyCount={dirtyCount}
+      onSchedulePublish={() => void schedulePublish()}
+      setMoreMenuOpen={setMoreMenuOpen}
+    />
   );
 
   const headerActions = (
-    <div className="hub-header-actions">
-      {isMobile ? (
-        <button
-          ref={searchToggleRef}
-          type="button"
-          className="hub-search-toggle"
-          data-testid="hub-search-toggle"
-          aria-label="Search content"
-          aria-expanded={searchOverlayOpen}
-          onClick={() => setSearchOverlayOpen(true)}
-        >
-          <Search size={16} />
-        </button>
-      ) : (
-        searchField
-      )}
-
-      <div className="hub-locale-seg" role="group" aria-label="Language">
-        {(['en', 'dv'] as const).map((loc) => (
-          <button
-            key={loc}
-            type="button"
-            aria-pressed={locale === loc}
-            onClick={() => setLocale(loc)}
-            className={`hub-locale-btn${locale === loc ? ' hub-locale-btn--active' : ''}`}
-          >
-            {loc === 'en' ? 'EN' : 'DV'}
-          </button>
-        ))}
-      </div>
-
-      {draftStatusNode}
-
-      {!isMobile ? (
-        <button
-          type="button"
-          data-testid="preview-toggle"
-          aria-pressed={isCompactAdmin ? previewSheetOpen : desktopPreviewOpen}
-          className={`hub-preview-toggle${(isCompactAdmin ? previewSheetOpen : desktopPreviewOpen) ? ' hub-preview-toggle--on' : ''}`}
-          onClick={() => {
-            if (isCompactAdmin) {
-              setPreviewSheetOpen((o) => !o);
-              return;
-            }
-            setDesktopPreviewOpenPersisted(!desktopPreviewOpen);
-          }}
-        >
-          <Eye size={14} /> Preview
-        </button>
-      ) : null}
-
-      {effectiveDirtyCount > 0 ? (
-        <Btn
-          onClick={() => void publish()}
-          disabled={saving || effectiveDirtyCount === 0 || autosaveFailed}
-          className="content-studio-publish-desktop content-studio-publish-desktop--needed"
-          data-testid="publish-live-btn"
-          title={autosaveFailed
-            ? 'Retry draft save before publishing'
-            : layoutDraft && dirtyCount === 0
-              ? `Publishes unpublished ${hubApp === 'website' ? 'Website' : 'Order App'} Home layout changes`
-              : undefined}
-        >
-          <Save size={16} />
-          {saving ? `Publishing ${hubLabel}…` : publishFailed ? 'Publish failed — Try again' : `Publish ${hubLabel}`}
-        </Btn>
-      ) : null}
-
-      <div className="hub-more-wrap" ref={moreMenuRef}>
-        <button
-          ref={moreBtnRef}
-          type="button"
-          className="hub-more-trigger"
-          onClick={() => setMoreMenuOpen((o) => !o)}
-          aria-expanded={moreMenuOpen}
-          aria-label="More actions"
-        >
-          <MoreHorizontal size={16} />
-          <span className="hub-more-trigger-label">More</span>
-        </button>
-        {moreMenuOpen && !isMobile ? (
-          <div className="hub-more-menu" role="menu">
-            {moreMenuItems}
-          </div>
-        ) : null}
-      </div>
-      {isMobile ? (
-        <MobileActionSheet
-          open={moreMenuOpen}
-          title="More"
-          onClose={() => setMoreMenuOpen(false)}
-          testId="hub-more-menu-mobile"
-          returnFocusTo={moreBtnRef.current}
-          layer={5}
-        >
-          {moreMenuItems}
-        </MobileActionSheet>
-      ) : null}
-    </div>
+    <HubHeaderActions
+      isMobile={isMobile}
+      searchOverlayOpen={searchOverlayOpen}
+      searchToggleRef={searchToggleRef}
+      onOpenSearchOverlay={() => setSearchOverlayOpen(true)}
+      searchField={searchField}
+      locale={locale}
+      setLocale={setLocale}
+      draftStatusNode={draftStatusNode}
+      isCompactAdmin={isCompactAdmin}
+      previewSheetOpen={previewSheetOpen}
+      setPreviewSheetOpen={setPreviewSheetOpen}
+      desktopPreviewOpen={desktopPreviewOpen}
+      setDesktopPreviewOpenPersisted={setDesktopPreviewOpenPersisted}
+      effectiveDirtyCount={effectiveDirtyCount}
+      saving={saving}
+      autosaveFailed={autosaveFailed}
+      layoutDraft={layoutDraft}
+      dirtyCount={dirtyCount}
+      hubApp={hubApp}
+      hubLabel={hubLabel}
+      publishFailed={publishFailed}
+      onPublish={() => void publish()}
+      moreMenuOpen={moreMenuOpen}
+      setMoreMenuOpen={setMoreMenuOpen}
+      moreMenuRef={moreMenuRef}
+      moreBtnRef={moreBtnRef}
+      onDiscardDrafts={() => void discardAllContentDrafts()}
+      onExport={() => void doExport()}
+      onImportClick={() => importInputRef.current?.click()}
+      schedulePublishPanel={schedulePublishPanel}
+      onOpenMediaLibrary={() => setMediaOpen(true)}
+    />
   );
 
   // ── Schedules banner ───────────────────────────────────────────────────────
@@ -1460,44 +1302,17 @@ export function ContentHubPage() {
         />
 
         {/* Sticky mobile publish bar */}
-        {effectiveDirtyCount > 0 && isMobile ? (
-          <div
-            className="content-studio-sticky-bar"
-            role="region"
-            aria-label={autosaveFailed ? 'Draft not saved' : saving ? `Publishing ${hubLabel}` : 'Draft status'}
-          >
-            <span className="content-studio-sticky-bar-label" data-testid="sticky-draft-status">
-              {saving
-                ? `Publishing ${hubLabel}…`
-                : publishFailed
-                  ? 'Publish failed — Try again'
-                  : autosaveFailed
-                    ? 'Draft not saved — Retry'
-                    : hasUnsaved
-                      ? 'Saving draft…'
-                      : 'Draft saved'}
-            </span>
-            {autosaveFailed ? (
-              <Btn
-                onClick={() => void persistDrafts(locale)}
-                style={{ flex: '0 0 auto' }}
-                data-testid="retry-save-btn-mobile"
-                variant="secondary"
-              >
-                Retry
-              </Btn>
-            ) : null}
-            <Btn
-              onClick={() => void publish()}
-              disabled={saving || autosaveFailed}
-              style={{ flex: 1 }}
-              data-testid="publish-live-btn-mobile"
-              className="content-studio-publish-sticky"
-            >
-              <Save size={16} /> {saving ? `Publishing ${hubLabel}…` : `Publish ${hubLabel}`}
-            </Btn>
-          </div>
-        ) : null}
+        <HubStickyPublishBar
+          effectiveDirtyCount={effectiveDirtyCount}
+          isMobile={isMobile}
+          autosaveFailed={autosaveFailed}
+          saving={saving}
+          publishFailed={publishFailed}
+          hasUnsaved={hasUnsaved}
+          hubLabel={hubLabel}
+          onRetrySave={() => void persistDrafts(locale)}
+          onPublish={() => void publish()}
+        />
 
         <MediaPicker
           open={mediaOpen}
