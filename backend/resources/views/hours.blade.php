@@ -29,6 +29,18 @@
     margin: 0 auto;
     padding: 3.5rem 2rem 5rem;
 }
+@media (min-width: 769px) {
+    .page-hero {
+        padding-inline: var(--desktop-page-gutter, 2rem);
+    }
+    .hours-wrap {
+        max-width: min(600px, var(--desktop-content-max, 1280px));
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 
 .closure-notice {
     background: #FFF3CD;

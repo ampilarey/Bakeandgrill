@@ -383,7 +383,15 @@
 
 /* ── Desktop-only hero / banner polish (mobile unchanged) ───────── */
 @media (min-width: 769px) {
+    /* Hero stays inside the shared 1280px rail (not full-bleed) */
     .hero-banner {
+        width: min(
+            calc(var(--desktop-content-max, 1280px) - 2 * var(--desktop-page-gutter, 2rem)),
+            calc(100% - 2 * var(--desktop-page-gutter, 2rem))
+        );
+        max-width: calc(var(--desktop-content-max, 1280px) - 2 * var(--desktop-page-gutter, 2rem));
+        margin-inline: auto;
+        box-sizing: border-box;
         height: min(78vh, 760px);
         min-height: 560px;
     }
@@ -512,6 +520,15 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
 }
+@media (min-width: 769px) {
+    .trust-inner {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 .trust-item {
     display: flex;
     align-items: center;
@@ -547,6 +564,19 @@
 .section { padding: 5rem 2rem; }
 .section.alt { background: #FDFAF5; }
 .section-inner { max-width: 1280px; margin: 0 auto; }
+@media (min-width: 769px) {
+    .section {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .section-inner {
+        max-width: var(--desktop-content-max, 1280px);
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 .section-header { margin-bottom: 2.75rem; }
 .section-eyebrow {
     display: inline-block;
@@ -862,6 +892,19 @@
     text-align: center;
 }
 .proof-inner { max-width: 780px; margin: 0 auto; }
+@media (min-width: 769px) {
+    .proof-strip {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .proof-inner {
+        max-width: min(780px, var(--desktop-content-max, 1280px));
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 .proof-eyebrow {
     display: inline-block;
     font-size: 0.7rem; font-weight: 700;
@@ -1015,6 +1058,19 @@
     text-align: center;
 }
 .cta-band-inner { max-width: 600px; margin: 0 auto; }
+@media (min-width: 769px) {
+    .cta-band {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .cta-band-inner {
+        max-width: min(600px, var(--desktop-content-max, 1280px));
+        width: 100%;
+        margin-inline: auto;
+        padding-inline: var(--desktop-page-gutter, 2rem);
+        box-sizing: border-box;
+    }
+}
 .cta-band h2 {
     font-size: 2.5rem; font-weight: 800;
     letter-spacing: -0.04em; color: var(--dark);

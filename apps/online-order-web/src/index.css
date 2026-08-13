@@ -89,7 +89,7 @@
   --header-height: 68px;       /* sticky header row height */
 
   /* ── Redesign shell metrics (§8.3) — additive; old tokens kept ── */
-  /* Mobile: compact column. ≥768 goes edge-to-edge (see desktop shell). */
+  /* Mobile: compact column. ≥769 uses centred 1280px content rail (see desktop tokens). */
   --shell-max:            640px;
   --top-nav-height:       64px;
   --bottom-nav-height:    64px;
@@ -589,12 +589,17 @@ img.brand-logo--dark { display: none; }
   .home-promo-hero__dot.is-active { width: 26px; }
 }
 
-/* Desktop: same height band as main website hero (full-bleed) */
+/* Desktop: same height band as main website hero — inside 1280px rail (not full-bleed) */
 @media (min-width: 769px) {
   .home-promo-hero {
-    width: 100%;
-    margin: 0;
+    width: min(
+      calc(var(--layout-max) - 2 * var(--page-gutter)),
+      calc(100% - 2 * var(--page-gutter))
+    );
+    max-width: calc(var(--layout-max) - 2 * var(--page-gutter));
+    margin-inline: auto;
     border-radius: 0;
+    box-sizing: border-box;
     height: min(78vh, 760px);
     min-height: 560px;
   }
@@ -4216,7 +4221,7 @@ textarea.field-input {
   }
 }
 
-/* Tablet/desktop shell — edge-to-edge (no centered 1280px column). */
+/* Tablet shell at exactly 768 — preserve prior edge-to-edge tokens (mobile audit). */
 @media (min-width: 768px) {
   :root {
     --layout-max: 100%;
@@ -4247,6 +4252,34 @@ textarea.field-input {
   .sheet-panel {
     max-width: min(480px, 100%);
     margin-inline: auto;
+  }
+}
+
+/*
+ * Desktop content rail (Order App) — same principle as Website:
+ * max-width 1280px, equal gutters (~32px), centred. Shell/background may span.
+ * Mobile / ≤768 declarations above are left unchanged.
+ */
+@media (min-width: 769px) {
+  :root {
+    --layout-max: 1280px;
+    --shell-max: 1280px;
+    --page-gutter: clamp(1.25rem, 2.5vw, 2rem);
+  }
+
+  /* Footer: gutters on the rail (not outside it) so columns align with header/hero */
+  .order-site-footer .footer-desktop {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .order-site-footer .footer-grid,
+  .order-site-footer .footer-bottom,
+  .order-site-footer .footer-trust {
+    max-width: var(--layout-max);
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--page-gutter);
+    box-sizing: border-box;
   }
 }
 
