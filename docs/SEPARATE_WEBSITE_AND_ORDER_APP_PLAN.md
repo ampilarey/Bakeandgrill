@@ -1,6 +1,8 @@
 # Separating Website and Order App Content — Plan
 
-Status: proposed, not built.
+Status: **Stages 1–3 shipped** on `claude/service-availability-maintenance-zj4whc`
+(2026-08-13). Stages 4–6 remain. Shared scope and `SiteSetting::get()` were not
+modified.
 
 Owner's ask: *"I have tried many time to make the content settings in admin app. Its really
 confusing and complicated since it controls main app and order app combined. I need to totally
@@ -222,15 +224,21 @@ change it on the order app. That must be said in the interface, not discovered.
 
 Each stage ships on its own and leaves the system working.
 
-**Stage 1 — Measure.** Write the 620-combination snapshot as a test fixture against the current
-resolver. Nothing changes yet. This is the safety net everything else hangs from.
+**Stage 1 — Measure.** ✅ Shipped. Fixture
+`backend/tests/Fixtures/content_resolver_separation_snapshot.json` +
+`ContentResolverSeparationSnapshotTest` (155 keys × 2 apps × 2 locales = 620).
 
-**Stage 2 — Migrate the data.** Copy resolved values into the app scopes. Shared untouched. The
-old resolver still runs, and because the app scopes now hold what the app was already resolving,
-output is unchanged — verifiable with the Stage 1 snapshot before the resolver is touched at all.
+**Stage 2 — Migrate the data.** ✅ Shipped.
+`2026_08_13_060000_materialize_content_app_scopes_from_resolver.php` inlines the **legacy**
+four-step chain (must not call `ContentResolver::get()` after Stage 3). Shared untouched.
+Idempotent; `down()` no-op. Flushes per-key `forgetScoped` + `SiteSetting::bust()` +
+`ContentResolver::bust()`.
 
-**Stage 3 — Shorten the resolver.** Drop the two shared steps. Re-run the Stage 1 snapshot; it
-must pass unchanged. This is the moment the apps become independent.
+**Stage 3 — Shorten the resolver.** ✅ Shipped. Public chain is
+`app+locale → app+en → registry default`. Docblock updated (`"[]"` masking trap retired for
+apps). Admin `share` / `split` / `copy` still use `getIncludingShared()` until Stage 4 removes
+them. Snapshot still 0/620 diffs. Five non-app consumers covered by
+`SharedScopeNonAppConsumersTest`.
 
 **Stage 4 — Remove the machinery.** `share`, `split`, copy-between-apps, `linkState`,
 `BRAND_SYNCED_KEYS` mirroring, and the hub's mode controls.
@@ -243,3 +251,26 @@ operational record that invoices and signage read.
 Stages 1 to 3 deliver the separation. Stages 4 to 6 deliver the *simplicity*, which is the thing
 actually being asked for — the owner's complaint was never that the apps were linked, it was that
 the screen made him decide about it on every block.
+
+---
+
+## 9. What shipped (Stages 1–3) — ops notes
+
+### Cache
+
+- Migration: `SiteSetting::forgetScoped()` on every upserted app row, then `SiteSetting::bust()`
+  and `ContentResolver::bust()`.
+- Deploy scripts already run `php artisan config:cache` after migrate (rebuilds cached
+  `content.php` registry). No separate `config:clear` required when those scripts are used.
+
+### Deploy order
+
+`scripts/pull-deploy-test.sh` and `scripts/full-deploy.sh` both run `php artisan migrate --force`
+**before** `config:cache` / route cache / queue restart in the same script. Migration + new
+resolver must ship in one deploy (do not cherry-pick resolver without the migration). The
+migration inlines the legacy lookup chain so it remains correct even when the shortened
+`ContentResolver` is already on disk at migrate time.
+
+Residual note: `git pull` places new PHP on disk before migrate finishes; concurrent requests in
+that window could theoretically hit the new resolver against un-migrated data. Keep deploys to
+the scripted path (migrate immediately after pull).

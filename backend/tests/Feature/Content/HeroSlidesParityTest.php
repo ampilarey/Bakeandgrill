@@ -251,16 +251,17 @@ class HeroSlidesParityTest extends TestCase
             'cta2_url' => '/menu',
         ]];
 
+        // Stage 3: website reads website scope only — publish to website, not shared.
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [[
                 'key' => 'hero_slides',
-                'scope' => 'shared',
+                'scope' => 'website',
                 'value' => json_encode($payload),
             ]],
         ])->assertOk();
 
-        $stored = json_decode((string) SiteSetting::getScoped('hero_slides', 'shared', 'en'), true);
+        $stored = json_decode((string) SiteSetting::getScoped('hero_slides', 'website', 'en'), true);
         $this->assertIsArray($stored);
         $this->assertFalse($stored[0]['showing']);
         $this->assertSame('/storage/keep-me.jpg', $stored[0]['image']);
@@ -305,12 +306,10 @@ class HeroSlidesParityTest extends TestCase
         $this->assertStringNotContainsString('Legacy Ghost', $html);
     }
 
-    public function test_publishing_hero_slides_to_shared_clears_stale_app_overrides(): void
+    public function test_publishing_hero_slides_to_website_replaces_stale_override(): void
     {
         $this->actingAsOwner();
 
-        // Stale per-app rows (e.g. from E2E or a prior "Different per app" mode)
-        // previously won over shared, so a new shared photo never appeared.
         SiteSetting::set('hero_slides', json_encode([[
             'image' => '/images/old-override.jpg',
             'title' => 'Stale Override',
@@ -319,23 +318,15 @@ class HeroSlidesParityTest extends TestCase
             'cta_text' => 'Order',
             'cta_url' => '/order/',
         ]]), 'website');
-        SiteSetting::set('hero_slides', json_encode([[
-            'image' => '/images/old-override.jpg',
-            'title' => 'Stale Override',
-            'eyebrow' => '',
-            'subtitle' => '',
-            'cta_text' => 'Order',
-            'cta_url' => '/order/',
-        ]]), 'order_app');
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [[
                 'key' => 'hero_slides',
-                'scope' => 'shared',
+                'scope' => 'website',
                 'value' => json_encode([[
                     'image' => '/images/cafe/Bajiya.png',
-                    'title' => 'Shared Fresh Photo',
+                    'title' => 'Website Fresh Photo',
                     'eyebrow' => '',
                     'subtitle' => '',
                     'cta_text' => 'Order',
@@ -346,13 +337,41 @@ class HeroSlidesParityTest extends TestCase
             ]],
         ])->assertOk();
 
-        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
-        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
-
         $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringContainsString('Shared Fresh Photo', $html);
+        $this->assertStringContainsString('Website Fresh Photo', $html);
         $this->assertStringContainsString('/images/cafe/Bajiya.png', $html);
         $this->assertStringNotContainsString('Stale Override', $html);
         $this->assertStringNotContainsString('old-override.jpg', $html);
+    }
+
+    public function test_publishing_hero_slides_to_shared_still_clears_app_overrides(): void
+    {
+        $this->actingAsOwner();
+
+        SiteSetting::set('hero_slides', json_encode([['title' => 'Stale', 'image' => '/a.jpg']]), 'website');
+        SiteSetting::set('hero_slides', json_encode([['title' => 'Stale', 'image' => '/a.jpg']]), 'order_app');
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [[
+                'key' => 'hero_slides',
+                'scope' => 'shared',
+                'value' => json_encode([[
+                    'image' => '/images/cafe/Bajiya.png',
+                    'title' => 'Shared Fresh Photo',
+                    'cta_text' => 'Order',
+                    'cta_url' => '/order/',
+                ]]),
+            ]],
+        ])->assertOk();
+
+        // Stage 4 will remove shared writes from the hub; until then ContentWriter
+        // still clears app overrides on shared publish (share/split machinery).
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
+        $this->assertStringContainsString(
+            'Shared Fresh Photo',
+            (string) SiteSetting::getScoped('hero_slides', 'shared', 'en'),
+        );
     }
 }

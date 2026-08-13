@@ -52,7 +52,8 @@ class ContentPreviewTest extends TestCase
     public function test_preview_token_overlays_draft_not_published(): void
     {
         $this->actingAsOwner();
-        SiteSetting::set('business_phone', '+960 LIVE', 'shared');
+        SiteSetting::set('business_phone', '+960 LIVE SHARED', 'shared');
+        SiteSetting::set('business_phone', '+960 LIVE ORDER', 'order_app');
 
         $res = $this->postJson('/api/admin/content/preview-token', [
             'app' => 'order_app',
@@ -68,7 +69,30 @@ class ContentPreviewTest extends TestCase
             ->json('content');
 
         $this->assertSame('+960 DRAFT', $preview['business_phone']);
-        $this->assertSame('+960 LIVE', SiteSetting::getScoped('business_phone', 'shared'));
+        $this->assertSame('+960 LIVE SHARED', SiteSetting::getScoped('business_phone', 'shared'));
+    }
+
+    public function test_preview_base_uses_two_step_app_chain_not_shared(): void
+    {
+        $this->actingAsOwner();
+        SiteSetting::query()->where('key', 'business_phone')->where('scope', 'website')->delete();
+        SiteSetting::bust();
+        \App\Domains\Content\ContentResolver::bust();
+
+        SiteSetting::set('business_phone', '+960 ONLY SHARED', 'shared');
+        SiteSetting::set('business_phone', '+960 WEB LIVE', 'website');
+
+        $token = ContentDraftStore::put('website', 'en', [
+            'footer_thanks' => 'Draft thanks',
+        ]);
+
+        $preview = $this->getJson('/api/content/preview?token=' . urlencode($token))
+            ->assertOk()
+            ->json('content');
+
+        $this->assertSame('+960 WEB LIVE', $preview['business_phone']);
+        $this->assertSame('Draft thanks', $preview['footer_thanks']);
+        $this->assertNotSame('+960 ONLY SHARED', $preview['business_phone']);
     }
 
     public function test_signed_website_preview_renders_draft(): void

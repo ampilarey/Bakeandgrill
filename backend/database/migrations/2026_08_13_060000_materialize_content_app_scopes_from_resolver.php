@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Stage 2 — materialize ContentResolver output into website / order_app scopes.
+ * Stage 2 — materialize the OLD four-step ContentResolver output into app scopes.
  *
- * For each non-deprecated content key × app × locale, write the value the app
- * currently resolves (old four-step chain) into that app's own row — except when
- * the resolved value is the registry default (leave both app rows absent).
+ * IMPORTANT: This migration inlines the pre-Stage-3 lookup chain
+ * (app+locale → shared+locale → app+en → shared+en → registry default)
+ * and must NOT call ContentResolver::get(). After Stage 3 ships, the class
+ * no longer falls back to shared — using it here would skip materialization.
  *
- * Shared rows are never modified. Safe to re-run. Reversing is restoring the
- * old ContentResolver lookup chain (down() is intentionally a no-op).
+ * Shared rows are never modified. Safe to re-run. down() is a no-op.
  */
 return new class extends Migration
 {
@@ -39,7 +39,7 @@ return new class extends Migration
                     continue;
                 }
                 foreach (ContentRegistry::LOCALES as $locale) {
-                    $resolved = ContentResolver::for($app, $locale)->get($key);
+                    $resolved = $this->resolveWithLegacySharedFallback($key, $app, $locale);
 
                     // Present = not null and not ''. "[]" is present and wins.
                     if ($resolved === null || $resolved === '') {
@@ -74,6 +74,71 @@ return new class extends Migration
         // No-op: shared was never touched. App-scoped copies are harmless under
         // the old resolver chain. Roll back Stage 2 by restoring the four-step
         // ContentResolver lookup, not by deleting data.
+    }
+
+    /**
+     * Pre-Stage-3 ContentResolver chain for non-brand-synced keys:
+     * app+locale → shared+locale → app+en → shared+en → registry default.
+     *
+     * Brand-synced keys use the historical cross-app chain (current app, other
+     * app, shared) per locale then en — matching ContentResolver before Stage 3.
+     */
+    private function resolveWithLegacySharedFallback(string $key, string $app, string $locale): mixed
+    {
+        foreach ($this->legacyLookupChain($key, $app, $locale) as [$scope, $loc]) {
+            $val = SiteSetting::getScoped($key, $scope, $loc);
+            if ($val !== null && $val !== '') {
+                return $val;
+            }
+        }
+
+        return ContentRegistry::default($key);
+    }
+
+    /**
+     * @return list<array{0: string, 1: string}>
+     */
+    private function legacyLookupChain(string $key, string $app, string $locale): array
+    {
+        if (ContentRegistry::isSyncedAcrossApps($key)) {
+            $scopes = ['website', 'order_app', 'shared'];
+            usort($scopes, function (string $a, string $b) use ($app): int {
+                if ($a === $app) {
+                    return -1;
+                }
+                if ($b === $app) {
+                    return 1;
+                }
+                if ($a === 'shared') {
+                    return 1;
+                }
+                if ($b === 'shared') {
+                    return -1;
+                }
+
+                return 0;
+            });
+            $chain = [];
+            foreach ($scopes as $scope) {
+                $chain[] = [$scope, $locale];
+                if ($locale !== 'en') {
+                    $chain[] = [$scope, 'en'];
+                }
+            }
+
+            return $chain;
+        }
+
+        $chain = [
+            [$app, $locale],
+            ['shared', $locale],
+        ];
+        if ($locale !== 'en') {
+            $chain[] = [$app, 'en'];
+            $chain[] = ['shared', 'en'];
+        }
+
+        return $chain;
     }
 
     /**

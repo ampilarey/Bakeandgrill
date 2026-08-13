@@ -574,9 +574,9 @@ class ContentController extends Controller
                 // Drop empty/stale rows and cache before resolving, otherwise a
                 // stale app-scope forever cache can beat the shared value.
                 SiteSetting::clearScoped($key, $app, $locale);
-                // Copy each app's resolved value for the active locale. In DV this
-                // preserves resolver fallback (app DV → shared DV → app EN → shared EN).
-                $resolved = ContentResolver::for($app, $locale)->get($key);
+                // Copy each app's resolved value for the active locale. Until Stage 4
+                // removes share/split, include shared so "Same in both" still materializes.
+                $resolved = ContentResolver::for($app, $locale)->getIncludingShared($key);
                 $value = ($resolved !== null && $resolved !== '')
                     ? (string) $resolved
                     : (string) (ContentRegistry::default($key) ?? '');
@@ -615,9 +615,9 @@ class ContentController extends Controller
         }
 
         // Copy the RESOLVED source value so seed/shared content is included when the
-        // source app has no override row yet (app → shared → default).
+        // source app has no override row yet (admin machinery still walks shared).
         if (in_array($from, ContentRegistry::APPS, true)) {
-            $resolved = ContentResolver::for($from, $locale)->get($key);
+            $resolved = ContentResolver::for($from, $locale)->getIncludingShared($key);
             $value = $resolved !== null && $resolved !== ''
                 ? (string) $resolved
                 : (string) (ContentRegistry::default($key) ?? '');
@@ -887,7 +887,7 @@ class ContentController extends Controller
     private function resolvedValueForSource(string $key, string $source, string $locale): string
     {
         if (in_array($source, ContentRegistry::APPS, true)) {
-            $value = ContentResolver::for($source, $locale)->get($key);
+            $value = ContentResolver::for($source, $locale)->getIncludingShared($key);
         } else {
             $value = SiteSetting::getScoped($key, 'shared', $locale);
         }

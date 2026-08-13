@@ -10,14 +10,19 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Resolves content per app (+locale):
- * app+locale → shared+locale → app+en → shared+en → registry default.
+ * app+locale → app+en → registry default.
+ *
+ * Shared is not in this chain. Operational callers (invoices, signage, SMS, …)
+ * still read SiteSetting::get() → shared; website and order_app do not fall
+ * back to shared. Stage 2 materializes each app's previously-resolved values
+ * into its own scope so this shorter chain keeps customer-facing output identical.
  *
  * Empty-value rule (all keys, including json-type):
- * - `null` or `''` means absent → fall through to the next scope in the chain.
+ * - `null` or `''` means absent → fall through to the next step in the chain.
  * - Any other stored string is present and wins — including JSON empty arrays
  *   (`"[]"`). An app-scoped empty array is a deliberate “show nothing here”
- *   override of shared content, not a missing value. Admin Content Hub warns
- *   when an app holds `[]` while shared still has items.
+ *   value, not a missing value. With no shared step in the chain, the old
+ *   “[] masks shared items” trap no longer applies to website / order_app.
  */
 final class ContentResolver
 {
@@ -50,6 +55,20 @@ final class ContentResolver
 
     public function get(string $key, mixed $default = null): mixed
     {
+        return $this->resolve($key, $default, includeShared: false);
+    }
+
+    /**
+     * Admin share / split / copy only — still walks shared until Stage 4 removes
+     * that machinery. Public website / order_app resolution must use get().
+     */
+    public function getIncludingShared(string $key, mixed $default = null): mixed
+    {
+        return $this->resolve($key, $default, includeShared: true);
+    }
+
+    private function resolve(string $key, mixed $default, bool $includeShared): mixed
+    {
         if (!ContentRegistry::has($key)) {
             $shared = SiteSetting::getScoped($key, 'shared', $this->locale);
             if ($shared !== null && $shared !== '') {
@@ -69,7 +88,7 @@ final class ContentResolver
             return $default ?? ContentRegistry::default($key);
         }
 
-        foreach ($this->lookupChain($key) as [$scope, $locale]) {
+        foreach ($this->lookupChain($key, $includeShared) as [$scope, $locale]) {
             $val = SiteSetting::getScoped($key, $scope, $locale);
             // Present = not null and not ''. "[]" and other JSON empties win.
             if ($this->isPresentScopedValue($val)) {
@@ -99,7 +118,7 @@ final class ContentResolver
     /**
      * @return list<array{0: string, 1: string}>
      */
-    private function lookupChain(string $key = ''): array
+    private function lookupChain(string $key = '', bool $includeShared = false): array
     {
         if (ContentRegistry::isSyncedAcrossApps($key)) {
             $scopes = ['website', 'order_app', 'shared'];
@@ -131,13 +150,24 @@ final class ContentResolver
             return $chain;
         }
 
+        if ($includeShared) {
+            $chain = [
+                [$this->app, $this->locale],
+                ['shared', $this->locale],
+            ];
+            if ($this->locale !== 'en') {
+                $chain[] = [$this->app, 'en'];
+                $chain[] = ['shared', 'en'];
+            }
+
+            return $chain;
+        }
+
         $chain = [
             [$this->app, $this->locale],
-            ['shared', $this->locale],
         ];
         if ($this->locale !== 'en') {
             $chain[] = [$this->app, 'en'];
-            $chain[] = ['shared', 'en'];
         }
 
         return $chain;
