@@ -85,8 +85,11 @@ class ContentResolverTest extends TestCase
 
         SiteSetting::set('hero_slides', $sharedHero, 'shared');
         SiteSetting::set('hero_slides', '[]', 'website');
+        // Stage 2 may have materialized seed hero_slides onto order_app — clear so shared wins.
+        SiteSetting::clearScoped('hero_slides', 'order_app');
         SiteSetting::set('trust_items', $sharedTrust, 'shared');
         SiteSetting::set('trust_items', '[]', 'order_app');
+        SiteSetting::clearScoped('trust_items', 'website');
 
         $this->assertSame('[]', ContentResolver::for('website')->get('hero_slides'));
         $this->assertSame($sharedHero, ContentResolver::for('order_app')->get('hero_slides'));

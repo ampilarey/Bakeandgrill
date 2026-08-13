@@ -26,6 +26,7 @@ class ContentScopeApiTest extends TestCase
         SiteSetting::set('business_phone', '+960 WEB', 'website');
         SiteSetting::set('business_phone', '+960 ORDER', 'order_app');
         SiteSetting::set('home_open_badge_text', 'Open now', 'shared');
+        SiteSetting::set('home_open_badge_text', 'Open now', 'website');
 
         $order = $this->getJson('/api/content?app=order_app')->assertOk()->json('content');
         $web = $this->getJson('/api/content?app=website')->assertOk()->json('content');
@@ -48,6 +49,7 @@ class ContentScopeApiTest extends TestCase
     public function test_site_settings_public_is_order_app_alias(): void
     {
         SiteSetting::set('menu_page_title', 'Alias Menu', 'shared');
+        SiteSetting::set('menu_page_title', 'Alias Menu', 'order_app');
         SiteSetting::bust();
         \App\Domains\Content\ContentResolver::bust();
 

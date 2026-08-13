@@ -134,7 +134,14 @@ class HeroSlidesParityTest extends TestCase
     public function test_website_and_order_app_public_content_emit_same_hero_slides(): void
     {
         $slides = $this->sampleSlides();
-        SiteSetting::set('hero_slides', json_encode($slides), 'shared');
+        // Clear Stage 2 materialized app rows, then set identical values on both apps
+        // (and shared for pre-Stage-3 fallback).
+        SiteSetting::clearScoped('hero_slides', 'website');
+        SiteSetting::clearScoped('hero_slides', 'order_app');
+        $json = json_encode($slides);
+        SiteSetting::set('hero_slides', $json, 'shared');
+        SiteSetting::set('hero_slides', $json, 'website');
+        SiteSetting::set('hero_slides', $json, 'order_app');
 
         $website = ContentResolver::for('website')->allPublic();
         $order = ContentResolver::for('order_app')->allPublic();
@@ -163,7 +170,9 @@ class HeroSlidesParityTest extends TestCase
 
     public function test_home_view_renders_hero_slides_array(): void
     {
-        SiteSetting::set('hero_slides', json_encode($this->sampleSlides()), 'shared');
+        $json = json_encode($this->sampleSlides());
+        SiteSetting::set('hero_slides', $json, 'shared');
+        SiteSetting::set('hero_slides', $json, 'website');
 
         $html = $this->get('/')->assertOk()->getContent();
         $this->assertStringContainsString('Title A', $html);
@@ -175,7 +184,9 @@ class HeroSlidesParityTest extends TestCase
         $slides = $this->sampleSlides();
         $slides[0]['showing'] = false;
         // slide 1 has no showing key — must still render
-        SiteSetting::set('hero_slides', json_encode($slides), 'shared');
+        $json = json_encode($slides);
+        SiteSetting::set('hero_slides', $json, 'shared');
+        SiteSetting::set('hero_slides', $json, 'website');
 
         $resolved = HeroSlides::resolve(static function (string $key, mixed $default) {
             return SiteSetting::getScoped($key, 'shared', 'en') ?? $default;
@@ -192,7 +203,9 @@ class HeroSlidesParityTest extends TestCase
         $slides = $this->sampleSlides();
         $slides[0]['showing'] = false;
         $slides[1]['showing'] = false;
-        SiteSetting::set('hero_slides', json_encode($slides), 'shared');
+        $json = json_encode($slides);
+        SiteSetting::set('hero_slides', $json, 'shared');
+        SiteSetting::set('hero_slides', $json, 'website');
 
         $resolved = HeroSlides::resolve(static function (string $key, mixed $default) {
             return SiteSetting::getScoped($key, 'shared', 'en') ?? $default;
