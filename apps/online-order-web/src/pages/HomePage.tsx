@@ -482,26 +482,32 @@ export function HomePage() {
     return generic;
   };
 
+  // brand_footer + site_footer both map to BrandFooter — paint exactly once
+  // across home and footer surfaces (CMS often leaves both placements enabled).
+  const isFooterChrome = (b: { block_type: string }) =>
+    b.block_type === 'site_footer' || b.block_type === 'brand_footer';
+  const footerChrome = (() => {
+    const fromFooter = footerBlocks.filter(isFooterChrome);
+    const fromHome = homeBlocks.filter(isFooterChrome);
+    const pool = fromFooter.length > 0 ? fromFooter : fromHome;
+    if (pool.length === 0) return null;
+    return pool.find((b) => b.block_type === 'site_footer') ?? pool[0];
+  })();
+
   const nodes: ReactNode[] = [];
   for (const block of homeBlocks) {
+    if (isFooterChrome(block)) continue;
     const node = renderBlock(block);
     if (node) nodes.push(node);
   }
-  // One compact footer only — brand_footer and site_footer share BrandFooter.
-  // Prefer site_footer when both are placed on the footer surface.
-  const footerChrome = (() => {
-    const candidates = footerBlocks.filter(
-      (b) => b.block_type === 'site_footer' || b.block_type === 'brand_footer',
-    );
-    if (candidates.length === 0) return null;
-    return candidates.find((b) => b.block_type === 'site_footer') ?? candidates[0];
-  })();
   for (const block of footerBlocks) {
     if (block.block_type === 'bottom_nav') continue;
-    if (block.block_type === 'site_footer' || block.block_type === 'brand_footer') {
-      if (!footerChrome || block.id !== footerChrome.id) continue;
-    }
+    if (isFooterChrome(block)) continue;
     const node = renderBlock(block);
+    if (node) nodes.push(node);
+  }
+  if (footerChrome) {
+    const node = renderBlock(footerChrome);
     if (node) nodes.push(node);
   }
 
