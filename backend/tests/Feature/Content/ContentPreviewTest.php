@@ -75,27 +75,30 @@ class ContentPreviewTest extends TestCase
         $this->assertSame('+960 LIVE SHARED', SiteSetting::getScoped('business_phone', 'shared'));
     }
 
-    public function test_preview_base_uses_two_step_app_chain_not_shared(): void
+    public function test_preview_base_uses_two_step_app_chain_not_shared_for_marketing(): void
     {
         $this->actingAsOwner();
-        SiteSetting::query()->where('key', 'business_phone')->where('scope', 'website')->delete();
+        SiteSetting::query()->where('key', 'footer_thanks')->delete();
         SiteSetting::bust();
         \App\Domains\Content\ContentResolver::bust();
 
+        SiteSetting::set('footer_thanks', 'Only shared thanks', 'shared');
+        SiteSetting::set('footer_thanks', 'Web live thanks', 'website');
         SiteSetting::set('business_phone', '+960 ONLY SHARED', 'shared');
         SiteSetting::set('business_phone', '+960 WEB LIVE', 'website');
 
         $token = ContentDraftStore::put('website', 'en', [
-            'footer_thanks' => 'Draft thanks',
+            'cta_band_headline' => 'Draft CTA',
         ]);
 
         $preview = $this->getJson('/api/content/preview?token=' . urlencode($token))
             ->assertOk()
             ->json('content');
 
-        $this->assertSame('+960 WEB LIVE', $preview['business_phone']);
-        $this->assertSame('Draft thanks', $preview['footer_thanks']);
-        $this->assertNotSame('+960 ONLY SHARED', $preview['business_phone']);
+        // Marketing: app scope wins; Business Details phone always shared.
+        $this->assertSame('Web live thanks', $preview['footer_thanks']);
+        $this->assertSame('Draft CTA', $preview['cta_band_headline']);
+        $this->assertSame('+960 ONLY SHARED', $preview['business_phone']);
     }
 
     public function test_preview_token_include_layout_merges_page_layout_draft_blocks(): void
