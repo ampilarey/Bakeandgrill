@@ -56,13 +56,15 @@ class CustomerFacingSeparationTest extends TestCase
             'changes' => [
                 ['key' => 'logo', 'scope' => 'website', 'value' => '/storage/site/web.png'],
                 ['key' => 'primary_color', 'scope' => 'website', 'value' => '#ABCDEF'],
-                ['key' => 'site_name', 'scope' => 'website', 'value' => 'Web Name'],
             ],
         ])->assertOk();
 
         $this->assertSame('/storage/site/web.png', ContentResolver::for('website')->get('logo'));
         $this->assertSame('/storage/site/order.png', ContentResolver::for('order_app')->get('logo'));
         $this->assertSame('/storage/site/invoice.png', SiteSetting::get('logo'));
+        // Trading name is Business Details–owned — both apps resolve the shared record.
+        $this->assertSame('Invoice Name', ContentResolver::for('website')->get('site_name'));
+        $this->assertSame('Invoice Name', ContentResolver::for('order_app')->get('site_name'));
         $brand = DocumentBrandView::variables();
         $this->assertSame('/storage/site/invoice.png', $brand['brandLogoWeb']);
         $this->assertSame('#111111', $brand['brandPrimary']);

@@ -196,18 +196,18 @@ const logoBlock = {
 };
 
 const phoneBlock = {
-  key: 'business_phone',
+  key: 'delivery_time',
   label: 'Phone number',
   group: 'Contact',
   type: 'text' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
   public: true,
-  shared: '+960 912 0011',
+  shared: '30–45 min',
   website: null,
   order_app: null,
-  resolved_website: '+960 912 0011',
-  resolved_order_app: '+960 912 0011',
+  resolved_website: '30–45 min',
+  resolved_order_app: '30–45 min',
   state: 'shared' as const,
   description: 'Primary phone number shown on contact pages and the footer.',
 };

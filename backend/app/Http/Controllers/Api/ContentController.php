@@ -529,7 +529,8 @@ class ContentController extends Controller
         ]);
 
         $applied = 0;
-        DB::transaction(function () use ($data, $request, &$applied): void {
+        $skipped = 0;
+        DB::transaction(function () use ($data, $request, &$applied, &$skipped): void {
             foreach ($data['entries'] as $entry) {
                 $locale = $entry['locale'] ?? 'en';
                 $value = $entry['value'] ?? '';
@@ -538,6 +539,11 @@ class ContentController extends Controller
                 }
                 $key = (string) $entry['key'];
                 $scope = (string) $entry['scope'];
+                // Ops / Business Details ownership — never import competing copies.
+                if (\App\Domains\Settings\OpsOwnedContent::isWriteForbidden($key)) {
+                    $skipped++;
+                    continue;
+                }
                 $value = $this->contentValidator->normalizeForWrite($key, $scope, $value);
                 $this->ensureRow($key, $scope, $locale);
                 $this->writer->write(
@@ -555,8 +561,9 @@ class ContentController extends Controller
         SiteSetting::bust();
 
         return response()->json([
-            'message' => "Imported {$applied} entries.",
+            'message' => "Imported {$applied} entries.".($skipped > 0 ? " Skipped {$skipped} ops-owned keys." : ''),
             'applied' => $applied,
+            'skipped' => $skipped,
             'blocks' => ContentBlockResource::collectionFromRegistry('en'),
         ]);
     }

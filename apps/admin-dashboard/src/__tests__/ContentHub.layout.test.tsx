@@ -41,18 +41,18 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const phoneBlock = {
-  key: 'business_phone',
+  key: 'delivery_time',
   label: 'Phone number',
   group: 'Contact',
   type: 'text',
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
   shareable: true,
   public: true,
-  shared: '+960 912 0011',
+  shared: '30–45 min',
   website: null,
   order_app: null,
-  resolved_website: '+960 912 0011',
-  resolved_order_app: '+960 912 0011',
+  resolved_website: '30–45 min',
+  resolved_order_app: '30–45 min',
   state: 'shared' as const,
 };
 
@@ -125,10 +125,10 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     await screen.findByTestId('section-editor');
     expect(screen.queryByTestId('section-dirty-Contact & map')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    const phoneInput = within(sheet).getByDisplayValue('+960 912 0011');
-    fireEvent.change(phoneInput, { target: { value: '+960 999 9999' } });
+    fireEvent.click(screen.getByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    const phoneInput = within(sheet).getByDisplayValue('30–45 min');
+    fireEvent.change(phoneInput, { target: { value: '25–40 min' } });
 
     await waitFor(() => {
       expect(screen.getByTestId('section-dirty-Contact & map')).toBeTruthy();
@@ -175,20 +175,20 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
     await screen.findByTestId('section-editor');
 
-    // Face should NOT contain "business_phone · text"
-    expect(screen.queryByText(/business_phone\s*·\s*text/i)).toBeNull();
+    // Face should NOT contain "delivery_time · text"
+    expect(screen.queryByText(/delivery_time\s*·\s*text/i)).toBeNull();
 
     // Open ⋯ menu
-    const moreBtn = screen.getByTestId('block-more-business_phone');
+    const moreBtn = screen.getByTestId('block-more-delivery_time');
     fireEvent.click(moreBtn);
 
     await waitFor(() => {
-      expect(screen.getByTestId('block-menu-business_phone')).toBeTruthy();
+      expect(screen.getByTestId('block-menu-delivery_time')).toBeTruthy();
     });
 
-    const menu = screen.getByTestId('block-menu-business_phone');
+    const menu = screen.getByTestId('block-menu-delivery_time');
     expect(menu.textContent).toMatch(/History/i);
-    expect(menu.textContent).toContain('business_phone');
+    expect(menu.textContent).toContain('delivery_time');
   });
 
   it('section-enable card face has no content key either', async () => {

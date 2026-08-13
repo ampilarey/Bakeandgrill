@@ -45,32 +45,32 @@ class ContentBacklogTest extends TestCase
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'business_phone', 'scope' => 'website', 'value' => '111'],
+                ['key' => 'delivery_time', 'scope' => 'website', 'value' => '111'],
             ],
         ])->assertOk();
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'business_phone', 'scope' => 'website', 'value' => '222'],
+                ['key' => 'delivery_time', 'scope' => 'website', 'value' => '222'],
             ],
         ])->assertOk();
 
-        $this->assertSame('222', SiteSetting::getScoped('business_phone', 'website', 'en'));
+        $this->assertSame('222', SiteSetting::getScoped('delivery_time', 'website', 'en'));
         $this->assertDatabaseHas('content_revisions', [
-            'key' => 'business_phone',
+            'key' => 'delivery_time',
             'scope' => 'website',
             'locale' => 'en',
             'value' => '111',
         ]);
 
-        $rev = ContentRevision::query()->where('key', 'business_phone')->where('scope', 'website')->latest('id')->first();
+        $rev = ContentRevision::query()->where('key', 'delivery_time')->where('scope', 'website')->latest('id')->first();
         $this->assertNotNull($rev);
 
-        $this->postJson("/api/admin/content/business_phone/revisions/{$rev->id}/restore")
+        $this->postJson("/api/admin/content/delivery_time/revisions/{$rev->id}/restore")
             ->assertOk();
 
-        $this->assertSame('111', SiteSetting::getScoped('business_phone', 'website', 'en'));
+        $this->assertSame('111', SiteSetting::getScoped('delivery_time', 'website', 'en'));
     }
 
     public function test_scheduled_publish_applies_via_command(): void
@@ -107,21 +107,21 @@ class ContentBacklogTest extends TestCase
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'site_name', 'scope' => 'order_app', 'value' => 'Bake EN'],
+                ['key' => 'delivery_time', 'scope' => 'order_app', 'value' => 'Bake EN'],
             ],
         ])->assertOk();
 
         $this->putJson('/api/admin/content', [
             'locale' => 'dv',
             'changes' => [
-                ['key' => 'site_name', 'scope' => 'order_app', 'locale' => 'dv', 'value' => 'Bake DV'],
+                ['key' => 'delivery_time', 'scope' => 'order_app', 'locale' => 'dv', 'value' => 'Bake DV'],
             ],
         ])->assertOk();
 
         $en = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
         $dv = $this->getJson('/api/content?app=order_app&locale=dv')->assertOk()->json('content');
-        $this->assertSame('Bake EN', $en['site_name'] ?? null);
-        $this->assertSame('Bake DV', $dv['site_name'] ?? null);
+        $this->assertSame('Bake EN', $en['delivery_time'] ?? null);
+        $this->assertSame('Bake DV', $dv['delivery_time'] ?? null);
     }
 
     public function test_export_import_round_trip(): void
@@ -130,7 +130,7 @@ class ContentBacklogTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'business_email', 'scope' => 'website', 'value' => 'a@test.mv'],
+                ['key' => 'delivery_time', 'scope' => 'website', 'value' => 'a@test.mv'],
             ],
         ])->assertOk();
 
@@ -139,12 +139,12 @@ class ContentBacklogTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'business_email', 'scope' => 'website', 'value' => 'changed@test.mv'],
+                ['key' => 'delivery_time', 'scope' => 'website', 'value' => 'changed@test.mv'],
             ],
         ])->assertOk();
 
         $this->postJson('/api/admin/content/import', $bundle)->assertOk();
-        $this->assertSame('a@test.mv', SiteSetting::getScoped('business_email', 'website', 'en'));
+        $this->assertSame('a@test.mv', SiteSetting::getScoped('delivery_time', 'website', 'en'));
     }
 
     public function test_export_can_filter_to_one_app_scope(): void
@@ -153,8 +153,8 @@ class ContentBacklogTest extends TestCase
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'site_name', 'scope' => 'website', 'value' => 'Website Name'],
-                ['key' => 'site_name', 'scope' => 'order_app', 'value' => 'Order Name'],
+                ['key' => 'delivery_time', 'scope' => 'website', 'value' => 'Website Name'],
+                ['key' => 'delivery_time', 'scope' => 'order_app', 'value' => 'Order Name'],
             ],
         ])->assertOk();
 
@@ -164,7 +164,7 @@ class ContentBacklogTest extends TestCase
             $this->assertSame('website', $entry['scope']);
         }
         $this->assertTrue(collect($website['entries'])->contains(
-            fn (array $e): bool => $e['key'] === 'site_name' && $e['value'] === 'Website Name',
+            fn (array $e): bool => $e['key'] === 'delivery_time' && $e['value'] === 'Website Name',
         ));
 
         $order = $this->getJson('/api/admin/content/export?locale=en&scope=order_app')->assertOk()->json();
@@ -172,7 +172,7 @@ class ContentBacklogTest extends TestCase
             $this->assertSame('order_app', $entry['scope']);
         }
         $this->assertTrue(collect($order['entries'])->contains(
-            fn (array $e): bool => $e['key'] === 'site_name' && $e['value'] === 'Order Name',
+            fn (array $e): bool => $e['key'] === 'delivery_time' && $e['value'] === 'Order Name',
         ));
 
         $this->getJson('/api/admin/content/export?locale=en&scope=shared')->assertStatus(422);

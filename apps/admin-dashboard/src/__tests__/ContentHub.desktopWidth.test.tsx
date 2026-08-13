@@ -40,7 +40,7 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const sharedPhone = {
-  key: 'business_phone',
+  key: 'delivery_time',
   label: 'Phone number',
   group: 'Contact',
   type: 'text' as const,
@@ -59,10 +59,10 @@ const splitPhone = {
   ...sharedPhone,
   state: 'split' as const,
   shared: null,
-  website: '+960 WEB',
-  order_app: '+960 ORDER',
-  resolved_website: '+960 WEB',
-  resolved_order_app: '+960 ORDER',
+  website: 'WEB ETA',
+  order_app: 'ORDER ETA',
+  resolved_website: 'WEB ETA',
+  resolved_order_app: 'ORDER ETA',
 };
 
 const splitBoolean = {
@@ -105,11 +105,11 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
-    expect(within(sheet).getByDisplayValue('+960 WEB')).toBeTruthy();
-    expect(within(sheet).queryByDisplayValue('+960 ORDER')).toBeNull();
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    expect(within(sheet).getByDisplayValue('WEB ETA')).toBeTruthy();
+    expect(within(sheet).queryByDisplayValue('ORDER ETA')).toBeNull();
     expect(document.querySelectorAll('.content-preview-grid').length).toBe(0);
   });
 
@@ -122,15 +122,15 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await within(sheet).findByDisplayValue('+960 WEB');
-    fireEvent.change(within(sheet).getByDisplayValue('+960 WEB'), { target: { value: '+960 WEB EDIT' } });
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    await within(sheet).findByDisplayValue('WEB ETA');
+    fireEvent.change(within(sheet).getByDisplayValue('WEB ETA'), { target: { value: 'WEB ETA EDIT' } });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
     await waitFor(() => {
       expect(contentApi.updateContent).toHaveBeenCalledWith(
-        [{ key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' }],
+        [{ key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
         'en',
       );
     });
@@ -144,10 +144,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     await within(sheet).findByDisplayValue('+960 SHARED');
-    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
+    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
   });
 
   it('boolean dual-app block stays compact and untabbed', async () => {
@@ -172,14 +172,14 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    fireEvent.click(screen.getByTestId('block-more-business_phone'));
+    fireEvent.click(screen.getByTestId('block-more-delivery_time'));
     fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
 
     await waitFor(() => {
-      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('business_phone', 'website', 'en');
+      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('delivery_time', 'website', 'en');
     });
   });
 

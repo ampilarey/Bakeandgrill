@@ -53,18 +53,18 @@ const heroBlock: ContentBlock = {
 };
 
 const phoneBlock: ContentBlock = {
-  key: 'business_phone',
+  key: 'delivery_time',
   label: 'Phone number',
   group: 'Contact',
   type: 'text',
   apps: ['website', 'order_app'],
   shareable: true,
   public: true,
-  shared: '+960 912 0011',
+  shared: '30–45 min',
   website: null,
   order_app: null,
-  resolved_website: '+960 912 0011',
-  resolved_order_app: '+960 912 0011',
+  resolved_website: '30–45 min',
+  resolved_order_app: '30–45 min',
   state: 'shared',
 };
 
@@ -130,20 +130,20 @@ describe('Content Hub Overview → Edit', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    let sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    fireEvent.change(within(sheet).getByDisplayValue('+960 912 0011'), {
-      target: { value: '+960 DRAFT KEEP' },
+    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
+    let sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
+      target: { value: 'DRAFT KEEP ETA' },
     });
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/All published/);
 
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-business_phone')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-delivery_time')).toBeNull());
 
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    expect(within(sheet).getByDisplayValue('+960 DRAFT KEEP')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('edit-delivery_time'));
+    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    expect(within(sheet).getByDisplayValue('DRAFT KEEP ETA')).toBeTruthy();
   });
 });
