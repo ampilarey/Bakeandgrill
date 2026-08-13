@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
@@ -317,8 +317,16 @@ function latestIso(values: Array<string | null | undefined>): string | null {
   return sorted[0] ?? null;
 }
 
+function contentAppFromPath(pathname: string): ContentApp {
+  if (pathname.includes('/content/order-app')) return 'order_app';
+  return 'website';
+}
+
 export function ContentHubPage() {
-  usePageTitle('Content & Branding');
+  const location = useLocation();
+  const hubApp = contentAppFromPath(location.pathname);
+  const hubTitle = hubApp === 'order_app' ? 'Order App Content' : 'Website Content';
+  usePageTitle(hubTitle);
   const { success, error } = useToast();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -541,9 +549,10 @@ export function ContentHubPage() {
   };
 
   // Landing is the default home — do not auto-jump into the first section.
+  // Stage A: each destination only lists blocks that app actually uses.
   const contentBlocks = useMemo(
-    () => blocks.filter((block) => !isDeprecatedBlock(block)),
-    [blocks],
+    () => blocks.filter((block) => !isDeprecatedBlock(block) && block.apps.includes(hubApp)),
+    [blocks, hubApp],
   );
 
   const orderedSectionNames = useMemo(() => {
@@ -1056,6 +1065,7 @@ export function ContentHubPage() {
 
   const taskLanding = (
     <SurfaceBuilderLanding
+      appFilter={hubApp}
       surfaceCounts={surfaceCounts}
       dirtyGroups={dirtyGroups}
       onSelectSurface={handleSurfaceSelect}
@@ -2121,7 +2131,7 @@ export function ContentHubPage() {
       <div className={`content-studio-page hub-page${effectiveDirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
         <PageHeader
           section="System"
-          title="Content & Branding"
+          title={hubTitle}
           subtitle="Edit what customers see — hero, brand, pages, and order app"
           action={headerActions}
         />

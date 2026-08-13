@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
 
@@ -97,14 +97,14 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { name: 'Content & Branding' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Website Content' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Branding' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Contact & map' })).toBeTruthy();
   });
 
   it('shows Same/Different control and splits into scoped tabs', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -145,7 +145,7 @@ describe('ContentHubPage', () => {
   it('passes discard draft_action after confirmation when mode changes with dirty drafts', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -167,7 +167,7 @@ describe('ContentHubPage', () => {
 
   it('branding block has no link control', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -180,7 +180,7 @@ describe('ContentHubPage', () => {
 
   it('opens Branding from ?group= deep link', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -228,7 +228,7 @@ describe('ContentHubPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -259,7 +259,7 @@ describe('ContentHubPage', () => {
 
   it('copy-from-other-app is hidden for Same-in-both and branding blocks', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -278,17 +278,18 @@ describe('ContentHubPage', () => {
   });
 });
 
-describe('legacy content routes redirect to hub', () => {
-  it('redirects /content/website to /content', async () => {
-    // Mirrors App.tsx Navigate routes (legacy ContentStudioPage redirects removed).
+describe('content hub destinations', () => {
+  it('keeps /content/website and /content/order-app as separate destinations', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <Routes>
-          <Route path="/content/website" element={<Navigate to="/content" replace />} />
-          <Route path="/content" element={<div>Hub</div>} />
+          <Route path="/content" element={<div>Chooser</div>} />
+          <Route path="/content/website" element={<div>Website hub</div>} />
+          <Route path="/content/order-app" element={<div>Order hub</div>} />
         </Routes>
       </MemoryRouter>,
     );
-    expect(await screen.findByText('Hub')).toBeTruthy();
+    expect(await screen.findByText('Website hub')).toBeTruthy();
+    expect(screen.queryByText('Chooser')).toBeNull();
   });
 });

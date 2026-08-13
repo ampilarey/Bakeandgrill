@@ -89,7 +89,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('shows not-yet-live wording and a reachable publish action while unpublished', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -112,7 +112,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('autosave does not call updateContent; publish does', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -134,7 +134,7 @@ describe('Content Hub draft vs published status', () => {
 
   it('reads as published after publish clears dirty state', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -74,7 +74,7 @@ describe('Content Hub empty JSON array override warning', () => {
 
   it('warns when website holds [] while shared still has slides', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

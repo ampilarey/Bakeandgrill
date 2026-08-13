@@ -116,7 +116,7 @@ describe('Content Hub visual editors', () => {
 
   it('hero editor edits a slide field into the active draft', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -141,7 +141,7 @@ describe('Content Hub visual editors', () => {
 
   it('category image upload sets the draft image_url via crop endpoint', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -192,7 +192,7 @@ describe('Content Hub visual editors', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -88,7 +88,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
 
   it('renders WYSIWYG for rich blocks and autosaves drafts', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -113,7 +113,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
 
   it('publish promotes via updateContent', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -132,7 +132,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
   it('registers beforeunload when there are dirty drafts', async () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -153,7 +153,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

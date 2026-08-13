@@ -29,9 +29,8 @@ describe('App route coverage', () => {
       '/*',
       '*',
       'account',
-      // Legacy content aliases → /content (tested below)
-      'content/website',
-      'content/order-app',
+      // Chooser at /content; destinations are in nav. content-studio → website.
+      'content',
       'content-studio',
       // Nested under settings/* wildcard — path segments handled by SettingsPage
       'settings/*',
@@ -67,13 +66,14 @@ describe('App route coverage', () => {
     }
   });
 
-  it('legacy content routes redirect to /content in App.tsx', async () => {
+  it('content website and order-app are real destinations; content-studio redirects', async () => {
     const src = await readAppTsx();
     expect(src).toContain('path="content/website"');
     expect(src).toContain('path="content/order-app"');
+    expect(src).toContain('ContentHubChooser');
     expect(src).toContain('path="content-studio"');
-    expect(src).toMatch(/content\/website[^]*Navigate to="\/content"/);
-    expect(src).toMatch(/content\/order-app[^]*Navigate to="\/content"/);
-    expect(src).toMatch(/content-studio[^]*Navigate to="\/content"/);
+    expect(src).toMatch(/content-studio[^]*Navigate to="\/content\/website"/);
+    expect(src).not.toMatch(/path="content\/website" element=\{<Navigate/);
+    expect(src).not.toMatch(/path="content\/order-app" element=\{<Navigate/);
   });
 });

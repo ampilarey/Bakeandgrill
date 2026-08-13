@@ -147,7 +147,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('editing a shared field publishes to the shared scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -180,7 +180,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('hero visual editor drafts persist to the order_app scope on publish when split', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -214,7 +214,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('locale switch reloads blocks for that locale', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -247,7 +247,7 @@ describe('Content Hub dual-app editing', () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

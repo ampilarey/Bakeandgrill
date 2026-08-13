@@ -81,7 +81,7 @@ describe('Content Hub content-mode buttons (mobile)', () => {
 
   it('Customise for Website and Order App button calls split and shows scope tabs', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/website?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

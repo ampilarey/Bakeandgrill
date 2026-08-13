@@ -94,7 +94,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('landing exposes Hero, Announcement, and Footer task cards', async () => {
     render(
-      <MemoryRouter initialEntries={['/content']}>
+      <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -106,7 +106,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('layout-only draft enables Publish in the section sheet footer', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -124,7 +124,7 @@ describe('ContentHub mobile audit fixes', () => {
   it('More menu stays open for Discard after mousedown outside the trigger', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -146,7 +146,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('preview sheet portals above the editor (higher stacking root)', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

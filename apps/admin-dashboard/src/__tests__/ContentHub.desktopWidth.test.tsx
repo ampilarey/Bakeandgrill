@@ -107,7 +107,7 @@ describe('ContentHub desktop width', () => {
   it('split block renders tabs with only one editor in the DOM', async () => {
     mockBlocks([splitPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -129,7 +129,7 @@ describe('ContentHub desktop width', () => {
   it('edits write to the active tab scope and inactive tab shows a draft dot', async () => {
     mockBlocks([splitPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -156,7 +156,7 @@ describe('ContentHub desktop width', () => {
   it('Shared with Website and Order App renders one editor with no tabs', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -170,7 +170,7 @@ describe('ContentHub desktop width', () => {
   it('boolean split block stays compact and untabbed', async () => {
     mockBlocks([splitBoolean]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -183,7 +183,7 @@ describe('ContentHub desktop width', () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.getContentRevisions).mockResolvedValue({ revisions: [] });
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -217,7 +217,7 @@ describe('ContentHub desktop width', () => {
 
     mockBlocks([splitPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -260,7 +260,7 @@ describe('ContentHub desktop width', () => {
     window.localStorage.setItem('bg_hub_preview_open', '1');
 
     const { unmount } = render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -278,7 +278,7 @@ describe('ContentHub desktop width', () => {
 
     unmount();
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -292,7 +292,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
     const wide = render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -303,7 +303,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -315,7 +315,7 @@ describe('ContentHub desktop width', () => {
   it('rail collapse toggles icon strip and persists', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -339,7 +339,7 @@ describe('ContentHub desktop width — mobile unchanged', () => {
 
   it('keeps section grid, no preview column, sheet still works', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

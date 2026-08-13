@@ -20,7 +20,7 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   ordering: '/online-ordering',
   delivery: '/delivery-settings',
   'ordering-charges': '/settings/charges',
-  website: '/content',
+  website: '/content/website',
   permissions: '/settings/permissions',
   notifications: '/settings/notifications',
   charges: '/settings/charges',

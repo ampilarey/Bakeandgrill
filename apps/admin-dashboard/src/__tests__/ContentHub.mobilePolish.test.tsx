@@ -251,7 +251,7 @@ function mockBlocks(blocks: unknown[] = allBlocks) {
 
 function openSection(name: string) {
   return render(
-    <MemoryRouter initialEntries={[`/content?group=${name}`]}>
+    <MemoryRouter initialEntries={[`/content/website?group=${name}`]}>
       <ContentHubPage />
     </MemoryRouter>,
   );

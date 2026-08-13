@@ -95,7 +95,7 @@ describe('Content Hub Overview → Edit', () => {
     async (width) => {
       setViewport(width);
       render(
-        <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <MemoryRouter initialEntries={['/content/website?group=Hero']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
@@ -131,7 +131,7 @@ describe('Content Hub Overview → Edit', () => {
   it('preserves draft after closing the focused editor', async () => {
     setViewport(1280);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

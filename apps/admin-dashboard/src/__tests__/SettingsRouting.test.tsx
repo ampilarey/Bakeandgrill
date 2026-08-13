@@ -18,7 +18,7 @@ describe('Settings routing', () => {
       <MemoryRouter initialEntries={['/settings?tab=website']}>
         <Routes>
           <Route path="/settings/*" element={<SettingsPage />} />
-          <Route path="/content" element={<div data-testid="probe">content</div>} />
+          <Route path="/content/website" element={<div data-testid="probe">content</div>} />
         </Routes>
       </MemoryRouter>,
     );

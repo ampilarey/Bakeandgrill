@@ -137,7 +137,7 @@ function mockBlocks(blocks: unknown[] = [heroEnable, heroSlides]) {
   });
 }
 
-function openHub(path = '/content') {
+function openHub(path = '/content/website') {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <ContentHubPage />
@@ -162,7 +162,7 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('opens Hero in a portaled dialog sheet with draft status and compact overview', async () => {
     // Surface Builder landing no longer has a Hero task card — open Hero via deep link.
-    openHub('/content?group=Hero');
+    openHub('/content/website?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(sheet.getAttribute('role')).toBe('dialog');
@@ -181,7 +181,7 @@ describe('ContentHub mobile editor sheet', () => {
 
   it('locks body scroll while the sheet is open and restores it on close', async () => {
     document.body.style.overflow = 'auto';
-    openHub('/content?group=Hero');
+    openHub('/content/website?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     await waitFor(() => {
@@ -196,7 +196,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('moves focus to the close control on open and returns it to the surface landing on close', async () => {
-    openHub('/content?group=Hero');
+    openHub('/content/website?group=Hero');
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     const closeBtn = within(sheet).getByTestId('content-editor-sheet-close');
@@ -212,7 +212,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('Edit Hero opens slide overview sheet; slide tap opens slide editor; draft state preserved', async () => {
-    openHub('/content?group=Hero');
+    openHub('/content/website?group=Hero');
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
@@ -256,7 +256,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('block ⋯ menu uses a collision-safe mobile action sheet', async () => {
-    openHub('/content?group=Hero');
+    openHub('/content/website?group=Hero');
     await screen.findByTestId('content-editor-sheet');
 
     fireEvent.click(screen.getByTestId('block-more-hero_slides'));
@@ -267,7 +267,7 @@ describe('ContentHub mobile editor sheet', () => {
   });
 
   it('mobile header keeps language + publish status readable; search can open overlay', async () => {
-    openHub('/content');
+    openHub('/content/website');
     await screen.findByTestId('draft-save-status');
 
     expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy();

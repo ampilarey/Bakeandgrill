@@ -140,7 +140,7 @@ describe('ContentHub preview + schedule fixes', () => {
   });
 
   it('remints docked preview tokens when the Home layout draft revision changes', async () => {
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('home-layout-editor-stub');
 
     await waitFor(() => {
@@ -170,7 +170,7 @@ describe('ContentHub preview + schedule fixes', () => {
       return { drafts: {} as Record<string, string>, saved_at: null };
     });
 
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('publish-live-btn');
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;

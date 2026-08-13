@@ -95,7 +95,7 @@ describe('Brand Kit UI', () => {
 
   it('renders Brand Kit cards for Branding and leaves other groups unchanged', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -122,7 +122,7 @@ describe('Brand Kit UI', () => {
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -148,7 +148,7 @@ describe('Brand Kit UI', () => {
 
   it('empty asset shows Not set on overview and default copy in editor', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
