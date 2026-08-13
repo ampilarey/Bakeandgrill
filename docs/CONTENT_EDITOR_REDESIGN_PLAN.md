@@ -232,6 +232,22 @@ Component identity, for anything that has to be addressed unambiguously:
 
 ### 6.1 Group by what the customer sees, in render order
 
+**Ordering answered by the owner: "usually hero".** So the groups below are ordered by how often
+he reaches for them, not alphabetically or by size — Home first, Legal and SEO last. And within
+Home, the hero is the first component in the list, because `page_blocks` already renders it first
+on both apps; no special-casing is needed to achieve that, only a guarantee that render order is
+respected (§6.2).
+
+Two consequences that would not otherwise be in this plan:
+
+- **The hero needs a direct route from the Content landing.** If one component accounts for most
+  visits, making it three taps away is the wrong default. A "Hero" shortcut on the landing,
+  alongside the surface cards, costs almost nothing and removes two levels from the single most
+  common task.
+- **The hero editor is the benchmark for Stage 6, not an afterthought.** Visual previews (§6.4)
+  should be built for the hero first and generalised outward, rather than built generically and
+  fitted to the hero last.
+
 **Website Content**
 
 | Group | Contains |
@@ -434,10 +450,17 @@ than a detail of it.
 
 ---
 
-## 12. Open question for the owner
+## 12. Owner input — answered
 
-**When you open Website Content, what are you usually trying to change?**
+**Question:** when you open Website Content, what are you usually trying to change?
+**Answer (2026-08-13):** *"usually hero"*.
 
-The §6.1 grouping is logical. Ordering it by what you reach for most — hero and homepage words
-first, Legal and SEO last, or something else entirely — needs one sentence from you, and it
-changes Stage 4.
+Applied to this plan:
+
+- §6.1 groups are ordered Home first, Legal and SEO last.
+- Home lists the hero first, which `page_blocks` render order already produces.
+- A hero shortcut is added to the Content landing (§6.1) so the most common task is one tap, not
+  three.
+- Stage 6 builds visual previews for the hero first and generalises outward (§6.1).
+
+This is the only owner input Stage 4 was waiting on. No open questions remain.
