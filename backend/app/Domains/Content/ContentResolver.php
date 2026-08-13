@@ -6,7 +6,6 @@ namespace App\Domains\Content;
 
 use App\Models\SiteSetting;
 use App\Support\ResilientCache;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Resolves content per app (+locale):
@@ -14,8 +13,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * Shared is not in this chain. Operational callers (invoices, signage, SMS, …)
  * still read SiteSetting::get() → shared; website and order_app do not fall
- * back to shared. Stage 2 materializes each app's previously-resolved values
- * into its own scope so this shorter chain keeps customer-facing output identical.
+ * back to shared.
  *
  * Empty-value rule (all keys, including json-type):
  * - `null` or `''` means absent → fall through to the next step in the chain.
@@ -55,20 +53,6 @@ final class ContentResolver
 
     public function get(string $key, mixed $default = null): mixed
     {
-        return $this->resolve($key, $default, includeShared: false);
-    }
-
-    /**
-     * Admin share / split / copy only — still walks shared until Stage 4 removes
-     * that machinery. Public website / order_app resolution must use get().
-     */
-    public function getIncludingShared(string $key, mixed $default = null): mixed
-    {
-        return $this->resolve($key, $default, includeShared: true);
-    }
-
-    private function resolve(string $key, mixed $default, bool $includeShared): mixed
-    {
         if (!ContentRegistry::has($key)) {
             $shared = SiteSetting::getScoped($key, 'shared', $this->locale);
             if ($shared !== null && $shared !== '') {
@@ -88,7 +72,7 @@ final class ContentResolver
             return $default ?? ContentRegistry::default($key);
         }
 
-        foreach ($this->lookupChain($key, $includeShared) as [$scope, $locale]) {
+        foreach ($this->lookupChain($key) as [$scope, $locale]) {
             $val = SiteSetting::getScoped($key, $scope, $locale);
             // Present = not null and not ''. "[]" and other JSON empties win.
             if ($this->isPresentScopedValue($val)) {
@@ -118,11 +102,12 @@ final class ContentResolver
     /**
      * @return list<array{0: string, 1: string}>
      */
-    private function lookupChain(string $key = '', bool $includeShared = false): array
+    private function lookupChain(string $key = ''): array
     {
+        // Brand-synced cross-app chain removed in Stage C.4 — until then brand
+        // keys still prefer current app, other app, then shared.
         if (ContentRegistry::isSyncedAcrossApps($key)) {
             $scopes = ['website', 'order_app', 'shared'];
-            // Prefer the current app, then the other app, then shared.
             usort($scopes, function (string $a, string $b): int {
                 if ($a === $this->app) {
                     return -1;
@@ -145,19 +130,6 @@ final class ContentResolver
                 if ($this->locale !== 'en') {
                     $chain[] = [$scope, 'en'];
                 }
-            }
-
-            return $chain;
-        }
-
-        if ($includeShared) {
-            $chain = [
-                [$this->app, $this->locale],
-                ['shared', $this->locale],
-            ];
-            if ($this->locale !== 'en') {
-                $chain[] = [$this->app, 'en'];
-                $chain[] = ['shared', 'en'];
             }
 
             return $chain;
