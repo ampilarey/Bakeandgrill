@@ -11,10 +11,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
-  shareContentBlock: vi.fn(),
-  splitContentBlock: vi.fn(),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -54,7 +50,6 @@ const heroBlock: ContentBlock = {
   resolved_website: JSON.stringify([{ title: 'Welcome', image: '/a.jpg', eyebrow: 'Hi' }]),
   resolved_order_app: JSON.stringify([{ title: 'Welcome', image: '/a.jpg', eyebrow: 'Hi' }]),
   state: 'shared',
-  link_state: 'same',
 };
 
 const phoneBlock: ContentBlock = {
@@ -71,7 +66,6 @@ const phoneBlock: ContentBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared',
-  link_state: 'same',
 };
 
 function setViewport(width: number) {
@@ -95,7 +89,7 @@ describe('Content Hub Overview → Edit', () => {
     async (width) => {
       setViewport(width);
       render(
-        <MemoryRouter initialEntries={['/content?group=Hero']}>
+        <MemoryRouter initialEntries={['/content/website?group=Hero']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
@@ -131,7 +125,7 @@ describe('Content Hub Overview → Edit', () => {
   it('preserves draft after closing the focused editor', async () => {
     setViewport(1280);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

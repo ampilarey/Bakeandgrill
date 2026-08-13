@@ -52,11 +52,12 @@ class ContentMediaTest extends TestCase
     public function test_direct_image_upload_is_draft_safe_and_catalogued(): void
     {
         $this->actingAsOwner();
-        SiteSetting::set('logo', '/storage/site/live-logo.jpg', 'shared', 'en');
+        SiteSetting::set('logo', '/storage/site/live-logo.jpg', 'website', 'en');
+        SiteSetting::set('logo', '/storage/site/invoice-logo.jpg', 'shared', 'en');
 
         $res = $this->post('/api/admin/content/upload', [
             'key' => 'logo',
-            'scope' => 'shared',
+            'scope' => 'website',
             'file' => $this->jpegAt(800, 600, [220, 80, 40], 'draft-logo.jpg'),
         ], ['Accept' => 'application/json'])
             ->assertCreated()
@@ -67,7 +68,9 @@ class ContentMediaTest extends TestCase
         $this->assertStringStartsWith('/storage/', $res['thumb_url']);
         $this->assertStringStartsWith('/storage/', $res['original_url']);
         $this->assertNotEmpty($res['media_id']);
-        $this->assertSame('/storage/site/live-logo.jpg', SiteSetting::get('logo'));
+        // Upload is draft-safe — live website + invoice logos stay put.
+        $this->assertSame('/storage/site/live-logo.jpg', SiteSetting::getScoped('logo', 'website'));
+        $this->assertSame('/storage/site/invoice-logo.jpg', SiteSetting::get('logo'));
 
         $public = $this->getJson('/api/content?app=website&locale=en')
             ->assertOk()
@@ -94,26 +97,32 @@ class ContentMediaTest extends TestCase
     public function test_publishing_uploaded_logo_url_changes_live_content(): void
     {
         $this->actingAsOwner();
-        SiteSetting::set('logo', '/storage/site/live-before-publish.jpg', 'shared', 'en');
+        SiteSetting::set('logo', '/storage/site/live-before-publish.jpg', 'website', 'en');
+        SiteSetting::set('logo', '/storage/site/invoice-before.jpg', 'shared', 'en');
+        SiteSetting::set('logo', '/storage/site/order-before.jpg', 'order_app', 'en');
 
         $res = $this->post('/api/admin/content/upload', [
             'key' => 'logo',
-            'scope' => 'shared',
+            'scope' => 'website',
             'file' => $this->jpegAt(800, 600, [40, 120, 220], 'publish-logo.jpg'),
         ], ['Accept' => 'application/json'])
             ->assertCreated()
             ->json();
 
-        $this->assertSame('/storage/site/live-before-publish.jpg', SiteSetting::get('logo'));
+        $this->assertSame('/storage/site/live-before-publish.jpg', SiteSetting::getScoped('logo', 'website'));
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'logo', 'scope' => 'shared', 'value' => $res['url']],
+                ['key' => 'logo', 'scope' => 'website', 'value' => $res['url']],
             ],
         ])->assertOk()->assertJsonPath('message', 'Content published.');
 
-        $this->assertSame($res['url'], SiteSetting::get('logo'));
+        $this->assertSame($res['url'], SiteSetting::getScoped('logo', 'website'));
+        // Brand mirroring is gone — invoice + order app logos stay on their own scopes.
+        $this->assertSame('/storage/site/invoice-before.jpg', SiteSetting::get('logo'));
+        $this->assertSame('/storage/site/order-before.jpg', SiteSetting::getScoped('logo', 'order_app'));
+
         $public = $this->getJson('/api/content?app=website&locale=en')
             ->assertOk()
             ->json('content');

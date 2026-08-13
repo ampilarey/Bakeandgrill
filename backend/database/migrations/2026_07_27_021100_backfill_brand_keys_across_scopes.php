@@ -21,7 +21,7 @@ return new class extends Migration
             return;
         }
 
-        $keys = ContentRegistry::BRAND_SYNCED_KEYS;
+        $keys = ['default_item_image', 'logo', 'logo_dark', 'favicon', 'og_image', 'primary_color'];
         $hasLocale = SiteSetting::hasLocaleColumn();
 
         $locales = ['en'];

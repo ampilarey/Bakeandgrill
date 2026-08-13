@@ -11,10 +11,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
-  shareContentBlock: vi.fn(),
-  splitContentBlock: vi.fn(),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -78,7 +74,6 @@ function phoneBlock(): ContentBlock {
     resolved_website: '+960 912 0011',
     resolved_order_app: '+960 912 0011',
     state: 'shared',
-    link_state: 'same',
   };
 }
 
@@ -100,7 +95,6 @@ function heroBlock(): ContentBlock {
     resolved_website: websiteArr,
     resolved_order_app: orderArr,
     state: 'split',
-    link_state: 'different',
   };
 }
 
@@ -130,24 +124,11 @@ describe('Content Hub dual-app editing', () => {
         return b;
       }),
     }));
-    vi.mocked(contentApi.splitContentBlock).mockImplementation(async () => ({
-      blocks: [
-        {
-          ...phoneBlock(),
-          state: 'split',
-          link_state: 'different',
-          website: '+960 912 0011',
-          order_app: '+960 912 0011',
-          shared: null,
-        },
-        heroBlock(),
-      ],
-    }));
   });
 
-  it('editing a shared field publishes to the shared scope', async () => {
+  it('editing a dual-app field publishes to the current destination scope', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -174,22 +155,20 @@ describe('Content Hub dual-app editing', () => {
     const [changes, locale] = vi.mocked(contentApi.updateContent).mock.calls[0];
     expect(locale).toBe('en');
     expect(changes).toEqual([
-      { key: 'business_phone', scope: 'shared', value: '+960 WEB EDIT', locale: 'en' },
+      { key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' },
     ]);
   }, 15000);
 
-  it('hero visual editor drafts persist to the order_app scope on publish when split', async () => {
+  it('hero visual editor drafts persist to the order_app scope in the order app hub', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Hero']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Hero']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     fireEvent.click(await screen.findByTestId('edit-hero_slides'));
     const sheet = await screen.findByTestId('hero-editor-sheet');
-    await within(sheet).findByTestId('scope-tabs-hero_slides');
-    // Default tab is Website — switch to Order app to edit that scope.
-    fireEvent.click(within(sheet).getByTestId('scope-tab-hero_slides-order_app'));
+    expect(within(sheet).queryByTestId('scope-tabs-hero_slides')).toBeNull();
     fireEvent.click(await within(sheet).findByTestId('hero-slide-overview-0'));
     const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
 
@@ -214,7 +193,7 @@ describe('Content Hub dual-app editing', () => {
 
   it('locale switch reloads blocks for that locale', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -247,7 +226,7 @@ describe('Content Hub dual-app editing', () => {
     }));
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -344,12 +344,12 @@ class HeroSlidesParityTest extends TestCase
         $this->assertStringNotContainsString('old-override.jpg', $html);
     }
 
-    public function test_publishing_hero_slides_to_shared_still_clears_app_overrides(): void
+    public function test_publishing_hero_slides_to_shared_does_not_clear_app_rows(): void
     {
         $this->actingAsOwner();
 
-        SiteSetting::set('hero_slides', json_encode([['title' => 'Stale', 'image' => '/a.jpg']]), 'website');
-        SiteSetting::set('hero_slides', json_encode([['title' => 'Stale', 'image' => '/a.jpg']]), 'order_app');
+        SiteSetting::set('hero_slides', json_encode([['title' => 'Web Hero', 'image' => '/a.jpg']]), 'website');
+        SiteSetting::set('hero_slides', json_encode([['title' => 'Order Hero', 'image' => '/b.jpg']]), 'order_app');
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
@@ -365,10 +365,8 @@ class HeroSlidesParityTest extends TestCase
             ]],
         ])->assertOk();
 
-        // Stage 4 will remove shared writes from the hub; until then ContentWriter
-        // still clears app overrides on shared publish (share/split machinery).
-        $this->assertNull(SiteSetting::getScoped('hero_slides', 'website', 'en'));
-        $this->assertNull(SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
+        $this->assertStringContainsString('Web Hero', (string) SiteSetting::getScoped('hero_slides', 'website', 'en'));
+        $this->assertStringContainsString('Order Hero', (string) SiteSetting::getScoped('hero_slides', 'order_app', 'en'));
         $this->assertStringContainsString(
             'Shared Fresh Photo',
             (string) SiteSetting::getScoped('hero_slides', 'shared', 'en'),

@@ -24,14 +24,6 @@ final class ContentRegistry
      *
      * @var list<string>
      */
-    public const BRAND_SYNCED_KEYS = [
-        'default_item_image',
-        'logo',
-        'logo_dark',
-        'favicon',
-        'og_image',
-        'primary_color',
-    ];
 
     /**
      * @return array<string, array<string, mixed>>
@@ -78,10 +70,6 @@ final class ContentRegistry
      * Brand assets that must resolve the same on website + order app.
      * Content Studio may write an app scope; writers mirror across scopes.
      */
-    public static function isSyncedAcrossApps(string $key): bool
-    {
-        return in_array($key, self::BRAND_SYNCED_KEYS, true);
-    }
 
     /**
      * Same/Different link state for hub UI.
@@ -89,28 +77,6 @@ final class ContentRegistry
      * non-empty website or order_app override row exists.
      *
      * @return 'same'|'different'
-     */
-    public static function linkState(string $key, string $locale = 'en'): string
-    {
-        if (self::isSyncedAcrossApps($key)) {
-            return 'same';
-        }
-
-        if (! SiteSetting::hasScopeColumn()) {
-            return 'same';
-        }
-
-        foreach (['website', 'order_app'] as $scope) {
-            if (SiteSetting::hasScopedValue($key, $scope, $locale)) {
-                return 'different';
-            }
-        }
-
-        return 'same';
-    }
-
-    /**
-     * @return array<string, mixed>|null
      */
     public static function block(string $key): ?array
     {

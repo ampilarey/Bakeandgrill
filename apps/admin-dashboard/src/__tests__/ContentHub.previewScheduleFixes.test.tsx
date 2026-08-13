@@ -51,10 +51,6 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: null, deleted: 0 })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -103,7 +99,6 @@ const block: ContentBlock = {
   resolved_website: 'Hello',
   resolved_order_app: 'Hello',
   state: 'split',
-  link_state: 'different',
 };
 
 function openHub(path: string) {
@@ -140,7 +135,7 @@ describe('ContentHub preview + schedule fixes', () => {
   });
 
   it('remints docked preview tokens when the Home layout draft revision changes', async () => {
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('home-layout-editor-stub');
 
     await waitFor(() => {
@@ -170,7 +165,7 @@ describe('ContentHub preview + schedule fixes', () => {
       return { drafts: {} as Record<string, string>, saved_at: null };
     });
 
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('publish-live-btn');
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;

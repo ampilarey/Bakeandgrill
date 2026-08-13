@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
-  AlertCircle, Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
+  Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon, X,
 } from 'lucide-react';
 import {
   cancelContentSchedule,
@@ -16,19 +16,16 @@ import {
   restoreContentRevision,
   saveContentDrafts,
   scheduleContent,
-  copyContentBlock,
-  shareContentBlock,
-  splitContentBlock,
   updateContent,
   uploadContentImage,
   uploadContentVideo,
   type ContentApp,
   type ContentBlock,
-  type ContentDraftAction,
   type ContentLocale,
   type ContentRevision,
   type ContentScheduleRow,
   type ContentScope,
+  type ContentScopeMismatch,
 } from '../../api/content';
 import {
   discardPageBlockDraft,
@@ -36,6 +33,7 @@ import {
   publishPageBlocks,
 } from '../../api/pageBlocks';
 import { PageHeader, PageShell, Btn } from '../../components/SharedUI';
+import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import {
   AboutValuesEditor,
   BusinessHoursEditor,
@@ -177,19 +175,6 @@ function isDualAppBlock(block: ContentBlock): boolean {
   return block.apps.includes('website') && block.apps.includes('order_app');
 }
 
-function isAlwaysSynced(block: ContentBlock): boolean {
-  return block.group === 'Branding' || Boolean(block.brand_synced);
-}
-
-function linkState(block: ContentBlock): 'same' | 'different' {
-  if (block.link_state) return block.link_state;
-  return block.state === 'split' ? 'different' : 'same';
-}
-
-function canChooseContentMode(block: ContentBlock): boolean {
-  return isDualAppBlock(block) && block.shareable && !isAlwaysSynced(block);
-}
-
 function uploadAppFor(scope: ContentScope): ContentApp {
   return scope === 'order_app' ? 'order_app' : 'website';
 }
@@ -198,10 +183,6 @@ function labelForScope(scope: ContentScope): string {
   if (scope === 'order_app') return 'Order app';
   if (scope === 'website') return 'Website';
   return 'Both';
-}
-
-function otherAppScope(scope: ContentScope): ContentScope {
-  return scope === 'website' ? 'order_app' : 'website';
 }
 
 function baseValueForScope(block: ContentBlock, scope: ContentScope): string {
@@ -220,14 +201,11 @@ function valueForScope(block: ContentBlock, scope: ContentScope, drafts: DraftMa
   return baseValueForScope(block, scope);
 }
 
-function editorScopesForBlock(block: ContentBlock): ContentScope[] {
-  if (isAlwaysSynced(block)) return ['shared'];
-  if (isDualAppBlock(block)) {
-    if (block.shareable && linkState(block) === 'same') return ['shared'];
-    return ['website', 'order_app'];
-  }
+function editorScopesForBlock(block: ContentBlock, app: ContentApp): ContentScope[] {
+  if (isDualAppBlock(block) || block.apps.includes(app)) return [app];
   if (block.apps.includes('order_app')) return ['order_app'];
-  return ['website'];
+  if (block.apps.includes('website')) return ['website'];
+  return ['shared'];
 }
 
 function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): ContentScope {
@@ -238,72 +216,6 @@ function preferredScopeTab(scopes: ContentScope[], preferred?: ContentScope): Co
 
 function scopeHasDraft(scope: ContentScope, key: string, drafts: DraftMap): boolean {
   return drafts[draftKey(scope, key)] !== undefined;
-}
-
-function blockDraftScopes(block: ContentBlock, drafts: DraftMap): ContentScope[] {
-  return ALL_SCOPES.filter((scope) => scopeHasDraft(scope, block.key, drafts));
-}
-
-function presentValue(value: string | null | undefined): boolean {
-  return value !== null && value !== undefined && value !== '';
-}
-
-function sharedSourceAvailable(block: ContentBlock, drafts: DraftMap): boolean {
-  return presentValue(storedValueForScope(block, 'shared', drafts));
-}
-
-/** Stored/draft value for a scope only — does not fall through to shared. */
-function storedValueForScope(
-  block: ContentBlock,
-  scope: ContentScope,
-  drafts: DraftMap,
-): string | null {
-  const key = draftKey(scope, block.key);
-  if (drafts[key] !== undefined) return drafts[key];
-  if (scope === 'website') return block.website;
-  if (scope === 'order_app') return block.order_app;
-  return block.shared;
-}
-
-function isEmptyJsonArrayValue(value: string | null | undefined): boolean {
-  if (value === null || value === undefined) return false;
-  const trimmed = value.trim();
-  if (trimmed === '') return false;
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    return Array.isArray(parsed) && parsed.length === 0;
-  } catch {
-    return false;
-  }
-}
-
-function isNonEmptyJsonArrayValue(value: string | null | undefined): boolean {
-  if (value === null || value === undefined) return false;
-  try {
-    const parsed = JSON.parse(value.trim()) as unknown;
-    return Array.isArray(parsed) && parsed.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * App-scoped empty JSON arrays are deliberate "show nothing" overrides (see
- * ContentResolver). Warn when that hides a non-empty shared value.
- */
-function emptyArrayMasksShared(
-  block: ContentBlock,
-  scope: ContentScope,
-  drafts: DraftMap,
-): boolean {
-  if (block.type !== 'json') return false;
-  if (scope !== 'website' && scope !== 'order_app') return false;
-  const scoped = storedValueForScope(block, scope, drafts);
-  if (!isEmptyJsonArrayValue(scoped)) return false;
-  const shared = storedValueForScope(block, 'shared', drafts)
-    ?? block.shared
-    ?? null;
-  return isNonEmptyJsonArrayValue(shared);
 }
 
 function isDeprecatedBlock(block: ContentBlock): boolean {
@@ -317,14 +229,23 @@ function latestIso(values: Array<string | null | undefined>): string | null {
   return sorted[0] ?? null;
 }
 
+function contentAppFromPath(pathname: string): ContentApp {
+  if (pathname.includes('/content/order-app')) return 'order_app';
+  return 'website';
+}
+
 export function ContentHubPage() {
-  usePageTitle('Content & Branding');
+  const location = useLocation();
+  const hubApp = contentAppFromPath(location.pathname);
+  const hubTitle = hubApp === 'order_app' ? 'Order App Content' : 'Website Content';
+  usePageTitle(hubTitle);
   const { success, error } = useToast();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
 
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [mismatches, setMismatches] = useState<ContentScopeMismatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(() => urlGroup || null);
@@ -347,14 +268,6 @@ export function ContentHubPage() {
   const [autosaving, setAutosaving] = useState(false);
   const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   const [mediaOpen, setMediaOpen] = useState(false);
-  const [linkingKey, setLinkingKey] = useState<string | null>(null);
-  /** Inline "make it the same" source-picker modal (replaces window.prompt). */
-  const [shareSourceModal, setShareSourceModal] = useState<{
-    block: ContentBlock;
-    choices: Array<{ scope: ContentScope; label: string }>;
-    selected: ContentScope;
-  } | null>(null);
-  const shareSourceResolveRef = useRef<((scope: ContentScope | null) => void) | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   /** Mobile: which visual block is open in a nested editor sheet. */
   const [mobileBlockEditorKey, setMobileBlockEditorKey] = useState<string | null>(null);
@@ -445,6 +358,7 @@ export function ContentHubPage() {
         ? { ...restored, ...(draftsByLocaleRef.current[loc] ?? {}) }
         : restored;
       setBlocks(blockRes.blocks);
+      setMismatches(blockRes.mismatches ?? []);
       setSchedules(scheduleRes.schedules);
       replaceLocaleDrafts(loc, nextDrafts);
       setLocaleLastSavedAt(loc, latestIso([sharedDrafts.saved_at, websiteDrafts.saved_at, orderDrafts.saved_at]));
@@ -541,9 +455,10 @@ export function ContentHubPage() {
   };
 
   // Landing is the default home — do not auto-jump into the first section.
+  // Stage A: each destination only lists blocks that app actually uses.
   const contentBlocks = useMemo(
-    () => blocks.filter((block) => !isDeprecatedBlock(block)),
-    [blocks],
+    () => blocks.filter((block) => !isDeprecatedBlock(block) && block.apps.includes(hubApp)),
+    [blocks, hubApp],
   );
 
   const orderedSectionNames = useMemo(() => {
@@ -593,18 +508,11 @@ export function ContentHubPage() {
       const websiteOverrides: Record<string, string> = {};
       const orderOverrides: Record<string, string> = {};
       for (const block of contentBlocks) {
-        const scopes = editorScopesForBlock(block);
         if (block.apps.includes('website')) {
-          const previewScope = scopes.includes('website')
-            ? 'website'
-            : (scopes.includes('shared') ? 'shared' : scopes[0]);
-          websiteOverrides[block.key] = valueForScope(block, previewScope, drafts);
+          websiteOverrides[block.key] = valueForScope(block, 'website', drafts);
         }
         if (block.apps.includes('order_app')) {
-          const previewScope = scopes.includes('order_app')
-            ? 'order_app'
-            : (scopes.includes('shared') ? 'shared' : scopes[0]);
-          orderOverrides[block.key] = valueForScope(block, previewScope, drafts);
+          orderOverrides[block.key] = valueForScope(block, 'order_app', drafts);
         }
       }
       // Layout-only drafts still need a token (empty overrides + include_layout).
@@ -846,109 +754,6 @@ export function ContentHubPage() {
     }
   };
 
-  const discardDraftActionForModeChange = (block: ContentBlock): ContentDraftAction | undefined | null => {
-    const scopes = blockDraftScopes(block, drafts);
-    if (scopes.length === 0) return undefined;
-    const names = scopes.map(labelForScope).join(', ');
-    return window.confirm(
-      `${block.label} has unpublished ${locale.toUpperCase()} drafts for ${names}. Discard those drafts and change the mode?`,
-    )
-      ? 'discard'
-      : null;
-  };
-
-  const chooseShareSource = (block: ContentBlock): Promise<ContentScope | null> => {
-    const choices: Array<{ scope: ContentScope; label: string }> = [
-      { scope: 'website', label: 'Website' },
-      { scope: 'order_app', label: 'Order app' },
-    ];
-    if (sharedSourceAvailable(block, drafts)) {
-      choices.push({ scope: 'shared', label: 'Shared' });
-    }
-    return new Promise((resolve) => {
-      shareSourceResolveRef.current = resolve;
-      setShareSourceModal({ block, choices, selected: choices[0]?.scope ?? 'website' });
-    });
-  };
-
-  const resolveShareSourceModal = (scope: ContentScope | null) => {
-    const resolve = shareSourceResolveRef.current;
-    shareSourceResolveRef.current = null;
-    setShareSourceModal(null);
-    resolve?.(scope);
-  };
-
-  const discardBlockDrafts = (block: ContentBlock) => {
-    saveGeneration.current += 1;
-    updateLocaleDrafts(locale, (prev) => {
-      const next = { ...prev };
-      for (const scope of ALL_SCOPES) {
-        delete next[draftKey(scope, block.key)];
-      }
-      return next;
-    });
-    setLocaleSynced(locale, true);
-  };
-
-  const changeContentMode = async (block: ContentBlock, next: 'same' | 'different') => {
-    if (linkState(block) === next || linkingKey) return;
-    const draftAction = discardDraftActionForModeChange(block);
-    if (draftAction === null) return;
-    const source = next === 'same' ? await chooseShareSource(block) : null;
-    if (next === 'same' && !source) return;
-    setLinkingKey(block.key);
-    try {
-      const { blocks: nextBlocks } = next === 'same'
-        ? await shareContentBlock(block.key, locale, { source: source as ContentScope, ...(draftAction ? { draft_action: draftAction } : {}) })
-        : (draftAction ? await splitContentBlock(block.key, locale, { draft_action: draftAction }) : await splitContentBlock(block.key, locale));
-      if (!Array.isArray(nextBlocks) || nextBlocks.length === 0) {
-        error('Could not update content mode — empty response');
-        return;
-      }
-      setBlocks(nextBlocks);
-      const updated = nextBlocks.find((b) => b.key === block.key);
-      const nextState = updated ? linkState(updated) : null;
-      if (nextState !== next) {
-        error(
-          next === 'different'
-            ? 'Could not switch to different per app. Try again, or contact support if it keeps failing.'
-            : 'Could not switch to same in both. Try again.',
-        );
-        return;
-      }
-      if (draftAction === 'discard') {
-        discardBlockDrafts(block);
-      }
-      success(next === 'different'
-        ? 'Website and order app can now differ — use the tabs below'
-        : 'Same content on website and order app');
-    } catch (e) {
-      error(e instanceof Error ? e.message : 'Could not update content mode');
-    } finally {
-      setLinkingKey(null);
-    }
-  };
-
-  const copyFromOtherApp = async (block: ContentBlock, from: ContentScope, to: ContentScope) => {
-    const fromLabel = labelForScope(from);
-    const toLabel = labelForScope(to);
-    if (!window.confirm(`Replace the ${toLabel} value with the ${fromLabel} value?`)) {
-      return;
-    }
-    try {
-      const { blocks: nextBlocks } = await copyContentBlock(block.key, from, to, locale);
-      setBlocks(nextBlocks);
-      updateLocaleDrafts(locale, (prev) => {
-        const next = { ...prev };
-        delete next[draftKey(to, block.key)];
-        return next;
-      });
-      success(`Copied from ${fromLabel}`);
-    } catch (e) {
-      error(e instanceof Error ? e.message : 'Copy failed');
-    }
-  };
-
   const onUpload = async (block: ContentBlock, scope: ContentScope, file: File) => {
     try {
       const res = await uploadContentImage(block.key, uploadAppFor(scope), file, undefined, locale);
@@ -1056,6 +861,7 @@ export function ContentHubPage() {
 
   const taskLanding = (
     <SurfaceBuilderLanding
+      appFilter={hubApp}
       surfaceCounts={surfaceCounts}
       dirtyGroups={dirtyGroups}
       onSelectSurface={handleSurfaceSelect}
@@ -1104,57 +910,6 @@ export function ContentHubPage() {
   };
 
   // ── Render helpers ─────────────────────────────────────────────────────────
-
-  const renderContentModeControl = (block: ContentBlock) => {
-    if (!canChooseContentMode(block)) return null;
-    const state = linkState(block);
-    const busy = linkingKey === block.key;
-    const isHero = block.key === 'hero_slides';
-    return (
-      <div
-        className={`hub-content-mode${isHero ? ' hub-content-mode--hero' : ''}`}
-        data-testid={`content-mode-${block.key}`}
-      >
-        <div className="hub-content-mode-label">
-          {isHero ? 'Where these banners appear' : 'Sharing'}
-        </div>
-        {isHero ? (
-          <p className="hub-content-mode-hint">
-            Share one set of banners, or customise separately for the website and order app.
-            Customising creates a copy you can edit.
-          </p>
-        ) : (
-          <p className="hub-content-mode-hint">
-            Shared content stays in sync. Customising creates a copy for one app.
-          </p>
-        )}
-        <div className="hub-content-mode-options" role="radiogroup" aria-label="Content sharing">
-          {(['same', 'different'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              role="radio"
-              aria-checked={state === mode}
-              aria-label={
-                mode === 'same'
-                  ? 'Shared with Website and Order App'
-                  : 'Customise for Website and Order App'
-              }
-              disabled={busy}
-              className={`hub-content-mode-option${state === mode ? ' hub-content-mode-option--active' : ''}`}
-              data-testid={`content-mode-${block.key}-${mode}`}
-              onClick={() => void changeContentMode(block, mode)}
-            >
-              <span className="hub-content-mode-dot" aria-hidden />
-              {mode === 'same'
-                ? 'Shared with Website and Order App'
-                : 'Customise for each app'}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const renderHistoryPanel = (block: ContentBlock, scope: ContentScope, currentValue: string) => {
     if (!historyTarget || historyTarget.key !== block.key || historyTarget.scope !== scope) return null;
@@ -1401,7 +1156,7 @@ export function ContentHubPage() {
   };
 
   const renderSectionEnable = (block: ContentBlock) => {
-    const scopes = editorScopesForBlock(block);
+    const scopes = editorScopesForBlock(block, hubApp);
     const split = scopes.length > 1;
     return (
       <div
@@ -1413,7 +1168,6 @@ export function ContentHubPage() {
         <div className="hub-section-enable-face">
           <div className="hub-section-enable-label">{block.label}</div>
         </div>
-        {renderContentModeControl(block)}
         <div
           className={`hub-section-enable-switches${split ? ' hub-section-enable-switches--split' : ''}`}
         >
@@ -1494,14 +1248,13 @@ export function ContentHubPage() {
       if (contentBlocks.some((c) => c.key === titleKey)) return null;
     }
 
-    const scopes = editorScopesForBlock(block);
+    const scopes = editorScopesForBlock(block, hubApp);
     const isSplitEditors = scopes.length > 1;
     const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
     const activeValue = valueForScope(block, activeScope, drafts);
     const historyOpen =
       historyTarget?.key === block.key && historyTarget?.scope === activeScope;
 
-    const modeControl = renderContentModeControl(block);
     const isBoolean = block.type === 'boolean';
 
     let editorContent: ReactNode = null;
@@ -1547,40 +1300,6 @@ export function ContentHubPage() {
     } else {
       editorContent = renderEditorForScope(block, activeScope);
     }
-
-    const showCopyFromOtherApp = canChooseContentMode(block) && linkState(block) === 'different';
-    const copyFromScope = otherAppScope(activeScope);
-
-    const emptyOverrideScopes = (['website', 'order_app'] as const).filter((scope) =>
-      emptyArrayMasksShared(block, scope, drafts),
-    );
-    const emptyArrayBanner = emptyOverrideScopes.length > 0 ? (
-      <div
-        className="hub-empty-array-warning"
-        data-testid={`empty-array-override-${block.key}`}
-        role="status"
-      >
-        <AlertCircle size={16} aria-hidden />
-        <div>
-          <strong>This app is set to show nothing</strong>
-          {' — '}
-          {emptyOverrideScopes.map((s) => labelForScope(s)).join(' & ')}
-          {' '}
-          has an empty list, so customers on
-          {emptyOverrideScopes.length === 1 ? ' that app' : ' those apps'}
-          {' '}
-          will not see the shared content. That is intentional. Clear the empty list
-          or switch to “Use shared version again” if you meant to use the shared version.
-        </div>
-      </div>
-    ) : null;
-
-    const wrappedEditor = (
-      <>
-        {emptyArrayBanner}
-        {editorContent}
-      </>
-    );
 
     // Overview → Edit on every device: forms live in the focused sheet, not on cards.
     const useCompact = !isBoolean;
@@ -1640,15 +1359,11 @@ export function ContentHubPage() {
         key={`${block.key}-${locale}`}
         block={block}
         locale={locale}
-        modeControl={modeControl}
-        editor={wrappedEditor}
+        editor={editorContent}
         booleanControl={booleanControl}
         onOpenHistory={() => void openHistory(block, activeScope)}
         historyOpen={historyOpen}
         historyPanel={renderHistoryPanel(block, activeScope, activeValue)}
-        showCopyFromOtherApp={showCopyFromOtherApp}
-        activeScope={activeScope}
-        onCopyFromOtherScope={() => void copyFromOtherApp(block, copyFromScope, activeScope)}
         technicalScopesLabel={scopesLabelFor(scopes)}
         rawValuePreview={activeValue.slice(0, 80)}
         compact={useCompact}
@@ -1678,8 +1393,9 @@ export function ContentHubPage() {
 
     const siteNameBlock = contentBlocks.find((b) => b.key === 'site_name');
     const siteName = siteNameBlock
-      ? (valueForScope(siteNameBlock, 'shared', drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
+      ? (valueForScope(siteNameBlock, hubApp, drafts) || siteNameBlock.resolved_website || 'Bake & Grill')
       : 'Bake & Grill';
+    const brandScope = (block: ContentBlock) => brandKitWriteScope(block, hubApp);
 
     const hoursOpsBanner = sectionName === 'Opening hours' ? (
       <div className="hub-hours-ops-banner" data-testid="hours-ops-banner">
@@ -1739,37 +1455,12 @@ export function ContentHubPage() {
     // Publish/Discard use publishLayoutDraftsViaApi / discardLayoutDraftsViaApi.
     const chrome: ReactNode =
       sectionName === 'Homepage' ? (
-        <>
-          <div
-            role="note"
-            data-testid="hub-shared-content-vs-placement-banner"
-            style={{
-              display: 'flex',
-              gap: 8,
-              alignItems: 'flex-start',
-              padding: '10px 12px',
-              marginBottom: 12,
-              borderRadius: 10,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg)',
-              fontSize: 12,
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-text-muted)' }} aria-hidden />
-            <span>
-              Sharing a component&apos;s content (&ldquo;Same content in both&rdquo;) does not make it visible on
-              the other app. Both switches need to be on: the content sharing switch above, and the
-              component&apos;s own visibility/placement on that app&apos;s surface.
-            </span>
-          </div>
-          <HomeLayoutEditor
-            ref={homeLayoutEditorRef}
-            initialApp={homeLayoutApp}
-            surfaceFilter={surfaceFilter ?? undefined}
-            onLayoutDraftChange={handleLayoutDraftChange}
-          />
-        </>
+        <HomeLayoutEditor
+          ref={homeLayoutEditorRef}
+          initialApp={homeLayoutApp}
+          surfaceFilter={surfaceFilter ?? undefined}
+          onLayoutDraftChange={handleLayoutDraftChange}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {hoursOpsBanner}
@@ -1784,17 +1475,18 @@ export function ContentHubPage() {
           draftStatus={draftStatusNode}
           blocksByKey={brandBlocksByKey}
           siteName={siteName}
-          valueOf={(block) => valueForScope(block, brandKitWriteScope(block), drafts)}
-          onSetValue={(block, value) => setDraft(brandKitWriteScope(block), block.key, value)}
-          onUploadFile={(block, file) => onUpload(block, brandKitWriteScope(block), file)}
+          scopeLabel={labelForScope(hubApp)}
+          valueOf={(block) => valueForScope(block, brandScope(block), drafts)}
+          onSetValue={(block, value) => setDraft(brandScope(block), block.key, value)}
+          onUploadFile={(block, file) => onUpload(block, brandScope(block), file)}
           onOpenLibrary={(block) => {
-            const scope = brandKitWriteScope(block);
+            const scope = brandScope(block);
             uploadCtx.current = { blockKey: block.key, scope, onDone: (url) => setDraft(scope, block.key, url) };
             setMediaOpen(true);
           }}
-          onOpenHistory={(block) => void openHistory(block, brandKitWriteScope(block))}
+          onOpenHistory={(block) => void openHistory(block, brandScope(block))}
           historyPanel={(block) =>
-            renderHistoryPanel(block, brandKitWriteScope(block), valueForScope(block, brandKitWriteScope(block), drafts))
+            renderHistoryPanel(block, brandScope(block), valueForScope(block, brandScope(block), drafts))
           }
         />
       ) : null;
@@ -2121,7 +1813,7 @@ export function ContentHubPage() {
       <div className={`content-studio-page hub-page${effectiveDirtyCount > 0 ? ' content-studio-page--dirty' : ''}`}>
         <PageHeader
           section="System"
-          title="Content & Branding"
+          title={hubTitle}
           subtitle="Edit what customers see — hero, brand, pages, and order app"
           action={headerActions}
         />
@@ -2130,6 +1822,8 @@ export function ContentHubPage() {
         <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => void doImport(e)} />
 
         {schedulesBanner}
+
+        {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
 
         {isMobile ? (
           /* ── Mobile layout ──────────────────────────────────────────────── */
@@ -2265,33 +1959,10 @@ export function ContentHubPage() {
             ? contentBlocks.find((b) => b.key === mobileBlockEditorKey)
             : null;
           if (!editBlock) return null;
-          const scopes = editorScopesForBlock(editBlock);
+          const scopes = editorScopesForBlock(editBlock, hubApp);
           const activeScope = preferredScopeTab(scopes, blockScopeTab[editBlock.key]);
           const val = valueForScope(editBlock, activeScope, drafts);
           const isHero = editBlock.editor === 'hero';
-          const emptyOverrideScopes = (['website', 'order_app'] as const).filter((scope) =>
-            emptyArrayMasksShared(editBlock, scope, drafts),
-          );
-          const emptyArrayBanner = emptyOverrideScopes.length > 0 ? (
-            <div
-              className="hub-empty-array-warning"
-              data-testid={`empty-array-override-${editBlock.key}`}
-              role="status"
-            >
-              <AlertCircle size={16} aria-hidden />
-              <div>
-                <strong>This app is set to show nothing</strong>
-                {' — '}
-                {emptyOverrideScopes.map((s) => labelForScope(s)).join(' & ')}
-                {' '}
-                has an empty list, so customers on
-                {emptyOverrideScopes.length === 1 ? ' that app' : ' those apps'}
-                {' '}
-                will not see the shared content. That is intentional. Clear the empty list
-                or switch to “Use shared version again” if you meant to use the shared version.
-              </div>
-            </div>
-          ) : null;
           const editorBody = isHero
             ? renderVisualEditor(editBlock, activeScope, val, {
               mobileMode: true,
@@ -2323,8 +1994,6 @@ export function ContentHubPage() {
                     {schedulePublishPanel}
                   </div>
                 ) : null}
-                {emptyArrayBanner}
-                {renderContentModeControl(editBlock)}
                 {scopes.length > 1
                   ? renderScopeTabs(editBlock.key, scopes, activeScope, editorBody)
                   : editorBody}
@@ -2369,74 +2038,6 @@ export function ContentHubPage() {
           }}
         />
 
-        {shareSourceModal ? (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Make this the same in both apps"
-            data-testid="share-source-modal"
-            style={{
-              position: 'fixed', inset: 0, zIndex: 1000,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-            }}
-          >
-            <div
-              onClick={() => resolveShareSourceModal(null)}
-              aria-hidden="true"
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }}
-            />
-            <div
-              style={{
-                position: 'relative', width: '100%', maxWidth: 360, borderRadius: 14,
-                background: 'var(--color-surface)', boxShadow: '0 8px 24px rgba(28,20,8,0.15)',
-                padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>
-                Make this the same in both apps
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                {shareSourceModal.block.label} will use the same content in both apps. Which version should we keep?
-              </p>
-              <div role="radiogroup" aria-label="Copy which source?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {shareSourceModal.choices.map((choice) => (
-                  <label
-                    key={choice.scope}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}
-                  >
-                    <input
-                      type="radio"
-                      name="share-source"
-                      value={choice.scope}
-                      checked={shareSourceModal.selected === choice.scope}
-                      onChange={() => setShareSourceModal((prev) => (prev ? { ...prev, selected: choice.scope } : prev))}
-                      data-testid={`share-source-option-${choice.scope}`}
-                    />
-                    {choice.label}
-                  </label>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => resolveShareSourceModal(null)}
-                  data-testid="share-source-cancel"
-                  style={{ height: 40, padding: '0 14px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => resolveShareSourceModal(shareSourceModal.selected)}
-                  data-testid="share-source-confirm"
-                  style={{ height: 40, padding: '0 14px', borderRadius: 8, border: 'none', background: 'var(--color-primary)', color: 'var(--color-bg)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700 }}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </div>
     </PageShell>
   );

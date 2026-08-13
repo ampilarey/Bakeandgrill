@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Content;
 
-use App\Console\Commands\AlertDeliveryDelays;
 use App\Console\Commands\CheckReorderPoints;
 use App\Domains\Notifications\DTOs\SmsMessage;
 use App\Domains\Notifications\Services\SmsService;
+use App\Domains\Permissions\PermissionCatalogSync;
 use App\Domains\Signage\Services\SignageResolver;
-use App\Http\Controllers\Api\PublicComplaintController;
+use App\Models\Complaint;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Receipt;
 use App\Models\SmsLog;
 use App\Models\SiteSetting;
 use App\Support\DocumentBrandView;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Console\OutputStyle;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Mockery;
-use ReflectionClass;
 use ReflectionMethod;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -44,12 +47,12 @@ class SharedScopeNonAppConsumersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        PermissionCatalogSync::sync();
         SiteSetting::set('site_name', self::SITE, 'shared');
         SiteSetting::set('business_phone', self::PHONE, 'shared');
         SiteSetting::set('business_email', self::EMAIL, 'shared');
         SiteSetting::set('business_address', self::ADDRESS, 'shared');
         SiteSetting::set('business_whatsapp', self::WHATSAPP, 'shared');
-        // Ensure apps differ so a mistaken ContentResolver path would not accidentally pass.
         SiteSetting::set('business_phone', '+960 APP WEB', 'website');
         SiteSetting::set('business_phone', '+960 APP ORDER', 'order_app');
         SiteSetting::bust();
@@ -81,19 +84,54 @@ class SharedScopeNonAppConsumersTest extends TestCase
 
     public function test_public_complaint_whatsapp_link_uses_shared_business_whatsapp(): void
     {
-        $waBase = (string) SiteSetting::get('business_whatsapp', 'https://wa.me/9609120011');
-        $this->assertSame(self::WHATSAPP, $waBase);
-        $this->assertNotSame('https://wa.me/9609120011', $waBase);
+        SiteSetting::query()->updateOrCreate(
+            ['key' => 'complaint_open_cap_per_receipt', 'scope' => 'shared', 'locale' => 'en'],
+            [
+                'value' => '1',
+                'type' => 'text',
+                'group' => 'Complaints',
+                'label' => 'cap',
+                'is_public' => false,
+            ],
+        );
 
-        $src = (string) file_get_contents(
-            (new ReflectionClass(PublicComplaintController::class))->getFileName() ?: '',
-        );
-        $this->assertStringContainsString("SiteSetting::get('business_whatsapp'", $src);
-        $this->assertSame(
-            2,
-            substr_count($src, "SiteSetting::get('business_whatsapp'"),
-            'Both complaint WhatsApp call sites must keep reading shared',
-        );
+        $customer = $this->makeCustomer([
+            'phone' => '+9607'.str_pad((string) random_int(100000, 999999), 6, '0'),
+            'sms_opt_out' => false,
+        ]);
+        $order = $this->makePaidOrder($customer, [
+            'order_number' => 'BG-COMP-'.Str::upper(Str::random(4)),
+            'type' => 'takeaway',
+            'total' => 40,
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'item_name' => 'Shared Scope Bun',
+            'quantity' => 1,
+            'unit_price' => 40,
+            'total_price' => 40,
+        ]);
+        $receipt = Receipt::create([
+            'order_id' => $order->id,
+            'token' => Str::random(48),
+            'channel' => 'sms',
+            'recipient' => $customer->phone,
+        ]);
+
+        $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
+            'categories' => [Complaint::CATEGORY_TOO_LONG],
+            'idempotency_key' => 'cap-a',
+        ])->assertCreated();
+
+        $res = $this->postJson('/api/receipts/'.$receipt->token.'/complaints', [
+            'categories' => [Complaint::CATEGORY_SOMETHING_ELSE],
+            'idempotency_key' => 'cap-b',
+        ])->assertStatus(422);
+
+        $this->assertTrue($res->json('at_open_cap'));
+        $href = (string) $res->json('whatsapp_href');
+        $this->assertStringStartsWith(self::WHATSAPP, $href);
+        $this->assertStringNotContainsString('9609120011', $href);
     }
 
     public function test_check_reorder_points_fallback_uses_shared_business_phone(): void
@@ -124,16 +162,33 @@ class SharedScopeNonAppConsumersTest extends TestCase
     {
         SiteSetting::set('ops_delivery_delay_alert_sms', '1', 'shared');
 
-        $phone = trim((string) SiteSetting::get('business_phone', ''));
-        $this->assertSame(self::PHONE, $phone);
-        $this->assertNotSame('', $phone);
+        Order::create([
+            'order_number' => 'D-DELAY-1',
+            'type' => 'delivery',
+            'status' => 'out_for_delivery',
+            'subtotal' => 50,
+            'total' => 50,
+            'delivery_eta_at' => now()->subMinutes(45),
+            'fired_at' => now()->subHour(),
+            'estimated_wait_minutes' => 20,
+        ]);
 
-        $src = (string) file_get_contents(
-            (new ReflectionClass(AlertDeliveryDelays::class))->getFileName() ?: '',
-        );
-        $this->assertStringContainsString("SiteSetting::get('business_phone'", $src);
+        $sms = Mockery::mock(SmsService::class);
+        $captured = [];
+        $sms->shouldReceive('send')
+            ->once()
+            ->with(Mockery::on(function (SmsMessage $msg) use (&$captured): bool {
+                $captured[] = $msg->to;
 
-        // Smoke: command still boots after migration (no delayed orders → SUCCESS).
-        $this->artisan('ops:alert-delivery-delays')->assertSuccessful();
+                return $msg->to === self::PHONE;
+            }))
+            ->andReturn(new SmsLog);
+
+        $this->app->instance(SmsService::class, $sms);
+
+        $this->artisan('ops:alert-delivery-delays', ['--minutes' => 15])
+            ->assertSuccessful();
+
+        $this->assertSame([self::PHONE], $captured);
     }
 }

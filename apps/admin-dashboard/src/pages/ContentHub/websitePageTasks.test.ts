@@ -19,7 +19,6 @@ function block(key: string, group: string): ContentBlock {
     public: true,
     rich: false,
     state: 'shared',
-    link_state: 'same',
     shared: '',
     website: null,
     order_app: null,

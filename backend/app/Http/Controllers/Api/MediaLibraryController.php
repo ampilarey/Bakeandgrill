@@ -252,11 +252,8 @@ class MediaLibraryController extends Controller
             return response()->json(['message' => 'Only image assets can be used as brand/default photos.'], 422);
         }
 
-        // Image "Use as" targets — primary_color syncs via ContentWriter but is not an image assign.
-        $allowed = array_values(array_filter(
-            ContentRegistry::BRAND_SYNCED_KEYS,
-            static fn (string $k): bool => ContentRegistry::type($k) === 'image',
-        ));
+        // Image "Use as" targets for the shared business record (Business Details).
+        $allowed = ['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image'];
         $validated = $request->validate([
             'key' => ['required', 'string', Rule::in($allowed)],
         ]);
@@ -275,10 +272,8 @@ class MediaLibraryController extends Controller
             'description' => is_string($block['description'] ?? null) ? (string) $block['description'] : '',
         ];
 
-        // Ensure rows exist, then write through ContentWriter (mirrors all brand scopes).
-        foreach (ContentRegistry::SCOPES as $scope) {
-            $this->ensureSettingRow($key, $scope, 'en', $meta);
-        }
+        // Write the shared business record only — website/order_app logos are independent.
+        $this->ensureSettingRow($key, 'shared', 'en', $meta);
         $this->contentWriter->write(
             $key,
             'shared',

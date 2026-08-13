@@ -16,10 +16,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -93,8 +89,6 @@ const heroEnable = {
   resolved_website: 'true',
   resolved_order_app: 'true',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const heroSlides = {
@@ -112,8 +106,6 @@ const heroSlides = {
   resolved_website: '[]',
   resolved_order_app: '[]',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Carousel slides for the top of the homepage with image title and CTAs.',
 };
 
@@ -132,8 +124,6 @@ const homeEnable = {
   resolved_website: 'true',
   resolved_order_app: 'true',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const proofStat = {
@@ -150,8 +140,6 @@ const proofStat = {
   resolved_website: '500+',
   resolved_order_app: null,
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
   description: 'Large number shown in the social proof band on the homepage.',
 };
 
@@ -170,8 +158,6 @@ const footerEnable = {
   resolved_website: 'true',
   resolved_order_app: 'false',
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
 };
 
 const footerText = {
@@ -188,8 +174,6 @@ const footerText = {
   resolved_website: 'Fresh every day',
   resolved_order_app: 'Fresh every day',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Short line under the logo in the site footer across pages.',
 };
 
@@ -207,8 +191,6 @@ const logoBlock = {
   resolved_website: '/logo.png',
   resolved_order_app: '/logo.png',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: true,
 };
 
 const phoneBlock = {
@@ -225,8 +207,6 @@ const phoneBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
   description: 'Primary phone number shown on contact pages and the footer.',
 };
 
@@ -251,7 +231,7 @@ function mockBlocks(blocks: unknown[] = allBlocks) {
 
 function openSection(name: string) {
   return render(
-    <MemoryRouter initialEntries={[`/content?group=${name}`]}>
+    <MemoryRouter initialEntries={[`/content/website?group=${name}`]}>
       <ContentHubPage />
     </MemoryRouter>,
   );
@@ -265,16 +245,13 @@ describe('ContentHub mobile polish — systemic', () => {
     mockBlocks();
   });
 
-  it('never renders mockup ◉/○ content-mode notation across multiple sections', async () => {
+  it('does not render content-mode controls across multiple sections', async () => {
     openSection('Hero');
     await screen.findByTestId('section-editor');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
     fireEvent.click(screen.getByTestId('edit-hero_slides'));
     const heroSheet = await screen.findByTestId('hero-editor-sheet');
-    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Where these banners appear/);
-    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Shared with Website and Order App/);
-    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/Customise for each app/);
-    expect(within(heroSheet).getByTestId('content-mode-hero_slides').textContent).toMatch(/customise separately/i);
+    expect(within(heroSheet).queryByTestId('content-mode-hero_slides')).toBeNull();
     fireEvent.click(within(heroSheet).getByTestId('content-editor-sheet-close'));
 
     fireEvent.click(screen.getByTestId('section-rail-Homepage'));
@@ -292,21 +269,22 @@ describe('ContentHub mobile polish — systemic', () => {
     expect(document.body.textContent).not.toMatch(/[◉○]/);
     fireEvent.click(screen.getByTestId('edit-footer_tagline'));
     const footerSheet = await screen.findByTestId('block-editor-sheet-footer_tagline');
-    expect(within(footerSheet).getAllByLabelText(/Shared with Website and Order App/i).length).toBeGreaterThan(0);
+    expect(within(footerSheet).queryByTestId('content-mode-footer_tagline')).toBeNull();
+    expect(within(footerSheet).queryByTestId('scope-tabs-footer_tagline')).toBeNull();
   });
 
-  it('section-enable switches use Show this section / Website / Order app — never Both', async () => {
+  it('section-enable switches use the current destination — never Both', async () => {
     openSection('Hero');
     await screen.findByTestId('section-enable-section_hero_enabled');
-    const heroSwitch = screen.getByTestId('section-enable-switch-section_hero_enabled-shared');
-    expect(heroSwitch.textContent).toMatch(/Show this section/);
+    const heroSwitch = screen.getByTestId('section-enable-switch-section_hero_enabled-website');
+    expect(heroSwitch.textContent).toMatch(/Website/);
     expect(heroSwitch.textContent).not.toMatch(/\bBoth\b/);
 
-    // Split enable on Footer
+    // Dual-app enable on Footer still edits the current destination only.
     fireEvent.click(screen.getByTestId('section-rail-Footer'));
     await screen.findByTestId('section-enable-section_footer_enabled');
     expect(screen.getByTestId('section-enable-switch-section_footer_enabled-website').textContent).toMatch(/Website/);
-    expect(screen.getByTestId('section-enable-switch-section_footer_enabled-order_app').textContent).toMatch(/Order app/);
+    expect(screen.queryByTestId('section-enable-switch-section_footer_enabled-order_app')).toBeNull();
     expect(screen.queryByTestId('section-enable-switch-section_footer_enabled-shared')).toBeNull();
 
     const enableCard = screen.getByTestId('section-enable-section_footer_enabled');
@@ -350,36 +328,6 @@ describe('ContentHub mobile polish — systemic', () => {
     expect(screen.getByTestId('section-editor-count').textContent).toMatch(/^1 blocks?$/);
     expect(screen.getByTestId('block-card-proof_stat')).toBeTruthy();
     expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
-  });
-
-  it('scope tabs still say Website / Order app (labelForScope not broken)', async () => {
-    openSection('Footer');
-    await screen.findByTestId('section-enable-section_footer_enabled');
-
-    vi.mocked(contentApi.splitContentBlock).mockResolvedValue({
-      blocks: allBlocks.map((b) =>
-        b.key === 'footer_tagline'
-          ? {
-              ...footerText,
-              state: 'split' as const,
-              link_state: 'different' as const,
-              shared: null,
-              website: 'Web line',
-              order_app: 'Order line',
-              resolved_website: 'Web line',
-              resolved_order_app: 'Order line',
-            }
-          : b,
-      ) as never,
-    });
-
-    fireEvent.click(screen.getByTestId('edit-footer_tagline'));
-    const sheet = await screen.findByTestId('block-editor-sheet-footer_tagline');
-    const mode = within(sheet).getByTestId('content-mode-footer_tagline');
-    fireEvent.click(within(mode).getByLabelText(/Customise for Website and Order App/i));
-    await within(sheet).findByTestId('scope-tabs-footer_tagline');
-    expect(within(sheet).getByTestId('scope-tab-footer_tagline-website').textContent).toMatch(/Website/);
-    expect(within(sheet).getByTestId('scope-tab-footer_tagline-order_app').textContent).toMatch(/Order app/);
   });
 
   it('Brand Kit still hides key/type behind Advanced', async () => {

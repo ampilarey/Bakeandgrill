@@ -11,7 +11,7 @@ use Tests\TestCase;
 /**
  * Stage 1 safety net for separating website / order_app content from shared fallback.
  *
- * Captures ContentResolver output for all non-deprecated keys × apps × locales (620)
+ * Captures ContentResolver output for all non-deprecated keys × apps × locales
  * after migrations. Stages 2–3 must leave every answer unchanged.
  *
  * Regenerate fixture (only when intentionally updating the baseline):
@@ -24,13 +24,13 @@ class ContentResolverSeparationSnapshotTest extends TestCase
     public function test_resolver_snapshot_matches_committed_fixture_for_all_620_combinations(): void
     {
         $keys = ContentResolverSnapshot::nonDeprecatedKeys();
-        $this->assertCount(155, $keys, 'Expected 155 non-deprecated content.php keys');
+        $this->assertCount(169, $keys, 'Expected 169 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(
             ContentResolverSnapshot::EXPECTED_COMBINATIONS,
             $actual['meta']['combinations'],
-            'Expected 155 keys × 2 apps × 2 locales = 620 combinations',
+            'Expected 169 keys × 2 apps × 2 locales = 676 combinations',
         );
 
         $path = ContentResolverSnapshot::fixturePath();

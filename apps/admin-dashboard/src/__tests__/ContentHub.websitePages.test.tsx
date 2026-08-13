@@ -18,10 +18,6 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: null, deleted: 0 })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -69,7 +65,6 @@ function blk(key: string, group: string, label = key) {
     resolved_website: 'value',
     resolved_order_app: 'value',
     state: 'shared' as const,
-    link_state: 'same' as const,
   };
 }
 
@@ -117,7 +112,7 @@ describe('ContentHub Website pages focused tasks', () => {
   });
 
   it('does not expose a generic mixed Pages editor or task', async () => {
-    openHub('/content');
+    openHub('/content/website');
     await screen.findByTestId('surface-builder-landing');
     expect(screen.queryByTestId('task-card-website_pages')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Pages' })).toBeNull();
@@ -125,13 +120,14 @@ describe('ContentHub Website pages focused tasks', () => {
 
     expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
     expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
-    expect(screen.getByTestId('task-card-order_about')).toBeTruthy();
+    expect(screen.queryByTestId('task-card-order_about')).toBeNull();
     expect(screen.getByTestId('task-card-catering_events')).toBeTruthy();
     expect(screen.getByTestId('surface-card-website.mobile.footer')).toBeTruthy();
+    expect(screen.queryByTestId('surface-app-order_app')).toBeNull();
   });
 
   it('legacy ?group=Pages redirects to the Website task overview', async () => {
-    openHub('/content?group=Pages');
+    openHub('/content/website?group=Pages');
     await screen.findByTestId('surface-builder-landing');
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
     expect(screen.queryByTestId('section-editor')).toBeNull();
@@ -139,7 +135,7 @@ describe('ContentHub Website pages focused tasks', () => {
   });
 
   it('Contact & map sheet shows only contact fields', async () => {
-    openHub('/content');
+    openHub('/content/website');
     await screen.findByTestId('task-card-contact_map');
     fireEvent.click(screen.getByTestId('task-card-contact_map'));
 
@@ -159,14 +155,14 @@ describe('ContentHub Website pages focused tasks', () => {
   });
 
   it('Opening hours sheet shows only hours fields', async () => {
-    openHub('/content?group=Opening%20hours');
+    openHub('/content/website?group=Opening%20hours');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-hours_page_title')).toBeTruthy();
     expect(within(sheet).queryByTestId('block-card-contact_page_title')).toBeNull();
   });
 
   it('About sheet shows only about fields', async () => {
-    openHub('/content?group=About');
+    openHub('/content/website?group=About');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-about_values')).toBeTruthy();
     expect(within(sheet).getByTestId('block-card-about_page_title')).toBeTruthy();
@@ -174,7 +170,7 @@ describe('ContentHub Website pages focused tasks', () => {
   });
 
   it('Catering & events sheet shows only events fields', async () => {
-    openHub('/content?group=Catering%20%26%20events');
+    openHub('/content/website?group=Catering%20%26%20events');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-events_section_headline')).toBeTruthy();
     expect(within(sheet).getByTestId('block-card-contact_events_cta_headline')).toBeTruthy();
@@ -182,7 +178,7 @@ describe('ContentHub Website pages focused tasks', () => {
   });
 
   it('Footer sheet shows only footer fields', async () => {
-    openHub('/content?group=Footer');
+    openHub('/content/website?group=Footer');
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(within(sheet).getByTestId('block-card-footer_text')).toBeTruthy();
     expect(within(sheet).queryByTestId('block-card-privacy_page_title')).toBeNull();
@@ -191,7 +187,7 @@ describe('ContentHub Website pages focused tasks', () => {
   it('Legal receives remapped privacy fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
-    openHub('/content?group=Legal');
+    openHub('/content/website?group=Legal');
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-privacy_page_title')).toBeTruthy();
     expect(screen.getByTestId('block-card-legal_privacy_body')).toBeTruthy();
@@ -201,7 +197,7 @@ describe('ContentHub Website pages focused tasks', () => {
   it('Order App receives office_orders fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
-    openHub('/content?group=Order%20App');
+    openHub('/content/order-app?group=Order%20App');
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-office_orders_headline')).toBeTruthy();
     expect(screen.getByTestId('block-card-order_checkout_title')).toBeTruthy();
@@ -210,7 +206,7 @@ describe('ContentHub Website pages focused tasks', () => {
   it('Homepage receives remapped home content fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('block-card-homepage_categories')).toBeTruthy();
     expect(screen.getByTestId('block-card-trust_items')).toBeTruthy();
@@ -230,7 +226,7 @@ describe('ContentHub Website pages focused tasks', () => {
       saved_at: null,
     }));
 
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('section-editor');
 
     // No content key drafts exist — Publish should still appear because the
@@ -264,7 +260,7 @@ describe('ContentHub Website pages focused tasks', () => {
     }));
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    openHub('/content?group=Homepage');
+    openHub('/content/website?group=Homepage');
     await screen.findByTestId('section-editor');
     await screen.findByTestId('publish-live-btn');
 
@@ -284,7 +280,7 @@ describe('ContentHub Website pages focused tasks', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
     Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: width });
 
-    openHub('/content');
+    openHub('/content/website');
     await screen.findByTestId('task-card-contact_map');
     fireEvent.click(screen.getByTestId('task-card-contact_map'));
     const sheet = await screen.findByTestId('content-editor-sheet');

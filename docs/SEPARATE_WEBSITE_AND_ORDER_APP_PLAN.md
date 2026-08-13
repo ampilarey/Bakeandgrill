@@ -1,8 +1,7 @@
 # Separating Website and Order App Content — Plan
 
-Status: **Stages 1–3 shipped** on `claude/service-availability-maintenance-zj4whc`
-(2026-08-13). Stages 4–6 remain. Shared scope and `SiteSetting::get()` were not
-modified.
+Status: **Stages 1–6 shipped** on `claude/service-availability-maintenance-zj4whc`
+(2026-08-13). Shared scope and `SiteSetting::get()` were not modified.
 
 Owner's ask: *"I have tried many time to make the content settings in admin app. Its really
 confusing and complicated since it controls main app and order app combined. I need to totally
@@ -31,7 +30,7 @@ completely different jobs.
 **114 of 155 (74%) are already separate** — they target one app and cannot be confused with the
 other. They are not the problem and must not be touched.
 
-The 41 dual-app blocks are the entire source of the "Same in both / Different per app" machinery.
+The 41 dual-app blocks were the entire source of the "Same in both / Different per app" machinery.
 They divide into three kinds:
 
 **Page wording — 23 blocks.** `hero_slides`, `announcement_*` (4), `footer_text`,
@@ -45,10 +44,9 @@ They divide into three kinds:
 `business_website`, `site_name`, `site_tagline`, `delivery_time`, `delivery_threshold`,
 `menu_new_days`.
 
-**Brand assets — 5 blocks.** `logo`, `logo_dark`, `favicon`, `og_image`, `primary_color`, plus
-`default_item_image`. Listed in `ContentRegistry::BRAND_SYNCED_KEYS` and currently **forced**
-identical — every write mirrors to all three scopes. Splitting these means removing that
-mirroring.
+**Brand assets — 6 blocks.** `logo`, `logo_dark`, `favicon`, `og_image`, `primary_color`,
+`default_item_image`. Previously listed in `ContentRegistry::BRAND_SYNCED_KEYS` and forced
+identical — every write mirrored to all three scopes. That mirroring is removed.
 
 ---
 
@@ -78,7 +76,7 @@ Several of them read the *same keys* the two apps display:
 
 | Consumer | Reads | Breaks if shared is emptied |
 |---|---|---|
-| `Support/DocumentBrandView.php` | `site_name`, `business_phone`, `business_email`, `business_address` | Invoices and printed documents lose the shop's name, phone and address |
+| `Support/DocumentBrandView.php` | `site_name`, `business_phone`, `business_email`, `business_address`, `logo`, `primary_color` | Invoices and printed documents lose brand facts |
 | `Domains/Signage/Services/SignageResolver.php` | `site_name`, `business_phone` | Digital signage screens go blank |
 | `Api/PublicComplaintController.php` | `business_whatsapp` | Complaint WhatsApp link silently falls back to a hardcoded number |
 | `Console/Commands/CheckReorderPoints.php` | `business_phone` | Reorder SMS loses its fallback recipient |
@@ -103,27 +101,28 @@ Three scopes stay in the database. Their meanings become distinct and stop overl
 | `order_app` | Order app only | Everything the order app shows |
 | `shared` | Everything that is not one of those two apps — invoices, receipts, signage, SMS, GST, delivery pricing, kitchen | The business record and operational settings |
 
-**`ContentResolver`'s lookup chain loses two of its four steps.**
+**`ContentResolver`'s lookup chain is two steps.**
 
-Today: `app+locale → shared+locale → app+en → shared+en → registry default`
+Today (pre–Stage 3): `app+locale → shared+locale → app+en → shared+en → registry default`
 After: `app+locale → app+en → registry default`
 
 Consequences, all of them improvements:
 
-- **The `"[]"` masking trap disappears.** The resolver's own docblock warns that an app-scoped
-  empty array beats a shared value with items, and the Content Hub has a warning built for it.
-  With no shared step there is nothing to mask, so the trap and its warning both go.
+- **The `"[]"` masking trap disappears.** With no shared step there is nothing to mask, so the
+  trap and its Content Hub warning both go.
 - **`linkState()` disappears** along with `same` / `different`.
-- **`share()` (`ContentController.php:477`) and `split()` (`:538`) disappear**, along with the
-  copy-between-apps actions.
-- **`BRAND_SYNCED_KEYS` mirroring disappears.** The logo becomes two settings.
-- **26 references to that machinery in `ContentHubPage.tsx` alone** come out, plus
-  `canChooseContentMode()`, `isAlwaysSynced()`, `content-mode` controls, `brand_synced` flags and
-  the share/split/copy API client functions.
+- **`share()` / `split()` / copy-between-apps disappear** (404).
+- **`BRAND_SYNCED_KEYS` mirroring disappears.** The logo is three independent settings.
+- Hub mode controls, `brand_synced`, and share/split/copy API client functions are gone.
 
-The Content Hub becomes two independent sections — **Website** and **Order App** — each showing
-only the blocks that app actually uses. No toggle, no mode, no decision to make. Blocks that
-already target one app appear in one section, which is what happens today anyway.
+The Content Hub is two independent destinations — **Website** and **Order App** — each showing
+only the blocks that app actually uses. No toggle, no mode, no decision to make.
+
+Business Details (`/business-details`) edits the shared business record for invoices / receipts /
+signage / SMS. It never writes website or order_app.
+
+Mismatch notices (`ContentScopeMismatch`) tell the owner when the 13 business facts + 6 brand
+assets disagree across the three scopes. Notice only — no sync button.
 
 ---
 
@@ -172,8 +171,8 @@ months with nobody noticing.
 
 Mitigation that does **not** reintroduce a toggle: a **mismatch notice**. Where a business-fact
 key holds different values across website, order app and the business record, show it plainly —
-"Business record says 9120011, website says 9120022". A warning, not a link. Nothing is
-synchronised behind the owner's back; he is simply told.
+"Business record says 9120011 · Website says 9120022 · Order app says 9120011". A warning, not a
+link. Nothing is synchronised behind the owner's back; he is simply told.
 
 The same applies to the brand assets. After the split, changing the logo on the website does not
 change it on the order app. That must be said in the interface, not discovered.
@@ -184,22 +183,13 @@ change it on the order app. That must be said in the interface, not discovered.
 
 1. **Blanking business data on documents.** The one that matters. Any change to `SiteSetting::get`
    or to the shared rows puts invoices, signage and SMS at risk. The rule is absolute: shared rows
-   are read-only during this work.
+   are not deleted/emptied during this work.
 2. **Cache.** `SiteSetting::getScoped` uses `ResilientCache::rememberForever` keyed per scope and
-   locale. The migration writes hundreds of new rows; every affected key must be flushed or the
-   apps serve stale values. `scripts/pull-deploy-test.sh` and `scripts/full-deploy.sh` run
-   `config:cache` — `content.php` is config, so a registry change needs the config cache cleared
-   too, not just the settings cache.
-3. **Doubling the rows the admin shows.** 41 blocks become 82. If they are all listed in one
-   screen the Content Hub becomes worse, not better. Two separate sections is not cosmetic — it is
-   what stops this change making the confusion double.
-4. **Drift, as in §5.**
-5. **Partial deploy.** The resolver change and the data migration must land together. A deploy
-   with the new resolver and un-migrated data resolves everything to registry defaults — the
-   website would show placeholder text. Run the migration before the code, or gate the resolver on
-   a flag.
-6. **Preview and drafts.** `ContentPreviewController` and the draft store both carry scope. Both
-   need checking against the new two-step chain.
+   locale. Writers must bust the right keys (`SiteSetting::bust()` + `ContentResolver::bust()`).
+3. **Doubling the rows the admin shows.** 41 blocks become independent copies. Two separate
+   sections stop this making the confusion worse.
+4. **Drift, as in §5.** Mitigated by mismatch notices.
+5. **Partial deploy.** The resolver change and the data migration must land together.
 
 ---
 
@@ -209,14 +199,14 @@ change it on the order app. That must be said in the interface, not discovered.
   CI, not by hand.
 - Every one of the five non-app consumers in §2 still resolves its keys after migration:
   invoice/document brand block, signage resolver, complaint WhatsApp link, reorder SMS fallback,
-  delivery delay SMS fallback.
+  delivery delay SMS fallback. (`SharedScopeNonAppConsumersTest` — behavioural for all five.)
 - Editing a website block does not change the order app, and the reverse.
-- The removed API endpoints (`share`, `split`, copy-between-apps) return 404 or 410 rather than
-  half-working.
+  (`BrandingSyncTest::test_website_logo_edit_does_not_change_order_app_or_invoice_logo`)
+- The removed API endpoints (`share`, `split`, copy-between-apps) return 404.
 - A key with an app-scoped `"[]"` today keeps showing nothing after migration.
-- A key with no stored row keeps resolving to its registry default and does not gain a row.
 - Locale: a key with a `dv` value on shared only ends up with `dv` values on both apps.
 - Cache: change a value, confirm the other app is unaffected and that neither serves a stale read.
+- Mismatch notices cover the 19 keys and never page wording (`ContentScopeMismatchTest`).
 
 ---
 
@@ -226,7 +216,8 @@ Each stage ships on its own and leaves the system working.
 
 **Stage 1 — Measure.** ✅ Shipped. Fixture
 `backend/tests/Fixtures/content_resolver_separation_snapshot.json` +
-`ContentResolverSeparationSnapshotTest` (155 keys × 2 apps × 2 locales = 620).
+`ContentResolverSeparationSnapshotTest` (grown with registry; currently 169 keys × 2 apps × 2
+locales = 676).
 
 **Stage 2 — Migrate the data.** ✅ Shipped.
 `2026_08_13_060000_materialize_content_app_scopes_from_resolver.php` inlines the **legacy**
@@ -236,17 +227,23 @@ Idempotent; `down()` no-op. Flushes per-key `forgetScoped` + `SiteSetting::bust(
 
 **Stage 3 — Shorten the resolver.** ✅ Shipped. Public chain is
 `app+locale → app+en → registry default`. Docblock updated (`"[]"` masking trap retired for
-apps). Admin `share` / `split` / `copy` still use `getIncludingShared()` until Stage 4 removes
-them. Snapshot still 0/620 diffs. Five non-app consumers covered by
+apps). Snapshot still 0 diffs. Five non-app consumers covered by
 `SharedScopeNonAppConsumersTest`.
 
-**Stage 4 — Remove the machinery.** `share`, `split`, copy-between-apps, `linkState`,
-`BRAND_SYNCED_KEYS` mirroring, and the hub's mode controls.
+**Stage 4 — Remove the machinery.** ✅ Shipped (prompt Stages A–C mapping):
+- Admin destinations: `/content/website`, `/content/order-app` (chooser at `/content`); two nav
+  entries (prompt Stage A).
+- Business Details screen + `GET/PUT /api/admin/business-details` writing **shared only**
+  (prompt Stage B) — built **before** brand mirroring removal.
+- Removed `share` / `split` / `copy` routes+methods (404), `getIncludingShared()`,
+  `linkState()`, `BRAND_SYNCED_KEYS` / `isSyncedAcrossApps()` mirroring, hub mode UI + API
+  clients, and the `"[]" masks shared` warning (prompt Stage C).
 
-**Stage 5 — Two sections in the admin.** Website and Order App as separate destinations.
+**Stage 5 — Two sections in the admin.** ✅ Shipped as Stage A above.
 
-**Stage 6 — The mismatch notice** from §5, plus a small Business Details screen for the shared
-operational record that invoices and signage read.
+**Stage 6 — The mismatch notice + Business Details.** ✅ Shipped as Stages B + D above.
+`ContentScopeMismatch` covers the 13 business facts + 6 brand assets on Website Content, Order
+App Content, and Business Details. No sync control.
 
 Stages 1 to 3 deliver the separation. Stages 4 to 6 deliver the *simplicity*, which is the thing
 actually being asked for — the owner's complaint was never that the apps were linked, it was that
@@ -254,14 +251,20 @@ the screen made him decide about it on every block.
 
 ---
 
-## 9. What shipped (Stages 1–3) — ops notes
+## 9. What shipped — ops notes
+
+### Business Details keys
+
+Derived by grepping `SiteSetting::get('…')` under `backend/app` and intersecting with content
+blocks. Permission: `website.manage` (existing; not widened). Screen never writes app scopes.
 
 ### Cache
 
 - Migration: `SiteSetting::forgetScoped()` on every upserted app row, then `SiteSetting::bust()`
   and `ContentResolver::bust()`.
+- Business Details + content writers call the same bust pair after writes.
 - Deploy scripts already run `php artisan config:cache` after migrate (rebuilds cached
-  `content.php` registry). No separate `config:clear` required when those scripts are used.
+  `content.php` registry).
 
 ### Deploy order
 
@@ -274,3 +277,9 @@ migration inlines the legacy lookup chain so it remains correct even when the sh
 Residual note: `git pull` places new PHP on disk before migrate finishes; concurrent requests in
 that window could theoretically hit the new resolver against un-migrated data. Keep deploys to
 the scripted path (migrate immediately after pull).
+
+### Invoice branding after mirroring removal
+
+`logo` and `primary_color` on invoices come from shared via `DocumentBrandView`. Content Hub edits
+to website/order_app logos do **not** update the invoice. Edit **Business Details** (or Media
+Library “use as”) for the business record.

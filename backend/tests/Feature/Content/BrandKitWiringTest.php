@@ -23,8 +23,9 @@ class BrandKitWiringTest extends TestCase
 
     public function test_dark_logo_renders_and_falls_back_to_logo(): void
     {
-        SiteSetting::set('logo', '/storage/site/logo-light.png', 'shared');
-        SiteSetting::set('logo_dark', '/storage/site/logo-dark.png', 'shared');
+        // Website branding resolves from the website scope only (no shared fallback).
+        SiteSetting::set('logo', '/storage/site/logo-light.png', 'website');
+        SiteSetting::set('logo_dark', '/storage/site/logo-dark.png', 'website');
         SiteSetting::bust();
 
         $html = $this->get('/')->assertOk()->getContent();
@@ -37,7 +38,7 @@ class BrandKitWiringTest extends TestCase
         $this->assertStringContainsString('[data-theme="dark"] img.brand-logo--light', $html);
         $this->assertStringContainsString('[data-theme="dark"] img.brand-logo--dark', $html);
 
-        SiteSetting::set('logo_dark', '', 'shared');
+        SiteSetting::set('logo_dark', '', 'website');
         SiteSetting::bust();
         Cache::flush();
 
@@ -55,13 +56,13 @@ class BrandKitWiringTest extends TestCase
         $plain = $this->get('/')->assertOk()->getContent();
         $this->assertStringNotContainsString('id="brand-palette"', $plain);
 
-        SiteSetting::set('primary_color', 'not-hex', 'shared');
+        SiteSetting::set('primary_color', 'not-hex', 'website');
         SiteSetting::bust();
         Cache::flush();
         $invalid = $this->get('/')->assertOk()->getContent();
         $this->assertStringNotContainsString('id="brand-palette"', $invalid);
 
-        SiteSetting::set('primary_color', '#2B1B0F', 'shared');
+        SiteSetting::set('primary_color', '#2B1B0F', 'website');
         SiteSetting::bust();
         Cache::flush();
         $html = $this->get('/')->assertOk()->getContent();
@@ -80,6 +81,5 @@ class BrandKitWiringTest extends TestCase
         $this->assertSame('Menu', ContentRegistry::block('menu_new_days')['group'] ?? null);
         $this->assertSame('Branding', ContentRegistry::block('og_image')['group'] ?? null);
         $this->assertSame('Link preview image', ContentRegistry::block('og_image')['label'] ?? null);
-        $this->assertTrue(ContentRegistry::isSyncedAcrossApps('og_image'));
     }
 }

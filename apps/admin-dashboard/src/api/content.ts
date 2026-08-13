@@ -4,7 +4,6 @@ export type ContentScope = 'shared' | 'website' | 'order_app';
 /** App scopes used by the two Content Studio editors (excludes invisible seed `shared`). */
 export type ContentApp = 'website' | 'order_app';
 export type ContentLocale = 'en' | 'dv';
-export type ContentDraftAction = 'publish' | 'discard' | 'migrate';
 
 export type ContentEditorHint =
   | 'hero'
@@ -15,6 +14,15 @@ export type ContentEditorHint =
   | 'preorder_steps'
   | 'footer_links'
   | 'business_hours';
+
+export type ContentScopeMismatch = {
+  key: string;
+  label: string;
+  message: string;
+  shared?: string;
+  website?: string;
+  order_app?: string;
+};
 
 export type ContentBlock = {
   key: string;
@@ -36,8 +44,6 @@ export type ContentBlock = {
   resolved_website: string | null;
   resolved_order_app: string | null;
   state: 'shared' | 'split';
-  link_state?: 'same' | 'different';
-  brand_synced?: boolean;
   section_enable?: boolean;
   deprecated?: boolean;
 };
@@ -76,6 +82,7 @@ export async function getContentBlocks(locale: ContentLocale = 'en'): Promise<{
   blocks: ContentBlock[];
   locale: string;
   locales: string[];
+  mismatches?: ContentScopeMismatch[];
 }> {
   return req(`/admin/content?locale=${encodeURIComponent(locale)}`);
 }
@@ -118,55 +125,6 @@ export async function discardContentDrafts(
   const q = new URLSearchParams({ locale });
   if (scope) q.set('scope', scope);
   return req(`/admin/content/drafts?${q}`, { method: 'DELETE' });
-}
-
-export async function shareContentBlock(
-  key: string,
-  locale: ContentLocale = 'en',
-  options: { source: ContentScope; draft_action?: ContentDraftAction },
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/share`, {
-    method: 'POST',
-    body: JSON.stringify({ locale, ...options }),
-  });
-}
-
-export async function splitContentBlock(
-  key: string,
-  locale: ContentLocale = 'en',
-  options: { draft_action?: ContentDraftAction } = {},
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/split`, {
-    method: 'POST',
-    body: JSON.stringify({ locale, ...options }),
-  });
-}
-
-export async function copyContentBlock(
-  key: string,
-  from: ContentScope,
-  to: ContentScope,
-  locale: ContentLocale = 'en',
-): Promise<{ blocks: ContentBlock[] }> {
-  return req(`/admin/content/${encodeURIComponent(key)}/copy`, {
-    method: 'POST',
-    body: JSON.stringify({ from, to, locale }),
-  });
-}
-
-/** Client-side section copy — loops per-block copy (no batch endpoint). */
-export async function copyContentSection(
-  keys: string[],
-  from: ContentScope,
-  to: ContentScope,
-  locale: ContentLocale = 'en',
-): Promise<{ blocks: ContentBlock[] }> {
-  let blocks: ContentBlock[] = [];
-  for (const key of keys) {
-    const res = await copyContentBlock(key, from, to, locale);
-    blocks = res.blocks;
-  }
-  return { blocks };
 }
 
 export async function uploadContentImage(

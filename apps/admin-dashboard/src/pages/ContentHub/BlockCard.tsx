@@ -9,8 +9,6 @@ type Props = {
   block: ContentBlock;
   locale: ContentLocale;
   helper?: string;
-  /** Same / Different control (content-meaningful — stays on the face). */
-  modeControl: ReactNode;
   /** Editor body (scopes / visual editors). */
   editor: ReactNode;
   /** Boolean: render switch on the same row as the label. */
@@ -18,11 +16,6 @@ type Props = {
   onOpenHistory: () => void;
   historyOpen: boolean;
   historyPanel: ReactNode;
-  /** Split dual-app blocks only — copy the other app into the active tab scope. */
-  showCopyFromOtherApp?: boolean;
-  /** Active tab scope (website | order_app) — determines which copy action is shown. */
-  activeScope?: ContentScope;
-  onCopyFromOtherScope?: () => void;
   technicalScopesLabel: string;
   rawValuePreview: string;
   /**
@@ -45,15 +38,11 @@ export function BlockCard({
   block,
   locale,
   helper,
-  modeControl,
   editor,
   booleanControl,
   onOpenHistory,
   historyOpen,
   historyPanel,
-  showCopyFromOtherApp = false,
-  activeScope,
-  onCopyFromOtherScope,
   technicalScopesLabel,
   rawValuePreview,
   compact = false,
@@ -92,32 +81,6 @@ export function BlockCard({
       >
         History
       </button>
-      {showCopyFromOtherApp && activeScope === 'order_app' ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid={`copy-from-website-${block.key}`}
-          onClick={() => {
-            setMenuOpen(false);
-            onCopyFromOtherScope?.();
-          }}
-        >
-          Copy from Website
-        </button>
-      ) : null}
-      {showCopyFromOtherApp && activeScope === 'website' ? (
-        <button
-          type="button"
-          role="menuitem"
-          data-testid={`copy-from-order-${block.key}`}
-          onClick={() => {
-            setMenuOpen(false);
-            onCopyFromOtherScope?.();
-          }}
-        >
-          Copy from Order app
-        </button>
-      ) : null}
       <div className="hub-block-more-tech" data-testid={`block-tech-${block.key}`}>
         <div>
           <strong>Key</strong> {block.key}
@@ -183,8 +146,6 @@ export function BlockCard({
           )}
         </div>
         <div className="hub-block-card-actions">
-          {/* Overview stays simple — sharing/scope controls live inside the Edit sheet. */}
-          {!compact ? modeControl : null}
           {compact && onEdit && !isBoolean ? (
             <button
               type="button"

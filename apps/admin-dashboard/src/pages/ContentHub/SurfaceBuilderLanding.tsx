@@ -12,6 +12,8 @@ import {
 import { BRAND_PAGE_TASKS, type ContentTask, type ContentTaskId } from './taskLandingConfig';
 
 export type SurfaceBuilderLandingProps = {
+  /** When set, only show this app's surfaces and relevant brand/page tasks. */
+  appFilter?: SurfaceApp;
   /** Optional component counts keyed by surface id (e.g. website.mobile.header). */
   surfaceCounts?: Record<string, number>;
   /** Dirty section names for unpublished-edit dots on brand/page cards. */
@@ -34,21 +36,43 @@ const SURFACE_DEVICES: Array<{ id: SurfaceDevice; label: string }> = [
  * Customer Surface Builder — primary Content & Branding landing.
  * Tree: Website / Order App → Desktop / Mobile → surface slot cards.
  */
+function taskVisibleForApp(task: ContentTask, app: SurfaceApp): boolean {
+  if (task.homeAppHint) return task.homeAppHint === app;
+  // Dual / shared brand tasks appear under both destinations (independent copies).
+  if (app === 'website') {
+    return !['order_nav', 'order_home', 'order_menu', 'order_wording', 'order_about',
+      'order_contact', 'order_hours', 'order_privacy', 'status_banners'].includes(task.id);
+  }
+  return !['website_header', 'website_home', 'website_footer', 'catering_events', 'seo', 'legal'].includes(task.id);
+}
+
 export function SurfaceBuilderLanding({
+  appFilter,
   surfaceCounts = {},
   dirtyGroups = new Set(),
   onSelectSurface,
   onSelectTask,
 }: SurfaceBuilderLandingProps) {
+  const apps = appFilter
+    ? SURFACE_APPS.filter((a) => a.id === appFilter)
+    : SURFACE_APPS;
+  const brandTasks = appFilter
+    ? BRAND_PAGE_TASKS.filter((t) => taskVisibleForApp(t, appFilter))
+    : BRAND_PAGE_TASKS;
+  const intro = appFilter === 'order_app'
+    ? 'Build what customers see in the Order App — desktop and mobile. Pick a surface to add or edit components.'
+    : appFilter === 'website'
+      ? 'Build what customers see on the Website — desktop and mobile. Pick a surface to add or edit components.'
+      : 'Build what customers see on each surface — Website and Order App, desktop and mobile. Pick a surface to add or edit components.';
+
   return (
     <div className="hub-task-landing hub-surface-landing" data-testid="surface-builder-landing">
       <p className="hub-task-landing-intro">
-        Build what customers see on each surface — Website and Order App, desktop and mobile.
-        Pick a surface to add or edit components.
+        {intro}
       </p>
 
       <section className="hub-surface-tree" data-testid="surface-tree">
-        {SURFACE_APPS.map((app) => (
+        {apps.map((app) => (
           <div key={app.id} className="hub-surface-app" data-testid={`surface-app-${app.id}`}>
             <h2 className="hub-surface-app-label">{app.label}</h2>
             <div className="hub-surface-devices">
@@ -118,7 +142,7 @@ export function SurfaceBuilderLanding({
       <section className="hub-task-cluster" data-testid="task-cluster-brand_pages">
         <h2 className="hub-task-cluster-label">Brand &amp; pages</h2>
         <div className="hub-task-grid">
-          {BRAND_PAGE_TASKS.map((task) => (
+          {brandTasks.map((task) => (
             <BrandPageCard
               key={task.id}
               task={task}

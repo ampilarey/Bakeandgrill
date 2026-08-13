@@ -18,10 +18,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: '2026-07-23T12:00:00Z' })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
-  shareContentBlock: vi.fn(),
-  splitContentBlock: vi.fn(),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -63,7 +59,6 @@ const richBlock: ContentBlock = {
   resolved_website: 'Hello',
   resolved_order_app: 'Hello',
   state: 'split',
-  link_state: 'different',
 };
 
 describe('Content Hub autosave + WYSIWYG', () => {
@@ -88,7 +83,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
 
   it('renders WYSIWYG for rich blocks and autosaves drafts', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -113,7 +108,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
 
   it('publish promotes via updateContent', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -132,7 +127,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
   it('registers beforeunload when there are dirty drafts', async () => {
     const addSpy = vi.spyOn(window, 'addEventListener');
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -153,7 +148,7 @@ describe('Content Hub autosave + WYSIWYG', () => {
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Homepage']}>
+      <MemoryRouter initialEntries={['/content/website?group=Homepage']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -25,10 +25,6 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: null, deleted: 0 })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -76,7 +72,6 @@ const block: ContentBlock = {
   resolved_website: 'Hi',
   resolved_order_app: 'Hi',
   state: 'shared',
-  link_state: 'same',
 };
 
 describe('ContentHub mobile audit fixes', () => {
@@ -94,7 +89,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('landing exposes Hero, Announcement, and Footer task cards', async () => {
     render(
-      <MemoryRouter initialEntries={['/content']}>
+      <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -106,7 +101,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('layout-only draft enables Publish in the section sheet footer', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -124,7 +119,7 @@ describe('ContentHub mobile audit fixes', () => {
   it('More menu stays open for Discard after mousedown outside the trigger', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -146,7 +141,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('preview sheet portals above the editor (higher stacking root)', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Footer']}>
+      <MemoryRouter initialEntries={['/content/website?group=Footer']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

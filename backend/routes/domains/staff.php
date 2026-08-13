@@ -211,6 +211,9 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
         Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
 
+        Route::get('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'show']);
+        Route::put('/admin/business-details', [App\Http\Controllers\Api\BusinessDetailsController::class, 'update']);
+
         Route::get('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'index']);
         Route::put('/admin/content', [App\Http\Controllers\Api\ContentController::class, 'update']);
         Route::get('/admin/content/drafts', [App\Http\Controllers\Api\ContentController::class, 'drafts']);
@@ -226,9 +229,6 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::delete('/admin/content/schedules/{id}', [App\Http\Controllers\Api\ContentController::class, 'cancelSchedule']);
         Route::get('/admin/content/{key}/revisions', [App\Http\Controllers\Api\ContentController::class, 'revisions']);
         Route::post('/admin/content/{key}/revisions/{id}/restore', [App\Http\Controllers\Api\ContentController::class, 'restoreRevision']);
-        Route::post('/admin/content/{key}/share', [App\Http\Controllers\Api\ContentController::class, 'share']);
-        Route::post('/admin/content/{key}/split', [App\Http\Controllers\Api\ContentController::class, 'split']);
-        Route::post('/admin/content/{key}/copy', [App\Http\Controllers\Api\ContentController::class, 'copy']);
 
         // POS close-shift currency photos (note/coin thumbnails).
         Route::post('/admin/currency-images/{face}', [App\Http\Controllers\Api\CurrencyImageController::class, 'store'])->whereNumber('face');

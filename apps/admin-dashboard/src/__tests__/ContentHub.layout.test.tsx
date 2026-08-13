@@ -17,10 +17,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -56,8 +52,6 @@ const phoneBlock = {
   resolved_website: '+960 912 0011',
   resolved_order_app: '+960 912 0011',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const logoBlock = {
@@ -74,8 +68,6 @@ const logoBlock = {
   resolved_website: '/logo.png',
   resolved_order_app: '/logo.png',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: true,
 };
 
 function setup() {
@@ -98,7 +90,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('shows section rail, editor, and preview pane', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -110,7 +102,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('?group=Branding deep link activates Branding in rail', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -123,7 +115,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('dirty dot appears when section has unsaved drafts', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -143,7 +135,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('label search shows dropdown and clicking result navigates to section', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Branding']}>
+      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -174,7 +166,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
   it('block face has no key·type meta line; ⋯ menu has History and key', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -218,7 +210,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -239,7 +231,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
 
   it('shows section grid and no preview column on mobile', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -277,7 +269,7 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
 
   it('preview sheet opens and closes via sheet header Preview button', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

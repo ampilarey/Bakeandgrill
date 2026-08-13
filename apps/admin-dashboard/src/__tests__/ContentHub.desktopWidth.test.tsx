@@ -16,10 +16,6 @@ vi.mock('../api/content', () => ({
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
-  shareContentBlock: vi.fn(async () => ({ blocks: [] })),
-  splitContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentBlock: vi.fn(async () => ({ blocks: [] })),
-  copyContentSection: vi.fn(),
   uploadContentImage: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
@@ -55,14 +51,11 @@ const sharedPhone = {
   resolved_website: '+960 SHARED',
   resolved_order_app: '+960 SHARED',
   state: 'shared' as const,
-  link_state: 'same' as const,
-  brand_synced: false,
 };
 
 const splitPhone = {
   ...sharedPhone,
   state: 'split' as const,
-  link_state: 'different' as const,
   shared: null,
   website: '+960 WEB',
   order_app: '+960 ORDER',
@@ -84,8 +77,6 @@ const splitBoolean = {
   resolved_website: 'true',
   resolved_order_app: 'false',
   state: 'split' as const,
-  link_state: 'different' as const,
-  brand_synced: false,
 };
 
 function mockBlocks(blocks: unknown[]) {
@@ -104,32 +95,27 @@ describe('ContentHub desktop width', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   });
 
-  it('split block renders tabs with only one editor in the DOM', async () => {
+  it('dual-app blocks render one current-destination editor with no tabs', async () => {
     mockBlocks([splitPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     fireEvent.click(await screen.findByTestId('edit-business_phone'));
     const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await within(sheet).findByTestId('scope-tabs-business_phone');
+    expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
     expect(within(sheet).getByDisplayValue('+960 WEB')).toBeTruthy();
     expect(within(sheet).queryByDisplayValue('+960 ORDER')).toBeNull();
     expect(document.querySelectorAll('.content-preview-grid').length).toBe(0);
-
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
-    await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
-      expect(within(sheet).queryByDisplayValue('+960 WEB')).toBeNull();
-    });
   });
 
-  it('edits write to the active tab scope and inactive tab shows a draft dot', async () => {
+  it('edits write to the current destination scope', async () => {
     mockBlocks([splitPhone]);
+    vi.mocked(contentApi.updateContent).mockResolvedValue({ blocks: [splitPhone] });
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -138,25 +124,20 @@ describe('ContentHub desktop width', () => {
     const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
     await within(sheet).findByDisplayValue('+960 WEB');
     fireEvent.change(within(sheet).getByDisplayValue('+960 WEB'), { target: { value: '+960 WEB EDIT' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
-      expect(within(sheet).getByTestId('scope-tab-dirty-business_phone-website')).toBeTruthy();
-    });
-
-    fireEvent.change(within(sheet).getByDisplayValue('+960 ORDER'), { target: { value: '+960 ORDER EDIT' } });
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-website'));
-    await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 WEB EDIT')).toBeTruthy();
-      expect(within(sheet).getByTestId('scope-tab-dirty-business_phone-order_app')).toBeTruthy();
+      expect(contentApi.updateContent).toHaveBeenCalledWith(
+        [{ key: 'business_phone', scope: 'website', value: '+960 WEB EDIT', locale: 'en' }],
+        'en',
+      );
     });
   });
 
-  it('Shared with Website and Order App renders one editor with no tabs', async () => {
+  it('shared backend state still renders one current-destination editor with no tabs', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -167,92 +148,37 @@ describe('ContentHub desktop width', () => {
     expect(within(sheet).queryByTestId('scope-tabs-business_phone')).toBeNull();
   });
 
-  it('boolean split block stays compact and untabbed', async () => {
+  it('boolean dual-app block stays compact and untabbed', async () => {
     mockBlocks([splitBoolean]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('boolean-scopes-show_hours');
+    await screen.findByTestId('block-card-show_hours');
+    expect(screen.queryByTestId('boolean-scopes-show_hours')).toBeNull();
     expect(screen.queryByTestId('scope-tabs-show_hours')).toBeNull();
   });
 
-  it('History opens for the active tab scope', async () => {
+  it('History opens for the current destination scope', async () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.getContentRevisions).mockResolvedValue({ revisions: [] });
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     fireEvent.click(await screen.findByTestId('edit-business_phone'));
     const sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await within(sheet).findByTestId('scope-tabs-business_phone');
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
     fireEvent.click(screen.getByTestId('block-more-business_phone'));
     fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
 
     await waitFor(() => {
-      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('business_phone', 'order_app', 'en');
+      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('business_phone', 'website', 'en');
     });
-  });
-
-  it('Copy from Website on Order app tab writes website value into order_app scope', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    vi.mocked(contentApi.copyContentBlock).mockResolvedValue({
-      blocks: [
-        {
-          ...splitPhone,
-          website: '+960 WEB',
-          order_app: '+960 WEB',
-          resolved_website: '+960 WEB',
-          resolved_order_app: '+960 WEB',
-        },
-      ],
-    });
-
-    mockBlocks([splitPhone]);
-    render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(await screen.findByTestId('edit-business_phone'));
-    let sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    await within(sheet).findByTestId('scope-tabs-business_phone');
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
-    await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 ORDER')).toBeTruthy();
-    });
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-
-    fireEvent.click(screen.getByTestId('block-more-business_phone'));
-    expect(screen.getByTestId('copy-from-website-business_phone')).toBeTruthy();
-    expect(screen.queryByTestId('copy-from-order-business_phone')).toBeNull();
-
-    fireEvent.click(screen.getByTestId('copy-from-website-business_phone'));
-    await waitFor(() => {
-      expect(contentApi.copyContentBlock).toHaveBeenCalledWith(
-        'business_phone',
-        'website',
-        'order_app',
-        'en',
-      );
-    });
-    expect(confirmSpy).toHaveBeenCalledWith('Replace the Order app value with the Website value?');
-    fireEvent.click(screen.getByTestId('edit-business_phone'));
-    sheet = await screen.findByTestId('block-editor-sheet-business_phone');
-    fireEvent.click(within(sheet).getByTestId('scope-tab-business_phone-order_app'));
-    await waitFor(() => {
-      expect(within(sheet).getByDisplayValue('+960 WEB')).toBeTruthy();
-    });
-
-    confirmSpy.mockRestore();
   });
 
   it('preview toggle docks/undocks and persists across remount', async () => {
@@ -260,7 +186,7 @@ describe('ContentHub desktop width', () => {
     window.localStorage.setItem('bg_hub_preview_open', '1');
 
     const { unmount } = render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -278,7 +204,7 @@ describe('ContentHub desktop width', () => {
 
     unmount();
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -292,7 +218,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
     const wide = render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -303,7 +229,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -315,7 +241,7 @@ describe('ContentHub desktop width', () => {
   it('rail collapse toggles icon strip and persists', async () => {
     mockBlocks([sharedPhone]);
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -339,7 +265,7 @@ describe('ContentHub desktop width — mobile unchanged', () => {
 
   it('keeps section grid, no preview column, sheet still works', async () => {
     render(
-      <MemoryRouter initialEntries={['/content?group=Contact']}>
+      <MemoryRouter initialEntries={['/content/website?group=Contact']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

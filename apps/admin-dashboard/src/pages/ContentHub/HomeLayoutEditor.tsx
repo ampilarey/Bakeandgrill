@@ -320,35 +320,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const setMode = async (app: HomeApp, block: PageBlockRow, mode: 'shared' | 'own') => {
-    let shareSource: 'website' | 'order_app' | 'shared' | undefined;
-    if (mode === 'shared' && block.content_mode === 'own') {
-      if (!window.confirm(
-        `Use the same content in both apps for “${block.label}”?\n\n`
-        + 'Visibility and order stay independent per app.',
-      )) return;
-      shareSource = app;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      const st = stateFor(app);
-      const res = await updatePageBlock(block.id, {
-        app,
-        page: 'home',
-        version: st.version,
-        content_mode: mode,
-        share_source: shareSource,
-      });
-      await load();
-      setPreviewMsg(res.draft ? 'Draft saved — not live' : '');
-    } catch (e) {
-      setError((e as Error).message || 'Could not update content mode.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const saveSettings = async (app: HomeApp, block: PageBlockRow, settings: BlockSettings) => {
     setBusy(true);
     setError('');
@@ -520,7 +491,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 560 }}>
             {surfaceFilter
               ? 'Components you can place on this surface. Edit to adjust visibility, order, and content.'
-              : 'One library for Website and Order App. Sharing content does not force shared visibility or order.'}
+              : 'Choose which components appear on each customer surface, then edit placement and visibility per app.'}
           </div>
           <div
             data-testid="home-layout-draft-status"
@@ -640,9 +611,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
             const o = row.orderApp;
             const wStatus = instanceStatus(w);
             const oStatus = instanceStatus(o);
-            const shared =
-              (w?.content_mode === 'shared' || o?.content_mode === 'shared')
-              && Boolean(w && o);
             return (
               <div
                 key={rowKey}
@@ -704,9 +672,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                     >
                       Order App: {oStatus}
                     </span>
-                    <span className="hub-placement-chip">
-                      {shared ? 'Same content in both' : 'Separate content'}
-                    </span>
                   </span>
                   {(w || o) ? (
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
@@ -749,7 +714,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               label="Website"
               block={webInst}
               busy={busy}
-              supportsShared={editingComp.supportsSharedContent}
               onAdd={() => {
                 void addToApp('website', editingComp.type).then((block) => {
                   if (block) setEditingSession((prev) => (prev ? { ...prev, websiteId: block.id } : prev));
@@ -757,7 +721,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               }}
               onToggle={() => webInst && void toggleEnabled('website', webInst)}
               onRemove={() => webInst && void removeFromApp('website', webInst)}
-              onMode={(mode) => webInst && void setMode('website', webInst, mode)}
               onSaveSettings={(settings) => webInst && void saveSettings('website', webInst, settings)}
             />
             <AppInstancePanel
@@ -765,7 +728,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               label="Order App"
               block={orderInst}
               busy={busy}
-              supportsShared={editingComp.supportsSharedContent}
               onAdd={() => {
                 void addToApp('order_app', editingComp.type).then((block) => {
                   if (block) setEditingSession((prev) => (prev ? { ...prev, orderId: block.id } : prev));
@@ -773,7 +735,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               }}
               onToggle={() => orderInst && void toggleEnabled('order_app', orderInst)}
               onRemove={() => orderInst && void removeFromApp('order_app', orderInst)}
-              onMode={(mode) => orderInst && void setMode('order_app', orderInst, mode)}
               onSaveSettings={(settings) => orderInst && void saveSettings('order_app', orderInst, settings)}
             />
           </div>
@@ -855,22 +816,18 @@ function AppInstancePanel({
   label,
   block,
   busy,
-  supportsShared,
   onAdd,
   onToggle,
   onRemove,
-  onMode,
   onSaveSettings,
 }: {
   app: HomeApp;
   label: string;
   block?: PageBlockRow;
   busy: boolean;
-  supportsShared: boolean;
   onAdd: () => void;
   onToggle: () => void;
   onRemove: () => void;
-  onMode: (mode: 'shared' | 'own') => void;
   onSaveSettings: (settings: BlockSettings) => void;
 }) {
   const [localSettings, setLocalSettings] = useState<BlockSettings>((block?.settings ?? {}) as BlockSettings);
@@ -915,27 +872,6 @@ function AppInstancePanel({
               Remove
             </button>
           </div>
-          {supportsShared ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                disabled={busy || block.content_mode === 'shared'}
-                onClick={() => onMode('shared')}
-                style={btnSecondary}
-              >
-                Same content in both
-              </button>
-              <button
-                type="button"
-                disabled={busy || block.content_mode === 'own'}
-                onClick={() => onMode('own')}
-                style={btnSecondary}
-              >
-                Customise for {label}
-              </button>
-            </div>
-          ) : null}
-
           <DevicePlacementFields
             settings={localSettings}
             onChange={setLocalSettings}
