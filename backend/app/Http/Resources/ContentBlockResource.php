@@ -38,9 +38,8 @@ class ContentBlockResource extends JsonResource
         $website = SiteSetting::getScoped($key, 'website', $locale);
         $orderApp = SiteSetting::getScoped($key, 'order_app', $locale);
 
-        $linkState = ContentRegistry::linkState($key, $locale);
-        // Back-compat for older admin clients (share/split wording).
-        $state = $linkState === 'different' ? 'split' : 'shared';
+        // Stage C: same/different removed — per-app scopes are always independent.
+        $state = 'split';
 
         $description = $block['description'] ?? null;
 
@@ -65,7 +64,6 @@ class ContentBlockResource extends JsonResource
             'order_app' => $orderApp,
             'resolved_website' => ContentResolver::for('website', $locale)->get($key),
             'resolved_order_app' => ContentResolver::for('order_app', $locale)->get($key),
-            'link_state' => $linkState,
             'state' => $state,
         ];
     }

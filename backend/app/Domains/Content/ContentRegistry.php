@@ -90,28 +90,6 @@ final class ContentRegistry
      *
      * @return 'same'|'different'
      */
-    public static function linkState(string $key, string $locale = 'en'): string
-    {
-        if (self::isSyncedAcrossApps($key)) {
-            return 'same';
-        }
-
-        if (! SiteSetting::hasScopeColumn()) {
-            return 'same';
-        }
-
-        foreach (['website', 'order_app'] as $scope) {
-            if (SiteSetting::hasScopedValue($key, $scope, $locale)) {
-                return 'different';
-            }
-        }
-
-        return 'same';
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
     public static function block(string $key): ?array
     {
         $blocks = self::blocks();
