@@ -39,12 +39,10 @@ final class HomeChromeResolver
             fn (PageBlock $b) => $b->block_type === $blockType && $b->is_enabled,
         );
 
-        // Before the shared-home migration, prayer/announcement may not exist as
-        // page_blocks. Preserve the historical header experience until a row exists.
+        // No page_block row: prayer stays on (historical default); announcement
+        // stays off. Never read shared SiteSetting — each app is independent.
         if ($any === null && in_array($blockType, ['prayer_bar', 'announcement'], true)) {
-            $legacyOn = $blockType === 'prayer_bar'
-                ? true
-                : (string) \App\Models\SiteSetting::get('announcement_enabled', 'false') === 'true';
+            $legacyOn = $blockType === 'prayer_bar';
 
             return [
                 'enabled' => $legacyOn,

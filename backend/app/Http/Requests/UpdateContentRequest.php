@@ -26,7 +26,8 @@ class UpdateContentRequest extends FormRequest
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes' => ['required', 'array', 'min:1'],
             'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            // Content Hub writes Website / Order App only. Shared is Business Details.
+            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes.*.value' => ['nullable'],
         ];

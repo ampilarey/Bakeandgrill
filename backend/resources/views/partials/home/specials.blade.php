@@ -23,7 +23,7 @@
                     @elseif(!empty($defaultItemImage))
                         <img src="{{ $defaultItemImage }}" alt="{{ $offer['title'] ?? '' }}" data-default-item-image="1">
                     @else
-                        @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
+                        @php $brandLogo = content('logo'); @endphp
                         <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
                             @if($brandLogo)
                                 <img src="{{ $brandLogo }}" alt="" class="product-img-placeholder__logo">
@@ -83,7 +83,7 @@
                     @elseif(!empty($defaultItemImage))
                         <img src="{{ $defaultItemImage }}" alt="{{ $sp['item_name'] ?? '' }}" data-default-item-image="1">
                     @else
-                        @php $brandLogo = \App\Models\SiteSetting::get('logo'); @endphp
+                        @php $brandLogo = content('logo'); @endphp
                         <div class="product-img-placeholder product-img-placeholder--brand" aria-hidden="true">
                             @if($brandLogo)
                                 <img src="{{ $brandLogo }}" alt="" class="product-img-placeholder__logo">

@@ -15,6 +15,7 @@ class PageBlock extends Model
 
     public const PAGE_HOME = 'home';
 
+    /** @deprecated Shared mode is retired — every customer-facing block is own. */
     public const MODE_SHARED = 'shared';
 
     public const MODE_OWN = 'own';
@@ -37,6 +38,10 @@ class PageBlock extends Model
         'settings' => 'array',
     ];
 
+    /**
+     * Legacy relation retained for rollback safety only. Runtime never uses it
+     * for customer-facing rendering after materialization.
+     */
     public function sharedContent(): BelongsTo
     {
         return $this->belongsTo(PageBlockSharedContent::class, 'shared_content_id');
@@ -47,21 +52,11 @@ class PageBlock extends Model
      */
     public function resolvedSettings(): array
     {
-        if ($this->shared_content_id !== null) {
-            $shared = $this->relationLoaded('sharedContent')
-                ? $this->sharedContent
-                : $this->sharedContent()->first();
-
-            if ($shared instanceof PageBlockSharedContent && is_array($shared->settings)) {
-                return $shared->settings;
-            }
-        }
-
         return is_array($this->settings) ? $this->settings : [];
     }
 
     public function isSharedMode(): bool
     {
-        return $this->content_mode === self::MODE_SHARED;
+        return false;
     }
 }

@@ -140,11 +140,9 @@ final class ContentWriter
 
     private function clearLegacyHeroSlides(string $scope, string $locale): void
     {
-        $scopes = array_values(array_unique([$scope, 'shared', 'website', 'order_app']));
-        foreach ($scopes as $clearScope) {
-            foreach (['hero_slide_1', 'hero_slide_2', 'hero_slide_3'] as $legacyKey) {
-                SiteSetting::set($legacyKey, '{}', $clearScope, $locale);
-            }
+        // Only the scope being edited — never wipe the other app or business record.
+        foreach (['hero_slide_1', 'hero_slide_2', 'hero_slide_3'] as $legacyKey) {
+            SiteSetting::set($legacyKey, '{}', $scope, $locale);
         }
     }
 

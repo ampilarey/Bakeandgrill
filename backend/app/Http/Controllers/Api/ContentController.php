@@ -121,7 +121,7 @@ class ContentController extends Controller
     public function drafts(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
         ]);
         $locale = $data['locale'] ?? 'en';
@@ -161,7 +161,7 @@ class ContentController extends Controller
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes' => ['required', 'array', 'min:1'],
             'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes.*.value' => ['nullable'],
         ]);
@@ -240,7 +240,7 @@ class ContentController extends Controller
     {
         $data = $request->validate([
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
-            'scope' => ['sometimes', 'nullable', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'scope' => ['sometimes', 'nullable', 'string', Rule::in(ContentRegistry::APPS)],
         ]);
         $locale = $data['locale'] ?? 'en';
         $user = $request->user();
@@ -286,7 +286,7 @@ class ContentController extends Controller
         }
 
         $data = $request->validate([
-            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
         ]);
         $locale = $data['locale'] ?? 'en';
@@ -348,7 +348,7 @@ class ContentController extends Controller
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes' => ['required', 'array', 'min:1'],
             'changes.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'changes.*.scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'changes.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'changes.*.value' => ['nullable'],
         ]);
@@ -507,7 +507,7 @@ class ContentController extends Controller
             'version' => ['sometimes', 'integer'],
             'entries' => ['required', 'array', 'min:1'],
             'entries.*.key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'entries.*.scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'entries.*.scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'entries.*.locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'entries.*.value' => ['nullable'],
         ]);
@@ -555,7 +555,7 @@ class ContentController extends Controller
 
         $data = $request->validate([
             'key' => ['required', 'string', Rule::in(array_keys(ContentRegistry::blocks()))],
-            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'file' => ['required', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
             'original' => ['sometimes', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],
@@ -638,7 +638,7 @@ class ContentController extends Controller
     {
         $data = $request->validate([
             'key' => ['required', 'string', Rule::in(['hero_slides'])],
-            'scope' => ['required', 'string', Rule::in(ContentRegistry::SCOPES)],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'video' => ['required', 'file', 'mimetypes:video/mp4,video/webm,video/quicktime', 'max:51200'],
             'poster' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:10240'],

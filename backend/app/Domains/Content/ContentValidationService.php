@@ -65,9 +65,15 @@ final class ContentValidationService
             $this->fail('scope', 'Invalid content scope.');
         }
 
-        // Shared is the business-record layer (Business Details / ops). App scopes
-        // must target an app the key is registered for.
+        // Shared is only for Business Details / Media "document logo" writers —
+        // never for ordinary Content Hub publish of customer-facing content.
         if ($scope === 'shared') {
+            if (! BusinessDetailsKeys::isAllowed($key)
+                && ! in_array($key, ['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image', 'primary_color'], true)
+            ) {
+                $this->fail('scope', 'Shared scope is only for the business record (Business Details), not Content Hub.');
+            }
+
             return;
         }
 

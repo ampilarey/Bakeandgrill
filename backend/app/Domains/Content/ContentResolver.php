@@ -53,18 +53,10 @@ final class ContentResolver
 
     public function get(string $key, mixed $default = null): mixed
     {
-        if (!ContentRegistry::has($key)) {
-            $shared = SiteSetting::getScoped($key, 'shared', $this->locale);
-            if ($shared !== null && $shared !== '') {
-                return $shared;
-            }
-            if ($this->locale !== 'en') {
-                $sharedEn = SiteSetting::getScoped($key, 'shared', 'en');
-                if ($sharedEn !== null && $sharedEn !== '') {
-                    return $sharedEn;
-                }
-            }
-
+        // Unregistered keys must not silently read the shared business record
+        // from Website / Order App rendering. Callers that need ops data should
+        // use SiteSetting::get() explicitly outside these apps.
+        if (! ContentRegistry::has($key)) {
             return $default;
         }
 
