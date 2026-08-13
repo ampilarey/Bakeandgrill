@@ -662,7 +662,10 @@ export function ContentHubPage() {
     handleSectionSelect(task.group, task.homeAppHint, task.surface);
   };
 
-  const homeLayoutApp = searchParams.get('homeApp') === 'order_app' ? 'order_app' as const : 'website' as const;
+  const homeLayoutApp =
+    searchParams.get('homeApp') === 'order_app' ? 'order_app' as const
+      : searchParams.get('homeApp') === 'website' ? 'website' as const
+        : hubApp;
   const surfaceFilter = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
 
   const handleMobileBack = () => {

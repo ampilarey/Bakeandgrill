@@ -40,7 +40,7 @@ import {
 
 export type LayoutDraftSignal = {
   hasDraft: boolean;
-  /** Bumps whenever either app's layout draft version changes — used to remint previews. */
+  /** Bumps whenever the layout draft version changes — used to remint previews. */
   revision: number;
 };
 
@@ -70,29 +70,29 @@ export type HomeLayoutEditorHandle = {
 type OverviewRow = {
   rowKey: string;
   comp: LibraryComponent;
-  website?: PageBlockRow;
-  orderApp?: PageBlockRow;
+  instance?: PageBlockRow;
   /** True for the trailing "add another" slot on multi-instance types. */
   isAddSlot?: boolean;
 };
 
 /**
- * The currently open editor sheet, identified by specific block ids rather
+ * The currently open editor sheet, identified by specific block id rather
  * than just a type — required so multi-instance blocks (e.g. rich text) edit
  * one instance at a time instead of always the first of that type.
  */
 type EditingSession = {
   type: string;
-  websiteId: number | null;
-  orderId: number | null;
+  blockId: number | null;
   isAddSlot: boolean;
 };
 
 const emptyApp = (): AppState => ({ blocks: [], types: [], version: 0, hasDraft: false });
 
+const appLabel = (app: HomeApp) => (app === 'website' ? 'Website' : 'Order App');
+
 /**
- * Home Components overview — dual-app cards + focused editor.
- * Overview shows Website / Order App status; Edit opens drawer/sheet.
+ * Home Components overview — single-app cards + focused editor.
+ * Edits Website OR Order App only, never both in one session.
  */
 export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(function HomeLayoutEditor({
   reloadKey = 0,
@@ -100,22 +100,18 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   surfaceFilter,
   onLayoutDraftChange,
 }: Props, ref) {
-  const [website, setWebsite] = useState<AppState>(emptyApp);
-  const [orderApp, setOrderApp] = useState<AppState>(emptyApp);
+  const activeApp = surfaceFilter?.app ?? initialApp;
+  const [appState, setAppState] = useState<AppState>(emptyApp);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [previewMsg, setPreviewMsg] = useState('');
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
-  const [reorderApp, setReorderApp] = useState<HomeApp | null>(null);
-  const [focusApp, setFocusApp] = useState<HomeApp>(surfaceFilter?.app ?? initialApp);
+  const [reorderMode, setReorderMode] = useState(false);
 
-  useEffect(() => {
-    setFocusApp(surfaceFilter?.app ?? initialApp);
-  }, [initialApp, surfaceFilter?.app]);
+  const hasDraft = appState.hasDraft;
+  const layoutRevision = appState.version * 1_000_000 + (hasDraft ? 1 : 0);
 
-  const hasDraft = website.hasDraft || orderApp.hasDraft;
-  const layoutRevision = (website.version * 1_000_000) + orderApp.version + (hasDraft ? 1 : 0);
   // Skip while loading so we don't briefly report "no draft" and clear the
   // parent's layoutDraft flag that was seeded from the landing fetch.
   useEffect(() => {
@@ -127,48 +123,38 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     setLoading(true);
     setError('');
     try {
-      const [w, o] = await Promise.all([
-        fetchAdminPageBlocks('website'),
-        fetchAdminPageBlocks('order_app'),
-      ]);
-      setWebsite({
-        blocks: w.blocks ?? [],
-        types: w.available_types ?? [],
-        version: w.version ?? 0,
-        hasDraft: Boolean(w.draft),
-      });
-      setOrderApp({
-        blocks: o.blocks ?? [],
-        types: o.available_types ?? [],
-        version: o.version ?? 0,
-        hasDraft: Boolean(o.draft),
+      const res = await fetchAdminPageBlocks(activeApp);
+      setAppState({
+        blocks: res.blocks ?? [],
+        types: res.available_types ?? [],
+        version: res.version ?? 0,
+        hasDraft: Boolean(res.draft),
       });
     } catch (e) {
       setError((e as Error).message || 'Could not load home layouts.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeApp]);
 
   useEffect(() => {
     void load();
   }, [load, reloadKey]);
 
-  const stateFor = (app: HomeApp) => (app === 'website' ? website : orderApp);
-  const setStateFor = (app: HomeApp, next: AppState) => {
-    if (app === 'website') setWebsite(next);
-    else setOrderApp(next);
-  };
+  useEffect(() => {
+    setReorderMode(false);
+    setEditingSession(null);
+  }, [activeApp]);
 
   /** Find a specific instance by id, or (legacy) the first instance of a type. */
-  const findInstance = (app: HomeApp, type: string, id?: number) => {
-    const list = stateFor(app).blocks;
+  const findInstance = (type: string, id?: number) => {
+    const list = appState.blocks;
     if (id !== undefined) return list.find((b) => b.id === id);
     return list.find((b) => b.block_type === type);
   };
 
   const library = useMemo(() => {
-    const fromApi = [...website.types, ...orderApp.types];
+    const fromApi = appState.types;
     const byType = new Map<string, LibraryComponent>();
     for (const c of HOME_COMPONENT_LIBRARY) byType.set(c.type, c);
     for (const t of fromApi) {
@@ -186,29 +172,23 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       }
     }
     return Array.from(byType.values());
-  }, [website.types, orderApp.types]);
+  }, [appState.types]);
 
   const visibleLibrary = useMemo(() => {
     if (!surfaceFilter) return library;
     const slotTypes = new Set(typesForSlot(surfaceFilter.slot));
     return library.filter((comp) => {
       if (slotTypes.has(comp.type)) return true;
-      const inst = stateFor(surfaceFilter.app).blocks.find((b) => b.block_type === comp.type);
+      const inst = appState.blocks.find((b) => b.block_type === comp.type);
       if (!inst) return false;
       return blockOnSurface(inst.settings, surfaceFilter.device, surfaceFilter.slot);
     });
-  }, [library, surfaceFilter, website.blocks, orderApp.blocks]);
+  }, [library, surfaceFilter, appState.blocks]);
 
-  const conflict =
-    heroPromoConflict(website.blocks.filter((b) => b.is_enabled).map((b) => b.block_type))
-    || heroPromoConflict(orderApp.blocks.filter((b) => b.is_enabled).map((b) => b.block_type));
+  const conflict = heroPromoConflict(
+    appState.blocks.filter((b) => b.is_enabled).map((b) => b.block_type),
+  );
 
-  /**
-   * Overview rows — one card per component type normally, but one card per
-   * *instance* for blocks that allow multiple (e.g. rich text). Each app's
-   * instances are listed independently since multi-instance blocks are not
-   * paired 1:1 across apps like singleton blocks are.
-   */
   const overviewRows = useMemo((): OverviewRow[] => {
     const rows: OverviewRow[] = [];
     for (const comp of visibleLibrary) {
@@ -216,77 +196,73 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
         rows.push({
           rowKey: comp.type,
           comp,
-          website: findInstance('website', comp.type),
-          orderApp: findInstance('order_app', comp.type),
+          instance: findInstance(comp.type),
         });
         continue;
       }
-      const wInstances = website.blocks.filter((b) => b.block_type === comp.type);
-      const oInstances = orderApp.blocks.filter((b) => b.block_type === comp.type);
-      const max = Math.max(wInstances.length, oInstances.length);
-      for (let i = 0; i < max; i += 1) {
+      const instances = appState.blocks.filter((b) => b.block_type === comp.type);
+      for (const inst of instances) {
         rows.push({
-          rowKey: `${comp.type}-${wInstances[i]?.id ?? 'none'}-${oInstances[i]?.id ?? 'none'}`,
+          rowKey: `${comp.type}-${inst.id}`,
           comp,
-          website: wInstances[i],
-          orderApp: oInstances[i],
+          instance: inst,
         });
       }
-      // Always offer one more empty slot so staff can add another instance
-      // even after the first one exists (multi-instance blocks are not capped).
-      rows.push({ rowKey: `${comp.type}-add-${max}`, comp, isAddSlot: max > 0 });
+      rows.push({
+        rowKey: `${comp.type}-add-${instances.length}`,
+        comp,
+        isAddSlot: instances.length > 0,
+      });
     }
     return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleLibrary, website.blocks, orderApp.blocks]);
+  }, [visibleLibrary, appState.blocks]);
 
-  const addToApp = async (app: HomeApp, type: string): Promise<PageBlockRow | null> => {
+  const addBlock = async (type: string): Promise<PageBlockRow | null> => {
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
       const res = await createPageBlock({
-        app,
-        version: st.version,
+        app: activeApp,
+        version: appState.version,
         block_type: type,
         content_mode: 'own',
         settings: {},
       });
-      const refreshed = await fetchAdminPageBlocks(app);
-      setStateFor(app, {
+      const refreshed = await fetchAdminPageBlocks(activeApp);
+      setAppState({
         blocks: refreshed.blocks ?? [],
-        types: refreshed.available_types ?? st.types,
+        types: refreshed.available_types ?? appState.types,
         version: refreshed.version ?? res.version,
         hasDraft: true,
       });
       return res.block;
     } catch (e) {
-      setError((e as Error).message || `Could not add to ${app}.`);
+      setError((e as Error).message || `Could not add to ${appLabel(activeApp)}.`);
       return null;
     } finally {
       setBusy(false);
     }
   };
 
-  const toggleEnabled = async (app: HomeApp, block: PageBlockRow) => {
+  const toggleEnabled = async (block: PageBlockRow) => {
     if (block.flow_warning && block.is_enabled) {
-      if (!window.confirm(`${block.flow_warning}\n\nTurn off “${block.label}” for ${app === 'website' ? 'Website' : 'Order App'}?`)) {
+      if (!window.confirm(`${block.flow_warning}\n\nTurn off “${block.label}” for ${appLabel(activeApp)}?`)) {
         return;
       }
     }
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
       const res = await updatePageBlock(block.id, {
-        app,
+        app: activeApp,
         page: 'home',
-        version: st.version,
+        version: appState.version,
         is_enabled: !block.is_enabled,
       });
-      setStateFor(app, {
-        ...st,
-        blocks: st.blocks.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)),
+      setAppState({
+        ...appState,
+        blocks: appState.blocks.map((b) => (b.id === block.id ? { ...b, ...res.block } : b)),
         version: res.version,
         hasDraft: true,
       });
@@ -297,18 +273,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const removeFromApp = async (app: HomeApp, block: PageBlockRow) => {
+  const removeBlock = async (block: PageBlockRow) => {
     const warn = block.flow_warning ? `${block.flow_warning}\n\n` : '';
-    if (!window.confirm(`${warn}Remove “${block.label}” from ${app === 'website' ? 'Website' : 'Order App'} Home?`)) {
+    if (!window.confirm(`${warn}Remove “${block.label}” from ${appLabel(activeApp)} Home?`)) {
       return;
     }
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
-      const res = await deletePageBlock({ id: block.id, app, version: st.version });
-      setStateFor(app, {
-        ...st,
+      const res = await deletePageBlock({ id: block.id, app: activeApp, version: appState.version });
+      setAppState({
+        ...appState,
         blocks: res.blocks ?? [],
         version: res.version,
         hasDraft: true,
@@ -320,20 +295,19 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const saveSettings = async (app: HomeApp, block: PageBlockRow, settings: BlockSettings) => {
+  const saveSettings = async (block: PageBlockRow, settings: BlockSettings) => {
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
       const res = await updatePageBlock(block.id, {
-        app,
+        app: activeApp,
         page: 'home',
-        version: st.version,
+        version: appState.version,
         settings,
       });
-      setStateFor(app, {
-        ...st,
-        blocks: st.blocks.map((b) => (b.id === block.id ? { ...b, ...res.block, settings } : b)),
+      setAppState({
+        ...appState,
+        blocks: appState.blocks.map((b) => (b.id === block.id ? { ...b, ...res.block, settings } : b)),
         version: res.version,
         hasDraft: true,
       });
@@ -344,18 +318,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const persistOrder = async (app: HomeApp, next: PageBlockRow[]) => {
+  const persistOrder = async (next: PageBlockRow[]) => {
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
       const res = await reorderPageBlocks({
-        app,
-        version: st.version,
+        app: activeApp,
+        version: appState.version,
         blocks: next.map((b, i) => ({ id: b.id, position: i, is_enabled: b.is_enabled })),
       });
-      setStateFor(app, {
-        ...st,
+      setAppState({
+        ...appState,
         blocks: next.map((b, i) => ({ ...b, position: i })),
         version: res.version,
         hasDraft: true,
@@ -368,14 +341,14 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const move = (app: HomeApp, index: number, dir: -1 | 1) => {
-    const list = [...stateFor(app).blocks].sort((a, b) => a.position - b.position);
+  const move = (index: number, dir: -1 | 1) => {
+    const list = [...appState.blocks].sort((a, b) => a.position - b.position);
     const j = index + dir;
     if (j < 0 || j >= list.length) return;
     const tmp = list[index];
     list[index] = list[j];
     list[j] = tmp;
-    void persistOrder(app, list);
+    void persistOrder(list);
   };
 
   const publish = async () => {
@@ -383,18 +356,12 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     setError('');
     setPreviewMsg('');
     try {
-      // Fresh server read — local hasDraft can lag while load() is in flight,
-      // and the hub Publish bar may enable before our first load settles.
-      const [w, o] = await Promise.all([
-        fetchAdminPageBlocks('website'),
-        fetchAdminPageBlocks('order_app'),
-      ]);
-      for (const res of [w, o]) {
-        if (!res.draft) continue;
-        await publishPageBlocks({ app: res.app as HomeApp, version: res.version ?? 0 });
+      const res = await fetchAdminPageBlocks(activeApp);
+      if (res.draft) {
+        await publishPageBlocks({ app: activeApp, version: res.version ?? 0 });
       }
       await load();
-      setPreviewMsg('Published to Website and Order App Home.');
+      setPreviewMsg(`Published to ${appLabel(activeApp)} Home.`);
     } catch (e) {
       setError((e as Error).message || 'Could not publish.');
     } finally {
@@ -403,19 +370,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   };
 
   const discard = async (skipConfirm = false) => {
-    if (!skipConfirm && !window.confirm('Discard unpublished Home layout drafts for both apps?')) return;
+    if (!skipConfirm && !window.confirm(`Discard unpublished Home layout draft for ${appLabel(activeApp)}?`)) {
+      return;
+    }
     setBusy(true);
     try {
-      const [w, o] = await Promise.all([
-        fetchAdminPageBlocks('website'),
-        fetchAdminPageBlocks('order_app'),
-      ]);
-      for (const res of [w, o]) {
-        if (!res.draft) continue;
-        await discardPageBlockDraft({ app: res.app as HomeApp });
+      const res = await fetchAdminPageBlocks(activeApp);
+      if (res.draft) {
+        await discardPageBlockDraft({ app: activeApp });
       }
       await load();
-      setPreviewMsg('Drafts discarded.');
+      setPreviewMsg('Draft discarded.');
     } catch (e) {
       setError((e as Error).message || 'Could not discard.');
     } finally {
@@ -423,8 +388,6 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  // Exposed so the Content Hub's unified publish/discard bar can drive the
-  // layout editor without duplicating its confirm/API-call logic.
   useImperativeHandle(ref, () => ({
     publishAll: () => publish(),
     discardAll: () => discard(true),
@@ -432,18 +395,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     hasDraft,
   }));
 
-  const preview = async (app: HomeApp, device: 'desktop' | 'mobile') => {
+  const preview = async (device: 'desktop' | 'mobile') => {
     setBusy(true);
     setError('');
     try {
-      const st = stateFor(app);
-      const res = await createPageBlockPreviewToken({ app, version: st.version });
-      const base = app === 'website' ? '/' : '/order/';
+      const res = await createPageBlockPreviewToken({ app: activeApp, version: appState.version });
+      const base = activeApp === 'website' ? '/' : '/order/';
       const url = new URL(base, window.location.origin);
       if (res.token) url.searchParams.set('previewToken', res.token);
       url.searchParams.set('previewDevice', device);
       window.open(url.toString(), '_blank', 'noopener,noreferrer');
-      setPreviewMsg(`Opened ${app === 'website' ? 'Website' : 'Order App'} ${device} preview.`);
+      setPreviewMsg(`Opened ${appLabel(activeApp)} ${device} preview.`);
     } catch (e) {
       setError((e as Error).message || 'Could not create preview.');
     } finally {
@@ -452,18 +414,15 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   };
 
   const editingComp = editingSession ? library.find((c) => c.type === editingSession.type) ?? null : null;
-  const webInst = editingSession?.websiteId != null
-    ? findInstance('website', editingSession.type, editingSession.websiteId)
-    : undefined;
-  const orderInst = editingSession?.orderId != null
-    ? findInstance('order_app', editingSession.type, editingSession.orderId)
+  const editingBlock = editingSession?.blockId != null
+    ? findInstance(editingSession.type, editingSession.blockId)
     : undefined;
 
   return (
     <div
       data-testid="home-layout-editor"
-      data-reorder={reorderApp ? 'true' : 'false'}
-      data-app={focusApp}
+      data-reorder={reorderMode ? 'true' : 'false'}
+      data-app={activeApp}
       data-surface={surfaceFilter ? `${surfaceFilter.app}.${surfaceFilter.device}.${surfaceFilter.slot}` : undefined}
       style={{
         border: '1px solid var(--color-border)',
@@ -491,7 +450,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, maxWidth: 560 }}>
             {surfaceFilter
               ? 'Components you can place on this surface. Edit to adjust visibility, order, and content.'
-              : 'Choose which components appear on each customer surface, then edit placement and visibility per app.'}
+              : `${appLabel(activeApp)} home layout — choose components, placement, and visibility.`}
           </div>
           <div
             data-testid="home-layout-draft-status"
@@ -509,14 +468,14 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           <button
             type="button"
             data-testid="home-layout-reorder-toggle"
-            onClick={() => setReorderApp((r) => (r ? null : focusApp))}
+            onClick={() => setReorderMode((r) => !r)}
             style={{
               ...btnSecondary,
-              background: reorderApp ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: reorderApp ? 'var(--color-bg)' : 'var(--color-text)',
+              background: reorderMode ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: reorderMode ? 'var(--color-bg)' : 'var(--color-text)',
             }}
           >
-            {reorderApp ? 'Done reordering' : 'Reorder'}
+            {reorderMode ? 'Done reordering' : 'Reorder'}
           </button>
           {hasDraft ? (
             <>
@@ -532,44 +491,20 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        {!surfaceFilter ? (
-          ([
-            ['website', 'Website'],
-            ['order_app', 'Order App'],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              data-testid={`home-layout-tab-${id}`}
-              onClick={() => {
-                setFocusApp(id);
-                if (reorderApp) setReorderApp(id);
-              }}
-              style={{
-                ...btnSecondary,
-                background: focusApp === id ? 'var(--color-primary)' : 'transparent',
-                color: focusApp === id ? 'var(--color-bg)' : 'var(--color-text-secondary)',
-              }}
-            >
-              {label}
-            </button>
-          ))
-        ) : (
-          <span
-            data-testid="home-layout-surface-app-lock"
-            style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', alignSelf: 'center' }}
-          >
-            {focusApp === 'website' ? 'Website' : 'Order App'}
-          </span>
-        )}
+        <span
+          data-testid="home-layout-app-label"
+          style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', alignSelf: 'center' }}
+        >
+          {appLabel(activeApp)}
+        </span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginLeft: 'auto' }}>
           {(['desktop', 'mobile'] as const).map((device) => (
             <button
               key={device}
               type="button"
-              data-testid={`home-layout-preview-${focusApp}-${device}`}
+              data-testid={`home-layout-preview-${activeApp}-${device}`}
               disabled={busy || loading}
-              onClick={() => void preview(focusApp, device)}
+              onClick={() => void preview(device)}
               style={btnSecondary}
             >
               Preview {device}
@@ -593,10 +528,10 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
 
       {loading ? (
         <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading Home components…</div>
-      ) : reorderApp ? (
+      ) : reorderMode ? (
         <ReorderList
-          app={reorderApp}
-          blocks={[...stateFor(reorderApp).blocks].sort((a, b) => a.position - b.position)}
+          app={activeApp}
+          blocks={[...appState.blocks].sort((a, b) => a.position - b.position)}
           busy={busy}
           onMove={move}
         />
@@ -606,16 +541,14 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
           {overviewRows.map((row) => {
-            const { comp, rowKey, isAddSlot } = row;
-            const w = row.website;
-            const o = row.orderApp;
-            const wStatus = instanceStatus(w);
-            const oStatus = instanceStatus(o);
+            const { comp, rowKey, isAddSlot, instance } = row;
+            const status = instanceStatus(instance);
+            const editId = instance?.id ?? comp.type;
             return (
               <div
                 key={rowKey}
                 data-testid={`home-layout-block-${rowKey}`}
-                data-block-id={w?.id ?? o?.id ?? comp.type}
+                data-block-id={instance?.id ?? comp.type}
                 className="home-layout-section-card"
                 style={{
                   display: 'grid',
@@ -630,11 +563,10 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               >
                 <button
                   type="button"
-                  data-testid={`home-layout-edit-${w?.id ?? o?.id ?? comp.type}`}
+                  data-testid={`home-layout-edit-${editId}`}
                   onClick={() => setEditingSession({
                     type: comp.type,
-                    websiteId: w?.id ?? null,
-                    orderId: o?.id ?? null,
+                    blockId: instance?.id ?? null,
                     isAddSlot: Boolean(isAddSlot),
                   })}
                   style={{
@@ -659,25 +591,16 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                   </span>
                   <span className="hub-task-card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     <span
-                      data-testid={`home-comp-website-status-${rowKey}`}
+                      data-testid={`home-comp-status-${rowKey}`}
                       className="hub-placement-chip hub-placement-chip--status"
-                      style={badgeStyle(wStatus === 'Added')}
+                      style={badgeStyle(status === 'Added')}
                     >
-                      Website: {wStatus}
-                    </span>
-                    <span
-                      data-testid={`home-comp-order-status-${rowKey}`}
-                      className="hub-placement-chip hub-placement-chip--status"
-                      style={badgeStyle(oStatus === 'Added')}
-                    >
-                      Order App: {oStatus}
+                      {status}
                     </span>
                   </span>
-                  {(w || o) ? (
+                  {instance ? (
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                      {w ? `Website ${placementLabels(w.settings).join(' · ')}` : null}
-                      {w && o ? ' · ' : null}
-                      {o ? `Order ${placementLabels(o.settings).join(' · ')}` : null}
+                      {placementLabels(instance.settings).join(' · ')}
                     </span>
                   ) : null}
                 </button>
@@ -710,32 +633,18 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
             ) : null}
 
             <AppInstancePanel
-              app="website"
-              label="Website"
-              block={webInst}
+              app={activeApp}
+              label={appLabel(activeApp)}
+              block={editingBlock}
               busy={busy}
               onAdd={() => {
-                void addToApp('website', editingComp.type).then((block) => {
-                  if (block) setEditingSession((prev) => (prev ? { ...prev, websiteId: block.id } : prev));
+                void addBlock(editingComp.type).then((block) => {
+                  if (block) setEditingSession((prev) => (prev ? { ...prev, blockId: block.id } : prev));
                 });
               }}
-              onToggle={() => webInst && void toggleEnabled('website', webInst)}
-              onRemove={() => webInst && void removeFromApp('website', webInst)}
-              onSaveSettings={(settings) => webInst && void saveSettings('website', webInst, settings)}
-            />
-            <AppInstancePanel
-              app="order_app"
-              label="Order App"
-              block={orderInst}
-              busy={busy}
-              onAdd={() => {
-                void addToApp('order_app', editingComp.type).then((block) => {
-                  if (block) setEditingSession((prev) => (prev ? { ...prev, orderId: block.id } : prev));
-                });
-              }}
-              onToggle={() => orderInst && void toggleEnabled('order_app', orderInst)}
-              onRemove={() => orderInst && void removeFromApp('order_app', orderInst)}
-              onSaveSettings={(settings) => orderInst && void saveSettings('order_app', orderInst, settings)}
+              onToggle={() => editingBlock && void toggleEnabled(editingBlock)}
+              onRemove={() => editingBlock && void removeBlock(editingBlock)}
+              onSaveSettings={(settings) => editingBlock && void saveSettings(editingBlock, settings)}
             />
           </div>
         </ContentEditorSheet>
@@ -753,12 +662,12 @@ function ReorderList({
   app: HomeApp;
   blocks: PageBlockRow[];
   busy: boolean;
-  onMove: (app: HomeApp, index: number, dir: -1 | 1) => void;
+  onMove: (index: number, dir: -1 | 1) => void;
 }) {
   return (
     <div data-testid="home-layout-reorder-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text-secondary)' }}>
-        Reorder {app === 'website' ? 'Website' : 'Order App'} Home
+        Reorder {appLabel(app)} Home
       </div>
       {blocks.map((block, index) => (
         <div
@@ -789,7 +698,7 @@ function ReorderList({
               aria-label={`Move ${block.label} up`}
               data-testid={`home-layout-move-up-${block.id}`}
               disabled={busy || index === 0}
-              onClick={() => onMove(app, index, -1)}
+              onClick={() => onMove(index, -1)}
               style={btnTiny}
             >
               ↑
@@ -799,7 +708,7 @@ function ReorderList({
               aria-label={`Move ${block.label} down`}
               data-testid={`home-layout-move-down-${block.id}`}
               disabled={busy || index === blocks.length - 1}
-              onClick={() => onMove(app, index, 1)}
+              onClick={() => onMove(index, 1)}
               style={btnTiny}
             >
               ↓
