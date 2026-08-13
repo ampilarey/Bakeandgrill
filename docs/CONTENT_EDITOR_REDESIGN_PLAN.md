@@ -201,28 +201,30 @@ bottom navigation. Structural matrix: app × device × slot in the inventory doc
 
 **Website (149 non-deprecated registry keys, each exactly once in inventory)**
 
-| Page | Route(s) | Primary template(s) |
-|------|----------|---------------------|
-| Home | `/` | `home.blade.php` + `partials/home/*` (+ `page_blocks` by position) |
-| Menu | `/menu`, `/menu/{category}` | `menu.blade.php`, `menu-category.blade.php` |
-| Contact | `/contact` | `contact.blade.php` |
-| Hours | `/hours` | `hours.blade.php` |
-| Events & Catering | `/events`, `/catering` | `events.blade.php`, `catering.blade.php` |
-| Legal | `/privacy`, `/terms`, `/refund` | `privacy.blade.php`, `terms.blade.php`, `refund.blade.php` |
-| Everywhere (layout chrome) | all pages via layout | `layout.blade.php`, site footer / overlays |
-| Reads nowhere found | — | `business_website`, `menu_new_days` (do not delete) |
+| Page | Route(s) | Primary template(s) | Notes |
+|------|----------|---------------------|-------|
+| Home | `GET /` | `home.blade.php` + `partials/home/*` (+ `page_blocks`) | Includes `order_mode_*`, `events_section_*` |
+| Contact | `GET /contact` | `contact.blade.php` | |
+| Hours | `GET /hours` | `hours.blade.php` | |
+| Legal — Terms / Refund | `GET /terms`, `GET /refund` | `terms.blade.php`, `refund.blade.php` | |
+| Legal — Privacy | `GET /privacy` → 301 `/order/privacy` | `privacy.blade.php` exists; public URL is Order App | Keys still inventoried under website |
+| Menu | `GET /menu` → 301 `/order/menu` | **No website blade** | 0 unique keys; Order App owns Menu |
+| Events & Catering | `/pre-order` → `/order/events` | **No website page**; home `events-band` only | `events_section_*` under Home |
+| Everywhere (layout chrome) | all pages via layout | `layout.blade.php` + site footer / overlays | Website global footer lives here |
+| Reads nowhere found | — | — | `business_website`, `menu_new_days` (do not delete) |
 
 **Order App (88 non-deprecated registry keys, each exactly once in inventory)**
 
-| Page | Route(s) | Primary component(s) |
-|------|----------|----------------------|
-| Home | `/` | `pages/Home.tsx` + home sections (+ `page_blocks`) |
-| Menu | `/menu`, `/menu/:categoryId` | `pages/Menu.tsx` |
-| Ordering | cart / checkout flows | `App.tsx`, CartDrawer, Checkout*, banners |
-| Order history | `/orders`, `/orders/:orderId` | `Orders.tsx`, `OrderDetail.tsx` (API UI; 0 content keys) |
-| Gift cards | `/gift-cards` | `pages/GiftCards.tsx` (0 content keys) |
-| Everywhere (shell chrome) | all routes | Header, Footer, overlays, auth chrome |
-| Reads nowhere found | — | `business_website` (do not delete) |
+| Page | Route(s) under `/order` | Primary component(s) | Notes |
+|------|-------------------------|----------------------|-------|
+| Home | `/` (index) | `HomePage.tsx` + `components/home/*` (+ `page_blocks`) | Mode cards / ordering entry |
+| Menu | `/menu` | `MenuPage.tsx` | |
+| Ordering | `/checkout` (+ auth) | `CheckoutPage.tsx`, `AuthBlock.tsx` | No `/ordering` route |
+| Order history | `/order-history` | `OrderHistoryPage.tsx` | 0 content keys (API UI) |
+| Gift cards | `/gift-cards*` | `GiftCardsPage.tsx` (+ buy/success/view) | 0 content keys |
+| About / Contact / Hours / Privacy | `/about`, `/contact`, `/hours`, `/privacy` | matching `*Page.tsx` | Extra SPA pages holding registry keys |
+| Everywhere (shell chrome) | all routes via `AppShell` | TopNav, BrandFooter, overlays | Order App footer ≠ bottom nav |
+| Reads nowhere found | — | — | `business_website` (do not delete) |
 
 Only Home is composable via `page_blocks`. Stage 4 regroups by these verified pages. Do not
 trust `group` alone — see inventory §4.4 (e.g. all ten `order_mode_*` keys).

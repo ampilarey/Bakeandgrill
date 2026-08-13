@@ -58,20 +58,21 @@ After registry changes: update `docs/content_surface_inventory.json` page bucket
 These come from `SurfaceCatalog` / live `page_blocks` placement. **Three footers/navs must stay separate:**
 
 | Surface id | App | Device | Slot | What lives there today | Distinct? |
-|---|---|---|---|---|---|| `website.desktop.header` | website | desktop | header | prayer_bar, announcement (optional); Order App also TopNav / HomePhoneHeader | n/a |
-| `website.desktop.home` | website | desktop | home | Composable home scroll (page_blocks placement=home) | n/a |
-| `website.desktop.footer` | website | desktop | footer | Website global footer — site_footer chrome (legal/links/contact) | Website global footer (site_footer) — NOT bottom nav |
-| `website.mobile.header` | website | mobile | header | prayer_bar, announcement (optional); Order App also TopNav / HomePhoneHeader | n/a |
-| `website.mobile.home` | website | mobile | home | Composable home scroll (page_blocks placement=home) | n/a |
-| `website.mobile.footer` | website | mobile | footer | Website global footer — site_footer chrome (legal/links/contact) | Website global footer — NOT bottom_navigation |
-| `website.mobile.bottom_navigation` | website | mobile | bottom_navigation | Mobile bottom navigation tab bar (bottom_nav) — NOT a footer | Mobile bottom navigation — NOT footer |
-| `order_app.desktop.header` | order_app | desktop | header | prayer_bar, announcement (optional); Order App also TopNav / HomePhoneHeader | n/a |
-| `order_app.desktop.home` | order_app | desktop | home | Composable home scroll (page_blocks placement=home) | n/a |
-| `order_app.desktop.footer` | order_app | desktop | footer | Order App footer — BrandFooter / site_footer / brand_footer | Order App footer (BrandFooter/site_footer) — NOT bottom nav |
-| `order_app.mobile.header` | order_app | mobile | header | prayer_bar, announcement (optional); Order App also TopNav / HomePhoneHeader | n/a |
-| `order_app.mobile.home` | order_app | mobile | home | Composable home scroll (page_blocks placement=home) | n/a |
-| `order_app.mobile.footer` | order_app | mobile | footer | Order App footer — BrandFooter / site_footer / brand_footer | Order App footer — NOT bottom_navigation |
-| `order_app.mobile.bottom_navigation` | order_app | mobile | bottom_navigation | Mobile bottom navigation tab bar (bottom_nav) — NOT a footer | Mobile bottom navigation — NOT footer |
+|---|---|---|---|---|---|
+| `website.desktop.header` | website | desktop | header | prayer_bar, announcement (optional) | n/a |
+| `website.desktop.home` | website | desktop | home | Composable home scroll (`page_blocks` placement=home) | n/a |
+| `website.desktop.footer` | website | desktop | footer | **Website global footer** — `site_footer` chrome (legal/links/contact) | Website global footer — NOT bottom nav |
+| `website.mobile.header` | website | mobile | header | prayer_bar, announcement (optional) | n/a |
+| `website.mobile.home` | website | mobile | home | Composable home scroll (`page_blocks` placement=home) | n/a |
+| `website.mobile.footer` | website | mobile | footer | **Website global footer** — `site_footer` chrome | Website global footer — NOT `bottom_navigation` |
+| `website.mobile.bottom_navigation` | website | mobile | bottom_navigation | **Mobile bottom navigation** tab bar (`bottom_nav`) | Mobile bottom navigation — NOT a footer |
+| `order_app.desktop.header` | order_app | desktop | header | prayer_bar, announcement (optional); TopNav / HomePhoneHeader | n/a |
+| `order_app.desktop.home` | order_app | desktop | home | Composable home scroll (`page_blocks` placement=home) | n/a |
+| `order_app.desktop.footer` | order_app | desktop | footer | **Order App footer** — BrandFooter / `site_footer` / `brand_footer` | Order App footer — NOT bottom nav |
+| `order_app.mobile.header` | order_app | mobile | header | prayer_bar, announcement (optional); TopNav / HomePhoneHeader | n/a |
+| `order_app.mobile.home` | order_app | mobile | home | Composable home scroll (`page_blocks` placement=home) | n/a |
+| `order_app.mobile.footer` | order_app | mobile | footer | **Order App footer** — BrandFooter / `site_footer` / `brand_footer` | Order App footer — NOT `bottom_navigation` |
+| `order_app.mobile.bottom_navigation` | order_app | mobile | bottom_navigation | **Mobile bottom navigation** tab bar (`bottom_nav`) | Mobile bottom navigation — NOT a footer |
 
 **There is no desktop `bottom_navigation` surface.**
 
@@ -545,16 +546,55 @@ Assigned once in the inventory (primary page); still appear elsewhere at runtime
 
 ---
 
-## 5. Home page_blocks (both apps)
+## 5. Home page_blocks (both apps) — interleaved with registry keys
 
-Home is the only composable page. Inventory of **registry keys** above is interleaved with **block types** at runtime:
+Home is the only composable page. Registry keys in §2.home / §3.home are **not** a top-to-bottom paint order by themselves; at runtime they ride inside `page_blocks` components (plus layout chrome).
+
+**Walker (both apps):**
 
 1. Load `page_blocks` for the app (`PageBlockRepository` / `PageBlocksContext`).
-2. Filter by device visibility + `placement_*` slot (`header` / `home` / `footer` / `bottom_navigation`).
+2. Filter by device visibility + `placement_*` (`header` / `home` / `footer` / `bottom_navigation`).
 3. Sort by `order_desktop` / `order_mobile`, else `position`.
-4. Map `block_type` → partial / React component; shell types (`site_footer`, `bottom_nav`, announcement chrome) render in layout/AppShell, not the home walker.
+4. Map `block_type` → Blade partial / React component.
+5. Shell types (`site_footer`, `bottom_nav`, announcement) render in layout / AppShell — **not** the home walker. Keep **Website global footer**, **Order App footer**, and **Mobile bottom navigation** distinct.
 
-Authoritative live order = database rows, not this document. Migrators seed a typical order (hero → mode_cards → trust → specials → …).
+Authoritative live order = database rows. Frozen default seeds (`LegacyHomeLayout` / `HomeLayoutSnapshot`) and later migrators (e.g. website `mode_cards`) establish the usual shape:
+
+### Website Home — default interleaved order
+
+| # | `page_blocks` type (or chrome) | Registry keys that type reads (primary) |
+|---|---|---|
+| — | layout header / announcement | `announcement_*`, `logo`, `nav_order_cta_text`, … (§2.everywhere) |
+| 1 | `hero` | `hero_slides` (+ deprecated `hero_slide_*` fallback) |
+| 2 | `mode_cards` (ensured by migrator) | all 10 `order_mode_*`, `delivery_time`, `delivery_threshold`, mode card titles/taglines |
+| 3 | `trust` (when present) | `trust_items` |
+| 4 | `specials` | `home_specials_*`, `offers_*` |
+| 5 | `featured` | `home_featured_*`, `default_item_image` |
+| 6 | `categories` | `homepage_categories`, `home_categories_*` |
+| 7 | `proof` | `proof_*`, `home_proof_eyebrow` |
+| 8 | `cta` | `cta_band_*` |
+| 9 | `location` | `home_location_*`, `home_visit_*`, `home_directions_cta`, `home_call_cta`, … |
+| 10 | `events_band` (when enabled) | `events_section_*` |
+| — | **Website global footer** (`site_footer` / layout) | `footer_*`, `social_*`, contact strip (§2.everywhere) — **not** bottom nav |
+
+### Order App Home — default interleaved order
+
+| # | `page_blocks` type (or chrome) | Registry keys that type reads (primary) |
+|---|---|---|
+| — | shell header / greeting chrome | branding + announcement keys (§3.everywhere) |
+| 1 | `greeting` | (mostly runtime customer name; little registry) |
+| 2 | `prayer_bar` | (times API; optional copy keys) |
+| 3 | `hero` + `opening_status` | `hero_slides`, open/closed badge copy |
+| 4 | `mode_cards` | `order_mode_*`, delivery/pickup hints |
+| 5 | `specials` | `home_specials_*`, `offers_*` |
+| 6 | `reviews` | review section titles (may include order-only keys) |
+| 7 | `categories` | `homepage_categories`, `home_categories_*` |
+| 8 | `reorder_strip` | (order history API; little registry) |
+| 9 | `office_orders` (when present) | `office_orders_*` |
+| — | **Order App footer** (`brand_footer` / BrandFooter) | order-app footer keys — **not** website footer, **not** bottom nav |
+| — | **Mobile bottom navigation** (`bottom_nav`, mobile only) | tab labels — **not** a footer |
+
+Install-specific `position` / enable flags can reorder or hide rows; Stage 4 must not assume this table is frozen for every environment.
 
 ---
 
