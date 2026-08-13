@@ -41,7 +41,7 @@ class BrandingSyncTest extends TestCase
         Sanctum::actingAs($this->owner, ['staff']);
     }
 
-    public function test_use_as_writes_all_three_scopes_and_creates_revision(): void
+    public function test_use_as_writes_shared_business_record_only(): void
     {
         Storage::disk('public')->put('library/logo.jpg', 'fake');
         $media = Media::create([
@@ -56,26 +56,27 @@ class BrandingSyncTest extends TestCase
             'title' => 'logo.jpg',
         ]);
 
+        SiteSetting::set('logo', '/storage/site/web-before.png', 'website');
+        SiteSetting::set('logo', '/storage/site/order-before.png', 'order_app');
+
         foreach (['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image'] as $key) {
             $this->postJson("/api/admin/media/{$media->id}/use-as", ['key' => $key])
                 ->assertOk()
                 ->assertJsonPath('key', $key);
 
             $this->assertSame($media->url, SiteSetting::getScoped($key, 'shared'));
-            $this->assertSame($media->url, SiteSetting::getScoped($key, 'website'));
-            $this->assertSame($media->url, SiteSetting::getScoped($key, 'order_app'));
-            $this->assertTrue(
-                ContentRevision::query()->where('key', $key)->exists(),
-                "Expected content revision for {$key}",
-            );
             $this->assertDatabaseHas('audit_logs', ['action' => 'media.use_as']);
         }
+
+        $this->assertSame('/storage/site/web-before.png', SiteSetting::getScoped('logo', 'website'));
+        $this->assertSame('/storage/site/order-before.png', SiteSetting::getScoped('logo', 'order_app'));
     }
 
-    public function test_content_resolver_logo_is_independent_per_app_after_hub_write(): void
+    public function test_website_logo_edit_does_not_change_order_app_or_invoice_logo(): void
     {
         SiteSetting::set('logo', '/storage/site/order-logo.png', 'order_app');
         SiteSetting::set('logo', '/storage/site/invoice-logo.png', 'shared');
+        SiteSetting::set('primary_color', '#ABCDEF', 'shared');
 
         $url = '/storage/site/hub-logo.png';
         $this->putJson('/api/admin/content', [
@@ -86,8 +87,11 @@ class BrandingSyncTest extends TestCase
         ])->assertOk();
 
         $this->assertSame($url, ContentResolver::for('website')->get('logo'));
-        // Until C.4 removes brand mirroring this may still sync — assert website wrote.
-        $this->assertSame($url, SiteSetting::getScoped('logo', 'website'));
+        $this->assertSame('/storage/site/order-logo.png', ContentResolver::for('order_app')->get('logo'));
+        $this->assertSame('/storage/site/invoice-logo.png', SiteSetting::get('logo'));
+        $brand = \App\Support\DocumentBrandView::variables();
+        $this->assertSame('/storage/site/invoice-logo.png', $brand['brandLogoWeb']);
+        $this->assertSame('#ABCDEF', $brand['brandPrimary']);
     }
 
     public function test_media_file_cleaner_treats_site_settings_and_media_assets_as_refs(): void

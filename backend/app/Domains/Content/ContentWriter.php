@@ -30,7 +30,6 @@ final class ContentWriter
         ?Request $request = null,
         string $auditAction = 'content.updated',
         array $extraMeta = [],
-        bool $clearSharedOverrides = true,
     ): void {
         $value = $this->validator->normalizeForWrite($key, $scope, $value);
         $value = self::prepareValue($key, $value);
@@ -53,25 +52,6 @@ final class ContentWriter
         }
 
         SiteSetting::set($key, $value, $scope, $locale);
-
-        // Brand keys (logo, favicon, default item photo, …) must stay identical
-        // across website + order app. Hub may write one scope — mirror the rest.
-        if (ContentRegistry::isSyncedAcrossApps($key)) {
-            foreach (ContentRegistry::SCOPES as $mirrorScope) {
-                if ($mirrorScope === $scope) {
-                    continue;
-                }
-                SiteSetting::set($key, $value, $mirrorScope, $locale);
-            }
-        }
-
-        // Publishing to "shared" while website/order_app overrides linger makes the
-        // new value invisible on the public site (resolver prefers app scope).
-        // Clear those overrides so "Same in both" edits actually show — same as
-        // ContentController::share(), but applied on every shared write.
-        if ($clearSharedOverrides && $scope === 'shared' && ContentRegistry::isShareable($key) && ! ContentRegistry::isSyncedAcrossApps($key)) {
-            $this->clearAppOverrides($key, $locale);
-        }
 
         // hero_slides is the sole source of truth — blank legacy slots so an
         // empty array cannot resurrect old hero_slide_1/2/3 on the public site.
@@ -168,12 +148,4 @@ final class ContentWriter
         }
     }
 
-    private function clearAppOverrides(string $key, string $locale): void
-    {
-        foreach (ContentRegistry::APPS as $appScope) {
-            // clearScoped forgets the forever cache — bare delete left stale
-            // getScoped() values that blocked Content Hub "Different per app".
-            SiteSetting::clearScoped($key, $appScope, $locale);
-        }
-    }
 }

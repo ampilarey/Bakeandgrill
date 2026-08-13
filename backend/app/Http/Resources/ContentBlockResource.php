@@ -56,7 +56,6 @@ class ContentBlockResource extends JsonResource
             'rich' => (bool) ($block['rich'] ?? false),
             'deprecated' => (bool) ($block['deprecated'] ?? false),
             'section_enable' => (bool) ($block['section_enable'] ?? false),
-            'brand_synced' => ContentRegistry::isSyncedAcrossApps($key),
             'description' => is_string($description) && $description !== '' ? $description : null,
             'default' => $block['default'] ?? null,
             'shared' => $shared,

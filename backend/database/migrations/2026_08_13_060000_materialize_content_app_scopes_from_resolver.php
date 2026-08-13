@@ -100,7 +100,11 @@ return new class extends Migration
      */
     private function legacyLookupChain(string $key, string $app, string $locale): array
     {
-        if (ContentRegistry::isSyncedAcrossApps($key)) {
+        // Historical brand-synced keys (pre Stage C.4) used a cross-app chain.
+        $legacyBrandSynced = in_array($key, [
+            'default_item_image', 'logo', 'logo_dark', 'favicon', 'og_image', 'primary_color',
+        ], true);
+        if ($legacyBrandSynced) {
             $scopes = ['website', 'order_app', 'shared'];
             usort($scopes, function (string $a, string $b) use ($app): int {
                 if ($a === $app) {

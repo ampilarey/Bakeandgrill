@@ -65,11 +65,9 @@ final class ContentValidationService
             $this->fail('scope', 'Invalid content scope.');
         }
 
-        // Shared is the seed/default layer for every registry key (ContentResolver
-        // falls through to shared). App scopes are the overrides and must target
-        // an app the key is registered for. Brand-synced keys may be written to
-        // any scope because ContentWriter mirrors them across website/order/shared.
-        if ($scope === 'shared' || ContentRegistry::isSyncedAcrossApps($key)) {
+        // Shared is the business-record layer (Business Details / ops). App scopes
+        // must target an app the key is registered for.
+        if ($scope === 'shared') {
             return;
         }
 

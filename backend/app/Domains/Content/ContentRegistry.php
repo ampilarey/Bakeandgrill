@@ -24,14 +24,6 @@ final class ContentRegistry
      *
      * @var list<string>
      */
-    public const BRAND_SYNCED_KEYS = [
-        'default_item_image',
-        'logo',
-        'logo_dark',
-        'favicon',
-        'og_image',
-        'primary_color',
-    ];
 
     /**
      * @return array<string, array<string, mixed>>
@@ -78,10 +70,6 @@ final class ContentRegistry
      * Brand assets that must resolve the same on website + order app.
      * Content Studio may write an app scope; writers mirror across scopes.
      */
-    public static function isSyncedAcrossApps(string $key): bool
-    {
-        return in_array($key, self::BRAND_SYNCED_KEYS, true);
-    }
 
     /**
      * Same/Different link state for hub UI.

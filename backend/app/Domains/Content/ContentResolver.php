@@ -104,37 +104,6 @@ final class ContentResolver
      */
     private function lookupChain(string $key = ''): array
     {
-        // Brand-synced cross-app chain removed in Stage C.4 — until then brand
-        // keys still prefer current app, other app, then shared.
-        if (ContentRegistry::isSyncedAcrossApps($key)) {
-            $scopes = ['website', 'order_app', 'shared'];
-            usort($scopes, function (string $a, string $b): int {
-                if ($a === $this->app) {
-                    return -1;
-                }
-                if ($b === $this->app) {
-                    return 1;
-                }
-                if ($a === 'shared') {
-                    return 1;
-                }
-                if ($b === 'shared') {
-                    return -1;
-                }
-
-                return 0;
-            });
-            $chain = [];
-            foreach ($scopes as $scope) {
-                $chain[] = [$scope, $this->locale];
-                if ($this->locale !== 'en') {
-                    $chain[] = [$scope, 'en'];
-                }
-            }
-
-            return $chain;
-        }
-
         $chain = [
             [$this->app, $this->locale],
         ];

@@ -53,8 +53,7 @@ class BusinessDetailsController extends Controller
         foreach ($data['changes'] as $change) {
             $key = (string) $change['key'];
             $value = (string) ($change['value'] ?? '');
-            // Direct shared write — do NOT use ContentWriter (brand mirroring /
-            // clearAppOverrides would touch app scopes).
+            // Direct shared write — never ContentWriter (app scopes stay untouched).
             SiteSetting::set($key, $value, 'shared', 'en');
         }
 
