@@ -237,7 +237,7 @@ jobs:
           # Fail fast if any migration is PostgreSQL-incompatible.
           php artisan migrate:fresh --force
           php artisan test --testsuite=Contract --stop-on-failure
-          php artisan test --stop-on-failure --filter='WebsiteFooterTest|GiftCardStockTest|RouteSurfaceRegressionTest|StaffRouteMiddlewareTest|ReturnUrlSafetyTest|OverpaymentBlockedTest|PrintJobIdempotencyTest|KdsFinancialDataMinimizationTest|DepositActivityReportTest|CreditRefundActorTest|CustomerCreditTest::test_duplicate|InventoryDeductionTest::test_restore|WebhookIdempotencyTest|EnsureActiveDeviceTest|OfflinePosSyncTest|CustomerTokenStaffRoutesTest'
+          php artisan test --stop-on-failure --filter='WebsiteFooterTest|ReceiptFeedbackUniqueMigrationTest|GiftCardStockTest|RouteSurfaceRegressionTest|StaffRouteMiddlewareTest|ReturnUrlSafetyTest|OverpaymentBlockedTest|PrintJobIdempotencyTest|KdsFinancialDataMinimizationTest|DepositActivityReportTest|CreditRefundActorTest|CustomerCreditTest::test_duplicate|InventoryDeductionTest::test_restore|WebhookIdempotencyTest|EnsureActiveDeviceTest|OfflinePosSyncTest|CustomerTokenStaffRoutesTest'
 
   frontend:
     name: Frontend type-check & build
