@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\Schema;
  */
 return new class extends Migration
 {
+    /**
+     * PostgreSQL aborts the whole migration transaction on a failed DROP INDEX;
+     * we attempt dropIndex when the non-unique index may already be absent
+     * (FK-backed receipt_id never created receipt_feedback_receipt_id_index).
+     */
+    public $withinTransaction = false;
+
     public function up(): void
     {
         // --- Complaints: categories list (replaces singular category) ---
