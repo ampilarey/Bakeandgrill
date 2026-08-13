@@ -19,6 +19,8 @@ export function DividerBlock({ settings }: { settings: GenericBlockSettings }) {
         maxWidth: 'var(--layout-max)',
         margin: '0 auto',
         width: '100%',
+        padding: '0 var(--page-gutter)',
+        boxSizing: 'border-box',
         borderBottom: style === 'rule' ? '1px solid var(--color-border)' : undefined,
       }}
     />

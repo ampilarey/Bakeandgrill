@@ -303,10 +303,19 @@ export function HomePage() {
       data-home-block="office_orders"
       style={{
         borderTop: '1px solid var(--color-border)',
-        padding: '2rem var(--page-gutter)',
+        padding: '2rem 0',
         background: 'var(--color-surface-alt)',
       }}
     >
+      <div
+        style={{
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+          width: '100%',
+          padding: '0 var(--page-gutter)',
+          boxSizing: 'border-box',
+        }}
+      >
       <div
         style={{
           maxWidth: '520px',
@@ -357,6 +366,7 @@ export function HomePage() {
         >
           Plan your event
         </button>
+      </div>
       </div>
     </section>
   );

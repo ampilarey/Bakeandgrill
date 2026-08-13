@@ -24,10 +24,18 @@ export function ReorderStrip({ orders, customerName, reorderingId, onReorder }: 
         background: 'var(--color-surface-alt)',
         borderTop: '1px solid var(--color-border)',
         borderBottom: '1px solid var(--color-border)',
-        padding: '1.25rem var(--page-gutter)',
+        padding: '1.25rem 0',
       }}
     >
-      <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+      <div
+        style={{
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+          padding: '0 var(--page-gutter)',
+          boxSizing: 'border-box',
+          width: '100%',
+        }}
+      >
         <p
           style={{
             fontSize: '0.72rem',

@@ -31,10 +31,18 @@ export function SpecialsCarousel({ offers, apiOrigin }: Props) {
       className="offers-rail"
       style={{
         borderTop: '1px solid var(--color-border)',
-        padding: '1.25rem var(--page-gutter)',
+        padding: '1.25rem 0',
       }}
     >
-      <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+      <div
+        style={{
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+          padding: '0 var(--page-gutter)',
+          boxSizing: 'border-box',
+          width: '100%',
+        }}
+      >
         <div
           style={{
             display: 'flex',

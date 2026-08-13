@@ -1367,8 +1367,8 @@ export function CheckoutPage() {
       />
 
       {/* ── Page heading ───────────────────────────────────── */}
-      <div style={{ background: 'linear-gradient(135deg, var(--color-surface-alt) 0%, var(--color-surface) 100%)', borderBottom: '1px solid rgba(212,129,58,0.2)', padding: '0.875rem var(--page-gutter)' }}>
-        <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--color-surface-alt) 0%, var(--color-surface) 100%)', borderBottom: '1px solid rgba(212,129,58,0.2)', padding: '0.875rem 0' }}>
+        <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto', width: '100%', padding: '0 var(--page-gutter)', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
           <span style={{ fontSize: '1.25rem' }}>🧾</span>
           <div>
             <h1 style={{ fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--color-text)', margin: 0, lineHeight: 1.2 }}>
