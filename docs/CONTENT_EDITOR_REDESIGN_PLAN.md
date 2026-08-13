@@ -463,8 +463,16 @@ device (matrix row 13 — device toggle locks to canonical surface). Vitest:
 `VisualBlockPreview.test.tsx`, `ContentHub.previewDeviceParity.test.tsx`,
 `LivePreviewFrame` lock coverage.
 
+**Stage 7 — Visual landing redesign (admin). Done on this branch.** Hybrid task-first landing for
+Website Content and Order App Content (desktop + mobile admin only — not the public site):
+**Start here** (Edit hero → `hero_slides` focus; Edit Home → home surface) → **Pages** list →
+**Layout by device** (segmented Desktop/Mobile + denser slot rows) → **Site-wide** / Tools.
+Editors and sheets unchanged. Vitest: `SurfaceBuilderLanding.test.tsx`; Playwright mobile /
+responsive band specs still assert `surface-builder-landing` + `task-card-hero`.
+
 Stages 1 and 4 carry most of the value. Stage 1 is correctness and cannot be deferred; Stage 4 is
-the relief the owner actually asked for.
+the relief the owner actually asked for. Stage 7 is the visible landing redesign that Stages 2–6
+deliberately deferred.
 
 ---
 

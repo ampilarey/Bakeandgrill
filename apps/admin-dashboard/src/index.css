@@ -4185,6 +4185,203 @@ a { text-decoration: none; color: inherit; }
 .hub-surface-landing {
   max-width: none;
 }
+
+/* Stage 7 — hybrid task-first landing */
+.hub-landing-v7 {
+  gap: 1.5rem;
+}
+.hub-landing-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.hub-landing-primary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.hub-landing-primary-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 72px;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.hub-landing-primary-btn:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+.hub-landing-primary-btn--hero {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+.hub-landing-primary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--color-bg);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.hub-landing-primary-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.hub-landing-primary-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.hub-landing-primary-desc {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+.hub-landing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.hub-landing-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+}
+.hub-landing-row:hover {
+  border-color: var(--color-primary);
+}
+.hub-landing-row-icon {
+  display: inline-flex;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+.hub-landing-row-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.hub-landing-row-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 42%;
+}
+.hub-landing-surfaces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.hub-landing-surfaces-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.hub-landing-surfaces-head .hub-task-cluster-label {
+  margin: 0;
+}
+.hub-landing-device-tabs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  gap: 2px;
+}
+.hub-landing-device-tab {
+  min-height: 36px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hub-landing-device-tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+.hub-landing-slot-list.hub-surface-slots {
+  grid-template-columns: 1fr;
+}
+.hub-landing-surfaces .hub-surface-card {
+  min-height: 52px;
+}
+@media (min-width: 900px) {
+  .hub-landing-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+  .hub-landing-primary-btn {
+    min-height: 104px;
+    align-items: flex-start;
+  }
+  .hub-landing-primary-icon {
+    margin-top: 2px;
+  }
+  .hub-landing-sitewide-grid.hub-task-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .hub-landing-primary-btn,
+  .hub-landing-row {
+    max-width: 100%;
+  }
+  .hub-landing-row-meta {
+    max-width: 36%;
+  }
+}
 .hub-integrity-panel {
   margin: 0 0 20px;
   border: 1px solid var(--color-border);

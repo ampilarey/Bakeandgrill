@@ -127,10 +127,11 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(screen.queryByRole('button', { name: 'Pages' })).toBeNull();
     expect(screen.queryByTestId('section-card-Pages')).toBeNull();
 
-    expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
-    expect(screen.getByTestId('task-card-opening_hours')).toBeTruthy();
-    expect(screen.queryByTestId('task-card-order_about')).toBeNull();
-    expect(screen.getByTestId('task-card-catering_events')).toBeTruthy();
+    expect(screen.getByTestId('hub-landing-primary')).toBeTruthy();
+    expect(screen.getByTestId('task-card-hero')).toBeTruthy();
+    expect(screen.getByTestId('hub-landing-page-contact-page')).toBeTruthy();
+    expect(screen.getByTestId('hub-landing-page-hours-page')).toBeTruthy();
+    expect(screen.queryByTestId('hub-landing-page-about')).toBeNull();
     expect(screen.getByTestId('surface-card-website.mobile.footer')).toBeTruthy();
     expect(screen.queryByTestId('surface-app-order_app')).toBeNull();
   });
@@ -140,13 +141,13 @@ describe('ContentHub Website pages focused tasks', () => {
     await screen.findByTestId('surface-builder-landing');
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
     expect(screen.queryByTestId('section-editor')).toBeNull();
-    expect(screen.getByTestId('task-card-contact_map')).toBeTruthy();
+    expect(screen.getByTestId('hub-landing-page-contact-page')).toBeTruthy();
   });
 
   it('Contact page sheet shows only contact fields', async () => {
     openHub('/content/website');
-    await screen.findByTestId('task-card-contact_map');
-    fireEvent.click(screen.getByTestId('task-card-contact_map'));
+    await screen.findByTestId('hub-landing-page-contact-page');
+    fireEvent.click(screen.getByTestId('hub-landing-page-contact-page'));
 
     const sheet = await screen.findByTestId('content-editor-sheet');
     expect(sheet.textContent).toMatch(/Contact page/);
@@ -300,8 +301,8 @@ describe('ContentHub Website pages focused tasks', () => {
     Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: width });
 
     openHub('/content/website');
-    await screen.findByTestId('task-card-contact_map');
-    fireEvent.click(screen.getByTestId('task-card-contact_map'));
+    await screen.findByTestId('hub-landing-page-contact-page');
+    fireEvent.click(screen.getByTestId('hub-landing-page-contact-page'));
     const sheet = await screen.findByTestId('content-editor-sheet');
 
     await waitFor(() => {
