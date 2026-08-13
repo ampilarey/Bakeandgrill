@@ -40,7 +40,6 @@ class PublicSiteSettingsTest extends TestCase
             'footer_hours_heading',
             'footer_payments_text',
             'footer_delivery_text',
-            'footer_ramadan_note',
             'nav_order_cta_text',
         ];
 

@@ -579,7 +579,7 @@ return [
             'label' => 'Footer — Ramadan note',
             'group' => 'Footer',
             'type' => 'text',
-            'apps' => ['website', 'order_app'],
+            'apps' => ['website'],
             'shareable' => true,
             'public' => true,
             'rich' => false,
