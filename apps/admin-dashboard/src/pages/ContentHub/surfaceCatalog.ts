@@ -175,13 +175,22 @@ export type BlockLike = {
   settings?: Record<string, unknown>;
 };
 
+/** Enabled blocks placed on one surface (canonical card-count source). */
+export function listBlocksOnSurface(
+  blocks: BlockLike[],
+  device: SurfaceDevice,
+  slot: SurfaceSlot,
+): BlockLike[] {
+  return blocks.filter(
+    (b) => b.is_enabled && blockOnSurface(b.settings, device, slot),
+  );
+}
+
 /** Count enabled blocks on one surface for one app. */
 export function countBlocksOnSurface(
   blocks: BlockLike[],
   device: SurfaceDevice,
   slot: SurfaceSlot,
 ): number {
-  return blocks.filter(
-    (b) => b.is_enabled && blockOnSurface(b.settings, device, slot),
-  ).length;
+  return listBlocksOnSurface(blocks, device, slot).length;
 }

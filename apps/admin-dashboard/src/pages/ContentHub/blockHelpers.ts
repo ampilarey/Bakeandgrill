@@ -20,7 +20,7 @@ const KEY_HELPERS: Record<string, string> = {
   logo_dark: 'Logo for dark backgrounds; falls back to the light logo if empty.',
   favicon: 'Small icon in the browser tab and on phone home screens.',
   og_image: 'Image used when someone shares your site link on social apps.',
-  primary_color: 'Brand accent colour for buttons and highlights on both apps.',
+  primary_color: 'Brand accent colour for buttons and highlights on this app only.',
   default_item_image: 'Photo shown for menu items that do not have their own image.',
   hero_slides: 'Full-width banners at the top of the home page (image or muted video). Edit the current destination from its own Content Hub.',
   homepage_categories: 'Four category shortcuts on the home page.',

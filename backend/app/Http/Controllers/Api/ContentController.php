@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Content\ContentIntegrityReport;
 use App\Domains\Content\ContentRegistry;
 use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentScopeMismatch;
@@ -80,6 +81,14 @@ class ContentController extends Controller
             'blocks' => ContentBlockResource::collectionFromRegistry($locale),
             'mismatches' => ContentScopeMismatch::collect($locale),
         ]);
+    }
+
+    /**
+     * GET /api/admin/content/integrity — admin-only Content & Branding audit report.
+     */
+    public function integrity(): JsonResponse
+    {
+        return response()->json(ContentIntegrityReport::generate());
     }
 
     /**

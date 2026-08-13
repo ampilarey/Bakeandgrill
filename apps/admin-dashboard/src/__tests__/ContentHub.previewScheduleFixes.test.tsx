@@ -47,6 +47,13 @@ vi.mock('../pages/ContentHub/HomeLayoutEditor', async () => {
 });
 
 vi.mock('../api/content', () => ({
+  getContentIntegrity: vi.fn(async () => ({
+    generated_at: '2026-08-13T00:00:00Z',
+    surfaces: [],
+    issues: [],
+    needs_review: [],
+    summary: { issue_count: 0, needs_review_count: 0, surface_count: 14 },
+  })),
   getContentBlocks: vi.fn(),
   getContentSchedules: vi.fn(async () => ({ schedules: [] })),
   getContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),

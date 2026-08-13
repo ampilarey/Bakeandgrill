@@ -85,6 +85,61 @@ function blocksFor(app: string) {
       removable: true,
       supports_shared_content: false,
     },
+    {
+      id: 12,
+      app: 'website',
+      page: 'home',
+      block_type: 'prayer_bar',
+      position: 2,
+      is_enabled: true,
+      content_mode: 'own',
+      settings: {
+        show_desktop: true,
+        show_mobile: true,
+        placement_desktop: 'header',
+        placement_mobile: 'header',
+      },
+      label: 'Prayer Time Banner',
+      description: 'Prayer banner',
+      removable: true,
+      supports_shared_content: false,
+    },
+    {
+      id: 13,
+      app: 'website',
+      page: 'home',
+      block_type: 'announcement',
+      position: 3,
+      is_enabled: true,
+      content_mode: 'own',
+      settings: {
+        show_desktop: true,
+        show_mobile: true,
+        placement_desktop: 'header',
+        placement_mobile: 'header',
+      },
+      label: 'Announcement banner',
+      description: 'Announcement',
+      removable: true,
+      supports_shared_content: false,
+    },
+    {
+      id: 14,
+      app: 'website',
+      page: 'home',
+      block_type: 'greeting',
+      position: 4,
+      is_enabled: false,
+      content_mode: 'own',
+      settings: {
+        show_mobile: true,
+        placement_mobile: 'header',
+      },
+      label: 'Greeting',
+      description: 'Greeting',
+      removable: true,
+      supports_shared_content: false,
+    },
   ];
 }
 
@@ -145,7 +200,7 @@ describe('HomeLayoutEditor', () => {
 
     expect(screen.getByTestId('home-layout-block-hero')).toBeTruthy();
     expect(screen.getByTestId('home-comp-status-hero').textContent).toMatch(/Added/);
-    expect(screen.getByTestId('home-comp-status-prayer_bar').textContent).toMatch(/Not added/);
+    expect(screen.getByTestId('home-comp-status-prayer_bar').textContent).toMatch(/Added/);
 
     expect(screen.queryByTestId('home-layout-move-up-10')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Hide$/i })).toBeNull();
@@ -191,7 +246,7 @@ describe('HomeLayoutEditor', () => {
     ));
   });
 
-  it('filters components when surfaceFilter is set', async () => {
+  it('opens only the components counted on the surface card', async () => {
     render(
       <HomeLayoutEditor
         surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
@@ -201,10 +256,27 @@ describe('HomeLayoutEditor', () => {
 
     expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website');
     expect(screen.getByTestId('home-layout-surface-breadcrumb').textContent).toMatch(/Website · Mobile · Header/);
-    expect(screen.getByTestId('home-layout-block-prayer_bar')).toBeTruthy();
-    expect(screen.getByTestId('home-layout-block-announcement')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/2 components/);
+    expect(screen.getByTestId('home-components-overview').getAttribute('data-surface-component-count')).toBe('2');
+
+    // Exactly the two enabled header instances — not the full type library, not home hero/trust, not disabled greeting.
+    const rows = screen.getByTestId('home-components-overview').querySelectorAll('[data-testid^="home-layout-block-"]');
+    expect(rows).toHaveLength(2);
+    expect(screen.getByTestId('home-layout-block-website.mobile.header.12')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-block-website.mobile.header.13')).toBeTruthy();
+    expect(screen.queryByTestId('home-layout-block-hero')).toBeNull();
+    expect(screen.queryByTestId('home-layout-block-greeting')).toBeNull();
     expect(screen.queryByTestId('home-layout-block-mode_cards')).toBeNull();
-    expect(screen.queryByTestId('home-layout-tab-website')).toBeNull();
     expect(screen.getByTestId('home-layout-app-label').textContent).toMatch(/Website/);
+  });
+
+  it('shows empty state when a surface has zero components', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'bottom_navigation' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-surface-empty')).toBeInTheDocument());
+    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/0 components/);
   });
 });

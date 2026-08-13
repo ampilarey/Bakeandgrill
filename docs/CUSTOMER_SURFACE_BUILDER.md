@@ -4,37 +4,37 @@ Explicit **page_blocks** placements for Website and Order App chrome. Each block
 
 ## Component library (non-deprecated)
 
-| Type | Label | Shared content |
+| Type | Label | Per-app content |
 |------|-------|----------------|
-| `greeting` | Greeting / welcome | yes |
-| `prayer_bar` | Prayer Time Banner | yes |
-| `hero` | Hero banner / promotional carousel | yes |
-| `announcement` | Announcement banner | yes |
-| `service_availability` | Service availability / maintenance | no |
-| `opening_status` | Opening status | no |
-| `stat_chips` | Stat chips / loyalty summary | no |
-| `mode_cards` | Order mode cards | no |
-| `specials` | Specials / offers carousel | yes |
-| `featured` | Featured items | yes |
-| `categories` | Categories | yes |
-| `trust_strip` | Trust strip | yes |
-| `proof` | Social proof | yes |
-| `reviews` | Customer reviews | no |
-| `reorder_strip` | Reorder strip | no |
-| `cta` | Call-to-action band | yes |
-| `location` | Location / map | yes |
-| `events_band` | Catering / events band | yes |
-| `office_orders` | Office orders card | yes |
-| `brand_footer` | Brand footer / Home footer | yes |
-| `site_footer` | Full footer | yes |
-| `bottom_nav` | Bottom navigation | no |
-| `rich_text` | Custom text | yes |
-| `image` | Custom image | yes |
-| `image_text` | Image with text | yes |
-| `video` | Video | yes |
-| `button_band` | Button band | yes |
-| `faq_list` | FAQ | yes |
-| `divider` | Divider / spacing | no |
+| `greeting` | Greeting / welcome | independent |
+| `prayer_bar` | Prayer Time Banner | independent |
+| `hero` | Hero banner / promotional carousel | independent |
+| `announcement` | Announcement banner | independent |
+| `service_availability` | Service availability / maintenance | independent |
+| `opening_status` | Opening status | independent |
+| `stat_chips` | Stat chips / loyalty summary | independent |
+| `mode_cards` | Order mode cards | independent |
+| `specials` | Specials / offers carousel | independent |
+| `featured` | Featured items | independent |
+| `categories` | Categories | independent |
+| `trust_strip` | Trust strip | independent |
+| `proof` | Social proof | independent |
+| `reviews` | Customer reviews | independent |
+| `reorder_strip` | Reorder strip | independent |
+| `cta` | Call-to-action band | independent |
+| `location` | Location / map | independent |
+| `events_band` | Catering / events band | independent |
+| `office_orders` | Office orders card | independent |
+| `brand_footer` | Brand footer / Home footer | independent |
+| `site_footer` | Full footer | independent |
+| `bottom_nav` | Bottom navigation | independent |
+| `rich_text` | Custom text | independent |
+| `image` | Custom image | independent |
+| `image_text` | Image with text | independent |
+| `video` | Video | independent |
+| `button_band` | Button band | independent |
+| `faq_list` | FAQ | independent |
+| `divider` | Divider / spacing | independent |
 
 `promo_carousel` is deprecated (merged into `hero`).
 

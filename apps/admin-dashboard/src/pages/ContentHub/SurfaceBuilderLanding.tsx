@@ -9,6 +9,7 @@ import {
   type SurfaceDevice,
   type SurfaceRecord,
 } from './surfaceCatalog';
+import { ContentIntegrityPanel } from './ContentIntegrityPanel';
 import { BRAND_PAGE_TASKS, type ContentTask, type ContentTaskId } from './taskLandingConfig';
 
 export type SurfaceBuilderLandingProps = {
@@ -138,6 +139,8 @@ export function SurfaceBuilderLanding({
           </div>
         ))}
       </section>
+
+      <ContentIntegrityPanel appFilter={appFilter} />
 
       <section className="hub-task-cluster" data-testid="task-cluster-brand_pages">
         <h2 className="hub-task-cluster-label">Brand &amp; pages</h2>

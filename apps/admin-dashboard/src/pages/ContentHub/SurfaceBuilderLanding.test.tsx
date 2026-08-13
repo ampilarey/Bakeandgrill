@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
 
+vi.mock('../../api/content', () => ({
+  getContentIntegrity: vi.fn(async () => ({
+    generated_at: '2026-08-13T00:00:00Z',
+    surfaces: [],
+    issues: [],
+    needs_review: [],
+    summary: { issue_count: 0, needs_review_count: 0, surface_count: 14 },
+  })),
+}));
+
 describe('SurfaceBuilderLanding', () => {
   it('renders Website / Order App surface tree and brand pages cluster', () => {
     const onSelectSurface = vi.fn();
@@ -46,7 +56,7 @@ describe('SurfaceBuilderLanding', () => {
     );
   });
 
-  it.each([320, 375, 390, 1024, 1280, 1440] as const)('does not overflow horizontally at %ipx', (width) => {
+  it.each([320, 375, 390, 414, 767, 768, 1024, 1199, 1200, 1366] as const)('does not overflow horizontally at %ipx', (width) => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
     const root = document.createElement('div');
     root.style.width = `${width}px`;
