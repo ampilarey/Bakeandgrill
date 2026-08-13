@@ -708,7 +708,11 @@ export function RewardsPage() {
       <PageHeader title={t('rewards.title')} />
       <div
         style={{
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+          width: '100%',
           padding: '1.25rem var(--page-gutter)',
+          boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',

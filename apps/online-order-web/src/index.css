@@ -1206,6 +1206,14 @@ a { text-decoration: none; color: inherit; }
   padding: 0.75rem var(--page-gutter) 0;
   flex-wrap: wrap;
 }
+@media (min-width: 769px) {
+  .status-pill-row {
+    max-width: var(--layout-max);
+    width: 100%;
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+}
 
 /* ── Online ordering status pill — matches main website hero badge ── */
 .ordering-status-bar {
@@ -4016,6 +4024,16 @@ textarea.field-input {
   position: sticky;
   top: 0;
   z-index: calc(var(--z-header) - 10);
+}
+
+/* Desktop: keep page titles on the same 1280 rail as TopNav */
+@media (min-width: 769px) {
+  .page-header {
+    max-width: var(--layout-max);
+    width: 100%;
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
 }
 
 .page-header__title {

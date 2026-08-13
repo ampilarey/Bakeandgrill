@@ -37,10 +37,18 @@ export function CategoryShortcuts({ categories, eyebrow, title }: Props) {
       aria-label={title || 'Browse by category'}
       style={{
         borderTop: '1px solid var(--color-border)',
-        padding: '1.25rem var(--page-gutter) 0.5rem',
+        padding: '1.25rem 0 0.5rem',
       }}
     >
-      <div style={{ maxWidth: 'var(--layout-max)', margin: '0 auto' }}>
+      <div
+        style={{
+          maxWidth: 'var(--layout-max)',
+          margin: '0 auto',
+          padding: '0 var(--page-gutter)',
+          boxSizing: 'border-box',
+          width: '100%',
+        }}
+      >
         {(eyebrow || title) && (
           <div style={{ marginBottom: '0.85rem' }}>
             {eyebrow && (
