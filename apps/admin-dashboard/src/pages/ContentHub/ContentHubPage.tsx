@@ -65,7 +65,13 @@ import { SectionEditor } from './SectionEditor';
 import { PreviewPane } from './PreviewPane';
 import { SurfaceBuilderLanding } from './SurfaceBuilderLanding';
 import type { ContentTask } from './taskLandingConfig';
-import { parseSurfaceId, countBlocksOnSurface, surfaceId, type SurfaceRecord } from './surfaceCatalog';
+import { defaultHomeSurface, surfaceCountLabel } from './canonicalCatalog';
+import {
+  parseSurfaceId,
+  surfaceId,
+  type SurfaceFilter,
+  type SurfaceRecord,
+} from './surfaceCatalog';
 import { orderSectionNames } from './hubLayoutConfig';
 import {
   LEGACY_PAGES_GROUP,
@@ -309,8 +315,10 @@ export function ContentHubPage() {
   const [layoutDraft, setLayoutDraft] = useState(false);
   /** Bumps when layout draft versions change so the docked preview remints. */
   const [layoutRevision, setLayoutRevision] = useState(0);
-  /** Component counts per surface for the landing overview. */
-  const [surfaceCounts, setSurfaceCounts] = useState<Record<string, number>>({});
+  /** Component count labels per surface for the landing overview. */
+  const [surfaceCounts, setSurfaceCounts] = useState<Record<string, string>>({});
+  /** Synchronous surface selection — avoids URL lag showing the full type library. */
+  const [activeSurface, setActiveSurface] = useState<SurfaceFilter | null>(null);
 
   const handleLayoutDraftChange = (signal: LayoutDraftSignal) => {
     setLayoutDraft(signal.hasDraft);
@@ -421,13 +429,14 @@ export function ContentHubPage() {
         if (cancelled) return;
         // Only the current hub app's layout draft counts toward this hub's Publish bar.
         setLayoutDraft(Boolean(hubApp === 'website' ? w.draft : o.draft));
-        const counts: Record<string, number> = {};
+        const counts: Record<string, string> = {};
         for (const app of ['website', 'order_app'] as const) {
           const blocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
           for (const device of ['desktop', 'mobile'] as const) {
             for (const slot of ['header', 'home', 'footer', 'bottom_navigation'] as const) {
               if (device === 'desktop' && slot === 'bottom_navigation') continue;
-              counts[surfaceId(app, device, slot)] = countBlocksOnSurface(blocks, device, slot);
+              const filter = { app, device, slot };
+              counts[surfaceId(app, device, slot)] = surfaceCountLabel(blocks, filter).label;
             }
           }
         }
@@ -437,7 +446,8 @@ export function ContentHubPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [hubApp]);
+    // layoutRevision bumps on every draft mutate so card counts refresh immediately.
+  }, [hubApp, layoutDraft, layoutRevision]);
 
   // Compact Admin (768–1199): keep the section rail collapsed so the editor stays usable.
   useEffect(() => {
@@ -656,6 +666,7 @@ export function ContentHubPage() {
     setMobileBlockEditorKey(null);
     setMobileEditorOpen(false);
     setActiveGroup(null);
+    setActiveSurface(null);
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.delete('group');
@@ -672,17 +683,28 @@ export function ContentHubPage() {
       return;
     }
     setActiveGroup(next);
+    // Homepage always resolves to exactly one surface — never the full type library.
+    let resolvedSurface = next === 'Homepage' ? (surface ?? null) : null;
+    if (next === 'Homepage' && !resolvedSurface) {
+      const app = homeAppHint ?? hubApp;
+      const device = isMobile ? 'mobile' : 'desktop';
+      resolvedSurface = surfaceId(app, device, 'home');
+    }
+    const parsed = resolvedSurface ? parseSurfaceId(resolvedSurface) : null;
+    setActiveSurface(parsed);
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.delete('section');
       p.set('group', next);
       if (next === 'Homepage' && homeAppHint) {
         p.set('homeApp', homeAppHint);
+      } else if (next === 'Homepage' && parsed) {
+        p.set('homeApp', parsed.app);
       } else {
         p.delete('homeApp');
       }
-      if (next === 'Homepage' && surface) {
-        p.set('surface', surface);
+      if (next === 'Homepage' && resolvedSurface) {
+        p.set('surface', resolvedSurface);
       } else {
         p.delete('surface');
       }
@@ -722,7 +744,27 @@ export function ContentHubPage() {
     searchParams.get('homeApp') === 'order_app' ? 'order_app' as const
       : searchParams.get('homeApp') === 'website' ? 'website' as const
         : hubApp;
-  const surfaceFilter = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
+  const urlSurface = parseSurfaceId(searchParams.get('surface')?.trim() ?? '');
+  // Prefer synchronous selection; fall back to URL; Homepage never opens unscoped.
+  const surfaceFilter: SurfaceFilter | null = activeSurface
+    ?? urlSurface
+    ?? (activeGroup === 'Homepage' ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
+
+  // Keep activeSurface aligned when deep-linking via URL only.
+  useEffect(() => {
+    if (!urlSurface) return;
+    setActiveSurface((prev) => {
+      if (
+        prev
+        && prev.app === urlSurface.app
+        && prev.device === urlSurface.device
+        && prev.slot === urlSurface.slot
+      ) {
+        return prev;
+      }
+      return urlSurface;
+    });
+  }, [urlSurface?.app, urlSurface?.device, urlSurface?.slot]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMobileBack = () => {
     clearActiveGroup();

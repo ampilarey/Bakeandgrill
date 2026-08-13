@@ -1,11 +1,11 @@
 /**
  * Canonical Content & Branding component catalog.
  *
- * Admin surface cards, editor lists, counts, and integrity checks MUST use this
- * module — not independent regex/group counters or the full type library.
+ * Surface-card counts, the configured-component editor list, Add picker,
+ * preview context, and duplicate checks MUST use these helpers — never the
+ * full type library or independent regex counters.
  *
- * Identity shape (page_block instances):
- *   app · page · surface(slot) · viewport(device) · component_id · component_type
+ * Identity: app · page · surface(slot) · viewport(device) · component_id · type
  */
 
 import {
@@ -34,7 +34,6 @@ export type CanonicalComponent = {
   enabled: boolean;
   owner: CanonicalOwner;
   label: string;
-  /** Block row id when sourced from page_blocks. */
   block_id: number;
   status: 'active' | 'needs_review' | 'archived';
   legacy_source?: string | null;
@@ -45,20 +44,81 @@ export type BlockInstance = BlockLike & {
   label?: string;
   position?: number;
   unknown?: boolean;
+  allows_multiple?: boolean;
 };
 
-/** Enabled blocks that render on a given surface — source of truth for card counts. */
-export function listComponentsOnSurface(
+/** Types that may only appear once per app × surface × device. */
+export const SINGLETON_SURFACE_TYPES = new Set([
+  'prayer_bar',
+  'announcement',
+  'bottom_nav',
+  'site_footer',
+  'brand_footer',
+  'opening_status',
+  'service_availability',
+  'greeting',
+  'stat_chips',
+  'mode_cards',
+  'hero',
+  'specials',
+  'featured',
+  'categories',
+  'trust_strip',
+  'proof',
+  'reviews',
+  'reorder_strip',
+  'cta',
+  'location',
+  'events_band',
+  'office_orders',
+]);
+
+export function isSingletonSurfaceType(type: string): boolean {
+  return SINGLETON_SURFACE_TYPES.has(type);
+}
+
+/**
+ * Exact instances placed on a surface (enabled or not).
+ * Filters by app (caller passes app-scoped blocks), device visibility, and slot placement.
+ */
+export function listPlacedOnSurface(
   blocks: BlockInstance[],
   filter: SurfaceFilter,
   page = 'home',
 ): CanonicalComponent[] {
   const allowed = new Set(typesForSlot(filter.slot));
   return blocks
-    .filter((b) => b.is_enabled && blockOnSurface(b.settings, filter.device, filter.slot))
+    .filter((b) => blockOnSurface(b.settings, filter.device, filter.slot))
     .slice()
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((b) => toCanonical(b, filter, page, allowed.has(b.block_type)));
+}
+
+/** Configured + showing (enabled) — source of truth for “N components” card labels. */
+export function listConfiguredOnSurface(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+  page = 'home',
+): CanonicalComponent[] {
+  return listPlacedOnSurface(blocks, filter, page).filter((c) => c.enabled);
+}
+
+/** Placed on the surface but disabled — show separately as Hidden, never in the live count. */
+export function listHiddenOnSurface(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+  page = 'home',
+): CanonicalComponent[] {
+  return listPlacedOnSurface(blocks, filter, page).filter((c) => !c.enabled);
+}
+
+/** @deprecated Use listConfiguredOnSurface — kept as alias for call sites. */
+export function listComponentsOnSurface(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+  page = 'home',
+): CanonicalComponent[] {
+  return listConfiguredOnSurface(blocks, filter, page);
 }
 
 function toCanonical(
@@ -92,25 +152,67 @@ export function countComponentsOnSurface(
   blocks: BlockInstance[],
   filter: SurfaceFilter,
 ): number {
-  return listComponentsOnSurface(blocks, filter).length;
+  return listConfiguredOnSurface(blocks, filter).length;
 }
 
-/** Types allowed on a slot that are not yet represented by an enabled instance on that surface. */
+export function countHiddenOnSurface(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+): number {
+  return listHiddenOnSurface(blocks, filter).length;
+}
+
+export type SurfaceCountLabel = {
+  showing: number;
+  hidden: number;
+  /** Card chip text, e.g. "2 components" or "2 showing · 1 hidden". */
+  label: string;
+};
+
+export function surfaceCountLabel(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+): SurfaceCountLabel {
+  const showing = countComponentsOnSurface(blocks, filter);
+  const hidden = countHiddenOnSurface(blocks, filter);
+  if (hidden > 0) {
+    return {
+      showing,
+      hidden,
+      label: `${showing} showing · ${hidden} hidden`,
+    };
+  }
+  return {
+    showing,
+    hidden: 0,
+    label: `${showing} component${showing === 1 ? '' : 's'}`,
+  };
+}
+
+/**
+ * Types offered in the Add Component picker for this surface.
+ * Singletons already configured (enabled or hidden) are excluded.
+ * Multi-instance types remain available.
+ */
 export function addableTypesOnSurface(
   blocks: BlockInstance[],
   filter: SurfaceFilter,
   availableTypes: string[],
+  allowsMultiple?: (type: string) => boolean,
 ): string[] {
-  const onSurface = new Set(
-    listComponentsOnSurface(blocks, filter).map((c) => c.component_type),
+  const placedTypes = new Set(
+    listPlacedOnSurface(blocks, filter).map((c) => c.component_type),
   );
   const slotTypes = typesForSlot(filter.slot);
-  return availableTypes.filter(
-    (t) => slotTypes.includes(t) && !onSurface.has(t),
-  );
+  return availableTypes.filter((t) => {
+    if (!slotTypes.includes(t)) return false;
+    const multi = allowsMultiple ? allowsMultiple(t) : !isSingletonSurfaceType(t);
+    if (multi) return true;
+    return !placedTypes.has(t);
+  });
 }
 
-/** Default placement settings when adding a block from a surface card. */
+/** Default placement when creating from a surface card — one instance, this device+slot. */
 export function placementSettingsForSurface(filter: SurfaceFilter): Record<string, unknown> {
   if (filter.device === 'desktop') {
     return {
@@ -132,10 +234,36 @@ export function surfaceAddress(filter: SurfaceFilter): string {
   return surfaceId(filter.app, filter.device, filter.slot);
 }
 
+/** Default surface when Homepage opens without an explicit card (home slot). */
+export function defaultHomeSurface(
+  app: SurfaceApp,
+  device: SurfaceDevice = 'desktop',
+): SurfaceFilter {
+  return { app, device, slot: 'home' };
+}
+
 /**
- * Detect duplicate active identities (same app/page/surface/viewport/position
- * with more than one enabled component when types collide on singleton slots).
+ * Duplicate singleton types on the same app/device/surface (enabled or hidden).
  */
+export function findSingletonDuplicatesOnSurface(
+  blocks: BlockInstance[],
+  filter: SurfaceFilter,
+): Array<{ type: string; component_ids: string[] }> {
+  const placed = listPlacedOnSurface(blocks, filter);
+  const byType = new Map<string, string[]>();
+  for (const c of placed) {
+    if (!isSingletonSurfaceType(c.component_type)) continue;
+    const list = byType.get(c.component_type) ?? [];
+    list.push(c.component_id);
+    byType.set(c.component_type, list);
+  }
+  const out: Array<{ type: string; component_ids: string[] }> = [];
+  for (const [type, ids] of byType) {
+    if (ids.length > 1) out.push({ type, component_ids: ids });
+  }
+  return out;
+}
+
 export function findDuplicateIdentities(components: CanonicalComponent[]): string[] {
   const seen = new Map<string, CanonicalComponent>();
   const dupes: string[] = [];
@@ -152,7 +280,6 @@ export function findDuplicateIdentities(components: CanonicalComponent[]): strin
   return dupes;
 }
 
-/** Content Hub keys that must never appear as editable customer content. */
 export function isOperationalContentKey(key: string): boolean {
   return isOpsOwnedContentKey(key);
 }

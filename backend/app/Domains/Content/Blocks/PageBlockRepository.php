@@ -62,7 +62,7 @@ final class PageBlockRepository
     ): Collection {
         $blocks ??= self::forPage($app);
 
-        return $blocks
+        $filtered = $blocks
             ->filter(function (PageBlock $block) use ($device, $slot, $enabledOnly) {
                 if ($enabledOnly && ! $block->is_enabled) {
                     return false;
@@ -83,6 +83,39 @@ final class PageBlockRepository
                 ];
             })
             ->values();
+
+        // Live/render path: if legacy data has duplicate singletons on one surface,
+        // keep the first (by device order) so customers never see doubles. Admin
+        // integrity still reports the extras when called with enabledOnly=false.
+        if ($enabledOnly) {
+            return self::dedupeSingletonsOnSurface($filtered);
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Keep one instance per non-multi block type (first wins after sort).
+     *
+     * @param  Collection<int, PageBlock>  $blocks
+     * @return Collection<int, PageBlock>
+     */
+    private static function dedupeSingletonsOnSurface(Collection $blocks): Collection
+    {
+        $seen = [];
+        $kept = [];
+        foreach ($blocks as $block) {
+            $type = (string) $block->block_type;
+            if ($type !== '' && ! BlockTypeRegistry::allowsMultiple($type)) {
+                if (isset($seen[$type])) {
+                    continue;
+                }
+                $seen[$type] = true;
+            }
+            $kept[] = $block;
+        }
+
+        return collect($kept)->values();
     }
 
     public static function bust(string $app, string $page = PageBlock::PAGE_HOME): void

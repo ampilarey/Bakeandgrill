@@ -169,6 +169,30 @@ describe('HomeLayoutEditor', () => {
           supports_shared_content: false,
         },
         {
+          type: 'announcement',
+          label: 'Announcement banner',
+          description: 'Announcement',
+          apps: ['website', 'order_app'],
+          removable: true,
+          supports_shared_content: false,
+        },
+        {
+          type: 'greeting',
+          label: 'Greeting',
+          description: 'Greeting',
+          apps: ['website', 'order_app'],
+          removable: true,
+          supports_shared_content: false,
+        },
+        {
+          type: 'opening_status',
+          label: 'Opening status',
+          description: 'Open/closed',
+          apps: ['website', 'order_app'],
+          removable: true,
+          supports_shared_content: false,
+        },
+        {
           type: 'featured',
           label: 'Featured items',
           description: 'Featured',
@@ -256,18 +280,33 @@ describe('HomeLayoutEditor', () => {
 
     expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website');
     expect(screen.getByTestId('home-layout-surface-breadcrumb').textContent).toMatch(/Website · Mobile · Header/);
-    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/2 components/);
+    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/2 configured/);
     expect(screen.getByTestId('home-components-overview').getAttribute('data-surface-component-count')).toBe('2');
 
-    // Exactly the two enabled header instances — not the full type library, not home hero/trust, not disabled greeting.
+    // Exactly the two enabled header instances — not the type library / Not added rows.
     const rows = screen.getByTestId('home-components-overview').querySelectorAll('[data-testid^="home-layout-block-"]');
     expect(rows).toHaveLength(2);
     expect(screen.getByTestId('home-layout-block-website.mobile.header.12')).toBeTruthy();
     expect(screen.getByTestId('home-layout-block-website.mobile.header.13')).toBeTruthy();
+    expect(screen.queryByText('Not added')).toBeNull();
     expect(screen.queryByTestId('home-layout-block-hero')).toBeNull();
-    expect(screen.queryByTestId('home-layout-block-greeting')).toBeNull();
     expect(screen.queryByTestId('home-layout-block-mode_cards')).toBeNull();
+    expect(screen.getByTestId('home-layout-hidden-website.mobile.header.14')).toBeTruthy();
     expect(screen.getByTestId('home-layout-app-label').textContent).toMatch(/Website/);
+  });
+
+  it('add picker lists only allowed types not already configured', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-add-component')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('home-layout-add-component'));
+    const picker = await screen.findByTestId('home-layout-add-picker-list');
+    expect(within(picker).queryByTestId('home-layout-add-type-prayer_bar')).toBeNull();
+    expect(within(picker).queryByTestId('home-layout-add-type-announcement')).toBeNull();
+    expect(within(picker).getByTestId('home-layout-add-type-opening_status')).toBeTruthy();
   });
 
   it('shows empty state when a surface has zero components', async () => {
@@ -277,6 +316,176 @@ describe('HomeLayoutEditor', () => {
       />,
     );
     await waitFor(() => expect(screen.getByTestId('home-layout-surface-empty')).toBeInTheDocument());
-    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/0 components/);
+    expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/0 configured/);
   });
+
+  it('keeps Website mobile header components off home and desktop header unless placed there', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'home' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+    expect(screen.queryByTestId('home-layout-block-website.mobile.header.12')).toBeNull();
+    expect(screen.queryByTestId('home-layout-block-website.mobile.header.13')).toBeNull();
+    // Default placement home: hero + trust_strip
+    expect(screen.getByTestId('home-layout-block-website.mobile.home.10')).toBeTruthy();
+    expect(screen.getByTestId('home-layout-block-website.mobile.home.11')).toBeTruthy();
+  });
+
+  it('loads only Website blocks for Website surfaces — never Order App instances', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+    expect(fetchAdminPageBlocks).toHaveBeenCalledWith('website');
+    expect(fetchAdminPageBlocks).not.toHaveBeenCalledWith('order_app');
+    expect(screen.queryByText('Order mode cards')).toBeNull();
+  });
+
+  it('adds a component to the selected surface and refreshes the configured count', async () => {
+    createPageBlock.mockResolvedValue({
+      block: {
+        id: 99,
+        block_type: 'opening_status',
+        is_enabled: true,
+        settings: { show_mobile: true, placement_mobile: 'header' },
+      },
+      draft: true,
+      version: 1,
+    });
+    fetchAdminPageBlocks
+      .mockResolvedValueOnce({
+        app: 'website',
+        page: 'home',
+        blocks: blocksFor('website'),
+        available_types: [
+          { type: 'opening_status', label: 'Opening status', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+          { type: 'prayer_bar', label: 'Prayer', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+          { type: 'announcement', label: 'Announcement', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+          { type: 'greeting', label: 'Greeting', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+        ],
+        draft: false,
+        version: 0,
+      })
+      .mockResolvedValueOnce({
+        app: 'website',
+        page: 'home',
+        blocks: [
+          ...blocksFor('website'),
+          {
+            id: 99,
+            app: 'website',
+            page: 'home',
+            block_type: 'opening_status',
+            position: 5,
+            is_enabled: true,
+            content_mode: 'own',
+            settings: { show_mobile: true, placement_mobile: 'header', show_desktop: false, placement_desktop: 'home' },
+            label: 'Opening status',
+            description: '',
+            removable: true,
+            supports_shared_content: false,
+          },
+        ],
+        available_types: [
+          { type: 'opening_status', label: 'Opening status', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+        ],
+        draft: true,
+        version: 1,
+      });
+
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/2 configured/));
+    fireEvent.click(screen.getByTestId('home-layout-add-component'));
+    fireEvent.click(await screen.findByTestId('home-layout-add-type-opening_status'));
+    await waitFor(() => expect(createPageBlock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app: 'website',
+        block_type: 'opening_status',
+        settings: expect.objectContaining({
+          show_mobile: true,
+          placement_mobile: 'header',
+          show_desktop: false,
+        }),
+      }),
+    ));
+    await waitFor(() => expect(screen.getByTestId('home-layout-surface-count').textContent).toMatch(/3 configured/));
+    expect(screen.getByTestId('home-layout-block-website.mobile.header.99')).toBeTruthy();
+  });
+
+  it('rejects adding a singleton already on the surface', async () => {
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-add-component')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('home-layout-add-component'));
+    expect(screen.queryByTestId('home-layout-add-type-prayer_bar')).toBeNull();
+  });
+
+  it('shows singleton duplicate warning with component ids', async () => {
+    fetchAdminPageBlocks.mockImplementation(async () => ({
+      app: 'website',
+      page: 'home',
+      blocks: [
+        ...blocksFor('website'),
+        {
+          id: 88,
+          app: 'website',
+          page: 'home',
+          block_type: 'prayer_bar',
+          position: 6,
+          is_enabled: true,
+          content_mode: 'own',
+          settings: { show_mobile: true, placement_mobile: 'header' },
+          label: 'Prayer dup',
+          description: '',
+          removable: true,
+          supports_shared_content: false,
+        },
+      ],
+      available_types: [
+        { type: 'prayer_bar', label: 'Prayer', description: '', apps: ['website'], removable: true, supports_shared_content: false },
+      ],
+      draft: false,
+      version: 0,
+    }));
+    render(
+      <HomeLayoutEditor
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-layout-singleton-warning')).toBeInTheDocument());
+    expect(screen.getByTestId('home-layout-singleton-warning').textContent).toMatch(/Duplicate components need review/);
+    expect(screen.getByTestId('home-layout-singleton-warning').textContent).toMatch(/website\.mobile\.header\.12/);
+    expect(screen.getByTestId('home-layout-singleton-warning').textContent).toMatch(/website\.mobile\.header\.88/);
+  });
+
+  it.each([320, 375, 390, 414, 768, 1024, 1200, 1366] as const)(
+    'surface editor does not overflow horizontally at %ipx',
+    async (width) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      const root = document.createElement('div');
+      root.style.width = `${width}px`;
+      root.style.overflow = 'auto';
+      document.body.appendChild(root);
+      render(
+        <HomeLayoutEditor
+          surfaceFilter={{ app: 'website', device: 'mobile', slot: 'header' }}
+        />,
+        { container: root },
+      );
+      await waitFor(() => expect(screen.getByTestId('home-layout-editor')).toBeInTheDocument());
+      expect(root.scrollWidth).toBeLessThanOrEqual(width + 1);
+      root.remove();
+    },
+  );
 });
