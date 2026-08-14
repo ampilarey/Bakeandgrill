@@ -7,12 +7,15 @@ use App\Domains\Content\ContentResolver;
 use App\Models\PageBlock;
 use App\Models\SiteSetting;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Enable a red (alert) site-wide announcement banner on Website + Order App.
- * Copy is editable later in Content Hub → Announcement.
+ * Re-apply red announcement banner content via SiteSetting::set().
+ *
+ * The prior migration (2026_08_14_140000) may have run without writing
+ * app-scoped rows the ContentResolver reads, or prod may have pulled code
+ * without migrating — live sites still had announcement_enabled=false and
+ * empty announcement_text, so the banner never rendered.
  */
 return new class extends Migration
 {
@@ -30,6 +33,7 @@ return new class extends Migration
             'announcement_text' => self::TEXT,
             'announcement_url' => '/order/',
         ];
+
         $meta = [
             'announcement_enabled' => ['type' => 'boolean', 'group' => 'Everywhere', 'label' => 'Show Announcement Banner'],
             'announcement_style' => ['type' => 'text', 'group' => 'Everywhere', 'label' => 'Announcement — Style'],
@@ -98,21 +102,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (! Schema::hasTable('site_settings')) {
-            return;
-        }
-
-        foreach (['website', 'order_app'] as $scope) {
-            if (SiteSetting::hasScopeColumn()) {
-                DB::table('site_settings')
-                    ->whereIn('key', ['announcement_enabled', 'announcement_style', 'announcement_text', 'announcement_url'])
-                    ->where('scope', $scope)
-                    ->where('locale', 'en')
-                    ->delete();
-            }
-        }
-
-        SiteSetting::bust();
-        ContentResolver::bust();
+        // Leave content in place — disabling is an editorial choice in Content Hub.
     }
 };
