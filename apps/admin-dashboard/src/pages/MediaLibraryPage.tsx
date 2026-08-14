@@ -1073,7 +1073,9 @@ export function MediaLibraryPage() {
   const handleReconcile = async () => {
     try {
       const res = await reconcileMedia();
-      alert(`Reconciled ${res.reconciled} asset${res.reconciled === 1 ? '' : 's'}`);
+      alert(
+        `Reconcile finished: ${res.created} new, ${res.skipped} skipped, ${res.thumbs_fixed} thumbs fixed (${res.scanned} scanned)`,
+      );
       void loadAssets();
     } catch (e) {
       alert((e as Error).message || 'Reconcile failed');

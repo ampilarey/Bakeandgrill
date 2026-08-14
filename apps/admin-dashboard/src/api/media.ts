@@ -100,7 +100,12 @@ export async function deleteMedia(id: number, force = false): Promise<void> {
   return req(`/admin/media/${id}?force=${force ? 1 : 0}`, { method: 'DELETE' });
 }
 
-export async function reconcileMedia(): Promise<{ reconciled: number }> {
+export async function reconcileMedia(): Promise<{
+  scanned: number;
+  created: number;
+  skipped: number;
+  thumbs_fixed: number;
+}> {
   return req('/admin/media/reconcile', { method: 'POST', body: '{}' });
 }
 

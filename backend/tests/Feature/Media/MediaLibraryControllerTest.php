@@ -110,6 +110,52 @@ class MediaLibraryControllerTest extends TestCase
         $this->assertNull(Media::find($media->id));
     }
 
+    public function test_delete_removes_webp_and_versions_so_reconcile_cannot_resurrect(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        Storage::disk('public')->put('library/images/hero.jpg', 'jpeg-bytes');
+        Storage::disk('public')->put('library/images/hero.webp', 'webp-bytes');
+        Storage::disk('public')->put('library/images/thumbs/hero.jpg', 'thumb-bytes');
+        Storage::disk('public')->put('library/images/masters/hero.jpg', 'master-bytes');
+        Storage::disk('public')->put('library/versions/1/backup.jpg', 'backup-bytes');
+
+        $media = Media::create([
+            'disk' => 'public',
+            'path' => 'library/images/hero.jpg',
+            'media_type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 10,
+            'source' => 'library',
+            'title' => 'hero',
+            'thumb_url' => '/storage/library/images/thumbs/hero.jpg',
+            'original_url' => '/storage/library/images/masters/hero.jpg',
+            'image_webp_url' => '/storage/library/images/hero.webp',
+            'thumb_webp_url' => '/storage/library/images/thumbs/hero.webp',
+        ]);
+        // Match version dir to the real asset id after create.
+        Storage::disk('public')->put('library/versions/' . $media->id . '/backup.jpg', 'backup-bytes');
+
+        $this->deleteJson("/api/admin/media/{$media->id}")->assertOk();
+        $this->assertNull(Media::find($media->id));
+
+        $this->assertFalse(Storage::disk('public')->exists('library/images/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/hero.webp'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/thumbs/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/masters/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/versions/' . $media->id . '/backup.jpg'));
+
+        // Leftover version/webp paths must not re-enter the catalog.
+        Storage::disk('public')->put('library/images/orphan.webp', 'webp-bytes');
+        Storage::disk('public')->put('library/versions/999/old.jpg', 'old');
+
+        $this->postJson('/api/admin/media/reconcile')
+            ->assertOk()
+            ->assertJsonPath('created', 0);
+
+        $this->assertSame(0, Media::count());
+    }
+
     public function test_permission_gates(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);
