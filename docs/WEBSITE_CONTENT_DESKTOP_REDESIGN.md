@@ -1,6 +1,7 @@
 # Website Content — Desktop Layout Redesign
 
-Status: **shipped** (Stages A–D) on branch `claude/service-availability-maintenance-zj4whc`.
+Status: **revision 3 shipped** (Stages A–D, list-then-detail + hero 3-column editor) on branch
+`claude/service-availability-maintenance-zj4whc`.
 
 Scope: **`/content/website` on desktop only.** Not the Order App destination, not mobile, not the
 rest of the admin. Mobile and Order App follow only after the owner has seen and approved this.
@@ -236,45 +237,74 @@ tools. The integrity warning stays but only as a slim banner when something is a
 
 ---
 
-## 5. Stages
+## 5. Stages (revision 3)
 
-**Stage A — the rail becomes the only map.** Remove the surface cards and the 13 task cards from
-the Website desktop landing. Selecting a page from the rail loads it directly; no landing screen.
-Tools move to the ⋯ menu. Assert every removed route is still reachable.
+**Stage A — the rail is the only map; page mode.** A **★ Hero** pin sits above the Pages cluster
+in the Website desktop rail, with a divider below it. The work area shows **only** the page list
+(`WebsiteDesktopPageList`), full width — the old side-by-side list-beside-editor column is gone
+for Website desktop. Tools stay in the header ⋯ menu, integrity banner only when there is an
+issue, sitewide divider on the rail, and every route the old surface/task cards pointed at stays
+reachable from the rail (20-route contract test).
 
-**Stage B — the centre column becomes the page in render order.** Component rows with a summary
-line, showing/hidden state and Edit. Hero first via `page_blocks` order. Existing subgroups become
-headings.
+**Stage B — component mode (list-then-detail).** Selecting a page-list row switches the *entire*
+work area to component mode: one block's full editor, a `{section} › {name}` breadcrumb, and a
+Back control. There is no fixed third column and no nested sheet for the block being edited —
+`focusedBlockKey` is the only thing that decides page mode vs. component mode. The ★ Hero pin
+focuses `hero_slides` on Home directly. Opening `/content/website` lands straight in component
+mode on the hero, since that is what the owner reaches for first.
 
-**Stage C — the hero editor, full width.** The work area's component mode, built hero-first:
-slide strip on top, then Picture / Words / Look in three columns. **View live site ↗** goes in the
-header. This is the stage the owner is waiting for — do not defer it behind the others.
+**Stage C — the hero editor, full width, three columns.** `HeroSlidesEditor`'s `wideLayout` path
+is a slide strip across the top (thumbnail, title, Showing/Hidden, Add) with PICTURE / WORDS /
+LOOK columns below for the selected slide, and a foot row with Duplicate / Delete and draft
+status. No presentation, brightness-mapping, swatch, scheduling or video logic was rewritten —
+only the JSX was moved into per-column render helpers that call the same update functions.
 
-**Stage D — Desktop | Mobile filter** in the header, driving the component list.
+**Stage D — Desktop | Mobile filter.** Header toggle filters the page-mode list via
+`blockMatchesDevice`; **View live site ↗** replaces the old preview column for Website desktop
+(`HubPreviewHost` is unchanged for Order App / mobile).
 
-Stage A alone removes most of the confusion. Stage B is what makes the settings comprehensible,
-now that there is no preview to lean on.
+Revision 2 (list-beside-detail with a fixed editor column) shipped first and is superseded by this
+list-then-detail shape, driven directly by the owner's feedback that the hero editor — 20+ controls
+per slide — never fit in a side column.
 
 ---
 
-## 6. What shipped (2026-08-14)
+## 6. What shipped — revision 3 (2026-08-14)
 
-Commits on this branch (after the plan docs):
+Revision 2 (list-beside-detail, described in the original §6 above and superseded here) shipped
+first. Revision 3 replaced it with the two-zone, list-then-detail shape in §2.1 above. Commits on
+this branch, in order:
 
 | Stage | What landed |
 |---|---|
-| **A** | Website desktop opens Home immediately (no landing). Surface cards + Brand & pages task cards removed as duplicate routes. History / Schedule / Import-Export in header ⋯. Integrity banner only when it has issues. Rail site-wide divider. Contract map + reachability test: `websiteDesktopLandingRoutes.ts`, `ContentHub.websiteDesktopStageA.test.tsx`. |
-| **B** | Middle column `WebsiteDesktopPageList` with load-bearing summaries (`summarizeBlockValue.ts`). Workspace: rail \| page list \| editor. Subgroups as headings. List stays while the right pane edits. |
-| **C** | Website desktop: no Preview column/sheet (Order App + mobile sheets keep `HubPreviewHost`). **View live site ↗**. Zones ~208 / 340 / flex. Hero `wideLayout`: slide cards across the top, fields in two columns. Draft status duplicated in the editor pane. Preview token mint skipped on Website desktop. |
-| **D** | Header **Desktop \| Mobile** filter (default Desktop). Filters device-named keys in the page list; syncs Home surface to `website.{device}.home`. |
+| **A** | **★ Hero** pin added to the Website desktop rail (`data-testid="section-rail-Hero"`), above Pages, with a divider. Website desktop work area renders **only** `WebsiteDesktopPageList`, full width — the side-by-side editor column from revision 2 is removed for Website desktop. CSS: `.hub-website-desktop-workspace` is a single-column flex stack; `WebsiteDesktopPageList` drops its sticky/max-height sizing since it now owns the full work area. Tools ⋯, integrity-onlyWhenIssues, sitewide divider and the 20-route reachability contract all carried over unchanged. |
+| **B** | Component mode: selecting a page-list row sets `focusedBlockKey`, which switches the *entire* work area to that block's full editor behind a `{section} › {name}` breadcrumb and a Back control (`data-testid="website-component-back"`). `HubSectionContent`'s desktop-website branch now owns the page-mode/component-mode switch directly (rail stays constant either way); `selectGroup` always clears `focusedBlockKey` so switching sections returns to page mode. The ★ Hero pin and the initial `/content/website` landing both go straight to component mode on `hero_slides`. Ops-owned blocks render `OpsOwnedSummary` read-only inside component mode instead of an editable form. |
+| **C** | `HeroSlidesEditor`'s `wideLayout` path re-laid out as a slide strip (`hero-slide-wide-*` cards: thumbnail, title, Showing/Hidden) followed by three columns — PICTURE / WORDS / LOOK (`hero-slide-wide-picture-*` / `-words-*` / `-look-*`) — and a foot row with Duplicate / Delete (`hero-slide-wide-duplicate-*` / `-delete-*`) and draft status (`hero-wide-draft-status`). `renderSlideFields` was split into `renderVisibilityAndSchedule` / `renderImageBlock` / `renderPresentationBlock` / `renderVideoBlock` helpers, which the new `renderPictureColumn` / `renderWordsColumn` / `renderLookColumn` functions compose — the mobile/default layout still calls the same helpers through the original `renderSlideFields`, so no update/`applyPresentation` logic was duplicated or rewritten. |
+| **D** | Verified against the rev3 shape: header **Desktop \| Mobile** filter (default Desktop) still filters the page-mode list via `blockMatchesDevice`; **View live site ↗** still replaces the Website preview column (`HubPreviewHost` is unchanged for Order App / mobile, still reachable via the `draft-save-status`/preview affordances there). |
 
 ### Guardrail results
 
-- Admin suite after each stage: **0 failures** (final: 536 passed).
-- Backend full suite: **0 failures** (2585 passed, 3 skipped). Resolver snapshot + ops-ownership unchanged.
-- Mobile test files: **not edited**.
-- Prove-can-fail: Stage A forced landing on; Stage B broke summaries to key names; Stage C nulled `liveSiteUrl`; Stage D forced `deviceFilter = 'desktop'` — each caught by the matching Stage test, then restored.
+- Admin suite: **0 failures** at the end of every stage (final full run: **546 passed**, 110 test
+  files).
+- Backend full suite: **0 failures** (2585 passed, 3 skipped). Resolver snapshot + ops-ownership
+  behaviour unchanged — no block key, value, or scope was touched.
+- Mobile test files: **not edited**. Only Website-desktop-specific test files and the shared
+  `ContentHub*`/`ContentStudio*`/`BrandKit` suites were updated to click into component mode
+  instead of the old edit-button/side-column pattern; several tests that exercised the legacy
+  compact-card + focused-sheet flow (which is now Order-App-only) were repointed at
+  `/content/order-app` to keep testing that behaviour without inventing a parallel desktop
+  fixture.
+- Prove-can-fail, each forced then reverted: Stage A — forced `heroPinActive` to `false`
+  (caught by the Hero-pin-active assertion); Stage B — short-circuited the Back button so it did
+  not clear `focusedBlockKey` (caught by the Back-returns-to-page-list assertion); Stage C —
+  forced the slide strip to render zero cards (caught by the slide-strip-lists-every-slide
+  assertion); Stage D — forced `deviceFilter` to always resolve to `'desktop'` (caught by the
+  Mobile-filter assertion).
 
 ### Summary-line notes
 
-Meaningful summaries for hero (title), trust (first + count), categories (first + count), proof, booleans, plain text, empty arrays → Empty/Hidden, ops-owned → current value + Managed elsewhere. Generic JSON objects without a title/label field summarize as **"Configured"** (acceptable, not the raw key). Hero slides with no title text report `weak: true` and fall back to a slide count only.
+Meaningful summaries for hero (title), trust (first + count), categories (first + count), proof,
+booleans, plain text, empty arrays → Empty/Hidden, ops-owned → current value + Managed elsewhere.
+Generic JSON objects without a title/label field summarize as **"Configured"** (acceptable, not the
+raw key). Hero slides with no title text report `weak: true` and fall back to a slide count only —
+unchanged from revision 2, since `summarizeBlockValue` was not touched in this pass.
