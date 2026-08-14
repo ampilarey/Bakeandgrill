@@ -288,21 +288,21 @@ export function OrderStatusPage() {
   const cartClearedRef = useRef(false);
 
   // useCallback gives a stable reference so polling intervals don't capture stale closures
-  const loadOrder = useCallback(async () => {
-    if (!trackingToken && !orderId) return;
+  const loadOrder = useCallback(async (): Promise<number | null> => {
+    if (!trackingToken && !orderId) return null;
 
     const parsedId = orderId ? parseInt(orderId, 10) : NaN;
     if (!trackingToken && !Number.isFinite(parsedId)) {
       setError(t("track.err_invalid_id"));
       setLoading(false);
-      return;
+      return null;
     }
 
     // Auth race: without a tracking token we cannot decide "need link / login"
     // until the session check finishes. Stay in loading — do not flash an error.
     if (!trackingToken && !authReady) {
       setLoading(true);
-      return;
+      return null;
     }
 
     try {
@@ -311,15 +311,19 @@ export function OrderStatusPage() {
         const res = await getOrderByTrackingToken(trackingToken);
         setOrder(res.order);
         setError("");
+        return null;
       } else if (isAuthenticated) {
         const res = await getOrderDetail(parsedId);
         setOrder(res.order);
         setError("");
+        return null;
       } else {
         setError(t("track.err_need_link"));
+        return null;
       }
     } catch (e) {
       setError((e as Error).message);
+      return (e as { status?: number }).status ?? 0;
     } finally {
       setLoading(false);
     }
@@ -509,11 +513,31 @@ export function OrderStatusPage() {
     };
   }, [order?.id, orderId, isAuthenticated]);
 
-  // Fallback polling — uses stable loadOrder reference from useCallback
+  // Fallback polling — uses stable loadOrder reference from useCallback.
+  // Back off on 429 so CGNAT / WhatsApp preview bursts do not keep hammering.
   useEffect(() => {
     if (liveConnected) return;
-    const interval = setInterval(() => void loadOrder(), 10_000);
-    return () => clearInterval(interval);
+    let delayMs = 10_000;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const tick = () => {
+      void loadOrder().then((status) => {
+        if (status === 429) {
+          delayMs = Math.min(delayMs * 2, 60_000);
+        } else if (status === null) {
+          delayMs = 10_000;
+        }
+        if (cancelled) return;
+        timer = setTimeout(tick, delayMs);
+      });
+    };
+
+    timer = setTimeout(tick, delayMs);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [liveConnected, loadOrder]);
 
   const statusMeta = order ? STATUS_CONFIG[order.status] : null;

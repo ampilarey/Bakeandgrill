@@ -20,9 +20,10 @@ Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, '
 Route::post('/deploy/test-pull', App\Http\Controllers\Api\TestDeployWebhookController::class)
     ->middleware('throttle:10,1');
 
-// Public order tracking — no auth required, token in URL acts as shared secret
+// Public order tracking — no auth required, token in URL acts as shared secret.
+// Named limiter is token-keyed (CGNAT-safe); polling + WhatsApp preview must not 429.
 Route::get('/orders/track/{token}', [OrderTrackingController::class, 'trackByToken'])
-    ->middleware('throttle:10,1');
+    ->middleware('throttle:public-order-track');
 
 // ── Prayer Times (public, throttled) ─────────────────────────────────────────
 Route::middleware('throttle:60,1')

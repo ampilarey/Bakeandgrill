@@ -77,6 +77,21 @@ class AppServiceProvider extends ServiceProvider
             });
         });
 
+        // Public SMS/track links poll every ~10s. Key by token (not CGNAT IP) so
+        // shared mobile networks and WhatsApp link-preview do not 429 the page.
+        RateLimiter::for('public-order-track', function (Request $request) {
+            $token = (string) $request->route('token');
+            $key = $token !== ''
+                ? 'track:'.$token
+                : 'track-ip:'.$request->ip();
+
+            return Limit::perMinute(120)->by($key)->response(function () {
+                return response()->json([
+                    'message' => 'Too many refreshes on this order link. Wait a few seconds and try again.',
+                ], 429);
+            });
+        });
+
         Order::observe(OrderObserver::class);
         StaffSchedule::observe(StaffScheduleObserver::class);
         Item::observe(ItemObserver::class);
