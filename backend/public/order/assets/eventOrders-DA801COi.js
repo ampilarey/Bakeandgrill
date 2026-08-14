@@ -1,0 +1,1 @@
+import{aH as n,aI as E}from"./index-CuWu9iWZ.js";async function a(a){return n(E.CUSTOMER_EVENT_ORDERS,{method:"POST",body:JSON.stringify(a)})}async function r(){return n(E.CUSTOMER_EVENT_ORDERS)}async function s(a){return n(E.CUSTOMER_EVENT_ORDER_BY_REF(a))}export{s as a,a as c,r as f};

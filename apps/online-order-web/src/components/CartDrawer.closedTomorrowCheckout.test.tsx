@@ -116,6 +116,8 @@ function wrapDrawer(props: {
   isOpen: boolean;
   items: Item[];
   closedMessage?: string;
+  canCheckout?: boolean;
+  checkoutForTomorrow?: boolean;
 }) {
   return render(
     <SiteSettingsProvider>
@@ -126,6 +128,8 @@ function wrapDrawer(props: {
             <CartDrawer
               isOpen={props.isOpen}
               closedMessage={props.closedMessage}
+              canCheckout={props.canCheckout}
+              checkoutForTomorrow={props.checkoutForTomorrow}
             />
           </MemoryRouter>
         </CartProvider>
@@ -214,8 +218,57 @@ describe('closed shop → tomorrow checkout CTA', () => {
     await act(async () => {
       wrapDrawer({ isOpen: false, items: [] });
     });
-    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
+    const btn = await screen.findByRole('button', { name: /Online ordering is off|Ordering is closed/i });
     expect(btn).toBeDisabled();
+  });
+
+  it('CartDrawer: service-off shows closed msg, not tomorrow CTA', async () => {
+    await act(async () => {
+      wrapDrawer({
+        isOpen: false,
+        items: [tomorrowItem],
+        closedMessage: 'Online ordering is off',
+        canCheckout: false,
+        checkoutForTomorrow: false,
+      });
+    });
+    expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
+    const btn = await screen.findByRole('button', { name: /Online ordering is off/i });
+    expect(btn).toBeDisabled();
+    expect(screen.getByTestId('cart-closed-off-message')).toHaveTextContent(/Online ordering is off/i);
+    expect(screen.queryByTestId('cart-closed-tomorrow-tip')).toBeNull();
+  });
+
+  it('FloatingCartBar: service kill switch blocks tomorrow CTA', async () => {
+    const user = userEvent.setup();
+    fetchStatus.mockResolvedValue(buildServices(false));
+    fetchGate.mockResolvedValue({
+      open: true,
+      message: null,
+      reason: null,
+      master_switch: true,
+      override_active: false,
+      override_until: null,
+      schedule_active: false,
+      current_close: null,
+      next_open_window: null,
+      delivery_available: true,
+      next_delivery_window: null,
+    });
+
+    await act(async () => {
+      wrapFloating([tomorrowItem]);
+    });
+    await waitFor(() => {
+      expect(document.querySelector('.float-cart-fab')).toBeTruthy();
+    });
+    await user.click(document.querySelector('.float-cart-fab') as HTMLElement);
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
+    });
+    const btn = await screen.findByRole('button', { name: /Paused|Online ordering is off/i });
+    expect(btn).toBeDisabled();
+    expect(screen.getByTestId('cart-closed-off-message')).toBeTruthy();
   });
 
   it('CartDrawer: shop open → normal checkout (unchanged)', async () => {
