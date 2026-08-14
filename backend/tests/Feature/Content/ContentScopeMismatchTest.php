@@ -36,11 +36,11 @@ class ContentScopeMismatchTest extends TestCase
         Sanctum::actingAs($user, ['staff']);
     }
 
-    public function test_collect_reports_business_fact_drift_and_skips_page_wording(): void
+    public function test_collect_reports_surface_fact_drift_and_skips_page_wording(): void
     {
-        SiteSetting::set('business_phone', '912 0011', 'shared');
-        SiteSetting::set('business_phone', '912 0022', 'website');
-        SiteSetting::set('business_phone', '912 0011', 'order_app');
+        SiteSetting::set('site_tagline', 'Shared tagline', 'shared');
+        SiteSetting::set('site_tagline', 'Web tagline', 'website');
+        SiteSetting::set('site_tagline', 'Order tagline', 'order_app');
 
         // Page wording is supposed to differ — must never appear in mismatches.
         SiteSetting::set('offers_headline', 'Shared offers', 'shared');
@@ -52,12 +52,27 @@ class ContentScopeMismatchTest extends TestCase
         $rows = ContentScopeMismatch::collect('en');
         $byKey = collect($rows)->keyBy('key');
 
-        $this->assertTrue($byKey->has('business_phone'));
+        $this->assertTrue($byKey->has('site_tagline'));
         $this->assertFalse($byKey->has('offers_headline'));
         $this->assertSame(
-            'Business record says 912 0011 · Website says 912 0022 · Order app says 912 0011',
-            $byKey['business_phone']['message'],
+            'Business record says Shared tagline · Website says Web tagline · Order app says Order tagline',
+            $byKey['site_tagline']['message'],
         );
+    }
+
+    public function test_ops_owned_business_details_keys_never_report_leftover_app_rows(): void
+    {
+        SiteSetting::set('business_phone', '+9609120011', 'shared');
+        SiteSetting::set('business_phone', '912 0011', 'website');
+        SiteSetting::set('business_phone', '912 0011', 'order_app');
+        SiteSetting::set('site_name', 'Bake & Grill', 'shared');
+        SiteSetting::set('site_name', 'Website Name', 'website');
+        SiteSetting::bust();
+
+        $byKey = collect(ContentScopeMismatch::collect('en'))->keyBy('key');
+
+        $this->assertFalse($byKey->has('business_phone'));
+        $this->assertFalse($byKey->has('site_name'));
     }
 
     public function test_content_and_business_details_apis_expose_mismatches(): void
@@ -86,12 +101,12 @@ class ContentScopeMismatchTest extends TestCase
 
     public function test_matching_scopes_produce_no_mismatch(): void
     {
-        SiteSetting::set('site_name', 'Same Everywhere', 'shared');
-        SiteSetting::set('site_name', 'Same Everywhere', 'website');
-        SiteSetting::set('site_name', 'Same Everywhere', 'order_app');
+        SiteSetting::set('site_tagline', 'Same Everywhere', 'shared');
+        SiteSetting::set('site_tagline', 'Same Everywhere', 'website');
+        SiteSetting::set('site_tagline', 'Same Everywhere', 'order_app');
         SiteSetting::bust();
 
-        $rows = collect(ContentScopeMismatch::collect('en'))->where('key', 'site_name');
+        $rows = collect(ContentScopeMismatch::collect('en'))->where('key', 'site_tagline');
         $this->assertCount(0, $rows);
     }
 }
