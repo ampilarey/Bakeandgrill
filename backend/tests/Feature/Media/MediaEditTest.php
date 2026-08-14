@@ -113,6 +113,92 @@ class MediaEditTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_crop_replace_rewrites_usages_and_keeps_master(): void
+    {
+        Storage::disk('public')->put('library/images/thumbs/old-thumb.jpg', 'thumb');
+        $this->asset->thumb_url = '/storage/library/images/thumbs/old-thumb.jpg';
+        $this->asset->save();
+
+        $oldMain = $this->asset->url;
+        $oldThumb = (string) $this->asset->thumb_url;
+        $oldMaster = (string) $this->asset->original_url;
+
+        $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-crop', 'is_active' => true]);
+        $item = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Crop Ref Item',
+            'base_price' => 8,
+            'sku' => 'REF-ML-CROP',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => $oldMain,
+            'thumb_url' => $oldThumb,
+        ]);
+
+        $res = $this->postJson("/api/admin/media/{$this->asset->id}/edit", [
+            'op' => 'crop',
+            'params' => [
+                'x' => 20, 'y' => 20, 'width' => 80, 'height' => 60,
+                'output_width' => 80, 'output_height' => 60,
+            ],
+            'mode' => 'replace',
+        ])->assertOk();
+
+        $this->assertGreaterThanOrEqual(2, (int) $res->json('updated_references'));
+
+        $this->asset->refresh();
+        $item->refresh();
+
+        $this->assertNotSame($oldMain, $this->asset->url);
+        $this->assertNotSame($oldThumb, (string) $this->asset->thumb_url);
+        $this->assertSame($oldMaster, (string) $this->asset->original_url);
+        $this->assertSame($this->asset->url, $item->image_url);
+        $this->assertSame($this->asset->thumb_url, $item->thumb_url);
+        $this->assertSame(80, (int) $this->asset->width);
+        $this->assertSame(60, (int) $this->asset->height);
+        $this->assertTrue(Storage::disk('public')->exists(
+            ltrim(str_replace('/storage/', '', (string) $this->asset->original_url), '/')
+        ));
+    }
+
+    public function test_crop_coords_apply_to_master_not_display(): void
+    {
+        // Display is 200×150; master is 400×300. Crop the right half of the master.
+        $master = imagecreatetruecolor(400, 300);
+        $red = imagecolorallocate($master, 255, 0, 0);
+        $blue = imagecolorallocate($master, 0, 0, 255);
+        imagefilledrectangle($master, 0, 0, 199, 299, $red);
+        imagefilledrectangle($master, 200, 0, 399, 299, $blue);
+        ob_start();
+        imagejpeg($master, null, 90);
+        $masterBytes = (string) ob_get_clean();
+        imagedestroy($master);
+
+        Storage::disk('public')->put('library/images/masters/edit-me-large.jpg', $masterBytes);
+        $this->asset->original_url = '/storage/library/images/masters/edit-me-large.jpg';
+        $this->asset->save();
+
+        $this->postJson("/api/admin/media/{$this->asset->id}/edit", [
+            'op' => 'crop',
+            'params' => [
+                'x' => 200, 'y' => 0, 'width' => 200, 'height' => 300,
+                'output_width' => 200, 'output_height' => 300,
+            ],
+            'mode' => 'replace',
+        ])->assertOk();
+
+        $this->asset->refresh();
+        $absolute = Storage::disk('public')->path($this->asset->path);
+        $img = imagecreatefromjpeg($absolute);
+        $this->assertNotFalse($img);
+        // Sample centre pixel — should be blue (from master right half), not red.
+        $rgb = imagecolorat($img, 100, 150);
+        imagedestroy($img);
+        $r = ($rgb >> 16) & 0xFF;
+        $b = $rgb & 0xFF;
+        $this->assertGreaterThan($r, $b);
+    }
+
     public function test_optimize_and_thumbnail(): void
     {
         $this->postJson("/api/admin/media/{$this->asset->id}/edit", [

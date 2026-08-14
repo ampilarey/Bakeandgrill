@@ -24,6 +24,7 @@ import {
   buildRotateParams,
   computeResizeOutputSize,
   cropParamsFromArea,
+  cropSourceUrl,
   exportMediaAsset,
   isCropReady,
   isRotateReady,
@@ -298,7 +299,7 @@ function CropEditPanel({
   const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [aspect, setAspect] = useState<number | undefined>(undefined);
-  const imageSrc = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const imageSrc = asset ? mediaPreviewSrc(cropSourceUrl(asset), asset) : '';
   const paramsRef = useRef(params);
   paramsRef.current = params;
   const frameH = compact ? 'min(56vh, 380px)' : 260;
@@ -317,6 +318,9 @@ function CropEditPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-crop-panel">
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+        Frame the area to keep. Crop runs on the full master photo so the saved region matches what you see.
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} role="group" aria-label="Crop aspect ratio">
         {CROP_ASPECTS.map(({ label, value }) => (
           <button
