@@ -171,6 +171,15 @@ export async function editMedia(
   });
 }
 
+/** Upload a new photo over an existing asset so every usage of that URL updates. */
+export async function replaceMediaFile(id: number, file: File): Promise<MediaEditResult> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const form = new FormData();
+  form.append('file', prepared);
+  return req(`/admin/media/${id}/replace-file`, { method: 'POST', body: form });
+}
+
 export type VideoAspect = 'original' | '16:9' | '4:5' | '1:1' | '9:16';
 
 export type VideoStudioCapabilities = {

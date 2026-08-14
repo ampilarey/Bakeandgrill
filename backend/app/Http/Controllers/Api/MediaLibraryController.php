@@ -268,6 +268,23 @@ class MediaLibraryController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Replace the image file for this asset so every usage of the same URL updates.
+     * POST /admin/media/{media}/replace-file  multipart file=
+     */
+    public function replaceFile(Request $request, Media $media): JsonResponse
+    {
+        $request->validate([
+            'file' => \App\Support\MenuImageValidation::fileRules(true),
+        ]);
+
+        /** @var \Illuminate\Http\UploadedFile $file */
+        $file = $request->file('file');
+        $result = $this->editor->replaceFile($media, $file, $request);
+
+        return response()->json($result);
+    }
+
     public function syncCollections(Request $request, Media $media): JsonResponse
     {
         $validated = $request->validate([

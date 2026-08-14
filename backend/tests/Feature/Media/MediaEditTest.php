@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\ImageCapabilities;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -149,6 +150,43 @@ class MediaEditTest extends TestCase
 
         $this->assertGreaterThanOrEqual(0, (int) $res->json('updated_references'));
         $this->assertSame(1, MediaAssetVersion::where('media_asset_id', $this->asset->id)->count());
+    }
+
+    public function test_replace_file_keeps_path_and_updates_usages(): void
+    {
+        $oldPath = $this->asset->path;
+        $oldChecksum = $this->asset->checksum;
+        $url = $this->asset->url;
+
+        $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-replace', 'is_active' => true]);
+        Item::create([
+            'category_id' => $category->id,
+            'name' => 'Replace Ref Item',
+            'base_price' => 12,
+            'sku' => 'REF-ML-REPLACE',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => $url,
+        ]);
+
+        $file = UploadedFile::fake()->image('new-photo.jpg', 320, 240);
+
+        $res = $this->post("/api/admin/media/{$this->asset->id}/replace-file", [
+            'file' => $file,
+        ])->assertOk()
+            ->assertJsonPath('mode', 'replace')
+            ->assertJsonPath('updated_references', 1)
+            ->assertJsonStructure(['asset', 'updated_references', 'mode']);
+
+        $this->asset->refresh();
+        $this->assertSame($oldPath, $this->asset->path);
+        $this->assertSame($url, $this->asset->url);
+        $this->assertNotSame($oldChecksum, $this->asset->checksum);
+        $this->assertGreaterThan(0, (int) $this->asset->width);
+        $this->assertGreaterThan(0, (int) $this->asset->height);
+        $this->assertTrue(Storage::disk('public')->exists($oldPath));
+        $this->assertSame(1, MediaAssetVersion::where('media_asset_id', $this->asset->id)->count());
+        $this->assertSame($url, Item::where('sku', 'REF-ML-REPLACE')->value('image_url'));
     }
 
     public function test_copy_leaves_original(): void

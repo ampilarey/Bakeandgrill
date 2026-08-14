@@ -10,7 +10,10 @@ use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\MenuImageProcessor;
 use App\Support\ImageCapabilities;
+use App\Support\MediaFileCleaner;
+use App\Support\MenuImageValidation;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -202,6 +205,120 @@ final class MediaEditor
         );
 
         return ['asset' => $asset->fresh(['collections', 'versions']), 'updated_references' => $updated];
+    }
+
+    /**
+     * Upload a brand-new photo over this catalog row so every place using
+     * the same media URL shows the replacement (path kept when possible).
+     *
+     * @return array{asset: Media, updated_references: int, mode: string}
+     */
+    public function replaceFile(Media $asset, UploadedFile $file, ?Request $request = null): array
+    {
+        if ($asset->media_type !== 'image') {
+            abort(422, 'Only image assets can be replaced with a new photo.');
+        }
+
+        $mime = (string) ($file->getMimeType() ?: '');
+        $allowed = MenuImageValidation::allowedMimeTypes();
+        if (!in_array($mime, $allowed, true)) {
+            if (MenuImageValidation::looksLikeHeic($file)) {
+                abort(422, MenuImageValidation::heicRejectedMessage());
+            }
+            if ($mime === 'image/webp' && !ImageCapabilities::supportsWebp()) {
+                abort(422, MenuImageValidation::webpUnsupportedMessage());
+            }
+            abort(422, 'Unsupported image type.');
+        }
+
+        $oldUrl = (string) $asset->url;
+        $oldPath = (string) $asset->path;
+        $this->backupVersion($asset);
+
+        // Drop old derivatives so reconcile cannot resurrect them.
+        foreach ([$asset->thumb_url, $asset->original_url, $asset->image_webp_url, $asset->thumb_webp_url] as $url) {
+            $derived = MediaFileCleaner::storagePathFromUrl(is_string($url) ? $url : null);
+            if (is_string($derived) && $derived !== '' && $derived !== $oldPath && Storage::disk('public')->exists($derived)) {
+                Storage::disk('public')->delete($derived);
+            }
+        }
+
+        $jpeg = $this->images->processToJpeg($file);
+        $thumbJpeg = $this->images->processThumbnailJpeg($file);
+        $masterJpeg = $this->images->processMasterJpeg($file);
+
+        $dir = trim(str_replace('\\', '/', (string) dirname($oldPath)), '.');
+        if ($dir === '' || $dir === '/') {
+            $dir = 'library/images';
+        }
+        $oldExt = strtolower((string) pathinfo($oldPath, PATHINFO_EXTENSION));
+        $targetPath = in_array($oldExt, ['jpg', 'jpeg'], true)
+            ? $oldPath
+            : $dir . '/' . Str::uuid()->toString() . '.jpg';
+
+        Storage::disk('public')->put($targetPath, $jpeg);
+
+        $thumbPath = 'library/images/thumbs/' . Str::uuid()->toString() . '.jpg';
+        Storage::disk('public')->put($thumbPath, $thumbJpeg);
+        $masterPath = 'library/images/masters/' . Str::uuid()->toString() . '.jpg';
+        Storage::disk('public')->put($masterPath, $masterJpeg);
+
+        $imageWebp = null;
+        $thumbWebp = null;
+        try {
+            $imageWebp = $this->images->storeWebpFromStoragePath($targetPath, $dir);
+        } catch (\Throwable) {
+            // Best-effort — primary JPEG is enough for references to update.
+        }
+        try {
+            $thumbWebp = $this->images->storeWebpFromStoragePath($thumbPath, 'library/images/thumbs');
+        } catch (\Throwable) {
+            // Best-effort
+        }
+
+        $absolute = Storage::disk('public')->path($targetPath);
+        $size = @getimagesize($absolute) ?: [null, null];
+
+        $asset->path = $targetPath;
+        $asset->mime_type = 'image/jpeg';
+        $asset->file_size = (int) (@filesize($absolute) ?: strlen($jpeg));
+        $asset->width = is_int($size[0] ?? null) ? $size[0] : null;
+        $asset->height = is_int($size[1] ?? null) ? $size[1] : null;
+        $asset->thumb_url = '/storage/' . ltrim($thumbPath, '/');
+        $asset->original_url = '/storage/' . ltrim($masterPath, '/');
+        $asset->image_webp_url = $imageWebp ? '/storage/' . ltrim($imageWebp, '/') : null;
+        $asset->thumb_webp_url = $thumbWebp ? '/storage/' . ltrim($thumbWebp, '/') : null;
+        $asset->checksum = hash('sha256', $jpeg);
+        $asset->save();
+
+        $fresh = $asset->fresh();
+        $newUrl = (string) $fresh->url;
+        $updated = 0;
+        if ($oldUrl !== $newUrl) {
+            $updated = $this->usage->rewriteReferences($asset, $oldUrl, $newUrl);
+            if ($oldPath !== $targetPath && Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        } else {
+            // Same public URL — every existing reference now serves the new bytes.
+            $updated = count($this->usage->for($fresh));
+        }
+
+        $this->audit->log(
+            'media.replaced_file',
+            'Media',
+            (int) $asset->id,
+            ['path' => $oldPath, 'url' => $oldUrl],
+            ['path' => $targetPath, 'url' => $newUrl, 'updated_references' => $updated],
+            [],
+            $request,
+        );
+
+        return [
+            'asset' => $asset->fresh(['collections', 'versions']),
+            'updated_references' => $updated,
+            'mode' => 'replace',
+        ];
     }
 
     /**
