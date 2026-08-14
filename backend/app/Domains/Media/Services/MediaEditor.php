@@ -231,12 +231,17 @@ final class MediaEditor
             abort(422, 'Unsupported image type.');
         }
 
-        $oldUrl = (string) $asset->url;
         $oldPath = (string) $asset->path;
+        $oldMainUrl = (string) $asset->url;
+        $oldThumbUrl = is_string($asset->thumb_url) ? $asset->thumb_url : null;
+        $oldOriginalUrl = is_string($asset->original_url) ? $asset->original_url : null;
+        $oldImageWebp = is_string($asset->image_webp_url) ? $asset->image_webp_url : null;
+        $oldThumbWebp = is_string($asset->thumb_webp_url) ? $asset->thumb_webp_url : null;
+
         $this->backupVersion($asset);
 
         // Drop old derivatives so reconcile cannot resurrect them.
-        foreach ([$asset->thumb_url, $asset->original_url, $asset->image_webp_url, $asset->thumb_webp_url] as $url) {
+        foreach ([$oldThumbUrl, $oldOriginalUrl, $oldImageWebp, $oldThumbWebp] as $url) {
             $derived = MediaFileCleaner::storagePathFromUrl(is_string($url) ? $url : null);
             if (is_string($derived) && $derived !== '' && $derived !== $oldPath && Storage::disk('public')->exists($derived)) {
                 Storage::disk('public')->delete($derived);
@@ -251,10 +256,9 @@ final class MediaEditor
         if ($dir === '' || $dir === '/') {
             $dir = 'library/images';
         }
-        $oldExt = strtolower((string) pathinfo($oldPath, PATHINFO_EXTENSION));
-        $targetPath = in_array($oldExt, ['jpg', 'jpeg'], true)
-            ? $oldPath
-            : $dir . '/' . Str::uuid()->toString() . '.jpg';
+        // Always a new basename so CDN/browser caches cannot keep serving the old bytes,
+        // and so every stored reference can be rewritten to the new URLs.
+        $targetPath = $dir . '/' . Str::uuid()->toString() . '.jpg';
 
         Storage::disk('public')->put($targetPath, $jpeg);
 
@@ -292,24 +296,32 @@ final class MediaEditor
         $asset->save();
 
         $fresh = $asset->fresh();
-        $newUrl = (string) $fresh->url;
-        $updated = 0;
-        if ($oldUrl !== $newUrl) {
-            $updated = $this->usage->rewriteReferences($asset, $oldUrl, $newUrl);
-            if ($oldPath !== $targetPath && Storage::disk('public')->exists($oldPath)) {
-                Storage::disk('public')->delete($oldPath);
-            }
-        } else {
-            // Same public URL — every existing reference now serves the new bytes.
-            $updated = count($this->usage->for($fresh));
+        $newMainUrl = (string) $fresh->url;
+        $newThumbUrl = is_string($fresh->thumb_url) ? $fresh->thumb_url : $newMainUrl;
+        $newOriginalUrl = is_string($fresh->original_url) ? $fresh->original_url : $newMainUrl;
+        $newImageWebp = is_string($fresh->image_webp_url) ? $fresh->image_webp_url : $newMainUrl;
+        $newThumbWebp = is_string($fresh->thumb_webp_url) ? $fresh->thumb_webp_url : $newThumbUrl;
+
+        $map = array_filter([
+            $oldMainUrl => $newMainUrl,
+            $oldThumbUrl => $newThumbUrl,
+            $oldOriginalUrl => $newOriginalUrl,
+            $oldImageWebp => $newImageWebp,
+            $oldThumbWebp => $newThumbWebp,
+        ], static fn ($to, $from) => is_string($from) && $from !== '' && is_string($to) && $to !== '', ARRAY_FILTER_USE_BOTH);
+
+        $updated = $this->usage->rewriteUrlMap($map);
+
+        if ($oldPath !== $targetPath && Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
         }
 
         $this->audit->log(
             'media.replaced_file',
             'Media',
             (int) $asset->id,
-            ['path' => $oldPath, 'url' => $oldUrl],
-            ['path' => $targetPath, 'url' => $newUrl, 'updated_references' => $updated],
+            ['path' => $oldPath, 'url' => $oldMainUrl],
+            ['path' => $targetPath, 'url' => $newMainUrl, 'updated_references' => $updated],
             [],
             $request,
         );
