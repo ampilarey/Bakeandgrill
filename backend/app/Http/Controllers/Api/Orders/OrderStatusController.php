@@ -277,6 +277,19 @@ class OrderStatusController extends Controller
             'reason' => 'required|string|max:255',
         ]);
 
+        // Settle stuck BML charges before void checks — otherwise a ticket that
+        // looks unpaid locally (missed webhook / fail-closed return URL) can be
+        // voided after the bank already charged the card.
+        $orderForReconcile = Order::find($id);
+        if ($orderForReconcile) {
+            try {
+                app(\App\Domains\Payments\Services\PaymentService::class)
+                    ->reconcilePendingBmlPayment($orderForReconcile);
+            } catch (\Throwable) {
+                // Non-blocking; existing payment_status / payment-row guards still apply.
+            }
+        }
+
         $result = DB::transaction(function () use ($id, $validated, $request) {
             $order = Order::lockForUpdate()->findOrFail($id);
 
