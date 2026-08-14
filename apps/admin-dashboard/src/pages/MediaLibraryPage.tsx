@@ -1016,7 +1016,7 @@ export function MediaLibraryPage() {
       toast.success(
         result.updated_references > 0
           ? `Photo replaced — updates ${result.updated_references} place${result.updated_references === 1 ? '' : 's'}`
-          : 'Photo replaced',
+          : 'Photo replaced in the library. If a menu item still shows the old image, it may be a separate upload — open that item and pick this photo again, or replace from the item’s Media Library entry.',
       );
     } catch (e) {
       setEditError((e as Error).message || 'Replace failed');
@@ -1805,7 +1805,7 @@ export function MediaLibraryPage() {
                   <Replace size={14} /> {replacingFile ? 'Replacing…' : 'Replace photo everywhere'}
                 </Btn>
                 <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Upload a new picture for this asset. Menu items, website blocks, and other places using this photo will show the new one. You can restore the previous version after.
+                  Upload a new picture for this asset. Menu items and website blocks that use this same file (including identical copies) will be pointed at the new photo. If an item was re-uploaded as its own file, replace that item&apos;s image or pick this library photo again. You can restore the previous version after.
                 </p>
               </div>
             )}
