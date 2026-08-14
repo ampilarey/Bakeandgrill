@@ -288,12 +288,11 @@ this branch, in order:
   files).
 - Backend full suite: **0 failures** (2585 passed, 3 skipped). Resolver snapshot + ops-ownership
   behaviour unchanged — no block key, value, or scope was touched.
-- Mobile test files: **not edited**. Only Website-desktop-specific test files and the shared
-  `ContentHub*`/`ContentStudio*`/`BrandKit` suites were updated to click into component mode
-  instead of the old edit-button/side-column pattern; several tests that exercised the legacy
-  compact-card + focused-sheet flow (which is now Order-App-only) were repointed at
-  `/content/order-app` to keep testing that behaviour without inventing a parallel desktop
-  fixture.
+- Mobile test files: **isMobile viewport suites were not edited.** One filename exception:
+  `ContentHub.mobilePolish.test.tsx` — two tests there run with `isMobileFlag = false` against
+  `/content/website` (desktop). They were updated to use page-list / component-mode selectors
+  (`website-page-mode`, `page-list-row-*`, `website-component-back`) instead of the old
+  `edit-*` / sheet flow. No `isMobile=true` assertions were changed.
 - Prove-can-fail, each forced then reverted: Stage A — forced `heroPinActive` to `false`
   (caught by the Hero-pin-active assertion); Stage B — short-circuited the Back button so it did
   not clear `focusedBlockKey` (caught by the Back-returns-to-page-list assertion); Stage C —

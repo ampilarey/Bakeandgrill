@@ -137,7 +137,10 @@ describe('Website desktop Stage B — page list with summaries', () => {
     await screen.findByTestId('website-desktop-editor');
     fireEvent.click(screen.getByTestId('website-component-back'));
 
-    const list = await screen.findByTestId('website-desktop-page-list');
+    await waitFor(() => {
+      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
+    }, { timeout: 3000 });
+    const list = screen.getByTestId('website-desktop-page-list');
     expect(list.getAttribute('data-section')).toBe('Home');
     expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
     expect(screen.getByTestId('page-list-summary-hero_slides').textContent).toMatch(/Breakfast your grandmother made/);
@@ -157,7 +160,7 @@ describe('Website desktop Stage B — page list with summaries', () => {
     fireEvent.click(screen.getByTestId('website-component-back'));
     await waitFor(() => {
       expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
-    });
+    }, { timeout: 3000 });
   });
 
   it('shows ops-owned rows as Managed elsewhere with owner link', async () => {

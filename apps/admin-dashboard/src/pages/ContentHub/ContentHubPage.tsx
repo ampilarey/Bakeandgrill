@@ -571,7 +571,14 @@ export function ContentHubPage() {
     onBack: handleMobileBack,
     focusedBlockKey: websiteDesktopNoLanding ? focusedBlockKey : null,
     desktopSplit: websiteDesktopNoLanding,
-    onFocusBlockKey: websiteDesktopNoLanding ? setFocusedBlockKey : undefined,
+    onFocusBlockKey: websiteDesktopNoLanding
+      ? (key) => {
+          // Explicit Back / list select — clear any pending auto-focus so Home
+          // page mode is not immediately re-entered as hero component mode.
+          if (key === null) pendingFocusKeyRef.current = null;
+          setFocusedBlockKey(key);
+        }
+      : undefined,
     deviceFilter: websiteDeviceFilter,
     dirtyCount,
     schedulePublishPanel,

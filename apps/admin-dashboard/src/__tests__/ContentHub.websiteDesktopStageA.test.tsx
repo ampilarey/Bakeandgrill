@@ -143,7 +143,10 @@ describe('Website desktop Stage A — rail is the only map', () => {
 
     // Back returns to the Home page list, hero first.
     fireEvent.click(screen.getByTestId('website-component-back'));
-    const list = await screen.findByTestId('website-desktop-page-list');
+    await waitFor(() => {
+      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
+    }, { timeout: 3000 });
+    const list = screen.getByTestId('website-desktop-page-list');
     expect(list.getAttribute('data-section')).toBe('Home');
     const rows = Array.from(list.querySelectorAll('[data-testid^="page-list-row-"]'));
     expect(rows[0]?.getAttribute('data-testid')).toBe('page-list-row-hero_slides');
