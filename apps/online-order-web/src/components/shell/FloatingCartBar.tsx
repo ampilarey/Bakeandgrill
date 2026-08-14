@@ -37,6 +37,7 @@ export function FloatingCartBar() {
   const [orderingOpen, setOrderingOpen] = useState(true);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
   const [tomorrowOrderingOpen, setTomorrowOrderingOpen] = useState(true);
+  const [gateClosedMessage, setGateClosedMessage] = useState<string | null>(null);
   const checkoutAvailable = isAvailable('online_checkout');
   const orderingServiceAvailable = isAvailable('online_ordering');
   const checkoutState = get('online_checkout');
@@ -59,11 +60,16 @@ export function FloatingCartBar() {
     // checkout label — keep reopen copy off so it doesn't fight the CTA.
     if (checkoutCta.checkoutForTomorrow) return null;
     if (!orderingServiceAvailable) {
-      return orderingState?.public_message?.trim() || t('cart.closed_cta');
+      return orderingState?.public_message?.trim()
+        || gateClosedMessage
+        || t('cart.closed_cta');
     }
     if (!checkoutAvailable) {
-      return checkoutState?.public_message?.trim() || t('cart.closed_cta');
+      return checkoutState?.public_message?.trim()
+        || gateClosedMessage
+        || t('cart.closed_cta');
     }
+    if (gateClosedMessage) return gateClosedMessage;
     const openAt = formatOpenTime(nextOpenWindow);
     if (openAt) return t('cart.opens_at_cta').replace('{time}', openAt);
     return t('cart.closed_cta');
@@ -81,12 +87,14 @@ export function FloatingCartBar() {
         setOrderingOpen(gate.open);
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
         setTomorrowOrderingOpen(gate.order_for_tomorrow?.open !== false);
+        setGateClosedMessage(gate.open ? null : (gate.message?.trim() || null));
       })
       .catch(() => {
         if (!cancelled) {
           setOrderingOpen(true);
           setNextOpenWindow(null);
           setTomorrowOrderingOpen(true);
+          setGateClosedMessage(null);
         }
       });
     return () => {

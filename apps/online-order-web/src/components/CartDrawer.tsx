@@ -189,9 +189,11 @@ export function CartDrawer({
   const blockingTomorrowCount = !isOpen ? cart.filter((e) => !e.item?.allow_pre_order).length : 0;
   /** Hours closed + mixed cart → tip to remove blockers for tomorrow. */
   const showClosedTomorrowTip = !isOpen && cart.length > 0 && !checkoutForTomorrow && blockingTomorrowCount > 0;
-  /** Service kill-switch / hours closed with no tomorrow path — surface closed copy in-cart. */
-  const showClosedOffMessage = !isOpen && cart.length > 0 && !checkoutForTomorrow && !showClosedTomorrowTip
-    && Boolean(closedMessage?.trim());
+  const closedButtonLabel = showClosedTomorrowTip
+    ? t('cart.closed_cta_short')
+    : (closedMessage?.trim() || t('cart.closed_cta'));
+  const closedButtonMultiline = !checkoutForTomorrow && !isOpen && !showClosedTomorrowTip
+    && closedButtonLabel.length > 28;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
@@ -419,25 +421,6 @@ export function CartDrawer({
           </div>
         )}
 
-        {showClosedOffMessage && (
-          <div
-            data-testid="cart-closed-off-message"
-            style={{
-              marginTop: '0.75rem',
-              padding: '0.65rem 0.75rem',
-              background: 'var(--color-warning-bg)',
-              borderRadius: 8,
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: 'var(--color-warning)',
-              border: '1px solid rgba(202,138,4,0.25)',
-              textAlign: 'center',
-            }}
-          >
-            {closedMessage}
-          </div>
-        )}
-
         {waitMinutes != null && cart.length > 0 && (
           <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
             {t('cart.kitchen_wait').replace('{n}', String(waitMinutes))}
@@ -452,13 +435,15 @@ export function CartDrawer({
             marginTop: '1rem',
             width: '100%',
             minHeight: 44,
-            padding: '0.875rem',
+            padding: closedButtonMultiline ? '0.75rem 0.85rem' : '0.875rem',
             background: canCheckout ? 'var(--color-primary)' : 'var(--color-text-muted)',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
-            fontSize: '0.95rem',
+            fontSize: closedButtonMultiline ? '0.82rem' : '0.95rem',
             fontWeight: 700,
+            lineHeight: closedButtonMultiline ? 1.35 : 1.2,
+            whiteSpace: closedButtonMultiline ? 'normal' : undefined,
             cursor: canCheckout ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
@@ -468,10 +453,7 @@ export function CartDrawer({
           {checkoutForTomorrow
             ? `${t('cart.checkout_tomorrow')} — MVR ${cartTotal.toFixed(2)} →`
             : !isOpen
-              // Banner already holds the full closed/off copy — keep the button short.
-              ? (showClosedOffMessage || showClosedTomorrowTip
-                ? t('cart.closed_cta_short')
-                : (closedMessage?.trim() || t('cart.closed_cta')))
+              ? closedButtonLabel
               : cart.length === 0
                 ? t('cart.add_items_cta')
                 : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}

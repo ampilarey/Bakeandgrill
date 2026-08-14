@@ -222,23 +222,23 @@ describe('closed shop → tomorrow checkout CTA', () => {
     expect(btn).toBeDisabled();
   });
 
-  it('CartDrawer: service-off shows closed msg, not tomorrow CTA', async () => {
+  it('CartDrawer: service-off shows closed msg on CTA, not tomorrow CTA', async () => {
     await act(async () => {
       wrapDrawer({
         isOpen: false,
         items: [tomorrowItem],
-        closedMessage: 'Online ordering is off',
+        closedMessage: 'Online ordering is currently closed. Please check back during opening hours.',
         canCheckout: false,
         checkoutForTomorrow: false,
       });
     });
     expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
-    expect(screen.getByTestId('cart-closed-off-message')).toHaveTextContent(/Online ordering is off/i);
-    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
-    expect(btn).toBeDisabled();
-    // Full message once in the banner — not repeated on the CTA.
-    expect(screen.getAllByText(/Online ordering is off/i)).toHaveLength(1);
+    expect(screen.queryByTestId('cart-closed-off-message')).toBeNull();
     expect(screen.queryByTestId('cart-closed-tomorrow-tip')).toBeNull();
+    const btn = await screen.findByRole('button', {
+      name: /Online ordering is currently closed\. Please check back during opening hours\./i,
+    });
+    expect(btn).toBeDisabled();
   });
 
   it('FloatingCartBar: service kill switch blocks tomorrow CTA', async () => {
@@ -268,10 +268,9 @@ describe('closed shop → tomorrow checkout CTA', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
     });
-    expect(screen.getByTestId('cart-closed-off-message')).toHaveTextContent(/Paused/i);
-    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
+    expect(screen.queryByTestId('cart-closed-off-message')).toBeNull();
+    const btn = await screen.findByRole('button', { name: /Paused/i });
     expect(btn).toBeDisabled();
-    expect(screen.getAllByText(/Paused/i)).toHaveLength(1);
   });
 
   it('CartDrawer: shop open → normal checkout (unchanged)', async () => {
