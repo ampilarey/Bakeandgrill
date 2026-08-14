@@ -63,8 +63,9 @@ return [
             'shareable' => true,
             'public' => true,
             'rich' => false,
-            'validate' => 'nullable|string|max:5000',
+            'validate' => 'nullable|string|in:info,warning,promo,alert|max:32',
             'default' => 'info',
+            'description' => 'Visual style: info (blue), warning (amber), promo (green), or alert (red).',
         ],
         'announcement_text' => [
             'label' => 'Announcement — Text',

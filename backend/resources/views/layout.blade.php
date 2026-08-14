@@ -277,6 +277,7 @@
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
         [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
         [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
+        [data-theme="dark"] .site-announcement--alert   { background: rgba(239,68,68,0.15); color: #fca5a5; border-bottom-color: rgba(239,68,68,0.35); }
 
         .dark-toggle {
             background: var(--surface);
@@ -367,6 +368,7 @@
         .site-announcement--info    { background: #eff6ff; color: #1e40af; border-bottom: 1px solid #bfdbfe; }
         .site-announcement--warning { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; }
         .site-announcement--promo   { background: #f0fdf4; color: #166534; border-bottom: 1px solid #bbf7d0; }
+        .site-announcement--alert   { background: #dc2626; color: #ffffff; border-bottom: 1px solid #b91c1c; }
         .site-announcement__inner {
             display: inline-flex; align-items: center; gap: 0.5rem;
             text-decoration: none; color: inherit;
@@ -1726,7 +1728,8 @@
 @php
     $annText    = trim(content('announcement_text', ''));
     $annUrl     = safe_public_url((string) content('announcement_url',  '')) ?? '';
-    $annStyle   = content('announcement_style', 'info');
+    $annStyleRaw = (string) content('announcement_style', 'info');
+    $annStyle = in_array($annStyleRaw, ['info', 'warning', 'promo', 'alert'], true) ? $annStyleRaw : 'info';
     $annContentOn = filter_var(content('announcement_enabled', 'false'), FILTER_VALIDATE_BOOLEAN);
     // Surface placement (page_blocks) AND content master switch both required.
     $annShow = $annContentOn && ($showAnnouncementDesktop || $showAnnouncementMobile) && $annText !== '';
