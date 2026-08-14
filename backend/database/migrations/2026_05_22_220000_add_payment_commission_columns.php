@@ -13,11 +13,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('payments', function (Blueprint $table) {
-            $table->unsignedInteger('commission_laar')->default(0)->after('amount_laar');
-            $table->unsignedSmallInteger('commission_rate_bp')->nullable()->after('commission_laar');
-            $table->string('commission_channel', 20)->nullable()->after('commission_rate_bp');
-        });
+        if (! Schema::hasColumn('payments', 'commission_laar')) {
+            Schema::table('payments', function (Blueprint $table) {
+                $table->unsignedInteger('commission_laar')->default(0)->after('amount_laar');
+            });
+        }
+        if (! Schema::hasColumn('payments', 'commission_rate_bp')) {
+            Schema::table('payments', function (Blueprint $table) {
+                $table->unsignedSmallInteger('commission_rate_bp')->nullable()->after('commission_laar');
+            });
+        }
+        if (! Schema::hasColumn('payments', 'commission_channel')) {
+            Schema::table('payments', function (Blueprint $table) {
+                $table->string('commission_channel', 20)->nullable()->after('commission_rate_bp');
+            });
+        }
 
         $now = now();
         $settings = [
@@ -57,6 +67,9 @@ return new class extends Migration
             );
         }
 
+        // Backfill payment commission columns only.
+        // Do NOT call PaymentCommissionService::applyToPayment() here — that syncs
+        // expenses via payment_id, which is added in 2026_05_23_000000.
         $service = app(PaymentCommissionService::class);
         Payment::query()
             ->whereIn('status', PaymentCommissionService::SETTLED_STATUSES)
@@ -64,16 +77,38 @@ return new class extends Migration
             ->orderBy('id')
             ->chunkById(200, function ($payments) use ($service): void {
                 foreach ($payments as $payment) {
-                    $service->applyToPayment($payment);
+                    if (! $service->isEnabled()) {
+                        continue;
+                    }
+                    $channel = $service->resolveChannel($payment);
+                    if ($channel === null) {
+                        continue;
+                    }
+                    $amountLaar = (int) ($payment->amount_laar ?? round((float) $payment->amount * 100));
+                    if ($amountLaar <= 0) {
+                        continue;
+                    }
+                    $rateBp = $service->rateBpForChannel($channel);
+                    $payment->update([
+                        'commission_laar' => $service->calculateCommissionLaar($amountLaar, $rateBp),
+                        'commission_rate_bp' => $rateBp,
+                        'commission_channel' => $channel,
+                    ]);
                 }
             });
     }
 
     public function down(): void
     {
-        Schema::table('payments', function (Blueprint $table) {
-            $table->dropColumn(['commission_laar', 'commission_rate_bp', 'commission_channel']);
-        });
+        $cols = array_values(array_filter(
+            ['commission_laar', 'commission_rate_bp', 'commission_channel'],
+            fn (string $c) => Schema::hasColumn('payments', $c),
+        ));
+        if ($cols !== []) {
+            Schema::table('payments', function (Blueprint $table) use ($cols) {
+                $table->dropColumn($cols);
+            });
+        }
 
         DB::table('site_settings')->whereIn('key', [
             'payment_commission_enabled',

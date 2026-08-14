@@ -13,10 +13,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('expenses', function (Blueprint $table) {
-            $table->foreignId('payment_id')->nullable()->after('purchase_id')->constrained()->nullOnDelete();
-            $table->unique('payment_id');
-        });
+        if (! Schema::hasColumn('expenses', 'payment_id')) {
+            Schema::table('expenses', function (Blueprint $table) {
+                $table->foreignId('payment_id')->nullable()->after('purchase_id')->constrained()->nullOnDelete();
+                $table->unique('payment_id');
+            });
+        }
 
         $now = now();
         DB::table('expense_categories')->updateOrInsert(
