@@ -128,6 +128,54 @@ class MediaEditTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_replace_file_rewrites_absolute_urls_and_byte_clones(): void
+    {
+        $bytes = Storage::disk('public')->get('library/images/edit-me.jpg');
+        $this->assertIsString($bytes);
+        Storage::disk('public')->put('menu/clone-copy.jpg', $bytes);
+        Storage::disk('public')->put('library/images/thumbs/old-thumb.jpg', 'thumb-bytes');
+        $this->asset->thumb_url = '/storage/library/images/thumbs/old-thumb.jpg';
+        $this->asset->checksum = hash('sha256', $bytes);
+        $this->asset->save();
+
+        $oldMain = $this->asset->url;
+        $absoluteMain = 'https://bakeandgrill.mv' . $oldMain;
+
+        $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-abs', 'is_active' => true]);
+        $shared = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Absolute URL Item',
+            'base_price' => 10,
+            'sku' => 'REF-ML-ABS',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => $absoluteMain,
+        ]);
+        $clone = Item::create([
+            'category_id' => $category->id,
+            'name' => 'Clone Path Item',
+            'base_price' => 11,
+            'sku' => 'REF-ML-CLONE',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => '/storage/menu/clone-copy.jpg',
+        ]);
+
+        $file = UploadedFile::fake()->image('brand-new.jpg', 320, 240);
+        $this->post("/api/admin/media/{$this->asset->id}/replace-file", [
+            'file' => $file,
+        ])->assertOk();
+
+        $this->asset->refresh();
+        $shared->refresh();
+        $clone->refresh();
+
+        $this->assertSame($this->asset->url, $shared->image_url);
+        $this->assertSame($this->asset->url, $clone->image_url);
+        $this->assertStringNotContainsString('bakeandgrill.mv', (string) $shared->image_url);
+        $this->assertStringNotContainsString('clone-copy.jpg', (string) $clone->image_url);
+    }
+
     public function test_replace_updates_references_and_keeps_backup(): void
     {
         $url = $this->asset->url;

@@ -59,6 +59,8 @@ export async function getMedia(params?: {
   q?: string;
   tag?: string;
   collection?: string;
+  /** Exact storage path or /storage/... URL — find the catalog row for a linked image. */
+  path?: string;
   page?: number;
   per_page?: number;
 }): Promise<{ data: MediaAsset[]; meta: MediaPaginationMeta }> {
@@ -68,10 +70,19 @@ export async function getMedia(params?: {
   if (params?.q) q.set('q', params.q);
   if (params?.tag) q.set('tag', params.tag);
   if (params?.collection) q.set('collection', params.collection);
+  if (params?.path) q.set('path', params.path);
   if (params?.page != null) q.set('page', String(params.page));
   if (params?.per_page != null) q.set('per_page', String(params.per_page));
   const qs = q.toString();
   return req(`/admin/media${qs ? `?${qs}` : ''}`);
+}
+
+/** Resolve a Media Library asset from a stored image URL, if it is catalogued. */
+export async function findMediaByUrl(url: string): Promise<MediaAsset | null> {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  const res = await getMedia({ path: trimmed, per_page: 1 });
+  return res.data[0] ?? null;
 }
 
 export async function uploadMedia(

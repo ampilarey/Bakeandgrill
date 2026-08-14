@@ -35,6 +35,7 @@ class MediaLibraryController extends Controller
             'q' => 'nullable|string|max:100',
             'tag' => 'nullable|string|max:50',
             'collection' => 'nullable|string|max:100',
+            'path' => 'nullable|string|max:500',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
@@ -46,6 +47,15 @@ class MediaLibraryController extends Controller
         }
         if (!empty($validated['source'])) {
             $query->where('source', $validated['source']);
+        }
+        if (!empty($validated['path'])) {
+            $rawPath = (string) $validated['path'];
+            $storagePath = \App\Support\MediaFileCleaner::storagePathFromUrl($rawPath)
+                ?? ltrim(str_replace('\\', '/', $rawPath), '/');
+            if (str_starts_with($storagePath, 'storage/')) {
+                $storagePath = substr($storagePath, strlen('storage/'));
+            }
+            $query->where('path', $storagePath);
         }
         if (!empty($validated['q'])) {
             $query->search($validated['q']);

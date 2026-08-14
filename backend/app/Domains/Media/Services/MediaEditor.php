@@ -238,6 +238,22 @@ final class MediaEditor
         $oldImageWebp = is_string($asset->image_webp_url) ? $asset->image_webp_url : null;
         $oldThumbWebp = is_string($asset->thumb_webp_url) ? $asset->thumb_webp_url : null;
 
+        $oldMainChecksum = is_string($asset->checksum) && $asset->checksum !== ''
+            ? $asset->checksum
+            : null;
+        if ($oldMainChecksum === null && Storage::disk('public')->exists($oldPath)) {
+            $hashed = @hash_file('sha256', Storage::disk('public')->path($oldPath));
+            $oldMainChecksum = is_string($hashed) ? $hashed : null;
+        }
+        $oldThumbChecksum = null;
+        if (is_string($oldThumbUrl)) {
+            $thumbPath = MediaFileCleaner::storagePathFromUrl($oldThumbUrl);
+            if (is_string($thumbPath) && Storage::disk('public')->exists($thumbPath)) {
+                $hashed = @hash_file('sha256', Storage::disk('public')->path($thumbPath));
+                $oldThumbChecksum = is_string($hashed) ? $hashed : null;
+            }
+        }
+
         $this->backupVersion($asset);
 
         // Drop old derivatives so reconcile cannot resurrect them.
@@ -310,7 +326,16 @@ final class MediaEditor
             $oldThumbWebp => $newThumbWebp,
         ], static fn ($to, $from) => is_string($from) && $from !== '' && is_string($to) && $to !== '', ARRAY_FILTER_USE_BOTH);
 
+        // Relink byte-identical copies (e.g. menu/ uploads reconciled from the same file).
+        if (is_string($oldMainChecksum)) {
+            $map = array_merge($map, $this->usage->mapUrlsByFileChecksum($oldMainChecksum, $newMainUrl));
+        }
+        if (is_string($oldThumbChecksum)) {
+            $map = array_merge($map, $this->usage->mapUrlsByFileChecksum($oldThumbChecksum, $newThumbUrl));
+        }
+
         $updated = $this->usage->rewriteUrlMap($map);
+        $this->usage->bustDisplayCaches();
 
         if ($oldPath !== $targetPath && Storage::disk('public')->exists($oldPath)) {
             Storage::disk('public')->delete($oldPath);
