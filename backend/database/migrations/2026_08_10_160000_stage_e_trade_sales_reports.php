@@ -61,8 +61,6 @@ return new class extends Migration
 
     private function hasIndex(string $table, string $indexName): bool
     {
-        $sm = Schema::getConnection()->getSchemaBuilder();
-        // Laravel 11+/12: getIndexListing may not exist; use doctrine-free information_schema.
         $driver = Schema::getConnection()->getDriverName();
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
             $row = Schema::getConnection()->selectOne(
