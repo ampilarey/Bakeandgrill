@@ -53,7 +53,9 @@ export default defineConfig({
         // Do NOT precache index.html — iPad PWAs kept serving the old shell
         // from Workbox even after "Update Now". Hashed JS/CSS can stay cached.
         globPatterns: ['**/*.{js,css,ico,png,svg,webp,woff2,webmanifest,json}'],
-        globIgnores: ['**/index.html'],
+        // HEIC converter (heic-to / libheif) is ~3MB and loaded on demand — do not precache.
+        globIgnores: ['**/index.html', '**/prepareUpload-*.js'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === 'navigate',

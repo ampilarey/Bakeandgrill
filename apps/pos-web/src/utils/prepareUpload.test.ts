@@ -6,15 +6,15 @@ import {
   prepareImageForUpload,
 } from '../utils/prepareUpload';
 
-const heic2any = vi.hoisted(() => vi.fn());
+const heicTo = vi.hoisted(() => vi.fn());
 
-vi.mock('heic2any', () => ({
-  default: (...args: unknown[]) => heic2any(...args),
+vi.mock('heic-to/csp', () => ({
+  heicTo: (...args: unknown[]) => heicTo(...args),
 }));
 
 describe('prepareImageForUpload (pos-web)', () => {
   beforeEach(() => {
-    heic2any.mockReset();
+    heicTo.mockReset();
     vi.stubGlobal('createImageBitmap', undefined);
   });
 
@@ -24,7 +24,7 @@ describe('prepareImageForUpload (pos-web)', () => {
   });
 
   it('converts HEIC and passes through JPEG', async () => {
-    heic2any.mockResolvedValue(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
+    heicTo.mockResolvedValue(new Blob([new Uint8Array([0xff, 0xd8])], { type: 'image/jpeg' }));
 
     class FailImage {
       onload: (() => void) | null = null;
@@ -49,7 +49,19 @@ describe('prepareImageForUpload (pos-web)', () => {
   });
 
   it('surfaces friendly error', async () => {
-    heic2any.mockRejectedValue(new Error('fail'));
+    heicTo.mockRejectedValue(new Error('fail'));
+    class FailImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_v: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    vi.stubGlobal('Image', FailImage as unknown as typeof Image);
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:fake',
+      revokeObjectURL: () => undefined,
+    });
     await expect(
       prepareImageForUpload(new File([new Uint8Array([1])], 'x.heic', { type: '' })),
     ).rejects.toThrow(IPHONE_HEIC_ERROR);
