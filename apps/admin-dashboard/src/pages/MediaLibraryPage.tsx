@@ -3,12 +3,12 @@ import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import {
   Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, Download, FileText, Film,
-  FlipHorizontal2, FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw,
+  FlipHorizontal2, FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw, Replace,
   RotateCcw, RotateCw, Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
   assignMediaCollections, bulkDeleteMedia, createMediaCollection, deleteMedia, deleteMediaCollection,
-  editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia,
+  editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia, replaceMediaFile,
   restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAs,
   type MediaAsset, type MediaCollection, type MediaEditOp,
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
@@ -805,12 +805,14 @@ export function MediaLibraryPage() {
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadCollectionId, setUploadCollectionId] = useState<number | ''>('');
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; deduped: boolean }>>([]);
+  const [replacingFile, setReplacingFile] = useState(false);
 
   // Delete (single or multi-select)
   const [checkedIds, setCheckedIds] = useState<number[]>([]);
@@ -995,6 +997,32 @@ export function MediaLibraryPage() {
       setEditError((e as Error).message || 'Restore failed');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleReplaceFile = async (files: FileList | null) => {
+    if (!selected || !files || files.length === 0) return;
+    const file = files[0];
+    setReplacingFile(true);
+    setEditError('');
+    setEditResult(null);
+    try {
+      const result = await replaceMediaFile(selected.id, file);
+      const next = { ...result.asset, usage_count: selected.usage_count };
+      setSelected(next);
+      setAssets((prev) => prev.map((a) => (a.id === next.id ? next : a)));
+      setCanRestore(true);
+      setEditResult(result);
+      toast.success(
+        result.updated_references > 0
+          ? `Photo replaced — updates ${result.updated_references} place${result.updated_references === 1 ? '' : 's'}`
+          : 'Photo replaced',
+      );
+    } catch (e) {
+      setEditError((e as Error).message || 'Replace failed');
+    } finally {
+      setReplacingFile(false);
+      if (replaceFileInputRef.current) replaceFileInputRef.current.value = '';
     }
   };
 
@@ -1754,6 +1782,31 @@ export function MediaLibraryPage() {
                 {!canManage ? (
                   <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>Needs media.manage permission.</p>
                 ) : null}
+              </div>
+            )}
+
+            {/* Replace photo — updates every place this URL is used */}
+            {selected.media_type === 'image' && canManage && (
+              <div style={{ marginBottom: 14 }}>
+                <input
+                  ref={replaceFileInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  style={{ display: 'none' }}
+                  onChange={(e) => void handleReplaceFile(e.target.files)}
+                />
+                <Btn
+                  variant="secondary"
+                  data-testid="media-replace-file"
+                  disabled={replacingFile}
+                  onClick={() => replaceFileInputRef.current?.click()}
+                  style={{ width: '100%', minHeight: 44 }}
+                >
+                  <Replace size={14} /> {replacingFile ? 'Replacing…' : 'Replace photo everywhere'}
+                </Btn>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Upload a new picture for this asset. Menu items, website blocks, and other places using this photo will show the new one. You can restore the previous version after.
+                </p>
               </div>
             )}
 
