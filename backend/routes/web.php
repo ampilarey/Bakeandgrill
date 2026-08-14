@@ -91,20 +91,39 @@ Route::post('/pre-order', function () {
     return redirect('/order/events', 301);
 })->name('pre-order.store');
 
+// Public token document pages — no session. WhatsApp / in-app browsers often
+// hit the URL 2–3 times in parallel; StartSession locking then makes the page
+// hang or look like "Too Many Requests" after refresh. Complaints POST to
+// CSRF-excepted /api/* routes, so these GETs do not need a CSRF cookie.
+$publicDocSkipSession = [
+    Illuminate\Session\Middleware\StartSession::class,
+    Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+];
+
 // Receipt pages
-Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])->name('receipts.show');
-Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])->name('receipts.pdf');
+Route::get('/receipts/{token}', [ReceiptPageController::class, 'show'])
+    ->withoutMiddleware($publicDocSkipSession)
+    ->name('receipts.show');
+Route::get('/receipts/{token}/pdf', [ReceiptPageController::class, 'pdf'])
+    ->withoutMiddleware($publicDocSkipSession)
+    ->name('receipts.pdf');
 Route::post('/receipts/{token}/feedback', [ReceiptPageController::class, 'feedback'])->name('receipts.feedback');
 
-// POS pay page — order review + terms before BML redirect (token = receipt token)
+// POS pay page — order review + terms before BML redirect (token = receipt token).
+// Keep session on GET so POST→redirect flash errors still show.
 Route::get('/pay/{token}', [PosPayPageController::class, 'show'])->name('pos-pay.show');
 Route::post('/pay/{token}', [PosPayPageController::class, 'pay'])
     ->middleware('throttle:10,1')
     ->name('pos-pay.pay');
 
 // Invoice public pages (no auth — token-gated)
-Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])->name('invoices.show');
-Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])->name('invoices.pdf');
+Route::get('/invoices/{token}', [InvoicePageController::class, 'show'])
+    ->withoutMiddleware($publicDocSkipSession)
+    ->name('invoices.show');
+Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])
+    ->withoutMiddleware($publicDocSkipSession)
+    ->name('invoices.pdf');
 
 // BML Return URL (non-authoritative — redirects to frontend)
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
