@@ -107,7 +107,8 @@ return new class extends Migration
         }
 
         // payments.order_id was NOT NULL — make nullable and add invoice_id.
-        // Exactly one of order_id / invoice_id must be set (enforced in service + MySQL check).
+        // Exactly one of order_id / invoice_id must be set (app services always;
+        // MySQL CHECK when the engine allows — MariaDB rejects CHECK on FK cols).
         if (Schema::hasTable('payments')) {
             try {
                 Schema::table('payments', function (Blueprint $table) {
