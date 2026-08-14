@@ -156,6 +156,51 @@ class MediaLibraryControllerTest extends TestCase
         $this->assertSame(0, Media::count());
     }
 
+    public function test_bulk_delete_removes_multiple_and_respects_force(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        Storage::disk('public')->put('library/a.jpg', 'a');
+        Storage::disk('public')->put('library/b.jpg', 'b');
+        Storage::disk('public')->put('menu/used.jpg', 'u');
+
+        $a = Media::create($this->assetAttrs('library/a.jpg', 'image'));
+        $b = Media::create($this->assetAttrs('library/b.jpg', 'image'));
+        $used = Media::create($this->assetAttrs('menu/used.jpg', 'image'));
+
+        $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-bulk', 'is_active' => true]);
+        Item::create([
+            'category_id' => $category->id,
+            'name' => 'Burger',
+            'base_price' => 10,
+            'sku' => 'BURGER-ML-BULK',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => $used->url,
+        ]);
+
+        $res = $this->postJson('/api/admin/media/bulk-delete', [
+            'ids' => [$a->id, $b->id, $used->id],
+            'force' => false,
+        ])->assertOk();
+
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $res->json('deleted'));
+        $this->assertCount(1, $res->json('blocked'));
+        $this->assertSame($used->id, $res->json('blocked.0.id'));
+        $this->assertNull(Media::find($a->id));
+        $this->assertNull(Media::find($b->id));
+        $this->assertNotNull(Media::find($used->id));
+        $this->assertFalse(Storage::disk('public')->exists('library/a.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/b.jpg'));
+
+        $this->postJson('/api/admin/media/bulk-delete', [
+            'ids' => [$used->id],
+            'force' => true,
+        ])->assertOk()->assertJsonPath('deleted.0', $used->id);
+
+        $this->assertNull(Media::find($used->id));
+        $this->assertFalse(Storage::disk('public')->exists('menu/used.jpg'));
+    }
+
     public function test_permission_gates(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);

@@ -122,6 +122,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
             ->middleware('permission:media.manage');
         Route::post('/reconcile', [App\Http\Controllers\Api\MediaLibraryController::class, 'reconcile'])
             ->middleware('permission:media.manage');
+        Route::post('/bulk-delete', [App\Http\Controllers\Api\MediaLibraryController::class, 'bulkDestroy'])
+            ->middleware('permission:media.manage');
 
         // Video studio (must be before /{media} routes). Permission checked in controller.
         Route::get('/video/capabilities', [App\Http\Controllers\Api\VideoStudioController::class, 'capabilities']);

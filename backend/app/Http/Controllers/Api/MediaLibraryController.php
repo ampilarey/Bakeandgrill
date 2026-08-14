@@ -151,6 +151,72 @@ class MediaLibraryController extends Controller
             ], 409);
         }
 
+        $id = $this->deleteAsset($media, $force, $request);
+
+        return response()->json(['ok' => true, 'id' => $id]);
+    }
+
+    /**
+     * Delete many catalog rows in one request (Media Library multi-select).
+     *
+     * @return JsonResponse{deleted: list<int>, blocked: list<array{id: int, usage: list<mixed>}>}
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'integer|distinct',
+            'force' => 'sometimes|boolean',
+        ]);
+        $force = (bool) ($validated['force'] ?? false);
+        /** @var list<int> $ids */
+        $ids = array_values(array_map('intval', $validated['ids']));
+
+        $assets = Media::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $deleted = [];
+        $blocked = [];
+        $missing = [];
+
+        foreach ($ids as $id) {
+            /** @var Media|null $media */
+            $media = $assets->get($id);
+            if (!$media) {
+                $missing[] = $id;
+                continue;
+            }
+            $usage = $this->usage->for($media);
+            if ($usage !== [] && !$force) {
+                $blocked[] = ['id' => $id, 'usage' => $usage];
+                continue;
+            }
+            $deleted[] = $this->deleteAsset($media, $force, $request);
+        }
+
+        $this->audit->log(
+            'media.bulk_deleted',
+            'Media',
+            null,
+            [],
+            [
+                'force' => $force,
+                'requested' => count($ids),
+                'deleted' => $deleted,
+                'blocked' => array_column($blocked, 'id'),
+                'missing' => $missing,
+            ],
+            [],
+            $request,
+        );
+
+        return response()->json([
+            'deleted' => $deleted,
+            'blocked' => $blocked,
+            'missing' => $missing,
+        ]);
+    }
+
+    private function deleteAsset(Media $media, bool $force, Request $request): int
+    {
         // Wipe primary + webp sidecars + masters + version backups so
         // reconcile / media:backfill cannot re-catalog leftovers.
         $this->library->purgeDiskFiles($media);
@@ -159,7 +225,7 @@ class MediaLibraryController extends Controller
         $media->delete();
         $this->audit->log('media.deleted', 'Media', $id, [], ['force' => $force], [], $request);
 
-        return response()->json(['ok' => true]);
+        return $id;
     }
 
     public function reconcile(Request $request): JsonResponse

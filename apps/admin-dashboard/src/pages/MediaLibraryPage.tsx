@@ -7,7 +7,7 @@ import {
   RotateCcw, RotateCw, Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
-  assignMediaCollections, createMediaCollection, deleteMedia, deleteMediaCollection,
+  assignMediaCollections, bulkDeleteMedia, createMediaCollection, deleteMedia, deleteMediaCollection,
   editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia,
   restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAs,
   type MediaAsset, type MediaCollection, type MediaEditOp,
@@ -202,36 +202,72 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
 // ─── Asset thumb card ─────────────────────────────────────────────────────────
 
 function AssetCard({
-  asset, selected, onClick,
-}: { asset: MediaAsset; selected: boolean; onClick: () => void }) {
+  asset, detailSelected, checked, onOpen, onToggleCheck, canManage,
+}: {
+  asset: MediaAsset;
+  detailSelected: boolean;
+  checked: boolean;
+  onOpen: () => void;
+  onToggleCheck: () => void;
+  canManage: boolean;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       data-testid={`asset-card-${asset.id}`}
       style={{
-        border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-        borderRadius: 10, padding: 0, background: selected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
-        cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
+        border: detailSelected || checked ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+        borderRadius: 10, padding: 0, background: checked || detailSelected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
+        textAlign: 'left', overflow: 'hidden',
         position: 'relative',
-        boxShadow: selected ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
+        boxShadow: detailSelected || checked ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
       }}
     >
-      <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <AssetThumb asset={asset} />
-      </div>
-      <div style={{ padding: '6px 8px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
+      {canManage && (
+        <label
+          data-testid={`asset-check-${asset.id}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 6, left: 6, zIndex: 2,
+            width: 28, height: 28, minWidth: 28, minHeight: 28,
+            borderRadius: 8, background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 1px 2px rgba(28,20,8,0.08)',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggleCheck}
+            aria-label={`Select ${asset.title || `asset ${asset.id}`}`}
+            style={{ width: 16, height: 16, accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+          />
+        </label>
+      )}
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          display: 'block', width: '100%', border: 'none', padding: 0, margin: 0,
+          background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+        }}
+      >
+        <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AssetThumb asset={asset} />
         </div>
-        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
-      </div>
-      {selected && (
+        <div style={{ padding: '6px 8px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
+        </div>
+      </button>
+      {detailSelected && !checked && (
         <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Check size={12} style={{ color: '#fff' }} />
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -775,8 +811,9 @@ export function MediaLibraryPage() {
   const [uploadCollectionId, setUploadCollectionId] = useState<number | ''>('');
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; deduped: boolean }>>([]);
 
-  // Delete
-  const [deleteTarget, setDeleteTarget] = useState<MediaAsset | null>(null);
+  // Delete (single or multi-select)
+  const [checkedIds, setCheckedIds] = useState<number[]>([]);
+  const [deleteTargets, setDeleteTargets] = useState<MediaAsset[] | null>(null);
   const [forceDelete, setForceDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -817,6 +854,9 @@ export function MediaLibraryPage() {
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [activeType, activeCollection, search]);
+
+  // Clear multi-select when the visible page/filter set changes
+  useEffect(() => { setCheckedIds([]); }, [activeType, activeCollection, search, page]);
 
   // ─── Detail drawer helpers ────────────────────────────────────────────────
 
@@ -1049,17 +1089,62 @@ export function MediaLibraryPage() {
     }
   };
 
-  // ─── Delete ───────────────────────────────────────────────────────────────
+  // ─── Multi-select + Delete ────────────────────────────────────────────────
+
+  const toggleChecked = (id: number) => {
+    setCheckedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectAllOnPage = () => {
+    setCheckedIds(assets.map((a) => a.id));
+  };
+
+  const clearChecked = () => setCheckedIds([]);
+
+  const checkedAssets = assets.filter((a) => checkedIds.includes(a.id));
+  const checkedInUseCount = checkedAssets.filter((a) => a.usage_count > 0).length;
+
+  const openBulkDelete = () => {
+    if (checkedAssets.length === 0) return;
+    setDeleteTargets(checkedAssets);
+    setDeleteError('');
+    setForceDelete(false);
+  };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTargets || deleteTargets.length === 0) return;
     setDeleting(true);
     setDeleteError('');
     try {
-      await deleteMedia(deleteTarget.id, forceDelete);
-      setAssets((prev) => prev.filter((a) => a.id !== deleteTarget.id));
-      if (selected?.id === deleteTarget.id) closeDetail();
-      setDeleteTarget(null);
+      const ids = deleteTargets.map((a) => a.id);
+      if (ids.length === 1) {
+        await deleteMedia(ids[0], forceDelete);
+        setAssets((prev) => prev.filter((a) => a.id !== ids[0]));
+        if (selected?.id === ids[0]) closeDetail();
+        setCheckedIds((prev) => prev.filter((id) => id !== ids[0]));
+      } else {
+        const res = await bulkDeleteMedia(ids, forceDelete);
+        const deletedSet = new Set(res.deleted);
+        setAssets((prev) => prev.filter((a) => !deletedSet.has(a.id)));
+        if (selected && deletedSet.has(selected.id)) closeDetail();
+        setCheckedIds((prev) => prev.filter((id) => !deletedSet.has(id)));
+        if (res.blocked.length > 0 && res.deleted.length === 0) {
+          setDeleteError(
+            `${res.blocked.length} asset${res.blocked.length === 1 ? ' is' : 's are'} in use. Enable force delete to remove them.`,
+          );
+          setDeleting(false);
+          return;
+        }
+        if (res.blocked.length > 0) {
+          setDeleteError(
+            `Deleted ${res.deleted.length}. ${res.blocked.length} still in use — enable force delete and try again.`,
+          );
+          setDeleteTargets(deleteTargets.filter((a) => res.blocked.some((b) => b.id === a.id)));
+          setDeleting(false);
+          return;
+        }
+      }
+      setDeleteTargets(null);
       setForceDelete(false);
     } catch (e) {
       setDeleteError((e as Error).message || 'Delete failed');
@@ -1336,19 +1421,58 @@ export function MediaLibraryPage() {
             <EmptyState message="No assets found. Upload some files to get started." />
           )}
           {!loading && assets.length > 0 && (
-            <div
-              data-testid="media-grid"
-              style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 100 : 140}px, 1fr))`, gap: 10 }}
-            >
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  selected={selected?.id === asset.id}
-                  onClick={() => openDetail(asset)}
-                />
-              ))}
-            </div>
+            <>
+              {canManage && (
+                <div
+                  data-testid="media-bulk-bar"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                    marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+                    background: checkedIds.length > 0 ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
+                  <Btn variant="secondary" small onClick={selectAllOnPage}>
+                    Select all ({assets.length})
+                  </Btn>
+                  {checkedIds.length > 0 && (
+                    <>
+                      <Btn variant="ghost" small onClick={clearChecked}>Clear</Btn>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                        {checkedIds.length} selected
+                        {checkedInUseCount > 0 ? ` · ${checkedInUseCount} in use` : ''}
+                      </span>
+                      <div style={{ marginLeft: 'auto' }}>
+                        <Btn variant="danger" small onClick={openBulkDelete}>
+                          <Trash2 size={14} /> Delete selected
+                        </Btn>
+                      </div>
+                    </>
+                  )}
+                  {checkedIds.length === 0 && (
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Tick photos to delete several at once
+                    </span>
+                  )}
+                </div>
+              )}
+              <div
+                data-testid="media-grid"
+                style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 100 : 140}px, 1fr))`, gap: 10 }}
+              >
+                {assets.map((asset) => (
+                  <AssetCard
+                    key={asset.id}
+                    asset={asset}
+                    detailSelected={selected?.id === asset.id}
+                    checked={checkedIds.includes(asset.id)}
+                    canManage={canManage}
+                    onOpen={() => openDetail(asset)}
+                    onToggleCheck={() => toggleChecked(asset.id)}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           {/* Pagination */}
@@ -1733,7 +1857,7 @@ export function MediaLibraryPage() {
                 {detailSaving ? 'Saving…' : 'Save'}
               </Btn>
               {canManage && (
-                <Btn variant="danger" onClick={() => { setDeleteTarget(selected); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
+                <Btn variant="danger" onClick={() => { setDeleteTargets(selected ? [selected] : null); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
                   <Trash2 size={14} />
                 </Btn>
               )}
@@ -1785,16 +1909,33 @@ export function MediaLibraryPage() {
         />
       ) : null}
 
-      {/* Delete confirm modal */}
-      {deleteTarget && (
-        <Modal title="Delete asset?" onClose={() => setDeleteTarget(null)} maxWidth={400}>
+      {/* Delete confirm modal (single or bulk) */}
+      {deleteTargets && deleteTargets.length > 0 && (
+        <Modal
+          title={deleteTargets.length === 1 ? 'Delete asset?' : `Delete ${deleteTargets.length} assets?`}
+          onClose={() => setDeleteTargets(null)}
+          maxWidth={400}
+        >
           <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-            Delete <strong>{deleteTarget.title || deleteTarget.url.split('/').pop()}</strong>?
-            {deleteTarget.usage_count > 0 && (
-              <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTarget.usage_count} place{deleteTarget.usage_count === 1 ? '' : 's'}.</span>
+            {deleteTargets.length === 1 ? (
+              <>
+                Delete <strong>{deleteTargets[0].title || deleteTargets[0].url.split('/').pop()}</strong>?
+                {deleteTargets[0].usage_count > 0 && (
+                  <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTargets[0].usage_count} place{deleteTargets[0].usage_count === 1 ? '' : 's'}.</span>
+                )}
+              </>
+            ) : (
+              <>
+                Permanently delete <strong>{deleteTargets.length}</strong> selected files from the library and disk.
+                {deleteTargets.some((a) => a.usage_count > 0) && (
+                  <span style={{ color: 'var(--color-danger-strong)' }}>
+                    {' '}{deleteTargets.filter((a) => a.usage_count > 0).length} of them are still in use.
+                  </span>
+                )}
+              </>
             )}
           </p>
-          {deleteTarget.usage_count > 0 && (
+          {deleteTargets.some((a) => a.usage_count > 0) && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
               <input type="checkbox" checked={forceDelete} onChange={(e) => setForceDelete(e.target.checked)} />
               Force delete (removes despite active references)
@@ -1802,13 +1943,13 @@ export function MediaLibraryPage() {
           )}
           {deleteError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{deleteError}</p>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Btn>
+            <Btn variant="ghost" onClick={() => setDeleteTargets(null)}>Cancel</Btn>
             <Btn
               variant="danger"
               onClick={() => void confirmDelete()}
-              disabled={deleting || (deleteTarget.usage_count > 0 && !forceDelete)}
+              disabled={deleting || (deleteTargets.some((a) => a.usage_count > 0) && !forceDelete)}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? 'Deleting…' : deleteTargets.length === 1 ? 'Delete' : `Delete ${deleteTargets.length}`}
             </Btn>
           </div>
         </Modal>
