@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ScopeMismatchNotices } from '../components/ScopeMismatchNotices';
 
 describe('ScopeMismatchNotices', () => {
@@ -27,5 +27,16 @@ describe('ScopeMismatchNotices', () => {
     render(<ScopeMismatchNotices mismatches={rows} onlyKey="logo" />);
     expect(screen.getByTestId('scope-mismatch-logo')).toBeTruthy();
     expect(screen.queryByTestId('scope-mismatch-item-business_phone')).toBeNull();
+  });
+
+  it('collapses into a summary banner for Content Hub', () => {
+    render(<ScopeMismatchNotices mismatches={rows} collapsible />);
+    expect(screen.getByTestId('scope-mismatch-list').getAttribute('data-collapsed')).toBe('true');
+    expect(screen.getByText(/2 values differ from Business Details/)).toBeTruthy();
+    expect(screen.queryByTestId('scope-mismatch-item-business_phone')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('scope-mismatch-toggle'));
+    expect(screen.getByTestId('scope-mismatch-list').getAttribute('data-collapsed')).toBe('false');
+    expect(screen.getByTestId('scope-mismatch-item-business_phone')).toBeTruthy();
   });
 });

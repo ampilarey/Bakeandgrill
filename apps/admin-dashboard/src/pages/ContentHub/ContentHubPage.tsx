@@ -617,7 +617,9 @@ export function ContentHubPage() {
 
         {schedulesBanner}
 
-        {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
+        {!loading ? (
+          <ScopeMismatchNotices mismatches={mismatches} collapsible defaultOpen={false} />
+        ) : null}
 
         {isMobile ? (
           <div className="hub-mobile-shell">
@@ -668,7 +670,11 @@ export function ContentHubPage() {
               onToggleCollapsed={() => setRailCollapsedPersisted(!railCollapsed)}
             />
 
-            <div className="hub-editor-area" data-testid="hub-editor-area">
+            <div
+              className={`hub-editor-area${activeGroup && !loading ? '' : ' hub-editor-area--landing'}`}
+              data-testid="hub-editor-area"
+              data-mode={activeGroup && !loading ? 'section' : 'landing'}
+            >
               {activeGroup && !loading
                 ? (
                   <HubSectionContent
@@ -683,6 +689,7 @@ export function ContentHubPage() {
                     skeleton={skeleton}
                     appFilter={hubApp}
                     preferredDevice={preferredDevice}
+                    desktopLayout
                     pageRows={pageRows}
                     onSelectPage={handlePageSelect}
                     surfaceCounts={surfaceCounts}

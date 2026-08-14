@@ -470,6 +470,12 @@ Website Content and Order App Content (desktop + mobile admin only — not the p
 Editors and sheets unchanged. Vitest: `SurfaceBuilderLanding.test.tsx`; Playwright mobile /
 responsive band specs still assert `surface-builder-landing` + `task-card-hero`.
 
+**Stage 7b — Desktop workspace redesign.** Mobile stack kept. Desktop: open landing canvas
+(`hub-editor-area--landing`, no nested panel boxes), hero spotlight + Pages/Layout columns,
+site-wide as dense rows, Layout slots forced single-column (no letter-stack), and Content Hub
+scope mismatches collapsed into a one-line review banner so the hub stays above the fold.
+Shell remains CSS-grid `rail | canvas | preview`; section editors still use the framed canvas.
+
 Stages 1 and 4 carry most of the value. Stage 1 is correctness and cannot be deferred; Stage 4 is
 the relief the owner actually asked for. Stage 7 is the visible landing redesign that Stages 2–6
 deliberately deferred.

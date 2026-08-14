@@ -29,6 +29,11 @@ export type SurfaceBuilderLandingProps = {
   appFilter?: SurfaceApp;
   /** Preferred device for Home primary CTA and default surface tab. */
   preferredDevice?: SurfaceDevice;
+  /**
+   * Desktop admin workspace layout (multi-column panels).
+   * Mobile keeps the stacked Stage 7 list — do not enable below 768.
+   */
+  desktopLayout?: boolean;
   /** Stage 4 page rows (excludes Home / Everywhere). */
   pageRows?: LandingPageRow[];
   onSelectPage?: (sectionName: string) => void;
@@ -51,12 +56,14 @@ const SURFACE_DEVICES: Array<{ id: SurfaceDevice; label: string }> = [
 ];
 
 /**
- * Stage 7 Content Hub landing — hybrid task-first composition:
- * Primary (Hero / Home) → Pages → Layout by device → Site-wide / tools.
+ * Content Hub landing — Stage 7 hybrid IA.
+ * Mobile: stacked Start here → Pages → Layout → Site-wide.
+ * Desktop (`desktopLayout`): workspace with hero spotlight + side-by-side panels.
  */
 export function SurfaceBuilderLanding({
   appFilter,
   preferredDevice = 'mobile',
+  desktopLayout = false,
   pageRows = [],
   onSelectPage,
   surfaceCounts = {},
@@ -85,6 +92,12 @@ export function SurfaceBuilderLanding({
     ]);
   const toolTasks = landingTasksInBand('tools', primaryApp);
 
+  const appTitle = appFilter === 'order_app'
+    ? 'Order App'
+    : appFilter === 'website'
+      ? 'Website'
+      : 'Content';
+
   const intro = appFilter === 'order_app'
     ? 'Edit what customers see in the Order App. Start with the hero, then pages and layout.'
     : appFilter === 'website'
@@ -111,150 +124,85 @@ export function SurfaceBuilderLanding({
 
   const showTaskPages = pageRows.length === 0;
 
-  return (
-    <div className="hub-task-landing hub-surface-landing hub-landing-v7" data-testid="surface-builder-landing">
-      <p className="hub-task-landing-intro">
-        {intro}
-      </p>
-
-      {/* 1. Primary — Hero + Home */}
-      <section className="hub-landing-primary" data-testid="hub-landing-primary">
-        <h2 className="hub-task-cluster-label">Start here</h2>
-        <div className="hub-landing-primary-actions">
+  const pagesBody = (
+    <div className="hub-landing-list" data-testid="hub-landing-page-list">
+      {pageRows.length > 0
+        ? pageRows.map((row) => (
           <button
+            key={row.name}
             type="button"
-            className="hub-landing-primary-btn hub-landing-primary-btn--hero"
-            data-testid="task-card-hero"
-            onClick={() => onSelectTask(heroTask)}
+            className="hub-landing-row"
+            data-testid={`hub-landing-page-${row.name.replace(/\s+/g, '-').toLowerCase()}`}
+            onClick={() => onSelectPage?.(row.name)}
           >
-            <span className="hub-landing-primary-icon" aria-hidden>
-              <Image size={22} />
-            </span>
-            <span className="hub-landing-primary-body">
-              <span className="hub-landing-primary-title">
-                Edit hero
-                {dirtyGroups.has('Home') ? (
-                  <span className="hub-section-dirty-dot" title="Unpublished edits" data-testid="task-dirty-hero" />
-                ) : null}
-              </span>
-              <span className="hub-landing-primary-desc">
-                Slideshow photos and titles — the most common edit
-              </span>
-            </span>
-            <ChevronRight size={20} className="hub-task-card-chevron" aria-hidden />
-          </button>
-
-          <button
-            type="button"
-            className="hub-landing-primary-btn"
-            data-testid="hub-landing-home-cta"
-            onClick={openHome}
-          >
-            <span className="hub-landing-primary-icon" aria-hidden>
-              <Home size={22} />
-            </span>
-            <span className="hub-landing-primary-body">
-              <span className="hub-landing-primary-title">
-                Edit Home
-                {dirtyGroups.has('Home') ? (
-                  <span className="hub-section-dirty-dot" title="Unpublished edits" data-testid="hub-landing-home-dirty" />
-                ) : null}
-              </span>
-              <span className="hub-landing-primary-desc">
-                {appLabel(primaryApp)}
-                {' · '}
-                {deviceLabel(preferredDevice)}
-                {' home layout'}
-                {homeCountText ? ` · ${homeCountText}` : ''}
-              </span>
-            </span>
-            <ChevronRight size={20} className="hub-task-card-chevron" aria-hidden />
-          </button>
-        </div>
-      </section>
-
-      {/* 2. Pages */}
-      <section className="hub-task-cluster hub-landing-pages" data-testid="hub-landing-pages">
-        <h2 className="hub-task-cluster-label">Pages</h2>
-        <div className="hub-landing-list" data-testid="hub-landing-page-list">
-          {pageRows.length > 0
-            ? pageRows.map((row) => (
-              <button
-                key={row.name}
-                type="button"
-                className="hub-landing-row"
-                data-testid={`hub-landing-page-${row.name.replace(/\s+/g, '-').toLowerCase()}`}
-                onClick={() => onSelectPage?.(row.name)}
-              >
-                <span className="hub-landing-row-title">
-                  {row.name}
-                  {row.dirty ? (
-                    <span className="hub-section-dirty-dot" title="Unpublished edits" />
-                  ) : null}
-                </span>
-                <span className="hub-landing-row-meta">
-                  {typeof row.count === 'number' ? `${row.count} fields` : null}
-                </span>
-                <ChevronRight size={16} className="hub-task-card-chevron" aria-hidden />
-              </button>
-            ))
-            : null}
-          {showTaskPages
-            ? pageTasks.map((task) => (
-              <BrandPageCard
-                key={task.id}
-                task={task}
-                dirty={Boolean(task.group && dirtyGroups.has(task.group))}
-                onSelect={() => onSelectTask(task)}
-                row
-              />
-            ))
-            : null}
-        </div>
-      </section>
-
-      {/* 3. Layout by device — secondary surfaces */}
-      <section className="hub-landing-surfaces" data-testid="surface-tree">
-        <div className="hub-landing-surfaces-head">
-          <h2 className="hub-task-cluster-label">Layout by device</h2>
-          <div className="hub-landing-device-tabs" role="tablist" aria-label="Device">
-            {SURFACE_DEVICES.map((device) => (
-              <button
-                key={device.id}
-                type="button"
-                role="tab"
-                aria-selected={deviceTab === device.id}
-                className={`hub-landing-device-tab${deviceTab === device.id ? ' hub-landing-device-tab--active' : ''}`}
-                data-testid={`hub-landing-device-tab-${device.id}`}
-                onClick={() => setDeviceTab(device.id)}
-              >
-                {device.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {apps.map((app) => {
-          const slots = slotsFor(app.id, deviceTab);
-          return (
-            <div key={app.id} className="hub-surface-app" data-testid={`surface-app-${app.id}`}>
-              {!appFilter ? (
-                <h3 className="hub-surface-app-label">{app.label}</h3>
+            <span className="hub-landing-row-title">
+              {row.name}
+              {row.dirty ? (
+                <span className="hub-section-dirty-dot" title="Unpublished edits" />
               ) : null}
-              <div
-                className="hub-surface-device"
-                data-testid={`surface-device-${app.id}-${deviceTab}`}
-              >
-                {/* Keep inactive device testids for e2e that probe structure */}
-                {SURFACE_DEVICES.filter((d) => d.id !== deviceTab).map((d) => (
-                  <span
-                    key={d.id}
-                    data-testid={`surface-device-${app.id}-${d.id}`}
-                    hidden
-                    aria-hidden
-                  />
-                ))}
-                <div className="hub-surface-devices hub-landing-slot-list">
+            </span>
+            <span className="hub-landing-row-meta">
+              {typeof row.count === 'number' ? `${row.count} fields` : null}
+            </span>
+            <ChevronRight size={16} className="hub-task-card-chevron" aria-hidden />
+          </button>
+        ))
+        : null}
+      {showTaskPages
+        ? pageTasks.map((task) => (
+          <BrandPageCard
+            key={task.id}
+            task={task}
+            dirty={Boolean(task.group && dirtyGroups.has(task.group))}
+            onSelect={() => onSelectTask(task)}
+            row
+          />
+        ))
+        : null}
+    </div>
+  );
+
+  const surfacesBody = (
+    <>
+      <div className="hub-landing-surfaces-head">
+        <h2 className="hub-task-cluster-label">Layout by device</h2>
+        <div className="hub-landing-device-tabs" role="tablist" aria-label="Device">
+          {SURFACE_DEVICES.map((device) => (
+            <button
+              key={device.id}
+              type="button"
+              role="tab"
+              aria-selected={deviceTab === device.id}
+              className={`hub-landing-device-tab${deviceTab === device.id ? ' hub-landing-device-tab--active' : ''}`}
+              data-testid={`hub-landing-device-tab-${device.id}`}
+              onClick={() => setDeviceTab(device.id)}
+            >
+              {device.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {apps.map((app) => {
+        const slots = slotsFor(app.id, deviceTab);
+        return (
+          <div key={app.id} className="hub-surface-app" data-testid={`surface-app-${app.id}`}>
+            {!appFilter ? (
+              <h3 className="hub-surface-app-label">{app.label}</h3>
+            ) : null}
+            <div
+              className="hub-surface-device"
+              data-testid={`surface-device-${app.id}-${deviceTab}`}
+            >
+              {SURFACE_DEVICES.filter((d) => d.id !== deviceTab).map((d) => (
+                <span
+                  key={d.id}
+                  data-testid={`surface-device-${app.id}-${d.id}`}
+                  hidden
+                  aria-hidden
+                />
+              ))}
+              <div className="hub-surface-devices hub-landing-slot-list">
                 <div className="hub-landing-slot-list hub-surface-slots">
                   {slots.map((slot) => {
                     const id = surfaceId(app.id, deviceTab, slot);
@@ -290,34 +238,126 @@ export function SurfaceBuilderLanding({
                     );
                   })}
                 </div>
-                </div>
               </div>
             </div>
-          );
-        })}
+          </div>
+        );
+      })}
+    </>
+  );
+
+  return (
+    <div
+      className={`hub-task-landing hub-surface-landing hub-landing-v7${desktopLayout ? ' hub-landing-v7--desktop' : ''}`}
+      data-testid="surface-builder-landing"
+      data-layout={desktopLayout ? 'desktop' : 'mobile'}
+    >
+      <header className="hub-landing-desk-header">
+        {desktopLayout ? (
+          <div className="hub-landing-desk-masthead">
+            <h2 className="hub-landing-desk-title">{appTitle} content</h2>
+            <p className="hub-task-landing-intro">{intro}</p>
+          </div>
+        ) : (
+          <p className="hub-task-landing-intro">{intro}</p>
+        )}
+      </header>
+
+      {/* 1. Primary — Hero + Home */}
+      <section className="hub-landing-primary" data-testid="hub-landing-primary">
+        {!desktopLayout ? (
+          <h2 className="hub-task-cluster-label">Start here</h2>
+        ) : (
+          <h2 className="hub-task-cluster-label">Start here</h2>
+        )}
+        <div className="hub-landing-primary-actions">
+          <button
+            type="button"
+            className="hub-landing-primary-btn hub-landing-primary-btn--hero"
+            data-testid="task-card-hero"
+            onClick={() => onSelectTask(heroTask)}
+          >
+            <span className="hub-landing-primary-icon" aria-hidden>
+              <Image size={22} />
+            </span>
+            <span className="hub-landing-primary-body">
+              <span className="hub-landing-primary-kicker">Most common</span>
+              <span className="hub-landing-primary-title">
+                Edit hero
+                {dirtyGroups.has('Home') ? (
+                  <span className="hub-section-dirty-dot" title="Unpublished edits" data-testid="task-dirty-hero" />
+                ) : null}
+              </span>
+              <span className="hub-landing-primary-desc">
+                Slideshow photos and titles
+              </span>
+            </span>
+            <ChevronRight size={20} className="hub-task-card-chevron" aria-hidden />
+          </button>
+
+          <button
+            type="button"
+            className="hub-landing-primary-btn"
+            data-testid="hub-landing-home-cta"
+            onClick={openHome}
+          >
+            <span className="hub-landing-primary-icon" aria-hidden>
+              <Home size={22} />
+            </span>
+            <span className="hub-landing-primary-body">
+              <span className="hub-landing-primary-kicker">Home layout</span>
+              <span className="hub-landing-primary-title">
+                Edit Home
+                {dirtyGroups.has('Home') ? (
+                  <span className="hub-section-dirty-dot" title="Unpublished edits" data-testid="hub-landing-home-dirty" />
+                ) : null}
+              </span>
+              <span className="hub-landing-primary-desc">
+                {appLabel(primaryApp)}
+                {' · '}
+                {deviceLabel(preferredDevice)}
+                {homeCountText ? ` · ${homeCountText}` : ''}
+              </span>
+            </span>
+            <ChevronRight size={20} className="hub-task-card-chevron" aria-hidden />
+          </button>
+        </div>
       </section>
+
+      {/* 2+3. Pages + Layout — stacked on mobile, side-by-side on desktop */}
+      <div className="hub-landing-desk-split" data-testid="hub-landing-desk-split">
+        <section className="hub-task-cluster hub-landing-pages hub-landing-panel" data-testid="hub-landing-pages">
+          <h2 className="hub-task-cluster-label">Pages</h2>
+          {pagesBody}
+        </section>
+
+        <section className="hub-landing-surfaces hub-landing-panel" data-testid="surface-tree">
+          {surfacesBody}
+        </section>
+      </div>
 
       <ContentIntegrityPanel appFilter={appFilter} />
 
       {/* 4. Site-wide + tools */}
-      <section className="hub-task-cluster" data-testid="task-cluster-brand_pages">
+      <section className="hub-task-cluster hub-landing-panel hub-landing-panel--sitewide" data-testid="task-cluster-brand_pages">
         <h2 className="hub-task-cluster-label">Site-wide</h2>
-        <div className="hub-landing-list hub-task-grid hub-landing-sitewide-grid">
+        <div className={`hub-landing-list hub-landing-sitewide-grid${desktopLayout ? '' : ' hub-task-grid'}`}>
           {sitewideTasks.map((task) => (
             <BrandPageCard
               key={task.id}
               task={task}
               dirty={Boolean(task.group && dirtyGroups.has(task.group))}
               onSelect={() => onSelectTask(task)}
+              row={desktopLayout}
             />
           ))}
         </div>
       </section>
 
       {toolTasks.length > 0 ? (
-        <section className="hub-task-cluster" data-testid="hub-landing-tools">
+        <section className="hub-task-cluster hub-landing-panel hub-landing-panel--tools" data-testid="hub-landing-tools">
           <h2 className="hub-task-cluster-label">Tools</h2>
-          <div className="hub-landing-list">
+          <div className="hub-landing-list hub-landing-tools-row">
             {toolTasks.map((task) => (
               <BrandPageCard
                 key={task.id}

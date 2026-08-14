@@ -100,6 +100,22 @@ describe('SurfaceBuilderLanding', () => {
     expect(onSelectPage).toHaveBeenCalledWith('Contact page');
   });
 
+  it('marks desktop workspace layout when desktopLayout is set', () => {
+    render(
+      <SurfaceBuilderLanding
+        appFilter="website"
+        desktopLayout
+        onSelectSurface={() => undefined}
+        onSelectTask={() => undefined}
+      />,
+    );
+    const landing = screen.getByTestId('surface-builder-landing');
+    expect(landing.getAttribute('data-layout')).toBe('desktop');
+    expect(landing.className).toContain('hub-landing-v7--desktop');
+    expect(screen.getByTestId('hub-landing-desk-split')).toBeTruthy();
+    expect(screen.getByText('Website content')).toBeTruthy();
+  });
+
   it('uses full width of the editor column', () => {
     render(
       <SurfaceBuilderLanding
