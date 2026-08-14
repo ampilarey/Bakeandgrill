@@ -40,6 +40,8 @@ export type Order = {
   customer_phone?: string | null;
   notes?: string | null;
   paid_at?: string | null;
+  /** Present on staff order detail (`GET /orders/{id}`) — used to hide Void when money exists. */
+  payments?: Array<{ id?: number; method?: string; amount?: number; status?: string | null }>;
   created_at: string;
   items?: OrderItem[];
   delivery_address_line1?: string | null;

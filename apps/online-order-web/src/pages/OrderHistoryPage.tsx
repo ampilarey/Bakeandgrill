@@ -108,12 +108,9 @@ export function OrderHistoryPage() {
 
   // Food orders only — gift card purchases live under Gifts.
   const foodOrders = orders.filter((o) => !isGiftCardOrder(o));
-  const activeOrders = foodOrders.filter(
-    (o) => !['completed', 'cancelled'].includes(o.status),
-  );
-  const pastOrders = foodOrders.filter(
-    (o) => ['completed', 'cancelled'].includes(o.status),
-  );
+  const PAST_STATUSES = new Set(['completed', 'cancelled', 'refunded', 'partially_refunded']);
+  const activeOrders = foodOrders.filter((o) => !PAST_STATUSES.has(o.status));
+  const pastOrders = foodOrders.filter((o) => PAST_STATUSES.has(o.status));
 
   const typeLabel = (type: string) => {
     if (type === 'gift_card') return t('orders.type_gift_card');

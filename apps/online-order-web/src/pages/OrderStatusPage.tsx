@@ -481,8 +481,17 @@ export function OrderStatusPage() {
       const es = new EventSource(sseUrl, { withCredentials: false });
       const handleStatus = (e: MessageEvent) => {
         try {
-          const payload = JSON.parse(e.data) as { status: string; paid_at?: string };
-          setOrder(prev => prev ? { ...prev, status: payload.status, paid_at: payload.paid_at ?? prev.paid_at } : prev);
+          const payload = JSON.parse(e.data) as {
+            status: string;
+            payment_status?: string;
+            paid_at?: string;
+          };
+          setOrder(prev => prev ? {
+            ...prev,
+            status: payload.status,
+            payment_status: payload.payment_status ?? prev.payment_status,
+            paid_at: payload.paid_at ?? prev.paid_at,
+          } : prev);
           setLiveConnected(true);
         } catch { /* ignore */ }
       };

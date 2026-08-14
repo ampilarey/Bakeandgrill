@@ -75,6 +75,15 @@ function canQuickAdvanceStatus(status: string, can: (slug?: string) => boolean):
 const SEND_BILL_TYPES = new Set(['dine_in', 'takeaway', 'online_pickup', 'delivery']);
 const SEND_BILL_STATUSES = new Set(['ready', 'preparing', 'in_progress', 'pending', 'payment_pending', 'held']);
 
+/** Void is blocked server-side once money is recorded — hide the button and steer to refund. */
+function orderHasRecordedPayment(order: Order): boolean {
+  if (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial') {
+    return true;
+  }
+  const payments = order.payments ?? [];
+  return payments.some((p) => ['paid', 'completed', 'confirmed'].includes(String(p.status ?? '')));
+}
+
 function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
   orderId: number;
   onClose: () => void;
@@ -267,13 +276,14 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
     return reload();
   }, [orderId]);
 
-  const doAction = async (key: string, fn: () => Promise<unknown>, label: string) => {
+  const doAction = async (key: string, fn: () => Promise<unknown>, label: string): Promise<boolean> => {
     setActing(key); setActionErr('');
     try {
       await fn();
       showToast(`${label} done.`);
       reload();
       onOrderUpdated();
+      return true;
     } catch (e) {
       // Surface failures as a toast in addition to the inline error
       // banner — the inline banner sits below the buttons and is easy
@@ -282,6 +292,7 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
       const msg = (e as Error).message;
       setActionErr(msg);
       showToast(`${label} failed: ${msg}`);
+      return false;
     }
     finally { setActing(''); }
   };
@@ -360,10 +371,21 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                   {acting === 'paylink' ? '…' : '🔗 Send Pay Link'}
                 </Btn>
               )}
-              {canVoid && !['cancelled', 'refunded', 'completed', 'paid', 'partially_refunded'].includes(order.status) && (
+              {canVoid
+                && !['cancelled', 'refunded', 'completed', 'paid', 'partially_refunded'].includes(order.status)
+                && !orderHasRecordedPayment(order) && (
                 <Btn small variant="danger" onClick={() => { setShowCancel(true); setCancelReason(''); setActionErr(''); }}>
                   Void / Cancel
                 </Btn>
+              )}
+              {canVoid
+                && !['cancelled', 'refunded', 'completed'].includes(order.status)
+                && orderHasRecordedPayment(order)
+                && !(canRequestRefund
+                  && (order.paid_at || order.payment_status === 'paid' || order.payment_status === 'partial' || REFUNDABLE_STATUSES.has(order.status))) && (
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', width: '100%' }}>
+                  Payment recorded — use Request Refund instead of void.
+                </p>
               )}
               {canSendBill && SEND_BILL_TYPES.has(order.type) && SEND_BILL_STATUSES.has(order.status) && (
                 <Btn
@@ -460,9 +482,11 @@ function OrderDrawer({ orderId, onClose, onOrderUpdated }: {
                         setActionErr('A cancel reason is required.');
                         return;
                       }
-                      void doAction('cancel', () => cancelOrder(order.id, reason), 'Order cancelled').then(() => {
-                        setShowCancel(false);
-                        setCancelReason('');
+                      void doAction('cancel', () => cancelOrder(order.id, reason), 'Order cancelled').then((ok) => {
+                        if (ok) {
+                          setShowCancel(false);
+                          setCancelReason('');
+                        }
                       });
                     }}
                   >
