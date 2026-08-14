@@ -85,6 +85,25 @@ describe('prepareImageForUpload', () => {
     await expect(prepareImageForUpload(input)).rejects.toThrow(IPHONE_HEIC_ERROR);
   });
 
+  it('throws a friendly error when HEIC conversion hangs past timeout', async () => {
+    vi.useFakeTimers();
+    heic2any.mockImplementation(() => new Promise(() => { /* never settles */ }));
+    const input = new File([new Uint8Array([1])], 'slow.heic', { type: 'image/heic' });
+
+    const pending = prepareImageForUpload(input);
+    const assertion = expect(pending).rejects.toThrow(IPHONE_HEIC_ERROR);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await assertion;
+    vi.useRealTimers();
+  });
+
+  it('skips non-image files without calling heic2any', async () => {
+    const pdf = new File([new Uint8Array([1])], 'doc.pdf', { type: 'application/pdf' });
+    const out = await prepareImageForUpload(pdf);
+    expect(out).toBe(pdf);
+    expect(heic2any).not.toHaveBeenCalled();
+  });
+
   it('downscales images larger than MASTER_MAX_EDGE', async () => {
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'huge.jpg', { type: 'image/jpeg' });
 

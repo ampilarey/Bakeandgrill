@@ -807,6 +807,7 @@ export function MediaLibraryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadCollectionId, setUploadCollectionId] = useState<number | ''>('');
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; deduped: boolean }>>([]);
@@ -1003,11 +1004,13 @@ export function MediaLibraryPage() {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
     setUploading(true);
+    setUploadStatus('Starting…');
     setUploadError('');
     setUploadResults([]);
     try {
       const res = await uploadMedia(fileArray, {
         collection_ids: uploadCollectionId ? [uploadCollectionId] : [],
+        onStatus: setUploadStatus,
       });
       setUploadResults(res.data.map((r) => ({
         name: r.asset.title || r.asset.url.split('/').pop() || `#${r.asset.id}`,
@@ -1018,6 +1021,7 @@ export function MediaLibraryPage() {
       setUploadError((e as Error).message || 'Upload failed');
     } finally {
       setUploading(false);
+      setUploadStatus('');
     }
   };
 
@@ -1351,23 +1355,29 @@ export function MediaLibraryPage() {
           {/* Upload dropzone */}
           {canManage && (
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => { e.preventDefault(); if (!uploading) setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onDrop={(e) => { if (!uploading) onDrop(e); else e.preventDefault(); }}
+              onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
               style={{
                 border: `2px dashed ${dragOver ? 'var(--color-primary)' : '#C4B5A5'}`,
-                borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center', cursor: 'pointer',
+                borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center',
+                cursor: uploading ? 'wait' : 'pointer',
                 background: dragOver ? 'var(--color-warning-bg)' : 'var(--color-bg)', marginBottom: 16,
                 transition: 'border-color 0.15s, background 0.15s',
                 minHeight: isMobile ? 88 : undefined,
+                opacity: uploading ? 0.85 : 1,
               }}
             >
               <Upload size={22} style={{ color: 'var(--color-text-muted)', marginBottom: 6 }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
-                {uploading ? 'Uploading…' : 'Drop files here or click to browse'}
+                {uploading ? (uploadStatus || 'Uploading…') : 'Drop files here or click to browse'}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Images, video, audio, documents — multi-select supported</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                {uploading
+                  ? 'Please wait — iPhone HEIC photos are converted before upload'
+                  : 'Images, video, audio, documents — multi-select supported'}
+              </div>
               {collections.length > 0 && (
                 <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
                   <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Collection:</label>
