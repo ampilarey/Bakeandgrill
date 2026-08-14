@@ -468,7 +468,8 @@ export function CartDrawer({
           {checkoutForTomorrow
             ? `${t('cart.checkout_tomorrow')} — MVR ${cartTotal.toFixed(2)} →`
             : !isOpen
-              ? (showClosedTomorrowTip
+              // Banner already holds the full closed/off copy — keep the button short.
+              ? (showClosedOffMessage || showClosedTomorrowTip
                 ? t('cart.closed_cta_short')
                 : (closedMessage?.trim() || t('cart.closed_cta')))
               : cart.length === 0

@@ -233,9 +233,11 @@ describe('closed shop → tomorrow checkout CTA', () => {
       });
     });
     expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
-    const btn = await screen.findByRole('button', { name: /Online ordering is off/i });
-    expect(btn).toBeDisabled();
     expect(screen.getByTestId('cart-closed-off-message')).toHaveTextContent(/Online ordering is off/i);
+    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
+    expect(btn).toBeDisabled();
+    // Full message once in the banner — not repeated on the CTA.
+    expect(screen.getAllByText(/Online ordering is off/i)).toHaveLength(1);
     expect(screen.queryByTestId('cart-closed-tomorrow-tip')).toBeNull();
   });
 
@@ -266,9 +268,10 @@ describe('closed shop → tomorrow checkout CTA', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /collect tomorrow/i })).toBeNull();
     });
-    const btn = await screen.findByRole('button', { name: /Paused|Online ordering is off/i });
+    expect(screen.getByTestId('cart-closed-off-message')).toHaveTextContent(/Paused/i);
+    const btn = await screen.findByRole('button', { name: /Ordering is closed/i });
     expect(btn).toBeDisabled();
-    expect(screen.getByTestId('cart-closed-off-message')).toBeTruthy();
+    expect(screen.getAllByText(/Paused/i)).toHaveLength(1);
   });
 
   it('CartDrawer: shop open → normal checkout (unchanged)', async () => {
