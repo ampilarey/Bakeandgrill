@@ -14,7 +14,6 @@ import { HubEditorSheets } from './HubEditorSheets';
 import { HubPreviewHost } from './HubPreviewHost';
 import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
 import { ContentIntegrityPanel } from './ContentIntegrityPanel';
-import { WebsiteDesktopPageList } from './WebsiteDesktopPageList';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface } from './canonicalCatalog';
 import {
@@ -27,7 +26,6 @@ import {
   LEGACY_PAGES_GROUP,
   contentViewForKey,
   isHomeSection,
-  blocksForContentView,
   LEGACY_GROUP_ALIASES,
   websitePageTaskByGroup,
 } from './websitePageTasks';
@@ -302,6 +300,10 @@ export function ContentHubPage() {
       return;
     }
     setActiveGroup(next);
+    // Website desktop Stage B — switching sections always returns to page mode;
+    // callers that want a specific component focused (Hero pin, search) set
+    // focusedBlockKey again right after calling selectGroup.
+    setFocusedBlockKey(null);
     const home = isHomeSection(next);
     let resolvedSurface = home ? (surface ?? null) : null;
     if (home && !resolvedSurface) {
@@ -345,7 +347,9 @@ export function ContentHubPage() {
     setMobileEditorOpen(true);
   };
 
-  // Website desktop Stage A: opening /content/website selects Home immediately.
+  // Website desktop Stage A/B: opening /content/website selects Home immediately
+  // and — once Home is present — lands straight in component mode on the hero
+  // (owner: "usually hero"). Falls back to page mode if Home isn't available.
   useEffect(() => {
     if (!websiteDesktopNoLanding) return;
     if (loading) return;
@@ -354,6 +358,10 @@ export function ContentHubPage() {
     if (orderedSectionNames.length === 0) return;
     const target = orderedSectionNames.includes('Home') ? 'Home' : orderedSectionNames[0];
     selectGroup(target);
+    if (target === 'Home') {
+      pendingFocusKeyRef.current = 'hero_slides';
+      setFocusedBlockKey('hero_slides');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [websiteDesktopNoLanding, loading, urlGroup, activeGroup, orderedSectionNames]);
 
@@ -361,13 +369,13 @@ export function ContentHubPage() {
     handleSectionSelect('Home', surface.app, surface.id);
   };
 
-  // Website desktop Stage A — ★ Hero pin: select Home and clear any other
-  // component focus. Active whenever Home is selected and no other block is
-  // focused (Stage B focuses hero_slides specifically once component mode ships).
+  // Website desktop Stage B — ★ Hero pin: select Home and focus hero_slides,
+  // landing straight in component mode (the owner's own "usually hero" answer).
   const handleHeroPinSelect = () => {
     selectGroup('Home');
     setMobileEditorOpen(true);
-    setFocusedBlockKey(null);
+    pendingFocusKeyRef.current = 'hero_slides';
+    setFocusedBlockKey('hero_slides');
   };
   const heroPinActive = Boolean(
     websiteDesktopNoLanding
@@ -517,6 +525,23 @@ export function ContentHubPage() {
     ? (websitePageTaskByGroup(activeGroup)?.title ?? activeGroup)
     : 'Section';
 
+  const schedulePublishPanel = (
+    <HubSchedulePublishPanel
+      hubLabel={hubLabel}
+      drafts={drafts}
+      locale={locale}
+      hubApp={hubApp}
+      schedules={schedules}
+      layoutDraft={layoutDraft}
+      scheduleAt={scheduleAt}
+      setScheduleAt={setScheduleAt}
+      saving={saving}
+      dirtyCount={dirtyCount}
+      onSchedulePublish={() => void schedulePublish()}
+      setMoreMenuOpen={setMoreMenuOpen}
+    />
+  );
+
   const hubSectionContentProps = {
     contentBlocks,
     drafts,
@@ -546,12 +571,11 @@ export function ContentHubPage() {
     onBack: handleMobileBack,
     focusedBlockKey: websiteDesktopNoLanding ? focusedBlockKey : null,
     desktopSplit: websiteDesktopNoLanding,
+    onFocusBlockKey: websiteDesktopNoLanding ? setFocusedBlockKey : undefined,
+    deviceFilter: websiteDeviceFilter,
+    dirtyCount,
+    schedulePublishPanel,
   };
-
-  const websiteDesktopSectionBlocks = useMemo(() => {
-    if (!websiteDesktopNoLanding || !activeGroup) return [];
-    return blocksForContentView(activeGroup, contentBlocks, hubApp).filter((b) => !b.section_enable);
-  }, [websiteDesktopNoLanding, activeGroup, contentBlocks, hubApp]);
 
   // Website desktop Stage D: Desktop|Mobile filter drives the Home surface scope.
   useEffect(() => {
@@ -614,23 +638,6 @@ export function ContentHubPage() {
         </div>
       ) : null}
     </div>
-  );
-
-  const schedulePublishPanel = (
-    <HubSchedulePublishPanel
-      hubLabel={hubLabel}
-      drafts={drafts}
-      locale={locale}
-      hubApp={hubApp}
-      schedules={schedules}
-      layoutDraft={layoutDraft}
-      scheduleAt={scheduleAt}
-      setScheduleAt={setScheduleAt}
-      saving={saving}
-      dirtyCount={dirtyCount}
-      onSchedulePublish={() => void schedulePublish()}
-      setMoreMenuOpen={setMoreMenuOpen}
-    />
   );
 
   const headerActions = (
@@ -793,16 +800,12 @@ export function ContentHubPage() {
                     <div
                       className="hub-website-desktop-workspace"
                       data-testid="website-desktop-workspace"
-                      data-mode="page"
+                      data-mode={focusedBlockKey ? 'component' : 'page'}
                     >
-                      <WebsiteDesktopPageList
+                      <HubSectionContent
                         sectionName={activeGroup}
-                        blocks={websiteDesktopSectionBlocks}
-                        hubApp={hubApp}
-                        drafts={drafts}
-                        selectedKey={focusedBlockKey}
-                        onSelect={setFocusedBlockKey}
-                        deviceFilter={websiteDeviceFilter}
+                        withBack={false}
+                        {...hubSectionContentProps}
                       />
                     </div>
                   ) : (

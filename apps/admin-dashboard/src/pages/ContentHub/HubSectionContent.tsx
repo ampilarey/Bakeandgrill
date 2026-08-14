@@ -1,4 +1,5 @@
 import type { Dispatch, MutableRefObject, ReactNode, SetStateAction } from 'react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import {
   AboutValuesEditor,
   BusinessHoursEditor,
@@ -32,6 +33,8 @@ import { HomeLayoutEditor, type HomeLayoutEditorHandle, type LayoutDraftSignal }
 import { SectionEditor } from './SectionEditor';
 import { blocksForContentView, isHomeSection, websitePageTaskByGroup } from './websitePageTasks';
 import { fallbackManagedBy } from './opsOwnedContentKeys';
+import { blockDisplayName } from './summarizeBlockValue';
+import { WebsiteDesktopPageList } from './WebsiteDesktopPageList';
 import type { SurfaceFilter } from './surfaceCatalog';
 import {
   editorScopesForBlock,
@@ -327,8 +330,15 @@ export type HubSectionContentProps = {
   isMobile: boolean;
   /** Website desktop Stage B — focused block in the right editor pane. */
   focusedBlockKey?: string | null;
-  /** Website desktop Stage B — rail | list | editor workspace. */
+  /** Website desktop rev3 — page mode (list) vs component mode (one block, full width). */
   desktopSplit?: boolean;
+  /** Website desktop rev3 — sets/clears focusedBlockKey (page list row click / Back). */
+  onFocusBlockKey?: (key: string | null) => void;
+  /** Website desktop Stage D — Desktop|Mobile filter for the page list. */
+  deviceFilter?: 'desktop' | 'mobile';
+  /** Needed to surface the schedule/publish slot inside component-mode's focused editor. */
+  dirtyCount?: number;
+  schedulePublishPanel?: ReactNode;
 };
 
 /**
@@ -366,6 +376,10 @@ export function HubSectionContent({
   isMobile,
   focusedBlockKey = null,
   desktopSplit = false,
+  onFocusBlockKey,
+  deviceFilter = 'desktop',
+  dirtyCount = 0,
+  schedulePublishPanel,
 }: HubSectionContentProps) {
   const editorDeps: SharedEditorDeps = {
     locale,
@@ -759,6 +773,74 @@ export function HubSectionContent({
     + visibleRegularCount
     + (isHomeLayout ? 0 : sectionEnableBlocks.length);
 
+  // Website desktop rev3 — two zones, not three: PAGE MODE (chrome + brand kit +
+  // a full-width component list) OR COMPONENT MODE (one block takes the whole
+  // work area). No list-beside-detail, no third fixed column.
+  if (desktopSplit) {
+    const focusedBlock = focusedBlockKey
+      ? leftoverBrandBlocks.find((b) => b.key === focusedBlockKey) ?? null
+      : null;
+
+    if (focusedBlock) {
+      return (
+        <div className="hub-website-component-mode" data-testid="website-component-mode">
+          <div className="hub-website-component-breadcrumb">
+            <button
+              type="button"
+              data-testid="website-component-back"
+              className="hub-website-component-back"
+              onClick={() => onFocusBlockKey?.(null)}
+            >
+              <ArrowLeft size={16} aria-hidden />
+              Back
+            </button>
+            <span className="hub-website-component-crumb" data-testid="website-component-crumb">
+              <span>{sectionName}</span>
+              <ChevronRight size={14} aria-hidden />
+              <span>{blockDisplayName(focusedBlock)}</span>
+            </span>
+          </div>
+          <div className="hub-website-desktop-editor" data-testid="website-desktop-editor">
+            <HubFocusedBlockBody
+              block={focusedBlock}
+              hubApp={hubApp}
+              drafts={drafts}
+              locale={locale}
+              contentBlocks={contentBlocks}
+              blockScopeTab={blockScopeTab}
+              setBlockScopeTab={setBlockScopeTab}
+              setDraft={setDraft}
+              makeTriggerUpload={makeTriggerUpload}
+              onUpload={onUpload}
+              uploadCtx={uploadCtx}
+              setMediaOpen={setMediaOpen}
+              draftStatusNode={draftStatusNode}
+              dirtyCount={dirtyCount}
+              schedulePublishPanel={schedulePublishPanel}
+              wideLayout
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="hub-website-page-mode" data-testid="website-page-mode">
+        {chrome ? <div className="hub-section-editor-chrome">{chrome}</div> : null}
+        {brandKit ? <div className="hub-section-editor-brandkit">{brandKit}</div> : null}
+        <WebsiteDesktopPageList
+          sectionName={sectionName}
+          blocks={leftoverBrandBlocks}
+          hubApp={hubApp}
+          drafts={drafts}
+          selectedKey={null}
+          onSelect={(key) => onFocusBlockKey?.(key)}
+          deviceFilter={deviceFilter}
+        />
+      </div>
+    );
+  }
+
   return (
     <SectionEditor
       sectionName={sectionName}
@@ -791,11 +873,14 @@ export type HubFocusedBlockBodyProps = {
   draftStatusNode: ReactNode;
   dirtyCount: number;
   schedulePublishPanel: ReactNode;
+  /** Website desktop Stage B/C — full-width component mode (hero gets 3 columns, not the mobile sheet layout). */
+  wideLayout?: boolean;
 };
 
 /**
  * Body rendered INSIDE the focused block editor `ContentEditorSheet`
- * (Overview → Edit). The sheet chrome itself stays in ContentHubPage.
+ * (Overview → Edit) on mobile, OR full-width component mode on Website
+ * desktop (Stage B). The sheet/breadcrumb chrome itself stays in the caller.
  */
 export function HubFocusedBlockBody({
   block,
@@ -813,6 +898,7 @@ export function HubFocusedBlockBody({
   draftStatusNode,
   dirtyCount,
   schedulePublishPanel,
+  wideLayout = false,
 }: HubFocusedBlockBodyProps) {
   const editorDeps: SharedEditorDeps = {
     locale,
@@ -827,16 +913,24 @@ export function HubFocusedBlockBody({
   };
   const scopeTabsDeps: ScopeTabsDeps = { drafts, setBlockScopeTab };
 
+  // Ops-owned — read-only everywhere, including Website desktop component mode.
+  const resolvedDisplay = (hubApp === 'order_app' ? block.resolved_order_app : block.resolved_website) ?? '';
+  const managedBy = block.managed_by ?? fallbackManagedBy(block.key, resolvedDisplay);
+  if (managedBy) {
+    return <OpsOwnedSummary managedBy={managedBy} testId={`ops-owned-${block.key}`} />;
+  }
+
   const scopes = editorScopesForBlock(block, hubApp);
   const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
   const val = valueForScope(block, activeScope, drafts);
   const isHero = block.editor === 'hero';
   const editorBody = isHero
     ? renderVisualEditor(editorDeps, block, activeScope, val, {
-      mobileMode: true,
+      mobileMode: !wideLayout,
+      wideLayout,
       scheduleSlot: dirtyCount > 0 ? schedulePublishPanel : undefined,
     })
-    : renderEditorForScope(editorDeps, block, activeScope);
+    : renderEditorForScope(editorDeps, block, activeScope, { wideLayout });
 
   const appLabel = scopesLabelFor([activeScope]);
   // §6.4 — show the thing, not its key. Hero first; other visual editors + plain text follow.
@@ -847,7 +941,9 @@ export function HubFocusedBlockBody({
     && block.type !== 'boolean'
     && block.type !== 'image'
     && !seoDescriptionKey(block.key)
-    && !isSeoDescriptionKey(block.key);
+    && !isSeoDescriptionKey(block.key)
+    // The wide hero editor's own slide strip already shows the same thing.
+    && !(wideLayout && isHero);
 
   return (
     <>
