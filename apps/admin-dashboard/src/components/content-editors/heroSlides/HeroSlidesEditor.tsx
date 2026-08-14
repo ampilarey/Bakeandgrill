@@ -189,29 +189,22 @@ export function HeroSlidesEditor({
     );
   };
 
-  const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => {
-    const presentation = resolveHeroSlidePresentation(slide);
+  const toDatetimeLocalValue = (raw: string | undefined) => {
+    const s = String(raw ?? '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00`;
+    const m = /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})/.exec(s);
+    if (m) return `${m[1]}T${m[2]}:${m[3]}`;
+    return '';
+  };
+
+  /** Showing/Hidden toggle + schedule label + start/end dates. Reused by the
+   *  default/mobile stack (original position) and the wide LOOK column. */
+  const renderVisibilityAndSchedule = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => {
     const showing = isHeroSlideShowing(slide);
     const scheduleLabel = formatHeroSlideScheduleLabel(slide);
-    const toDatetimeLocalValue = (raw: string | undefined) => {
-      const s = String(raw ?? '').trim();
-      if (!s) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00`;
-      const m = /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})/.exec(s);
-      if (m) return `${m[1]}T${m[2]}:${m[3]}`;
-      return '';
-    };
     return (
-      <div
-        data-testid={`hero-slide-${idx}`}
-        data-showing={showing ? 'true' : 'false'}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          opacity: showing ? 1 : 0.72,
-        }}
-      >
+      <>
         <div
           data-testid={`hero-slide-visibility-${idx}`}
           style={{
@@ -306,320 +299,405 @@ export function HeroSlidesEditor({
             </label>
           </div>
         </div>
+      </>
+    );
+  };
 
-        {uploadImage ? (
-          <ContentImageField
-            imageUrl={slide.image || ''}
-            imageAlt={slide.image_alt || ''}
-            focalX={slide.image_focal_x}
-            focalY={slide.image_focal_y}
-            upload={uploadImage}
-            onChange={(patch) => update(patch)}
-          />
-        ) : (
-          <button type="button" onClick={() => triggerUpload(`hero_slides_${idx}_image`, (url) => update({ image: url }))}>
-            Upload image
-          </button>
-        )}
+  /** The slide image (focal/alt/replace/crop). Reused by the default/mobile
+   *  stack and the wide PICTURE column. */
+  const renderImageBlock = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
+    uploadImage ? (
+      <ContentImageField
+        imageUrl={slide.image || ''}
+        imageAlt={slide.image_alt || ''}
+        focalX={slide.image_focal_x}
+        focalY={slide.image_focal_y}
+        upload={uploadImage}
+        onChange={(patch) => update(patch)}
+      />
+    ) : (
+      <button type="button" onClick={() => triggerUpload(`hero_slides_${idx}_image`, (url) => update({ image: url }))}>
+        Upload image
+      </button>
+    )
+  );
 
-        <div
-          data-testid={`hero-slide-presentation-${idx}`}
-          style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label
-              htmlFor={`hero-${idx}-photo-brightness`}
-              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
-            >
-              Photo brightness — {presentation.photo_brightness}%
-            </label>
-            <input
-              id={`hero-${idx}-photo-brightness`}
-              type="range"
-              min={0}
-              max={100}
-              value={presentation.photo_brightness}
-              onChange={(e) => applyPresentation(idx, { photo_brightness: Number(e.target.value) })}
-              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
-              aria-label="Photo brightness"
-            />
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Higher keeps the photo looking like the photo. Lower knocks it back.
-            </p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label
-              htmlFor={`hero-${idx}-text-background`}
-              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
-            >
-              Text background — {presentation.text_background}%
-            </label>
-            <input
-              id={`hero-${idx}-text-background`}
-              type="range"
-              min={0}
-              max={100}
-              value={presentation.text_background}
-              onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
-              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
-              aria-label="Text background"
-            />
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Dark panel behind the words only — the photo stays untouched.
-            </p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-              Text position
-            </span>
-            <div
-              role="radiogroup"
-              aria-label="Text position"
-              style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
-            >
-              {([
-                ['top', 'Top'],
-                ['middle', 'Middle'],
-                ['bottom', 'Bottom'],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={presentation.text_position === value}
-                  data-testid={`hero-text-position-${idx}-${value}`}
-                  onClick={() => applyPresentation(idx, { text_position: value })}
-                  style={{
-                    ...btnStyle,
-                    fontWeight: presentation.text_position === value ? 700 : 600,
-                    background: presentation.text_position === value
-                      ? 'var(--color-warning-bg)'
-                      : 'var(--color-surface)',
-                    borderColor: presentation.text_position === value
-                      ? 'var(--color-primary)'
-                      : 'var(--color-border)',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div
-            data-testid={`hero-element-bg-group-${idx}`}
-            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+  /** Photo brightness, text background, text position, per-element swatches.
+   *  Reused by the default/mobile stack and the wide LOOK column. */
+  const renderPresentationBlock = (slide: HeroSlideRow, idx: number) => {
+    const presentation = resolveHeroSlidePresentation(slide);
+    return (
+      <div
+        data-testid={`hero-slide-presentation-${idx}`}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label
+            htmlFor={`hero-${idx}-photo-brightness`}
+            style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
           >
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-              Per-element backgrounds
-            </p>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Leave on Default to keep today’s look. Open only the pieces you want to change.
-            </p>
-            {(['eyebrow', 'title', 'subtitle', 'cta1', 'cta2'] as HeroElementKey[]).map((key) =>
-              renderElementBgEditor(slide, idx, key))}
+            Photo brightness — {presentation.photo_brightness}%
+          </label>
+          <input
+            id={`hero-${idx}-photo-brightness`}
+            type="range"
+            min={0}
+            max={100}
+            value={presentation.photo_brightness}
+            onChange={(e) => applyPresentation(idx, { photo_brightness: Number(e.target.value) })}
+            style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+            aria-label="Photo brightness"
+          />
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Higher keeps the photo looking like the photo. Lower knocks it back.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label
+            htmlFor={`hero-${idx}-text-background`}
+            style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+          >
+            Text background — {presentation.text_background}%
+          </label>
+          <input
+            id={`hero-${idx}-text-background`}
+            type="range"
+            min={0}
+            max={100}
+            value={presentation.text_background}
+            onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
+            style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+            aria-label="Text background"
+          />
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Dark panel behind the words only — the photo stays untouched.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            Text position
+          </span>
+          <div
+            role="radiogroup"
+            aria-label="Text position"
+            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+          >
+            {([
+              ['top', 'Top'],
+              ['middle', 'Middle'],
+              ['bottom', 'Bottom'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={presentation.text_position === value}
+                data-testid={`hero-text-position-${idx}-${value}`}
+                onClick={() => applyPresentation(idx, { text_position: value })}
+                style={{
+                  ...btnStyle,
+                  fontWeight: presentation.text_position === value ? 700 : 600,
+                  background: presentation.text_position === value
+                    ? 'var(--color-warning-bg)'
+                    : 'var(--color-surface)',
+                  borderColor: presentation.text_position === value
+                    ? 'var(--color-primary)'
+                    : 'var(--color-border)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
         <div
-          data-testid="hero-video-editor"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            padding: 12,
-            borderRadius: 12,
-            border: '1.5px solid var(--color-border)',
-            background: 'var(--color-bg)',
-          }}
+          data-testid={`hero-element-bg-group-${idx}`}
+          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Clapperboard size={16} color="var(--color-primary)" />
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Video editor</p>
-            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-              Trim · crop · poster · export
-            </span>
-          </div>
-
-          {slide.video ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div
-                style={{
-                  position: 'relative',
-                  width: 120,
-                  height: 68,
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                  background: 'var(--color-text)',
-                  flexShrink: 0,
-                  border: '1px solid var(--color-border)',
-                }}
-              >
-                {(slide.video_poster || slide.image) ? (
-                  <img
-                    src={slide.video_poster || slide.image}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                ) : (
-                  <video
-                    src={slide.video}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                )}
-                <span
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(28,20,8,0.35)',
-                  }}
-                >
-                  <Film size={22} color="#fff" />
-                </span>
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Video attached</p>
-                <p
-                  style={{
-                    margin: '3px 0 0',
-                    fontSize: 11,
-                    color: 'var(--color-text-secondary)',
-                    overflowWrap: 'anywhere',
-                  }}
-                  title={slide.video}
-                >
-                  {slide.video}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-              1) Upload or pick a video below · 2) Click <strong>Open video editor</strong> to trim, crop, and set a poster.
-            </p>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button
-              type="button"
-              disabled={!uploadVideo || busy}
-              onClick={() => {
-                videoInput.current = { idx, kind: 'video' };
-                if (fileRef.current) fileRef.current.accept = 'video/mp4,video/webm,video/quicktime,.mov';
-                fileRef.current?.click();
-              }}
-              style={btnStyle}
-            >
-              <Film size={13} />
-              {slide.video ? 'Replace video' : 'Upload video'}
-            </button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon={<Images size={13} />}
-              disabled={busy}
-              onClick={() => setLibraryTarget({ idx, kind: 'video' })}
-            >
-              Video library
-            </Button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                videoInput.current = { idx, kind: 'poster' };
-                if (fileRef.current) fileRef.current.accept = 'image/*,.heic,.heif';
-                fileRef.current?.click();
-              }}
-              style={btnStyle}
-            >
-              {slide.video_poster ? 'Replace poster' : 'Upload poster'}
-            </button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon={<Images size={13} />}
-              disabled={busy}
-              onClick={() => setLibraryTarget({ idx, kind: 'poster' })}
-            >
-              Poster library
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              icon={<Clapperboard size={13} />}
-              disabled={busy || !slide.video}
-              onClick={() => setStudioIdx(idx)}
-              title={!slide.video ? 'Upload or pick a video first' : 'Open trim / crop / poster editor'}
-            >
-              Open video editor
-            </Button>
-            {slide.video ? (
-              <button
-                type="button"
-                onClick={() => {
-                  update({ video: '', video_poster: '' });
-                  setStatus('');
-                }}
-                style={{ ...btnStyle, background: 'var(--color-warning-bg)' }}
-              >
-                Clear video
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="form-grid-2 hero-slide-fields" style={{ display: 'grid', gridTemplateColumns: multiline ? '1fr' : '1fr 1fr', gap: 10 }}>
-          {FIELDS.map((f) => {
-            const useArea = multiline || f.multiline;
-            return (
-              <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: (!multiline && f.col === 'full') || useArea ? '1 / -1' : undefined }}>
-                <label htmlFor={`hero-${idx}-${f.key}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
-                {useArea ? (
-                  <textarea
-                    id={`hero-${idx}-${f.key}`}
-                    value={String(slide[f.key] ?? '')}
-                    onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
-                    placeholder={f.placeholder}
-                    rows={f.key === 'title' || f.key === 'subtitle' ? 3 : 2}
-                    style={{
-                      minHeight: 44,
-                      borderRadius: 8,
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                      padding: '8px 10px',
-                      fontSize: 13,
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      color: 'var(--color-text)',
-                      resize: 'vertical',
-                      width: '100%',
-                      overflowWrap: 'anywhere',
-                    }}
-                  />
-                ) : (
-                  <input
-                    id={`hero-${idx}-${f.key}`}
-                    value={String(slide[f.key] ?? '')}
-                    onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
-                    placeholder={f.placeholder}
-                    style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', width: '100%' }}
-                  />
-                )}
-              </div>
-            );
-          })}
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
+            Per-element backgrounds
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Leave on Default to keep today’s look. Open only the pieces you want to change.
+          </p>
+          {(['eyebrow', 'title', 'subtitle', 'cta1', 'cta2'] as HeroElementKey[]).map((key) =>
+            renderElementBgEditor(slide, idx, key))}
         </div>
       </div>
     );
   };
+
+  /** Video upload/replace/trim entry points. Reused by the default/mobile
+   *  stack and the wide PICTURE column. */
+  const renderVideoBlock = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
+    <div
+      data-testid="hero-video-editor"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        padding: 12,
+        borderRadius: 12,
+        border: '1.5px solid var(--color-border)',
+        background: 'var(--color-bg)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Clapperboard size={16} color="var(--color-primary)" />
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Video editor</p>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+          Trim · crop · poster · export
+        </span>
+      </div>
+
+      {slide.video ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              position: 'relative',
+              width: 120,
+              height: 68,
+              borderRadius: 8,
+              overflow: 'hidden',
+              background: 'var(--color-text)',
+              flexShrink: 0,
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            {(slide.video_poster || slide.image) ? (
+              <img
+                src={slide.video_poster || slide.image}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            ) : (
+              <video
+                src={slide.video}
+                muted
+                playsInline
+                preload="metadata"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            )}
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(28,20,8,0.35)',
+              }}
+            >
+              <Film size={22} color="#fff" />
+            </span>
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Video attached</p>
+            <p
+              style={{
+                margin: '3px 0 0',
+                fontSize: 11,
+                color: 'var(--color-text-secondary)',
+                overflowWrap: 'anywhere',
+              }}
+              title={slide.video}
+            >
+              {slide.video}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+          1) Upload or pick a video below · 2) Click <strong>Open video editor</strong> to trim, crop, and set a poster.
+        </p>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button
+          type="button"
+          disabled={!uploadVideo || busy}
+          onClick={() => {
+            videoInput.current = { idx, kind: 'video' };
+            if (fileRef.current) fileRef.current.accept = 'video/mp4,video/webm,video/quicktime,.mov';
+            fileRef.current?.click();
+          }}
+          style={btnStyle}
+        >
+          <Film size={13} />
+          {slide.video ? 'Replace video' : 'Upload video'}
+        </button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon={<Images size={13} />}
+          disabled={busy}
+          onClick={() => setLibraryTarget({ idx, kind: 'video' })}
+        >
+          Video library
+        </Button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            videoInput.current = { idx, kind: 'poster' };
+            if (fileRef.current) fileRef.current.accept = 'image/*,.heic,.heif';
+            fileRef.current?.click();
+          }}
+          style={btnStyle}
+        >
+          {slide.video_poster ? 'Replace poster' : 'Upload poster'}
+        </button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon={<Images size={13} />}
+          disabled={busy}
+          onClick={() => setLibraryTarget({ idx, kind: 'poster' })}
+        >
+          Poster library
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          icon={<Clapperboard size={13} />}
+          disabled={busy || !slide.video}
+          onClick={() => setStudioIdx(idx)}
+          title={!slide.video ? 'Upload or pick a video first' : 'Open trim / crop / poster editor'}
+        >
+          Open video editor
+        </Button>
+        {slide.video ? (
+          <button
+            type="button"
+            onClick={() => {
+              update({ video: '', video_poster: '' });
+              setStatus('');
+            }}
+            style={{ ...btnStyle, background: 'var(--color-warning-bg)' }}
+          >
+            Clear video
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  /** Eyebrow / title / subtitle / CTA1 / CTA2 text + URL fields. Reused by
+   *  the default/mobile grid and the wide WORDS column (stacked). */
+  const renderWordsFieldsBlock = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => (
+    <div className="form-grid-2 hero-slide-fields" style={{ display: 'grid', gridTemplateColumns: multiline ? '1fr' : '1fr 1fr', gap: 10 }}>
+      {FIELDS.map((f) => {
+        const useArea = multiline || f.multiline;
+        return (
+          <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: (!multiline && f.col === 'full') || useArea ? '1 / -1' : undefined }}>
+            <label htmlFor={`hero-${idx}-${f.key}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
+            {useArea ? (
+              <textarea
+                id={`hero-${idx}-${f.key}`}
+                value={String(slide[f.key] ?? '')}
+                onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
+                placeholder={f.placeholder}
+                rows={f.key === 'title' || f.key === 'subtitle' ? 3 : 2}
+                style={{
+                  minHeight: 44,
+                  borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  color: 'var(--color-text)',
+                  resize: 'vertical',
+                  width: '100%',
+                  overflowWrap: 'anywhere',
+                }}
+              />
+            ) : (
+              <input
+                id={`hero-${idx}-${f.key}`}
+                value={String(slide[f.key] ?? '')}
+                onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
+                placeholder={f.placeholder}
+                style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', width: '100%' }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  /** Original single-column stack — mobile sheet + default RepeaterShell.
+   *  Composes the same sub-blocks the wide layout's 3 columns use below. */
+  const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => {
+    const showing = isHeroSlideShowing(slide);
+    return (
+      <div
+        data-testid={`hero-slide-${idx}`}
+        data-showing={showing ? 'true' : 'false'}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          opacity: showing ? 1 : 0.72,
+        }}
+      >
+        {renderVisibilityAndSchedule(slide, idx, update)}
+        {renderImageBlock(slide, idx, update)}
+        {renderPresentationBlock(slide, idx)}
+        {renderVideoBlock(slide, idx, update)}
+        {renderWordsFieldsBlock(slide, idx, update, multiline)}
+      </div>
+    );
+  };
+
+  /** Small caps heading shared by the three wide-layout columns. */
+  const renderColumnHeading = (text: string) => (
+    <p
+      style={{
+        margin: 0,
+        fontSize: 11,
+        fontWeight: 800,
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        color: 'var(--color-text-muted)',
+      }}
+    >
+      {text}
+    </p>
+  );
+
+  /** Website desktop Stage C — PICTURE column: image + video, full width. */
+  const renderPictureColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
+    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-picture-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+      {renderColumnHeading('Picture')}
+      {renderImageBlock(slide, idx, update)}
+      {renderVideoBlock(slide, idx, update)}
+    </div>
+  );
+
+  /** Website desktop Stage C — WORDS column: eyebrow/title/subtitle/CTAs, stacked. */
+  const renderWordsColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
+    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-words-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      {renderColumnHeading('Words')}
+      {renderWordsFieldsBlock(slide, idx, update, true)}
+    </div>
+  );
+
+  /** Website desktop Stage C — LOOK column: brightness/text bg/position/swatches + Showing/dates. */
+  const renderLookColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
+    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-look-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      {renderColumnHeading('Look')}
+      {renderVisibilityAndSchedule(slide, idx, update)}
+      {renderPresentationBlock(slide, idx)}
+    </div>
+  );
 
   const sharedChrome = (
     <>
@@ -952,9 +1030,61 @@ export function HeroSlidesEditor({
           </button>
         </div>
         {selected && items.length > 0 ? (
-          <div className="hero-slides-wide-fields" data-testid="hero-slides-wide-fields">
-            {renderSlideFields(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch), false)}
-          </div>
+          <>
+            <div
+              className="hero-slides-wide-columns"
+              data-testid="hero-slides-wide-fields"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 20,
+                alignItems: 'start',
+              }}
+            >
+              {renderPictureColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
+              {renderWordsColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
+              {renderLookColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
+            </div>
+            <div
+              className="hero-slides-wide-foot"
+              data-testid="hero-slides-wide-foot"
+              style={{
+                display: 'flex',
+                gap: 8,
+                paddingTop: 10,
+                borderTop: '1px solid var(--color-border)',
+              }}
+            >
+              <button
+                type="button"
+                className="hub-block-edit-btn"
+                aria-label="Duplicate slide"
+                data-testid={`hero-slide-wide-duplicate-${selectedIdx}`}
+                onClick={() => {
+                  const clone = { ...items[selectedIdx] };
+                  const next = items.slice();
+                  next.splice(selectedIdx + 1, 0, clone);
+                  commitSlides(next);
+                  setEditingIdx(selectedIdx + 1);
+                }}
+              >
+                <Copy size={14} /> Duplicate
+              </button>
+              <button
+                type="button"
+                className="hub-block-edit-btn"
+                aria-label="Delete slide"
+                data-testid={`hero-slide-wide-delete-${selectedIdx}`}
+                onClick={() => {
+                  const next = items.filter((_, i) => i !== selectedIdx);
+                  commitSlides(next);
+                  setEditingIdx(Math.max(0, selectedIdx - 1));
+                }}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </>
         ) : (
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
             Add a slide to start editing the hero.
