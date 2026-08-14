@@ -152,21 +152,26 @@ class MediaEditTest extends TestCase
         $this->assertSame(1, MediaAssetVersion::where('media_asset_id', $this->asset->id)->count());
     }
 
-    public function test_replace_file_keeps_path_and_updates_usages(): void
+    public function test_replace_file_rewrites_main_and_thumb_usages(): void
     {
-        $oldPath = $this->asset->path;
-        $oldChecksum = $this->asset->checksum;
-        $url = $this->asset->url;
+        Storage::disk('public')->put('library/images/thumbs/old-thumb.jpg', 'thumb');
+        $this->asset->thumb_url = '/storage/library/images/thumbs/old-thumb.jpg';
+        $this->asset->save();
+
+        $oldMain = $this->asset->url;
+        $oldThumb = (string) $this->asset->thumb_url;
 
         $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-replace', 'is_active' => true]);
-        Item::create([
+        $item = Item::create([
             'category_id' => $category->id,
             'name' => 'Replace Ref Item',
             'base_price' => 12,
             'sku' => 'REF-ML-REPLACE',
             'is_active' => true,
             'is_available' => true,
-            'image_url' => $url,
+            'image_url' => $oldMain,
+            'thumb_url' => $oldThumb,
+            'image_original_url' => (string) $this->asset->original_url,
         ]);
 
         $file = UploadedFile::fake()->image('new-photo.jpg', 320, 240);
@@ -175,18 +180,21 @@ class MediaEditTest extends TestCase
             'file' => $file,
         ])->assertOk()
             ->assertJsonPath('mode', 'replace')
-            ->assertJsonPath('updated_references', 1)
             ->assertJsonStructure(['asset', 'updated_references', 'mode']);
 
+        $this->assertGreaterThanOrEqual(2, (int) $res->json('updated_references'));
+
         $this->asset->refresh();
-        $this->assertSame($oldPath, $this->asset->path);
-        $this->assertSame($url, $this->asset->url);
-        $this->assertNotSame($oldChecksum, $this->asset->checksum);
-        $this->assertGreaterThan(0, (int) $this->asset->width);
-        $this->assertGreaterThan(0, (int) $this->asset->height);
-        $this->assertTrue(Storage::disk('public')->exists($oldPath));
+        $item->refresh();
+
+        $this->assertNotSame($oldMain, $this->asset->url);
+        $this->assertNotSame($oldThumb, (string) $this->asset->thumb_url);
+        $this->assertSame($this->asset->url, $item->image_url);
+        $this->assertSame($this->asset->thumb_url, $item->thumb_url);
+        $this->assertSame($this->asset->original_url, $item->image_original_url);
+        $this->assertTrue(Storage::disk('public')->exists($this->asset->path));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/edit-me.jpg'));
         $this->assertSame(1, MediaAssetVersion::where('media_asset_id', $this->asset->id)->count());
-        $this->assertSame($url, Item::where('sku', 'REF-ML-REPLACE')->value('image_url'));
     }
 
     public function test_copy_leaves_original(): void

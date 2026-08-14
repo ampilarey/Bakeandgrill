@@ -34,11 +34,7 @@ final class MediaUsageResolver
 
         $out = [];
 
-        $itemCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('items', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('items', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $itemCols = $this->itemImageColumns();
         if ($itemCols !== []) {
             $items = Item::query()
                 ->where(function ($q) use ($itemCols, $candidates) {
@@ -61,12 +57,7 @@ final class MediaUsageResolver
             }
         }
 
-        $photoCols = array_values(array_filter([
-            'url',
-            Schema::hasColumn('item_photos', 'original_url') ? 'original_url' : null,
-            Schema::hasColumn('item_photos', 'thumb_url') ? 'thumb_url' : null,
-            Schema::hasColumn('item_photos', 'poster_url') ? 'poster_url' : null,
-        ]));
+        $photoCols = $this->itemPhotoColumns();
         if ($photoCols !== [] && Schema::hasTable('item_photos')) {
             $photos = ItemPhoto::query()
                 ->where(function ($q) use ($photoCols, $candidates) {
@@ -89,11 +80,7 @@ final class MediaUsageResolver
             }
         }
 
-        $catCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('categories', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('categories', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $catCols = $this->categoryImageColumns();
         if ($catCols !== []) {
             $cats = Category::query()
                 ->where(function ($q) use ($catCols, $candidates) {
@@ -310,22 +297,42 @@ final class MediaUsageResolver
      */
     public function rewriteReferences(Media $media, string $fromUrl, string $toUrl): int
     {
-        if ($fromUrl === '' || $toUrl === '' || $fromUrl === $toUrl) {
+        unset($media);
+
+        return $this->rewriteUrlMap([$fromUrl => $toUrl]);
+    }
+
+    /**
+     * Rewrite many old→new URL pairs across items, photos, categories, settings,
+     * signage, and content JSON. Each column/blob value is matched per-from URL
+     * so thumbnails stay thumbnails and mains stay mains.
+     *
+     * @param  array<string, string>  $map  oldUrl => newUrl
+     * @return int Number of field / blob updates
+     */
+    public function rewriteUrlMap(array $map): int
+    {
+        $pairs = [];
+        foreach ($map as $from => $to) {
+            $from = is_string($from) ? trim($from) : '';
+            $to = is_string($to) ? trim($to) : '';
+            if ($from === '' || $to === '' || $from === $to) {
+                continue;
+            }
+            foreach ($this->urlVariants($from) as $variant) {
+                // Longer variants first so /storage/foo wins over bare path when both match.
+                $pairs[$variant] = $to;
+            }
+        }
+        if ($pairs === []) {
             return 0;
         }
+        uksort($pairs, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
 
-        $fromUrls = array_values(array_unique(array_filter([
-            $fromUrl,
-            $this->normalizeStorageUrl($fromUrl),
-            $this->pathOnly($fromUrl),
-        ])));
+        $fromUrls = array_keys($pairs);
         $updated = 0;
 
-        $itemCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('items', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('items', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $itemCols = $this->itemImageColumns();
         foreach (Item::query()->where(function ($q) use ($itemCols, $fromUrls) {
             foreach ($itemCols as $col) {
                 $q->orWhereIn($col, $fromUrls);
@@ -333,8 +340,9 @@ final class MediaUsageResolver
         })->get() as $item) {
             $dirty = false;
             foreach ($itemCols as $col) {
-                if (in_array((string) $item->{$col}, $fromUrls, true)) {
-                    $item->{$col} = $toUrl;
+                $current = (string) $item->{$col};
+                if (isset($pairs[$current])) {
+                    $item->{$col} = $pairs[$current];
                     $dirty = true;
                     $updated++;
                 }
@@ -344,13 +352,8 @@ final class MediaUsageResolver
             }
         }
 
-        $photoCols = array_values(array_filter([
-            'url',
-            Schema::hasColumn('item_photos', 'original_url') ? 'original_url' : null,
-            Schema::hasColumn('item_photos', 'thumb_url') ? 'thumb_url' : null,
-            Schema::hasColumn('item_photos', 'poster_url') ? 'poster_url' : null,
-        ]));
-        if (Schema::hasTable('item_photos')) {
+        $photoCols = $this->itemPhotoColumns();
+        if ($photoCols !== [] && Schema::hasTable('item_photos')) {
             foreach (ItemPhoto::query()->where(function ($q) use ($photoCols, $fromUrls) {
                 foreach ($photoCols as $col) {
                     $q->orWhereIn($col, $fromUrls);
@@ -358,8 +361,9 @@ final class MediaUsageResolver
             })->get() as $photo) {
                 $dirty = false;
                 foreach ($photoCols as $col) {
-                    if (in_array((string) $photo->{$col}, $fromUrls, true)) {
-                        $photo->{$col} = $toUrl;
+                    $current = (string) $photo->{$col};
+                    if (isset($pairs[$current])) {
+                        $photo->{$col} = $pairs[$current];
                         $dirty = true;
                         $updated++;
                     }
@@ -370,11 +374,7 @@ final class MediaUsageResolver
             }
         }
 
-        $catCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('categories', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('categories', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $catCols = $this->categoryImageColumns();
         foreach (Category::query()->where(function ($q) use ($catCols, $fromUrls) {
             foreach ($catCols as $col) {
                 $q->orWhereIn($col, $fromUrls);
@@ -382,8 +382,9 @@ final class MediaUsageResolver
         })->get() as $cat) {
             $dirty = false;
             foreach ($catCols as $col) {
-                if (in_array((string) $cat->{$col}, $fromUrls, true)) {
-                    $cat->{$col} = $toUrl;
+                $current = (string) $cat->{$col};
+                if (isset($pairs[$current])) {
+                    $cat->{$col} = $pairs[$current];
                     $dirty = true;
                     $updated++;
                 }
@@ -393,20 +394,37 @@ final class MediaUsageResolver
             }
         }
 
-        foreach (SiteSetting::query()->get(['id', 'key', 'value']) as $setting) {
+        $settingsTouched = false;
+        $settingCols = ['id', 'key', 'value'];
+        if (Schema::hasColumn('site_settings', 'scope')) {
+            $settingCols[] = 'scope';
+        }
+        if (Schema::hasColumn('site_settings', 'locale')) {
+            $settingCols[] = 'locale';
+        }
+        foreach (SiteSetting::query()->get($settingCols) as $setting) {
             $value = (string) $setting->value;
-            $new = $value;
-            foreach ($fromUrls as $from) {
-                if ($from !== '' && str_contains($new, $from)) {
-                    $new = str_replace($from, $toUrl, $new);
-                }
-            }
+            $new = $this->replaceInBlob($value, $pairs);
             if ($new !== $value) {
                 $setting->value = $new;
                 $setting->save();
+                $settingsTouched = true;
                 $updated++;
+                $scope = SiteSetting::hasScopeColumn() && is_string($setting->scope ?? null)
+                    ? (string) $setting->scope
+                    : 'shared';
+                $locale = SiteSetting::hasLocaleColumn() && is_string($setting->locale ?? null)
+                    ? (string) $setting->locale
+                    : 'en';
+                SiteSetting::forgetScoped((string) $setting->key, $scope, $locale);
             }
         }
+        if ($settingsTouched) {
+            SiteSetting::bust();
+        }
+
+        $updated += $this->rewriteSignageBlobs($pairs);
+        $updated += $this->rewriteContentBlobs($pairs);
 
         return $updated;
     }
@@ -422,9 +440,173 @@ final class MediaUsageResolver
             $path !== '' ? '/storage/' . ltrim($path, '/') : null,
             $media->thumb_url,
             $media->original_url,
+            $media->image_webp_url,
+            $media->thumb_webp_url,
         ]);
 
         return array_values(array_unique(array_map('strval', $list)));
+    }
+
+    /** @return list<string> */
+    private function itemImageColumns(): array
+    {
+        return array_values(array_filter([
+            'image_url',
+            Schema::hasColumn('items', 'image_original_url') ? 'image_original_url' : null,
+            Schema::hasColumn('items', 'thumb_url') ? 'thumb_url' : null,
+            Schema::hasColumn('items', 'image_webp_url') ? 'image_webp_url' : null,
+            Schema::hasColumn('items', 'thumb_webp_url') ? 'thumb_webp_url' : null,
+        ]));
+    }
+
+    /** @return list<string> */
+    private function itemPhotoColumns(): array
+    {
+        if (! Schema::hasTable('item_photos')) {
+            return [];
+        }
+
+        return array_values(array_filter([
+            'url',
+            Schema::hasColumn('item_photos', 'original_url') ? 'original_url' : null,
+            Schema::hasColumn('item_photos', 'thumb_url') ? 'thumb_url' : null,
+            Schema::hasColumn('item_photos', 'poster_url') ? 'poster_url' : null,
+        ]));
+    }
+
+    /** @return list<string> */
+    private function categoryImageColumns(): array
+    {
+        return array_values(array_filter([
+            'image_url',
+            Schema::hasColumn('categories', 'image_original_url') ? 'image_original_url' : null,
+            Schema::hasColumn('categories', 'thumb_url') ? 'thumb_url' : null,
+            Schema::hasColumn('categories', 'image_webp_url') ? 'image_webp_url' : null,
+            Schema::hasColumn('categories', 'thumb_webp_url') ? 'thumb_webp_url' : null,
+        ]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function urlVariants(string $url): array
+    {
+        return array_values(array_unique(array_filter([
+            $url,
+            $this->normalizeStorageUrl($url),
+            $this->pathOnly($url),
+        ], static fn ($v) => is_string($v) && $v !== '')));
+    }
+
+    /**
+     * @param  array<string, string>  $pairs
+     */
+    private function replaceInBlob(string $value, array $pairs): string
+    {
+        $new = $value;
+        foreach ($pairs as $from => $to) {
+            if ($from !== '' && str_contains($new, $from)) {
+                $new = str_replace($from, $to, $new);
+            }
+        }
+
+        return $new;
+    }
+
+    /**
+     * @param  array<string, string>  $pairs
+     */
+    private function rewriteSignageBlobs(array $pairs): int
+    {
+        $updated = 0;
+        if (Schema::hasTable('signage_playlists')) {
+            foreach (SignagePlaylist::query()->get() as $playlist) {
+                $dirty = false;
+                foreach (['slides', 'theme'] as $field) {
+                    if (! isset($playlist->{$field})) {
+                        continue;
+                    }
+                    $encoded = json_encode($playlist->{$field}, JSON_UNESCAPED_UNICODE);
+                    if (! is_string($encoded)) {
+                        continue;
+                    }
+                    $replaced = $this->replaceInBlob($encoded, $pairs);
+                    if ($replaced !== $encoded) {
+                        $playlist->{$field} = json_decode($replaced, true);
+                        $dirty = true;
+                        $updated++;
+                    }
+                }
+                if ($dirty) {
+                    $playlist->save();
+                }
+            }
+        }
+        if (Schema::hasTable('signage_campaigns')) {
+            foreach (SignageCampaign::query()->get() as $campaign) {
+                if (! isset($campaign->slides)) {
+                    continue;
+                }
+                $encoded = json_encode($campaign->slides, JSON_UNESCAPED_UNICODE);
+                if (! is_string($encoded)) {
+                    continue;
+                }
+                $replaced = $this->replaceInBlob($encoded, $pairs);
+                if ($replaced !== $encoded) {
+                    $campaign->slides = json_decode($replaced, true);
+                    $campaign->save();
+                    $updated++;
+                }
+            }
+        }
+
+        return $updated;
+    }
+
+    /**
+     * @param  array<string, string>  $pairs
+     */
+    private function rewriteContentBlobs(array $pairs): int
+    {
+        $updated = 0;
+        $tables = [
+            'page_blocks' => 'settings',
+            'page_block_shared_contents' => 'settings',
+            'page_layout_drafts' => 'payload',
+            'content_drafts' => 'value',
+            'content_revisions' => 'value',
+        ];
+
+        foreach ($tables as $table => $field) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $field)) {
+                continue;
+            }
+            foreach (DB::table($table)->get(['id', $field]) as $row) {
+                $raw = $row->{$field} ?? null;
+                if ($raw === null) {
+                    continue;
+                }
+                $asString = is_string($raw) ? $raw : (json_encode($raw, JSON_UNESCAPED_UNICODE) ?: '');
+                if ($asString === '') {
+                    continue;
+                }
+                $replaced = $this->replaceInBlob($asString, $pairs);
+                if ($replaced === $asString) {
+                    continue;
+                }
+                $payload = json_decode($replaced, true);
+                DB::table($table)->where('id', $row->id)->update([
+                    $field => $payload !== null || $replaced === 'null' ? json_encode($payload, JSON_UNESCAPED_UNICODE) : $replaced,
+                ]);
+                $updated++;
+            }
+        }
+
+        if ($updated > 0 && class_exists(\App\Domains\Content\ContentResolver::class)) {
+            \App\Domains\Content\ContentResolver::bust();
+        }
+
+        return $updated;
     }
 
     private function normalizeStorageUrl(string $url): string
