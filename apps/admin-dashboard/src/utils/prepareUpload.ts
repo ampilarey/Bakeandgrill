@@ -161,7 +161,7 @@ async function convertHeicToJpeg(file: File): Promise<File> {
     // continue
   }
 
-  // 2) WASM path (Chrome/desktop + newer HEIC that heic2any couldn't handle)
+  // 2) WASM path (Chrome/desktop + iOS 18+ HEIC variants)
   return convertHeicWithWasm(file);
 }
 
