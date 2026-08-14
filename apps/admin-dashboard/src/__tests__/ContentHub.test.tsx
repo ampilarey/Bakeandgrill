@@ -102,7 +102,7 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('Phone number');
+    await screen.findByTestId('block-card-delivery_time');
     fireEvent.click(screen.getByTestId('edit-delivery_time'));
     const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
     expect(within(sheet).queryByTestId('content-mode-delivery_time')).toBeNull();

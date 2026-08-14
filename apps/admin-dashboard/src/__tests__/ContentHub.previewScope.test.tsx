@@ -80,21 +80,20 @@ describe('Content Hub preview is app-locked', () => {
     vi.clearAllMocks();
   });
 
-  it('Website hub mints only website preview tokens and locks the pane', async () => {
+  it('Website desktop has no Preview host; View live site instead (Stage C)', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(contentApi.createContentPreviewToken).toHaveBeenCalled(), { timeout: 5000 });
-    const apps = vi.mocked(contentApi.createContentPreviewToken).mock.calls.map((c) => c[0]);
-    expect(apps.every((a) => a === 'website')).toBe(true);
-    expect(apps.some((a) => a === 'order_app')).toBe(false);
-
-    expect(await screen.findByTestId('preview-app-locked-website')).toBeTruthy();
-    expect(screen.queryByTestId('preview-app-order_app')).toBeNull();
+    await screen.findByTestId('hub-desktop-shell');
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
+    expect(screen.queryByTestId('preview-app-locked-website')).toBeNull();
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
     expect(screen.getByRole('heading', { name: /Editing Website/i })).toBeTruthy();
+    // No docked preview → no token mint on Website desktop.
+    expect(contentApi.createContentPreviewToken).not.toHaveBeenCalled();
   }, 10000);
 
   it('Order App hub mints only order_app preview tokens and locks the pane', async () => {

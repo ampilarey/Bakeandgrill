@@ -19,6 +19,8 @@ type Props = {
   /** Desktop only — icon strip (~56px). Ignored for grid. */
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** When true, hide the overview row (Website desktop Stage A). */
+  hideOverview?: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ export function SectionRail({
   app = 'website',
   collapsed = false,
   onToggleCollapsed,
+  hideOverview = false,
 }: Props) {
   const names = sections.map((s) => s.name);
   const byName = new Map(sections.map((s) => [s.name, s]));
@@ -109,25 +112,37 @@ export function SectionRail({
           </button>
         ) : null}
       </div>
-      <button
-        type="button"
-        data-testid="section-rail-tasks-home"
-        className={`hub-section-rail-row${!active ? ' hub-section-rail-row--active' : ''}`}
-        aria-label="Overview"
-        aria-pressed={!active}
-        onClick={() => onSelect('')}
-        style={{ marginBottom: 6 }}
-      >
-        {!collapsed ? (
-          <span className="hub-section-rail-row-name" aria-hidden="true">Overview</span>
-        ) : (
-          <span className="hub-section-rail-row-name" aria-hidden="true">∗</span>
-        )}
-      </button>
-      {clusters.map((cluster) => (
+      {!hideOverview ? (
+        <button
+          type="button"
+          data-testid="section-rail-tasks-home"
+          className={`hub-section-rail-row${!active ? ' hub-section-rail-row--active' : ''}`}
+          aria-label="Overview"
+          aria-pressed={!active}
+          onClick={() => onSelect('')}
+          style={{ marginBottom: 6 }}
+        >
+          {!collapsed ? (
+            <span className="hub-section-rail-row-name" aria-hidden="true">Overview</span>
+          ) : (
+            <span className="hub-section-rail-row-name" aria-hidden="true">∗</span>
+          )}
+        </button>
+      ) : null}
+      {clusters.map((cluster, clusterIndex) => (
         <div key={cluster.cluster} className="hub-section-rail-cluster">
+          {cluster.cluster === 'sitewide' && !collapsed ? (
+            <div
+              className="hub-section-rail-divider"
+              data-testid="section-rail-sitewide-divider"
+              role="separator"
+              aria-hidden="true"
+            />
+          ) : null}
           {!collapsed ? (
             <div className="hub-section-rail-cluster-label">{cluster.label}</div>
+          ) : clusterIndex > 0 ? (
+            <div className="hub-section-rail-divider hub-section-rail-divider--collapsed" aria-hidden="true" />
           ) : null}
           {cluster.sections.map((name) => {
             const item = byName.get(name)!;

@@ -137,9 +137,9 @@ describe('Content Hub visual editors', () => {
       target: { value: 'Edited eyebrow' },
     });
     expect(within(slideSheet).getByDisplayValue('Edited eyebrow')).toBeTruthy();
-    await waitFor(() => {
-      expect(screen.getByTestId('live-preview-frame')).toBeTruthy();
-    });
+    // Stage C — Website desktop has no docked live-preview-frame; draft status stays visible.
+    expect(screen.queryByTestId('live-preview-frame')).toBeNull();
+    expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
   });
 
   it('category image upload sets the draft image_url via crop endpoint', async () => {

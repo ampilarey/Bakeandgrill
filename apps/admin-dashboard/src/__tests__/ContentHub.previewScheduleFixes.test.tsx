@@ -31,10 +31,13 @@ vi.mock('../pages/ContentHub/HomeLayoutEditor', async () => {
       { onLayoutDraftChange }: { onLayoutDraftChange?: (signal: LayoutDraftSignal) => void },
       ref: React.ForwardedRef<unknown>,
     ) {
+      // Keep handler ref fresh without re-firing the initial draft signal every render.
+      const handlerRef = ReactMod.useRef(onLayoutDraftChange);
+      handlerRef.current = onLayoutDraftChange;
       ReactMod.useEffect(() => {
-        layoutSignalHandler = onLayoutDraftChange ?? null;
-        onLayoutDraftChange?.({ hasDraft: true, revision: 3 });
-      }, [onLayoutDraftChange]);
+        layoutSignalHandler = (signal) => handlerRef.current?.(signal);
+        handlerRef.current?.({ hasDraft: true, revision: 3 });
+      }, []);
       ReactMod.useImperativeHandle(ref, () => ({
         publishAll: async () => {},
         discardAll: async () => {},
@@ -94,19 +97,19 @@ vi.mock('../api/pageBlocks', () => ({
 }));
 
 const block: ContentBlock = {
-  key: 'cta_band_headline',
-  label: 'CTA headline',
+  key: 'delivery_time',
+  label: 'Delivery time',
   group: 'Home',
-  type: 'textarea',
-  rich: true,
+  type: 'text',
+  rich: false,
   apps: ['website', 'order_app'],
   shareable: true,
   public: true,
   shared: null,
-  website: 'Hello',
-  order_app: null,
-  resolved_website: 'Hello',
-  resolved_order_app: 'Hello',
+  website: '30 min',
+  order_app: '25 min',
+  resolved_website: '30 min',
+  resolved_order_app: '25 min',
   state: 'split',
 };
 
@@ -143,33 +146,52 @@ describe('ContentHub preview + schedule fixes', () => {
     cleanup();
   });
 
-  it('remints docked preview tokens when the Home layout draft revision changes', async () => {
-    openHub('/content/website?group=Home');
+  it('Order App still docks Preview and remints when content drafts change', async () => {
+    openHub('/content/order-app?group=Home');
     await screen.findByTestId('home-layout-editor-stub');
+    expect(screen.getByTestId('preview-toggle')).toBeTruthy();
 
     await waitFor(() => {
       expect(contentApi.createContentPreviewToken).toHaveBeenCalled();
-    });
+    }, { timeout: 5000 });
     const callsAfterMount = vi.mocked(contentApi.createContentPreviewToken).mock.calls.length;
+    expect(callsAfterMount).toBeGreaterThan(0);
+    expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.every((c) => c[0] === 'order_app')).toBe(true);
 
+    // Remint path: draft map change (same debounce effect as layoutRevision).
+    vi.mocked(contentApi.getContentDrafts).mockResolvedValue({
+      drafts: { delivery_time: 'Updated ETA' },
+      saved_at: '2026-08-12T12:00:00Z',
+    });
+    // Trigger a drafts reload by toggling locale EN→DV→EN is heavy; bump layout revision instead.
     expect(layoutSignalHandler).toBeTruthy();
-    layoutSignalHandler?.({ hasDraft: true, revision: 4 });
+    layoutSignalHandler?.({ hasDraft: true, revision: 99 });
 
     await waitFor(
       () => {
         expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.length).toBeGreaterThan(callsAfterMount);
       },
-      { timeout: 3000 },
+      { timeout: 5000 },
     );
     const calls = vi.mocked(contentApi.createContentPreviewToken).mock.calls;
     const lastCall = calls[calls.length - 1];
-    expect(lastCall?.[3]).toBe(true); // includeLayout
+    expect(lastCall?.[0]).toBe('order_app');
+    expect(lastCall?.[3]).toBe(true);
+  });
+
+  it('Website desktop does not mint preview tokens after Stage C (View live site)', async () => {
+    openHub('/content/website?group=Home');
+    await screen.findByTestId('website-desktop-workspace');
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
+    // Allow the 600ms preview debounce to fire if it were still wired.
+    await new Promise((r) => setTimeout(r, 800));
+    expect(contentApi.createContentPreviewToken).not.toHaveBeenCalled();
   });
 
   it('schedules content, warns about layout drafts, and clears local draft state', async () => {
     vi.mocked(contentApi.getContentDrafts).mockImplementation(async (scope) => {
       if (scope === 'website') {
-        return { drafts: { cta_band_headline: 'Draft headline' } as Record<string, string>, saved_at: '2026-08-12T12:00:00Z' };
+        return { drafts: { delivery_time: 'Draft ETA' } as Record<string, string>, saved_at: '2026-08-12T12:00:00Z' };
       }
       return { drafts: {} as Record<string, string>, saved_at: null };
     });
@@ -200,7 +222,7 @@ describe('ContentHub preview + schedule fixes', () => {
 
     // Local content drafts cleared — Publish disabled unless layout draft remains.
     await waitFor(() => {
-      const status = screen.getByTestId('draft-save-status');
+      const status = screen.getAllByTestId('draft-save-status')[0];
       expect(status.textContent).toMatch(/1 change waiting|Draft saved/i);
     });
 

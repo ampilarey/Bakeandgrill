@@ -70,4 +70,17 @@ describe('ContentIntegrityPanel', () => {
     await waitFor(() => expect(screen.getByTestId('content-integrity-singleton-banner')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
   });
+
+  it('onlyWhenIssues hides the panel when the report is clean', async () => {
+    getContentIntegrity.mockResolvedValue({
+      generated_at: '2026-08-13T00:00:00Z',
+      surfaces: [],
+      issues: [],
+      needs_review: [],
+      summary: { issue_count: 0, needs_review_count: 0, surface_count: 14 },
+    });
+    const { container } = render(<ContentIntegrityPanel appFilter="website" onlyWhenIssues />);
+    await waitFor(() => expect(getContentIntegrity).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector('[data-testid="content-integrity-panel"]')).toBeNull());
+  });
 });

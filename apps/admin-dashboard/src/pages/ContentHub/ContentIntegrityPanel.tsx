@@ -4,6 +4,11 @@ import { getContentIntegrity, type ContentIntegrityReport } from '../../api/cont
 type Props = {
   /** When set, only show surface counts for this app. */
   appFilter?: 'website' | 'order_app';
+  /**
+   * Stage A Website desktop: render nothing when there are no issues to report.
+   * Landing / Order App keep the always-visible panel.
+   */
+  onlyWhenIssues?: boolean;
 };
 
 type SingletonDupeIssue = {
@@ -37,7 +42,7 @@ function parseSingletonDupes(report: ContentIntegrityReport | null, appFilter?: 
  * Singleton duplicates get a persistent warning banner; resolution (hide others) lives
  * on the surface editor so the owner chooses which instance to keep.
  */
-export function ContentIntegrityPanel({ appFilter }: Props) {
+export function ContentIntegrityPanel({ appFilter, onlyWhenIssues = false }: Props) {
   const [report, setReport] = useState<ContentIntegrityReport | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
@@ -67,6 +72,14 @@ export function ContentIntegrityPanel({ appFilter }: Props) {
     return true;
   });
   const singletonDupes = parseSingletonDupes(report, appFilter);
+  const hasSomethingToReport = singletonDupes.length > 0 || issues.length > 0 || review.length > 0 || Boolean(error);
+
+  if (onlyWhenIssues && report && !hasSomethingToReport) {
+    return null;
+  }
+  if (onlyWhenIssues && !report && !error) {
+    return null;
+  }
 
   return (
     <section className="hub-integrity-panel" data-testid="content-integrity-panel">

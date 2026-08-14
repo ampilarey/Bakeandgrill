@@ -13,6 +13,7 @@ export type HubSectionListProps = {
   onSelect: (name: string) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  hideOverview?: boolean;
 };
 
 /** Build left-rail section rows (count + dirty) for Content Hub. */
@@ -47,6 +48,7 @@ export function HubSectionList({
   onSelect,
   collapsed,
   onToggleCollapsed,
+  hideOverview = false,
 }: HubSectionListProps) {
   const sections = useMemo(
     () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey, app),
@@ -62,6 +64,7 @@ export function HubSectionList({
       onSelect={onSelect}
       collapsed={collapsed}
       onToggleCollapsed={onToggleCollapsed}
+      hideOverview={hideOverview}
     />
   );
 }

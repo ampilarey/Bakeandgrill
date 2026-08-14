@@ -82,7 +82,13 @@ function formatContentActionError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export function useContentHubController(toast: ContentHubToast) {
+export type ContentHubControllerOptions = {
+  /** Stage C — Website desktop has no preview column; skip token minting. */
+  skipPreviewMint?: boolean;
+};
+
+export function useContentHubController(toast: ContentHubToast, options: ContentHubControllerOptions = {}) {
+  const { skipPreviewMint = false } = options;
   const { success, error } = toast;
   const location = useLocation();
   const hubApp = contentAppFromPath(location.pathname);
@@ -266,7 +272,13 @@ export function useContentHubController(toast: ContentHubToast) {
 
   // Preview token for THIS hub app only — never mint/cross-load the other app.
   // include_layout is always on; layoutRevision remints when page-block drafts change.
+  // Stage C: Website desktop dropped the preview column — skip minting (View live site instead).
   useEffect(() => {
+    if (skipPreviewMint) {
+      setPreviewState({ website: null, orderApp: null });
+      setPreviewLoading(false);
+      return;
+    }
     const t = window.setTimeout(() => {
       const overrides: Record<string, string> = {};
       for (const block of contentBlocks) {
@@ -293,7 +305,7 @@ export function useContentHubController(toast: ContentHubToast) {
     }, 600);
     return () => window.clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision, hubApp]);
+  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision, hubApp, skipPreviewMint]);
 
   const persistDrafts = async (loc: ContentLocale = locale): Promise<boolean> => {
     const gen = saveGeneration.current;

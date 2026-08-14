@@ -97,7 +97,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     setup();
   });
 
-  it('shows section rail, editor, and preview pane', async () => {
+  it('shows section rail, page list, and editor — no Website Preview column', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
@@ -106,7 +106,9 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
     await screen.findByTestId('section-editor');
     expect(screen.getByTestId('section-rail')).toBeTruthy();
-    expect(screen.getByTestId('preview-pane')).toBeTruthy();
+    expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
   });
 
   it('?group=Branding deep link activates Everywhere in rail', async () => {

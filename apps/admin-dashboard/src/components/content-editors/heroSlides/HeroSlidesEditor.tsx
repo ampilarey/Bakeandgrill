@@ -41,6 +41,11 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
    * Desktop behaviour unchanged when false/undefined.
    */
   mobileMode?: boolean;
+  /**
+   * Website desktop Stage C — slides as selectable cards across the top,
+   * fields for the selected slide in a two-column grid below.
+   */
+  wideLayout?: boolean;
   /** Publish-state banner shown inside nested slide sheets. */
   draftStatus?: ReactNode;
   /** Content Hub schedule controls — surfaced inside the slide sheet on mobile. */
@@ -51,6 +56,7 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
 export function HeroSlidesEditor({
   label, description, value, onChange, triggerUpload, uploadImage, uploadVideo,
   mobileMode = false,
+  wideLayout = false,
   draftStatus,
   scheduleSlot,
 }: HeroSlidesEditorProps) {
@@ -838,6 +844,122 @@ export function HeroSlidesEditor({
             </>
           ) : null}
         </ContentEditorSheet>
+      </div>
+    );
+  }
+
+  if (wideLayout && !mobileMode) {
+    const selectedIdx = editingIdx ?? 0;
+    const selected = items[selectedIdx] ?? null;
+    return (
+      <div
+        className="hero-slides-wide"
+        data-testid="hero-slides-wide"
+        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+      >
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{label}</p>
+          {description && <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '3px 0 0' }}>{description}</p>}
+        </div>
+        {draftStatus ? (
+          <div className="hero-slides-wide-draft" data-testid="hero-wide-draft-status">
+            {draftStatus}
+          </div>
+        ) : null}
+        {sharedChrome}
+        <div
+          className="hero-slides-wide-rail"
+          data-testid="hero-slides-wide-rail"
+          style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}
+        >
+          {items.map((slide, idx) => {
+            const showing = isHeroSlideShowing(slide);
+            const titleText = stripHtml(slide.title || '') || `Slide ${idx + 1}`;
+            const pressed = selectedIdx === idx;
+            return (
+              <button
+                key={idx}
+                type="button"
+                className={`hero-slide-wide-card${pressed ? ' hero-slide-wide-card--active' : ''}`}
+                data-testid={`hero-slide-wide-${idx}`}
+                aria-pressed={pressed}
+                onClick={() => setEditingIdx(idx)}
+                style={{
+                  flex: '0 0 160px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  textAlign: 'left',
+                  padding: 8,
+                  borderRadius: 12,
+                  border: pressed ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  cursor: 'pointer',
+                  minHeight: 44,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'block',
+                    height: 72,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    background: 'var(--color-bg)',
+                  }}
+                >
+                  {slide.image || slide.video_poster ? (
+                    <img
+                      src={slide.image || slide.video_poster}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
+                      <Images size={18} />
+                    </span>
+                  )}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>{titleText}</span>
+                <span style={{ fontSize: 11, color: showing ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                  {showing ? 'Showing' : 'Hidden'}
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className="hero-slide-wide-add"
+            data-testid="hero-slide-wide-add"
+            onClick={() => {
+              const next = [...items, emptySlide()];
+              commitSlides(next);
+              setEditingIdx(next.length - 1);
+            }}
+            style={{
+              flex: '0 0 120px',
+              minHeight: 44,
+              borderRadius: 12,
+              border: '1px dashed var(--color-border)',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            + Add slide
+          </button>
+        </div>
+        {selected && items.length > 0 ? (
+          <div className="hero-slides-wide-fields" data-testid="hero-slides-wide-fields">
+            {renderSlideFields(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch), false)}
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
+            Add a slide to start editing the hero.
+          </p>
+        )}
       </div>
     );
   }

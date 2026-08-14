@@ -124,24 +124,29 @@ describe('Content Hub responsive bands', () => {
     } else if (width <= 1199) {
       const shell = await screen.findByTestId('hub-desktop-shell');
       expect(shell.getAttribute('data-rail')).toBe('collapsed');
+      // Stage C — Website desktop has no Preview column/toggle; live site link instead.
       expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
-      expect(screen.getByTestId('preview-toggle')).toBeTruthy();
+      expect(screen.queryByTestId('preview-toggle')).toBeNull();
+      expect(screen.getByTestId('view-live-site')).toBeTruthy();
+      expect(shell.getAttribute('data-preview')).toBe('off');
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
     } else {
       const shell = await screen.findByTestId('hub-desktop-shell');
       expect(shell).toBeTruthy();
-      expect(screen.getByTestId('preview-toggle')).toBeTruthy();
+      expect(screen.queryByTestId('preview-toggle')).toBeNull();
+      expect(screen.getByTestId('view-live-site')).toBeTruthy();
+      expect(shell.getAttribute('data-preview')).toBe('off');
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
     }
   });
 
   it.each([768, 1024, 1199] as const)(
-    'compact Admin preview toggle opens a sheet, never a docked column @ %ipx',
+    'Order App compact Admin preview toggle opens a sheet, never a docked column @ %ipx',
     async (width) => {
       mockViewport(width);
       window.localStorage.setItem('bg_hub_preview_open', '0');
       render(
-        <MemoryRouter initialEntries={['/content/website?group=Home']}>
+        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
@@ -157,12 +162,12 @@ describe('Content Hub responsive bands', () => {
   );
 
   it.each([1200, 1366] as const)(
-    'wide desktop preview toggle docks a column @ %ipx',
+    'Order App wide desktop preview toggle docks a column @ %ipx',
     async (width) => {
       mockViewport(width);
       window.localStorage.setItem('bg_hub_preview_open', '0');
       render(
-        <MemoryRouter initialEntries={['/content/website?group=Home']}>
+        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
           <ContentHubPage />
         </MemoryRouter>,
       );

@@ -71,7 +71,7 @@ function renderVisualEditor(
   block: ContentBlock,
   scope: ContentScope,
   val: string,
-  opts?: { mobileMode?: boolean; scheduleSlot?: ReactNode },
+  opts?: { mobileMode?: boolean; scheduleSlot?: ReactNode; wideLayout?: boolean },
 ): ReactNode {
   const onChange = (next: string) => deps.setDraft(scope, block.key, next);
   const triggerUpload = deps.makeTriggerUpload(block, scope);
@@ -86,6 +86,7 @@ function renderVisualEditor(
           uploadImage={(cropped, original) => uploadContentImage(block.key, uploadAppFor(scope), cropped, original, deps.locale)}
           uploadVideo={(video, poster, posterUrl) => uploadContentVideo(block.key, uploadAppFor(scope), video, poster, deps.locale, posterUrl)}
           mobileMode={Boolean(opts?.mobileMode)}
+          wideLayout={Boolean(opts?.wideLayout)}
           draftStatus={deps.draftStatusNode}
           scheduleSlot={opts?.scheduleSlot}
         />
@@ -213,9 +214,14 @@ function renderPlainEditor(deps: SharedEditorDeps, block: ContentBlock, scope: C
 }
 
 /** Resolves a block's editor for one scope — visual, SEO title+description pair, or plain. */
-function renderEditorForScope(deps: SharedEditorDeps, block: ContentBlock, scope: ContentScope): ReactNode {
+function renderEditorForScope(
+  deps: SharedEditorDeps,
+  block: ContentBlock,
+  scope: ContentScope,
+  opts?: { wideLayout?: boolean },
+): ReactNode {
   const val = valueForScope(block, scope, deps.drafts);
-  const visual = block.editor ? renderVisualEditor(deps, block, scope, val) : null;
+  const visual = block.editor ? renderVisualEditor(deps, block, scope, val, { wideLayout: opts?.wideLayout }) : null;
   const descKey = seoDescriptionKey(block.key);
   const descBlock = descKey ? deps.contentBlocks.find((candidate) => candidate.key === descKey) : undefined;
   const isSeoTitle = Boolean(descKey);
@@ -319,6 +325,10 @@ export type HubSectionContentProps = {
   onLayoutDraftChange: (signal: LayoutDraftSignal) => void;
   onSectionSelectForAnnouncement: (name: string, homeAppHint?: 'website' | 'order_app', surface?: string) => void;
   isMobile: boolean;
+  /** Website desktop Stage B — focused block in the right editor pane. */
+  focusedBlockKey?: string | null;
+  /** Website desktop Stage B — rail | list | editor workspace. */
+  desktopSplit?: boolean;
 };
 
 /**
@@ -354,6 +364,8 @@ export function HubSectionContent({
   onLayoutDraftChange,
   onSectionSelectForAnnouncement,
   isMobile,
+  focusedBlockKey = null,
+  desktopSplit = false,
 }: HubSectionContentProps) {
   const editorDeps: SharedEditorDeps = {
     locale,
@@ -494,6 +506,10 @@ export function HubSectionContent({
 
     const isBoolean = block.type === 'boolean';
 
+    // Website desktop Stage B: the middle list stays; the right pane shows the full editor.
+    const focusedHere = Boolean(desktopSplit && focusedBlockKey === block.key);
+    const wideHero = focusedHere && block.editor === 'hero';
+
     let editorContent: ReactNode = null;
     let booleanControl: ReactNode = undefined;
 
@@ -533,14 +549,13 @@ export function HubSectionContent({
         block.key,
         scopes,
         activeScope,
-        renderEditorForScope(editorDeps, block, activeScope),
+        renderEditorForScope(editorDeps, block, activeScope, { wideLayout: wideHero }),
       );
     } else {
-      editorContent = renderEditorForScope(editorDeps, block, activeScope);
+      editorContent = renderEditorForScope(editorDeps, block, activeScope, { wideLayout: wideHero });
     }
 
-    // Overview → Edit on every device: forms live in the focused sheet, not on cards.
-    const useCompact = !isBoolean;
+    const useCompact = !isBoolean && !focusedHere;
     let compactSummary: ReactNode = null;
     let visibilityLabel: string | undefined;
     if (useCompact && block.editor === 'hero') {
@@ -755,7 +770,7 @@ export function HubSectionContent({
       onBack={withBack ? onBack : undefined}
       isBrandKit={isBrandKit}
       cardCount={cardCount}
-      showHeader={withBack}
+      showHeader={withBack && !desktopSplit}
     />
   );
 }

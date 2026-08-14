@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { cancelContentSchedule } from '../../api/content';
 import { PageHeader, PageShell } from '../../components/SharedUI';
@@ -13,6 +13,8 @@ import { HubSectionContent } from './HubSectionContent';
 import { HubEditorSheets } from './HubEditorSheets';
 import { HubPreviewHost } from './HubPreviewHost';
 import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
+import { ContentIntegrityPanel } from './ContentIntegrityPanel';
+import { WebsiteDesktopPageList } from './WebsiteDesktopPageList';
 import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface } from './canonicalCatalog';
 import {
@@ -25,13 +27,14 @@ import {
   LEGACY_PAGES_GROUP,
   contentViewForKey,
   isHomeSection,
+  blocksForContentView,
   LEGACY_GROUP_ALIASES,
   websitePageTaskByGroup,
 } from './websitePageTasks';
 import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 import type { ContentBlock, ContentScope } from '../../api/content';
-import { parseDraftKey, labelForScope } from './hubDraftUtils';
+import { parseDraftKey, labelForScope, contentAppFromPath } from './hubDraftUtils';
 import { useContentHubController } from './useContentHubController';
 
 /** Desktop layout prefs — Content Hub only. */
@@ -71,7 +74,17 @@ function defaultRailCollapsed(): boolean {
 
 export function ContentHubPage() {
   const { success, error } = useToast();
-  const hub = useContentHubController({ success, error });
+  const isMobile = useIsMobile();
+  const isCompactAdmin = useIsCompactAdmin();
+  const isWideDesktop = useIsWideDesktop();
+  const location = useLocation();
+  const hubAppFromPath = contentAppFromPath(location.pathname);
+  const websiteDesktopNoLanding = !isMobile && hubAppFromPath === 'website';
+
+  const hub = useContentHubController(
+    { success, error },
+    { skipPreviewMint: websiteDesktopNoLanding },
+  );
   const {
     hubApp,
     hubLabel,
@@ -124,9 +137,6 @@ export function ContentHubPage() {
 
   const hubTitle = `Editing ${hubLabel}`;
   usePageTitle(hubTitle);
-  const isMobile = useIsMobile();
-  const isCompactAdmin = useIsCompactAdmin();
-  const isWideDesktop = useIsWideDesktop();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
 
@@ -145,6 +155,12 @@ export function ContentHubPage() {
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   /** Synchronous surface selection — avoids URL lag showing the full type library. */
   const [activeSurface, setActiveSurface] = useState<SurfaceFilter | null>(null);
+  /** Website desktop Stage B — selected component in the middle page list. */
+  const [focusedBlockKey, setFocusedBlockKey] = useState<string | null>(null);
+  /** Survives the activeGroup effect that clears focus when navigating via search. */
+  const pendingFocusKeyRef = useRef<string | null>(null);
+  /** Website desktop Stage D — Desktop | Mobile filter (default Desktop). */
+  const [websiteDeviceFilter, setWebsiteDeviceFilter] = useState<'desktop' | 'mobile'>('desktop');
 
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -160,13 +176,27 @@ export function ContentHubPage() {
 
   // Sync URL group param → activeGroup (landing when cleared).
   // Legacy ?group= aliases redirect to Stage 4 section names.
+  // Website desktop Stage A: no landing — empty/legacy Pages → Home.
   useEffect(() => {
     if (!urlGroup) {
+      if (websiteDesktopNoLanding) {
+        setMobileEditorOpen(false);
+        return;
+      }
       setActiveGroup(null);
       setMobileEditorOpen(false);
       return;
     }
     if (urlGroup === LEGACY_PAGES_GROUP || LEGACY_GROUP_ALIASES[urlGroup] === '') {
+      if (websiteDesktopNoLanding) {
+        setSearchParams((prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete('section');
+          p.set('group', 'Home');
+          return p;
+        }, { replace: true });
+        return;
+      }
       setActiveGroup(null);
       setMobileEditorOpen(false);
       setSearchParams((prev) => {
@@ -189,11 +219,14 @@ export function ContentHubPage() {
     }
     setActiveGroup(urlGroup);
     setMobileEditorOpen(true);
-  }, [urlGroup, setSearchParams]);
+  }, [urlGroup, setSearchParams, websiteDesktopNoLanding]);
 
   // Per-block scope tabs reset when the active section changes.
   useEffect(() => {
     setBlockScopeTab({});
+    const pending = pendingFocusKeyRef.current;
+    pendingFocusKeyRef.current = null;
+    setFocusedBlockKey(pending);
   }, [activeGroup]);
 
   const setDesktopPreviewOpenPersisted = (open: boolean) => {
@@ -214,7 +247,16 @@ export function ContentHubPage() {
     if (orderedSectionNames.length === 0) return;
     if (orderedSectionNames.includes(urlGroup)) return;
     const t = window.setTimeout(() => {
-      error(`Unknown content section "${urlGroup}". Showing the overview instead.`);
+      error(`Unknown content section "${urlGroup}". Showing ${websiteDesktopNoLanding ? 'Home' : 'the overview'} instead.`);
+      if (websiteDesktopNoLanding) {
+        setSearchParams((prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete('section');
+          p.set('group', 'Home');
+          return p;
+        }, { replace: true });
+        return;
+      }
       setActiveGroup(null);
       setMobileEditorOpen(false);
       setSearchParams((prev) => {
@@ -291,12 +333,29 @@ export function ContentHubPage() {
 
   const handleSectionSelect = (name: string, homeAppHint?: 'website' | 'order_app', surface?: string) => {
     if (!name) {
+      if (websiteDesktopNoLanding) {
+        selectGroup(orderedSectionNames.includes('Home') ? 'Home' : (orderedSectionNames[0] ?? 'Home'));
+        setMobileEditorOpen(true);
+        return;
+      }
       clearActiveGroup();
       return;
     }
     selectGroup(name, homeAppHint, surface);
     setMobileEditorOpen(true);
   };
+
+  // Website desktop Stage A: opening /content/website selects Home immediately.
+  useEffect(() => {
+    if (!websiteDesktopNoLanding) return;
+    if (loading) return;
+    if (urlGroup) return;
+    if (activeGroup) return;
+    if (orderedSectionNames.length === 0) return;
+    const target = orderedSectionNames.includes('Home') ? 'Home' : orderedSectionNames[0];
+    selectGroup(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [websiteDesktopNoLanding, loading, urlGroup, activeGroup, orderedSectionNames]);
 
   const handleSurfaceSelect = (surface: SurfaceRecord) => {
     handleSectionSelect('Home', surface.app, surface.id);
@@ -409,6 +468,10 @@ export function ContentHubPage() {
     }
     selectGroup(view);
     setMobileEditorOpen(true);
+    if (websiteDesktopNoLanding) {
+      pendingFocusKeyRef.current = block.key;
+      setFocusedBlockKey(block.key);
+    }
     setQ('');
     setSearchOverlayOpen(false);
     window.setTimeout(() => {
@@ -467,7 +530,31 @@ export function ContentHubPage() {
     onSectionSelectForAnnouncement: handleSectionSelect,
     isMobile,
     onBack: handleMobileBack,
+    focusedBlockKey: websiteDesktopNoLanding ? focusedBlockKey : null,
+    desktopSplit: websiteDesktopNoLanding,
   };
+
+  const websiteDesktopSectionBlocks = useMemo(() => {
+    if (!websiteDesktopNoLanding || !activeGroup) return [];
+    return blocksForContentView(activeGroup, contentBlocks, hubApp).filter((b) => !b.section_enable);
+  }, [websiteDesktopNoLanding, activeGroup, contentBlocks, hubApp]);
+
+  // Website desktop Stage D: Desktop|Mobile filter drives the Home surface scope.
+  useEffect(() => {
+    if (!websiteDesktopNoLanding) return;
+    if (!activeGroup || !isHomeSection(activeGroup)) return;
+    const sid = surfaceId('website', websiteDeviceFilter, 'home');
+    const parsed = parseSurfaceId(sid);
+    setActiveSurface(parsed);
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set('group', activeGroup);
+      p.delete('section');
+      p.set('homeApp', 'website');
+      p.set('surface', sid);
+      return p;
+    }, { replace: true });
+  }, [websiteDesktopNoLanding, websiteDeviceFilter, activeGroup, setSearchParams]);
 
   const searchField = (
     <div className="hub-search-wrap" ref={searchRef}>
@@ -565,6 +652,14 @@ export function ContentHubPage() {
       onImportClick={() => importInputRef.current?.click()}
       schedulePublishPanel={schedulePublishPanel}
       onOpenMediaLibrary={() => setMediaOpen(true)}
+      onOpenHistory={() => {
+        handleSectionSelect('Everywhere');
+        success('Open ⋯ on any field to view and restore History.');
+      }}
+      websiteDesktopChrome={websiteDesktopNoLanding}
+      liveSiteUrl={websiteDesktopNoLanding ? `${window.location.origin}/` : undefined}
+      deviceFilter={websiteDesktopNoLanding ? websiteDeviceFilter : undefined}
+      onDeviceFilterChange={websiteDesktopNoLanding ? setWebsiteDeviceFilter : undefined}
     />
   );
 
@@ -621,6 +716,10 @@ export function ContentHubPage() {
           <ScopeMismatchNotices mismatches={mismatches} collapsible defaultOpen={false} />
         ) : null}
 
+        {websiteDesktopNoLanding ? (
+          <ContentIntegrityPanel appFilter="website" onlyWhenIssues />
+        ) : null}
+
         {isMobile ? (
           <div className="hub-mobile-shell">
             <div className="hub-mobile-overview">
@@ -653,10 +752,11 @@ export function ContentHubPage() {
           </div>
         ) : (
           <div
-            className={`hub-desktop-shell${railCollapsed ? ' hub-desktop-shell--rail-collapsed' : ''}${desktopPreviewOpen ? '' : ' hub-desktop-shell--preview-off'}`}
+            className={`hub-desktop-shell${railCollapsed ? ' hub-desktop-shell--rail-collapsed' : ''}${desktopPreviewOpen && !websiteDesktopNoLanding ? '' : ' hub-desktop-shell--preview-off'}${websiteDesktopNoLanding ? ' hub-desktop-shell--website' : ''}`}
             data-testid="hub-desktop-shell"
-            data-preview={desktopPreviewOpen ? 'on' : 'off'}
+            data-preview={websiteDesktopNoLanding ? 'off' : (desktopPreviewOpen ? 'on' : 'off')}
             data-rail={railCollapsed ? 'collapsed' : 'expanded'}
+            data-hub={hubApp}
           >
             <HubSectionList
               app={hubApp}
@@ -668,39 +768,65 @@ export function ContentHubPage() {
               onSelect={handleSectionSelect}
               collapsed={railCollapsed}
               onToggleCollapsed={() => setRailCollapsedPersisted(!railCollapsed)}
+              hideOverview={websiteDesktopNoLanding}
             />
 
-            <div
-              className={`hub-editor-area${activeGroup && !loading ? '' : ' hub-editor-area--landing'}`}
-              data-testid="hub-editor-area"
-              data-mode={activeGroup && !loading ? 'section' : 'landing'}
-            >
+            <div className="hub-editor-area" data-testid="hub-editor-area">
               {activeGroup && !loading
                 ? (
-                  <HubSectionContent
-                    sectionName={activeGroup}
-                    withBack
-                    {...hubSectionContentProps}
-                  />
+                  websiteDesktopNoLanding ? (
+                    <div
+                      className="hub-website-desktop-workspace"
+                      data-testid="website-desktop-workspace"
+                    >
+                      <WebsiteDesktopPageList
+                        sectionName={activeGroup}
+                        blocks={websiteDesktopSectionBlocks}
+                        hubApp={hubApp}
+                        drafts={drafts}
+                        selectedKey={focusedBlockKey}
+                        onSelect={setFocusedBlockKey}
+                        deviceFilter={websiteDeviceFilter}
+                      />
+                      <div className="hub-website-desktop-editor" data-testid="website-desktop-editor">
+                        <div className="hub-website-desktop-editor-status" data-testid="website-desktop-editor-draft">
+                          {draftStatusNode}
+                        </div>
+                        <HubSectionContent
+                          sectionName={activeGroup}
+                          withBack={false}
+                          {...hubSectionContentProps}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <HubSectionContent
+                      sectionName={activeGroup}
+                      withBack
+                      {...hubSectionContentProps}
+                    />
+                  )
                 )
-                : (
-                  <HubSurfaceLanding
-                    loading={loading}
-                    skeleton={skeleton}
-                    appFilter={hubApp}
-                    preferredDevice={preferredDevice}
-                    desktopLayout
-                    pageRows={pageRows}
-                    onSelectPage={handlePageSelect}
-                    surfaceCounts={surfaceCounts}
-                    dirtyGroups={dirtyGroups}
-                    onSelectSurface={handleSurfaceSelect}
-                    onSelectTask={handleTaskSelect}
-                  />
-                )}
+                : websiteDesktopNoLanding
+                  ? (loading ? skeleton : null)
+                  : (
+                    <HubSurfaceLanding
+                      loading={loading}
+                      skeleton={skeleton}
+                      appFilter={hubApp}
+                      preferredDevice={preferredDevice}
+                      desktopLayout
+                      pageRows={pageRows}
+                      onSelectPage={handlePageSelect}
+                      surfaceCounts={surfaceCounts}
+                      dirtyGroups={dirtyGroups}
+                      onSelectSurface={handleSurfaceSelect}
+                      onSelectTask={handleTaskSelect}
+                    />
+                  )}
             </div>
 
-            {desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
+            {!websiteDesktopNoLanding && desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
               <HubPreviewHost
                 mode="desktop-column"
                 lockedApp={hubApp}
@@ -714,7 +840,7 @@ export function ContentHubPage() {
           </div>
         )}
 
-        {!isMobile && (isCompactAdmin || !isWideDesktop) ? (
+        {!isMobile && !websiteDesktopNoLanding && (isCompactAdmin || !isWideDesktop) ? (
           <HubPreviewHost
             mode="compact-sheet"
             lockedApp={hubApp}

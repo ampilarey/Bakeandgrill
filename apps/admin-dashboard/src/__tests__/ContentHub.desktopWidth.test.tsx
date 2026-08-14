@@ -190,12 +190,29 @@ describe('ContentHub desktop width', () => {
     });
   });
 
-  it('preview toggle docks/undocks and persists across remount', async () => {
+  it('Website desktop has no Preview column; View live site instead', async () => {
+    mockBlocks([sharedPhone]);
+    window.localStorage.setItem('bg_hub_preview_open', '1');
+
+    render(
+      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId('hub-desktop-shell');
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
+    expect(screen.queryByTestId('preview-toggle')).toBeNull();
+    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
+  });
+
+  it('Order App preview toggle docks/undocks and persists across remount', async () => {
     mockBlocks([sharedPhone]);
     window.localStorage.setItem('bg_hub_preview_open', '1');
 
     const { unmount } = render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -213,7 +230,7 @@ describe('ContentHub desktop width', () => {
 
     unmount();
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -222,12 +239,12 @@ describe('ContentHub desktop width', () => {
     expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
   });
 
-  it('defaults preview ON at >=1280 and OFF below when nothing stored', async () => {
+  it('Order App defaults preview ON at >=1280 and OFF below when nothing stored', async () => {
     mockBlocks([sharedPhone]);
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
     const wide = render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -238,7 +255,7 @@ describe('ContentHub desktop width', () => {
 
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

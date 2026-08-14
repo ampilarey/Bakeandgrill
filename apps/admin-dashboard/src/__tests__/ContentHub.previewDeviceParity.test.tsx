@@ -73,14 +73,14 @@ const heroBlock: ContentBlock = {
   type: 'json',
   editor: 'hero',
   rich: false,
-  apps: ['website'],
+  apps: ['website', 'order_app'],
   shareable: false,
   public: true,
   shared: null,
   website: '[{"showing":true,"image":"/h.jpg","title":"Hello","cta_text":"Go"}]',
-  order_app: null,
+  order_app: '[{"showing":true,"image":"/h.jpg","title":"Hello","cta_text":"Go"}]',
   resolved_website: '[{"showing":true,"image":"/h.jpg","title":"Hello","cta_text":"Go"}]',
-  resolved_order_app: null,
+  resolved_order_app: '[{"showing":true,"image":"/h.jpg","title":"Hello","cta_text":"Go"}]',
   state: 'split',
 };
 
@@ -100,38 +100,54 @@ describe('Content Hub preview device parity (matrix 13)', () => {
     vi.clearAllMocks();
   });
 
-  it('locks preview device to the editor surface (desktop home)', async () => {
+  it('Website desktop: device filter replaces docked preview device lock (Stage D)', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Home&surface=website.desktop.home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
+    await screen.findByTestId('website-device-filter');
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
+    expect(screen.getByTestId('website-device-filter-desktop').getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByTestId('website-device-filter-mobile'));
+    await waitFor(() => {
+      expect(screen.getByTestId('website-device-filter-mobile').getAttribute('aria-pressed')).toBe('true');
+    });
+  }, 10000);
+
+  it('Order App locks preview device to the editor surface (desktop home)', async () => {
+    render(
+      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.desktop.home']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
     const pane = await screen.findByTestId('preview-pane', {}, { timeout: 5000 });
-    expect(pane.getAttribute('data-editor-app')).toBe('website');
+    expect(pane.getAttribute('data-editor-app')).toBe('order_app');
     expect(pane.getAttribute('data-editor-device')).toBe('desktop');
-    expect(pane.getAttribute('data-editor-surface')).toBe('website.desktop.home');
+    expect(pane.getAttribute('data-editor-surface')).toBe('order_app.desktop.home');
 
     const frame = screen.getByTestId('live-preview-frame');
     expect(frame.getAttribute('data-device')).toBe('desktop');
     expect(frame.getAttribute('data-device-locked')).toBe('1');
     expect(frame.getAttribute('data-logical-width')).toBe('1280');
 
-    // Locked — clicking Mobile must not diverge from the editor surface.
     fireEvent.click(screen.getByTestId('preview-device-mobile'));
     expect(frame.getAttribute('data-device')).toBe('desktop');
   }, 10000);
 
-  it('switches locked preview device when the surface query becomes mobile', async () => {
+  it('Order App switches locked preview device when the surface query becomes mobile', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home&surface=website.mobile.home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.mobile.home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
     const pane = await screen.findByTestId('preview-pane', {}, { timeout: 5000 });
     expect(pane.getAttribute('data-editor-device')).toBe('mobile');
-    expect(pane.getAttribute('data-editor-surface')).toBe('website.mobile.home');
+    expect(pane.getAttribute('data-editor-surface')).toBe('order_app.mobile.home');
 
     const frame = screen.getByTestId('live-preview-frame');
     expect(frame.getAttribute('data-device')).toBe('mobile');

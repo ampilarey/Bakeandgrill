@@ -248,6 +248,14 @@ export type HubHeaderActionsProps = {
   onImportClick: () => void;
   schedulePublishPanel: ReactNode;
   onOpenMediaLibrary: () => void;
+  /** Stage A — Publishing history tip (Website desktop tools left the landing). */
+  onOpenHistory?: () => void;
+  /** Stage C — hide Preview column toggle; show View live site instead (Website desktop). */
+  websiteDesktopChrome?: boolean;
+  liveSiteUrl?: string;
+  /** Stage D — Desktop | Mobile filter for the middle page list. */
+  deviceFilter?: 'desktop' | 'mobile';
+  onDeviceFilterChange?: (device: 'desktop' | 'mobile') => void;
 };
 
 export function HubHeaderActions({
@@ -282,6 +290,11 @@ export function HubHeaderActions({
   onImportClick,
   schedulePublishPanel,
   onOpenMediaLibrary,
+  onOpenHistory,
+  websiteDesktopChrome = false,
+  liveSiteUrl,
+  deviceFilter,
+  onDeviceFilterChange,
 }: HubHeaderActionsProps) {
   const moreMenuItems = (
     <>
@@ -303,6 +316,7 @@ export function HubHeaderActions({
         type="button"
         role="menuitem"
         className="hub-more-item"
+        data-testid="hub-more-export"
         onClick={() => { onExport(); setMoreMenuOpen(false); }}
       >
         <Download size={14} /> Export {hubLabel}
@@ -311,15 +325,31 @@ export function HubHeaderActions({
         type="button"
         role="menuitem"
         className="hub-more-item"
+        data-testid="hub-more-import"
         onClick={() => { onImportClick(); setMoreMenuOpen(false); }}
       >
         <UploadIcon size={14} /> Import {hubLabel}
       </button>
       {schedulePublishPanel}
+      {onOpenHistory ? (
+        <button
+          type="button"
+          role="menuitem"
+          className="hub-more-item"
+          data-testid="hub-more-history"
+          onClick={() => {
+            setMoreMenuOpen(false);
+            onOpenHistory();
+          }}
+        >
+          Publishing history
+        </button>
+      ) : null}
       <button
         type="button"
         role="menuitem"
         className="hub-more-item"
+        data-testid="hub-more-media"
         onClick={() => { onOpenMediaLibrary(); setMoreMenuOpen(false); }}
       >
         Media library
@@ -361,7 +391,36 @@ export function HubHeaderActions({
 
       {draftStatusNode}
 
-      {!isMobile ? (
+      {websiteDesktopChrome && deviceFilter && onDeviceFilterChange ? (
+        <div className="hub-device-filter" role="group" aria-label="Device filter" data-testid="website-device-filter">
+          {(['desktop', 'mobile'] as const).map((device) => (
+            <button
+              key={device}
+              type="button"
+              className={`hub-device-filter-btn${deviceFilter === device ? ' hub-device-filter-btn--active' : ''}`}
+              aria-pressed={deviceFilter === device}
+              data-testid={`website-device-filter-${device}`}
+              onClick={() => onDeviceFilterChange(device)}
+            >
+              {device === 'desktop' ? 'Desktop' : 'Mobile'}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {websiteDesktopChrome && liveSiteUrl ? (
+        <a
+          href={liveSiteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hub-preview-toggle hub-view-live-site"
+          data-testid="view-live-site"
+        >
+          View live site ↗
+        </a>
+      ) : null}
+
+      {!isMobile && !websiteDesktopChrome ? (
         <button
           type="button"
           data-testid="preview-toggle"
