@@ -367,7 +367,9 @@ export function usePosApp() {
     // pre-fills "Table 1" (etc.) for every new order and Active Orders
     // all look like the same table.
     setSelectedTableId(null);
-  }, [cart]);
+    // Failed settle must not pin Charge to a stale snapshot after Clear.
+    order.clearPendingPayment();
+  }, [cart, order.clearPendingPayment]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
   const [deliveryFeeSettings, setDeliveryFeeSettings] = useState<{
@@ -648,7 +650,13 @@ export function usePosApp() {
   });
 
   const chargeTotal = useMemo(() => {
-    if (order.pendingPaymentForOrderId != null && order.pendingPaymentTotalDue != null) {
+    // Retry mode: pin Charge to the failed settle's due amount — but never
+    // let a stuck 0.00 snapshot hide a live cart the cashier is ringing.
+    if (
+      order.pendingPaymentForOrderId != null
+      && order.pendingPaymentTotalDue != null
+      && order.pendingPaymentTotalDue > 0
+    ) {
       return order.pendingPaymentTotalDue;
     }
     // Paid/view-only resume: prefer server grand total − gift tender.

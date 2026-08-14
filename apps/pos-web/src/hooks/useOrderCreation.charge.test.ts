@@ -281,6 +281,90 @@ describe("useOrderCreation charge path (FIX 1/2/3)", () => {
     expect(createOrderPayments.mock.calls[1][0]).toBe(501);
   });
 
+  it("clearPendingPayment dismisses stuck retry mode", async () => {
+    const useOrderCreation = await importHook();
+    const cartItems = [item({ id: 1, name: "A", price: 50 })];
+    createOrder.mockResolvedValue({ order: { id: 502, total: 50 } });
+    createOrderPayments.mockRejectedValueOnce(new Error("network"));
+
+    const { result } = renderHook(() =>
+      useOrderCreation({
+        cartItems,
+        setCartItems: vi.fn(),
+        clearCart: vi.fn(),
+        setSelectedItem: vi.fn(),
+        cartTotal: 50,
+        payments: [],
+        orderType: "Takeaway",
+        selectedTableId: null,
+        customerId: null,
+        customerName: null,
+        customerPhone: null,
+        discountAmount: "",
+        deviceId: "POS-1",
+        isOnline: true,
+        isReachable: true,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleCharge([{ method: "cash", amount: 50 }]);
+    });
+    expect(result.current.pendingPaymentForOrderId).toBe(502);
+
+    act(() => {
+      result.current.clearPendingPayment();
+    });
+    expect(result.current.pendingPaymentForOrderId).toBeNull();
+    expect(result.current.pendingPaymentTotalDue).toBeNull();
+  });
+
+  it("zero-due pending with live cart creates a new order instead of retrying", async () => {
+    const useOrderCreation = await importHook();
+    const cartItems = [item({ id: 1, name: "A", price: 40 })];
+    createOrder
+      .mockResolvedValueOnce({ order: { id: 503, total: 0 } })
+      .mockResolvedValueOnce({ order: { id: 504, total: 40 } });
+    createOrderPayments
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ ok: true });
+
+    const { result } = renderHook(() =>
+      useOrderCreation({
+        cartItems,
+        setCartItems: vi.fn(),
+        clearCart: vi.fn(),
+        setSelectedItem: vi.fn(),
+        cartTotal: 40,
+        payments: [],
+        orderType: "Takeaway",
+        selectedTableId: null,
+        customerId: null,
+        customerName: null,
+        customerPhone: null,
+        discountAmount: "",
+        deviceId: "POS-1",
+        isOnline: true,
+        isReachable: true,
+      }),
+    );
+
+    await act(async () => {
+      const ok = await result.current.handleCharge([{ method: "cash", amount: 40 }]);
+      expect(ok).toBe(false);
+    });
+    expect(result.current.pendingPaymentForOrderId).toBe(503);
+    expect(result.current.pendingPaymentTotalDue).toBe(0);
+
+    await act(async () => {
+      const ok = await result.current.handleCharge([{ method: "cash", amount: 40 }]);
+      expect(ok).toBe(true);
+    });
+    expect(createOrder).toHaveBeenCalledTimes(2);
+    expect(createOrderPayments.mock.calls[1][0]).toBe(504);
+    expect(result.current.pendingPaymentForOrderId).toBeNull();
+  });
+
   it("FIX 3: discount-only edit marks dirty and PATCH carries discount_amount", async () => {
     const useOrderCreation = await importHook();
     const cartItems = [item({ id: 1, name: "A", price: 100 })];
