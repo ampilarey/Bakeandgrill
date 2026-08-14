@@ -112,11 +112,12 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
-    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
-    expect(within(sheet).getByDisplayValue('WEB ETA')).toBeTruthy();
-    expect(within(sheet).queryByDisplayValue('ORDER ETA')).toBeNull();
+    // Website desktop rev3 — page list row opens component mode (no sheet).
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    expect(within(editor).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    expect(within(editor).getByDisplayValue('WEB ETA')).toBeTruthy();
+    expect(within(editor).queryByDisplayValue('ORDER ETA')).toBeNull();
     expect(document.querySelectorAll('.content-preview-grid').length).toBe(0);
   });
 
@@ -129,10 +130,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
-    await within(sheet).findByDisplayValue('WEB ETA');
-    fireEvent.change(within(sheet).getByDisplayValue('WEB ETA'), { target: { value: 'WEB ETA EDIT' } });
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    await within(editor).findByDisplayValue('WEB ETA');
+    fireEvent.change(within(editor).getByDisplayValue('WEB ETA'), { target: { value: 'WEB ETA EDIT' } });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
     await waitFor(() => {
@@ -151,10 +152,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
-    await within(sheet).findByDisplayValue('+960 SHARED');
-    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    await within(editor).findByDisplayValue('+960 SHARED');
+    expect(within(editor).queryByTestId('scope-tabs-delivery_time')).toBeNull();
   });
 
   it('boolean dual-app block stays compact and untabbed', async () => {
@@ -165,16 +166,26 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('block-card-announcement_enabled');
+    // Page mode: the row summarizes the boolean without a Save path.
+    await screen.findByTestId('page-list-row-announcement_enabled');
+    expect(screen.queryByTestId('boolean-scopes-announcement_enabled')).toBeNull();
+    expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
+
+    // Component mode: still compact — no scope tabs for a boolean.
+    fireEvent.click(screen.getByTestId('page-list-row-announcement_enabled'));
+    await screen.findByTestId('website-desktop-editor');
     expect(screen.queryByTestId('boolean-scopes-announcement_enabled')).toBeNull();
     expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
   });
 
+  // Per-field History still moved out of the block face and into the header's
+  // ⋯ menu (Stage A) — order_app desktop keeps the classic block ⋯ menu this
+  // covers; the underlying openHistory/scope-resolution logic is shared code.
   it('History opens for the current destination scope', async () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.getContentRevisions).mockResolvedValue({ revisions: [] });
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -186,7 +197,7 @@ describe('ContentHub desktop width', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
 
     await waitFor(() => {
-      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('delivery_time', 'website', 'en');
+      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('delivery_time', 'order_app', 'en');
     });
   });
 

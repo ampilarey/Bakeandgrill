@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import {
@@ -82,7 +82,7 @@ function blk(key: string, group: string, label = key) {
 
 /** Enough keys so every Stage A destination section appears in the rail. */
 const websiteBlocks = [
-  blk('hero_slides', 'Hero', 'Hero'),
+  { ...blk('hero_slides', 'Hero', 'Hero'), type: 'json' as const, editor: 'hero' as const, shared: '[]', resolved_website: '[]', resolved_order_app: '[]' },
   blk('trust_items', 'Homepage', 'Trust'),
   blk('events_section_headline', 'Pages', 'Events'),
   blk('contact_page_title', 'Pages', 'Contact title'),
@@ -121,28 +121,32 @@ describe('Website desktop Stage A — rail is the only map', () => {
     cleanup();
   });
 
-  it('lands on Hero — Hero pin pressed + Home page list, hero first in the list', async () => {
+  it('lands on Hero — Hero pin pressed + hero editor visible (Stage B component mode)', async () => {
     openWebsiteDesktop('/content/website');
-    const list = await screen.findByTestId('website-desktop-page-list');
-    expect(list.getAttribute('data-section')).toBe('Home');
+    const editor = await screen.findByTestId('website-desktop-editor');
     expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('task-card-hero')).toBeNull();
     expect(screen.queryByTestId('surface-card-website.desktop.home')).toBeNull();
     expect(screen.queryByTestId('section-rail-tasks-home')).toBeNull();
     expect(screen.getByTestId('section-rail-sitewide-divider')).toBeTruthy();
 
-    // ★ Hero pin is pressed on landing (page mode, no other block focused yet).
+    // ★ Hero pin is pressed on landing, and the crumb shows Home › the hero block.
     expect(screen.getByTestId('section-rail-Hero')).toBeTruthy();
     expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByTestId('section-rail-hero-divider')).toBeTruthy();
+    expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
+    expect(within(editor).getByTestId('hero-slides-wide')).toBeTruthy();
 
-    // Hero is first in the Home page list.
+    // Component mode only — no page list beside the hero editor.
+    expect(screen.queryByTestId('website-desktop-page-list')).toBeNull();
+    expect(screen.queryByTestId('section-editor')).toBeNull();
+
+    // Back returns to the Home page list, hero first.
+    fireEvent.click(screen.getByTestId('website-component-back'));
+    const list = await screen.findByTestId('website-desktop-page-list');
+    expect(list.getAttribute('data-section')).toBe('Home');
     const rows = Array.from(list.querySelectorAll('[data-testid^="page-list-row-"]'));
     expect(rows[0]?.getAttribute('data-testid')).toBe('page-list-row-hero_slides');
-
-    // Page mode only — no side-by-side editor column.
-    expect(screen.queryByTestId('website-desktop-editor')).toBeNull();
-    expect(screen.queryByTestId('section-editor')).toBeNull();
   });
 
   it('★ Hero pin selects Home and clears focus even from another section', async () => {
@@ -152,9 +156,10 @@ describe('Website desktop Stage A — rail is the only map', () => {
 
     fireEvent.click(screen.getByTestId('section-rail-Hero'));
     await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Home');
+      expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
     });
     expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
+    expect(within(screen.getByTestId('website-desktop-editor')).getByTestId('hero-slides-wide')).toBeTruthy();
   });
 
   it('keeps every removed landing destination reachable from the rail or ⋯ tools', async () => {
@@ -184,8 +189,9 @@ describe('Website desktop Stage A — rail is the only map', () => {
     }
 
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('website-desktop-page-list');
-    // Clicking a non-Home rail row switches the list (guards against a stuck Home)
+    // Bare route lands in component mode on the hero (Stage B) — not the page list.
+    await screen.findByTestId('website-desktop-editor');
+    // Clicking a non-Home rail row switches to the page list (guards against a stuck Home/hero)
     fireEvent.click(screen.getByTestId('section-rail-Contact page'));
     await waitFor(() => {
       expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Contact page');
@@ -205,7 +211,7 @@ describe('Website desktop Stage A — rail is the only map', () => {
 
   it('hides the integrity panel when there is nothing to report', async () => {
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('website-desktop-page-list');
+    await screen.findByTestId('website-desktop-editor');
     await waitFor(() => {
       expect(contentApi.getContentIntegrity).toHaveBeenCalled();
     });

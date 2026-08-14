@@ -104,7 +104,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-page-mode');
     expect(screen.getByTestId('section-rail')).toBeTruthy();
     expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
@@ -121,7 +121,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('section-rail-Everywhere').getAttribute('aria-pressed')).toBe('true');
     });
-    expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
+    expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Everywhere');
   });
 
   it('dirty dot appears when section has unsaved drafts', async () => {
@@ -131,12 +131,12 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-page-mode');
     expect(screen.queryByTestId('section-dirty-Home')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
-    const phoneInput = within(sheet).getByDisplayValue('30–45 min');
+    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    const phoneInput = within(editor).getByDisplayValue('30–45 min');
     fireEvent.change(phoneInput, { target: { value: '25–40 min' } });
 
     await waitFor(() => {
@@ -151,7 +151,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-page-mode');
 
     const searchInput = screen.getByPlaceholderText(/search by label/i);
     fireEvent.change(searchInput, { target: { value: 'Phone' } });
@@ -169,15 +169,20 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(resultBtn).toBeTruthy();
     fireEvent.click(resultBtn!);
 
-    // Editor should switch to Home (delivery_time)
+    // Website desktop: search lands straight in component mode on the matched block.
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Home');
+      expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
     });
+    expect(screen.getByTestId('website-desktop-editor')).toBeTruthy();
   });
 
   it('block face has no key·type meta line; ⋯ menu has History and key', async () => {
+    // Per-block ⋯ / History menu lives on the classic BlockCard list, which the
+    // Website desktop redesign replaced with the page list + component editor.
+    // Order App still uses BlockCard, so this generic Content Hub rule is
+    // exercised there — Website desktop coverage is in the Stage B/C tests.
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

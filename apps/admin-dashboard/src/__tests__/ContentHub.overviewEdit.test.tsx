@@ -95,8 +95,11 @@ describe('Content Hub Overview → Edit', () => {
     'keeps overview cards simple and opens a focused editor at %spx',
     async (width) => {
       setViewport(width);
+      // Compact-card + focused-sheet editing is the Order App / mobile pattern.
+      // Website desktop replaced it with the page list + component editor
+      // (Stage B/C) — covered by the websiteDesktopStage* tests.
       render(
-        <MemoryRouter initialEntries={['/content/website?group=Home']}>
+        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
@@ -132,7 +135,7 @@ describe('Content Hub Overview → Edit', () => {
   it('preserves draft after closing the focused editor', async () => {
     setViewport(1280);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -238,24 +238,25 @@ describe('ContentHub mobile polish — systemic', () => {
 
   it('does not render content-mode controls across multiple sections', async () => {
     openSection('Home');
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-page-mode');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-    const heroSheet = await screen.findByTestId('hero-editor-sheet');
-    expect(within(heroSheet).queryByTestId('content-mode-hero_slides')).toBeNull();
-    fireEvent.click(within(heroSheet).getByTestId('content-editor-sheet-close'));
+    fireEvent.click(screen.getByTestId('page-list-row-hero_slides'));
+    const heroEditor = await screen.findByTestId('website-desktop-editor');
+    expect(within(heroEditor).queryByTestId('content-mode-hero_slides')).toBeNull();
+    fireEvent.click(screen.getByTestId('website-component-back'));
 
+    await screen.findByTestId('website-page-mode');
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('section-rail-Everywhere'));
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
+      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Everywhere');
     });
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    fireEvent.click(screen.getByTestId('edit-footer_text'));
-    const footerSheet = await screen.findByTestId('block-editor-sheet-footer_text');
-    expect(within(footerSheet).queryByTestId('content-mode-footer_text')).toBeNull();
-    expect(within(footerSheet).queryByTestId('scope-tabs-footer_text')).toBeNull();
+    fireEvent.click(screen.getByTestId('page-list-row-footer_text'));
+    const footerEditor = await screen.findByTestId('website-desktop-editor');
+    expect(within(footerEditor).queryByTestId('content-mode-footer_text')).toBeNull();
+    expect(within(footerEditor).queryByTestId('scope-tabs-footer_text')).toBeNull();
   });
 
   it('section-enable switches use the current destination — never Both', async () => {
@@ -287,14 +288,12 @@ describe('ContentHub mobile polish — systemic', () => {
 
   it('section header block count matches rendered cards on Home', async () => {
     openSection('Home');
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-page-mode');
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
-    // Layout editor chrome + content cards (hero_slides, proof_stat); legacy enable cards hidden.
-    expect(screen.getByTestId('block-card-hero_slides')).toBeTruthy();
-    expect(screen.getByTestId('block-card-proof_stat')).toBeTruthy();
+    // Layout editor chrome + page-list rows (hero_slides, proof_stat); legacy enable cards hidden.
+    expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
+    expect(screen.getByTestId('page-list-row-proof_stat')).toBeTruthy();
     expect(screen.queryByTestId('section-enable-announcement_enabled')).toBeNull();
-    const countText = screen.getByTestId('section-editor-count').textContent || '';
-    expect(countText).toMatch(/^\d+ blocks?$/);
   });
 
   it('Brand Kit still hides key/type behind Advanced', async () => {

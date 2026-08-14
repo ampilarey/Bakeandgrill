@@ -102,9 +102,9 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('block-card-delivery_time');
-    fireEvent.click(screen.getByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    await screen.findByTestId('page-list-row-delivery_time');
+    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
+    const sheet = await screen.findByTestId('website-desktop-editor');
     expect(within(sheet).queryByTestId('content-mode-delivery_time')).toBeNull();
     expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
     expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();

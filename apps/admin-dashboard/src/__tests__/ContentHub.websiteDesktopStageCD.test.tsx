@@ -112,7 +112,9 @@ describe('Website desktop Stages C+D', () => {
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
     expect(screen.queryByTestId('preview-toggle')).toBeNull();
     expect(screen.queryByTestId('preview-desktop-column')).toBeNull();
-    expect(screen.getByTestId('website-desktop-editor-draft')).toBeTruthy();
+    // Bare route lands in component mode on the hero (Stage B) — draft status
+    // stays visible in the header regardless of page/component mode.
+    expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
   });
 
   it('Stage D: Desktop|Mobile filter defaults to Desktop and is toggleable', async () => {
@@ -123,6 +125,11 @@ describe('Website desktop Stages C+D', () => {
     );
     await screen.findByTestId('website-device-filter');
     expect(screen.getByTestId('website-device-filter-desktop').getAttribute('aria-pressed')).toBe('true');
+
+    // Bare route lands in component mode on the hero (Stage B) — Back to see the page list.
+    await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(screen.getByTestId('website-component-back'));
+
     const list = await screen.findByTestId('website-desktop-page-list');
     expect(list.getAttribute('data-device')).toBe('desktop');
     expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();

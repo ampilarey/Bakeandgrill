@@ -124,19 +124,18 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('edit-hero_slides');
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-    const sheet = await screen.findByTestId('hero-editor-sheet');
-    fireEvent.click(await within(sheet).findByTestId('hero-slide-overview-0'));
-    const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
+    fireEvent.click(await screen.findByTestId('page-list-row-hero_slides'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    await within(editor).findByTestId('hero-slides-wide');
+    const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
     await waitFor(() => {
-      expect(within(slideSheet).getByDisplayValue('Shared eyebrow')).toBeTruthy();
+      expect(within(wordsCol).getByDisplayValue('Shared eyebrow')).toBeTruthy();
     });
 
-    fireEvent.change(within(slideSheet).getByDisplayValue('Shared eyebrow'), {
+    fireEvent.change(within(wordsCol).getByDisplayValue('Shared eyebrow'), {
       target: { value: 'Edited eyebrow' },
     });
-    expect(within(slideSheet).getByDisplayValue('Edited eyebrow')).toBeTruthy();
+    expect(within(wordsCol).getByDisplayValue('Edited eyebrow')).toBeTruthy();
     // Stage C — Website desktop has no docked live-preview-frame; draft status stays visible.
     expect(screen.queryByTestId('live-preview-frame')).toBeNull();
     expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
@@ -149,9 +148,8 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('edit-homepage_categories');
-    fireEvent.click(screen.getByTestId('edit-homepage_categories'));
-    const sheet = await screen.findByTestId('block-editor-sheet-homepage_categories');
+    fireEvent.click(await screen.findByTestId('page-list-row-homepage_categories'));
+    const sheet = await screen.findByTestId('website-desktop-editor');
     await waitFor(() => {
       expect(within(sheet).getAllByText('Hedhikaa').length).toBeGreaterThan(0);
     });

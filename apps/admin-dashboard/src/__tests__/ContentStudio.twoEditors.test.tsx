@@ -140,9 +140,9 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('edit-delivery_time');
-    fireEvent.click(screen.getByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    await screen.findByTestId('page-list-row-delivery_time');
+    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
+    const sheet = await screen.findByTestId('website-desktop-editor');
     await waitFor(
       () => {
         expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
@@ -238,8 +238,8 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    let sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    let sheet = await screen.findByTestId('website-desktop-editor');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
     });
@@ -248,19 +248,19 @@ describe('Content Hub dual-app editing', () => {
       target: { value: 'EN DRAFT ETA' },
     });
     expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
+    fireEvent.click(screen.getByTestId('website-component-back'));
 
     fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    sheet = await screen.findByTestId('website-desktop-editor');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('+960 DV LIVE')).toBeTruthy();
     });
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
+    fireEvent.click(screen.getByTestId('website-component-back'));
 
     fireEvent.click(screen.getByRole('button', { name: /^EN$/i }));
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
+    sheet = await screen.findByTestId('website-desktop-editor');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
     });

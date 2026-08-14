@@ -5,11 +5,12 @@ import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
+// Website desktop rev3 — page list row opens component mode (no sheet).
 async function openCtaEditor() {
-  fireEvent.click(await screen.findByTestId('edit-cta_band_headline'));
-  const sheet = await screen.findByTestId('block-editor-sheet-cta_band_headline');
-  await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-  return sheet;
+  fireEvent.click(await screen.findByTestId('page-list-row-cta_band_headline'));
+  const editor = await screen.findByTestId('website-desktop-editor');
+  await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+  return editor;
 }
 
 vi.mock('../api/content', () => ({

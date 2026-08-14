@@ -155,8 +155,11 @@ describe('Content Hub preview device parity (matrix 13)', () => {
   }, 10000);
 
   it('shows visual hero preview in the focused block editor', async () => {
+    // Website desktop's wide hero editor (Stage C) has its own slide strip and
+    // intentionally suppresses VisualBlockPreview (would duplicate the strip).
+    // Order App still uses the mobile-style focused sheet + VisualBlockPreview.
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home&surface=website.desktop.home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.desktop.home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -115,12 +115,18 @@ describe('Brand Kit UI', () => {
     }
     expect(screen.queryByTestId('brand-kit-card-default_item_image')).toBeNull();
     expect(screen.queryByTestId(/content-mode-/)).toBeNull();
-    // Ops-owned phone lives in Everywhere alongside Brand Kit cards.
-    expect(screen.getByTestId('ops-owned-business_phone')).toBeTruthy();
-    expect(screen.getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
-    expect(screen.getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');
+    // Ops-owned phone lives in Everywhere alongside Brand Kit cards — page mode
+    // shows it as a "Managed elsewhere" row, never an editable Save path.
+    expect(screen.getByTestId('page-list-row-business_phone')).toBeTruthy();
+    expect(screen.getByTestId('page-list-ops-business_phone')).toHaveAttribute('href', '/business-details');
     expect(screen.queryByTestId('edit-business_phone')).toBeNull();
     expect(screen.queryByTestId('block-editor-sheet-business_phone')).toBeNull();
+
+    // Opening it (component mode) shows the full read-only ops-owned summary.
+    fireEvent.click(screen.getByTestId('page-list-row-business_phone'));
+    expect(await screen.findByTestId('ops-owned-business_phone')).toBeTruthy();
+    expect(screen.getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
+    expect(screen.getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');
   });
 
   it('shows one primary upload action and hides raw URL until Advanced', async () => {

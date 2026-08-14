@@ -81,11 +81,12 @@ describe('Content Hub empty JSON array overrides', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(screen.getByTestId('block-card-hero_slides')).toBeTruthy());
+    // Website desktop rev3 — page list row, then component mode (no sheet).
+    await waitFor(() => expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy());
     expect(screen.queryByTestId('empty-array-override-hero_slides')).toBeNull();
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-    const sheet = await screen.findByTestId('hero-editor-sheet');
-    expect(within(sheet).queryByTestId('empty-array-override-hero_slides')).toBeNull();
-    expect(sheet.textContent).not.toMatch(/shared content/i);
+    fireEvent.click(screen.getByTestId('page-list-row-hero_slides'));
+    const editor = await screen.findByTestId('hero-slides-wide');
+    expect(within(editor).queryByTestId('empty-array-override-hero_slides')).toBeNull();
+    expect(editor.textContent).not.toMatch(/shared content/i);
   });
 });

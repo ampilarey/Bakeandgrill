@@ -126,12 +126,16 @@ describe('Website desktop Stage B — page list with summaries', () => {
 
   afterEach(() => cleanup());
 
-  it('lists Home components with human summaries; list stays when selecting', async () => {
+  it('lists Home components with human summaries; component mode replaces the list when selecting', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
+
+    // Bare route lands straight in component mode on the hero (Stage B) — Back to see the list.
+    await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(screen.getByTestId('website-component-back'));
 
     const list = await screen.findByTestId('website-desktop-page-list');
     expect(list.getAttribute('data-section')).toBe('Home');
@@ -142,13 +146,18 @@ describe('Website desktop Stage B — page list with summaries', () => {
     expect(screen.getByTestId('page-list-summary-homepage_categories').textContent).toBe('Empty');
 
     fireEvent.click(screen.getByTestId('page-list-row-trust_items'));
+
+    // Rev3: component mode takes the ENTIRE work area — the list is unmounted,
+    // not shown beside the editor.
+    await screen.findByTestId('website-desktop-editor');
+    expect(screen.queryByTestId('website-desktop-page-list')).toBeNull();
+    expect(screen.queryByTestId('section-editor')).toBeNull();
+    expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
+
+    fireEvent.click(screen.getByTestId('website-component-back'));
     await waitFor(() => {
-      expect(screen.getByTestId('page-list-row-trust_items').getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
     });
-    // List must still be mounted (not replaced by editor alone)
-    expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
-    expect(screen.getByTestId('website-desktop-editor')).toBeTruthy();
-    expect(screen.getByTestId('section-editor')).toBeTruthy();
   });
 
   it('shows ops-owned rows as Managed elsewhere with owner link', async () => {

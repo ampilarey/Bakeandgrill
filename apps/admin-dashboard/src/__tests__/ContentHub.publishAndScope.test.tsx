@@ -6,7 +6,15 @@ import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 import { ApiRequestError } from '@shared/api';
 
-async function openCtaEditor() {
+// Website desktop rev3 opens component mode (page-list row → full-width
+// editor); Order App keeps the compact-card + focused-sheet pattern.
+async function openCtaEditor(mode: 'website' | 'order_app' = 'website') {
+  if (mode === 'website') {
+    fireEvent.click(await screen.findByTestId('page-list-row-offers_headline'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+    return editor;
+  }
   fireEvent.click(await screen.findByTestId('edit-offers_headline'));
   const sheet = await screen.findByTestId('block-editor-sheet-offers_headline');
   await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
@@ -234,7 +242,7 @@ describe('Content Hub publish reliability + app scope', () => {
       </MemoryRouter>,
     );
 
-    const sheet = await openCtaEditor();
+    const sheet = await openCtaEditor('order_app');
     const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Order only edit';
     fireEvent.input(editor);
@@ -259,11 +267,11 @@ describe('Content Hub publish reliability + app scope', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-hero_slides'));
-    const heroSheet = await screen.findByTestId('hero-editor-sheet');
-    fireEvent.click(within(heroSheet).getByTestId('hero-slide-overview-0'));
-    const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
-    const title = within(slideSheet).getByLabelText(/Title \(HTML/i) as HTMLTextAreaElement;
+    fireEvent.click(await screen.findByTestId('page-list-row-hero_slides'));
+    const editor = await screen.findByTestId('website-desktop-editor');
+    await within(editor).findByTestId('hero-slides-wide');
+    const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
+    const title = within(wordsCol).getByLabelText(/Title \(HTML/i) as HTMLTextAreaElement;
     fireEvent.change(title, { target: { value: 'Website hero only' } });
 
     await waitFor(() => expect(contentApi.saveContentDrafts).toHaveBeenCalled(), { timeout: 5000 });
