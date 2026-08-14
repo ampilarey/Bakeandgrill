@@ -34,11 +34,7 @@ final class MediaUsageResolver
 
         $out = [];
 
-        $itemCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('items', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('items', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $itemCols = $this->itemImageColumns();
         if ($itemCols !== []) {
             $items = Item::query()
                 ->where(function ($q) use ($itemCols, $candidates) {
@@ -61,12 +57,7 @@ final class MediaUsageResolver
             }
         }
 
-        $photoCols = array_values(array_filter([
-            'url',
-            Schema::hasColumn('item_photos', 'original_url') ? 'original_url' : null,
-            Schema::hasColumn('item_photos', 'thumb_url') ? 'thumb_url' : null,
-            Schema::hasColumn('item_photos', 'poster_url') ? 'poster_url' : null,
-        ]));
+        $photoCols = $this->itemPhotoColumns();
         if ($photoCols !== [] && Schema::hasTable('item_photos')) {
             $photos = ItemPhoto::query()
                 ->where(function ($q) use ($photoCols, $candidates) {
@@ -89,11 +80,7 @@ final class MediaUsageResolver
             }
         }
 
-        $catCols = array_values(array_filter([
-            'image_url',
-            Schema::hasColumn('categories', 'image_original_url') ? 'image_original_url' : null,
-            Schema::hasColumn('categories', 'thumb_url') ? 'thumb_url' : null,
-        ]));
+        $catCols = $this->categoryImageColumns();
         if ($catCols !== []) {
             $cats = Category::query()
                 ->where(function ($q) use ($catCols, $candidates) {
