@@ -126,6 +126,18 @@ class CloneLiveToTestTrigger
         @chmod($script, 0755);
         @chmod($this->scriptPath(), 0755);
 
+        $startedAt = now()->toIso8601String();
+        file_put_contents(
+            $this->statusPath(),
+            json_encode([
+                'state' => 'running',
+                'started_at' => $startedAt,
+                'finished_at' => null,
+                'exit_code' => null,
+                'message' => 'Clone started',
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n",
+        );
+
         $log = $this->logPath();
         $home = $this->homePath();
         $status = $this->statusPath();
