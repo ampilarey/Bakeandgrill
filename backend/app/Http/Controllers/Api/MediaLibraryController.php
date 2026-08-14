@@ -13,10 +13,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Media;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
-use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class MediaLibraryController extends Controller
@@ -153,16 +151,9 @@ class MediaLibraryController extends Controller
             ], 409);
         }
 
-        $paths = array_filter([
-            $media->path,
-            MediaFileCleaner::storagePathFromUrl($media->thumb_url),
-            MediaFileCleaner::storagePathFromUrl($media->original_url),
-        ]);
-        foreach ($paths as $path) {
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
-        }
+        // Wipe primary + webp sidecars + masters + version backups so
+        // reconcile / media:backfill cannot re-catalog leftovers.
+        $this->library->purgeDiskFiles($media);
 
         $id = (int) $media->id;
         $media->delete();

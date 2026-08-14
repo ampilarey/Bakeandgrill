@@ -340,7 +340,11 @@ class MenuImageProcessor
             throw new RuntimeException('Could not save processed menu image.');
         }
 
-        $this->registerInLibrary($relative);
+        // WebP sidecars are derivatives — only the JPEG primary belongs in the catalog.
+        // Registering both made delete+reconcile resurrect "deleted" photos as WebP rows.
+        if (strtolower($ext) !== 'webp') {
+            $this->registerInLibrary($relative);
+        }
 
         return $relative;
     }
