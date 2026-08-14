@@ -6,12 +6,38 @@ const HEIC_EXT = /\.hei[cf]$/i;
 /** Matches MenuImageProcessor::MASTER_MAX_EDGE — client pre-cap before upload. */
 export const MASTER_MAX_EDGE = 3200;
 
+/** HEIC decode can hang in some browsers; fail instead of spinning forever. */
+const HEIC_CONVERT_TIMEOUT_MS = 30_000;
+const BITMAP_DECODE_TIMEOUT_MS = 8_000;
+const IMAGE_ELEMENT_TIMEOUT_MS = 10_000;
+
 export const IPHONE_HEIC_ERROR =
   "Couldn't read this iPhone photo — set iPhone Settings→Camera→Formats to 'Most Compatible', or retry.";
 
 export function isHeicFile(file: File): boolean {
   if (HEIC_MIME.test(file.type || '')) return true;
   return HEIC_EXT.test(file.name || '');
+}
+
+/** True when client-side image prep (HEIC convert / downscale) should run. */
+export function isImageLikeFile(file: File): boolean {
+  if (isHeicFile(file)) return true;
+  if ((file.type || '').startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|gif|hei[cf])$/i.test(file.name || '');
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 type SizedSource = {
@@ -21,24 +47,14 @@ type SizedSource = {
   close: () => void;
 };
 
-async function loadSizedSource(file: File): Promise<SizedSource> {
-  if (typeof createImageBitmap === 'function') {
-    const bitmap = await createImageBitmap(file);
-    return {
-      width: bitmap.width,
-      height: bitmap.height,
-      draw: (ctx, w, h) => ctx.drawImage(bitmap, 0, 0, w, h),
-      close: () => bitmap.close(),
-    };
-  }
-
+async function loadViaImageElement(file: File): Promise<SizedSource> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     const timer = window.setTimeout(() => {
       URL.revokeObjectURL(url);
       reject(new Error('Image load timed out.'));
-    }, 2500);
+    }, IMAGE_ELEMENT_TIMEOUT_MS);
     img.onload = () => {
       window.clearTimeout(timer);
       URL.revokeObjectURL(url);
@@ -56,6 +72,28 @@ async function loadSizedSource(file: File): Promise<SizedSource> {
     };
     img.src = url;
   });
+}
+
+async function loadSizedSource(file: File): Promise<SizedSource> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await withTimeout(
+        createImageBitmap(file),
+        BITMAP_DECODE_TIMEOUT_MS,
+        'Image decode timed out.',
+      );
+      return {
+        width: bitmap.width,
+        height: bitmap.height,
+        draw: (ctx, w, h) => ctx.drawImage(bitmap, 0, 0, w, h),
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall through to <img> — createImageBitmap can hang/fail on some HEIC leftovers.
+    }
+  }
+
+  return loadViaImageElement(file);
 }
 
 /**
@@ -112,15 +150,25 @@ export async function downscaleImageForUpload(file: File): Promise<File> {
  * iOS often sends an empty MIME type, so extension checks are required.
  */
 export async function prepareImageForUpload(file: File): Promise<File> {
+  if (!isImageLikeFile(file)) {
+    return file;
+  }
+
   let prepared = file;
 
   if (isHeicFile(file)) {
     try {
-      const converted = await heic2any({
-        blob: file,
-        toType: 'image/jpeg',
-        quality: 0.9,
-      });
+      const converted = await withTimeout(
+        Promise.resolve(
+          heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.9,
+          }),
+        ),
+        HEIC_CONVERT_TIMEOUT_MS,
+        'HEIC conversion timed out',
+      );
       const blob = Array.isArray(converted) ? converted[0] : converted;
       if (!(blob instanceof Blob)) {
         throw new Error('empty conversion');

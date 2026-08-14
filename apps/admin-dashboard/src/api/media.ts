@@ -76,13 +76,45 @@ export async function getMedia(params?: {
 
 export async function uploadMedia(
   files: File[],
-  options?: { title?: string; alt_text?: string; collection_ids?: number[] },
+  options?: {
+    title?: string;
+    alt_text?: string;
+    collection_ids?: number[];
+    onStatus?: (message: string) => void;
+  },
 ): Promise<{ data: Array<{ asset: MediaAsset; deduped: boolean }> }> {
-  const { prepareImageForUpload } = await import('../utils/prepareUpload');
   const form = new FormData();
-  for (const f of files) {
-    form.append('files[]', await prepareImageForUpload(f));
+  const imageLike = files.some((f) => {
+    if ((f.type || '').startsWith('image/')) return true;
+    return /\.(jpe?g|png|webp|gif|hei[cf])$/i.test(f.name || '');
+  });
+
+  let prepare: ((file: File) => Promise<File>) | null = null;
+  if (imageLike) {
+    options?.onStatus?.('Preparing photos…');
+    const mod = await import('../utils/prepareUpload');
+    prepare = mod.prepareImageForUpload;
   }
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const label = f.name || `file ${i + 1}`;
+    const heic = /\.hei[cf]$/i.test(f.name || '') || /image\/hei[cf]/i.test(f.type || '');
+    if (prepare && heic) {
+      options?.onStatus?.(
+        files.length > 1
+          ? `Converting iPhone photo ${i + 1} of ${files.length}…`
+          : 'Converting iPhone photo…',
+      );
+    } else if (prepare && ((f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(f.name || ''))) {
+      options?.onStatus?.(
+        files.length > 1 ? `Preparing ${i + 1} of ${files.length}: ${label}` : 'Preparing image…',
+      );
+    }
+    form.append('files[]', prepare ? await prepare(f) : f);
+  }
+
+  options?.onStatus?.('Uploading…');
   if (options?.title) form.append('title', options.title);
   if (options?.alt_text) form.append('alt_text', options.alt_text);
   for (const id of options?.collection_ids ?? []) form.append('collection_ids[]', String(id));
