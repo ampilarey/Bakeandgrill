@@ -94,4 +94,27 @@ describe('PrayerBar island picker', () => {
     await waitFor(() => {
       expect(screen.getByRole('listbox')).toBeTruthy();
     });
-  }, 15000);});
+  }, 15000);
+
+  it('rehydrates Latin island label when localStorage has Dhivehi nameLatin', async () => {
+    localStorage.setItem(
+      'pt_island',
+      JSON.stringify({ id: 102, atollLatin: 'ކ', nameLatin: 'މާލެ' }),
+    );
+
+    render(
+      <LanguageProvider>
+        <PrayerBar />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Malé/i })).toBeTruthy();
+    }, { timeout: 10000 });
+
+    expect(screen.queryByRole('button', { name: /މާލެ/ })).toBeNull();
+    const saved = JSON.parse(localStorage.getItem('pt_island') || '{}');
+    expect(saved.nameLatin).toBe('Malé');
+    expect(saved.atollLatin).toBe('Kaafu');
+  }, 15000);
+});

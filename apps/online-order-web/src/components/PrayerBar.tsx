@@ -107,17 +107,50 @@ function makeLabel(atollLatin: string, nameLatin: string) {
 
 const MALE_DV = 'މާލެ';
 const MALE_FALLBACK: IslandInfo = { id: 102, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+/** Thaana (Dhivehi) — never use these for banner island labels. */
+const THAANA_RE = /[\u0780-\u07BF]/;
+
+function isLatinLabel(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '' && !THAANA_RE.test(value);
+}
+
+function pickLatin(...candidates: unknown[]): string {
+  for (const c of candidates) {
+    if (isLatinLabel(c)) return c.trim();
+  }
+  return '';
+}
 
 function isMaleLatinName(nameLatin: string | null | undefined): boolean {
   if (!nameLatin) return false;
   return nameLatin.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z]/g, '').toLowerCase() === 'male';
 }
 
+/** Normalize API island or stale localStorage into Latin-only IslandInfo. */
+function toIslandInfo(raw: Partial<Island & IslandInfo> | null | undefined): IslandInfo | null {
+  if (!raw || typeof raw.id !== 'number' || !Number.isFinite(raw.id)) return null;
+  const nameLatin = pickLatin(raw.nameLatin, raw.name_latin);
+  const atollLatin = pickLatin(raw.atollLatin, raw.atoll_latin);
+  if (nameLatin) {
+    return { id: raw.id, atollLatin: atollLatin || '', nameLatin };
+  }
+  if (raw.name === MALE_DV || isMaleLatinName(raw.name_latin) || raw.id === MALE_FALLBACK.id) {
+    return { ...MALE_FALLBACK, id: raw.id };
+  }
+  // Keep id for prayer lookup; label stays empty until islands list rehydrates.
+  return { id: raw.id, atollLatin, nameLatin: '' };
+}
+
 function findMaleIsland(islands: Island[]): IslandInfo {
   const male = islands.find(i => i.name === MALE_DV || isMaleLatinName(i.name_latin));
-  return male
-    ? { id: male.id, atollLatin: male.atoll_latin || 'Kaafu', nameLatin: male.name_latin || 'Malé' }
-    : MALE_FALLBACK;
+  return male ? (toIslandInfo(male) ?? MALE_FALLBACK) : MALE_FALLBACK;
+}
+
+function resolveIslandInfo(id: number, islands: Island[], fallback?: IslandInfo | null): IslandInfo {
+  const hit = islands.find(i => i.id === id);
+  if (hit) return toIslandInfo(hit) ?? MALE_FALLBACK;
+  if (fallback && fallback.id === id && isLatinLabel(fallback.nameLatin)) return fallback;
+  return id === MALE_FALLBACK.id ? MALE_FALLBACK : { id, atollLatin: '', nameLatin: '' };
 }
 
 /** Normalize API / localStorage payloads into a plain Island[]. */
@@ -326,11 +359,7 @@ export function PrayerBar() {
   }, [startTick]);
 
   const selectIsland = useCallback((isl: Island) => {
-    const info: IslandInfo = {
-      id: isl.id,
-      atollLatin: isl.atoll_latin || '',
-      nameLatin: isl.name_latin || isl.name,
-    };
+    const info = toIslandInfo(isl) ?? MALE_FALLBACK;
     setIsland(info);
     try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
     prayersRef.current = null;
@@ -345,17 +374,27 @@ export function PrayerBar() {
     let savedIsland: IslandInfo | null = null;
     try {
       const s = localStorage.getItem('pt_island');
-      if (s) savedIsland = JSON.parse(s);
+      if (s) savedIsland = toIslandInfo(JSON.parse(s));
     } catch { /* ignore */ }
 
     // Always warm the islands list (needed for Change island), even when a
     // saved island means we skip the Malé defaulting path below.
-    const warmIslands = () => {
+    // Re-resolve Latin labels so stale Dhivehi localStorage (live vs test) heals.
+    const warmIslands = (preferredId?: number, provisional?: IslandInfo | null) => {
       try {
         const c = localStorage.getItem('pt_islands_list');
         if (c) {
           const cached = normalizeIslands(JSON.parse(c));
-          if (cached.length) setAllIslands(cached);
+          if (cached.length) {
+            setAllIslands(cached);
+            if (preferredId != null) {
+              const resolved = resolveIslandInfo(preferredId, cached, provisional);
+              if (isLatinLabel(resolved.nameLatin)) {
+                setIsland(resolved);
+                try { localStorage.setItem('pt_island', JSON.stringify(resolved)); } catch { /* ignore */ }
+              }
+            }
+          }
         }
       } catch { /* ignore */ }
       fetch(`${API_BASE_URL}/prayer-times/islands`)
@@ -365,6 +404,11 @@ export function PrayerBar() {
           if (!islands.length) return;
           setAllIslands(islands);
           try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
+          if (preferredId != null) {
+            const resolved = resolveIslandInfo(preferredId, islands, provisional);
+            setIsland(resolved);
+            try { localStorage.setItem('pt_island', JSON.stringify(resolved)); } catch { /* ignore */ }
+          }
         })
         .catch(() => { /* ignore */ });
     };
@@ -372,7 +416,7 @@ export function PrayerBar() {
     if (savedIsland) {
       setIsland(savedIsland);
       loadPrayers(savedIsland.id, finishLoad);
-      warmIslands();
+      warmIslands(savedIsland.id, savedIsland);
       return;
     }
 
@@ -569,7 +613,7 @@ export function PrayerBar() {
                 className={`order-hpt-option${island && isl.id === island.id ? ' selected' : ''}`}
                 onClick={e => { e.stopPropagation(); setDropOpen(false); selectIsland(isl); }}
               >
-                {isl.name_latin || isl.name}
+                {isl.name_latin || 'Island'}
               </div>
             ))}
           </div>
