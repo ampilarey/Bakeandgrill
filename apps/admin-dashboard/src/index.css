@@ -2389,27 +2389,10 @@ a { text-decoration: none; color: inherit; }
   overflow-y: auto;
   transition: width 0.15s ease;
 }
-/* Stage C — Website desktop: ~208px rail, page list ~340px, editor widest */
+/* Rev 3 — Website desktop: ~208px rail, work area is a single column that
+   changes mode (page list OR the one focused component, full width). */
 .hub-desktop-shell--website .hub-section-rail {
   width: 208px;
-}
-.hub-desktop-shell--website .hub-website-desktop-workspace {
-  grid-template-columns: 340px minmax(0, 1fr);
-}
-.hub-desktop-shell--website .hub-website-desktop-editor {
-  padding: 18px 22px 28px;
-}
-.hub-desktop-shell--website .hub-website-desktop-editor .hub-block-card--compact:has([data-testid^="block-card-hero"]),
-.hub-desktop-shell--website .hub-website-desktop-editor [data-testid="block-card-hero_slides"]:not(.hub-block-card--compact) {
-  max-width: none;
-}
-/* Hero fields: two columns when the full editor is open on Website desktop */
-.hub-desktop-shell--website .hub-website-desktop-editor .hero-slide-fields,
-.hub-desktop-shell--website .hub-website-desktop-editor .hero-slides-fields-grid,
-.hub-desktop-shell--website .hub-website-desktop-editor .hero-slides-wide-fields .hero-slide-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
 }
 .hub-website-desktop-editor-status {
   margin-bottom: 12px;
@@ -2547,6 +2530,9 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
 }
 .hub-section-rail-row-icon { color: inherit; flex-shrink: 0; }
+.hub-section-rail-row--hero .hub-section-rail-row-icon {
+  color: var(--color-warning);
+}
 .hub-section-rail-row-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hub-section-rail-row-count {
   font-size: 11px;
@@ -2703,26 +2689,23 @@ a { text-decoration: none; color: inherit; }
   box-sizing: border-box;
 }
 
-/* Website desktop Stage B — page list | editor */
+/* Rev 3 §2.1 — the work area is ONE column that changes mode: the full page
+   list, OR (once a component is selected) that component's full editor. */
 .hub-website-desktop-workspace {
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-  gap: 16px 20px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
   width: 100%;
   flex: 1;
 }
 .hub-website-page-list {
-  position: sticky;
-  top: 12px;
-  max-height: calc(100vh - 140px);
-  overflow-y: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 14px 12px 16px;
   min-width: 0;
+  width: 100%;
 }
 .hub-website-page-list-header {
   margin-bottom: 10px;
@@ -2837,15 +2820,6 @@ a { text-decoration: none; color: inherit; }
 }
 .hub-desktop-editor-draft {
   margin-bottom: 10px;
-}
-@media (max-width: 1199px) {
-  .hub-website-desktop-workspace {
-    grid-template-columns: 1fr;
-  }
-  .hub-website-page-list {
-    position: static;
-    max-height: none;
-  }
 }
 
 /* Landing: open canvas — no nested “card in a card” */

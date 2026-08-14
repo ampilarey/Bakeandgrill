@@ -121,15 +121,40 @@ describe('Website desktop Stage A — rail is the only map', () => {
     cleanup();
   });
 
-  it('opens Home immediately — no surface/task landing on Website desktop', async () => {
+  it('lands on Hero — Hero pin pressed + Home page list, hero first in the list', async () => {
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Home');
+    const list = await screen.findByTestId('website-desktop-page-list');
+    expect(list.getAttribute('data-section')).toBe('Home');
     expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('task-card-hero')).toBeNull();
     expect(screen.queryByTestId('surface-card-website.desktop.home')).toBeNull();
     expect(screen.queryByTestId('section-rail-tasks-home')).toBeNull();
     expect(screen.getByTestId('section-rail-sitewide-divider')).toBeTruthy();
+
+    // ★ Hero pin is pressed on landing (page mode, no other block focused yet).
+    expect(screen.getByTestId('section-rail-Hero')).toBeTruthy();
+    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('section-rail-hero-divider')).toBeTruthy();
+
+    // Hero is first in the Home page list.
+    const rows = Array.from(list.querySelectorAll('[data-testid^="page-list-row-"]'));
+    expect(rows[0]?.getAttribute('data-testid')).toBe('page-list-row-hero_slides');
+
+    // Page mode only — no side-by-side editor column.
+    expect(screen.queryByTestId('website-desktop-editor')).toBeNull();
+    expect(screen.queryByTestId('section-editor')).toBeNull();
+  });
+
+  it('★ Hero pin selects Home and clears focus even from another section', async () => {
+    openWebsiteDesktop('/content/website?group=Legal');
+    await screen.findByTestId('website-desktop-page-list');
+    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(screen.getByTestId('section-rail-Hero'));
+    await waitFor(() => {
+      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Home');
+    });
+    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('keeps every removed landing destination reachable from the rail or ⋯ tools', async () => {
@@ -151,7 +176,7 @@ describe('Website desktop Stage A — rail is the only map', () => {
     for (const section of websiteDesktopRemovedSectionNames()) {
       openWebsiteDesktop(`/content/website?group=${encodeURIComponent(section)}`);
       await waitFor(() => {
-        expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe(section);
+        expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe(section);
       });
       // Rail row is pressed for that section
       expect(screen.getByTestId(`section-rail-${section}`).getAttribute('aria-pressed')).toBe('true');
@@ -159,11 +184,11 @@ describe('Website desktop Stage A — rail is the only map', () => {
     }
 
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('section-editor');
-    // Clicking a non-Home rail row switches the editor (guards against a stuck Home)
+    await screen.findByTestId('website-desktop-page-list');
+    // Clicking a non-Home rail row switches the list (guards against a stuck Home)
     fireEvent.click(screen.getByTestId('section-rail-Contact page'));
     await waitFor(() => {
-      expect(screen.getByTestId('section-editor').getAttribute('data-section')).toBe('Contact page');
+      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Contact page');
     });
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;
@@ -180,7 +205,7 @@ describe('Website desktop Stage A — rail is the only map', () => {
 
   it('hides the integrity panel when there is nothing to report', async () => {
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('section-editor');
+    await screen.findByTestId('website-desktop-page-list');
     await waitFor(() => {
       expect(contentApi.getContentIntegrity).toHaveBeenCalled();
     });

@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
 import type { ContentApp } from '../../api/content';
 import { clusterSections, sectionMeta } from './hubLayoutConfig';
 
@@ -6,6 +6,12 @@ export type SectionRailItem = {
   name: string;
   count: number;
   dirty: boolean;
+};
+
+/** Website desktop Stage A/B — ★ Hero pin above the Pages cluster. */
+export type SectionRailHeroPin = {
+  active: boolean;
+  onSelect: () => void;
 };
 
 type Props = {
@@ -21,6 +27,8 @@ type Props = {
   onToggleCollapsed?: () => void;
   /** When true, hide the overview row (Website desktop Stage A). */
   hideOverview?: boolean;
+  /** Website desktop only — ★ Hero pin, rendered above the Pages cluster with a divider after it. */
+  heroPin?: SectionRailHeroPin;
 };
 
 /**
@@ -39,6 +47,7 @@ export function SectionRail({
   collapsed = false,
   onToggleCollapsed,
   hideOverview = false,
+  heroPin,
 }: Props) {
   const names = sections.map((s) => s.name);
   const byName = new Map(sections.map((s) => [s.name, s]));
@@ -128,6 +137,30 @@ export function SectionRail({
             <span className="hub-section-rail-row-name" aria-hidden="true">∗</span>
           )}
         </button>
+      ) : null}
+      {heroPin ? (
+        <>
+          <button
+            type="button"
+            aria-label="Hero"
+            title="Hero"
+            aria-pressed={heroPin.active}
+            data-testid="section-rail-Hero"
+            className={`hub-section-rail-row hub-section-rail-row--hero${heroPin.active ? ' hub-section-rail-row--active' : ''}`}
+            onClick={heroPin.onSelect}
+          >
+            <Star size={15} className="hub-section-rail-row-icon" aria-hidden="true" />
+            {!collapsed ? (
+              <span className="hub-section-rail-row-name" aria-hidden="true">★ Hero</span>
+            ) : null}
+          </button>
+          <div
+            className="hub-section-rail-divider"
+            data-testid="section-rail-hero-divider"
+            role="separator"
+            aria-hidden="true"
+          />
+        </>
       ) : null}
       {clusters.map((cluster, clusterIndex) => (
         <div key={cluster.cluster} className="hub-section-rail-cluster">

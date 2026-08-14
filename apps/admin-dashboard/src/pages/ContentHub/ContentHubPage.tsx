@@ -361,6 +361,20 @@ export function ContentHubPage() {
     handleSectionSelect('Home', surface.app, surface.id);
   };
 
+  // Website desktop Stage A — ★ Hero pin: select Home and clear any other
+  // component focus. Active whenever Home is selected and no other block is
+  // focused (Stage B focuses hero_slides specifically once component mode ships).
+  const handleHeroPinSelect = () => {
+    selectGroup('Home');
+    setMobileEditorOpen(true);
+    setFocusedBlockKey(null);
+  };
+  const heroPinActive = Boolean(
+    websiteDesktopNoLanding
+      && activeGroup === 'Home'
+      && (focusedBlockKey === null || focusedBlockKey === 'hero_slides'),
+  );
+
   const focusContentBlock = (blockKey: string) => {
     window.setTimeout(() => {
       setMobileBlockEditorKey(blockKey);
@@ -769,6 +783,7 @@ export function ContentHubPage() {
               collapsed={railCollapsed}
               onToggleCollapsed={() => setRailCollapsedPersisted(!railCollapsed)}
               hideOverview={websiteDesktopNoLanding}
+              heroPin={websiteDesktopNoLanding ? { active: heroPinActive, onSelect: handleHeroPinSelect } : undefined}
             />
 
             <div className="hub-editor-area" data-testid="hub-editor-area">
@@ -778,6 +793,7 @@ export function ContentHubPage() {
                     <div
                       className="hub-website-desktop-workspace"
                       data-testid="website-desktop-workspace"
+                      data-mode="page"
                     >
                       <WebsiteDesktopPageList
                         sectionName={activeGroup}
@@ -788,16 +804,6 @@ export function ContentHubPage() {
                         onSelect={setFocusedBlockKey}
                         deviceFilter={websiteDeviceFilter}
                       />
-                      <div className="hub-website-desktop-editor" data-testid="website-desktop-editor">
-                        <div className="hub-website-desktop-editor-status" data-testid="website-desktop-editor-draft">
-                          {draftStatusNode}
-                        </div>
-                        <HubSectionContent
-                          sectionName={activeGroup}
-                          withBack={false}
-                          {...hubSectionContentProps}
-                        />
-                      </div>
                     </div>
                   ) : (
                     <HubSectionContent

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { ContentApp, ContentBlock, ContentScope } from '../../api/content';
-import { SectionRail, type SectionRailItem } from './SectionRail';
+import { SectionRail, type SectionRailHeroPin, type SectionRailItem } from './SectionRail';
 import { blocksForContentView, isGroupDirty } from './websitePageTasks';
 
 export type HubSectionListProps = {
@@ -14,6 +14,8 @@ export type HubSectionListProps = {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   hideOverview?: boolean;
+  /** Website desktop only — ★ Hero pin above the Pages cluster. */
+  heroPin?: SectionRailHeroPin;
 };
 
 /** Build left-rail section rows (count + dirty) for Content Hub. */
@@ -49,6 +51,7 @@ export function HubSectionList({
   collapsed,
   onToggleCollapsed,
   hideOverview = false,
+  heroPin,
 }: HubSectionListProps) {
   const sections = useMemo(
     () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey, app),
@@ -65,6 +68,7 @@ export function HubSectionList({
       collapsed={collapsed}
       onToggleCollapsed={onToggleCollapsed}
       hideOverview={hideOverview}
+      heroPin={heroPin}
     />
   );
 }
