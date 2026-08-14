@@ -51,10 +51,13 @@ When you want real menu photos and live content on TEST for QA:
 CONFIRM=1 bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/clone-live-to-test.sh
 ```
 
+Or in **TEST Admin → System Health** (owner only): type `CLONE FROM LIVE` and click **Clone LIVE → TEST**.
+
 - Copies LIVE MySQL → TEST MySQL (after a TEST safety dump under `~/backups/`)
 - `rsync`s `backend/storage/app/public/` (item/CMS images)
 - Does **not** overwrite TEST `.env` or code
 - Flags: `--db-only`, `--media-only`, `--keep-test-media`, `--no-backup`
+- Never available on production hosts
 
 See script header: `scripts/clone-live-to-test.sh`.
 

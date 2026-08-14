@@ -7,6 +7,7 @@ import * as api from '../api';
 describe('SystemHealthPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(api, 'getCloneLiveToTestStatus').mockResolvedValue({ available: false });
     vi.spyOn(api, 'getSystemHealthDetailed').mockResolvedValue({
       status: 'degraded',
       deploy: {

@@ -275,6 +275,12 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::delete('/admin/system/health/failed-jobs/{uuid}', [App\Http\Controllers\Api\SystemHealthController::class, 'forgetFailedJob']);
     });
 
+    // LIVE → TEST data/media clone (owner + TEST host only)
+    Route::middleware(['auth:sanctum', 'staff.token', 'role:owner'])->group(function () {
+        Route::get('/admin/ops/clone-live-to-test', [App\Http\Controllers\Api\CloneLiveToTestController::class, 'status']);
+        Route::post('/admin/ops/clone-live-to-test', [App\Http\Controllers\Api\CloneLiveToTestController::class, 'start']);
+    });
+
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->prefix('admin/pos')->group(function () {
         Route::get('/maintenance-preview', [App\Http\Controllers\Api\PosAdminController::class, 'maintenancePreview']);
         Route::post('/cleanup-stale-tickets', [App\Http\Controllers\Api\PosAdminController::class, 'cleanupStaleTickets']);

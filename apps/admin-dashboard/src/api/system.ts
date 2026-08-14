@@ -76,3 +76,28 @@ export async function retryFailedJob(uuid: string): Promise<{ message: string }>
 export async function forgetFailedJob(uuid: string): Promise<{ message: string }> {
   return req(`/admin/system/health/failed-jobs/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
 }
+
+export type CloneLiveToTestStatus = {
+  available: boolean;
+  reason?: string;
+  running?: boolean;
+  status?: {
+    state: string;
+    started_at: string | null;
+    finished_at: string | null;
+    exit_code: number | null;
+    message: string | null;
+  };
+  log_tail?: string;
+};
+
+export async function getCloneLiveToTestStatus(): Promise<CloneLiveToTestStatus> {
+  return req('/admin/ops/clone-live-to-test');
+}
+
+export async function startCloneLiveToTest(): Promise<{ message: string }> {
+  return req('/admin/ops/clone-live-to-test', {
+    method: 'POST',
+    body: JSON.stringify({ confirm: 'CLONE FROM LIVE' }),
+  });
+}

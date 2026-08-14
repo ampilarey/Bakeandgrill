@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Activity, AlertTriangle, CheckCircle2, Database, HardDrive, MessageSquare, Printer, RefreshCw, Server, Webhook } from 'lucide-react';
 import {
   forgetFailedJob,
+  getCloneLiveToTestStatus,
   getSystemHealthDetailed,
   retryFailedJob,
+  startCloneLiveToTest,
+  type CloneLiveToTestStatus,
   type SystemHealthDetailed,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 
 function fmtTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -32,11 +36,16 @@ function printProxyLabel(status: string, ok: boolean | null): string {
 export function SystemHealthPage() {
   usePageTitle('System Health');
   const navigate = useNavigate();
+  const { user } = useCurrentUserPermissions();
+  const isOwner = user?.role === 'owner';
   const [data, setData] = useState<SystemHealthDetailed | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [jobBusy, setJobBusy] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState('');
+  const [cloneInfo, setCloneInfo] = useState<CloneLiveToTestStatus | null>(null);
+  const [cloneBusy, setCloneBusy] = useState(false);
+  const [cloneConfirm, setCloneConfirm] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -45,6 +54,38 @@ export function SystemHealthPage() {
       .then(setData)
       .catch((e: Error) => setErr(e.message))
       .finally(() => setLoading(false));
+  };
+
+  const loadClone = () => {
+    if (!isOwner) return;
+    getCloneLiveToTestStatus()
+      .then(setCloneInfo)
+      .catch(() => setCloneInfo(null));
+  };
+
+  const handleClone = async () => {
+    if (cloneConfirm.trim() !== 'CLONE FROM LIVE') {
+      setErr('Type CLONE FROM LIVE exactly to confirm.');
+      return;
+    }
+    if (!window.confirm(
+      'This overwrites the TEST database with LIVE data and replaces TEST photos. TEST .env is kept. Continue?',
+    )) {
+      return;
+    }
+    setCloneBusy(true);
+    setErr('');
+    setActionMsg('');
+    try {
+      const res = await startCloneLiveToTest();
+      setActionMsg(res.message);
+      setCloneConfirm('');
+      loadClone();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setCloneBusy(false);
+    }
   };
 
   const handleRetry = async (uuid: string) => {
@@ -82,7 +123,18 @@ export function SystemHealthPage() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    loadClone();
+  }, [isOwner]);
+
+  useEffect(() => {
+    if (!cloneInfo?.running) return;
+    const t = setInterval(loadClone, 5_000);
+    return () => clearInterval(t);
+  }, [cloneInfo?.running]);
+
   const degraded = data?.status === 'degraded';
+  const showClone = isOwner && cloneInfo?.available === true;
 
   return (
     <PageShell>
@@ -112,6 +164,64 @@ export function SystemHealthPage() {
         <p style={{ color: 'var(--color-success-strong)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{actionMsg}</p>
       )}
       {loading && !data && <Spinner />}
+
+      {showClone && (
+        <Card data-testid="clone-live-to-test" style={{ marginBottom: 20, padding: 16, borderColor: 'var(--color-warning)' }}>
+          <SectionLabel>TEST data from LIVE</SectionLabel>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+            Overwrite this TEST database and photos with a fresh copy from production.
+            TEST settings (.env) stay unchanged. Takes a few minutes.
+          </p>
+          {cloneInfo?.status?.message && (
+            <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Status: <strong style={{ color: 'var(--color-text)' }}>{cloneInfo.status.state}</strong>
+              {cloneInfo.status.message ? ` — ${cloneInfo.status.message}` : ''}
+              {cloneInfo.running ? ' (running…)' : ''}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={cloneConfirm}
+              onChange={(e) => setCloneConfirm(e.target.value)}
+              placeholder='Type CLONE FROM LIVE'
+              disabled={cloneBusy || !!cloneInfo?.running}
+              aria-label="Confirm clone phrase"
+              style={{
+                minHeight: 44, flex: '1 1 220px', padding: '8px 12px', borderRadius: 10,
+                border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13,
+              }}
+            />
+            <button
+              type="button"
+              data-testid="clone-live-to-test-btn"
+              onClick={() => { void handleClone(); }}
+              disabled={cloneBusy || !!cloneInfo?.running || cloneConfirm.trim() !== 'CLONE FROM LIVE'}
+              style={{
+                minHeight: 44, padding: '8px 16px', borderRadius: 10, border: 'none',
+                background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 13,
+                fontFamily: 'inherit', cursor: cloneBusy || cloneInfo?.running ? 'wait' : 'pointer',
+                opacity: cloneBusy || cloneInfo?.running || cloneConfirm.trim() !== 'CLONE FROM LIVE' ? 0.55 : 1,
+              }}
+            >
+              {cloneInfo?.running ? 'Cloning…' : cloneBusy ? 'Starting…' : 'Clone LIVE → TEST'}
+            </button>
+          </div>
+          {cloneInfo?.log_tail ? (
+            <pre
+              data-testid="clone-live-to-test-log"
+              style={{
+                marginTop: 12, maxHeight: 160, overflow: 'auto', fontSize: 11, lineHeight: 1.4,
+                padding: 10, borderRadius: 8, border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)', color: 'var(--color-text-muted)', whiteSpace: 'pre-wrap',
+              }}
+            >
+              {cloneInfo.log_tail}
+            </pre>
+          ) : null}
+        </Card>
+      )}
 
       {data && (
         <>
