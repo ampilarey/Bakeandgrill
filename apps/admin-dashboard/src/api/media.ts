@@ -100,6 +100,20 @@ export async function deleteMedia(id: number, force = false): Promise<void> {
   return req(`/admin/media/${id}?force=${force ? 1 : 0}`, { method: 'DELETE' });
 }
 
+export async function bulkDeleteMedia(
+  ids: number[],
+  force = false,
+): Promise<{
+  deleted: number[];
+  blocked: Array<{ id: number; usage: MediaUsageItem[] }>;
+  missing: number[];
+}> {
+  return req('/admin/media/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids, force }),
+  });
+}
+
 export async function reconcileMedia(): Promise<{
   scanned: number;
   created: number;
