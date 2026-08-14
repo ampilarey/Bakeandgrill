@@ -54,5 +54,10 @@ final class SharedTypographyTest extends TestCase
             $this->assertStringNotContainsString('fonts.gstatic.com', $csp, $path);
             $this->assertStringContainsString("font-src 'self'", $csp, $path);
         }
+
+        $adminCsp = $method->invoke($middleware, Request::create('/admin', 'GET'));
+        $this->assertStringContainsString("worker-src 'self' blob:", $adminCsp);
+        $posCsp = $method->invoke($middleware, Request::create('/pos', 'GET'));
+        $this->assertStringContainsString("worker-src 'self' blob:", $posCsp);
     }
 }
