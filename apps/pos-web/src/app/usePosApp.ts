@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
 import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
@@ -358,6 +358,8 @@ export function usePosApp() {
     }
   }, [customerAddresses, cart.attachedCustomer]);
 
+  const clearPendingPaymentRef = useRef<() => void>(() => undefined);
+
   const handleClearCart = useCallback(() => {
     cart.clearCart();
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
@@ -368,8 +370,8 @@ export function usePosApp() {
     // all look like the same table.
     setSelectedTableId(null);
     // Failed settle must not pin Charge to a stale snapshot after Clear.
-    order.clearPendingPayment();
-  }, [cart, order.clearPendingPayment]);
+    clearPendingPaymentRef.current();
+  }, [cart]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
   const [deliveryFeeSettings, setDeliveryFeeSettings] = useState<{
@@ -648,6 +650,8 @@ export function usePosApp() {
       setPane("sales");
     },
   });
+
+  clearPendingPaymentRef.current = order.clearPendingPayment;
 
   const chargeTotal = useMemo(() => {
     // Retry mode: pin Charge to the failed settle's due amount — but never
