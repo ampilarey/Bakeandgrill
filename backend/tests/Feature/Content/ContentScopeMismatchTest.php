@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Content;
 
+use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentScopeMismatch;
 use App\Domains\Permissions\PermissionCatalogSync;
 use App\Models\Role;
@@ -36,8 +37,11 @@ class ContentScopeMismatchTest extends TestCase
         Sanctum::actingAs($user, ['staff']);
     }
 
-    public function test_collect_reports_surface_fact_drift_and_skips_page_wording(): void
+    public function test_collect_stays_silent_once_every_covered_key_has_one_owner(): void
     {
+        // Owner decision 2026-08-14: all 9 keys this notice covers are now owned
+        // by Business Details, so leftover app rows are never read. Reporting
+        // "Website says …" would be a lie, not a warning.
         SiteSetting::set('site_tagline', 'Shared tagline', 'shared');
         SiteSetting::set('site_tagline', 'Web tagline', 'website');
         SiteSetting::set('site_tagline', 'Order tagline', 'order_app');
@@ -49,15 +53,10 @@ class ContentScopeMismatchTest extends TestCase
 
         SiteSetting::bust();
 
-        $rows = ContentScopeMismatch::collect('en');
-        $byKey = collect($rows)->keyBy('key');
+        $byKey = collect(ContentScopeMismatch::collect('en'))->keyBy('key');
 
-        $this->assertTrue($byKey->has('site_tagline'));
-        $this->assertFalse($byKey->has('offers_headline'));
-        $this->assertSame(
-            'Business record says Shared tagline · Website says Web tagline · Order app says Order tagline',
-            $byKey['site_tagline']['message'],
-        );
+        $this->assertFalse($byKey->has('site_tagline'), 'business-owned keys cannot drift');
+        $this->assertFalse($byKey->has('offers_headline'), 'page wording is meant to differ');
     }
 
     public function test_ops_owned_business_details_keys_never_report_leftover_app_rows(): void
@@ -75,11 +74,12 @@ class ContentScopeMismatchTest extends TestCase
         $this->assertFalse($byKey->has('site_name'));
     }
 
-    public function test_content_and_business_details_apis_expose_mismatches(): void
+    public function test_apis_report_no_logo_mismatch_now_that_the_logo_has_one_owner(): void
     {
         $this->actingAsOwner();
 
         SiteSetting::set('logo', '/storage/site/invoice.png', 'shared');
+        // Stale rows from before the move — ignored, so not a mismatch.
         SiteSetting::set('logo', '/storage/site/web.png', 'website');
         SiteSetting::set('logo', '/storage/site/order.png', 'order_app');
         SiteSetting::bust();
@@ -87,16 +87,12 @@ class ContentScopeMismatchTest extends TestCase
         $content = $this->getJson('/api/admin/content?locale=en')->assertOk()->json('mismatches');
         $details = $this->getJson('/api/admin/business-details')->assertOk()->json('mismatches');
 
-        $this->assertNotEmpty($content);
-        $this->assertNotEmpty($details);
-        $contentLogo = collect($content)->firstWhere('key', 'logo');
-        $detailsLogo = collect($details)->firstWhere('key', 'logo');
-        $this->assertNotNull($contentLogo);
-        $this->assertNotNull($detailsLogo);
-        $this->assertStringContainsString('invoice.png', $contentLogo['message']);
-        $this->assertStringContainsString('web.png', $contentLogo['message']);
-        $this->assertStringContainsString('order.png', $contentLogo['message']);
-        $this->assertSame($contentLogo['message'], $detailsLogo['message']);
+        $this->assertNull(collect($content)->firstWhere('key', 'logo'));
+        $this->assertNull(collect($details)->firstWhere('key', 'logo'));
+
+        // And the one live value is the business record, for both apps.
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('order_app')->get('logo'));
     }
 
     public function test_matching_scopes_produce_no_mismatch(): void
