@@ -5846,11 +5846,17 @@ a { text-decoration: none; color: inherit; }
 @media (max-width: 767px) {
   .business-details-grid { grid-template-columns: 1fr; }
   .business-details-card { padding: 14px; }
+  /* Owner, 2026-08-15: all seven section buttons must be on screen at once.
+     They used to sit in one row you had to slide sideways, so the last few
+     were invisible unless you knew to swipe. Now they wrap — about three
+     rows on a phone — and the type tightens just enough to keep it to three. */
   .business-details-jump {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  .business-details-jump-link {
+    font-size: 12px;
+    padding: 6px 11px;
   }
   .business-details-image {
     flex-direction: column;

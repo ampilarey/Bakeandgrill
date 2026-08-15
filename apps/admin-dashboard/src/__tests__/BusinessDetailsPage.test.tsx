@@ -315,6 +315,16 @@ describe('BusinessDetailsPage', () => {
  * Enhancements, 2026-08-15 — "Enhance the business details page desktop and
  * mobile version."
  */
+/** Titles as the API sends them, so the jump buttons can be matched by name. */
+function sectionTitle(id: string): string {
+  return ({
+    identity: 'Business identity',
+    address: 'Address and location',
+    contact: 'Customer contact channels',
+    documents: 'Receipt & document branding',
+  } as Record<string, string>)[id] ?? id;
+}
+
 describe('Business Details — enhancements', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -418,6 +428,21 @@ describe('Business Details — enhancements', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('business-details-savebar')).toBeNull();
     });
+  });
+
+  it('shows every section button on a phone instead of one sliding row', async () => {
+    // Owner, 2026-08-15: the row used to slide sideways, so the last buttons
+    // were invisible unless you knew to swipe for them.
+    mockViewport(390);
+    renderPage();
+    const jump = await screen.findByTestId('business-details-jump');
+
+    const links = within(jump).getAllByRole('link');
+    expect(links.length).toBe(4);
+    for (const section of ['identity', 'address', 'contact', 'documents']) {
+      expect(within(jump).getByRole('link', { name: sectionTitle(section) })).toBeTruthy();
+      expect(document.getElementById(`business-section-${section}`)).toBeTruthy();
+    }
   });
 
   it('the sticky bar stays put on a phone', async () => {
