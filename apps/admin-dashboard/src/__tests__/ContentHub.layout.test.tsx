@@ -48,7 +48,7 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const phoneBlock = {
-  key: 'delivery_time',
+  key: 'home_specials_title',
   label: 'Phone number',
   group: 'Home',
   type: 'text',
@@ -97,16 +97,17 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     setup();
   });
 
-  it('shows section rail, page list, and editor — no Website Preview column', async () => {
+  it('shows the five page tabs and Home as sections — no Website Preview column', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('website-page-mode');
-    expect(screen.getByTestId('section-rail')).toBeTruthy();
-    expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
+    await screen.findByTestId('website-content-workspace');
+    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
+    expect(screen.getByTestId('wcw-sections')).toBeTruthy();
+    expect(screen.queryByTestId('section-rail')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
   });
@@ -119,9 +120,9 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-rail-Everywhere').getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByTestId('wcw-tab-Everywhere').getAttribute('aria-selected')).toBe('true');
     });
-    expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Everywhere');
+    expect(screen.getByTestId('website-content-workspace').getAttribute('data-tab')).toBe('Everywhere');
   });
 
   it('dirty dot appears when section has unsaved drafts', async () => {
@@ -131,16 +132,16 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('website-page-mode');
-    expect(screen.queryByTestId('section-dirty-Home')).toBeNull();
+    await screen.findByTestId('wcw-sections');
+    expect(screen.queryByTestId('wcw-section-dirty-specials')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-specials'));
+    const editor = await screen.findByTestId('wcw-field-home_specials_title');
     const phoneInput = within(editor).getByDisplayValue('30–45 min');
     fireEvent.change(phoneInput, { target: { value: '25–40 min' } });
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-dirty-Home')).toBeTruthy();
+      expect(screen.getByTestId('wcw-section-dirty-specials')).toBeTruthy();
     });
   });
 
@@ -151,7 +152,7 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('website-page-mode');
+    await screen.findByTestId('website-content-workspace');
 
     const searchInput = screen.getByPlaceholderText(/search by label/i);
     fireEvent.change(searchInput, { target: { value: 'Phone' } });
@@ -169,11 +170,12 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(resultBtn).toBeTruthy();
     fireEvent.click(resultBtn!);
 
-    // Website desktop: search lands straight in component mode on the matched block.
+    // Website desktop: search opens the section that holds the match, in place.
     await waitFor(() => {
-      expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
+      expect(screen.getByTestId('website-content-workspace').getAttribute('data-tab')).toBe('Home');
     });
-    expect(screen.getByTestId('website-desktop-editor')).toBeTruthy();
+    expect(screen.getByTestId('wcw-section-specials').dataset.open).toBe('yes');
+    expect(screen.getByTestId('wcw-field-home_specials_title')).toBeTruthy();
   });
 
   it('block face has no key·type meta line; ⋯ menu has History and key', async () => {
@@ -189,20 +191,20 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
 
     await screen.findByTestId('section-editor');
 
-    // Face should NOT contain "delivery_time · text"
-    expect(screen.queryByText(/delivery_time\s*·\s*text/i)).toBeNull();
+    // Face should NOT contain "home_specials_title · text"
+    expect(screen.queryByText(/home_specials_title\s*·\s*text/i)).toBeNull();
 
     // Open ⋯ menu
-    const moreBtn = screen.getByTestId('block-more-delivery_time');
+    const moreBtn = screen.getByTestId('block-more-home_specials_title');
     fireEvent.click(moreBtn);
 
     await waitFor(() => {
-      expect(screen.getByTestId('block-menu-delivery_time')).toBeTruthy();
+      expect(screen.getByTestId('block-menu-home_specials_title')).toBeTruthy();
     });
 
-    const menu = screen.getByTestId('block-menu-delivery_time');
+    const menu = screen.getByTestId('block-menu-home_specials_title');
     expect(menu.textContent).toMatch(/History/i);
-    expect(menu.textContent).toContain('delivery_time');
+    expect(menu.textContent).toContain('home_specials_title');
   });
 
   it('section-enable card face has no content key either', async () => {
@@ -232,10 +234,11 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
       </MemoryRouter>,
     );
 
-    const enable = await screen.findByTestId('section-enable-announcement_enabled');
-    expect(enable.textContent).toContain('Show Contact Section');
-    expect(enable.textContent).not.toContain('announcement_enabled');
-    expect(enable.querySelector('.hub-section-enable-face')?.textContent).not.toMatch(/·/);
+    const enable = await screen.findByTestId('wcw-field-announcement_enabled');
+    const label = enable.querySelector('.wcw-field-label');
+    expect(label?.textContent).toContain('Show Contact Section');
+    expect(label?.textContent).not.toContain('announcement_enabled');
+    expect(label?.textContent).not.toMatch(/·/);
   });
 });
 

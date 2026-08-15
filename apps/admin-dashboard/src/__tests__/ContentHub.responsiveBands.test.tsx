@@ -121,22 +121,17 @@ describe('Content Hub responsive bands', () => {
     if (width <= 767) {
       expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
-    } else if (width <= 1199) {
-      const shell = await screen.findByTestId('hub-desktop-shell');
-      expect(shell.getAttribute('data-rail')).toBe('collapsed');
-      // Stage C — Website desktop has no Preview column/toggle; live site link instead.
+    } else {
+      // Website desktop is the page-tab workspace: no rail, no docked preview.
+      await screen.findByTestId('website-content-workspace');
+      expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
       expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
       expect(screen.queryByTestId('preview-toggle')).toBeNull();
       expect(screen.getByTestId('view-live-site')).toBeTruthy();
-      expect(shell.getAttribute('data-preview')).toBe('off');
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
-    } else {
-      const shell = await screen.findByTestId('hub-desktop-shell');
-      expect(shell).toBeTruthy();
-      expect(screen.queryByTestId('preview-toggle')).toBeNull();
-      expect(screen.getByTestId('view-live-site')).toBeTruthy();
-      expect(shell.getAttribute('data-preview')).toBe('off');
-      expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
+
+      const tabs = screen.getByRole('tablist', { name: /website pages/i });
+      expect(tabs.scrollWidth).toBeLessThanOrEqual(Math.max(tabs.clientWidth, width) + 1);
     }
   });
 

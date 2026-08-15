@@ -10,6 +10,8 @@ import { MediaPicker } from '../../components/MediaPicker';
 import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
 import { HubSectionContent } from './HubSectionContent';
+import { HomeLayoutEditor } from './HomeLayoutEditor';
+import { WebsiteContentWorkspace } from './WebsiteContentWorkspace';
 import { HubEditorSheets } from './HubEditorSheets';
 import { HubPreviewHost } from './HubPreviewHost';
 import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
@@ -103,6 +105,7 @@ export function ContentHubPage() {
     previewState,
     previewLoading,
     layoutDraft,
+    layoutRevision,
     surfaceCounts,
     handleLayoutDraftChange,
     autosaving,
@@ -157,6 +160,8 @@ export function ContentHubPage() {
   const [focusedBlockKey, setFocusedBlockKey] = useState<string | null>(null);
   /** Survives the activeGroup effect that clears focus when navigating via search. */
   const pendingFocusKeyRef = useRef<string | null>(null);
+  /** Website desktop: the one-time landing on Home has already happened. */
+  const autoSelectedRef = useRef(false);
   /** Website desktop Stage D — Desktop | Mobile filter (default Desktop). */
   const [websiteDeviceFilter, setWebsiteDeviceFilter] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -352,16 +357,21 @@ export function ContentHubPage() {
   // (owner: "usually hero"). Falls back to page mode if Home isn't available.
   useEffect(() => {
     if (!websiteDesktopNoLanding) return;
+    // Landing happens once. Without this the effect could still be queued from
+    // an earlier commit when the owner clicks a page tab, and would then
+    // bounce them back to Home a frame later.
+    if (autoSelectedRef.current) return;
     if (loading) return;
-    if (urlGroup) return;
-    if (activeGroup) return;
+    if (urlGroup || activeGroup) {
+      autoSelectedRef.current = true;
+      return;
+    }
     if (orderedSectionNames.length === 0) return;
+    autoSelectedRef.current = true;
     const target = orderedSectionNames.includes('Home') ? 'Home' : orderedSectionNames[0];
     selectGroup(target);
-    if (target === 'Home') {
-      pendingFocusKeyRef.current = 'hero_slides';
-      setFocusedBlockKey('hero_slides');
-    }
+    // The Home tab opens with the Hero section already expanded — that is
+    // handled by the workspace's defaultOpenSectionId, so nothing to focus here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [websiteDesktopNoLanding, loading, urlGroup, activeGroup, orderedSectionNames]);
 
@@ -584,22 +594,13 @@ export function ContentHubPage() {
     schedulePublishPanel,
   };
 
-  // Website desktop Stage D: Desktop|Mobile filter drives the Home surface scope.
-  useEffect(() => {
-    if (!websiteDesktopNoLanding) return;
-    if (!activeGroup || !isHomeSection(activeGroup)) return;
-    const sid = surfaceId('website', websiteDeviceFilter, 'home');
-    const parsed = parseSurfaceId(sid);
-    setActiveSurface(parsed);
-    setSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      p.set('group', activeGroup);
-      p.delete('section');
-      p.set('homeApp', 'website');
-      p.set('surface', sid);
-      return p;
-    }, { replace: true });
-  }, [websiteDesktopNoLanding, websiteDeviceFilter, activeGroup, setSearchParams]);
+  // Website desktop: the Desktop|Mobile filter chooses which device's Home
+  // layout the "Section order & visibility" editor arranges. It is derived, not
+  // written to the URL — an effect that rewrote search params raced with tab
+  // clicks and could drag the owner back to the page they had just left.
+  const websiteWorkspaceSurface = websiteDesktopNoLanding
+    ? parseSurfaceId(surfaceId('website', websiteDeviceFilter, 'home'))
+    : null;
 
   const searchField = (
     <div className="hub-search-wrap" ref={searchRef}>
@@ -778,6 +779,44 @@ export function ContentHubPage() {
               editorSurfaceId={previewEditorSurfaceId}
             />
           </div>
+        ) : websiteDesktopNoLanding ? (
+          <WebsiteContentWorkspace
+            loading={loading}
+            skeleton={skeleton}
+            sectionNames={orderedSectionNames}
+            activeGroup={activeGroup}
+            onSelectGroup={(name) => handleSectionSelect(name)}
+            contentBlocks={contentBlocks}
+            drafts={drafts}
+            draftKeys={draftKeys}
+            locale={locale}
+            hubApp={hubApp}
+            setDraft={setDraft}
+            blockScopeTab={blockScopeTab}
+            setBlockScopeTab={setBlockScopeTab}
+            makeTriggerUpload={makeTriggerUpload}
+            onUpload={onUpload}
+            uploadCtx={uploadCtx}
+            setMediaOpen={setMediaOpen}
+            draftStatusNode={draftStatusNode}
+            historyTarget={historyTarget}
+            setHistoryTarget={setHistoryTarget}
+            revisions={revisions}
+            restore={restore}
+            openHistory={openHistory}
+            focusKey={focusedBlockKey}
+            onFocusHandled={() => setFocusedBlockKey(null)}
+            defaultOpenSectionId="hero"
+            layoutRevision={layoutRevision}
+            layoutEditor={(
+              <HomeLayoutEditor
+                ref={homeLayoutEditorRef}
+                initialApp="website"
+                surfaceFilter={websiteWorkspaceSurface ?? surfaceFilter ?? undefined}
+                onLayoutDraftChange={handleLayoutDraftChange}
+              />
+            )}
+          />
         ) : (
           <div
             className={`hub-desktop-shell${railCollapsed ? ' hub-desktop-shell--rail-collapsed' : ''}${desktopPreviewOpen && !websiteDesktopNoLanding ? '' : ' hub-desktop-shell--preview-off'}${websiteDesktopNoLanding ? ' hub-desktop-shell--website' : ''}`}

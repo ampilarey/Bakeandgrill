@@ -105,15 +105,11 @@ describe('Website desktop Stages C+D', () => {
         <ContentHubPage />
       </MemoryRouter>,
     );
-    await screen.findByTestId('hub-desktop-shell');
-    await screen.findByTestId('website-desktop-workspace');
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
-    expect(screen.getByTestId('hub-desktop-shell').className).toMatch(/hub-desktop-shell--website/);
+    await screen.findByTestId('website-content-workspace');
+    expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
     expect(screen.queryByTestId('preview-toggle')).toBeNull();
     expect(screen.queryByTestId('preview-desktop-column')).toBeNull();
-    // Bare route lands in component mode on the hero (Stage B) — draft status
-    // stays visible in the header regardless of page/component mode.
     expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
   });
 
@@ -123,23 +119,22 @@ describe('Website desktop Stages C+D', () => {
         <ContentHubPage />
       </MemoryRouter>,
     );
+    // The Desktop|Mobile switch now chooses which device's Home layout the
+    // "Section order & visibility" editor arranges. The settings themselves are
+    // the same list on both devices, so it no longer filters fields.
     await screen.findByTestId('website-device-filter');
     expect(screen.getByTestId('website-device-filter-desktop').getAttribute('aria-pressed')).toBe('true');
 
-    // Bare route lands in component mode on the hero (Stage B) — Back to see the page list.
-    await screen.findByTestId('website-desktop-editor');
-    fireEvent.click(screen.getByTestId('website-component-back'));
-
-    const list = await screen.findByTestId('website-desktop-page-list');
-    expect(list.getAttribute('data-device')).toBe('desktop');
-    expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
+    await screen.findByTestId('wcw-sections');
+    expect(screen.getByTestId('wcw-section-hero')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('website-device-filter-mobile'));
     await waitFor(() => {
       expect(screen.getByTestId('website-device-filter-mobile').getAttribute('aria-pressed')).toBe('true');
-      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-device')).toBe('mobile');
     });
-    expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
+    // Switching device does not hide any setting.
+    expect(screen.getByTestId('wcw-section-hero')).toBeTruthy();
+    expect(screen.getByTestId('wcw-field-hero_slides')).toBeTruthy();
   });
 
   it('Stage D: blockMatchesDevice hides mobile-only keys on Desktop', () => {

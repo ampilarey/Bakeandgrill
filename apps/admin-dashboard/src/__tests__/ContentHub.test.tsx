@@ -39,7 +39,7 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const phoneBlock = {
-  key: 'delivery_time',
+  key: 'home_specials_title',
   label: 'Phone number',
   group: 'Home',
   type: 'text',
@@ -91,8 +91,9 @@ describe('ContentHubPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /Editing Website/i })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Everywhere' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Home' })).toBeTruthy();
+    // Page tabs carry a count chip, so match the tab itself.
+    expect(screen.getByTestId('wcw-tab-Everywhere')).toBeTruthy();
+    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
   });
 
   it('edits dual-app content in the current destination scope without mode controls', async () => {
@@ -102,11 +103,10 @@ describe('ContentHubPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('page-list-row-delivery_time');
-    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
-    const sheet = await screen.findByTestId('website-desktop-editor');
-    expect(within(sheet).queryByTestId('content-mode-delivery_time')).toBeNull();
-    expect(within(sheet).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const sheet = await screen.findByTestId('wcw-field-home_specials_title');
+    expect(within(sheet).queryByTestId('content-mode-home_specials_title')).toBeNull();
+    expect(within(sheet).queryByTestId('scope-tabs-home_specials_title')).toBeNull();
     expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
 
     fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
@@ -116,20 +116,21 @@ describe('ContentHubPage', () => {
 
     await waitFor(() => {
       expect(contentApi.updateContent).toHaveBeenCalledWith(
-        [{ key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
+        [{ key: 'home_specials_title', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
         'en',
       );
     });
   });
 
-  it('branding block has no link control', async () => {
+  it('the logo is read-only here — it lives in Business Details', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByText('Logo — for light backgrounds');
+    const field = await screen.findByTestId('wcw-field-logo');
+    expect(within(field).getByTestId('ops-owned-logo')).toBeTruthy();
     expect(screen.queryByText('Phone number')).toBeNull();
     expect(screen.queryByTestId(/content-mode-/)).toBeNull();
   });
@@ -142,9 +143,9 @@ describe('ContentHubPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Everywhere' }).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByTestId('wcw-tab-Everywhere').getAttribute('aria-selected')).toBe('true');
     });
-    expect(screen.getByText('Logo — for light backgrounds')).toBeTruthy();
+    expect(screen.getByTestId('wcw-field-logo')).toBeTruthy();
     expect(screen.queryByText('Phone number')).toBeNull();
   });
 

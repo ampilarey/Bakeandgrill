@@ -6,6 +6,9 @@ import type { ContentManagedBy } from '../../api/content';
  */
 export const OPS_OWNED_CONTENT_KEYS = new Set([
   'delivery_threshold',
+  // Moved to Delivery Settings 2026-08-14 so the promise and the free-delivery
+  // threshold cannot disagree. The mirror had been left behind.
+  'delivery_time',
   'site_name',
   'business_website',
   'business_phone',
@@ -45,11 +48,13 @@ export function fallbackManagedBy(
   key: string,
   currentValue?: string | null,
 ): ContentManagedBy | null {
-  if (key === 'delivery_threshold') {
+  if (key === 'delivery_threshold' || key === 'delivery_time') {
     return {
       owner_label: 'Ordering Control Center → Delivery Settings',
       owner_path: '/admin/delivery-settings',
-      note: 'Free delivery threshold used at checkout, invoices, receipts and public messaging.',
+      note: key === 'delivery_time'
+        ? 'Delivery promise shown to customers — kept beside the free-delivery threshold so the two cannot disagree.'
+        : 'Free delivery threshold used at checkout, invoices, receipts and public messaging.',
       current_value: currentValue ?? null,
     };
   }

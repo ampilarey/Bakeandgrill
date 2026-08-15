@@ -181,7 +181,7 @@ describe('ContentHub preview + schedule fixes', () => {
 
   it('Website desktop does not mint preview tokens after Stage C (View live site)', async () => {
     openHub('/content/website?group=Home');
-    await screen.findByTestId('website-desktop-workspace');
+    await screen.findByTestId('website-content-workspace');
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
     // Allow the 600ms preview debounce to fire if it were still wired.
     await new Promise((r) => setTimeout(r, 800));
@@ -191,7 +191,7 @@ describe('ContentHub preview + schedule fixes', () => {
   it('schedules content, warns about layout drafts, and clears local draft state', async () => {
     vi.mocked(contentApi.getContentDrafts).mockImplementation(async (scope) => {
       if (scope === 'website') {
-        return { drafts: { delivery_time: 'Draft ETA' } as Record<string, string>, saved_at: '2026-08-12T12:00:00Z' };
+        return { drafts: { home_specials_title: 'Draft heading' } as Record<string, string>, saved_at: '2026-08-12T12:00:00Z' };
       }
       return { drafts: {} as Record<string, string>, saved_at: null };
     });

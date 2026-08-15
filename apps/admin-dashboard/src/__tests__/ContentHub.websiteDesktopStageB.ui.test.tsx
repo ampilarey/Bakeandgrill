@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -126,41 +126,28 @@ describe('Website desktop Stage B — page list with summaries', () => {
 
   afterEach(() => cleanup());
 
-  it('lists Home components with human summaries; component mode replaces the list when selecting', async () => {
+  it('names Home sections in words and never shows a raw content key', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    // Bare route lands straight in component mode on the hero (Stage B) — Back to see the list.
-    await screen.findByTestId('website-desktop-editor');
-    fireEvent.click(screen.getByTestId('website-component-back'));
+    const sections = await screen.findByTestId('wcw-sections');
+    expect(sections.textContent).toMatch(/Hero banner/);
+    expect(sections.textContent).toMatch(/Trust strip/);
+    expect(sections.textContent).not.toMatch(/hero_slides/);
+    expect(sections.textContent).not.toMatch(/trust_items/);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
-    }, { timeout: 3000 });
-    const list = screen.getByTestId('website-desktop-page-list');
-    expect(list.getAttribute('data-section')).toBe('Home');
-    expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
-    expect(screen.getByTestId('page-list-summary-hero_slides').textContent).toMatch(/Breakfast your grandmother made/);
-    expect(screen.getByTestId('page-list-summary-hero_slides').textContent).not.toMatch(/hero_slides/);
-    expect(screen.getByTestId('page-list-summary-trust_items').textContent).toMatch(/Fresh daily/);
-    expect(screen.getByTestId('page-list-summary-homepage_categories').textContent).toBe('Empty');
+    // Opening a section shows what it currently says, in its own editor.
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-trust'));
+    const body = await screen.findByTestId('wcw-section-body-trust');
+    expect(within(body).getByDisplayValue('Fresh daily')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('page-list-row-trust_items'));
-
-    // Rev3: component mode takes the ENTIRE work area — the list is unmounted,
-    // not shown beside the editor.
-    await screen.findByTestId('website-desktop-editor');
+    // Opening one closes the other — the work area is never split.
+    expect(screen.getByTestId('wcw-section-hero').getAttribute('data-open')).toBe('no');
     expect(screen.queryByTestId('website-desktop-page-list')).toBeNull();
     expect(screen.queryByTestId('section-editor')).toBeNull();
-    expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
-
-    fireEvent.click(screen.getByTestId('website-component-back'));
-    await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
-    }, { timeout: 3000 });
   });
 
   it('shows ops-owned rows as Managed elsewhere with owner link', async () => {
@@ -169,9 +156,11 @@ describe('Website desktop Stage B — page list with summaries', () => {
         <ContentHubPage />
       </MemoryRouter>,
     );
-    await screen.findByTestId('website-desktop-page-list');
-    expect(screen.getByTestId('page-list-vis-maps_embed_url').textContent).toMatch(/Managed elsewhere/);
-    expect(screen.getByTestId('page-list-ops-maps_embed_url').textContent).toMatch(/Business Details/);
+    await screen.findByTestId('wcw-form-Contact page');
+    const field = screen.getByTestId('wcw-field-maps_embed_url');
+    expect(within(field).getByTestId('ops-owned-maps_embed_url')).toBeTruthy();
+    expect(field.querySelector('.wcw-field-owner')?.textContent).toMatch(/Business Details/);
+    expect(within(field).queryByRole('textbox')).toBeNull();
   });
 
   it('does not change Order App desktop (no page list)', async () => {

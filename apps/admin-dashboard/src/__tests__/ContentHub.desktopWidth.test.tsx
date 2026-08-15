@@ -47,8 +47,8 @@ vi.mock('../components/MediaPicker', () => ({
 }));
 
 const sharedPhone = {
-  key: 'delivery_time',
-  label: 'Phone number',
+  key: 'home_specials_title',
+  label: 'Specials heading',
   group: 'Home',
   type: 'text' as const,
   apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
@@ -112,10 +112,9 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    // Website desktop rev3 — page list row opens component mode (no sheet).
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    const editor = await screen.findByTestId('website-desktop-editor');
-    expect(within(editor).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const editor = await screen.findByTestId('wcw-field-home_specials_title');
+    expect(within(editor).queryByTestId('scope-tabs-home_specials_title')).toBeNull();
     expect(within(editor).getByDisplayValue('WEB ETA')).toBeTruthy();
     expect(within(editor).queryByDisplayValue('ORDER ETA')).toBeNull();
     expect(document.querySelectorAll('.content-preview-grid').length).toBe(0);
@@ -130,15 +129,15 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const editor = await screen.findByTestId('wcw-field-home_specials_title');
     await within(editor).findByDisplayValue('WEB ETA');
     fireEvent.change(within(editor).getByDisplayValue('WEB ETA'), { target: { value: 'WEB ETA EDIT' } });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);
 
     await waitFor(() => {
       expect(contentApi.updateContent).toHaveBeenCalledWith(
-        [{ key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
+        [{ key: 'home_specials_title', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' }],
         'en',
       );
     });
@@ -152,10 +151,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const editor = await screen.findByTestId('wcw-field-home_specials_title');
     await within(editor).findByDisplayValue('+960 SHARED');
-    expect(within(editor).queryByTestId('scope-tabs-delivery_time')).toBeNull();
+    expect(within(editor).queryByTestId('scope-tabs-home_specials_title')).toBeNull();
   });
 
   it('boolean dual-app block stays compact and untabbed', async () => {
@@ -166,14 +165,9 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    // Page mode: the row summarizes the boolean without a Save path.
-    await screen.findByTestId('page-list-row-announcement_enabled');
-    expect(screen.queryByTestId('boolean-scopes-announcement_enabled')).toBeNull();
-    expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
-
-    // Component mode: still compact — no scope tabs for a boolean.
-    fireEvent.click(screen.getByTestId('page-list-row-announcement_enabled'));
-    await screen.findByTestId('website-desktop-editor');
+    const field = await screen.findByTestId('wcw-field-announcement_enabled');
+    // One switch for the page you are on — never a Website/Order App pair.
+    expect(within(field).getAllByRole('checkbox')).toHaveLength(1);
     expect(screen.queryByTestId('boolean-scopes-announcement_enabled')).toBeNull();
     expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
   });
@@ -190,14 +184,14 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    const sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(await screen.findByTestId('edit-home_specials_title'));
+    const sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    fireEvent.click(screen.getByTestId('block-more-delivery_time'));
+    fireEvent.click(screen.getByTestId('block-more-home_specials_title'));
     fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
 
     await waitFor(() => {
-      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('delivery_time', 'order_app', 'en');
+      expect(contentApi.getContentRevisions).toHaveBeenCalledWith('home_specials_title', 'order_app', 'en');
     });
   });
 
@@ -211,10 +205,10 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('hub-desktop-shell');
+    await screen.findByTestId('website-content-workspace');
     expect(screen.queryByTestId('preview-pane')).toBeNull();
     expect(screen.queryByTestId('preview-toggle')).toBeNull();
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
+    expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
   });
 
@@ -275,10 +269,24 @@ describe('ContentHub desktop width', () => {
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 
-  it('rail collapse toggles icon strip and persists', async () => {
+  it('Website desktop has page tabs instead of a section rail', async () => {
     mockBlocks([sharedPhone]);
     render(
       <MemoryRouter initialEntries={['/content/website?group=Home']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId('website-content-workspace');
+    expect(screen.queryByTestId('section-rail')).toBeNull();
+    expect(screen.queryByTestId('rail-collapse-btn')).toBeNull();
+    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
+  });
+
+  it('Order App still has its section rail, and it still collapses', async () => {
+    mockBlocks([sharedPhone]);
+    render(
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

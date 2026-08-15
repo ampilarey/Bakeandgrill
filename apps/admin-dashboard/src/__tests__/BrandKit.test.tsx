@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
@@ -88,87 +88,62 @@ const brandingBlocks = [
   brandBlock('default_item_image', 'Default item photo', 'image', null),
 ];
 
-describe('Brand Kit UI', () => {
+describe('Brand identity on Website Content', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
     vi.mocked(contentApi.getContentBlocks).mockResolvedValue({
       locale: 'en',
       locales: ['en', 'dv'],
-      blocks: [...brandingBlocks, phoneBlock],
+      blocks: [...brandingBlocks, phoneBlock] as never,
     });
   });
 
-  it('renders Brand Kit cards for Branding and leaves other groups unchanged', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
+  /**
+   * The Brand Kit editor is gone from Website Content on purpose. Owner
+   * decision 2026-08-14 moved logo, dark logo, favicon, link-preview image,
+   * brand colour and the fallback item photo to Business Details so one logo
+   * cannot have three different values. This file guards that they never grow
+   * a second editable home here.
+   */
+
+  function mount() {
+    return render(
+      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
+  }
 
-    expect(await screen.findByTestId('brand-kit')).toBeTruthy();
-    expect(screen.queryByTestId('brand-kit-banner')).toBeNull();
-    // default_item_image is inventory-mapped to Home (not Everywhere Brand Kit).
-    for (const card of BRAND_KIT_CARDS.filter((c) => c.key !== 'default_item_image')) {
-      const el = screen.getByTestId(`brand-kit-card-${card.key}`);
-      expect(el).toBeTruthy();
-      expect(el).toHaveTextContent(card.title);
+  it('offers no Brand Kit editor', async () => {
+    mount();
+    await screen.findByTestId('wcw-form-Everywhere');
+    expect(screen.queryByTestId('brand-kit')).toBeNull();
+    for (const card of BRAND_KIT_CARDS) {
+      expect(screen.queryByTestId(`brand-kit-card-${card.key}`)).toBeNull();
+      expect(screen.queryByTestId(`edit-brand-${card.key}`)).toBeNull();
     }
-    expect(screen.queryByTestId('brand-kit-card-default_item_image')).toBeNull();
-    expect(screen.queryByTestId(/content-mode-/)).toBeNull();
-    // Ops-owned phone lives in Everywhere alongside Brand Kit cards — page mode
-    // shows it as a "Managed elsewhere" row, never an editable Save path.
-    expect(screen.getByTestId('page-list-row-business_phone')).toBeTruthy();
-    expect(screen.getByTestId('page-list-ops-business_phone')).toHaveAttribute('href', '/business-details');
+  });
+
+  it('shows every brand setting read-only, pointing at Business Details', async () => {
+    mount();
+    await screen.findByTestId('wcw-form-Everywhere');
+
+    for (const key of ['logo', 'logo_dark', 'favicon', 'og_image', 'primary_color']) {
+      const field = screen.getByTestId(`wcw-field-${key}`);
+      expect(within(field).getByTestId(`ops-owned-${key}`)).toBeTruthy();
+      expect(within(field).queryByRole('textbox')).toBeNull();
+    }
+  });
+
+  it('shows an ops-owned phone number with a link home, not an editor', async () => {
+    mount();
+    await screen.findByTestId('wcw-form-Everywhere');
+
+    const field = screen.getByTestId('wcw-field-business_phone');
+    expect(within(field).getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
+    expect(within(field).getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');
     expect(screen.queryByTestId('edit-business_phone')).toBeNull();
     expect(screen.queryByTestId('block-editor-sheet-business_phone')).toBeNull();
-
-    // Opening it (component mode) shows the full read-only ops-owned summary.
-    fireEvent.click(screen.getByTestId('page-list-row-business_phone'));
-    expect(await screen.findByTestId('ops-owned-business_phone')).toBeTruthy();
-    expect(screen.getByTestId('ops-owned-business_phone-value')).toHaveTextContent('+960 912 0011');
-    expect(screen.getByTestId('ops-owned-business_phone-link')).toHaveAttribute('href', '/business-details');
-  });
-
-  it('shows one primary upload action and hides raw URL until Advanced', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await screen.findByTestId('brand-kit-card-logo');
-    const logoCard = screen.getByTestId('brand-kit-card-logo');
-    expect(logoCard.querySelectorAll('[data-testid="brand-kit-dropzone"]').length).toBe(0);
-    fireEvent.click(screen.getByTestId('edit-brand-logo'));
-    const sheet = await screen.findByTestId('brand-kit-editor-sheet-logo');
-    expect(within(sheet).getAllByTestId('brand-kit-dropzone').length).toBe(1);
-    expect(within(sheet).queryByPlaceholderText('/storage/…')).toBeNull();
-
-    const advancedBtn = Array.from(sheet.querySelectorAll('button')).find((b) =>
-      /Advanced/i.test(b.textContent || ''),
-    );
-    expect(advancedBtn).toBeTruthy();
-    fireEvent.click(advancedBtn!);
-    await waitFor(() => {
-      expect(within(sheet).getByPlaceholderText('/storage/…')).toBeTruthy();
-    });
-    expect(sheet).toHaveTextContent(/logo · image · en · Website/i);
-  });
-
-  it('empty asset shows Not set on overview and default copy in editor', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/website?group=Branding']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await screen.findByTestId('brand-kit-card-favicon');
-    const faviconCard = screen.getByTestId('brand-kit-card-favicon');
-    expect(faviconCard).toHaveTextContent('Not set');
-    const logoCard = screen.getByTestId('brand-kit-card-logo');
-    expect(logoCard).toHaveTextContent('Showing');
-    fireEvent.click(screen.getByTestId('edit-brand-favicon'));
-    const sheet = await screen.findByTestId('brand-kit-editor-sheet-favicon');
-    expect(sheet).toHaveTextContent('Not set — using the default');
   });
 });

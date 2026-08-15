@@ -68,7 +68,7 @@ const heroOrder = JSON.stringify({
 
 function phoneBlock(): ContentBlock {
   return {
-    key: 'delivery_time',
+    key: 'home_specials_title',
     label: 'Phone number',
     group: 'Home',
     type: 'text',
@@ -140,9 +140,8 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('page-list-row-delivery_time');
-    fireEvent.click(screen.getByTestId('page-list-row-delivery_time'));
-    const sheet = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const sheet = await screen.findByTestId('wcw-field-home_specials_title');
     await waitFor(
       () => {
         expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
@@ -162,7 +161,7 @@ describe('Content Hub dual-app editing', () => {
     const [changes, locale] = vi.mocked(contentApi.updateContent).mock.calls[0];
     expect(locale).toBe('en');
     expect(changes).toEqual([
-      { key: 'delivery_time', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' },
+      { key: 'home_specials_title', scope: 'website', value: 'WEB ETA EDIT', locale: 'en' },
     ]);
   }, 15000);
 
@@ -238,8 +237,8 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    let sheet = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    let sheet = await screen.findByTestId('wcw-field-home_specials_title');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('30–45 min')).toBeTruthy();
     });
@@ -248,19 +247,15 @@ describe('Content Hub dual-app editing', () => {
       target: { value: 'EN DRAFT ETA' },
     });
     expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
-    fireEvent.click(screen.getByTestId('website-component-back'));
 
     fireEvent.click(screen.getByRole('button', { name: /^DV$/i }));
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    sheet = await screen.findByTestId('website-desktop-editor');
+    sheet = await screen.findByTestId('wcw-field-home_specials_title');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('+960 DV LIVE')).toBeTruthy();
     });
-    fireEvent.click(screen.getByTestId('website-component-back'));
 
     fireEvent.click(screen.getByRole('button', { name: /^EN$/i }));
-    fireEvent.click(await screen.findByTestId('page-list-row-delivery_time'));
-    sheet = await screen.findByTestId('website-desktop-editor');
+    sheet = await screen.findByTestId('wcw-field-home_specials_title');
     await waitFor(() => {
       expect(within(sheet).getByDisplayValue('EN DRAFT ETA')).toBeTruthy();
     });

@@ -121,83 +121,77 @@ describe('Website desktop Stage A — rail is the only map', () => {
     cleanup();
   });
 
-  it('lands on Hero — Hero pin pressed + hero editor visible (Stage B component mode)', async () => {
+  it('lands on the Home tab with the hero already open', async () => {
     openWebsiteDesktop('/content/website');
-    const editor = await screen.findByTestId('website-desktop-editor');
+    await screen.findByTestId('website-content-workspace');
     expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('task-card-hero')).toBeNull();
     expect(screen.queryByTestId('surface-card-website.desktop.home')).toBeNull();
-    expect(screen.queryByTestId('section-rail-tasks-home')).toBeNull();
-    expect(screen.getByTestId('section-rail-sitewide-divider')).toBeTruthy();
+    expect(screen.queryByTestId('section-rail')).toBeNull();
 
-    // ★ Hero pin is pressed on landing, and the crumb shows Home › the hero block.
-    expect(screen.getByTestId('section-rail-Hero')).toBeTruthy();
-    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByTestId('section-rail-hero-divider')).toBeTruthy();
-    expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
-    expect(within(editor).getByTestId('hero-slides-wide')).toBeTruthy();
+    expect(screen.getByTestId('wcw-tab-Home').getAttribute('aria-selected')).toBe('true');
+    const hero = await screen.findByTestId('wcw-section-body-hero');
+    expect(within(hero).getByTestId('hero-slides-wide')).toBeTruthy();
 
-    // Component mode only — no page list beside the hero editor.
-    expect(screen.queryByTestId('website-desktop-page-list')).toBeNull();
-    expect(screen.queryByTestId('section-editor')).toBeNull();
+    // Hero is first, and it is the only section open.
+    const sections = Array.from(
+      screen.getByTestId('wcw-sections').querySelectorAll('[data-testid^="wcw-section-"]'),
+    ).filter((el) => el.getAttribute('data-testid')?.startsWith('wcw-section-') && el.hasAttribute('data-open'));
+    expect(sections[0]?.getAttribute('data-testid')).toBe('wcw-section-hero');
+    expect(sections.filter((el) => el.getAttribute('data-open') === 'yes')).toHaveLength(1);
 
-    // Back returns to the Home page list, hero first.
-    fireEvent.click(screen.getByTestId('website-component-back'));
+    // Closing it leaves the list, with nothing open.
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-hero'));
     await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list')).toBeTruthy();
+      expect(screen.getByTestId('wcw-section-hero').getAttribute('data-open')).toBe('no');
     }, { timeout: 3000 });
-    const list = screen.getByTestId('website-desktop-page-list');
-    expect(list.getAttribute('data-section')).toBe('Home');
-    const rows = Array.from(list.querySelectorAll('[data-testid^="page-list-row-"]'));
-    expect(rows[0]?.getAttribute('data-testid')).toBe('page-list-row-hero_slides');
   });
 
-  it('★ Hero pin selects Home and clears focus even from another section', async () => {
+  it('the Home tab gets back to the hero from any other page', async () => {
     openWebsiteDesktop('/content/website?group=Legal');
-    await screen.findByTestId('website-desktop-page-list');
-    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('false');
+    await screen.findByTestId('wcw-form-Legal');
+    expect(screen.getByTestId('wcw-tab-Home').getAttribute('aria-selected')).toBe('false');
 
-    fireEvent.click(screen.getByTestId('section-rail-Hero'));
-    await waitFor(() => {
-      expect(screen.getByTestId('website-component-crumb').textContent).toContain('Home');
-    });
-    expect(screen.getByTestId('section-rail-Hero').getAttribute('aria-pressed')).toBe('true');
-    expect(within(screen.getByTestId('website-desktop-editor')).getByTestId('hero-slides-wide')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('wcw-tab-Home'));
+    await screen.findByTestId('wcw-sections');
+    expect(screen.getByTestId('wcw-tab-Home').getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-hero'));
+    const hero = await screen.findByTestId('wcw-section-body-hero');
+    expect(within(hero).getByTestId('hero-slides-wide')).toBeTruthy();
   });
 
   it('keeps every removed landing destination reachable from the rail or ⋯ tools', async () => {
     expect(WEBSITE_DESKTOP_REMOVED_LANDING_ROUTES).toHaveLength(20);
 
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('section-rail');
+    await screen.findByTestId('website-content-workspace');
 
     for (const section of websiteDesktopRemovedSectionNames()) {
       expect(
-        screen.getByTestId(`section-rail-${section}`),
-        `rail missing section "${section}" required by a removed landing card`,
+        screen.getByTestId(`wcw-tab-${section}`),
+        `no page tab for "${section}", required by a removed landing card`,
       ).toBeTruthy();
     }
 
     cleanup();
 
-    // Each section destination still opens from a rail deep-link (same selectGroup path as clicking the rail)
+    // Each destination still opens from a deep link.
     for (const section of websiteDesktopRemovedSectionNames()) {
       openWebsiteDesktop(`/content/website?group=${encodeURIComponent(section)}`);
       await waitFor(() => {
-        expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe(section);
+        expect(screen.getByTestId('website-content-workspace').getAttribute('data-tab')).toBe(section);
       });
-      // Rail row is pressed for that section
-      expect(screen.getByTestId(`section-rail-${section}`).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByTestId(`wcw-tab-${section}`).getAttribute('aria-selected')).toBe('true');
       cleanup();
     }
 
     openWebsiteDesktop('/content/website');
-    // Bare route lands in component mode on the hero (Stage B) — not the page list.
-    await screen.findByTestId('website-desktop-editor');
-    // Clicking a non-Home rail row switches to the page list (guards against a stuck Home/hero)
-    fireEvent.click(screen.getByTestId('section-rail-Contact page'));
+    await screen.findByTestId('wcw-sections');
+    // Clicking another page tab moves there (guards against a stuck Home).
+    fireEvent.click(screen.getByTestId('wcw-tab-Contact page'));
     await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Contact page');
+      expect(screen.getByTestId('website-content-workspace').getAttribute('data-tab')).toBe('Contact page');
     });
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;
@@ -214,7 +208,7 @@ describe('Website desktop Stage A — rail is the only map', () => {
 
   it('hides the integrity panel when there is nothing to report', async () => {
     openWebsiteDesktop('/content/website');
-    await screen.findByTestId('website-desktop-editor');
+    await screen.findByTestId('website-content-workspace');
     await waitFor(() => {
       expect(contentApi.getContentIntegrity).toHaveBeenCalled();
     });

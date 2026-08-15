@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -81,10 +81,8 @@ describe('Content Hub empty JSON array overrides', () => {
       </MemoryRouter>,
     );
 
-    // Website desktop rev3 — page list row, then component mode (no sheet).
-    await waitFor(() => expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy());
-    expect(screen.queryByTestId('empty-array-override-hero_slides')).toBeNull();
-    fireEvent.click(screen.getByTestId('page-list-row-hero_slides'));
+    // Website desktop — the hero section is already open on the Home tab.
+    await waitFor(() => expect(screen.getByTestId('wcw-section-hero')).toBeTruthy());
     const editor = await screen.findByTestId('hero-slides-wide');
     expect(within(editor).queryByTestId('empty-array-override-hero_slides')).toBeNull();
     expect(editor.textContent).not.toMatch(/shared content/i);

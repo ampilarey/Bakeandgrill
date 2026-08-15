@@ -60,7 +60,7 @@ const heroBlock: ContentBlock = {
 };
 
 const phoneBlock: ContentBlock = {
-  key: 'delivery_time',
+  key: 'home_specials_title',
   label: 'Phone number',
   group: 'Home',
   type: 'text',
@@ -140,8 +140,8 @@ describe('Content Hub Overview → Edit', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-delivery_time'));
-    let sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(await screen.findByTestId('edit-home_specials_title'));
+    let sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
     fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
       target: { value: 'DRAFT KEEP ETA' },
     });
@@ -149,11 +149,11 @@ describe('Content Hub Overview → Edit', () => {
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/All published/);
 
     fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-delivery_time')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-home_specials_title')).toBeNull());
 
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
-    fireEvent.click(screen.getByTestId('edit-delivery_time'));
-    sheet = await screen.findByTestId('block-editor-sheet-delivery_time');
+    fireEvent.click(screen.getByTestId('edit-home_specials_title'));
+    sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
     expect(within(sheet).getByDisplayValue('DRAFT KEEP ETA')).toBeTruthy();
   });
 });

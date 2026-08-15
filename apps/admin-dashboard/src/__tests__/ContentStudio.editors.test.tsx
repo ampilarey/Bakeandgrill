@@ -124,8 +124,7 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-hero_slides'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    const editor = await screen.findByTestId('wcw-field-hero_slides');
     await within(editor).findByTestId('hero-slides-wide');
     const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
     await waitFor(() => {
@@ -148,8 +147,8 @@ describe('Content Hub visual editors', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-homepage_categories'));
-    const sheet = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-categories'));
+    const sheet = await screen.findByTestId('wcw-field-homepage_categories');
     await waitFor(() => {
       expect(within(sheet).getAllByText('Hedhikaa').length).toBeGreaterThan(0);
     });

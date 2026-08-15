@@ -87,7 +87,8 @@ describe('Content Hub preview is app-locked', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('hub-desktop-shell');
+    await screen.findByTestId('website-content-workspace');
+    expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
     expect(screen.queryByTestId('preview-app-locked-website')).toBeNull();
     expect(screen.getByTestId('view-live-site')).toBeTruthy();

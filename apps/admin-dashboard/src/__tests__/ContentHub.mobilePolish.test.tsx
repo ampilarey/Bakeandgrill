@@ -238,79 +238,60 @@ describe('ContentHub mobile polish — systemic', () => {
 
   it('does not render content-mode controls across multiple sections', async () => {
     openSection('Home');
-    await screen.findByTestId('website-page-mode');
+    await screen.findByTestId('wcw-sections');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    fireEvent.click(screen.getByTestId('page-list-row-hero_slides'));
-    const heroEditor = await screen.findByTestId('website-desktop-editor');
-    expect(within(heroEditor).queryByTestId('content-mode-hero_slides')).toBeNull();
-    fireEvent.click(screen.getByTestId('website-component-back'));
 
-    await screen.findByTestId('website-page-mode');
-    expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
+    const hero = await screen.findByTestId('wcw-section-body-hero');
+    expect(within(hero).queryByTestId('content-mode-hero_slides')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('section-rail-Everywhere'));
-    await waitFor(() => {
-      expect(screen.getByTestId('website-desktop-page-list').getAttribute('data-section')).toBe('Everywhere');
-    });
+    fireEvent.click(screen.getByTestId('wcw-tab-Everywhere'));
+    const form = await screen.findByTestId('wcw-form-Everywhere');
     expect(document.body.textContent).not.toMatch(/[◉○]/);
-    fireEvent.click(screen.getByTestId('page-list-row-footer_text'));
-    const footerEditor = await screen.findByTestId('website-desktop-editor');
-    expect(within(footerEditor).queryByTestId('content-mode-footer_text')).toBeNull();
-    expect(within(footerEditor).queryByTestId('scope-tabs-footer_text')).toBeNull();
+    const footer = within(form).getByTestId('wcw-field-footer_text');
+    expect(within(footer).queryByTestId('content-mode-footer_text')).toBeNull();
+    expect(within(footer).queryByTestId('scope-tabs-footer_text')).toBeNull();
   });
 
-  it('section-enable switches use the current destination — never Both', async () => {
+  it('an on/off setting writes to the current destination — never Both', async () => {
     openSection('Everywhere');
-    await screen.findByTestId('section-enable-announcement_enabled');
-    const heroSwitch = screen.getByTestId('section-enable-switch-announcement_enabled-website');
-    expect(heroSwitch.textContent).toMatch(/Website/);
-    expect(heroSwitch.textContent).not.toMatch(/\bBoth\b/);
+    const field = await screen.findByTestId('wcw-field-language_switcher_enabled');
 
-    await screen.findByTestId('section-enable-language_switcher_enabled');
-    expect(screen.getByTestId('section-enable-switch-language_switcher_enabled-website').textContent).toMatch(/Website/);
-    expect(screen.queryByTestId('section-enable-switch-language_switcher_enabled-order_app')).toBeNull();
-    expect(screen.queryByTestId('section-enable-switch-language_switcher_enabled-shared')).toBeNull();
-
-    const enableCard = screen.getByTestId('section-enable-language_switcher_enabled');
-    const switchLabels = Array.from(enableCard.querySelectorAll('.hub-section-enable-switch'))
-      .map((el) => el.textContent || '');
-    expect(switchLabels.some((t) => /\bBoth\b/.test(t))).toBe(false);
+    // One switch, for the page you are editing. No Website/Order App pair, no
+    // "Both" — Website Content only ever writes the website.
+    expect(within(field).getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.queryByTestId('scope-tabs-language_switcher_enabled')).toBeNull();
+    expect(field.textContent).not.toMatch(/\bBoth\b/);
   });
 
-  it('section-enable card face has no content key (extends meta-line rule)', async () => {
+  it('a field is named in words, never by its content key', async () => {
     openSection('Everywhere');
-    await screen.findByTestId('section-enable-announcement_enabled');
-    const enableFace = screen.getByTestId('section-enable-announcement_enabled');
-    expect(enableFace.textContent).toContain('Show Hero Section');
-    expect(enableFace.textContent).not.toContain('announcement_enabled');
-    expect(enableFace.querySelector('.hub-section-enable-face')?.textContent).not.toMatch(/·/);
+    const field = await screen.findByTestId('wcw-field-announcement_enabled');
+    const label = field.querySelector('.wcw-field-label');
+    expect(label?.textContent).toContain('Show Hero Section');
+    expect(label?.textContent).not.toContain('announcement_enabled');
+    expect(label?.textContent).not.toMatch(/·/);
   });
 
-  it('section header block count matches rendered cards on Home', async () => {
+  it('Home shows its sections, and Section order & visibility stays reachable', async () => {
     openSection('Home');
-    await screen.findByTestId('website-page-mode');
+    await screen.findByTestId('wcw-sections');
     expect(screen.getByTestId('home-layout-editor')).toBeTruthy();
-    // Layout editor chrome + page-list rows (hero_slides, proof_stat); legacy enable cards hidden.
-    expect(screen.getByTestId('page-list-row-hero_slides')).toBeTruthy();
-    expect(screen.getByTestId('page-list-row-proof_stat')).toBeTruthy();
-    expect(screen.queryByTestId('section-enable-announcement_enabled')).toBeNull();
+    expect(screen.getByTestId('wcw-section-hero')).toBeTruthy();
+    expect(screen.getByTestId('wcw-section-proof')).toBeTruthy();
+    // The hero opens on arrival; proof waits until you ask for it.
+    expect(screen.getByTestId('wcw-field-hero_slides')).toBeTruthy();
+    expect(screen.queryByTestId('wcw-field-proof_stat')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-proof'));
+    await waitFor(() => expect(screen.getByTestId('wcw-field-proof_stat')).toBeTruthy());
   });
 
-  it('Brand Kit still hides key/type behind Advanced', async () => {
+  it('the logo is no longer editable here — it belongs to Business Details', async () => {
     openSection('Everywhere');
-    await screen.findByTestId('brand-kit-card-logo');
-    const logoCard = screen.getByTestId('brand-kit-card-logo');
-    expect(logoCard.textContent).not.toMatch(/logo · image · en/i);
-    fireEvent.click(screen.getByTestId('edit-brand-logo'));
-    const sheet = await screen.findByTestId('brand-kit-editor-sheet-logo');
-    const advancedBtn = Array.from(sheet.querySelectorAll('button')).find((b) =>
-      /Advanced/i.test(b.textContent || ''),
-    );
-    expect(advancedBtn).toBeTruthy();
-    fireEvent.click(advancedBtn!);
-    await waitFor(() => {
-      expect(sheet).toHaveTextContent(/logo · image · en/i);
-    });
+    const field = await screen.findByTestId('wcw-field-logo');
+    expect(within(field).getByTestId('ops-owned-logo')).toBeTruthy();
+    expect(screen.queryByTestId('brand-kit-card-logo')).toBeNull();
+    expect(within(field).queryByRole('textbox')).toBeNull();
   });
 });
 

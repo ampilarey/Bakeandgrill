@@ -184,9 +184,10 @@ describe('ContentHub Website pages focused tasks', () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
     openHub('/content/website?group=Home');
-    await screen.findByTestId('website-page-mode');
-    expect(screen.getByTestId('page-list-row-events_section_headline')).toBeTruthy();
-    expect(screen.queryByTestId('page-list-row-contact_page_title')).toBeNull();
+    await screen.findByTestId('wcw-sections');
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-events'));
+    expect(await screen.findByTestId('wcw-field-events_section_headline')).toBeTruthy();
+    expect(screen.queryByTestId('wcw-field-contact_page_title')).toBeNull();
   });
 
   it('Everywhere sheet includes footer fields', async () => {
@@ -200,10 +201,10 @@ describe('ContentHub Website pages focused tasks', () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
     openHub('/content/website?group=Legal');
-    await screen.findByTestId('website-page-mode');
-    expect(screen.getByTestId('page-list-row-privacy_page_title')).toBeTruthy();
-    expect(screen.getByTestId('page-list-row-legal_privacy_body')).toBeTruthy();
-    expect(screen.queryByTestId('page-list-row-contact_page_title')).toBeNull();
+    await screen.findByTestId('wcw-form-Legal');
+    expect(screen.getByTestId('wcw-field-privacy_page_title')).toBeTruthy();
+    expect(screen.getByTestId('wcw-field-legal_privacy_body')).toBeTruthy();
+    expect(screen.queryByTestId('wcw-field-contact_page_title')).toBeNull();
   });
 
   it('Order App Home receives office_orders fields', async () => {
@@ -227,9 +228,11 @@ describe('ContentHub Website pages focused tasks', () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
     openHub('/content/website?group=Home');
-    await screen.findByTestId('website-page-mode');
-    expect(screen.getByTestId('page-list-row-homepage_categories')).toBeTruthy();
-    expect(screen.getByTestId('page-list-row-trust_items')).toBeTruthy();
+    await screen.findByTestId('wcw-sections');
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-categories'));
+    expect(await screen.findByTestId('wcw-field-homepage_categories')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-trust'));
+    expect(await screen.findByTestId('wcw-field-trust_items')).toBeTruthy();
   });
 
   it('enables Publish and publishes the layout when only the Home layout has a draft', async () => {
@@ -247,7 +250,7 @@ describe('ContentHub Website pages focused tasks', () => {
     }));
 
     openHub('/content/website?group=Home');
-    await screen.findByTestId('website-page-mode');
+    await screen.findByTestId('wcw-sections');
 
     // No content key drafts exist — Publish should still appear because the
     // Home layout has an unpublished draft (website app, version 3).
@@ -281,7 +284,7 @@ describe('ContentHub Website pages focused tasks', () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     openHub('/content/website?group=Home');
-    await screen.findByTestId('website-page-mode');
+    await screen.findByTestId('wcw-sections');
     await screen.findByTestId('publish-live-btn');
 
     const moreTrigger = document.querySelector('.hub-more-trigger') as HTMLElement;

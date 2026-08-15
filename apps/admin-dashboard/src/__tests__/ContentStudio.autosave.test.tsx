@@ -5,10 +5,10 @@ import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
-// Website desktop rev3 — page list row opens component mode (no sheet).
+// Website desktop — the CTA band section opens in place on the Home tab.
 async function openCtaEditor() {
-  fireEvent.click(await screen.findByTestId('page-list-row-cta_band_headline'));
-  const editor = await screen.findByTestId('website-desktop-editor');
+  fireEvent.click(await screen.findByTestId('wcw-section-toggle-cta'));
+  const editor = await screen.findByTestId('wcw-field-cta_band_headline');
   await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
   return editor;
 }

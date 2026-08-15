@@ -6,12 +6,12 @@ import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 import { ApiRequestError } from '@shared/api';
 
-// Website desktop rev3 opens component mode (page-list row → full-width
-// editor); Order App keeps the compact-card + focused-sheet pattern.
+// Website desktop opens the section in place; Order App keeps the
+// compact-card + focused-sheet pattern.
 async function openCtaEditor(mode: 'website' | 'order_app' = 'website') {
   if (mode === 'website') {
-    fireEvent.click(await screen.findByTestId('page-list-row-offers_headline'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const editor = await screen.findByTestId('wcw-field-offers_headline');
     await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
     return editor;
   }
@@ -267,8 +267,7 @@ describe('Content Hub publish reliability + app scope', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('page-list-row-hero_slides'));
-    const editor = await screen.findByTestId('website-desktop-editor');
+    const editor = await screen.findByTestId('wcw-field-hero_slides');
     await within(editor).findByTestId('hero-slides-wide');
     const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
     const title = within(wordsCol).getByLabelText(/Title \(HTML/i) as HTMLTextAreaElement;

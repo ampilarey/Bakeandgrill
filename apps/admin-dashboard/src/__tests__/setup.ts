@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/react';
+
+// The Content Hub page mounts a lot at once (layout editor, hero carousel,
+// rich-text editors). Under a full-suite run one findBy per file can brush the
+// 1s default and fail on timing alone — the interactions themselves measure in
+// single-digit milliseconds. Give the whole suite headroom.
+configure({ asyncUtilTimeout: 5000 });
 
 // vitest 4 + jsdom 28 doesn't always expose a working Storage API on
 // the global `localStorage`. Tests that called `localStorage.setItem`
