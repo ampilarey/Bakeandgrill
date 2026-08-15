@@ -12,6 +12,7 @@ import {
 } from '../api/businessDetails';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { MediaPicker } from '../components/MediaPicker';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { MediaAsset } from '../api/media';
 import { ScopeMismatchNotices, type ScopeMismatch } from '../components/ScopeMismatchNotices';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -75,6 +76,7 @@ export function BusinessDetailsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   /** Which image field the Media Library is picking for. */
   const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   const formRef = useRef<HTMLFormElement>(null);
 
   const load = async () => {
@@ -265,6 +267,7 @@ export function BusinessDetailsPage() {
                       }}
                       mismatches={mismatches}
                       onPickImage={() => setPickerKey(field.key)}
+                      usedByOpen={!isMobile}
                     />
                   ))}
                 </div>
@@ -354,9 +357,20 @@ function keyboardFor(field: BusinessDetailsField): {
   return { type: 'text' };
 }
 
-/** Fields that need the whole row rather than half of it. */
+/**
+ * Fields that need the whole row rather than half of it.
+ *
+ * Everything else pairs up — two per row on a phone as well as a laptop, which
+ * is what stopped this page being a mile of scrolling (owner, 2026-08-15).
+ * Only three kinds genuinely cannot share a row: long text, a picture with its
+ * preview and buttons, and the map embed link, which is far too long to make
+ * any sense in half a phone screen.
+ */
 function isWideField(field: BusinessDetailsField): boolean {
-  return field.type === 'textarea' || field.type === 'image' || field.key === 'business_address';
+  return field.type === 'textarea'
+    || field.type === 'image'
+    || field.key === 'business_address'
+    || field.key === 'maps_embed_url';
 }
 
 function FieldEditor({
@@ -366,6 +380,7 @@ function FieldEditor({
   onChange,
   mismatches,
   onPickImage,
+  usedByOpen,
 }: {
   field: BusinessDetailsField;
   value: string;
@@ -373,6 +388,7 @@ function FieldEditor({
   onChange: (v: string) => void;
   mismatches: ScopeMismatch[];
   onPickImage?: () => void;
+  usedByOpen: boolean;
 }) {
   const keyboard = keyboardFor(field);
   const isSquarePreview = field.key === 'favicon' || field.key === 'default_item_image';
@@ -491,16 +507,20 @@ function FieldEditor({
         </span>
       ) : null}
       {field.used_by && field.used_by.length > 0 ? (
-        <div data-testid={`business-used-by-${field.key}`} style={usedByWrapStyle}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Used by
-          </span>
+        <details
+          className="business-details-usedby"
+          data-testid={`business-used-by-${field.key}`}
+          open={usedByOpen}
+        >
+          <summary data-testid={`business-used-by-toggle-${field.key}`}>
+            Where this shows
+          </summary>
           <ul style={usedByListStyle}>
             {field.used_by.map((item) => (
               <li key={item} style={usedByItemStyle}>{item}</li>
             ))}
           </ul>
-        </div>
+        </details>
       ) : null}
       <ScopeMismatchNotices mismatches={mismatches} onlyKey={field.key} />
     </label>
@@ -693,11 +713,6 @@ const inputErrorStyle: CSSProperties = {
 const errorTextStyle: CSSProperties = {
   fontSize: 12,
   color: 'var(--color-danger)',
-};
-
-const usedByWrapStyle: CSSProperties = {
-  display: 'grid',
-  gap: 6,
 };
 
 const usedByListStyle: CSSProperties = {

@@ -5843,8 +5843,33 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
 }
 
+/* ── "Where this shows" — collapsed on a phone ─────────────── */
+.business-details-usedby > summary {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  list-style: none;
+  padding: 2px 0;
+}
+.business-details-usedby > summary::-webkit-details-marker { display: none; }
+.business-details-usedby > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.business-details-usedby[open] > summary::before { content: "▾ "; }
+.business-details-usedby > ul { margin-top: 6px; }
+
 @media (max-width: 767px) {
-  .business-details-grid { grid-template-columns: 1fr; }
+  /* Two per row. One column meant this page was a mile of scrolling — only
+     long text, pictures and the map embed link keep the full width. */
+  .business-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 12px;
+  }
   .business-details-card { padding: 14px; }
   .business-details-jump {
     flex-wrap: nowrap;

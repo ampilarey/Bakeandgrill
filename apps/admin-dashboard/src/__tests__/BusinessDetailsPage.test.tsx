@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ApiRequestError } from '@shared/api';
 import { BusinessDetailsPage } from '../pages/BusinessDetailsPage';
@@ -418,6 +418,47 @@ describe('Business Details — enhancements', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('business-details-savebar')).toBeNull();
     });
+  });
+
+  it('pairs fields two to a row on a phone, and keeps only the unusable ones full width', async () => {
+    // jsdom has no layout engine, so the column count itself is a Playwright
+    // job. What is assertable here is the contract the CSS grid reads: which
+    // fields ask for the whole row and which are happy to share it.
+    mockViewport(390);
+    renderPage();
+    await screen.findByTestId('business-details-form');
+
+    const wide = (key: string) =>
+      screen.getByTestId(`business-field-${key}`).className.includes('business-details-field--wide');
+
+    // Long text and the map embed link cannot survive half a phone screen.
+    expect(wide('business_address')).toBe(true);
+    expect(wide('maps_embed_url')).toBe(true);
+
+    // Everything else pairs up — this is what took the scrolling down.
+    for (const key of ['site_name', 'business_phone', 'business_email', 'business_address_city', 'business_landmark']) {
+      expect(wide(key), `[${key}] should share a row`).toBe(false);
+    }
+  });
+
+  it('folds "Where this shows" away on a phone and leaves it open on a laptop', async () => {
+    // Three lines of chips under all 25 fields was most of the scrolling.
+    mockViewport(390);
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    const onPhone = screen.getByTestId('business-used-by-site_name') as HTMLDetailsElement;
+    expect(onPhone.open).toBe(false);
+    expect(screen.getByTestId('business-used-by-toggle-site_name').textContent).toMatch(/Where this shows/);
+
+    // Still reachable — tapping it opens the list, nothing is lost.
+    fireEvent.click(screen.getByTestId('business-used-by-toggle-site_name'));
+    expect(within(onPhone).getByText('Receipts & invoices')).toBeTruthy();
+
+    cleanup();
+    mockViewport(1440);
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    expect((screen.getByTestId('business-used-by-site_name') as HTMLDetailsElement).open).toBe(true);
   });
 
   it('the sticky bar stays put on a phone', async () => {
