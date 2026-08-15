@@ -4,31 +4,33 @@ declare(strict_types=1);
 
 namespace App\Domains\Content;
 
+use App\Domains\Settings\OpsOwnedContent;
 use App\Models\SiteSetting;
 
 /**
  * Notice-only drift between website, order app, and the shared business record.
- * Covers business facts + brand assets — never page-wording blocks.
+ * Covers independently scoped brand/marketing facts — never page-wording blocks.
+ *
+ * Business Details–owned identity/contact keys (phone, email, address, …) are
+ * excluded: ContentResolver always reads shared for those, so leftover
+ * website/order_app rows are integrity cleanup — not live surface values.
  */
 final class ContentScopeMismatch
 {
-    /** @var list<string> */
+    /**
+     * Independently scoped keys that may still differ across shared / website / order_app.
+     * Business Details–owned identity keys (phone, email, address, site_name, …) are
+     * intentionally absent — see OpsOwnedContent::BUSINESS_DETAILS_KEYS.
+     *
+     * @var list<string>
+     */
     public const KEYS = [
-        // Business facts (13)
-        'business_phone',
-        'business_whatsapp',
-        'business_viber',
-        'business_email',
-        'business_address',
-        'business_landmark',
-        'business_maps_url',
-        'business_website',
-        'site_name',
+        // Marketing / catalog facts that may still differ per surface
         'site_tagline',
         'delivery_time',
         // delivery_threshold is Ordering Control owned — not a content mismatch key.
         'menu_new_days',
-        // Brand assets (6)
+        // Brand assets (6) — still independently scoped per surface
         'logo',
         'logo_dark',
         'favicon',
@@ -52,6 +54,12 @@ final class ContentScopeMismatch
         $out = [];
         foreach (self::KEYS as $key) {
             if (! ContentRegistry::has($key)) {
+                continue;
+            }
+
+            // Ops-owned Business Details keys always resolve from shared; leftover
+            // app-scoped rows must not look like "Website says … / Order app says …".
+            if (OpsOwnedContent::resolvesFromBusinessDetails($key)) {
                 continue;
             }
 

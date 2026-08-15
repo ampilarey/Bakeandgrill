@@ -153,7 +153,9 @@ export async function getOrderByTrackingToken(trackingToken: string): Promise<{ 
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string };
-    throw new Error(body.message ?? 'Order not found');
+    const err = new Error(body.message ?? (res.status === 429 ? 'Too many refreshes — wait a moment.' : 'Order not found')) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return res.json() as Promise<{ order: OrderDetail }>;
 }

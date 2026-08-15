@@ -247,6 +247,14 @@ describe('ModeEntryCards informative closed states', () => {
     expect((await screen.findByTestId('mode-info-status')).textContent).toMatch(/Back at \d{1,2}:\d{2} (AM|PM)/);
   });
 
+  it('uses CMS mode card photo when set for the order app', async () => {
+    textStore.order_mode_delivery_image = 'https://cdn.example.test/order-delivery.jpg';
+    renderCards();
+    const media = await screen.findByTestId('mode-entry-media-delivery');
+    const img = media.querySelector('img');
+    expect(img?.getAttribute('src')).toBe('https://cdn.example.test/order-delivery.jpg');
+  });
+
   it('falls back cleanly when wording settings are empty', async () => {
     const user = userEvent.setup();
     renderCards();

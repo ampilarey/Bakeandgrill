@@ -39,4 +39,10 @@ describe('Content Hub mode-card helpers', () => {
   it('prefers registry description over KEY_HELPERS when present', () => {
     expect(helperForBlock(block('order_mode_dine_in_hint', 'From registry'))).toBe('From registry');
   });
+
+  it('registers mode card photo helpers', () => {
+    expect(helperForBlock(block('order_mode_delivery_image'))).toMatch(/Website vs Order App/i);
+    expect(helperForBlock(block('order_mode_pickup_image'))).toMatch(/Pickup/i);
+    expect(helperForBlock(block('order_mode_dine_in_image'))).toMatch(/Eat here/i);
+  });
 });

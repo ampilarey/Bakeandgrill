@@ -18,9 +18,12 @@ export function cartAllowsTomorrow(lines: CollectOnCartLine[]): boolean {
  * Cart checkout button eligibility shared by CartDrawer and the
  * FloatingCartBar → CartSheet path (both render CartDrawer).
  *
- * While the shop is closed, checkout stays available only when every
+ * While the shop is closed (hours), checkout stays available only when every
  * line allows tomorrow collection — so the customer can reach the
  * Today/Tomorrow picker that CheckoutPage already handles.
+ *
+ * When online ordering / checkout services are off (kill switch), never
+ * offer the tomorrow path — show the closed message instead.
  */
 export type CartCheckoutCta = {
   canCheckout: boolean;
@@ -29,15 +32,32 @@ export type CartCheckoutCta = {
 };
 
 export function cartCheckoutCta(args: {
+  /** Hours / online-gate open (not service kill switches). */
   shopOpen: boolean;
   lines: CollectOnCartLine[];
+  /**
+   * When false, online_ordering or online_checkout is unavailable.
+   * Defaults to true so hour-closed + pre-order carts still work.
+   */
+  orderingEnabled?: boolean;
+  /**
+   * When the shop is closed, tomorrow collection must also be allowed
+   * (CheckoutPage: order_for_tomorrow.open !== false). Defaults to true.
+   */
+  tomorrowOrderingEnabled?: boolean;
 }): CartCheckoutCta {
   const hasItems = args.lines.length > 0;
   if (!hasItems) {
     return { canCheckout: false, checkoutForTomorrow: false };
   }
+  if (args.orderingEnabled === false) {
+    return { canCheckout: false, checkoutForTomorrow: false };
+  }
   if (args.shopOpen) {
     return { canCheckout: true, checkoutForTomorrow: false };
+  }
+  if (args.tomorrowOrderingEnabled === false) {
+    return { canCheckout: false, checkoutForTomorrow: false };
   }
   const forTomorrow = cartAllowsTomorrow(args.lines);
   return { canCheckout: forTomorrow, checkoutForTomorrow: forTomorrow };

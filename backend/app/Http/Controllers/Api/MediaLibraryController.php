@@ -13,10 +13,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Media;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
-use App\Support\MediaFileCleaner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class MediaLibraryController extends Controller
@@ -37,6 +35,7 @@ class MediaLibraryController extends Controller
             'q' => 'nullable|string|max:100',
             'tag' => 'nullable|string|max:50',
             'collection' => 'nullable|string|max:100',
+            'path' => 'nullable|string|max:500',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
@@ -48,6 +47,15 @@ class MediaLibraryController extends Controller
         }
         if (!empty($validated['source'])) {
             $query->where('source', $validated['source']);
+        }
+        if (!empty($validated['path'])) {
+            $rawPath = (string) $validated['path'];
+            $storagePath = \App\Support\MediaFileCleaner::storagePathFromUrl($rawPath)
+                ?? ltrim(str_replace('\\', '/', $rawPath), '/');
+            if (str_starts_with($storagePath, 'storage/')) {
+                $storagePath = substr($storagePath, strlen('storage/'));
+            }
+            $query->where('path', $storagePath);
         }
         if (!empty($validated['q'])) {
             $query->search($validated['q']);
@@ -153,22 +161,81 @@ class MediaLibraryController extends Controller
             ], 409);
         }
 
-        $paths = array_filter([
-            $media->path,
-            MediaFileCleaner::storagePathFromUrl($media->thumb_url),
-            MediaFileCleaner::storagePathFromUrl($media->original_url),
+        $id = $this->deleteAsset($media, $force, $request);
+
+        return response()->json(['ok' => true, 'id' => $id]);
+    }
+
+    /**
+     * Delete many catalog rows in one request (Media Library multi-select).
+     *
+     * @return JsonResponse{deleted: list<int>, blocked: list<array{id: int, usage: list<mixed>}>}
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1|max:100',
+            'ids.*' => 'integer|distinct',
+            'force' => 'sometimes|boolean',
         ]);
-        foreach ($paths as $path) {
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
+        $force = (bool) ($validated['force'] ?? false);
+        /** @var list<int> $ids */
+        $ids = array_values(array_map('intval', $validated['ids']));
+
+        $assets = Media::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $deleted = [];
+        $blocked = [];
+        $missing = [];
+
+        foreach ($ids as $id) {
+            /** @var Media|null $media */
+            $media = $assets->get($id);
+            if (!$media) {
+                $missing[] = $id;
+                continue;
             }
+            $usage = $this->usage->for($media);
+            if ($usage !== [] && !$force) {
+                $blocked[] = ['id' => $id, 'usage' => $usage];
+                continue;
+            }
+            $deleted[] = $this->deleteAsset($media, $force, $request);
         }
+
+        $this->audit->log(
+            'media.bulk_deleted',
+            'Media',
+            null,
+            [],
+            [
+                'force' => $force,
+                'requested' => count($ids),
+                'deleted' => $deleted,
+                'blocked' => array_column($blocked, 'id'),
+                'missing' => $missing,
+            ],
+            [],
+            $request,
+        );
+
+        return response()->json([
+            'deleted' => $deleted,
+            'blocked' => $blocked,
+            'missing' => $missing,
+        ]);
+    }
+
+    private function deleteAsset(Media $media, bool $force, Request $request): int
+    {
+        // Wipe primary + webp sidecars + masters + version backups so
+        // reconcile / media:backfill cannot re-catalog leftovers.
+        $this->library->purgeDiskFiles($media);
 
         $id = (int) $media->id;
         $media->delete();
         $this->audit->log('media.deleted', 'Media', $id, [], ['force' => $force], [], $request);
 
-        return response()->json(['ok' => true]);
+        return $id;
     }
 
     public function reconcile(Request $request): JsonResponse
@@ -207,6 +274,23 @@ class MediaLibraryController extends Controller
     public function restore(Request $request, Media $media): JsonResponse
     {
         $result = $this->editor->restore($media, $request);
+
+        return response()->json($result);
+    }
+
+    /**
+     * Replace the image file for this asset so every usage of the same URL updates.
+     * POST /admin/media/{media}/replace-file  multipart file=
+     */
+    public function replaceFile(Request $request, Media $media): JsonResponse
+    {
+        $request->validate([
+            'file' => \App\Support\MenuImageValidation::fileRules(true),
+        ]);
+
+        /** @var \Illuminate\Http\UploadedFile $file */
+        $file = $request->file('file');
+        $result = $this->editor->replaceFile($media, $file, $request);
 
         return response()->json($result);
     }

@@ -544,6 +544,7 @@ export function PosShellLayout() {
                 setShowCharge(true);
               }}
               onRetryPayment={order.handleRetryPayment}
+              onDismissPendingPayment={order.clearPendingPayment}
               onOpenSendBill={() => setShowSendBill(true)}
               smsNotifications={smsNotifications}
               quickNotes={quickNotes}

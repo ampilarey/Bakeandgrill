@@ -109,7 +109,7 @@ final class ModeEntryCardsPresenter
                 'cta' => $available ? "{$label} →" : "{$learnMore} →",
                 'href' => $available ? '/order/menu?mode='.$kind : null,
                 'info' => $info[$kind],
-                'image' => self::resolveImageUrl($kind),
+                'image' => self::resolveImageUrl($kind, $copy),
                 'icon' => self::ICONS[$kind],
             ];
         }
@@ -117,8 +117,25 @@ final class ModeEntryCardsPresenter
         return $cards;
     }
 
-    public static function resolveImageUrl(string $kind): ?string
+    /**
+     * Prefer a CMS image for the current app (website vs order_app), then
+     * fall back to the committed static JPGs under public/images/modes.
+     */
+    public static function resolveImageUrl(string $kind, ?ContentResolver $copy = null): ?string
     {
+        $contentKey = match ($kind) {
+            'delivery' => 'order_mode_delivery_image',
+            'pickup' => 'order_mode_pickup_image',
+            'dine_in' => 'order_mode_dine_in_image',
+            default => null,
+        };
+        if ($contentKey !== null && $copy !== null) {
+            $custom = trim((string) $copy->get($contentKey, ''));
+            if ($custom !== '') {
+                return $custom;
+            }
+        }
+
         $url = self::IMAGES[$kind] ?? null;
         if ($url === null) {
             return null;

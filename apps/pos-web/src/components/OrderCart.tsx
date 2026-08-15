@@ -162,6 +162,8 @@ type Props = {
   onOpenTickets: () => void;
   onCheckout: () => void;
   onRetryPayment: () => void;
+  /** Drop failed-settle retry mode and return to a normal cart/charge flow. */
+  onDismissPendingPayment?: () => void;
   onOpenSendBill: () => void;
   smsNotifications?: { send_bill: boolean };
 
@@ -1086,13 +1088,20 @@ export function OrderCart(p: Props) {
 
         {/* Retry-payment banner */}
         {p.pendingPaymentForOrderId !== null && (
-          <div style={{
-            marginTop: 10, padding: '8px 10px', borderRadius: 8,
-            background: '#FEF3C7', color: '#92400E',
-            border: '1px solid #FDE68A', fontSize: 12,
-          }}>
-            Order #{p.pendingPaymentForOrderId} created — payment failed.{" "}
+          <div
+            data-testid="pending-payment-banner"
+            style={{
+              marginTop: 10, padding: '8px 10px', borderRadius: 8,
+              background: '#FEF3C7', color: '#92400E',
+              border: '1px solid #FDE68A', fontSize: 12,
+              display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+            }}
+          >
+            <span style={{ flex: '1 1 160px' }}>
+              Order #{p.pendingPaymentForOrderId} created — payment failed.
+            </span>
             <button
+              type="button"
               onClick={p.onRetryPayment}
               disabled={p.isSubmitting}
               style={{
@@ -1102,6 +1111,20 @@ export function OrderCart(p: Props) {
             >
               Retry payment
             </button>
+            {p.onDismissPendingPayment && (
+              <button
+                type="button"
+                onClick={p.onDismissPendingPayment}
+                disabled={p.isSubmitting}
+                style={{
+                  fontWeight: 700, background: 'none',
+                  border: 'none', color: '#92400E', cursor: 'pointer', padding: 0,
+                  opacity: 0.85,
+                }}
+              >
+                Dismiss
+              </button>
+            )}
           </div>
         )}
 

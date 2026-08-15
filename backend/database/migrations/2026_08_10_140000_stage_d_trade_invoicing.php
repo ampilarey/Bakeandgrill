@@ -107,7 +107,8 @@ return new class extends Migration
         }
 
         // payments.order_id was NOT NULL — make nullable and add invoice_id.
-        // Exactly one of order_id / invoice_id must be set (enforced in service + MySQL check).
+        // Exactly one of order_id / invoice_id must be set (app services always;
+        // MySQL CHECK when the engine allows — MariaDB rejects CHECK on FK cols).
         if (Schema::hasTable('payments')) {
             try {
                 Schema::table('payments', function (Blueprint $table) {
@@ -174,26 +175,35 @@ return new class extends Migration
 
                 if (! $xorExists()) {
                     try {
+                        // Prefer backticks — some MariaDB builds reject bare order_id in CHECK.
                         DB::statement("ALTER TABLE payments ADD CONSTRAINT {$xorName} CHECK (
-                            (order_id IS NOT NULL AND invoice_id IS NULL) OR (order_id IS NULL AND invoice_id IS NOT NULL)
+                            (`order_id` IS NOT NULL AND `invoice_id` IS NULL)
+                            OR (`order_id` IS NULL AND `invoice_id` IS NOT NULL)
                         )");
                     } catch (\Throwable $e) {
                         if (! $xorExists()) {
-                            throw new \RuntimeException(
-                                "Failed to add {$xorName} on payments. "
-                                .'XOR (exactly one of order_id / invoice_id) is not enforced. '
-                                .'Underlying error: '.$e->getMessage(),
-                                0,
-                                $e,
-                            );
+                            // MariaDB error 1901: CHECK cannot reference columns that are
+                            // also FOREIGN KEY targets (order_id / invoice_id). XOR is still
+                            // enforced in PaymentService + TradeReceivablePaymentService.
+                            $msg = $e->getMessage();
+                            if (str_contains($msg, '1901')
+                                || str_contains($msg, 'cannot be used in the CHECK clause')) {
+                                logger()->warning(
+                                    "Skipping {$xorName} on payments — MariaDB/MySQL cannot CHECK FK columns. "
+                                    .'App-level XOR enforcement remains active.',
+                                    ['error' => $msg],
+                                );
+                            } else {
+                                throw new \RuntimeException(
+                                    "Failed to add {$xorName} on payments. "
+                                    .'XOR (exactly one of order_id / invoice_id) is not enforced. '
+                                    .'Underlying error: '.$msg,
+                                    0,
+                                    $e,
+                                );
+                            }
                         }
                     }
-                }
-
-                if (! $xorExists()) {
-                    throw new \RuntimeException(
-                        "CHECK constraint {$xorName} missing on payments after migrate attempted to add it.",
-                    );
                 }
             }
         }

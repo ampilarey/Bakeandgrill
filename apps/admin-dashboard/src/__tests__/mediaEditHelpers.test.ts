@@ -3,6 +3,7 @@ import {
   buildRotateParams,
   computeResizeOutputSize,
   cropParamsFromArea,
+  cropSourceUrl,
   isCropReady,
   isRotateReady,
   mediaExportFilename,
@@ -20,6 +21,17 @@ describe('mediaEditHelpers — crop', () => {
       width: 100,
       height: 81,
     });
+  });
+
+  it('prefers master URL for crop source so coords match the server', () => {
+    expect(cropSourceUrl({
+      url: '/storage/library/images/display.jpg',
+      original_url: '/storage/library/images/masters/full.jpg',
+    })).toBe('/storage/library/images/masters/full.jpg');
+    expect(cropSourceUrl({
+      url: '/storage/library/images/display.jpg',
+      original_url: null,
+    })).toBe('/storage/library/images/display.jpg');
   });
 
   it('requires positive width and height', () => {

@@ -118,7 +118,38 @@ class MediaLibraryServiceTest extends TestCase
         $this->assertTrue($this->library->isDerivedPath('menu/thumbs/x.jpg'));
         $this->assertTrue($this->library->isDerivedPath('thumbs/x.jpg'));
         $this->assertTrue($this->library->isDerivedPath('menu-masters/x.jpg'));
+        $this->assertTrue($this->library->isDerivedPath('library/versions/12/a.jpg'));
+        $this->assertTrue($this->library->isDerivedPath('library/images/foo.webp'));
         $this->assertFalse($this->library->isDerivedPath('menu/x.jpg'));
+    }
+
+    public function test_purge_disk_files_removes_all_owned_paths(): void
+    {
+        Storage::disk('public')->put('library/images/a.jpg', 'a');
+        Storage::disk('public')->put('library/images/a.webp', 'w');
+        Storage::disk('public')->put('library/images/thumbs/a.jpg', 't');
+        Storage::disk('public')->put('library/images/masters/a.jpg', 'm');
+
+        $media = Media::create([
+            'disk' => 'public',
+            'path' => 'library/images/a.jpg',
+            'media_type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1,
+            'source' => 'library',
+            'thumb_url' => '/storage/library/images/thumbs/a.jpg',
+            'original_url' => '/storage/library/images/masters/a.jpg',
+            'image_webp_url' => '/storage/library/images/a.webp',
+        ]);
+        Storage::disk('public')->put('library/versions/' . $media->id . '/v1.jpg', 'v');
+
+        $this->library->purgeDiskFiles($media);
+
+        $this->assertFalse(Storage::disk('public')->exists('library/images/a.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/a.webp'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/thumbs/a.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/masters/a.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/versions/' . $media->id . '/v1.jpg'));
     }
 
     private function tinyJpeg(): string

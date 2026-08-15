@@ -9,9 +9,19 @@ export type MediaCropParams = {
 };
 
 /**
- * Round react-easy-crop pixel area into API crop params.
- * Pure — no DOM. Breakage-proof for Stage 1 tests.
+ * Prefer master (original_url) for crop UI so pixel coords match MediaEditor::opCrop.
+ * Falls back to the display URL when no master exists.
  */
+export function cropSourceUrl(asset: {
+  url: string;
+  original_url?: string | null;
+}): string {
+  const master = (asset.original_url || '').trim();
+  if (master !== '') return master;
+  return asset.url;
+}
+
+/** Round react-easy-crop pixel area into API crop params. */
 export function cropParamsFromArea(pixels: Area): MediaCropParams {
   return {
     x: Math.max(0, Math.round(pixels.x)),

@@ -36,32 +36,43 @@ export function FloatingCartBar() {
   const location = useLocation();
   const [orderingOpen, setOrderingOpen] = useState(true);
   const [nextOpenWindow, setNextOpenWindow] = useState<string | null>(null);
+  const [tomorrowOrderingOpen, setTomorrowOrderingOpen] = useState(true);
+  const [gateClosedMessage, setGateClosedMessage] = useState<string | null>(null);
   const checkoutAvailable = isAvailable('online_checkout');
   const orderingServiceAvailable = isAvailable('online_ordering');
   const checkoutState = get('online_checkout');
   const orderingState = get('online_ordering');
-  const effectiveOpen = orderingOpen && checkoutAvailable && orderingServiceAvailable;
+  const servicesOk = checkoutAvailable && orderingServiceAvailable;
+  /** Hours + services — drives closed UI / tip; tomorrow path uses hours alone. */
+  const effectiveOpen = orderingOpen && servicesOk;
 
   /** Single derived CTA — CartSheet/CartDrawer must not invent a second rule. */
   const checkoutCta = cartCheckoutCta({
-    shopOpen: effectiveOpen,
+    shopOpen: orderingOpen,
+    orderingEnabled: servicesOk,
+    tomorrowOrderingEnabled: tomorrowOrderingOpen,
     lines: cart.map((e) => ({ allow_pre_order: e.item?.allow_pre_order })),
   });
 
   const closedCta = (() => {
     if (effectiveOpen) return null;
-    // Tomorrow-eligible carts get an enabled checkout label in CartDrawer —
-    // keep the reopen copy off the yellow banner so it doesn't fight the CTA.
+    // Tomorrow-eligible carts (hours closed, services on) get an enabled
+    // checkout label — keep reopen copy off so it doesn't fight the CTA.
     if (checkoutCta.checkoutForTomorrow) return null;
     if (!orderingServiceAvailable) {
-      return orderingState?.public_message?.trim() || t('cart.closed_cta_short');
+      return orderingState?.public_message?.trim()
+        || gateClosedMessage
+        || t('cart.closed_cta');
     }
     if (!checkoutAvailable) {
-      return checkoutState?.public_message?.trim() || t('cart.closed_cta_short');
+      return checkoutState?.public_message?.trim()
+        || gateClosedMessage
+        || t('cart.closed_cta');
     }
+    if (gateClosedMessage) return gateClosedMessage;
     const openAt = formatOpenTime(nextOpenWindow);
     if (openAt) return t('cart.opens_at_cta').replace('{time}', openAt);
-    return t('cart.closed_cta_short');
+    return t('cart.closed_cta');
   })();
 
   const count = cart.reduce((sum, e) => sum + e.quantity, 0);
@@ -75,11 +86,15 @@ export function FloatingCartBar() {
         if (cancelled) return;
         setOrderingOpen(gate.open);
         setNextOpenWindow(gate.open ? null : (gate.next_open_window ?? null));
+        setTomorrowOrderingOpen(gate.order_for_tomorrow?.open !== false);
+        setGateClosedMessage(gate.open ? null : (gate.message?.trim() || null));
       })
       .catch(() => {
         if (!cancelled) {
           setOrderingOpen(true);
           setNextOpenWindow(null);
+          setTomorrowOrderingOpen(true);
+          setGateClosedMessage(null);
         }
       });
     return () => {

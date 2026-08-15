@@ -122,6 +122,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
             ->middleware('permission:media.manage');
         Route::post('/reconcile', [App\Http\Controllers\Api\MediaLibraryController::class, 'reconcile'])
             ->middleware('permission:media.manage');
+        Route::post('/bulk-delete', [App\Http\Controllers\Api\MediaLibraryController::class, 'bulkDestroy'])
+            ->middleware('permission:media.manage');
 
         // Video studio (must be before /{media} routes). Permission checked in controller.
         Route::get('/video/capabilities', [App\Http\Controllers\Api\VideoStudioController::class, 'capabilities']);
@@ -146,6 +148,8 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/{media}/edit', [App\Http\Controllers\Api\MediaLibraryController::class, 'edit'])
             ->middleware('permission:media.manage');
         Route::post('/{media}/restore', [App\Http\Controllers\Api\MediaLibraryController::class, 'restore'])
+            ->middleware('permission:media.manage');
+        Route::post('/{media}/replace-file', [App\Http\Controllers\Api\MediaLibraryController::class, 'replaceFile'])
             ->middleware('permission:media.manage');
         Route::post('/{media}/collections', [App\Http\Controllers\Api\MediaLibraryController::class, 'syncCollections'])
             ->middleware('permission:media.manage');
@@ -273,6 +277,12 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
         Route::post('/admin/system/health/failed-jobs/{uuid}/retry', [App\Http\Controllers\Api\SystemHealthController::class, 'retryFailedJob']);
         Route::delete('/admin/system/health/failed-jobs/{uuid}', [App\Http\Controllers\Api\SystemHealthController::class, 'forgetFailedJob']);
+    });
+
+    // LIVE → TEST data/media clone (owner + TEST host only)
+    Route::middleware(['auth:sanctum', 'staff.token', 'role:owner'])->group(function () {
+        Route::get('/admin/ops/clone-live-to-test', [App\Http\Controllers\Api\CloneLiveToTestController::class, 'status']);
+        Route::post('/admin/ops/clone-live-to-test', [App\Http\Controllers\Api\CloneLiveToTestController::class, 'start']);
     });
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->prefix('admin/pos')->group(function () {

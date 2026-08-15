@@ -180,6 +180,7 @@ class StreamController extends Controller
                         'id' => $order->id,
                         'order_number' => $order->order_number,
                         'status' => $order->status,
+                        'payment_status' => $order->payment_status,
                         'paid_at' => $order->paid_at?->toIso8601String(),
                         'updated_at' => $order->updated_at?->toIso8601String(),
                     ], JSON_UNESCAPED_UNICODE),

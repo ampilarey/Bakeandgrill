@@ -254,6 +254,17 @@ class CmsContentTest extends TestCase
         $this->assertStringContainsString('site-announcement--warning', $response->getContent());
     }
 
+    public function test_announcement_alert_style_is_red_banner_class(): void
+    {
+        $this->seedSetting('announcement_enabled', 'true', 'Announcements', 'boolean', true);
+        $this->seedSetting('announcement_text', 'Urgent notice', 'Announcements', 'text', true);
+        $this->seedSetting('announcement_style', 'alert', 'Announcements', 'text', true);
+
+        $response = $this->get('/');
+        $response->assertOk();
+        $this->assertStringContainsString('site-announcement--alert', $response->getContent());
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Public settings API — announcement keys are exposed
     // ──────────────────────────────────────────────────────────────────────────

@@ -41,7 +41,9 @@ const itemStyle: CSSProperties = {
 };
 
 /**
- * Read-only drift notice across business record / website / order app.
+ * Read-only drift notice across business record / website / order app for keys that
+ * still have independent scoped copies (brand assets, tagline, etc.).
+ * Ops-owned Business Details identity is never included in this list.
  * No sync button — owners fix each place deliberately.
  */
 export function ScopeMismatchNotices({

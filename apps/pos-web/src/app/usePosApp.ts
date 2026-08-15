@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
 import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
@@ -358,6 +358,8 @@ export function usePosApp() {
     }
   }, [customerAddresses, cart.attachedCustomer]);
 
+  const clearPendingPaymentRef = useRef<() => void>(() => undefined);
+
   const handleClearCart = useCallback(() => {
     cart.clearCart();
     setDeliveryDetails(EMPTY_DELIVERY_DETAILS);
@@ -367,6 +369,8 @@ export function usePosApp() {
     // pre-fills "Table 1" (etc.) for every new order and Active Orders
     // all look like the same table.
     setSelectedTableId(null);
+    // Failed settle must not pin Charge to a stale snapshot after Clear.
+    clearPendingPaymentRef.current();
   }, [cart]);
 
   const [deliveryFeeEst, setDeliveryFeeEst] = useState(0);
@@ -647,8 +651,16 @@ export function usePosApp() {
     },
   });
 
+  clearPendingPaymentRef.current = order.clearPendingPayment;
+
   const chargeTotal = useMemo(() => {
-    if (order.pendingPaymentForOrderId != null && order.pendingPaymentTotalDue != null) {
+    // Retry mode: pin Charge to the failed settle's due amount — but never
+    // let a stuck 0.00 snapshot hide a live cart the cashier is ringing.
+    if (
+      order.pendingPaymentForOrderId != null
+      && order.pendingPaymentTotalDue != null
+      && order.pendingPaymentTotalDue > 0
+    ) {
       return order.pendingPaymentTotalDue;
     }
     // Paid/view-only resume: prefer server grand total − gift tender.

@@ -43,6 +43,24 @@ bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-self-update-cron-te
 2. Refresh https://test.bakeandgrill.mv/
 3. Optional: `tail -f ~/self-update-test.log` on the server
 
+## Clone LIVE data → TEST (catalog, CMS, photos)
+
+When you want real menu photos and live content on TEST for QA:
+
+```bash
+CONFIRM=1 bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/clone-live-to-test.sh
+```
+
+Or in **TEST Admin → System Health** (owner only): type `CLONE FROM LIVE` and click **Clone LIVE → TEST**.
+
+- Copies LIVE MySQL → TEST MySQL (after a TEST safety dump under `~/backups/`)
+- `rsync`s `backend/storage/app/public/` (item/CMS images)
+- Does **not** overwrite TEST `.env` or code
+- Flags: `--db-only`, `--media-only`, `--keep-test-media`, `--no-backup`
+- Never available on production hosts
+
+See script header: `scripts/clone-live-to-test.sh`.
+
 ## Disable webhook
 
 Remove `TEST_DEPLOY_WEBHOOK_SECRET` from TEST `.env` and the GitHub `test` environment, then `php artisan config:cache` on the server.

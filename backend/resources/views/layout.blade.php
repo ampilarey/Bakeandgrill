@@ -277,6 +277,7 @@
         [data-theme="dark"] .site-announcement--info    { background: rgba(96,165,250,0.1); color: #93c5fd; border-bottom-color: rgba(96,165,250,0.25); }
         [data-theme="dark"] .site-announcement--warning { background: rgba(250,204,21,0.1);  color: #fde047; border-bottom-color: rgba(250,204,21,0.25); }
         [data-theme="dark"] .site-announcement--promo   { background: rgba(74,222,128,0.1);  color: #86efac; border-bottom-color: rgba(74,222,128,0.25); }
+        [data-theme="dark"] .site-announcement--alert   { background: rgba(239,68,68,0.15); color: #fca5a5; border-bottom-color: rgba(239,68,68,0.35); }
 
         .dark-toggle {
             background: var(--surface);
@@ -367,6 +368,7 @@
         .site-announcement--info    { background: #eff6ff; color: #1e40af; border-bottom: 1px solid #bfdbfe; }
         .site-announcement--warning { background: #fffbeb; color: #92400e; border-bottom: 1px solid #fcd34d; }
         .site-announcement--promo   { background: #f0fdf4; color: #166534; border-bottom: 1px solid #bbf7d0; }
+        .site-announcement--alert   { background: #dc2626; color: #ffffff; border-bottom: 1px solid #b91c1c; }
         .site-announcement__inner {
             display: inline-flex; align-items: center; gap: 0.5rem;
             text-decoration: none; color: inherit;
@@ -1726,7 +1728,8 @@
 @php
     $annText    = trim(content('announcement_text', ''));
     $annUrl     = safe_public_url((string) content('announcement_url',  '')) ?? '';
-    $annStyle   = content('announcement_style', 'info');
+    $annStyleRaw = (string) content('announcement_style', 'info');
+    $annStyle = in_array($annStyleRaw, ['info', 'warning', 'promo', 'alert'], true) ? $annStyleRaw : 'info';
     $annContentOn = filter_var(content('announcement_enabled', 'false'), FILTER_VALIDATE_BOOLEAN);
     // Surface placement (page_blocks) AND content master switch both required.
     $annShow = $annContentOn && ($showAnnouncementDesktop || $showAnnouncementMobile) && $annText !== '';
@@ -2109,15 +2112,39 @@
 
     var MALE_DV = 'މާލެ';
     var MALE_FALLBACK = { id: 102, atollLatin: 'Kaafu', nameLatin: 'Malé' };
+    var THAANA_RE = /[\u0780-\u07BF]/;
+    function isLatinLabel(value) {
+        return typeof value === 'string' && value.trim() !== '' && !THAANA_RE.test(value);
+    }
+    function pickLatin() {
+        for (var i = 0; i < arguments.length; i++) {
+            if (isLatinLabel(arguments[i])) return String(arguments[i]).trim();
+        }
+        return '';
+    }
     function isMaleLatinName(nameLatin) {
         if (!nameLatin) return false;
         return nameLatin.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z]/g,'').toLowerCase()==='male';
     }
+    function toIslandInfo(raw) {
+        if (!raw || typeof raw.id !== 'number' || !isFinite(raw.id)) return null;
+        var nameLatin = pickLatin(raw.nameLatin, raw.name_latin);
+        var atollLatin = pickLatin(raw.atollLatin, raw.atoll_latin);
+        if (nameLatin) return { id: raw.id, atollLatin: atollLatin || '', nameLatin: nameLatin };
+        if (raw.name === MALE_DV || isMaleLatinName(raw.name_latin) || raw.id === MALE_FALLBACK.id) {
+            return { id: raw.id, atollLatin: MALE_FALLBACK.atollLatin, nameLatin: MALE_FALLBACK.nameLatin };
+        }
+        return { id: raw.id, atollLatin: atollLatin, nameLatin: '' };
+    }
     function findMaleIsland(islands) {
         var male = islands.find(function(i){ return i.name===MALE_DV || isMaleLatinName(i.name_latin); });
-        return male
-            ? { id: male.id, atollLatin: male.atoll_latin||'Kaafu', nameLatin: male.name_latin||'Malé' }
-            : MALE_FALLBACK;
+        return male ? (toIslandInfo(male) || MALE_FALLBACK) : MALE_FALLBACK;
+    }
+    function resolveIslandInfo(id, islands, fallback) {
+        var hit = islands.find(function(i){ return i.id === id; });
+        if (hit) return toIslandInfo(hit) || MALE_FALLBACK;
+        if (fallback && fallback.id === id && isLatinLabel(fallback.nameLatin)) return fallback;
+        return id === MALE_FALLBACK.id ? MALE_FALLBACK : { id: id, atollLatin: '', nameLatin: '' };
     }
 
     function $$(id) { return document.getElementById(id); }
@@ -2246,7 +2273,7 @@
     }
 
     function selectIsland(isl) {
-        currentIsland = { id: isl.id, atollLatin: isl.atoll_latin||'', nameLatin: isl.name_latin||isl.name };
+        currentIsland = toIslandInfo(isl) || MALE_FALLBACK;
         try { localStorage.setItem('pt_island', JSON.stringify(currentIsland)); } catch(e){}
         prayers = null; tomorrowPrayers = null;
         loadPrayers(currentIsland.id, function(){ showBanner(currentIsland); });
@@ -2275,7 +2302,7 @@
             vis.forEach(function(isl){
                 var opt=document.createElement('div');
                 opt.className='hpt-option'+(currentIsland&&isl.id===currentIsland.id?' selected':'');
-                opt.textContent=isl.name_latin||isl.name;
+                opt.textContent=isl.name_latin||'Island';
                 opt.addEventListener('click', function(e){ e.stopPropagation(); closeDropdown(); selectIsland(isl); });
                 list.appendChild(opt);
             });
@@ -2373,11 +2400,34 @@
     function init() {
         wireEvents();
         var isl=null;
-        try{ var s=localStorage.getItem('pt_island'); if(s) isl=JSON.parse(s); }catch(e){}
+        try{ var s=localStorage.getItem('pt_island'); if(s) isl=toIslandInfo(JSON.parse(s)); }catch(e){}
+
+        function rehydrateLatin(preferredId, provisional) {
+            function applyList(list) {
+                if (!list || !list.length || preferredId == null) return;
+                allIslands = list;
+                var resolved = resolveIslandInfo(preferredId, list, provisional);
+                currentIsland = resolved;
+                try { localStorage.setItem('pt_island', JSON.stringify(resolved)); } catch(e){}
+                tick();
+            }
+            try {
+                var c=localStorage.getItem('pt_islands_list');
+                if(c){ applyList(JSON.parse(c)); }
+            } catch(e){}
+            fetch('/api/prayer-times/islands')
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    var list=d.islands||[];
+                    try{ localStorage.setItem('pt_islands_list', JSON.stringify(list)); }catch(e){}
+                    applyList(list);
+                }).catch(function(){});
+        }
 
         if (isl) {
             currentIsland=isl;
             loadPrayers(isl.id, function(){ showBanner(isl); });
+            rehydrateLatin(isl.id, isl);
             return;
         }
 

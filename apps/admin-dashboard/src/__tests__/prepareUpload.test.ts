@@ -6,15 +6,15 @@ import {
   prepareImageForUpload,
 } from '../utils/prepareUpload';
 
-const heic2any = vi.hoisted(() => vi.fn());
+const heicTo = vi.hoisted(() => vi.fn());
 
-vi.mock('heic2any', () => ({
-  default: (...args: unknown[]) => heic2any(...args),
+vi.mock('heic-to/csp', () => ({
+  heicTo: (...args: unknown[]) => heicTo(...args),
 }));
 
 describe('prepareImageForUpload', () => {
   beforeEach(() => {
-    heic2any.mockReset();
+    heicTo.mockReset();
     // Force the Image fallback path with a fast reject for undecodable stubs.
     vi.stubGlobal('createImageBitmap', undefined);
   });
@@ -31,9 +31,9 @@ describe('prepareImageForUpload', () => {
     expect(isHeicFile(new File([new Uint8Array([1])], 'a.jpg', { type: 'image/jpeg' }))).toBe(false);
   });
 
-  it('converts HEIC to JPEG via heic2any', async () => {
+  it('converts HEIC to JPEG via heic-to when native decode is unavailable', async () => {
     const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff]);
-    heic2any.mockResolvedValue(new Blob([jpegBytes], { type: 'image/jpeg' }));
+    heicTo.mockResolvedValue(new Blob([jpegBytes], { type: 'image/jpeg' }));
 
     class FailImage {
       onload: (() => void) | null = null;
@@ -51,9 +51,35 @@ describe('prepareImageForUpload', () => {
     const input = new File([new Uint8Array([1, 2, 3])], 'IMG_0001.heic', { type: '' });
     const out = await prepareImageForUpload(input);
 
-    expect(heic2any).toHaveBeenCalledOnce();
+    expect(heicTo).toHaveBeenCalledOnce();
     expect(out.type).toBe('image/jpeg');
     expect(out.name).toBe('IMG_0001.jpg');
+  });
+
+  it('uses native createImageBitmap for HEIC when available (Safari path)', async () => {
+    const drawImage = vi.fn();
+    const close = vi.fn();
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({
+      width: 100,
+      height: 80,
+      close,
+    })));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      fillStyle: '',
+      fillRect: vi.fn(),
+      drawImage,
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((cb: BlobCallback) => {
+      cb(new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }));
+    });
+
+    const input = new File([new Uint8Array([1])], 'shot.heic', { type: 'image/heic' });
+    const out = await prepareImageForUpload(input);
+
+    expect(heicTo).not.toHaveBeenCalled();
+    expect(out.type).toBe('image/jpeg');
+    expect(out.name).toBe('shot.jpg');
+    expect(close).toHaveBeenCalled();
   });
 
   it('passes small JPEG/PNG through when decode fails or already within bound', async () => {
@@ -75,14 +101,58 @@ describe('prepareImageForUpload', () => {
 
     await expect(prepareImageForUpload(jpeg)).resolves.toBe(jpeg);
     await expect(prepareImageForUpload(png)).resolves.toBe(png);
-    expect(heic2any).not.toHaveBeenCalled();
+    expect(heicTo).not.toHaveBeenCalled();
   });
 
   it('throws a friendly error when conversion fails', async () => {
-    heic2any.mockRejectedValue(new Error('decode failed'));
+    heicTo.mockRejectedValue(new Error('decode failed'));
+    class FailImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_v: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    vi.stubGlobal('Image', FailImage as unknown as typeof Image);
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:fake',
+      revokeObjectURL: () => undefined,
+    });
     const input = new File([new Uint8Array([1])], 'bad.heic', { type: 'image/heic' });
 
     await expect(prepareImageForUpload(input)).rejects.toThrow(IPHONE_HEIC_ERROR);
+  });
+
+  it('throws a friendly error when HEIC conversion hangs past timeout', async () => {
+    vi.useFakeTimers();
+    heicTo.mockImplementation(() => new Promise(() => { /* never settles */ }));
+    class FailImage {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      set src(_v: string) {
+        queueMicrotask(() => this.onerror?.());
+      }
+    }
+    vi.stubGlobal('Image', FailImage as unknown as typeof Image);
+    vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:fake',
+      revokeObjectURL: () => undefined,
+    });
+    const input = new File([new Uint8Array([1])], 'slow.heic', { type: 'image/heic' });
+
+    const pending = prepareImageForUpload(input);
+    const assertion = expect(pending).rejects.toThrow(IPHONE_HEIC_ERROR);
+    // Native path times out first (~13s), then WASM path at 45s.
+    await vi.advanceTimersByTimeAsync(60_000);
+    await assertion;
+    vi.useRealTimers();
+  });
+
+  it('skips non-image files without calling heic-to', async () => {
+    const pdf = new File([new Uint8Array([1])], 'doc.pdf', { type: 'application/pdf' });
+    const out = await prepareImageForUpload(pdf);
+    expect(out).toBe(pdf);
+    expect(heicTo).not.toHaveBeenCalled();
   });
 
   it('downscales images larger than MASTER_MAX_EDGE', async () => {

@@ -9,6 +9,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentCommissionExpenseService
 {
@@ -22,6 +23,11 @@ class PaymentCommissionExpenseService
 
     public function syncForPayment(Payment $payment): ?Expense
     {
+        // Guard mid-migration / older DBs: expenses.payment_id lands in a later migration.
+        if (! Schema::hasColumn('expenses', 'payment_id')) {
+            return null;
+        }
+
         $payment->refresh();
 
         if ($payment->commission_channel === null || (int) $payment->commission_laar <= 0) {

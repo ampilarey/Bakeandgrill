@@ -454,6 +454,21 @@ class OrderCreationController extends Controller
         $order = Order::findOrFail($id);
 
         if ($visibility->staffCanViewFullOrder($user, $order)) {
+            // Settle stuck BML charges when staff opens the ticket (TEST often
+            // misses webhooks; return URL may have failed closed).
+            $looksPaid = $order->paid_at !== null
+                || $order->payment_status === 'paid'
+                || in_array($order->status, ['paid', 'completed'], true);
+            if (! $looksPaid) {
+                try {
+                    app(\App\Domains\Payments\Services\PaymentService::class)
+                        ->reconcilePendingBmlPayment($order);
+                } catch (\Throwable) {
+                    // Non-blocking — drawer still loads.
+                }
+                $order->refresh();
+            }
+
             $order->load(['items.modifiers', 'payments', 'customer', 'table', 'user:id,name', 'device:id,name,identifier', 'shift:id,opened_at']);
 
             return response()->json(['order' => $order]);

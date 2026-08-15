@@ -123,8 +123,10 @@ only the blocks that app actually uses. No toggle, no mode, no decision to make.
 Business Details (`/business-details`) edits the shared business record for invoices / receipts /
 signage / SMS. It never writes website or order_app.
 
-Mismatch notices (`ContentScopeMismatch`) tell the owner when the 13 business facts + 6 brand
-assets disagree across the three scopes. Notice only — no sync button.
+Mismatch notices (`ContentScopeMismatch`) tell the owner when independently scoped
+brand/marketing facts disagree across the three scopes. Business Details–owned identity
+keys (phone, email, address, site_name, …) are excluded — those always resolve from shared.
+Notice only — no sync button.
 
 ---
 
@@ -208,7 +210,8 @@ change it on the order app. That must be said in the interface, not discovered.
 - A key with an app-scoped `"[]"` today keeps showing nothing after migration.
 - Locale: a key with a `dv` value on shared only ends up with `dv` values on both apps.
 - Cache: change a value, confirm the other app is unaffected and that neither serves a stale read.
-- Mismatch notices cover the 19 keys and never page wording (`ContentScopeMismatchTest`).
+- Mismatch notices cover independently scoped brand/marketing facts and never page wording
+  or Business Details–owned identity keys (`ContentScopeMismatchTest`).
 
 ---
 
@@ -244,8 +247,10 @@ apps). Snapshot still 0 diffs. Five non-app consumers covered by
 **Stage 5 — Two sections in the admin.** ✅ Shipped as Stage A above.
 
 **Stage 6 — The mismatch notice + Business Details.** ✅ Shipped as Stages B + D above.
-`ContentScopeMismatch` covers the 13 business facts + 6 brand assets on Website Content, Order
-App Content, and Business Details. No sync control.
+`ContentScopeMismatch` covers independently scoped brand/marketing facts (tagline, delivery
+time copy, menu_new_days, brand assets) on Website Content, Order App Content, and Business
+Details. Business Details–owned identity/contact keys are excluded after the ownership audit
+(leftover app-scoped rows are integrity cleanup, not live values). No sync control.
 
 **Stage 7 — Page blocks + Home editor + remaining leaks.** ✅ Shipped on
 `cursor/complete-content-app-separation-d038`:

@@ -3,7 +3,7 @@ import { Crop, Images, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
 import { Input } from '../../components/Layout';
 import { MediaPicker } from '../../components/MediaPicker';
-import type { MediaAsset } from '../../api/media';
+import { findMediaByUrl, type MediaAsset } from '../../api/media';
 import {
   CATEGORY_BANNER_ASPECT,
   CATEGORY_BANNER_HEIGHT,
@@ -142,6 +142,25 @@ export function ImageUploadField({
     setUploading(true);
     setUploadError('');
     try {
+      // If this image is already a Media Library asset, replace that asset so every
+      // place using it updates — do not silently detach into a new menu/ copy.
+      const linked = value.trim() ? await findMediaByUrl(value.trim()).catch(() => null) : null;
+      if (linked) {
+        const { replaceMediaFile } = await import('../../api/media');
+        const result = await replaceMediaFile(linked.id, file);
+        const asset = result.asset;
+        onChange({
+          url: asset.url,
+          original_url: asset.original_url || '',
+          thumb_url: asset.thumb_url || '',
+          image_webp_url: asset.image_webp_url || '',
+          thumb_webp_url: asset.thumb_webp_url || '',
+        });
+        setPreviewKey((k) => k + 1);
+        closeCropper();
+        return;
+      }
+
       const res = await uploadMenuImage(file, pendingMaster ?? undefined, cfg.purpose);
       if (!res.url) throw new Error('Upload succeeded but no image URL was returned.');
       onChange({

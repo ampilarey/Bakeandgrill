@@ -964,60 +964,65 @@ export function useOrderCreation(params: Params) {
     // ─── Pending-payment retry ────────────────────────────────────
     // createOrder already succeeded; Confirm must NOT create another order.
     if (pendingPaymentForOrderId !== null) {
-      setIsSubmitting(true);
-      try {
-        const snapshot = pendingPaymentSnapshot;
-        const matched = snapshot && snapshot.orderId === pendingPaymentForOrderId;
-        const totalDue = matched ? snapshot.totalDue : params.cartTotal;
-        // Prefer current overlay tender rows (cashier may have corrected them).
-        const retryRows = paymentSnapshot;
-        const orderId = pendingPaymentForOrderId;
+      const snapshot = pendingPaymentSnapshot;
+      const matched = snapshot && snapshot.orderId === pendingPaymentForOrderId;
+      const snapDue = matched ? snapshot.totalDue : params.cartTotal;
+      // Stale zero-due retry with a live cart → abandon retry and create anew.
+      if (!(snapDue <= 0 && params.cartTotal > 0)) {
+        setIsSubmitting(true);
+        try {
+          const totalDue = snapDue;
+          // Prefer current overlay tender rows (cashier may have corrected them).
+          const retryRows = paymentSnapshot;
+          const orderId = pendingPaymentForOrderId;
 
-        // Discount may still need approval if the first create omitted it.
-        let settleTotal = totalDue > 0 ? totalDue : 0;
-        if (approvalNeeded) {
-          const approved = await runDiscountApprovalFlow(orderId, discountAmt);
-          if (!approved) {
-            flashError("Discount approval cancelled.");
-            return false;
+          // Discount may still need approval if the first create omitted it.
+          let settleTotal = totalDue > 0 ? totalDue : 0;
+          if (approvalNeeded) {
+            const approved = await runDiscountApprovalFlow(orderId, discountAmt);
+            if (!approved) {
+              flashError("Discount approval cancelled.");
+              return false;
+            }
+            settleTotal = approved.total;
           }
-          settleTotal = approved.total;
-        }
 
-        const settled = await settleOrder(orderId, settleTotal, retryRows);
-        if (settled) {
-          const cid = params.customerId;
-          const cphone = params.customerPhone;
-          const settledType = resumedOrderType ?? mapOrderType(params.orderType);
-          setResumedOrderId(null);
-          setResumedOrderTotal(null);
-          setResumedItemsFingerprint(null);
-          setResumedFromStatus(null);
-          setIsEditingActive(false);
-          setResumedIsPaid(false);
-          setResumedOrderLabel(null);
-          setResumedOrderType(null);
-          setResumedTableId(null);
-          setResumedDeliveryFingerprint(null);
-          setResumedDiscountBaseline("");
-          setResumedStaffUserId(null);
-          params.clearCart();
-          params.setSelectedItem(null);
-          setLastCreatedOrderId(null);
-          params.onOrderSettled?.(
-            orderId,
-            cid,
-            cphone,
-            settledType,
-            paidOnCreditFromRows(retryRows),
-            creditPartialLabel(retryRows),
-            lastCreditBalanceRef.current,
-          );
+          const settled = await settleOrder(orderId, settleTotal, retryRows);
+          if (settled) {
+            const cid = params.customerId;
+            const cphone = params.customerPhone;
+            const settledType = resumedOrderType ?? mapOrderType(params.orderType);
+            setResumedOrderId(null);
+            setResumedOrderTotal(null);
+            setResumedItemsFingerprint(null);
+            setResumedFromStatus(null);
+            setIsEditingActive(false);
+            setResumedIsPaid(false);
+            setResumedOrderLabel(null);
+            setResumedOrderType(null);
+            setResumedTableId(null);
+            setResumedDeliveryFingerprint(null);
+            setResumedDiscountBaseline("");
+            setResumedStaffUserId(null);
+            params.clearCart();
+            params.setSelectedItem(null);
+            setLastCreatedOrderId(null);
+            params.onOrderSettled?.(
+              orderId,
+              cid,
+              cphone,
+              settledType,
+              paidOnCreditFromRows(retryRows),
+              creditPartialLabel(retryRows),
+              lastCreditBalanceRef.current,
+            );
+          }
+          return settled;
+        } finally {
+          setIsSubmitting(false);
         }
-        return settled;
-      } finally {
-        setIsSubmitting(false);
       }
+      clearPendingPayment();
     }
 
     // ─── Resumed-ticket path ──────────────────────────────────────

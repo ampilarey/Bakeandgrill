@@ -58,12 +58,13 @@ class SecurityHeaders
 
         if ($request->is('admin', 'admin/', 'admin/*')) {
             // data: + blob: required for menu image crop/preview
+            // worker-src blob: required for HEIC→JPEG conversion (heic-to / libheif wasm worker)
             // Fonts are self-hosted under /fonts/ — no Google Fonts hosts.
-            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;";
+            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;";
         }
 
         if ($request->is('pos', 'pos/*')) {
-            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self';";
+            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;";
         }
 
         if ($request->is('order', 'order/*')) {

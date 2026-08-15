@@ -110,6 +110,97 @@ class MediaLibraryControllerTest extends TestCase
         $this->assertNull(Media::find($media->id));
     }
 
+    public function test_delete_removes_webp_and_versions_so_reconcile_cannot_resurrect(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+
+        Storage::disk('public')->put('library/images/hero.jpg', 'jpeg-bytes');
+        Storage::disk('public')->put('library/images/hero.webp', 'webp-bytes');
+        Storage::disk('public')->put('library/images/thumbs/hero.jpg', 'thumb-bytes');
+        Storage::disk('public')->put('library/images/masters/hero.jpg', 'master-bytes');
+        Storage::disk('public')->put('library/versions/1/backup.jpg', 'backup-bytes');
+
+        $media = Media::create([
+            'disk' => 'public',
+            'path' => 'library/images/hero.jpg',
+            'media_type' => 'image',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 10,
+            'source' => 'library',
+            'title' => 'hero',
+            'thumb_url' => '/storage/library/images/thumbs/hero.jpg',
+            'original_url' => '/storage/library/images/masters/hero.jpg',
+            'image_webp_url' => '/storage/library/images/hero.webp',
+            'thumb_webp_url' => '/storage/library/images/thumbs/hero.webp',
+        ]);
+        // Match version dir to the real asset id after create.
+        Storage::disk('public')->put('library/versions/' . $media->id . '/backup.jpg', 'backup-bytes');
+
+        $this->deleteJson("/api/admin/media/{$media->id}")->assertOk();
+        $this->assertNull(Media::find($media->id));
+
+        $this->assertFalse(Storage::disk('public')->exists('library/images/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/hero.webp'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/thumbs/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/images/masters/hero.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/versions/' . $media->id . '/backup.jpg'));
+
+        // Leftover version/webp paths must not re-enter the catalog.
+        Storage::disk('public')->put('library/images/orphan.webp', 'webp-bytes');
+        Storage::disk('public')->put('library/versions/999/old.jpg', 'old');
+
+        $this->postJson('/api/admin/media/reconcile')
+            ->assertOk()
+            ->assertJsonPath('created', 0);
+
+        $this->assertSame(0, Media::count());
+    }
+
+    public function test_bulk_delete_removes_multiple_and_respects_force(): void
+    {
+        Sanctum::actingAs($this->owner, ['staff']);
+        Storage::disk('public')->put('library/a.jpg', 'a');
+        Storage::disk('public')->put('library/b.jpg', 'b');
+        Storage::disk('public')->put('menu/used.jpg', 'u');
+
+        $a = Media::create($this->assetAttrs('library/a.jpg', 'image'));
+        $b = Media::create($this->assetAttrs('library/b.jpg', 'image'));
+        $used = Media::create($this->assetAttrs('menu/used.jpg', 'image'));
+
+        $category = Category::create(['name' => 'Food', 'slug' => 'food-ml-bulk', 'is_active' => true]);
+        Item::create([
+            'category_id' => $category->id,
+            'name' => 'Burger',
+            'base_price' => 10,
+            'sku' => 'BURGER-ML-BULK',
+            'is_active' => true,
+            'is_available' => true,
+            'image_url' => $used->url,
+        ]);
+
+        $res = $this->postJson('/api/admin/media/bulk-delete', [
+            'ids' => [$a->id, $b->id, $used->id],
+            'force' => false,
+        ])->assertOk();
+
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $res->json('deleted'));
+        $this->assertCount(1, $res->json('blocked'));
+        $this->assertSame($used->id, $res->json('blocked.0.id'));
+        $this->assertNull(Media::find($a->id));
+        $this->assertNull(Media::find($b->id));
+        $this->assertNotNull(Media::find($used->id));
+        $this->assertFalse(Storage::disk('public')->exists('library/a.jpg'));
+        $this->assertFalse(Storage::disk('public')->exists('library/b.jpg'));
+
+        $this->postJson('/api/admin/media/bulk-delete', [
+            'ids' => [$used->id],
+            'force' => true,
+        ])->assertOk()->assertJsonPath('deleted.0', $used->id);
+
+        $this->assertNull(Media::find($used->id));
+        $this->assertFalse(Storage::disk('public')->exists('menu/used.jpg'));
+    }
+
     public function test_permission_gates(): void
     {
         Sanctum::actingAs($this->staff, ['staff']);

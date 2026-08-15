@@ -186,9 +186,14 @@ export function CartDrawer({
   });
   const canCheckout = canCheckoutProp ?? derivedCta.canCheckout;
   const checkoutForTomorrow = checkoutForTomorrowProp ?? derivedCta.checkoutForTomorrow;
-  /** Closed + cart not yet tomorrow-eligible → short tip instead of a long duplicate banner. */
-  const showClosedTomorrowTip = !isOpen && cart.length > 0 && !checkoutForTomorrow;
   const blockingTomorrowCount = !isOpen ? cart.filter((e) => !e.item?.allow_pre_order).length : 0;
+  /** Hours closed + mixed cart → tip to remove blockers for tomorrow. */
+  const showClosedTomorrowTip = !isOpen && cart.length > 0 && !checkoutForTomorrow && blockingTomorrowCount > 0;
+  const closedButtonLabel = showClosedTomorrowTip
+    ? t('cart.closed_cta_short')
+    : (closedMessage?.trim() || t('cart.closed_cta'));
+  const closedButtonMultiline = !checkoutForTomorrow && !isOpen && !showClosedTomorrowTip
+    && closedButtonLabel.length > 28;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.5rem' : '1rem' }}>
@@ -430,13 +435,15 @@ export function CartDrawer({
             marginTop: '1rem',
             width: '100%',
             minHeight: 44,
-            padding: '0.875rem',
+            padding: closedButtonMultiline ? '0.75rem 0.85rem' : '0.875rem',
             background: canCheckout ? 'var(--color-primary)' : 'var(--color-text-muted)',
             color: 'white',
             border: 'none',
             borderRadius: '12px',
-            fontSize: '0.95rem',
+            fontSize: closedButtonMultiline ? '0.82rem' : '0.95rem',
             fontWeight: 700,
+            lineHeight: closedButtonMultiline ? 1.35 : 1.2,
+            whiteSpace: closedButtonMultiline ? 'normal' : undefined,
             cursor: canCheckout ? 'pointer' : 'not-allowed',
             transition: 'background 0.15s',
           }}
@@ -446,9 +453,7 @@ export function CartDrawer({
           {checkoutForTomorrow
             ? `${t('cart.checkout_tomorrow')} — MVR ${cartTotal.toFixed(2)} →`
             : !isOpen
-              ? (showClosedTomorrowTip
-                ? t('cart.closed_cta_short')
-                : (closedMessage?.trim() || t('cart.closed_cta_short')))
+              ? closedButtonLabel
               : cart.length === 0
                 ? t('cart.add_items_cta')
                 : `${t('cart.checkout')} — MVR ${cartTotal.toFixed(2)} →`}

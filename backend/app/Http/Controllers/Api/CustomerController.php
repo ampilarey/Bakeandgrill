@@ -526,6 +526,22 @@ class CustomerController extends Controller
             ->with(['items.modifiers', 'items.item', 'payments', 'reservation.table'])
             ->findOrFail($id);
 
+        // Recovery: BML may have charged while return-URL/webhook never settled us.
+        // Same path gift-card purchaseStatus uses — ask the gateway when still unpaid.
+        $looksPaid = $order->paid_at !== null
+            || $order->payment_status === 'paid'
+            || in_array($order->status, ['paid', 'completed'], true);
+        if (! $looksPaid) {
+            try {
+                app(\App\Domains\Payments\Services\PaymentService::class)
+                    ->reconcilePendingBmlPayment($order);
+            } catch (\Throwable) {
+                // Leave unpaid; client can retry / show pending.
+            }
+            $order->refresh();
+            $order->load(['items.modifiers', 'items.item', 'payments', 'reservation.table']);
+        }
+
         $loyaltyPointsEarned = (int) LoyaltyLedger::query()
             ->where('order_id', $order->id)
             ->where('customer_id', $customer->id)

@@ -16,10 +16,12 @@ class InvoicePageController extends Controller
         $invoice = $this->loadAndHeal($token);
         $page = InvoicePagePresenter::present($invoice);
 
-        return view('invoice', [
-            'invoice' => $invoice,
-            'page' => $page,
-        ]);
+        return response()
+            ->view('invoice', [
+                'invoice' => $invoice,
+                'page' => $page,
+            ])
+            ->header('Cache-Control', 'private, max-age=15, must-revalidate');
     }
 
     public function pdf(string $token)

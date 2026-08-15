@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 149,
+        "page_count_keys": 152,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -143,11 +143,14 @@
                     "offers_headline",
                     "offers_subtext",
                     "order_mode_delivery_hint",
+                    "order_mode_delivery_image",
                     "order_mode_delivery_info",
                     "order_mode_dine_in_hint",
+                    "order_mode_dine_in_image",
                     "order_mode_dine_in_info",
                     "order_mode_learn_more",
                     "order_mode_pickup_hint",
+                    "order_mode_pickup_image",
                     "order_mode_pickup_info",
                     "order_mode_status_available",
                     "order_mode_status_unavailable",
@@ -205,7 +208,10 @@
                     "order_mode_pickup_info": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
                     "order_mode_status_available": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
                     "order_mode_status_unavailable": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
-                    "order_mode_status_unavailable_opens": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+                    "order_mode_status_unavailable_opens": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_delivery_image": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_pickup_image": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter",
+                    "order_mode_dine_in_image": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
                 },
                 "notes": "Composable via page_blocks. Order = DB position / order_desktop / order_mobile for surface home. Walker maps block_type → partials/home/{type}. mode_cards reads order_mode_* via ModeEntryCardsPresenter (not literal content() in blade). Events & Catering has no standalone website page — events_section_* render in home events_band only. Menu URL redirects to /order/menu."
             },
@@ -1436,11 +1442,32 @@
                 "label": "New items window (days)",
                 "group": "Menu",
                 "renderer": "n/a — no website Blade; Order App /view + Signage"
+            },
+            "order_mode_delivery_image": {
+                "page": "home",
+                "order": 53,
+                "label": "Delivery mode card photo",
+                "group": "Home",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_pickup_image": {
+                "page": "home",
+                "order": 54,
+                "label": "Pickup mode card photo",
+                "group": "Home",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "order_mode_dine_in_image": {
+                "page": "home",
+                "order": 55,
+                "label": "Eat here mode card photo",
+                "group": "Home",
+                "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
             }
         }
     },
     "order_app": {
-        "page_count_keys": 88,
+        "page_count_keys": 91,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (shell chrome)",
@@ -1549,8 +1576,11 @@
                     "order_home_greeting_named",
                     "order_home_greeting_sub",
                     "order_mode_delivery_hint",
+                    "order_mode_delivery_image",
                     "order_mode_pickup_hint",
+                    "order_mode_pickup_image",
                     "order_mode_dine_in_hint",
+                    "order_mode_dine_in_image",
                     "order_mode_delivery_info",
                     "order_mode_pickup_info",
                     "order_mode_dine_in_info",
@@ -1602,7 +1632,10 @@
                     "order_hours_closed": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
                     "order_hours_closed_opens": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
                     "order_hours_open": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
-                    "order_hours_open_closes": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+                    "order_hours_open_closes": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_delivery_image": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_pickup_image": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*",
+                    "order_mode_dine_in_image": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
                 }
             },
             "menu": {
@@ -2343,6 +2376,27 @@
                 "label": "Business Website",
                 "group": "Contact",
                 "renderer": "SignagePage.tsx:606 and :640 — settings.business_website via useSiteSettingsContext (ContentResolver::for(order_app)->allPublic())"
+            },
+            "order_mode_delivery_image": {
+                "page": "home",
+                "order": 37,
+                "label": "Delivery mode card photo",
+                "group": "Home",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_pickup_image": {
+                "page": "home",
+                "order": 38,
+                "label": "Pickup mode card photo",
+                "group": "Home",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "order_mode_dine_in_image": {
+                "page": "home",
+                "order": 39,
+                "label": "Eat here mode card photo",
+                "group": "Home",
+                "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
             }
         }
     },

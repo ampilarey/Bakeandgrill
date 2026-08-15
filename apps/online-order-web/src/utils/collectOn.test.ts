@@ -50,6 +50,27 @@ describe('collectOn helpers', () => {
     });
   });
 
+  it('cartCheckoutCta: service kill switch blocks even with allow_pre_order', () => {
+    expect(cartCheckoutCta({
+      shopOpen: false,
+      orderingEnabled: false,
+      lines: [{ allow_pre_order: true }],
+    })).toEqual({ canCheckout: false, checkoutForTomorrow: false });
+    expect(cartCheckoutCta({
+      shopOpen: true,
+      orderingEnabled: false,
+      lines: [{ allow_pre_order: true }],
+    })).toEqual({ canCheckout: false, checkoutForTomorrow: false });
+  });
+
+  it('cartCheckoutCta: tomorrow ordering off blocks closed-shop path', () => {
+    expect(cartCheckoutCta({
+      shopOpen: false,
+      tomorrowOrderingEnabled: false,
+      lines: [{ allow_pre_order: true }],
+    })).toEqual({ canCheckout: false, checkoutForTomorrow: false });
+  });
+
   it('defaults to tomorrow when the shop is closed and the cart allows it', () => {
     expect(defaultCollectOn({
       shopOpen: false,

@@ -32,4 +32,29 @@ return [
         explode(',', (string) env('TEST_DEPLOY_ALLOWED_HOSTS', 'test.bakeandgrill.mv')),
     ))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Clone LIVE → TEST (admin button)
+    |--------------------------------------------------------------------------
+    |
+    | Owner-only. Never enable on production. Hosts must match TEST.
+    |
+    */
+
+    'clone_live_to_test' => [
+        'enabled' => (bool) env('CLONE_LIVE_TO_TEST_ENABLED', true),
+        'home' => env('CLONE_LIVE_TO_TEST_HOME', '/home/bakeandgrill'),
+        'allowed_hosts' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CLONE_LIVE_TO_TEST_ALLOWED_HOSTS', 'test.bakeandgrill.mv')),
+        ))),
+        'blocked_hosts' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env(
+                'CLONE_LIVE_TO_TEST_BLOCKED_HOSTS',
+                'bakeandgrill.mv,www.bakeandgrill.mv',
+            )),
+        ))),
+    ],
+
 ];

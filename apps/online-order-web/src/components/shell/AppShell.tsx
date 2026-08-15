@@ -48,16 +48,19 @@ function AppShellChrome() {
     info: 'var(--color-primary-light)',
     warning: 'var(--color-warning-bg)',
     promo: 'var(--color-success-bg)',
+    alert: '#dc2626',
   };
   const annColorMap: Record<string, string> = {
     info: 'var(--color-primary)',
     warning: 'var(--color-warning)',
     promo: 'var(--color-success)',
+    alert: '#ffffff',
   };
   const annBorderMap: Record<string, string> = {
     info: 'var(--color-primary-light)',
     warning: 'var(--color-warning-bg)',
     promo: 'var(--color-success-bg)',
+    alert: '#b91c1c',
   };
 
   const shellClass = [

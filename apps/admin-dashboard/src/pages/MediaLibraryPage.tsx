@@ -3,12 +3,12 @@ import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import {
   Check, ChevronLeft, ChevronRight, Clapperboard, Copy, Crop, Download, FileText, Film,
-  FlipHorizontal2, FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw,
+  FlipHorizontal2, FlipVertical2, Folder, Image, Images, Music, Pencil, Plus, RefreshCw, Replace,
   RotateCcw, RotateCw, Search, Sliders, Trash2, Upload, X,
 } from 'lucide-react';
 import {
-  assignMediaCollections, createMediaCollection, deleteMedia, deleteMediaCollection,
-  editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia,
+  assignMediaCollections, bulkDeleteMedia, createMediaCollection, deleteMedia, deleteMediaCollection,
+  editMedia, getMedia, getMediaCollections, getMediaUsage, reconcileMedia, replaceMediaFile,
   restoreMedia, updateMedia, updateMediaCollection, uploadMedia, useMediaAs,
   type MediaAsset, type MediaCollection, type MediaEditOp,
   type MediaEditResult, type MediaPaginationMeta, type MediaType, type MediaUsageItem,
@@ -24,6 +24,7 @@ import {
   buildRotateParams,
   computeResizeOutputSize,
   cropParamsFromArea,
+  cropSourceUrl,
   exportMediaAsset,
   isCropReady,
   isRotateReady,
@@ -202,36 +203,72 @@ function TagInput({ value, onChange }: { value: string[]; onChange: (v: string[]
 // ─── Asset thumb card ─────────────────────────────────────────────────────────
 
 function AssetCard({
-  asset, selected, onClick,
-}: { asset: MediaAsset; selected: boolean; onClick: () => void }) {
+  asset, detailSelected, checked, onOpen, onToggleCheck, canManage,
+}: {
+  asset: MediaAsset;
+  detailSelected: boolean;
+  checked: boolean;
+  onOpen: () => void;
+  onToggleCheck: () => void;
+  canManage: boolean;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       data-testid={`asset-card-${asset.id}`}
       style={{
-        border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-        borderRadius: 10, padding: 0, background: selected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
-        cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', overflow: 'hidden',
+        border: detailSelected || checked ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+        borderRadius: 10, padding: 0, background: checked || detailSelected ? 'var(--color-warning-bg)' : 'var(--color-bg)',
+        textAlign: 'left', overflow: 'hidden',
         position: 'relative',
-        boxShadow: selected ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
+        boxShadow: detailSelected || checked ? '0 0 0 2px rgba(212,129,58,0.2)' : 'none',
       }}
     >
-      <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <AssetThumb asset={asset} />
-      </div>
-      <div style={{ padding: '6px 8px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
+      {canManage && (
+        <label
+          data-testid={`asset-check-${asset.id}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 6, left: 6, zIndex: 2,
+            width: 28, height: 28, minWidth: 28, minHeight: 28,
+            borderRadius: 8, background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: '0 1px 2px rgba(28,20,8,0.08)',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggleCheck}
+            aria-label={`Select ${asset.title || `asset ${asset.id}`}`}
+            style={{ width: 16, height: 16, accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+          />
+        </label>
+      )}
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          display: 'block', width: '100%', border: 'none', padding: 0, margin: 0,
+          background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+        }}
+      >
+        <div style={{ width: '100%', aspectRatio: '4 / 3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <AssetThumb asset={asset} />
         </div>
-        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
-      </div>
-      {selected && (
+        <div style={{ padding: '6px 8px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
+        </div>
+      </button>
+      {detailSelected && !checked && (
         <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Check size={12} style={{ color: '#fff' }} />
         </div>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -262,7 +299,7 @@ function CropEditPanel({
   const [cropPos, setCropPos] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [aspect, setAspect] = useState<number | undefined>(undefined);
-  const imageSrc = asset?.url ? mediaPreviewSrc(asset.url, asset) : '';
+  const imageSrc = asset ? mediaPreviewSrc(cropSourceUrl(asset), asset) : '';
   const paramsRef = useRef(params);
   paramsRef.current = params;
   const frameH = compact ? 'min(56vh, 380px)' : 260;
@@ -281,6 +318,9 @@ function CropEditPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="media-crop-panel">
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+        Frame the area to keep. Crop runs on the full master photo so the saved region matches what you see.
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }} role="group" aria-label="Crop aspect ratio">
         {CROP_ASPECTS.map(({ label, value }) => (
           <button
@@ -769,14 +809,18 @@ export function MediaLibraryPage() {
 
   // Upload
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploadCollectionId, setUploadCollectionId] = useState<number | ''>('');
   const [uploadResults, setUploadResults] = useState<Array<{ name: string; deduped: boolean }>>([]);
+  const [replacingFile, setReplacingFile] = useState(false);
 
-  // Delete
-  const [deleteTarget, setDeleteTarget] = useState<MediaAsset | null>(null);
+  // Delete (single or multi-select)
+  const [checkedIds, setCheckedIds] = useState<number[]>([]);
+  const [deleteTargets, setDeleteTargets] = useState<MediaAsset[] | null>(null);
   const [forceDelete, setForceDelete] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -817,6 +861,9 @@ export function MediaLibraryPage() {
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [activeType, activeCollection, search]);
+
+  // Clear multi-select when the visible page/filter set changes
+  useEffect(() => { setCheckedIds([]); }, [activeType, activeCollection, search, page]);
 
   // ─── Detail drawer helpers ────────────────────────────────────────────────
 
@@ -957,17 +1004,45 @@ export function MediaLibraryPage() {
     }
   };
 
+  const handleReplaceFile = async (files: FileList | null) => {
+    if (!selected || !files || files.length === 0) return;
+    const file = files[0];
+    setReplacingFile(true);
+    setEditError('');
+    setEditResult(null);
+    try {
+      const result = await replaceMediaFile(selected.id, file);
+      const next = { ...result.asset, usage_count: selected.usage_count };
+      setSelected(next);
+      setAssets((prev) => prev.map((a) => (a.id === next.id ? next : a)));
+      setCanRestore(true);
+      setEditResult(result);
+      toast.success(
+        result.updated_references > 0
+          ? `Photo replaced — updates ${result.updated_references} place${result.updated_references === 1 ? '' : 's'}`
+          : 'Photo replaced in the library. If a menu item still shows the old image, it may be a separate upload — open that item and pick this photo again, or replace from the item’s Media Library entry.',
+      );
+    } catch (e) {
+      setEditError((e as Error).message || 'Replace failed');
+    } finally {
+      setReplacingFile(false);
+      if (replaceFileInputRef.current) replaceFileInputRef.current.value = '';
+    }
+  };
+
   // ─── Upload ───────────────────────────────────────────────────────────────
 
   const doUpload = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
     setUploading(true);
+    setUploadStatus('Starting…');
     setUploadError('');
     setUploadResults([]);
     try {
       const res = await uploadMedia(fileArray, {
         collection_ids: uploadCollectionId ? [uploadCollectionId] : [],
+        onStatus: setUploadStatus,
       });
       setUploadResults(res.data.map((r) => ({
         name: r.asset.title || r.asset.url.split('/').pop() || `#${r.asset.id}`,
@@ -978,6 +1053,7 @@ export function MediaLibraryPage() {
       setUploadError((e as Error).message || 'Upload failed');
     } finally {
       setUploading(false);
+      setUploadStatus('');
     }
   };
 
@@ -1049,17 +1125,62 @@ export function MediaLibraryPage() {
     }
   };
 
-  // ─── Delete ───────────────────────────────────────────────────────────────
+  // ─── Multi-select + Delete ────────────────────────────────────────────────
+
+  const toggleChecked = (id: number) => {
+    setCheckedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const selectAllOnPage = () => {
+    setCheckedIds(assets.map((a) => a.id));
+  };
+
+  const clearChecked = () => setCheckedIds([]);
+
+  const checkedAssets = assets.filter((a) => checkedIds.includes(a.id));
+  const checkedInUseCount = checkedAssets.filter((a) => a.usage_count > 0).length;
+
+  const openBulkDelete = () => {
+    if (checkedAssets.length === 0) return;
+    setDeleteTargets(checkedAssets);
+    setDeleteError('');
+    setForceDelete(false);
+  };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTargets || deleteTargets.length === 0) return;
     setDeleting(true);
     setDeleteError('');
     try {
-      await deleteMedia(deleteTarget.id, forceDelete);
-      setAssets((prev) => prev.filter((a) => a.id !== deleteTarget.id));
-      if (selected?.id === deleteTarget.id) closeDetail();
-      setDeleteTarget(null);
+      const ids = deleteTargets.map((a) => a.id);
+      if (ids.length === 1) {
+        await deleteMedia(ids[0], forceDelete);
+        setAssets((prev) => prev.filter((a) => a.id !== ids[0]));
+        if (selected?.id === ids[0]) closeDetail();
+        setCheckedIds((prev) => prev.filter((id) => id !== ids[0]));
+      } else {
+        const res = await bulkDeleteMedia(ids, forceDelete);
+        const deletedSet = new Set(res.deleted);
+        setAssets((prev) => prev.filter((a) => !deletedSet.has(a.id)));
+        if (selected && deletedSet.has(selected.id)) closeDetail();
+        setCheckedIds((prev) => prev.filter((id) => !deletedSet.has(id)));
+        if (res.blocked.length > 0 && res.deleted.length === 0) {
+          setDeleteError(
+            `${res.blocked.length} asset${res.blocked.length === 1 ? ' is' : 's are'} in use. Enable force delete to remove them.`,
+          );
+          setDeleting(false);
+          return;
+        }
+        if (res.blocked.length > 0) {
+          setDeleteError(
+            `Deleted ${res.deleted.length}. ${res.blocked.length} still in use — enable force delete and try again.`,
+          );
+          setDeleteTargets(deleteTargets.filter((a) => res.blocked.some((b) => b.id === a.id)));
+          setDeleting(false);
+          return;
+        }
+      }
+      setDeleteTargets(null);
       setForceDelete(false);
     } catch (e) {
       setDeleteError((e as Error).message || 'Delete failed');
@@ -1073,7 +1194,9 @@ export function MediaLibraryPage() {
   const handleReconcile = async () => {
     try {
       const res = await reconcileMedia();
-      alert(`Reconciled ${res.reconciled} asset${res.reconciled === 1 ? '' : 's'}`);
+      alert(
+        `Reconcile finished: ${res.created} new, ${res.skipped} skipped, ${res.thumbs_fixed} thumbs fixed (${res.scanned} scanned)`,
+      );
       void loadAssets();
     } catch (e) {
       alert((e as Error).message || 'Reconcile failed');
@@ -1264,23 +1387,29 @@ export function MediaLibraryPage() {
           {/* Upload dropzone */}
           {canManage && (
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => { e.preventDefault(); if (!uploading) setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onDrop={(e) => { if (!uploading) onDrop(e); else e.preventDefault(); }}
+              onClick={() => { if (!uploading) fileInputRef.current?.click(); }}
               style={{
                 border: `2px dashed ${dragOver ? 'var(--color-primary)' : '#C4B5A5'}`,
-                borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center', cursor: 'pointer',
+                borderRadius: 12, padding: isMobile ? '28px 16px' : '20px 16px', textAlign: 'center',
+                cursor: uploading ? 'wait' : 'pointer',
                 background: dragOver ? 'var(--color-warning-bg)' : 'var(--color-bg)', marginBottom: 16,
                 transition: 'border-color 0.15s, background 0.15s',
                 minHeight: isMobile ? 88 : undefined,
+                opacity: uploading ? 0.85 : 1,
               }}
             >
               <Upload size={22} style={{ color: 'var(--color-text-muted)', marginBottom: 6 }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
-                {uploading ? 'Uploading…' : 'Drop files here or click to browse'}
+                {uploading ? (uploadStatus || 'Uploading…') : 'Drop files here or click to browse'}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>Images, video, audio, documents — multi-select supported</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+                {uploading
+                  ? 'Please wait — iPhone HEIC photos are converted before upload'
+                  : 'Images, video, audio, documents — multi-select supported'}
+              </div>
               {collections.length > 0 && (
                 <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
                   <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Collection:</label>
@@ -1334,19 +1463,58 @@ export function MediaLibraryPage() {
             <EmptyState message="No assets found. Upload some files to get started." />
           )}
           {!loading && assets.length > 0 && (
-            <div
-              data-testid="media-grid"
-              style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 100 : 140}px, 1fr))`, gap: 10 }}
-            >
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  selected={selected?.id === asset.id}
-                  onClick={() => openDetail(asset)}
-                />
-              ))}
-            </div>
+            <>
+              {canManage && (
+                <div
+                  data-testid="media-bulk-bar"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                    marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+                    background: checkedIds.length > 0 ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
+                  <Btn variant="secondary" small onClick={selectAllOnPage}>
+                    Select all ({assets.length})
+                  </Btn>
+                  {checkedIds.length > 0 && (
+                    <>
+                      <Btn variant="ghost" small onClick={clearChecked}>Clear</Btn>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                        {checkedIds.length} selected
+                        {checkedInUseCount > 0 ? ` · ${checkedInUseCount} in use` : ''}
+                      </span>
+                      <div style={{ marginLeft: 'auto' }}>
+                        <Btn variant="danger" small onClick={openBulkDelete}>
+                          <Trash2 size={14} /> Delete selected
+                        </Btn>
+                      </div>
+                    </>
+                  )}
+                  {checkedIds.length === 0 && (
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Tick photos to delete several at once
+                    </span>
+                  )}
+                </div>
+              )}
+              <div
+                data-testid="media-grid"
+                style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 100 : 140}px, 1fr))`, gap: 10 }}
+              >
+                {assets.map((asset) => (
+                  <AssetCard
+                    key={asset.id}
+                    asset={asset}
+                    detailSelected={selected?.id === asset.id}
+                    checked={checkedIds.includes(asset.id)}
+                    canManage={canManage}
+                    onOpen={() => openDetail(asset)}
+                    onToggleCheck={() => toggleChecked(asset.id)}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           {/* Pagination */}
@@ -1621,6 +1789,31 @@ export function MediaLibraryPage() {
               </div>
             )}
 
+            {/* Replace photo — updates every place this URL is used */}
+            {selected.media_type === 'image' && canManage && (
+              <div style={{ marginBottom: 14 }}>
+                <input
+                  ref={replaceFileInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  style={{ display: 'none' }}
+                  onChange={(e) => void handleReplaceFile(e.target.files)}
+                />
+                <Btn
+                  variant="secondary"
+                  data-testid="media-replace-file"
+                  disabled={replacingFile}
+                  onClick={() => replaceFileInputRef.current?.click()}
+                  style={{ width: '100%', minHeight: 44 }}
+                >
+                  <Replace size={14} /> {replacingFile ? 'Replacing…' : 'Replace photo everywhere'}
+                </Btn>
+                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Upload a new picture for this asset. Menu items and website blocks that use this same file (including identical copies) will be pointed at the new photo. If an item was re-uploaded as its own file, replace that item&apos;s image or pick this library photo again. You can restore the previous version after.
+                </p>
+              </div>
+            )}
+
             {/* Edit tools (images only) */}
             {selected.media_type === 'image' && canManage && (
               <div style={{ marginBottom: 14 }}>
@@ -1731,7 +1924,7 @@ export function MediaLibraryPage() {
                 {detailSaving ? 'Saving…' : 'Save'}
               </Btn>
               {canManage && (
-                <Btn variant="danger" onClick={() => { setDeleteTarget(selected); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
+                <Btn variant="danger" onClick={() => { setDeleteTargets(selected ? [selected] : null); setDeleteError(''); setForceDelete(false); }} style={{ minHeight: 44, minWidth: 44 }}>
                   <Trash2 size={14} />
                 </Btn>
               )}
@@ -1783,16 +1976,33 @@ export function MediaLibraryPage() {
         />
       ) : null}
 
-      {/* Delete confirm modal */}
-      {deleteTarget && (
-        <Modal title="Delete asset?" onClose={() => setDeleteTarget(null)} maxWidth={400}>
+      {/* Delete confirm modal (single or bulk) */}
+      {deleteTargets && deleteTargets.length > 0 && (
+        <Modal
+          title={deleteTargets.length === 1 ? 'Delete asset?' : `Delete ${deleteTargets.length} assets?`}
+          onClose={() => setDeleteTargets(null)}
+          maxWidth={400}
+        >
           <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
-            Delete <strong>{deleteTarget.title || deleteTarget.url.split('/').pop()}</strong>?
-            {deleteTarget.usage_count > 0 && (
-              <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTarget.usage_count} place{deleteTarget.usage_count === 1 ? '' : 's'}.</span>
+            {deleteTargets.length === 1 ? (
+              <>
+                Delete <strong>{deleteTargets[0].title || deleteTargets[0].url.split('/').pop()}</strong>?
+                {deleteTargets[0].usage_count > 0 && (
+                  <span style={{ color: 'var(--color-danger-strong)' }}> This asset is used in {deleteTargets[0].usage_count} place{deleteTargets[0].usage_count === 1 ? '' : 's'}.</span>
+                )}
+              </>
+            ) : (
+              <>
+                Permanently delete <strong>{deleteTargets.length}</strong> selected files from the library and disk.
+                {deleteTargets.some((a) => a.usage_count > 0) && (
+                  <span style={{ color: 'var(--color-danger-strong)' }}>
+                    {' '}{deleteTargets.filter((a) => a.usage_count > 0).length} of them are still in use.
+                  </span>
+                )}
+              </>
             )}
           </p>
-          {deleteTarget.usage_count > 0 && (
+          {deleteTargets.some((a) => a.usage_count > 0) && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
               <input type="checkbox" checked={forceDelete} onChange={(e) => setForceDelete(e.target.checked)} />
               Force delete (removes despite active references)
@@ -1800,13 +2010,13 @@ export function MediaLibraryPage() {
           )}
           {deleteError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{deleteError}</p>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Btn variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Btn>
+            <Btn variant="ghost" onClick={() => setDeleteTargets(null)}>Cancel</Btn>
             <Btn
               variant="danger"
               onClick={() => void confirmDelete()}
-              disabled={deleting || (deleteTarget.usage_count > 0 && !forceDelete)}
+              disabled={deleting || (deleteTargets.some((a) => a.usage_count > 0) && !forceDelete)}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? 'Deleting…' : deleteTargets.length === 1 ? 'Delete' : `Delete ${deleteTargets.length}`}
             </Btn>
           </div>
         </Modal>

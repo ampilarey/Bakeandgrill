@@ -8,6 +8,7 @@ vi.mock("../api", () => ({
   fetchPreparedStock: vi.fn().mockResolvedValue({ items: [] }),
   adjustPreparedStock: vi.fn(),
   fetchPosMenu: vi.fn().mockResolvedValue({ categories: [], items: [] }),
+  fetchReceipts: vi.fn().mockResolvedValue({ data: [] }),
   snoozeItem: vi.fn(),
   REFUND_REASON_CATEGORIES: [
     { value: "wrong_item", label: "Wrong item" },

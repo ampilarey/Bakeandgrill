@@ -3,6 +3,7 @@ import {
   adjustPreparedStock,
   fetchPosMenu,
   fetchPreparedStock,
+  fetchReceipts,
   snoozeItem,
   REFUND_REASON_CATEGORIES,
   type PreparedStockRow,
@@ -10,6 +11,7 @@ import {
 } from "../api";
 import type { Item } from "../types";
 import type { useOps } from "../hooks/useOps";
+import { localDateYmd } from "../utils/localDate";
 import { RefundConfirmModal } from "./RefundConfirmModal";
 
 type OpsState = ReturnType<typeof useOps>;
@@ -813,18 +815,88 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
 
   const [pendingRefund, setPendingRefund] = useState<{
     orderId: number;
+    orderLabel: string;
     amount: number;
     reason: string;
     cashOverride: boolean;
   } | null>(null);
   const [rejectId, setRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [orderQuery, setOrderQuery] = useState("");
+  const [debouncedOrderQuery, setDebouncedOrderQuery] = useState("");
+  const [orderCandidates, setOrderCandidates] = useState<Array<{
+    id: number;
+    order_number: string;
+    total: number;
+    created_at: string;
+    customer_name: string | null;
+    payment_status?: string | null;
+  }>>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const [pickedOrderLabel, setPickedOrderLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedOrderQuery(orderQuery.trim()), 250);
+    return () => window.clearTimeout(id);
+  }, [orderQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOrdersLoading(true);
+    setOrdersError("");
+    void (async () => {
+      try {
+        const res = await fetchReceipts({
+          date: localDateYmd(),
+          ...(debouncedOrderQuery ? { q: debouncedOrderQuery } : {}),
+          per_page: 25,
+          slim: true,
+        });
+        if (cancelled) return;
+        const rows = (res.data ?? [])
+          .filter((r) => r.payment_status !== "unpaid")
+          .map((r) => ({
+            id: r.id,
+            order_number: r.order_number,
+            total: Number(r.total) || 0,
+            created_at: r.created_at,
+            customer_name: r.customer?.name ?? null,
+            payment_status: r.payment_status ?? null,
+          }));
+        setOrderCandidates(rows);
+      } catch (e) {
+        if (!cancelled) {
+          setOrderCandidates([]);
+          setOrdersError((e as Error).message || "Could not load orders.");
+        }
+      } finally {
+        if (!cancelled) setOrdersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedOrderQuery]);
+
+  const pickOrder = (row: (typeof orderCandidates)[number]) => {
+    ops.setRefundOrderId(String(row.id));
+    ops.setRefundAmount(row.total > 0 ? row.total.toFixed(2) : "");
+    setPickedOrderLabel(`#${row.order_number}`);
+    ops.setOpsMessage("");
+  };
+
+  const clearPickedOrder = () => {
+    ops.setRefundOrderId("");
+    ops.setRefundAmount("");
+    setPickedOrderLabel(null);
+  };
 
   const handleRefundIntent = () => {
     const orderId = Number.parseInt(ops.refundOrderId, 10);
     const amount = Number.parseFloat(ops.refundAmount);
     if (!Number.isFinite(orderId) || orderId <= 0) {
-      ops.setOpsMessage("Enter a valid order ID.");
+      ops.setOpsMessage("Pick an order from the list (or enter a valid order ID).");
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -844,8 +916,11 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
       return;
     }
     ops.setOpsMessage("");
+    const fromList = orderCandidates.find((r) => r.id === orderId);
     setPendingRefund({
       orderId,
+      orderLabel: pickedOrderLabel
+        || (fromList ? `#${fromList.order_number}` : `Order #${orderId}`),
       amount,
       reason: ops.refundReason.trim(),
       cashOverride: ops.refundCashOverride,
@@ -859,15 +934,148 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
         subtitle="Request refunds for approval. Money moves only after an authoriser approves."
       />
 
-      <FormCard title="Request refund" help="Use the order ID from Receipts or Active orders. Amount is in MVR. Walk-in phone is only used when the order has no stored number — existing numbers cannot be changed here.">
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr 1.6fr auto", gap: 10 }}>
-          <input
-            value={ops.refundOrderId}
-            onChange={(e) => ops.setRefundOrderId(e.target.value)}
-            placeholder="Order ID"
-            inputMode="numeric"
-            style={fieldStyle}
-          />
+      <FormCard
+        title="Request refund"
+        help="Pick a sale from today’s list (search by order #, customer, or phone). Amount is in MVR. Walk-in phone is only used when the order has no stored number."
+      >
+        {pickedOrderLabel && ops.refundOrderId ? (
+          <div
+            data-testid="refund-picked-order"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 10,
+              padding: "10px 12px",
+              borderRadius: 8,
+              background: "#F0FDF4",
+              border: "1px solid #86EFAC",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                {pickedOrderLabel}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted }}>
+                Internal ID {ops.refundOrderId}
+                {ops.refundAmount ? ` · MVR ${ops.refundAmount}` : ""}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={clearPickedOrder}
+              aria-label="Clear selected order"
+              style={{
+                border: "none",
+                background: "transparent",
+                color: C.danger,
+                fontSize: 20,
+                lineHeight: 1,
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 10 }}>
+            <input
+              value={orderQuery}
+              onChange={(e) => setOrderQuery(e.target.value)}
+              placeholder="Search today’s orders (number, name, phone)…"
+              aria-label="Search orders for refund"
+              style={{ ...fieldStyle, width: "100%", marginBottom: 8 }}
+            />
+            <div
+              data-testid="refund-order-picker"
+              style={{
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                maxHeight: 200,
+                overflowY: "auto",
+                background: "#F8FAFC",
+              }}
+            >
+              {ordersLoading && (
+                <div style={{ padding: 12, fontSize: 12, color: C.muted }}>Loading orders…</div>
+              )}
+              {!ordersLoading && ordersError && (
+                <div style={{ padding: 12, fontSize: 12, color: C.danger }}>{ordersError}</div>
+              )}
+              {!ordersLoading && !ordersError && orderCandidates.length === 0 && (
+                <div style={{ padding: 12, fontSize: 12, color: C.muted }}>
+                  No matching paid orders today.
+                </div>
+              )}
+              {!ordersLoading && orderCandidates.map((row) => {
+                const time = (() => {
+                  try {
+                    return new Date(row.created_at).toLocaleTimeString(undefined, {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    });
+                  } catch {
+                    return "";
+                  }
+                })();
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => pickOrder(row)}
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 12px",
+                      border: "none",
+                      borderBottom: `1px solid ${C.border}`,
+                      background: "transparent",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
+                        #{row.order_number}
+                        {row.customer_name ? (
+                          <span style={{ fontWeight: 500, color: C.muted }}> · {row.customer_name}</span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.subtle }}>
+                        {time}
+                        {row.payment_status === "partial" ? " · partial" : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: "nowrap" }}>
+                      MVR {row.total.toFixed(2)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <details style={{ marginTop: 8 }}>
+              <summary style={{ fontSize: 12, color: C.muted, cursor: "pointer" }}>
+                Or type internal order ID
+              </summary>
+              <input
+                value={ops.refundOrderId}
+                onChange={(e) => {
+                  setPickedOrderLabel(null);
+                  ops.setRefundOrderId(e.target.value);
+                }}
+                placeholder="Order ID"
+                inputMode="numeric"
+                style={{ ...fieldStyle, width: "100%", marginTop: 8 }}
+              />
+            </details>
+          </div>
+        )}
+
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 1.6fr auto", gap: 10 }}>
           <input
             value={ops.refundAmount}
             onChange={(e) => ops.setRefundAmount(e.target.value)}
@@ -916,7 +1124,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
 
       {pendingRefund && (
         <RefundConfirmModal
-          orderLabel={`Order #${pendingRefund.orderId}`}
+          orderLabel={pendingRefund.orderLabel}
           amount={pendingRefund.amount}
           reason={pendingRefund.reason}
           cashRefundOverride={pendingRefund.cashOverride}
@@ -924,6 +1132,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
           onCancel={() => setPendingRefund(null)}
           onConfirm={() => {
             setPendingRefund(null);
+            setPickedOrderLabel(null);
             ops.handleCreateRefund();
           }}
         />

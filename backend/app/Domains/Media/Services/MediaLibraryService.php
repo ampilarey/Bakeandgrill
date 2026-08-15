@@ -33,15 +33,6 @@ final class MediaLibraryService
         'library/',
     ];
 
-    /** Derived path fragments that should not become primary catalog rows. */
-    private const DERIVED_MARKERS = [
-        '/thumbs/',
-        '/masters/',
-        '/posters/',
-        'menu-masters/',
-        'thumbs/',
-    ];
-
     public function __construct(
         private readonly MenuImageProcessor $images,
         private readonly VideoProcessor $videos,
@@ -567,10 +558,63 @@ final class MediaLibraryService
         ]);
     }
 
+    /**
+     * Remove every disk file owned by this catalog row (primary, thumbs,
+     * webp sidecars, masters, and edit-version backups). Call before delete().
+     */
+    public function purgeDiskFiles(Media $media): void
+    {
+        $disk = Storage::disk('public');
+        $paths = [];
+
+        if (is_string($media->path) && $media->path !== '') {
+            $paths[] = ltrim($media->path, '/');
+        }
+
+        foreach ([
+            $media->thumb_url,
+            $media->original_url,
+            $media->image_webp_url,
+            $media->thumb_webp_url,
+        ] as $url) {
+            $resolved = MediaFileCleaner::storagePathFromUrl(is_string($url) ? $url : null);
+            if (is_string($resolved) && $resolved !== '') {
+                $paths[] = $resolved;
+            }
+        }
+
+        $media->loadMissing('versions');
+        foreach ($media->versions as $version) {
+            $versionPath = is_string($version->path) ? ltrim($version->path, '/') : '';
+            if ($versionPath !== '') {
+                $paths[] = $versionPath;
+            }
+        }
+
+        foreach (array_values(array_unique($paths)) as $path) {
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
+
+        $versionDir = 'library/versions/' . (int) $media->id;
+        if ($disk->exists($versionDir)) {
+            $disk->deleteDirectory($versionDir);
+        }
+    }
+
     public function isDerivedPath(string $path): bool
     {
-        $path = str_replace('\\', '/', $path);
+        $path = str_replace('\\', '/', ltrim($path, '/'));
         if (str_starts_with($path, 'menu-masters/') || str_starts_with($path, 'thumbs/')) {
+            return true;
+        }
+        // Edit backups and processed WebP sidecars must never become primaries —
+        // otherwise delete+reconcile resurrects "deleted" photos from leftovers.
+        if (str_starts_with($path, 'library/versions/') || str_contains($path, '/versions/')) {
+            return true;
+        }
+        if (str_ends_with(strtolower($path), '.webp')) {
             return true;
         }
         foreach (['/thumbs/', '/masters/', '/posters/'] as $marker) {

@@ -59,6 +59,8 @@ export async function getMedia(params?: {
   q?: string;
   tag?: string;
   collection?: string;
+  /** Exact storage path or /storage/... URL — find the catalog row for a linked image. */
+  path?: string;
   page?: number;
   per_page?: number;
 }): Promise<{ data: MediaAsset[]; meta: MediaPaginationMeta }> {
@@ -68,21 +70,62 @@ export async function getMedia(params?: {
   if (params?.q) q.set('q', params.q);
   if (params?.tag) q.set('tag', params.tag);
   if (params?.collection) q.set('collection', params.collection);
+  if (params?.path) q.set('path', params.path);
   if (params?.page != null) q.set('page', String(params.page));
   if (params?.per_page != null) q.set('per_page', String(params.per_page));
   const qs = q.toString();
   return req(`/admin/media${qs ? `?${qs}` : ''}`);
 }
 
+/** Resolve a Media Library asset from a stored image URL, if it is catalogued. */
+export async function findMediaByUrl(url: string): Promise<MediaAsset | null> {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  const res = await getMedia({ path: trimmed, per_page: 1 });
+  return res.data[0] ?? null;
+}
+
 export async function uploadMedia(
   files: File[],
-  options?: { title?: string; alt_text?: string; collection_ids?: number[] },
+  options?: {
+    title?: string;
+    alt_text?: string;
+    collection_ids?: number[];
+    onStatus?: (message: string) => void;
+  },
 ): Promise<{ data: Array<{ asset: MediaAsset; deduped: boolean }> }> {
-  const { prepareImageForUpload } = await import('../utils/prepareUpload');
   const form = new FormData();
-  for (const f of files) {
-    form.append('files[]', await prepareImageForUpload(f));
+  const imageLike = files.some((f) => {
+    if ((f.type || '').startsWith('image/')) return true;
+    return /\.(jpe?g|png|webp|gif|hei[cf])$/i.test(f.name || '');
+  });
+
+  let prepare: ((file: File) => Promise<File>) | null = null;
+  if (imageLike) {
+    options?.onStatus?.('Preparing photos…');
+    const mod = await import('../utils/prepareUpload');
+    prepare = mod.prepareImageForUpload;
   }
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const label = f.name || `file ${i + 1}`;
+    const heic = /\.hei[cf]$/i.test(f.name || '') || /image\/hei[cf]/i.test(f.type || '');
+    if (prepare && heic) {
+      options?.onStatus?.(
+        files.length > 1
+          ? `Converting iPhone photo ${i + 1} of ${files.length}…`
+          : 'Converting iPhone photo…',
+      );
+    } else if (prepare && ((f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(f.name || ''))) {
+      options?.onStatus?.(
+        files.length > 1 ? `Preparing ${i + 1} of ${files.length}: ${label}` : 'Preparing image…',
+      );
+    }
+    form.append('files[]', prepare ? await prepare(f) : f);
+  }
+
+  options?.onStatus?.('Uploading…');
   if (options?.title) form.append('title', options.title);
   if (options?.alt_text) form.append('alt_text', options.alt_text);
   for (const id of options?.collection_ids ?? []) form.append('collection_ids[]', String(id));
@@ -100,7 +143,26 @@ export async function deleteMedia(id: number, force = false): Promise<void> {
   return req(`/admin/media/${id}?force=${force ? 1 : 0}`, { method: 'DELETE' });
 }
 
-export async function reconcileMedia(): Promise<{ reconciled: number }> {
+export async function bulkDeleteMedia(
+  ids: number[],
+  force = false,
+): Promise<{
+  deleted: number[];
+  blocked: Array<{ id: number; usage: MediaUsageItem[] }>;
+  missing: number[];
+}> {
+  return req('/admin/media/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids, force }),
+  });
+}
+
+export async function reconcileMedia(): Promise<{
+  scanned: number;
+  created: number;
+  skipped: number;
+  thumbs_fixed: number;
+}> {
   return req('/admin/media/reconcile', { method: 'POST', body: '{}' });
 }
 
@@ -118,6 +180,15 @@ export async function editMedia(
     method: 'POST',
     body: JSON.stringify({ op, params, mode }),
   });
+}
+
+/** Upload a new photo over an existing asset so every usage of that URL updates. */
+export async function replaceMediaFile(id: number, file: File): Promise<MediaEditResult> {
+  const { prepareImageForUpload } = await import('../utils/prepareUpload');
+  const prepared = await prepareImageForUpload(file);
+  const form = new FormData();
+  form.append('file', prepared);
+  return req(`/admin/media/${id}/replace-file`, { method: 'POST', body: form });
 }
 
 export type VideoAspect = 'original' | '16:9' | '4:5' | '1:1' | '9:16';
