@@ -36,6 +36,7 @@ export default function DeliverySettingsPage() {
   const [feeSettings, setFeeSettings] = useState<DeliveryFeeSettings | null>(null);
   const [defaultFee, setDefaultFee] = useState('30');
   const [freeThreshold, setFreeThreshold] = useState('200');
+  const [deliveryTime, setDeliveryTime] = useState('');
   const [zoneRows, setZoneRows] = useState<ZoneFeeRow[]>([]);
   const [restrictZones, setRestrictZones] = useState(false);
   const [feeSaving, setFeeSaving] = useState(false);
@@ -56,6 +57,7 @@ export default function DeliverySettingsPage() {
         setOpsAlerts(opsRes.settings);
         setDefaultFee(String(feeRes.settings.default_fee));
         setFreeThreshold(String(feeRes.settings.free_threshold));
+        setDeliveryTime(String(feeRes.settings.delivery_time ?? ''));
         setRestrictZones(feeRes.settings.zones_enforced);
         setZoneRows(
           Object.entries(feeRes.settings.zone_fees).map(([name, fee]) => ({
@@ -103,6 +105,7 @@ export default function DeliverySettingsPage() {
       const res = await updateDeliveryFeeSettings({
         default_fee: parseFloat(defaultFee) || 0,
         free_threshold: parseFloat(freeThreshold) || 0,
+        delivery_time: deliveryTime.trim(),
         zone_fees: zoneFees,
         restrict_to_zone_fees: restrictZones,
       });
@@ -256,6 +259,21 @@ export default function DeliverySettingsPage() {
               style={S.input}
             />
           </div>
+          <div>
+            <label style={S.label}>Delivery time promise</label>
+            <input
+              type="text"
+              value={deliveryTime}
+              onChange={(e) => setDeliveryTime(e.target.value)}
+              placeholder="30–45 min"
+              data-testid="delivery-time-input"
+              style={S.input}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              What customers are told on the Website and Order App. Kept here beside the free-delivery threshold so the two cannot disagree. Content &amp; Branding cannot edit a separate copy.
+            </p>
+          </div>
+
           <div>
             <label style={S.label}>Free delivery from (MVR)</label>
             <input

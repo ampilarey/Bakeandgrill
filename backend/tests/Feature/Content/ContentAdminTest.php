@@ -51,18 +51,18 @@ class ContentAdminTest extends TestCase
     {
         $this->actingAsOwner();
         // Marketing copy key (not ops-owned / Business Details).
-        SiteSetting::set('delivery_time', 'SHARED ETA', 'shared');
-        SiteSetting::set('delivery_time', 'ORDER ETA', 'order_app');
+        SiteSetting::set('home_specials_title', 'SHARED SPECIALS', 'shared');
+        SiteSetting::set('home_specials_title', 'ORDER SPECIALS', 'order_app');
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'delivery_time', 'scope' => 'website', 'value' => 'WEB ETA'],
+                ['key' => 'home_specials_title', 'scope' => 'website', 'value' => 'WEB SPECIALS'],
             ],
         ])->assertOk();
 
-        $this->assertSame('WEB ETA', SiteSetting::getScoped('delivery_time', 'website'));
-        $this->assertSame('ORDER ETA', SiteSetting::getScoped('delivery_time', 'order_app'));
-        $this->assertSame('SHARED ETA', SiteSetting::get('delivery_time'));
+        $this->assertSame('WEB SPECIALS', SiteSetting::getScoped('home_specials_title', 'website'));
+        $this->assertSame('ORDER SPECIALS', SiteSetting::getScoped('home_specials_title', 'order_app'));
+        $this->assertSame('SHARED SPECIALS', SiteSetting::get('home_specials_title'));
     }
 
     public function test_rich_content_is_sanitised_on_save(): void

@@ -27,6 +27,11 @@ final class OpsOwnedContent
             'owner_path' => '/admin/delivery-settings',
             'note' => 'Free delivery threshold used at checkout, invoices, receipts and public messaging.',
         ],
+        'delivery_time' => [
+            'owner_label' => 'Ordering Control Center → Delivery Settings',
+            'owner_path' => '/admin/delivery-settings',
+            'note' => 'Delivery promise shown to customers — kept beside the free-delivery threshold so the two cannot disagree.',
+        ],
     ];
 
     /**
@@ -137,6 +142,19 @@ final class OpsOwnedContent
     {
         if ($key === 'delivery_threshold') {
             return self::freeDeliveryThresholdLabel();
+        }
+
+        if ($key === 'delivery_time') {
+            $value = app(DeliverySettingsService::class)->deliveryTime();
+            if ($value !== '') {
+                return $value;
+            }
+
+            // Unset must not blank the promise on the live site — fall back to
+            // the registry default exactly as the resolver would have.
+            $default = \App\Domains\Content\ContentRegistry::default('delivery_time');
+
+            return is_string($default) ? $default : '';
         }
 
         return null;

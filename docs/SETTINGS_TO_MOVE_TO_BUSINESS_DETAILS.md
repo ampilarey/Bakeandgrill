@@ -2,8 +2,8 @@
 
 **Status: SHIPPED 2026-08-14.** All 13 moved. The bug in §1 is fixed. Business-record keys are
 now hidden from Website Content and Order App Content entirely — not shown there as read-only
-rows — at the owner's request. `delivery_time` and `menu_new_days` (§3) were NOT moved and remain
-outstanding.
+rows — at the owner's request. `delivery_time` moved to **Delivery Settings** (2026-08-14). `menu_new_days`
+(§3) remains outstanding.
 
 Owner's ask: *"check the settings that can be moved to business details section that are common on
 both websites and order app."*
@@ -164,7 +164,25 @@ need adding to it.
 the site only through Media Library "use as" (which already wrote the shared record) and hero slide
 embeds. The Content Hub's per-app image upload path has no keys left and is unreachable.
 
-## 9. Still outstanding
+## 9. Delivery time — shipped 2026-08-14
 
-`delivery_time` → Delivery Settings and `menu_new_days` → Menu settings, from §3. Both need a home
-on those screens first, so they were left out of this change rather than half-moved.
+`delivery_time` now lives in **Ordering Control Center → Delivery Settings**, in the same form as
+the free-delivery threshold, so the two cannot disagree.
+
+- Joins `DELIVERY_OPS` in `OpsOwnedContent` — write-forbidden in Content & Branding.
+- `DeliverySettingsService` gains `deliveryTime()`, returns it from `resolve()` and saves it in
+  `update()`; `UpdateDeliverySettingsRequest` validates it.
+- The Delivery Settings screen gains a **Delivery time promise** field beside the threshold.
+- **Unlike the Business Details keys, it stays visible in Content & Branding as a read-only row**
+  with a link home — matching how `delivery_threshold` already behaves. Say the word if you would
+  rather it were hidden there too.
+
+A bug caught by break-testing: routing the value through Delivery Settings made an *unset*
+`delivery_time` resolve to an empty string instead of the registry default, which would have
+blanked the delivery promise on the live site. `deriveResolvedValue()` now falls back to the
+registry default, and `test_unset_delivery_time_falls_back_to_the_default_not_blank` guards it.
+
+## 10. Still outstanding
+
+`menu_new_days` → Menu settings, from §3. It needs a home on that screen first, so it was left out
+rather than half-moved.

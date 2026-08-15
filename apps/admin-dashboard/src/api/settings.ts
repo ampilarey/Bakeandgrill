@@ -206,6 +206,8 @@ export async function updateDeliveryCapacity(
 export interface DeliveryFeeSettings {
   default_fee: number;
   free_threshold: number;
+  /** Customer-facing delivery promise, e.g. "30–45 min". */
+  delivery_time: string;
   zone_fees: Record<string, number>;
   zone_whitelist: string[] | null;
   zones_enforced: boolean;
@@ -219,6 +221,7 @@ export async function getDeliveryFeeSettings(): Promise<{ settings: DeliveryFeeS
 export async function updateDeliveryFeeSettings(payload: {
   default_fee: number;
   free_threshold: number;
+  delivery_time?: string;
   zone_fees: Record<string, number>;
   restrict_to_zone_fees?: boolean;
   zone_whitelist?: string[] | null;

@@ -35,11 +35,24 @@ class DeliverySettingsService
         return [
             'default_fee' => $this->defaultFee(),
             'free_threshold' => $this->freeThreshold(),
+            'delivery_time' => $this->deliveryTime(),
             'zone_fees' => $zoneFees,
             'zone_whitelist' => $whitelist,
             'zones_enforced' => $whitelist !== null,
             'source' => $this->usesDatabaseSettings() ? 'database' : 'config',
         ];
+    }
+
+    /**
+     * Customer-facing delivery promise, e.g. "30–45 min".
+     * Owner decision 2026-08-14 — lives beside the free-delivery threshold so
+     * the two cannot drift apart.
+     */
+    public function deliveryTime(): string
+    {
+        $raw = SiteSetting::get('delivery_time');
+
+        return is_string($raw) ? trim($raw) : '';
     }
 
     public function defaultFee(): float
@@ -152,6 +165,9 @@ class DeliverySettingsService
 
         SiteSetting::set('delivery_default_fee', (string) max(0, (float) $data['default_fee']));
         SiteSetting::set('delivery_free_threshold', (string) max(0, (float) $data['free_threshold']));
+        if (array_key_exists('delivery_time', $data)) {
+            SiteSetting::set('delivery_time', trim((string) ($data['delivery_time'] ?? '')));
+        }
 
         $zoneFees = [];
         foreach ($data['zone_fees'] as $zone => $fee) {
