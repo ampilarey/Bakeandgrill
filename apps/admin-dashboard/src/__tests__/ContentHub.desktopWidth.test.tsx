@@ -308,9 +308,9 @@ describe('ContentHub desktop width — mobile unchanged', () => {
     mockBlocks([sharedPhone]);
   });
 
-  it('keeps section grid, no preview column, sheet still works', async () => {
+  it('Order App keeps its card grid, no preview column, sheet still works', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

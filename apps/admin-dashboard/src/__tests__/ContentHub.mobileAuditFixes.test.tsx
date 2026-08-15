@@ -54,8 +54,8 @@ vi.mock('../api/pageBlocks', () => ({
     blocks: [],
     available_types: [],
     unknown_types: [],
-    draft: app === 'website',
-    version: app === 'website' ? 3 : 0,
+    draft: true,
+    version: 3,
     saved_at: null,
   })),
   reorderPageBlocks: vi.fn(),
@@ -96,21 +96,31 @@ describe('ContentHub mobile audit fixes', () => {
 
   afterEach(() => cleanup());
 
-  it('landing exposes Hero, Announcement, and Footer task cards', async () => {
+  it('Website Content on a phone opens on the five pages, not a card grid', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
+    await screen.findByTestId('wcw-pagelist');
+    expect(screen.getByTestId('wcw-page-Everywhere')).toBeTruthy();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
+    expect(screen.queryByTestId('task-card-hero')).toBeNull();
+  });
+
+  it('Order App on a phone still opens on its task cards', async () => {
+    render(
+      <MemoryRouter initialEntries={['/content/order-app']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
     await screen.findByTestId('surface-builder-landing');
     expect(screen.getByTestId('task-card-hero')).toBeTruthy();
-    expect(screen.getByTestId('task-card-announcement')).toBeTruthy();
-    expect(screen.getByTestId('task-card-website_footer')).toBeTruthy();
   });
 
   it('layout-only draft enables Publish in the section sheet footer', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -121,14 +131,14 @@ describe('ContentHub mobile audit fixes', () => {
 
     fireEvent.click(within(sheet).getByTestId('publish-live-btn-sheet'));
     await waitFor(() => {
-      expect(pageBlocksApi.publishPageBlocks).toHaveBeenCalledWith({ app: 'website', version: 3 });
+      expect(pageBlocksApi.publishPageBlocks).toHaveBeenCalledWith({ app: 'order_app', version: 3 });
     });
   });
 
   it('More menu stays open for Discard after mousedown outside the trigger', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -150,7 +160,7 @@ describe('ContentHub mobile audit fixes', () => {
 
   it('preview sheet portals above the editor (higher stacking root)', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Everywhere']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );

@@ -5618,5 +5618,92 @@ a { text-decoration: none; color: inherit; }
   .wcw-grid { grid-template-columns: 1fr; }
   .wcw-form { padding: 6px 16px 20px; }
   .wcw-sec-body { padding: 4px 14px 18px; }
-  .wcw-sec-meta { display: none; }
+  /* Keep the settings count — only the device badge needs the room back. */
+  .wcw-sec-where { display: none; }
+}
+
+/* ── phone: the five pages are a list, not a row ───────────── */
+.wcw-pagelist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wcw-pagelist-row {
+  appearance: none;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 15px 16px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wcw-pagelist-row:active { background: var(--color-surface-hover); }
+.wcw-pagelist-main { flex: 1; min-width: 0; }
+.wcw-pagelist-name {
+  display: block;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.wcw-pagelist-desc {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+.wcw-pagelist-count {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  background: var(--color-border-light);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.wcw-pagelist-chev { flex: none; color: var(--color-text-muted); }
+
+.wcw-mobile-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.wcw-mobile-back {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.wcw-mobile-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 767px) {
+  /* One column, and the row meta drops to the settings count alone — a phone
+     row has no room for a badge as well as a name and a description. */
+  .wcw-sec-row { padding: 13px 13px; gap: 11px; }
+  .wcw-sec-name { font-size: 15px; }
+  .wcw-sec-body { padding: 4px 12px 18px; }
+  .wcw-form { padding: 4px 12px 18px; }
+  .wcw-group-head { margin-top: 20px; }
+  .wcw--mobile .wcw-blurb { margin-bottom: 12px; }
 }

@@ -122,54 +122,50 @@ describe('ContentHub Website pages focused tasks', () => {
 
   it('does not expose a generic mixed Pages editor or task', async () => {
     openHub('/content/website');
-    await screen.findByTestId('surface-builder-landing');
+    await screen.findByTestId('wcw-pagelist');
     expect(screen.queryByTestId('task-card-website_pages')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Pages' })).toBeNull();
+    expect(screen.queryByTestId('wcw-page-Pages')).toBeNull();
     expect(screen.queryByTestId('section-card-Pages')).toBeNull();
 
-    expect(screen.getByTestId('hub-landing-primary')).toBeTruthy();
-    expect(screen.getByTestId('task-card-hero')).toBeTruthy();
-    expect(screen.getByTestId('hub-landing-page-contact-page')).toBeTruthy();
-    expect(screen.getByTestId('hub-landing-page-hours-page')).toBeTruthy();
-    expect(screen.queryByTestId('hub-landing-page-about')).toBeNull();
-    expect(screen.getByTestId('surface-card-website.mobile.footer')).toBeTruthy();
+    // Five real pages, and nothing from the Order App.
+    expect(screen.getByTestId('wcw-page-Home')).toBeTruthy();
+    expect(screen.getByTestId('wcw-page-Contact page')).toBeTruthy();
+    expect(screen.getByTestId('wcw-page-Hours page')).toBeTruthy();
+    expect(screen.queryByTestId('wcw-page-About')).toBeNull();
     expect(screen.queryByTestId('surface-app-order_app')).toBeNull();
   });
 
-  it('legacy ?group=Pages redirects to the Website task overview', async () => {
+  it('legacy ?group=Pages lands on the list of pages, never a mixed dump', async () => {
     openHub('/content/website?group=Pages');
-    await screen.findByTestId('surface-builder-landing');
+    await screen.findByTestId('wcw-pagelist');
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
     expect(screen.queryByTestId('section-editor')).toBeNull();
-    expect(screen.getByTestId('hub-landing-page-contact-page')).toBeTruthy();
+    expect(screen.getByTestId('wcw-page-Contact page')).toBeTruthy();
   });
 
-  it('Contact page sheet shows only contact fields', async () => {
+  it('Contact page shows only contact fields', async () => {
     openHub('/content/website');
-    await screen.findByTestId('hub-landing-page-contact-page');
-    fireEvent.click(screen.getByTestId('hub-landing-page-contact-page'));
+    fireEvent.click(await screen.findByTestId('wcw-page-Contact page'));
 
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(sheet.textContent).toMatch(/Contact page/);
-    const editor = within(sheet).getByTestId('section-editor');
-    expect(editor.getAttribute('data-section')).toBe('Contact page');
+    const form = await screen.findByTestId('wcw-form-Contact page');
+    expect(screen.getByTestId('website-content-workspace').getAttribute('data-tab')).toBe('Contact page');
 
-    expect(within(sheet).getByTestId('block-card-contact_page_title')).toBeTruthy();
-    expect(within(sheet).getByTestId('block-card-maps_embed_url')).toBeTruthy();
-    expect(within(sheet).queryByTestId('block-card-hours_page_title')).toBeNull();
-    expect(within(sheet).queryByTestId('block-card-privacy_page_title')).toBeNull();
-    expect(within(sheet).queryByTestId('block-card-office_orders_headline')).toBeNull();
-    expect(within(sheet).queryByTestId('block-card-homepage_categories')).toBeNull();
-    expect(within(sheet).queryByTestId('block-card-events_section_headline')).toBeNull();
-    expect(within(sheet).queryByTestId('block-card-about_values')).toBeNull();
-    expect(within(sheet).getByTestId('block-card-contact_events_cta_headline')).toBeTruthy();
+    expect(within(form).getByTestId('wcw-field-contact_page_title')).toBeTruthy();
+    expect(within(form).getByTestId('wcw-field-maps_embed_url')).toBeTruthy();
+    expect(within(form).queryByTestId('wcw-field-hours_page_title')).toBeNull();
+    expect(within(form).queryByTestId('wcw-field-privacy_page_title')).toBeNull();
+    expect(within(form).queryByTestId('wcw-field-office_orders_headline')).toBeNull();
+    expect(within(form).queryByTestId('wcw-field-homepage_categories')).toBeNull();
+    expect(within(form).queryByTestId('wcw-field-events_section_headline')).toBeNull();
+    expect(within(form).queryByTestId('wcw-field-about_values')).toBeNull();
+    expect(within(form).getByTestId('wcw-field-contact_events_cta_headline')).toBeTruthy();
   });
 
-  it('Hours page sheet shows only hours fields', async () => {
+  it('Hours page shows only hours fields', async () => {
     openHub('/content/website?group=Hours%20page');
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('block-card-hours_page_title')).toBeTruthy();
-    expect(within(sheet).queryByTestId('block-card-contact_page_title')).toBeNull();
+    const form = await screen.findByTestId('wcw-form-Hours page');
+    expect(within(form).getByTestId('wcw-field-hours_page_title')).toBeTruthy();
+    expect(within(form).queryByTestId('wcw-field-contact_page_title')).toBeNull();
   });
 
   it('About sheet shows only about fields on Order App', async () => {
@@ -190,11 +186,11 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(screen.queryByTestId('wcw-field-contact_page_title')).toBeNull();
   });
 
-  it('Everywhere sheet includes footer fields', async () => {
+  it('Everywhere includes footer fields', async () => {
     openHub('/content/website?group=Everywhere');
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('block-card-footer_text')).toBeTruthy();
-    expect(within(sheet).queryByTestId('block-card-privacy_page_title')).toBeNull();
+    const form = await screen.findByTestId('wcw-form-Everywhere');
+    expect(within(form).getByTestId('wcw-field-footer_text')).toBeTruthy();
+    expect(within(form).queryByTestId('wcw-field-privacy_page_title')).toBeNull();
   });
 
   it('Legal receives remapped privacy fields', async () => {
@@ -299,17 +295,16 @@ describe('ContentHub Website pages focused tasks', () => {
     confirmSpy.mockRestore();
   });
 
-  it.each([320, 375, 390] as const)('Contact page sheet does not overflow at %ipx', async (width) => {
+  it.each([320, 375, 390] as const)('Contact page does not overflow at %ipx', async (width) => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
     Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, value: width });
 
     openHub('/content/website');
-    await screen.findByTestId('hub-landing-page-contact-page');
-    fireEvent.click(screen.getByTestId('hub-landing-page-contact-page'));
-    const sheet = await screen.findByTestId('content-editor-sheet');
+    fireEvent.click(await screen.findByTestId('wcw-page-Contact page'));
+    const form = await screen.findByTestId('wcw-form-Contact page');
 
     await waitFor(() => {
-      expect(sheet.scrollWidth).toBeLessThanOrEqual(width + 1);
+      expect(form.scrollWidth).toBeLessThanOrEqual(width + 1);
     });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width + 1);
   });

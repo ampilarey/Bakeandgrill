@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchAdminPageBlocks } from '../../api/pageBlocks';
 import { OpsOwnedSummary } from '../../components/OpsOwnedSummary';
@@ -46,10 +46,23 @@ import { groupBlocks, WEBSITE_PAGE_GROUPS, type GroupedBlocks } from './websiteF
  *   • Contact, Hours, Legal and Everywhere are one plain form each, because at
  *     13–22 settings nothing beats an ordinary well-spaced form.
  *
+ * On a phone the five tabs become a plain list — a row of five does not fit in
+ * 390px without sideways scrolling, and a page you have to swipe to find is a
+ * page you never open. Everything below that first screen is identical.
+ *
  * Order App Content is deliberately untouched and still uses HubSectionContent.
  */
 
 const TAB_ORDER = ['Home', 'Contact page', 'Hours page', 'Legal', 'Everywhere'];
+
+/** One line per page on the phone's first screen. */
+const PAGE_BLURB: Record<string, string> = {
+  Home: 'The homepage, section by section',
+  'Contact page': 'Everything on /contact',
+  'Hours page': 'Wording around your opening times',
+  Legal: 'Terms, refunds and privacy',
+  Everywhere: 'Header, announcement bar, footer, search wording',
+};
 
 const TAB_BLURB: Record<string, string> = {
   Home: 'Ten sections, in the order they appear on the page. Click one to open it.',
@@ -137,6 +150,10 @@ export type WebsiteContentWorkspaceProps = {
   layoutEditor?: ReactNode;
   /** Bumps when a layout draft changes, so the device badges refresh. */
   layoutRevision?: number;
+  /** Phone: the five pages are a list, and a page opens with a Back arrow. */
+  isMobile?: boolean;
+  /** Phone: leave the page and return to the list of five. */
+  onBack?: () => void;
 };
 
 export function WebsiteContentWorkspace({
@@ -168,9 +185,14 @@ export function WebsiteContentWorkspace({
   layoutEditor,
   layoutRevision = 0,
   defaultOpenSectionId = null,
+  isMobile = false,
+  onBack,
 }: WebsiteContentWorkspaceProps) {
-  const activeTab = activeGroup && TAB_ORDER.includes(activeGroup) ? activeGroup : 'Home';
+  const selectedPage = activeGroup && TAB_ORDER.includes(activeGroup) ? activeGroup : null;
+  const activeTab = selectedPage ?? 'Home';
   const isHome = activeTab === 'Home';
+  /** Phone only: nothing picked yet, so show the list of five pages. */
+  const showPageList = isMobile && !selectedPage;
 
   /** Which section is open on Home. One at a time — opening one closes the last. */
   const [openSectionId, setOpenSectionId] = useState<string | null>(defaultOpenSectionId);
@@ -375,27 +397,74 @@ export function WebsiteContentWorkspace({
     return <div className="wcw" data-testid="website-content-workspace">{skeleton}</div>;
   }
 
-  return (
-    <div className="wcw" data-testid="website-content-workspace" data-tab={activeTab}>
-      <div className="wcw-tabs" role="tablist" aria-label="Website pages">
-        {tabs.map((tab) => {
-          const selected = tab.name === activeTab;
-          return (
+  if (showPageList) {
+    return (
+      <div className="wcw wcw--mobile" data-testid="website-content-workspace" data-tab="">
+        <p className="wcw-blurb" data-testid="wcw-blurb">
+          Five pages make up your website. Tap one to edit it.
+        </p>
+        <div className="wcw-pagelist" data-testid="wcw-pagelist">
+          {tabs.map((tab) => (
             <button
               key={tab.name}
               type="button"
-              role="tab"
-              aria-selected={selected}
-              className={`wcw-tab${selected ? ' wcw-tab--active' : ''}`}
-              data-testid={`wcw-tab-${tab.name}`}
+              className="wcw-pagelist-row"
+              data-testid={`wcw-page-${tab.name}`}
               onClick={() => onSelectGroup(tab.name)}
             >
-              {tab.name}
-              <span className="wcw-tab-count">{tab.count}</span>
+              <span className="wcw-pagelist-main">
+                <span className="wcw-pagelist-name">{tab.name}</span>
+                <span className="wcw-pagelist-desc">{PAGE_BLURB[tab.name]}</span>
+              </span>
+              <span className="wcw-pagelist-count">{tab.count}</span>
+              <ChevronRight size={18} className="wcw-pagelist-chev" aria-hidden />
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div
+      className={`wcw${isMobile ? ' wcw--mobile' : ''}`}
+      data-testid="website-content-workspace"
+      data-tab={activeTab}
+    >
+      {isMobile ? (
+        <div className="wcw-mobile-head">
+          <button
+            type="button"
+            className="wcw-mobile-back"
+            data-testid="wcw-mobile-back"
+            onClick={() => onBack?.()}
+          >
+            <ArrowLeft size={18} aria-hidden />
+            All pages
+          </button>
+          <h2 className="wcw-mobile-title">{activeTab}</h2>
+        </div>
+      ) : (
+        <div className="wcw-tabs" role="tablist" aria-label="Website pages">
+          {tabs.map((tab) => {
+            const selected = tab.name === activeTab;
+            return (
+              <button
+                key={tab.name}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                className={`wcw-tab${selected ? ' wcw-tab--active' : ''}`}
+                data-testid={`wcw-tab-${tab.name}`}
+                onClick={() => onSelectGroup(tab.name)}
+              >
+                {tab.name}
+                <span className="wcw-tab-count">{tab.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <p className="wcw-blurb" data-testid="wcw-blurb">{TAB_BLURB[activeTab]}</p>
 

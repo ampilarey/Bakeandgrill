@@ -79,11 +79,13 @@ export function ContentHubPage() {
   const isWideDesktop = useIsWideDesktop();
   const location = useLocation();
   const hubAppFromPath = contentAppFromPath(location.pathname);
-  const websiteDesktopNoLanding = !isMobile && hubAppFromPath === 'website';
+  /** Website Content uses the page-tab workspace on every screen size. */
+  const websiteWorkspace = hubAppFromPath === 'website';
+  const websiteDesktopNoLanding = !isMobile && websiteWorkspace;
 
   const hub = useContentHubController(
     { success, error },
-    { skipPreviewMint: websiteDesktopNoLanding },
+    { skipPreviewMint: websiteWorkspace },
   );
   const {
     hubApp,
@@ -500,7 +502,7 @@ export function ContentHubPage() {
     }
     selectGroup(view);
     setMobileEditorOpen(true);
-    if (websiteDesktopNoLanding) {
+    if (websiteWorkspace) {
       pendingFocusKeyRef.current = block.key;
       setFocusedBlockKey(block.key);
     }
@@ -685,8 +687,8 @@ export function ContentHubPage() {
         handleSectionSelect('Everywhere');
         success('Open ⋯ on any field to view and restore History.');
       }}
-      websiteDesktopChrome={websiteDesktopNoLanding}
-      liveSiteUrl={websiteDesktopNoLanding ? `${window.location.origin}/` : undefined}
+      websiteDesktopChrome={websiteWorkspace}
+      liveSiteUrl={websiteWorkspace ? `${window.location.origin}/` : undefined}
       deviceFilter={websiteDesktopNoLanding ? websiteDeviceFilter : undefined}
       onDeviceFilterChange={websiteDesktopNoLanding ? setWebsiteDeviceFilter : undefined}
     />
@@ -745,11 +747,50 @@ export function ContentHubPage() {
           <ScopeMismatchNotices mismatches={mismatches} collapsible defaultOpen={false} />
         ) : null}
 
-        {websiteDesktopNoLanding ? (
+        {websiteWorkspace ? (
           <ContentIntegrityPanel appFilter="website" onlyWhenIssues />
         ) : null}
 
-        {isMobile ? (
+        {isMobile && websiteWorkspace ? (
+          <WebsiteContentWorkspace
+            loading={loading}
+            skeleton={skeleton}
+            sectionNames={orderedSectionNames}
+            activeGroup={activeGroup}
+            onSelectGroup={(name) => handleSectionSelect(name)}
+            contentBlocks={contentBlocks}
+            drafts={drafts}
+            draftKeys={draftKeys}
+            locale={locale}
+            hubApp={hubApp}
+            setDraft={setDraft}
+            blockScopeTab={blockScopeTab}
+            setBlockScopeTab={setBlockScopeTab}
+            makeTriggerUpload={makeTriggerUpload}
+            onUpload={onUpload}
+            uploadCtx={uploadCtx}
+            setMediaOpen={setMediaOpen}
+            draftStatusNode={draftStatusNode}
+            historyTarget={historyTarget}
+            setHistoryTarget={setHistoryTarget}
+            revisions={revisions}
+            restore={restore}
+            openHistory={openHistory}
+            focusKey={focusedBlockKey}
+            onFocusHandled={() => setFocusedBlockKey(null)}
+            layoutRevision={layoutRevision}
+            isMobile
+            onBack={handleMobileBack}
+            layoutEditor={(
+              <HomeLayoutEditor
+                ref={homeLayoutEditorRef}
+                initialApp="website"
+                surfaceFilter={parseSurfaceId(surfaceId('website', 'mobile', 'home')) ?? undefined}
+                onLayoutDraftChange={handleLayoutDraftChange}
+              />
+            )}
+          />
+        ) : isMobile ? (
           <div className="hub-mobile-shell">
             <div className="hub-mobile-overview">
               <HubSurfaceLanding
@@ -918,7 +959,7 @@ export function ContentHubPage() {
         <HubEditorSheets
           isMobile={isMobile}
           loading={loading}
-          mobileEditorOpen={mobileEditorOpen}
+          mobileEditorOpen={mobileEditorOpen && !websiteWorkspace}
           activeGroup={activeGroup}
           activeEditorTitle={activeEditorTitle}
           onCloseSection={handleMobileBack}

@@ -202,8 +202,27 @@ const phoneBlock = {
   description: 'Primary phone number shown on contact pages and the footer.',
 };
 
+/** Dual-app Home copy — the Order App phone still renders these as cards. */
+const specialsTitle = {
+  key: 'home_specials_title',
+  label: 'Specials heading',
+  group: 'Home',
+  type: 'text' as const,
+  apps: ['website', 'order_app'] as Array<'website' | 'order_app'>,
+  shareable: true,
+  public: true,
+  shared: "Today's Specials",
+  website: null,
+  order_app: null,
+  resolved_website: "Today's Specials",
+  resolved_order_app: "Today's Specials",
+  state: 'shared' as const,
+  description: 'Large heading shown above the offers row on the homepage.',
+};
+
 const allBlocks = [
   heroEnable,
+  specialsTitle,
   heroSlides,
   proofStat,
   footerEnable,
@@ -220,9 +239,9 @@ function mockBlocks(blocks: unknown[] = allBlocks) {
   });
 }
 
-function openSection(name: string) {
+function openSection(name: string, app: 'website' | 'order-app' = 'website') {
   return render(
-    <MemoryRouter initialEntries={[`/content/website?group=${name}`]}>
+    <MemoryRouter initialEntries={[`/content/${app}?group=${name}`]}>
       <ContentHubPage />
     </MemoryRouter>,
   );
@@ -305,7 +324,7 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
   });
 
   it('mobile structure exposes title containers on Homepage content cards', async () => {
-    openSection('Home');
+    openSection('Home', 'order-app');
     await screen.findByTestId('section-editor');
     await screen.findByTestId('home-layout-editor');
 
@@ -313,18 +332,18 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     // jsdom here only checks that the stacking hooks exist in the DOM.
     expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
 
-    const blockCard = screen.getByTestId('block-card-proof_stat');
+    const blockCard = screen.getByTestId('block-card-home_specials_title');
     expect(blockCard.querySelector('.hub-block-card-titles')).toBeTruthy();
     expect(blockCard.querySelector('.hub-block-card-top')).toBeTruthy();
 
     const helper = within(blockCard).getByText(
-      /Large number shown in the social proof band/i,
+      /Large heading shown above the offers row/i,
     );
     expect(helper.textContent!.trim().split(/\s+/).length).toBeGreaterThanOrEqual(4);
   });
 
   it('mobile structure exposes section-enable face containers', async () => {
-    openSection('Everywhere');
+    openSection('Everywhere', 'order-app');
     await screen.findByTestId('section-enable-language_switcher_enabled');
 
     const enableCard = screen.getByTestId('section-enable-language_switcher_enabled');

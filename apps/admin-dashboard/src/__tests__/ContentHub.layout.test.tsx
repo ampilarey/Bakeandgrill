@@ -249,21 +249,22 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     setup();
   });
 
-  it('shows section grid and no preview column on mobile', async () => {
+  it('Website Content on a phone is the page list, and Home opens in place', async () => {
     render(
       <MemoryRouter initialEntries={['/content/website?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('surface-builder-landing');
-    // No column-variant preview pane on mobile (sheet is closed)
+    await screen.findByTestId('wcw-sections');
+    expect(screen.getByTestId('wcw-mobile-back')).toBeTruthy();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 
-  it('tapping a task card opens editor sheet; close returns to overview', async () => {
+  it('Order App on a phone still taps a task card into an editor sheet', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
@@ -287,9 +288,9 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     });
   });
 
-  it('preview sheet opens and closes via sheet header Preview button', async () => {
+  it('Order App preview sheet opens and closes via the sheet header', async () => {
     render(
-      <MemoryRouter initialEntries={['/content/website?group=Home']}>
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
