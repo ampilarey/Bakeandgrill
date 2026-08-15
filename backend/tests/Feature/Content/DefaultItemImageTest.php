@@ -12,6 +12,7 @@ use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\Media;
 use App\Models\Role;
+use App\Domains\Content\ContentResolver;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\SpecialPricingService;
@@ -56,39 +57,46 @@ class DefaultItemImageTest extends TestCase
         ]);
     }
 
-    public function test_content_upload_stages_default_item_image_until_publish(): void
+    public function test_default_item_image_is_one_business_record_for_both_apps(): void
+    {
+        // Owner decision 2026-08-14 — one stand-in photo for the whole business.
+        Sanctum::actingAs($this->owner, ['staff']);
+        SiteSetting::set('default_item_image', '/storage/site/business-default.jpg', 'shared', 'en');
+        // Stale per-app rows must be ignored, not preferred.
+        SiteSetting::set('default_item_image', '/storage/site/stale-order.jpg', 'order_app', 'en');
+        SiteSetting::set('default_item_image', '/storage/site/stale-web.jpg', 'website', 'en');
+        ContentResolver::bust();
+
+        $this->assertSame(
+            '/storage/site/business-default.jpg',
+            ContentResolver::for('website')->get('default_item_image'),
+        );
+        $this->assertSame(
+            '/storage/site/business-default.jpg',
+            ContentResolver::for('order_app')->get('default_item_image'),
+        );
+
+        $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
+        $this->assertSame('/storage/site/business-default.jpg', $public['default_item_image']);
+    }
+
+    public function test_content_api_cannot_write_a_per_app_default_item_image(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);
-        $file = UploadedFile::fake()->image('default-item.jpg', 400, 400);
-        SiteSetting::set('default_item_image', '/storage/site/live-default-item.jpg', 'order_app', 'en');
-        SiteSetting::set('default_item_image', '/storage/site/invoice-default.jpg', 'shared', 'en');
-
-        $res = $this->post('/api/admin/content/upload', [
-            'file' => $file,
-            'key' => 'default_item_image',
-            'scope' => 'order_app',
-        ], ['Accept' => 'application/json'])->assertCreated();
-
-        $url = $res->json('url');
-        $this->assertNotEmpty($url);
-        $this->assertNotEmpty($res->json('media_id'));
-        $this->assertSame('/storage/site/live-default-item.jpg', SiteSetting::getScoped('default_item_image', 'order_app'));
-        $this->assertSame('/storage/site/invoice-default.jpg', SiteSetting::get('default_item_image'));
-
-        // /api/site-settings/public is the order-app public payload.
-        $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
-        $this->assertArrayHasKey('default_item_image', $public);
-        $this->assertSame('/storage/site/live-default-item.jpg', $public['default_item_image']);
+        SiteSetting::set('default_item_image', '/storage/site/business-default.jpg', 'shared', 'en');
+        ContentResolver::bust();
 
         $this->putJson('/api/admin/content', [
             'locale' => 'en',
             'changes' => [
-                ['key' => 'default_item_image', 'scope' => 'order_app', 'value' => $url],
+                ['key' => 'default_item_image', 'scope' => 'order_app', 'value' => '/storage/site/nope.jpg'],
             ],
-        ])->assertOk();
+        ])->assertUnprocessable();
 
-        $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'order_app'));
-        $this->assertSame('/storage/site/invoice-default.jpg', SiteSetting::get('default_item_image'));
+        $this->assertSame(
+            '/storage/site/business-default.jpg',
+            ContentResolver::for('order_app')->get('default_item_image'),
+        );
     }
 
     public function test_use_as_sets_default_and_brand_key_permission_gated_and_audited(): void
@@ -134,10 +142,10 @@ class DefaultItemImageTest extends TestCase
 
     public function test_home_special_card_uses_default_item_image_when_set(): void
     {
-        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'website');
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
         $row = SiteSetting::query()
             ->where('key', 'default_item_image')
-            ->where('scope', 'website')
+            ->where('scope', 'shared')
             ->first();
         $row?->update(['is_public' => true, 'type' => 'image', 'group' => 'Branding']);
 
@@ -148,34 +156,25 @@ class DefaultItemImageTest extends TestCase
         $this->assertStringContainsString('/storage/site/default_item.jpg', $html);
     }
 
-    public function test_content_studio_website_publish_updates_home_only(): void
+    public function test_business_details_default_item_image_reaches_home_and_both_apps(): void
     {
         Sanctum::actingAs($this->owner, ['staff']);
-        $url = '/storage/site/website_default.jpg';
+        SiteSetting::set('default_item_image', '/storage/site/business-default.jpg', 'shared');
+        // Stale per-app rows must not win.
         SiteSetting::set('default_item_image', '/storage/site/order-default.jpg', 'order_app');
-        SiteSetting::set('default_item_image', '/storage/site/shared-default.jpg', 'shared');
-
-        $this->putJson('/api/admin/content', [
-            'locale' => 'en',
-            'changes' => [
-                ['key' => 'default_item_image', 'scope' => 'website', 'value' => $url],
-            ],
-        ])->assertOk();
-
-        $this->assertSame($url, SiteSetting::getScoped('default_item_image', 'website'));
-        $this->assertSame('/storage/site/shared-default.jpg', SiteSetting::get('default_item_image'));
-        $this->assertSame('/storage/site/order-default.jpg', SiteSetting::getScoped('default_item_image', 'order_app'));
+        SiteSetting::set('default_item_image', '/storage/site/website-default.jpg', 'website');
+        ContentResolver::bust();
 
         $public = $this->getJson('/api/site-settings/public')->assertOk()->json('settings');
-        $this->assertSame('/storage/site/order-default.jpg', $public['default_item_image'] ?? null);
+        $this->assertSame('/storage/site/business-default.jpg', $public['default_item_image'] ?? null);
 
         $orderContent = $this->getJson('/api/content?app=order_app&locale=en')->assertOk()->json('content');
-        $this->assertSame('/storage/site/order-default.jpg', $orderContent['default_item_image'] ?? null);
+        $this->assertSame('/storage/site/business-default.jpg', $orderContent['default_item_image'] ?? null);
 
         $this->seedImageLessSpecial();
         $html = $this->get('/')->assertOk()->getContent();
-        $this->assertStringContainsString('data-default-item-image="1"', $html);
-        $this->assertStringContainsString($url, $html);
+        $this->assertStringContainsString('/storage/site/business-default.jpg', $html);
+        $this->assertStringNotContainsString('/storage/site/website-default.jpg', $html);
     }
 
     public function test_order_app_does_not_resolve_website_only_default_item_image(): void

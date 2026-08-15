@@ -76,6 +76,11 @@ class ContentBlockResource extends JsonResource
     {
         $out = [];
         foreach (ContentRegistry::hubBlocks() as $key => $block) {
+            // Business-record keys live in Business Details only. They are not
+            // shown under Website Content or Order App Content at all.
+            if (OpsOwnedContent::isHiddenFromContentHub((string) $key)) {
+                continue;
+            }
             $out[] = (new self([
                 'key' => (string) $key,
                 'block' => $block,

@@ -300,6 +300,55 @@ function FieldEditor({
           style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}
           aria-invalid={Boolean(error)}
         />
+      ) : field.type === 'boolean' ? (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={value === 'true' || value === '1'}
+            onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            data-testid={`business-toggle-${field.key}`}
+          />
+          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+            {value === 'true' || value === '1' ? 'On' : 'Off'}
+          </span>
+        </label>
+      ) : field.type === 'color' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <input
+            type="color"
+            value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#d4813a'}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={`${field.label} colour picker`}
+            data-testid={`business-color-${field.key}`}
+            style={{ width: 44, height: 44, padding: 2, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-surface)', cursor: 'pointer' }}
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ ...inputStyle, ...(error ? inputErrorStyle : null), flex: 1, minWidth: 0 }}
+            aria-invalid={Boolean(error)}
+          />
+        </div>
+      ) : field.type === 'image' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          {value ? (
+            <img
+              src={value}
+              alt=""
+              data-testid={`business-image-preview-${field.key}`}
+              style={{ width: 56, height: 40, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', flex: 'none' }}
+            />
+          ) : null}
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Paste an image URL, or pick one from the Media Library"
+            style={{ ...inputStyle, ...(error ? inputErrorStyle : null), flex: 1, minWidth: 0 }}
+            aria-invalid={Boolean(error)}
+          />
+        </div>
       ) : (
         <input
           type={inputType}

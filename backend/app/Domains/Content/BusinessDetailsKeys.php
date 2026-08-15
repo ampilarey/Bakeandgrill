@@ -45,6 +45,22 @@ final class BusinessDetailsKeys
             'logo',
             'primary_color',
         ],
+        'brand' => [
+            'logo_dark',
+            'favicon',
+            'og_image',
+            'default_item_image',
+        ],
+        'social' => [
+            'show_social_links',
+            'social_instagram',
+            'social_facebook',
+            'social_tiktok',
+        ],
+        'tracking' => [
+            'google_analytics_id',
+            'google_tag_manager_id',
+        ],
     ];
 
     /**
@@ -103,9 +119,19 @@ final class BusinessDetailsKeys
             'Customer contact channels',
             'Website contact (when not overridden)',
         ],
-        'site_tagline' => ['Receipts & invoices', 'TV signage'],
-        'logo' => ['Receipts & invoices', 'TV signage'],
-        'primary_color' => ['Receipts & invoices', 'TV signage'],
+        'site_tagline' => ['Receipts & invoices', 'TV signage', 'Website', 'Order App'],
+        'logo' => ['Receipts & invoices', 'TV signage', 'Website', 'Order App'],
+        'primary_color' => ['Receipts & invoices', 'TV signage', 'Website', 'Order App'],
+        'logo_dark' => ['Website', 'Order App'],
+        'favicon' => ['Website browser tab', 'Order App browser tab'],
+        'og_image' => ['Website link previews', 'Order App link previews'],
+        'default_item_image' => ['Menu items with no photo (Website + Order App)'],
+        'show_social_links' => ['Website footer', 'Order App footer'],
+        'social_instagram' => ['Website footer', 'Order App footer'],
+        'social_facebook' => ['Website footer', 'Order App footer'],
+        'social_tiktok' => ['Website footer', 'Order App footer'],
+        'google_analytics_id' => ['Website visitor tracking', 'Order App visitor tracking'],
+        'google_tag_manager_id' => ['Website visitor tracking', 'Order App visitor tracking'],
     ];
 
     /** @return list<string> */

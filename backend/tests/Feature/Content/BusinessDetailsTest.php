@@ -79,9 +79,12 @@ class BusinessDetailsTest extends TestCase
         $res = $this->getJson('/api/admin/business-details')->assertOk()->json();
 
         $sectionIds = collect($res['sections'])->pluck('id')->all();
-        $this->assertSame(['identity', 'address', 'contact', 'documents'], $sectionIds);
+        $this->assertSame(
+            ['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking'],
+            $sectionIds,
+        );
 
-        foreach (['identity', 'address', 'contact', 'documents'] as $id) {
+        foreach (['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking'] as $id) {
             $section = collect($res['sections'])->firstWhere('id', $id);
             $this->assertNotEmpty($section['fields']);
             foreach ($section['fields'] as $field) {
@@ -182,9 +185,10 @@ class BusinessDetailsTest extends TestCase
         $this->assertSame('+960 700 9999', ContentResolver::for('order_app')->get('business_phone'));
         $this->assertSame('Invoice Brand Name', ContentResolver::for('website')->get('site_name'));
         $this->assertSame('Invoice Brand Name', ContentResolver::for('order_app')->get('site_name'));
-        // Website / Order App branding assets remain independently scoped.
-        $this->assertSame('/images/web-logo.png', ContentResolver::for('website')->get('logo'));
-        $this->assertSame('/images/order-logo.png', ContentResolver::for('order_app')->get('logo'));
+        // Owner decision 2026-08-14 — one logo. Stale per-app rows are ignored,
+        // and both apps resolve the Business Details record.
+        $this->assertSame('/images/invoice-logo.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/images/invoice-logo.png', ContentResolver::for('order_app')->get('logo'));
 
         $brand = DocumentBrandView::variables();
         $this->assertSame('Invoice Brand Name', $brand['brandSiteName']);

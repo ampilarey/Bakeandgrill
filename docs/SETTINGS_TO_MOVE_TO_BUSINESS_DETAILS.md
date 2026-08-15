@@ -1,5 +1,10 @@
 # Settings That Should Move to Business Details
 
+**Status: SHIPPED 2026-08-14.** All 13 moved. The bug in §1 is fixed. Business-record keys are
+now hidden from Website Content and Order App Content entirely — not shown there as read-only
+rows — at the owner's request. `delivery_time` and `menu_new_days` (§3) were NOT moved and remain
+outstanding.
+
 Owner's ask: *"check the settings that can be moved to business details section that are common on
 both websites and order app."*
 
@@ -136,9 +141,30 @@ need adding to it.
 
 ---
 
-## 7. Decision needed
+## 7. Decisions taken
 
-1. Move all 13 to Business Details, or hold back the two analytics IDs?
-2. Confirm the Website copy wins when three copies disagree.
+1. **All 13 moved**, including the two Google IDs. (Owner noted these as "google location" — they
+   are not; the map is `business_maps_url` / `maps_embed_url`, already in Business Details. The IDs
+   are visitor tracking, and moving them was correct anyway.)
+2. **The Website copy wins** when copies disagree, falling back to the Order App copy, then any
+   legacy unscoped row. Existing shared values are never overwritten.
+3. **Hidden, not read-only.** The owner asked that these not appear under Website or Order App
+   settings at all. `ContentBlockResource::collectionFromRegistry` filters them out.
 
-Answer those two and the prompt writes itself.
+## 8. What shipped
+
+- `OpsOwnedContent::BUSINESS_DETAILS_KEYS` 13 → 26 keys; new `isHiddenFromContentHub()`.
+- `BusinessDetailsKeys::SECTIONS` gains **Brand images**, **Social accounts** and
+  **Visitor tracking**; the screen now renders image previews, a colour picker and switches.
+- Migration `2026_08_14_090000_consolidate_business_identity_into_shared` backfills the shared
+  record where it is empty. App-scoped rows are left in place, so the change is reversible.
+- New `BusinessIdentityConsolidationTest` (7 tests), including two that cover the migration itself.
+
+**Consequence worth knowing:** no image-type setting is per-app any more. Brand images now reach
+the site only through Media Library "use as" (which already wrote the shared record) and hero slide
+embeds. The Content Hub's per-app image upload path has no keys left and is unreachable.
+
+## 9. Still outstanding
+
+`delivery_time` → Delivery Settings and `menu_new_days` → Menu settings, from §3. Both need a home
+on those screens first, so they were left out of this change rather than half-moved.

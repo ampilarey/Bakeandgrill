@@ -81,23 +81,23 @@ class ContentBacklogTest extends TestCase
             'publish_at' => now()->addHour()->toIso8601String(),
             'locale' => 'en',
             'changes' => [
-                ['key' => 'site_tagline', 'scope' => 'website', 'value' => 'Scheduled tagline'],
+                ['key' => 'footer_text', 'scope' => 'website', 'value' => 'Scheduled footer blurb'],
             ],
         ])->assertCreated();
 
         $this->assertDatabaseHas('content_schedules', [
-            'key' => 'site_tagline',
+            'key' => 'footer_text',
             'status' => 'pending',
         ]);
 
-        ContentSchedule::query()->where('key', 'site_tagline')->update([
+        ContentSchedule::query()->where('key', 'footer_text')->update([
             'publish_at' => now()->subMinute(),
         ]);
 
         Artisan::call('content:publish-scheduled');
 
-        $this->assertSame('Scheduled tagline', SiteSetting::getScoped('site_tagline', 'website', 'en'));
-        $this->assertSame('published', ContentSchedule::query()->where('key', 'site_tagline')->value('status'));
+        $this->assertSame('Scheduled footer blurb', SiteSetting::getScoped('footer_text', 'website', 'en'));
+        $this->assertSame('published', ContentSchedule::query()->where('key', 'footer_text')->value('status'));
     }
 
     public function test_locale_isolation_and_public_api(): void
