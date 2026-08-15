@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Image as ImageIcon } from 'lucide-react';
 import { ApiRequestError } from '@shared/api';
 import {
   getBusinessDetails,
@@ -10,6 +11,8 @@ import {
   type BusinessDetailsSection,
 } from '../api/businessDetails';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
+import { MediaPicker } from '../components/MediaPicker';
+import type { MediaAsset } from '../api/media';
 import { ScopeMismatchNotices, type ScopeMismatch } from '../components/ScopeMismatchNotices';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useToast } from '../components/ui';
@@ -70,6 +73,9 @@ export function BusinessDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** Which image field the Media Library is picking for. */
+  const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -195,19 +201,44 @@ export function BusinessDetailsPage() {
 
         {!loading ? <ScopeMismatchNotices mismatches={mismatches} /> : null}
 
+        {!loading && sections.length > 1 ? (
+          <nav className="business-details-jump" aria-label="Jump to a section" data-testid="business-details-jump">
+            {sections.map((section) => (
+              <a key={section.id} href={`#business-section-${section.id}`} className="business-details-jump-link">
+                {section.title}
+              </a>
+            ))}
+          </nav>
+        ) : null}
+
         {loading ? (
           <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
         ) : (
           <form
+            ref={formRef}
             data-testid="business-details-form"
             onSubmit={onSubmit}
-            style={{ display: 'grid', gap: 20, width: '100%', maxWidth: 880, minWidth: 0 }}
+            className="business-details-form"
           >
-            {sections.map((section) => (
+            {(() => {
+              // One field, one place. The API no longer repeats a key across
+              // sections, but the screen refuses to draw the same setting
+              // twice regardless — two boxes holding one value is a bug the
+              // owner has to spot, and he already did once.
+              const drawn = new Set<string>();
+              return sections.map((section) => {
+                const fieldsToDraw = section.fields.filter((f) => {
+                  if (drawn.has(f.key)) return false;
+                  drawn.add(f.key);
+                  return true;
+                });
+                if (fieldsToDraw.length === 0) return null;
+                return (
               <section
                 key={section.id}
+                id={`business-section-${section.id}`}
                 data-testid={`business-section-${section.id}`}
-                style={cardStyle}
+                className="business-details-card"
               >
                 <header style={{ marginBottom: 12 }}>
                   <h2 style={sectionTitleStyle}>{section.title}</h2>
@@ -215,8 +246,8 @@ export function BusinessDetailsPage() {
                     <p style={sectionDescStyle}>{section.description}</p>
                   ) : null}
                 </header>
-                <div style={{ display: 'grid', gap: 16 }}>
-                  {section.fields.map((field) => (
+                <div className="business-details-grid">
+                  {fieldsToDraw.map((field) => (
                     <FieldEditor
                       key={`${section.id}-${field.key}`}
                       field={field}
@@ -233,16 +264,20 @@ export function BusinessDetailsPage() {
                         });
                       }}
                       mismatches={mismatches}
+                      onPickImage={() => setPickerKey(field.key)}
                     />
                   ))}
                 </div>
               </section>
-            ))}
+                );
+              });
+            })()}
 
             <HoursSection hours={hours} />
             <LegalSection legal={legal} />
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            {/* Kept for keyboard submit and for anyone who scrolls to the end. */}
+            <div className="business-details-foot">
               <Btn
                 variant="primary"
                 type="submit"
@@ -257,9 +292,71 @@ export function BusinessDetailsPage() {
             </div>
           </form>
         )}
+
+        {/* Save follows you down the page. With 25 fields and eight sections,
+            a button pinned to the top of a phone screen is a button you have
+            to scroll back up to find. */}
+        {isDirty || saveStatus === 'failed' ? (
+          <div className="business-details-savebar" data-testid="business-details-savebar">
+            <span className="business-details-savebar-text">
+              {saveStatus === 'saving'
+                ? 'Saving…'
+                : saveStatus === 'failed'
+                  ? 'Save failed'
+                  : `${dirty.length} unsaved change${dirty.length === 1 ? '' : 's'}`}
+            </span>
+            <Btn
+              variant="primary"
+              onClick={() => void save()}
+              disabled={saveStatus === 'saving'}
+              data-testid="business-details-save-sticky"
+            >
+              {saveLabel}
+            </Btn>
+          </div>
+        ) : null}
+
+        <MediaPicker
+          open={pickerKey !== null}
+          onClose={() => setPickerKey(null)}
+          mediaType="image"
+          title="Pick a picture"
+          onPick={(asset: MediaAsset) => {
+            const key = pickerKey;
+            setPickerKey(null);
+            if (!key) return;
+            setDrafts((d) => ({ ...d, [key]: asset.url }));
+            setSaveStatus((st) => (st === 'saved' ? 'idle' : st));
+          }}
+        />
       </div>
     </PageShell>
   );
+}
+
+/**
+ * Phone keyboards, chosen per field.
+ *
+ * Typing a phone number on a phone should raise the number pad, not the
+ * alphabet. Same for an email or a web address — small change, felt on every
+ * single edit made from behind the counter.
+ */
+function keyboardFor(field: BusinessDetailsField): {
+  type: string;
+  inputMode?: 'text' | 'tel' | 'email' | 'url' | 'numeric';
+  autoComplete?: string;
+} {
+  const key = field.key;
+  if (key.includes('email')) return { type: 'email', inputMode: 'email', autoComplete: 'email' };
+  if (/phone|whatsapp|viber/.test(key)) return { type: 'tel', inputMode: 'tel', autoComplete: 'tel' };
+  if (/website|maps_url|maps_embed|social_/.test(key)) return { type: 'url', inputMode: 'url', autoComplete: 'url' };
+  if (field.type === 'number' || key === 'menu_new_days') return { type: 'text', inputMode: 'numeric' };
+  return { type: 'text' };
+}
+
+/** Fields that need the whole row rather than half of it. */
+function isWideField(field: BusinessDetailsField): boolean {
+  return field.type === 'textarea' || field.type === 'image' || field.key === 'business_address';
 }
 
 function FieldEditor({
@@ -268,22 +365,21 @@ function FieldEditor({
   error,
   onChange,
   mismatches,
+  onPickImage,
 }: {
   field: BusinessDetailsField;
   value: string;
   error?: string;
   onChange: (v: string) => void;
   mismatches: ScopeMismatch[];
+  onPickImage?: () => void;
 }) {
-  const inputType =
-    field.key.includes('email') ? 'email'
-      : field.key.includes('color') ? 'text'
-        : field.type === 'color' ? 'text'
-          : 'text';
+  const keyboard = keyboardFor(field);
+  const isSquarePreview = field.key === 'favicon' || field.key === 'default_item_image';
 
   return (
     <label
-      style={{ display: 'grid', gap: 6, minWidth: 0 }}
+      className={`business-details-field${isWideField(field) ? ' business-details-field--wide' : ''}`}
       data-testid={`business-field-${field.key}`}
     >
       <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>
@@ -331,27 +427,58 @@ function FieldEditor({
           />
         </div>
       ) : field.type === 'image' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          {value ? (
-            <img
-              src={value}
-              alt=""
-              data-testid={`business-image-preview-${field.key}`}
-              style={{ width: 56, height: 40, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-bg)', flex: 'none' }}
+        <div className="business-details-image">
+          <span
+            className={`business-details-image-preview${isSquarePreview ? ' business-details-image-preview--square' : ''}`}
+            data-testid={`business-image-slot-${field.key}`}
+          >
+            {value ? (
+              <img
+                src={value}
+                alt=""
+                data-testid={`business-image-preview-${field.key}`}
+              />
+            ) : (
+              <span className="business-details-image-empty">Not set</span>
+            )}
+          </span>
+          <span className="business-details-image-controls">
+            <input
+              type="url"
+              inputMode="url"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="/storage/…"
+              style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}
+              aria-invalid={Boolean(error)}
             />
-          ) : null}
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Paste an image URL, or pick one from the Media Library"
-            style={{ ...inputStyle, ...(error ? inputErrorStyle : null), flex: 1, minWidth: 0 }}
-            aria-invalid={Boolean(error)}
-          />
+            <span className="business-details-image-actions">
+              <Btn
+                type="button"
+                variant="secondary"
+                onClick={onPickImage}
+                data-testid={`business-image-pick-${field.key}`}
+              >
+                <ImageIcon size={14} aria-hidden /> Choose picture
+              </Btn>
+              {value ? (
+                <Btn
+                  type="button"
+                  variant="secondary"
+                  onClick={() => onChange('')}
+                  data-testid={`business-image-clear-${field.key}`}
+                >
+                  Remove
+                </Btn>
+              ) : null}
+            </span>
+          </span>
         </div>
       ) : (
         <input
-          type={inputType}
+          type={keyboard.type}
+          inputMode={keyboard.inputMode}
+          autoComplete={keyboard.autoComplete}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           style={{ ...inputStyle, ...(error ? inputErrorStyle : null) }}

@@ -5707,3 +5707,165 @@ a { text-decoration: none; color: inherit; }
   .wcw-group-head { margin-top: 20px; }
   .wcw--mobile .wcw-blurb { margin-bottom: 12px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   BUSINESS DETAILS — one record, two columns on a desk, one on a phone
+════════════════════════════════════════════════════════════ */
+.business-details-form {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 1040px;
+  min-width: 0;
+  padding-bottom: 12px;
+}
+
+.business-details-card {
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  scroll-margin-top: 16px;
+}
+
+/* Short fields pair up; addresses, images and long text take the row. */
+.business-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px 22px;
+  align-items: start;
+}
+.business-details-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  align-content: start;
+}
+.business-details-field--wide { grid-column: 1 / -1; }
+
+/* ── jump row ──────────────────────────────────────────────── */
+.business-details-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  max-width: 1040px;
+}
+.business-details-jump-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 7px 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.business-details-jump-link:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* ── image fields ──────────────────────────────────────────── */
+.business-details-image {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.business-details-image-preview {
+  flex: none;
+  width: 96px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.business-details-image-preview--square { width: 64px; height: 64px; }
+.business-details-image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.business-details-image-empty {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.business-details-image-controls {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.business-details-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── save bar that follows you down ────────────────────────── */
+.business-details-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-width: 1040px;
+  box-sizing: border-box;
+}
+.business-details-savebar-text {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.business-details-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .business-details-grid { grid-template-columns: 1fr; }
+  .business-details-card { padding: 14px; }
+  .business-details-jump {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .business-details-image {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .business-details-image-preview { width: 100%; height: 120px; }
+  .business-details-image-preview--square { width: 100%; height: 120px; }
+  /* The footer button duplicates the sticky bar on a phone — one Save is enough. */
+  .business-details-foot { display: none; }
+  .business-details-savebar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--admin-tabbar-h, 56px) + 12px);
+    margin-top: 0;
+    z-index: 40;
+  }
+}

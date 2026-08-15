@@ -80,11 +80,21 @@ class BusinessDetailsTest extends TestCase
 
         $sectionIds = collect($res['sections'])->pluck('id')->all();
         $this->assertSame(
-            ['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking', 'menu_rules'],
+            ['identity', 'contact', 'address', 'brand', 'social', 'tracking', 'menu_rules'],
             $sectionIds,
         );
 
-        foreach (['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking', 'menu_rules'] as $id) {
+        // Owner decision 2026-08-15: one field, one place. The phone and email
+        // used to be listed under Identity AND Contact, so the screen drew each
+        // of them twice — two boxes, one value.
+        $this->assertSame([], BusinessDetailsKeys::duplicatedKeys());
+        $this->assertTrue(BusinessDetailsKeys::sectionsCoverEveryKeyOnce());
+
+        $rendered = collect($res['sections'])->flatMap(fn (array $s) => array_column($s['fields'], 'key'))->all();
+        $this->assertSame(count($rendered), count(array_unique($rendered)), 'no field may be drawn twice');
+        $this->assertEqualsCanonicalizing(BusinessDetailsKeys::all(), array_unique($rendered));
+
+        foreach (['identity', 'contact', 'address', 'brand', 'social', 'tracking', 'menu_rules'] as $id) {
             $section = collect($res['sections'])->firstWhere('id', $id);
             $this->assertNotEmpty($section['fields']);
             foreach ($section['fields'] as $field) {

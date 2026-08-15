@@ -12,6 +12,14 @@ vi.mock('../api/businessDetails', () => ({
 }));
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+vi.mock('../components/MediaPicker', () => ({
+  MediaPicker: ({ open, onPick }: { open: boolean; onPick: (a: { url: string }) => void }) =>
+    (open ? (
+      <button type="button" data-testid="media-picker-stub" onClick={() => onPick({ url: '/storage/picked.png' })}>
+        Pick
+      </button>
+    ) : null),
+}));
 vi.mock('../components/ui', async () => {
   const actual = await vi.importActual<typeof import('../components/ui')>('../components/ui');
   return {
@@ -300,4 +308,127 @@ describe('BusinessDetailsPage', () => {
       expect(page.scrollWidth).toBeLessThanOrEqual(Math.max(page.clientWidth + 1, width + 1));
     },
   );
+});
+
+
+/**
+ * Enhancements, 2026-08-15 — "Enhance the business details page desktop and
+ * mobile version."
+ */
+describe('Business Details — enhancements', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.getBusinessDetails).mockResolvedValue(mockResponse());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('draws every field exactly once', async () => {
+    // The phone number and the email used to be listed under Identity AND
+    // Contact, so the page rendered two boxes for one value.
+    renderPage();
+    await screen.findByTestId('business-details-form');
+
+    for (const key of ['business_phone', 'business_email', 'site_name']) {
+      expect(screen.getAllByTestId(`business-field-${key}`)).toHaveLength(1);
+    }
+  });
+
+  it('raises the right keyboard for each kind of field', async () => {
+    renderPage();
+    await screen.findByTestId('business-details-form');
+
+    const inputIn = (key: string) =>
+      within(screen.getByTestId(`business-field-${key}`)).getByRole('textbox') as HTMLInputElement;
+
+    expect(inputIn('business_phone').type).toBe('tel');
+    expect(inputIn('business_phone').inputMode).toBe('tel');
+    expect(inputIn('business_email').type).toBe('email');
+    expect(inputIn('business_website').type).toBe('url');
+    expect(inputIn('business_whatsapp').type).toBe('tel');
+    expect(inputIn('site_name').type).toBe('text');
+  });
+
+  it('lists a jump link for every section', async () => {
+    renderPage();
+    const jump = await screen.findByTestId('business-details-jump');
+    const links = within(jump).getAllByRole('link');
+    expect(links).toHaveLength(4);
+    expect(links[0].getAttribute('href')).toBe('#business-section-identity');
+    expect(document.getElementById('business-section-identity')).toBeTruthy();
+  });
+
+  it('picks a picture from the Media Library instead of pasting a URL', async () => {
+    vi.mocked(api.getBusinessDetails).mockResolvedValue(mockResponse({
+      sections: [
+        {
+          id: 'brand',
+          title: 'Brand',
+          description: 'Brand',
+          fields: [
+            { key: 'logo', label: 'Logo', type: 'image', group: 'General', description: null, value: '', used_by: [] },
+          ],
+        },
+      ],
+      fields: [
+        { key: 'logo', label: 'Logo', type: 'image', group: 'General', description: null, value: '', used_by: [] },
+      ],
+    }));
+
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    expect(screen.getByTestId('business-image-slot-logo').textContent).toMatch(/Not set/);
+
+    fireEvent.click(screen.getByTestId('business-image-pick-logo'));
+    fireEvent.click(await screen.findByTestId('media-picker-stub'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('business-image-preview-logo').getAttribute('src')).toBe('/storage/picked.png');
+    });
+
+    fireEvent.click(screen.getByTestId('business-image-clear-logo'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('business-image-preview-logo')).toBeNull();
+    });
+  });
+
+  it('keeps Save reachable once something changes, and hides it again after', async () => {
+    vi.mocked(api.updateBusinessDetails).mockImplementation(async () => mockResponse({
+      fields: mockResponse().fields.map((f) =>
+        (f.key === 'site_name' ? { ...f, value: 'New Name' } : f)),
+    }));
+
+    renderPage();
+    await screen.findByTestId('business-details-form');
+    // Nothing to save yet — no bar in the way.
+    expect(screen.queryByTestId('business-details-savebar')).toBeNull();
+
+    const nameInput = within(screen.getByTestId('business-field-site_name')).getByRole('textbox');
+    fireEvent.change(nameInput, { target: { value: 'New Name' } });
+
+    const bar = await screen.findByTestId('business-details-savebar');
+    expect(bar.textContent).toMatch(/1 unsaved change/);
+
+    fireEvent.click(within(bar).getByTestId('business-details-save-sticky'));
+    await waitFor(() => {
+      expect(api.updateBusinessDetails).toHaveBeenCalledWith([{ key: 'site_name', value: 'New Name' }]);
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('business-details-savebar')).toBeNull();
+    });
+  });
+
+  it('the sticky bar stays put on a phone', async () => {
+    mockViewport(390);
+    renderPage();
+    await screen.findByTestId('business-details-form');
+
+    const nameInput = within(screen.getByTestId('business-field-site_name')).getByRole('textbox');
+    fireEvent.change(nameInput, { target: { value: 'Phone Edit' } });
+
+    const bar = await screen.findByTestId('business-details-savebar');
+    expect(within(bar).getByTestId('business-details-save-sticky')).toBeTruthy();
+  });
 });

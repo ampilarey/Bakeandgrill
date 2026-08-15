@@ -13,8 +13,12 @@ namespace App\Domains\Content;
 final class BusinessDetailsKeys
 {
     /**
-     * Section → editable shared keys (order preserved in the Admin UI).
-     * A key may appear in more than one section for display; {@see all()} is unique.
+     * Section → editable shared keys, in the order the Admin UI shows them.
+     *
+     * Every key appears exactly ONCE. Until 2026-08-15 the phone number and
+     * email address were listed under both Identity and Contact, so the screen
+     * drew each of them twice — two boxes, one value, no way to tell which was
+     * which. {@see sectionsCoverEveryKeyOnce} guards it.
      *
      * @var array<string, list<string>>
      */
@@ -22,8 +26,12 @@ final class BusinessDetailsKeys
         'identity' => [
             'site_name',
             'business_website',
+        ],
+        'contact' => [
             'business_phone',
             'business_email',
+            'business_whatsapp',
+            'business_viber',
         ],
         'address' => [
             'business_address',
@@ -34,21 +42,16 @@ final class BusinessDetailsKeys
             'business_maps_url',
             'maps_embed_url',
         ],
-        'contact' => [
-            'business_phone',
-            'business_email',
-            'business_whatsapp',
-            'business_viber',
-        ],
-        'documents' => [
-            'site_tagline',
-            'logo',
-            'primary_color',
-        ],
+        // One brand, one set of images — since 2026-08-14 the same logo prints
+        // on an invoice and shows on the website, so splitting "document
+        // branding" from "brand images" described a difference that is gone.
         'brand' => [
+            'logo',
             'logo_dark',
             'favicon',
             'og_image',
+            'primary_color',
+            'site_tagline',
             'default_item_image',
         ],
         'social' => [
@@ -137,6 +140,37 @@ final class BusinessDetailsKeys
         'google_tag_manager_id' => ['Website visitor tracking', 'Order App visitor tracking'],
         'menu_new_days' => ['Order App menu "New items"', 'TV signage'],
     ];
+
+    /**
+     * True when every key is listed under exactly one section.
+     *
+     * A duplicate does not corrupt anything — {@see all()} de-duplicates — but
+     * it draws the same field twice on screen, which is how the phone number
+     * came to appear in two places at once.
+     */
+    public static function sectionsCoverEveryKeyOnce(): bool
+    {
+        return count(self::duplicatedKeys()) === 0;
+    }
+
+    /** @return list<string> keys listed under more than one section */
+    public static function duplicatedKeys(): array
+    {
+        $seen = [];
+        $duplicates = [];
+        foreach (self::SECTIONS as $sectionKeys) {
+            foreach ($sectionKeys as $key) {
+                if (isset($seen[$key])) {
+                    $duplicates[$key] = true;
+
+                    continue;
+                }
+                $seen[$key] = true;
+            }
+        }
+
+        return array_keys($duplicates);
+    }
 
     /** @return list<string> */
     public static function all(): array
