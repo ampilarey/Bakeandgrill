@@ -82,12 +82,18 @@ final class OpsOwnedContent
     ];
 
     /**
-     * Business-record keys are edited in Business Details only and are hidden
-     * from Content & Branding entirely — not shown as read-only rows.
+     * Single-owner keys are hidden from Content & Branding entirely — not shown
+     * as read-only rows.
+     *
+     * Owner decision 2026-08-15: "Hide those read only boxes also." A row you
+     * cannot edit, sitting among rows you can, reads as a setting to fix. It
+     * cost him a trip looking for a Website delivery time that does not exist.
+     * Business Details keys went first (2026-08-14); the two Delivery Settings
+     * mirrors now follow.
      */
     public static function isHiddenFromContentHub(string $key): bool
     {
-        return in_array($key, self::BUSINESS_DETAILS_KEYS, true);
+        return self::isWriteForbidden($key);
     }
 
     public static function isWriteForbidden(string $key): bool

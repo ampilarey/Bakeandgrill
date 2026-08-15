@@ -210,12 +210,21 @@ describe('Website Content workspace — phone', () => {
     expect(screen.getByTestId('wcw-mobile-back')).toBeTruthy();
   });
 
-  it('a setting owned elsewhere stays read-only on the phone too', async () => {
+  it('a setting owned elsewhere is not offered here, and never vanishes silently', async () => {
+    // The API hides single-owner keys (owner, 2026-08-15) — that is enforced
+    // backend-side. What this screen must guarantee is the other half: if one
+    // ever does arrive, it shows up somewhere, read-only, instead of being
+    // quietly dropped.
     mount();
     fireEvent.click(await screen.findByTestId('wcw-page-Home'));
-    fireEvent.click(await screen.findByTestId('wcw-section-toggle-location'));
 
-    const field = await screen.findByTestId('wcw-field-delivery_time');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-location'));
+    const location = await screen.findByTestId('wcw-section-body-location');
+    expect(within(location).queryByTestId('wcw-field-delivery_time')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-other'));
+    const other = await screen.findByTestId('wcw-section-body-other');
+    const field = within(other).getByTestId('wcw-field-delivery_time');
     expect(within(field).getByTestId('ops-owned-delivery_time')).toBeTruthy();
     expect(within(field).queryByRole('textbox')).toBeNull();
   });

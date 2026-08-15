@@ -135,19 +135,22 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
         ])->assertUnprocessable();
     }
 
-    public function test_content_blocks_expose_managed_by_for_ops_owned_keys(): void
+    public function test_content_blocks_hide_ops_owned_keys_but_still_name_their_owner(): void
     {
         $this->actingAsOwner();
         SiteSetting::set('delivery_free_threshold', '210');
         ContentResolver::bust();
 
         $blocks = $this->getJson('/api/admin/content')->assertOk()->json('blocks');
-        $threshold = collect($blocks)->firstWhere('key', 'delivery_threshold');
-        $this->assertIsArray($threshold);
-        $this->assertNotNull($threshold['managed_by']);
-        $this->assertStringContainsString('Delivery', (string) $threshold['managed_by']['owner_label']);
-        $this->assertSame('/admin/delivery-settings', $threshold['managed_by']['owner_path']);
-        $this->assertSame('MVR 210', $threshold['managed_by']['current_value']);
+
+        // Owner decision 2026-08-15 — the free-delivery threshold is edited in
+        // Delivery Settings and is not listed here at all, not even read-only.
+        $this->assertNull(collect($blocks)->firstWhere('key', 'delivery_threshold'));
+
+        $meta = OpsOwnedContent::managedByMeta('delivery_threshold');
+        $this->assertStringContainsString('Delivery', (string) $meta['owner_label']);
+        $this->assertSame('/admin/delivery-settings', $meta['owner_path']);
+        $this->assertSame('MVR 210', $meta['current_value']);
 
         // Business-record keys are no longer listed in the hub at all — they
         // are edited in Business Details only (owner decision 2026-08-14).
@@ -197,24 +200,25 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
                 "ops-owned key [{$key}] must remain write-forbidden",
             );
 
-            if (OpsOwnedContent::isHiddenFromContentHub($key)) {
-                // Owner decision 2026-08-14: business-record keys are edited in
-                // Business Details ONLY and are hidden from Content & Branding
-                // entirely — not shown there as read-only rows.
-                $this->assertNull(
-                    $blocks->firstWhere('key', $key),
-                    "business-record key [{$key}] must not appear under Website or Order App content",
-                );
+            // Owner decisions 2026-08-14 and 2026-08-15: every single-owner key
+            // is edited in its own screen ONLY and is hidden from Content &
+            // Branding entirely — business-record keys first, then the two
+            // Delivery Settings mirrors. A read-only row among editable ones
+            // reads as a setting to fix.
+            $this->assertTrue(
+                OpsOwnedContent::isHiddenFromContentHub($key),
+                "ops-owned key [{$key}] must be hidden from Content & Branding",
+            );
+            $this->assertNull(
+                $blocks->firstWhere('key', $key),
+                "ops-owned key [{$key}] must not appear under Website or Order App content",
+            );
 
-                continue;
-            }
-
-            // Delivery Settings mirrors still appear, read-only, with a link home.
-            $block = $blocks->firstWhere('key', $key);
-            $this->assertIsArray($block, "delivery mirror [{$key}] should still show in the hub");
-            $this->assertNotNull($block['managed_by'] ?? null, "ops-owned key [{$key}] must expose managed_by");
-            $this->assertNotEmpty($block['managed_by']['owner_label'] ?? null);
-            $this->assertNotEmpty($block['managed_by']['owner_path'] ?? null);
+            // Hidden, but still owned by a real screen the owner can reach.
+            $meta = OpsOwnedContent::managedByMeta($key);
+            $this->assertIsArray($meta, "ops-owned key [{$key}] must name its owner");
+            $this->assertNotEmpty($meta['owner_label'] ?? null);
+            $this->assertNotEmpty($meta['owner_path'] ?? null);
         }
     }
 

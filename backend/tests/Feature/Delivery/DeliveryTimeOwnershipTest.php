@@ -46,7 +46,7 @@ class DeliveryTimeOwnershipTest extends TestCase
     {
         $this->assertTrue(OpsOwnedContent::isDeliveryOpsMirror('delivery_time'));
         $this->assertTrue(OpsOwnedContent::isWriteForbidden('delivery_time'));
-        $this->assertFalse(OpsOwnedContent::isHiddenFromContentHub('delivery_time'));
+        $this->assertTrue(OpsOwnedContent::isHiddenFromContentHub('delivery_time'));
 
         $meta = OpsOwnedContent::managedByMeta('delivery_time');
         $this->assertSame('/admin/delivery-settings', $meta['owner_path']);
@@ -106,17 +106,30 @@ class DeliveryTimeOwnershipTest extends TestCase
         );
     }
 
-    public function test_it_still_shows_in_content_hub_read_only_with_a_link_home(): void
+    public function test_it_is_hidden_from_content_and_branding_entirely(): void
     {
+        // Owner decision 2026-08-15: "Hide those read only boxes also." A row
+        // you cannot edit, among rows you can, reads as a setting to fix.
         $this->actingAsOwner();
         SiteSetting::set('delivery_time', '25–40 min (test)');
         ContentResolver::bust();
 
         $blocks = collect($this->getJson('/api/admin/content')->assertOk()->json('blocks'));
-        $block = $blocks->firstWhere('key', 'delivery_time');
 
-        $this->assertIsArray($block, 'delivery_time should still be visible, read-only');
-        $this->assertSame('/admin/delivery-settings', $block['managed_by']['owner_path']);
-        $this->assertSame('25–40 min (test)', $block['managed_by']['current_value']);
+        $this->assertNull($blocks->firstWhere('key', 'delivery_time'));
+        $this->assertNull($blocks->firstWhere('key', 'delivery_threshold'));
+    }
+
+    public function test_hiding_it_does_not_take_it_off_the_live_site(): void
+    {
+        // The danger of hiding a key: it stops being edited AND stops being
+        // shown. The public payload must still carry the promise.
+        SiteSetting::set('delivery_time', '25–40 min (test)');
+        ContentResolver::bust();
+
+        foreach (['website', 'order_app'] as $app) {
+            $content = $this->getJson("/api/content?app={$app}&locale=en")->assertOk()->json('content');
+            $this->assertSame('25–40 min (test)', $content['delivery_time'] ?? null, $app);
+        }
     }
 }

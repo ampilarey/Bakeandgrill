@@ -199,12 +199,21 @@ describe('Website Content workspace — desktop', () => {
     expect((input as HTMLInputElement).value).toBe('Fresh today');
   });
 
-  it('shows a setting owned elsewhere read-only, with a link to its home', async () => {
+  it('a setting owned elsewhere is not offered here, and never vanishes silently', async () => {
+    // The API hides single-owner keys (owner, 2026-08-15) — enforced backend
+    // side. This screen owns the other half of the promise: if one ever does
+    // arrive, it appears somewhere, read-only, rather than being dropped.
     mount();
     fireEvent.click(await screen.findByTestId('wcw-section-toggle-location'));
-    const field = await screen.findByTestId('wcw-field-delivery_time');
+    const location = await screen.findByTestId('wcw-section-body-location');
+    expect(within(location).queryByTestId('wcw-field-delivery_time')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-other'));
+    const other = await screen.findByTestId('wcw-section-body-other');
+    const field = within(other).getByTestId('wcw-field-delivery_time');
     expect(within(field).getByTestId('ops-owned-delivery_time')).toBeTruthy();
     expect(within(field).queryByRole('textbox')).toBeNull();
+    expect(field.querySelector('.wcw-field-owner')?.textContent).toMatch(/Delivery Settings/);
   });
 
   it('says where each section shows, from the real layout', async () => {

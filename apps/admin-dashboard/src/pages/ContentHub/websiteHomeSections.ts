@@ -3,7 +3,7 @@ import { groupBlocks, type FieldGroup, type GroupedBlocks } from './websiteField
 
 /**
  * The homepage, as the owner sees it: ten sections in the order a visitor
- * scrolls past them — not 54 loose settings.
+ * scrolls past them — not fifty-odd loose settings.
  *
  * Owner decision 2026-08-15: "5 pages tabs in a row … when each part is clicked
  * it opens in place." This file answers *what the parts are*. `blockType` ties
@@ -13,8 +13,13 @@ import { groupBlocks, type FieldGroup, type GroupedBlocks } from './websiteField
  * Membership is by explicit key list, never by regex over labels — a renamed
  * label must not silently move a setting to another section. Anything not
  * listed falls into the catch-all at the bottom, which is visible on screen
- * and asserted empty by websiteHomeSections.test.ts, so a newly added key can
+ * and asserted empty by websiteFieldGroups.test.ts, so a newly added key can
  * never disappear from the screen.
+ *
+ * Settings edited on another screen are NOT filed here. The delivery promise
+ * and the free-delivery threshold used to sit at the bottom of Location &
+ * delivery as read-only rows; the owner had them hidden on 2026-08-15 because
+ * a row you cannot edit reads as a setting to fix.
  */
 
 export type WebsiteHomeSectionId =
@@ -150,7 +155,7 @@ export const WEBSITE_HOME_SECTIONS: WebsiteHomeSectionDef[] = [
   {
     id: 'location',
     label: 'Location & delivery',
-    description: 'Where to find us, and the delivery promise',
+    description: 'Where to find us, and how delivery is described',
     blockType: 'location',
     keys: [
       'home_location_title',
@@ -167,8 +172,6 @@ export const WEBSITE_HOME_SECTIONS: WebsiteHomeSectionDef[] = [
       'home_delivery_subtitle',
       'home_delivery_quality_line',
       'home_delivery_payment_line',
-      'delivery_time',
-      'delivery_threshold',
     ],
     headings: [
       {
@@ -196,7 +199,6 @@ export const WEBSITE_HOME_SECTIONS: WebsiteHomeSectionDef[] = [
           'home_delivery_payment_line',
         ],
       },
-      { label: 'Managed elsewhere', keys: ['delivery_time', 'delivery_threshold'] },
     ],
   },
 ];

@@ -12,10 +12,11 @@ import { WEBSITE_PAGE_GROUPS, groupBlocks } from './websiteFieldGroups';
  * claims — which is exactly how a setting would quietly stop being editable.
  */
 
-/** Business-record keys are hidden from Content & Branding entirely. */
-const HIDDEN_FROM_HUB = new Set(
-  [...OPS_OWNED_CONTENT_KEYS].filter((k) => k !== 'delivery_threshold' && k !== 'delivery_time'),
-);
+/**
+ * Every single-owner key is hidden from Content & Branding entirely — business
+ * records (2026-08-14) and the two Delivery Settings mirrors (2026-08-15).
+ */
+const HIDDEN_FROM_HUB = new Set(OPS_OWNED_CONTENT_KEYS);
 
 function websiteKeysIn(group: string): string[] {
   return Object.entries(WEBSITE_HUB_GROUP_BY_KEY)
@@ -70,9 +71,18 @@ describe('Website Home sections', () => {
     expect(sections.find((s) => s.id === 'other')).toBeUndefined();
   });
 
-  it('is ten sections and 54 settings', () => {
+  it('is ten sections and 52 settings', () => {
+    // 54 until the delivery promise and the free-delivery threshold were
+    // hidden here and left to Delivery Settings (owner, 2026-08-15).
     expect(WEBSITE_HOME_SECTIONS).toHaveLength(10);
-    expect(homeKeys).toHaveLength(54);
+    expect(homeKeys).toHaveLength(52);
+  });
+
+  it('files nothing that is edited on another screen', () => {
+    const filed = new Set(WEBSITE_HOME_SECTIONS.flatMap((s) => s.keys));
+    for (const key of ['delivery_time', 'delivery_threshold', 'logo', 'business_phone']) {
+      expect(filed.has(key), `[${key}] is owned elsewhere and must not be filed on Home`).toBe(false);
+    }
   });
 
   it('every sub-heading only names keys its own section owns', () => {
