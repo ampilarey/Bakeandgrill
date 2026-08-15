@@ -80,11 +80,11 @@ class BusinessDetailsTest extends TestCase
 
         $sectionIds = collect($res['sections'])->pluck('id')->all();
         $this->assertSame(
-            ['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking'],
+            ['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking', 'menu_rules'],
             $sectionIds,
         );
 
-        foreach (['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking'] as $id) {
+        foreach (['identity', 'address', 'contact', 'documents', 'brand', 'social', 'tracking', 'menu_rules'] as $id) {
             $section = collect($res['sections'])->firstWhere('id', $id);
             $this->assertNotEmpty($section['fields']);
             foreach ($section['fields'] as $field) {

@@ -76,6 +76,9 @@ final class OpsOwnedContent
         // Visitor tracking — one property per business.
         'google_analytics_id',
         'google_tag_manager_id',
+
+        // Menu rule, one business (owner decision 2026-08-14).
+        'menu_new_days',
     ];
 
     /**

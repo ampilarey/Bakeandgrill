@@ -2,8 +2,8 @@
 
 **Status: SHIPPED 2026-08-14.** All 13 moved. The bug in §1 is fixed. Business-record keys are
 now hidden from Website Content and Order App Content entirely — not shown there as read-only
-rows — at the owner's request. `delivery_time` moved to **Delivery Settings** (2026-08-14). `menu_new_days`
-(§3) remains outstanding.
+rows — at the owner's request. `delivery_time` moved to **Delivery Settings**, `menu_new_days` to
+**Business Details** (both 2026-08-14). Nothing outstanding.
 
 Owner's ask: *"check the settings that can be moved to business details section that are common on
 both websites and order app."*
@@ -182,7 +182,18 @@ A bug caught by break-testing: routing the value through Delivery Settings made 
 blanked the delivery promise on the live site. `deriveResolvedValue()` now falls back to the
 registry default, and `test_unset_delivery_time_falls_back_to_the_default_not_blank` guards it.
 
-## 10. Still outstanding
+## 10. Menu new-items window — shipped 2026-08-14
 
-`menu_new_days` → Menu settings, from §3. It needs a home on that screen first, so it was left out
-rather than half-moved.
+Owner chose **Business Details**, not a new Menu settings screen: *"Keep new items setting under
+businesses settings."* Sensible — it avoids building a settings area on a page that is otherwise a
+list of dishes.
+
+`menu_new_days` joins `BUSINESS_DETAILS_KEYS`, appears under a new **Menu rules** section, and is
+hidden from Website and Order App content like the other business-record keys. It controls how many
+days a newly added dish shows under "New items" on the Order App menu and on TV signage.
+
+The owner also confirmed **delivery threshold stays in Delivery Settings** — it already did
+(`DELIVERY_OPS` → `/admin/delivery-settings`, editable as "Free delivery from (MVR)"), so no change
+was needed.
+
+Final ownership: **2** delivery mirrors (threshold, promise) + **27** Business Details keys.

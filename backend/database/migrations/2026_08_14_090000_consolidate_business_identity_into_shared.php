@@ -42,6 +42,7 @@ return new class extends Migration
         'social_tiktok',
         'google_analytics_id',
         'google_tag_manager_id',
+        'menu_new_days',
     ];
 
     public function up(): void

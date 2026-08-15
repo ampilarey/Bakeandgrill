@@ -58,6 +58,7 @@ class BusinessDetailsController extends Controller
                     'brand' => 'Brand images',
                     'social' => 'Social accounts',
                     'tracking' => 'Visitor tracking',
+                    'menu_rules' => 'Menu rules',
                     default => $id,
                 },
                 'description' => match ($id) {
@@ -68,6 +69,7 @@ class BusinessDetailsController extends Controller
                     'brand' => 'Dark logo, browser tab icon, link-preview image and the stand-in photo for menu items with no picture. One set everywhere.',
                     'social' => 'Your accounts, shown in the footer of both the Website and the Order App.',
                     'tracking' => 'Google Analytics and Tag Manager IDs. These track website visitors — they are not your Google Maps location, which is under Address and location.',
+                    'menu_rules' => 'How long a newly added dish keeps its “New” label on the menu and on TV signage.',
                     default => null,
                 },
                 'fields' => array_values(array_map(
@@ -143,6 +145,7 @@ class BusinessDetailsController extends Controller
             'site_tagline' => 'Receipt / document tagline',
             'logo' => 'Receipt / document logo',
             'primary_color' => 'Receipt / document primary colour',
+            'menu_new_days' => 'Show a new dish as “New” for this many days',
             default => (string) ($meta['label'] ?? $key),
         };
     }

@@ -61,6 +61,9 @@ final class BusinessDetailsKeys
             'google_analytics_id',
             'google_tag_manager_id',
         ],
+        'menu_rules' => [
+            'menu_new_days',
+        ],
     ];
 
     /**
@@ -132,6 +135,7 @@ final class BusinessDetailsKeys
         'social_tiktok' => ['Website footer', 'Order App footer'],
         'google_analytics_id' => ['Website visitor tracking', 'Order App visitor tracking'],
         'google_tag_manager_id' => ['Website visitor tracking', 'Order App visitor tracking'],
+        'menu_new_days' => ['Order App menu "New items"', 'TV signage'],
     ];
 
     /** @return list<string> */

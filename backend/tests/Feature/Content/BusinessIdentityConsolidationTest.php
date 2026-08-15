@@ -25,12 +25,13 @@ class BusinessIdentityConsolidationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** The 13 keys moved by this change. */
+    /** The 14 keys moved by this change. */
     private const MOVED = [
         'site_tagline', 'logo', 'logo_dark', 'favicon', 'og_image',
         'primary_color', 'default_item_image',
         'show_social_links', 'social_instagram', 'social_facebook', 'social_tiktok',
         'google_analytics_id', 'google_tag_manager_id',
+        'menu_new_days',
     ];
 
     private function actingAsOwner(): void
