@@ -56,9 +56,14 @@ describe('Content task surface map IA', () => {
     expect(order.tasks.some((t) => t.id === 'status_banners' && t.group === 'Home')).toBe(true);
   });
 
-  it('renames technical details to Business profile & language under Global', () => {
+  it('brand_profile now covers only the language switcher, not the business profile', () => {
+    // Logo, colours and site name moved to Business Details (2026-08-14), so the
+    // card must not advertise them — see taskLandingConfig.movedKeys.test.ts.
     const global = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'global')!;
-    expect(global.tasks.some((t) => t.id === 'brand_profile' && /Business profile/i.test(t.title))).toBe(true);
+    const card = global.tasks.find((t) => t.id === 'brand_profile')!;
+    expect(card).toBeTruthy();
+    expect(/language/i.test(card.title)).toBe(true);
+    expect(/moved to Business Details/i.test(card.description)).toBe(true);
     expect(CONTENT_TASK_CLUSTERS.flatMap((c) => c.tasks).some((t) => /Technical content/i.test(t.title))).toBe(false);
   });
 

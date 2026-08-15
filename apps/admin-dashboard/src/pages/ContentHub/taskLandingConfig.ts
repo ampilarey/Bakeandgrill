@@ -86,11 +86,11 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
     tasks: [
       {
         id: 'brand_profile',
-        title: 'Business profile & language',
-        description: 'Logo, colours, site name, and language-facing brand assets',
+        title: 'Language switcher',
+        description: 'Show the EN / ދވ switcher. Logo, colours and business name moved to Business Details.',
         icon: Palette,
         group: 'Everywhere',
-        placements: ['Website header', 'Order App phone home'],
+        placements: ['Website header'],
         statusHint: 'Website only',
       },
       {
@@ -115,7 +115,7 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       {
         id: 'website_footer',
         title: 'Website footer',
-        description: 'Website footer copy, links, and socials',
+        description: 'Website footer copy and links. Social accounts moved to Business Details.',
         icon: PanelBottom,
         group: 'Everywhere',
         placements: ['Website footer'],
@@ -191,8 +191,8 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
       },
       {
         id: 'seo',
-        title: 'SEO & analytics',
-        description: 'Search titles, descriptions, and tracking IDs',
+        title: 'Search wording',
+        description: 'Search titles and descriptions. Analytics IDs moved to Business Details.',
         icon: Search,
         group: 'Everywhere',
         placements: ['Website header'],
@@ -308,11 +308,11 @@ export const CONTENT_TASK_CLUSTERS: ContentTaskCluster[] = [
 export const BRAND_PAGE_TASKS: ContentTask[] = [
   {
     id: 'brand_profile',
-    title: 'Brand Kit',
-    description: 'Logo, colours, site name, and language-facing brand assets',
+    title: 'Language switcher',
+    description: 'Show the EN / ދވ switcher. Logo, colours and business name moved to Business Details.',
     icon: Palette,
     group: 'Everywhere',
-    placements: ['Website header', 'Order App phone home'],
+    placements: ['Website header'],
     statusHint: 'Website only',
   },
   {
@@ -335,7 +335,7 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
   {
     id: 'website_footer',
     title: 'Website footer',
-    description: 'Website footer copy, links, and socials',
+    description: 'Website footer copy and links. Social accounts moved to Business Details.',
     icon: PanelBottom,
     group: 'Everywhere',
     placements: ['Website footer'],
@@ -364,8 +364,8 @@ export const BRAND_PAGE_TASKS: ContentTask[] = [
   },
   {
     id: 'seo',
-    title: 'SEO & analytics',
-    description: 'Search titles, descriptions, and tracking IDs',
+    title: 'Search wording',
+    description: 'Search titles and descriptions. Analytics IDs moved to Business Details.',
     icon: Search,
     group: 'Everywhere',
     placements: ['Website header'],
