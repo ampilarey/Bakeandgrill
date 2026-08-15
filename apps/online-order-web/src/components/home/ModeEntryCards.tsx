@@ -40,6 +40,8 @@ type CardProps = {
   statusLine: string | null;
   available: boolean;
   cta: string;
+  /** CMS override; falls back to bundled MODE_IMAGES. */
+  imageSrc?: string | null;
   onClick: () => void;
 };
 
@@ -60,9 +62,10 @@ function formatWindowTime(iso: string | null | undefined): string {
   }
 }
 
-function ModeCard({ kind, label, hint, statusLine, available, cta, onClick }: CardProps) {
+function ModeCard({ kind, label, hint, statusLine, available, cta, imageSrc, onClick }: CardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const icon = kind === 'delivery' ? '🛵' : kind === 'dine_in' ? '🍽️' : '🏪';
+  const resolvedSrc = (imageSrc || '').trim() || MODE_IMAGES[kind];
 
   return (
     <button
@@ -81,7 +84,7 @@ function ModeCard({ kind, label, hint, statusLine, available, cta, onClick }: Ca
         {!imgFailed ? (
           <img
             className="mode-entry-card__img"
-            src={MODE_IMAGES[kind]}
+            src={resolvedSrc}
             alt=""
             onError={() => setImgFailed(true)}
           />
@@ -228,6 +231,12 @@ export function ModeEntryCards() {
     dine_in: text('order_mode_dine_in_info', DEFAULT_INFO.dine_in),
   }), [text]);
 
+  const modeImages = useMemo(() => ({
+    delivery: text('order_mode_delivery_image', ''),
+    pickup: text('order_mode_pickup_image', ''),
+    dine_in: text('order_mode_dine_in_image', ''),
+  }), [text]);
+
   const startOrder = (mode: ModeKind) => {
     setMode(mode);
     void navigate('/menu');
@@ -264,6 +273,7 @@ export function ModeEntryCards() {
               hint={hints[kind]}
               statusLine={statusLine}
               available={state.available}
+              imageSrc={modeImages[kind]}
               cta={state.available ? `${labels[kind]} →` : `${learnMore} →`}
               onClick={() => handleCard(kind)}
             />

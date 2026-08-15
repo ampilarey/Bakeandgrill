@@ -13,7 +13,7 @@
  * caches are cleaned up on activation.
  */
 
-const CACHE_VERSION = 'bg-pwa-v71';
+const CACHE_VERSION = 'bg-pwa-v72';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
