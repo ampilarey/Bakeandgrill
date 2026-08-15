@@ -45,8 +45,8 @@ class WebsiteFooterTest extends TestCase
         $this->assertStringNotContainsString('data-social="facebook"', $emptyHtml);
         $this->assertStringNotContainsString('data-social="tiktok"', $emptyHtml);
 
-        SiteSetting::set('social_instagram', 'https://instagram.com/bakeandgrill', 'website');
-        SiteSetting::set('social_facebook', 'https://facebook.com/bakeandgrill', 'website');
+        SiteSetting::set('social_instagram', 'https://instagram.com/bakeandgrill', 'shared');
+        SiteSetting::set('social_facebook', 'https://facebook.com/bakeandgrill', 'shared');
         SiteSetting::bust();
         Cache::flush();
         \App\Domains\Content\ContentResolver::bust();
@@ -126,7 +126,7 @@ class WebsiteFooterTest extends TestCase
     public function test_footer_blurb_ignores_legacy_copyright_footer_text(): void
     {
         SiteSetting::set('footer_text', '© 2026 Bake & Grill. All rights reserved.', 'website');
-        SiteSetting::set('site_tagline', 'Fresh every day in Malé.', 'website');
+        SiteSetting::set('site_tagline', 'Fresh every day in Malé.', 'shared');
         SiteSetting::bust();
         Cache::flush();
         \App\Domains\Content\ContentResolver::bust();

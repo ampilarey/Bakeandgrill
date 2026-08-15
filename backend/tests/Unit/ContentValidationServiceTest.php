@@ -32,7 +32,8 @@ class ContentValidationServiceTest extends TestCase
     {
         $validator = app(ContentValidationService::class);
 
-        $this->assertSame('#AABBCC', $validator->normalizeForWrite('primary_color', 'website', '#abc'));
+        // primary_color is Business Details–owned (2026-08-14) — shared only.
+        $this->assertSame('#AABBCC', $validator->normalizeForWrite('primary_color', 'shared', '#abc'));
         $this->assertSame('#D4813A', $validator->normalizeForWrite('primary_color', 'shared', '#d4813a'));
 
         $slides = $validator->normalizeForWrite('hero_slides', 'website', [[

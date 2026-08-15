@@ -72,26 +72,39 @@ class BrandingSyncTest extends TestCase
         $this->assertSame('/storage/site/order-before.png', SiteSetting::getScoped('logo', 'order_app'));
     }
 
-    public function test_website_logo_edit_does_not_change_order_app_or_invoice_logo(): void
+    public function test_logo_is_one_business_record_shared_by_both_apps_and_invoices(): void
     {
-        SiteSetting::set('logo', '/storage/site/order-logo.png', 'order_app');
+        // Owner decision 2026-08-14 — one business, one identity. Brand images,
+        // tagline, socials and tracking IDs live in Business Details only.
         SiteSetting::set('logo', '/storage/site/invoice-logo.png', 'shared');
         SiteSetting::set('primary_color', '#ABCDEF', 'shared');
+        // Stale per-app rows must be ignored, not preferred.
+        SiteSetting::set('logo', '/storage/site/order-logo.png', 'order_app');
+        SiteSetting::set('logo', '/storage/site/old-website-logo.png', 'website');
+        ContentResolver::bust();
 
-        $url = '/storage/site/hub-logo.png';
-        $this->putJson('/api/admin/content', [
-            'locale' => 'en',
-            'changes' => [
-                ['key' => 'logo', 'scope' => 'website', 'value' => $url],
-            ],
-        ])->assertOk();
-
-        $this->assertSame($url, ContentResolver::for('website')->get('logo'));
-        $this->assertSame('/storage/site/order-logo.png', ContentResolver::for('order_app')->get('logo'));
+        $this->assertSame('/storage/site/invoice-logo.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/storage/site/invoice-logo.png', ContentResolver::for('order_app')->get('logo'));
         $this->assertSame('/storage/site/invoice-logo.png', SiteSetting::get('logo'));
+
         $brand = \App\Support\DocumentBrandView::variables();
         $this->assertSame('/storage/site/invoice-logo.png', $brand['brandLogoWeb']);
         $this->assertSame('#ABCDEF', $brand['brandPrimary']);
+    }
+
+    public function test_content_api_cannot_write_a_per_app_logo(): void
+    {
+        SiteSetting::set('logo', '/storage/site/invoice-logo.png', 'shared');
+        ContentResolver::bust();
+
+        $this->putJson('/api/admin/content', [
+            'locale' => 'en',
+            'changes' => [
+                ['key' => 'logo', 'scope' => 'website', 'value' => '/storage/site/hub-logo.png'],
+            ],
+        ])->assertUnprocessable();
+
+        $this->assertSame('/storage/site/invoice-logo.png', ContentResolver::for('website')->get('logo'));
     }
 
     public function test_media_file_cleaner_treats_site_settings_and_media_assets_as_refs(): void

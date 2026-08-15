@@ -149,9 +149,16 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
         $this->assertSame('/admin/delivery-settings', $threshold['managed_by']['owner_path']);
         $this->assertSame('MVR 210', $threshold['managed_by']['current_value']);
 
-        $phone = collect($blocks)->firstWhere('key', 'business_phone');
-        $this->assertNotNull($phone['managed_by']);
-        $this->assertSame('/admin/business-details', $phone['managed_by']['owner_path']);
+        // Business-record keys are no longer listed in the hub at all — they
+        // are edited in Business Details only (owner decision 2026-08-14).
+        $this->assertNull(collect($blocks)->firstWhere('key', 'business_phone'));
+        $this->assertNull(collect($blocks)->firstWhere('key', 'logo'));
+        $this->assertNull(collect($blocks)->firstWhere('key', 'primary_color'));
+        $this->assertNull(collect($blocks)->firstWhere('key', 'social_instagram'));
+
+        // …but they still carry owner metadata for anything that asks.
+        $meta = OpsOwnedContent::managedByMeta('logo');
+        $this->assertSame('/admin/business-details', $meta['owner_path']);
     }
 
     public function test_every_ops_owned_key_is_unwritable_via_content_api_and_exposes_owner_link(): void
@@ -164,8 +171,9 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
             array_keys(OpsOwnedContent::DELIVERY_OPS),
             OpsOwnedContent::BUSINESS_DETAILS_KEYS,
         )));
-        // 1 delivery ops mirror + 13 Business Details identity keys.
-        $this->assertCount(14, $keys);
+        // 2 delivery ops mirrors (threshold + promise) + 27 Business Details
+        // keys (13 original + 14 moved 2026-08-14, incl. menu_new_days).
+        $this->assertCount(29, $keys);
 
         $blocks = collect($this->getJson('/api/admin/content')->assertOk()->json('blocks'));
 
@@ -184,16 +192,26 @@ class OpsOwnedSettingsOwnershipTest extends TestCase
                 ],
             ])->assertUnprocessable();
 
-            $block = $blocks->firstWhere('key', $key);
-            if (! is_array($block)) {
-                // Structured address keys may be Business Details-only, not hub blocks.
-                $this->assertTrue(
-                    OpsOwnedContent::isWriteForbidden($key),
-                    "ops-owned key [{$key}] must remain write-forbidden even if absent from hub blocks",
+            $this->assertTrue(
+                OpsOwnedContent::isWriteForbidden($key),
+                "ops-owned key [{$key}] must remain write-forbidden",
+            );
+
+            if (OpsOwnedContent::isHiddenFromContentHub($key)) {
+                // Owner decision 2026-08-14: business-record keys are edited in
+                // Business Details ONLY and are hidden from Content & Branding
+                // entirely — not shown there as read-only rows.
+                $this->assertNull(
+                    $blocks->firstWhere('key', $key),
+                    "business-record key [{$key}] must not appear under Website or Order App content",
                 );
 
                 continue;
             }
+
+            // Delivery Settings mirrors still appear, read-only, with a link home.
+            $block = $blocks->firstWhere('key', $key);
+            $this->assertIsArray($block, "delivery mirror [{$key}] should still show in the hub");
             $this->assertNotNull($block['managed_by'] ?? null, "ops-owned key [{$key}] must expose managed_by");
             $this->assertNotEmpty($block['managed_by']['owner_label'] ?? null);
             $this->assertNotEmpty($block['managed_by']['owner_path'] ?? null);

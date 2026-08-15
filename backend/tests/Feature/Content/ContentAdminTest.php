@@ -51,18 +51,18 @@ class ContentAdminTest extends TestCase
     {
         $this->actingAsOwner();
         // Marketing copy key (not ops-owned / Business Details).
-        SiteSetting::set('delivery_time', 'SHARED ETA', 'shared');
-        SiteSetting::set('delivery_time', 'ORDER ETA', 'order_app');
+        SiteSetting::set('home_specials_title', 'SHARED SPECIALS', 'shared');
+        SiteSetting::set('home_specials_title', 'ORDER SPECIALS', 'order_app');
 
         $this->putJson('/api/admin/content', [
             'changes' => [
-                ['key' => 'delivery_time', 'scope' => 'website', 'value' => 'WEB ETA'],
+                ['key' => 'home_specials_title', 'scope' => 'website', 'value' => 'WEB SPECIALS'],
             ],
         ])->assertOk();
 
-        $this->assertSame('WEB ETA', SiteSetting::getScoped('delivery_time', 'website'));
-        $this->assertSame('ORDER ETA', SiteSetting::getScoped('delivery_time', 'order_app'));
-        $this->assertSame('SHARED ETA', SiteSetting::get('delivery_time'));
+        $this->assertSame('WEB SPECIALS', SiteSetting::getScoped('home_specials_title', 'website'));
+        $this->assertSame('ORDER SPECIALS', SiteSetting::getScoped('home_specials_title', 'order_app'));
+        $this->assertSame('SHARED SPECIALS', SiteSetting::get('home_specials_title'));
     }
 
     public function test_rich_content_is_sanitised_on_save(): void
@@ -83,17 +83,19 @@ class ContentAdminTest extends TestCase
         $this->assertStringContainsString('<em>there</em>', (string) $val);
     }
 
-    public function test_content_validation_normalizes_primary_color_and_rejects_bad_public_url(): void
+    public function test_content_validation_rejects_business_record_keys_and_bad_public_url(): void
     {
         $this->actingAsOwner();
 
+        // primary_color moved to Business Details (2026-08-14) — the content API
+        // must refuse it rather than store a competing per-app copy.
         $this->putJson('/api/admin/content', [
             'changes' => [
                 ['key' => 'primary_color', 'scope' => 'website', 'value' => '#d8a'],
             ],
-        ])->assertOk();
+        ])->assertUnprocessable();
 
-        $this->assertSame('#DD88AA', SiteSetting::getScoped('primary_color', 'website'));
+        $this->assertNull(SiteSetting::getScoped('primary_color', 'website'));
 
         $this->putJson('/api/admin/content', [
             'changes' => [
@@ -181,11 +183,11 @@ class ContentAdminTest extends TestCase
         $this->postJson('/api/admin/content/schedule', [
             'publish_at' => now()->addHour()->toIso8601String(),
             'changes' => [
-                ['key' => 'primary_color', 'scope' => 'website', 'value' => '#abc'],
+                ['key' => 'announcement_text', 'scope' => 'website', 'value' => '  Ramadan hours  '],
             ],
         ])->assertCreated();
 
-        $this->assertSame('#AABBCC', ContentSchedule::query()->latest('id')->value('value'));
+        $this->assertSame('Ramadan hours', ContentSchedule::query()->latest('id')->value('value'));
 
         $this->postJson('/api/admin/content/schedule', [
             'publish_at' => now()->addHour()->toIso8601String(),

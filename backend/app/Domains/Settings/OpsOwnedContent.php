@@ -27,6 +27,11 @@ final class OpsOwnedContent
             'owner_path' => '/admin/delivery-settings',
             'note' => 'Free delivery threshold used at checkout, invoices, receipts and public messaging.',
         ],
+        'delivery_time' => [
+            'owner_label' => 'Ordering Control Center → Delivery Settings',
+            'owner_path' => '/admin/delivery-settings',
+            'note' => 'Delivery promise shown to customers — kept beside the free-delivery threshold so the two cannot disagree.',
+        ],
     ];
 
     /**
@@ -49,7 +54,41 @@ final class OpsOwnedContent
         'maps_embed_url',
         'business_whatsapp',
         'business_viber',
+
+        // Owner decision 2026-08-14: one business, one identity. These were
+        // independently editable per app; logo/primary_color/site_tagline were
+        // ALSO editable in Business Details, so one logo had three homes and the
+        // invoice copy (DocumentBrandView) could differ from the website's.
+        'site_tagline',
+        'logo',
+        'logo_dark',
+        'favicon',
+        'og_image',
+        'primary_color',
+        'default_item_image',
+
+        // One set of social accounts for the business.
+        'show_social_links',
+        'social_instagram',
+        'social_facebook',
+        'social_tiktok',
+
+        // Visitor tracking — one property per business.
+        'google_analytics_id',
+        'google_tag_manager_id',
+
+        // Menu rule, one business (owner decision 2026-08-14).
+        'menu_new_days',
     ];
+
+    /**
+     * Business-record keys are edited in Business Details only and are hidden
+     * from Content & Branding entirely — not shown as read-only rows.
+     */
+    public static function isHiddenFromContentHub(string $key): bool
+    {
+        return in_array($key, self::BUSINESS_DETAILS_KEYS, true);
+    }
 
     public static function isWriteForbidden(string $key): bool
     {
@@ -106,6 +145,19 @@ final class OpsOwnedContent
     {
         if ($key === 'delivery_threshold') {
             return self::freeDeliveryThresholdLabel();
+        }
+
+        if ($key === 'delivery_time') {
+            $value = app(DeliverySettingsService::class)->deliveryTime();
+            if ($value !== '') {
+                return $value;
+            }
+
+            // Unset must not blank the promise on the live site — fall back to
+            // the registry default exactly as the resolver would have.
+            $default = \App\Domains\Content\ContentRegistry::default('delivery_time');
+
+            return is_string($default) ? $default : '';
         }
 
         return null;

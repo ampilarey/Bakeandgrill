@@ -19,6 +19,21 @@ export const OPS_OWNED_CONTENT_KEYS = new Set([
   'maps_embed_url',
   'business_whatsapp',
   'business_viber',
+  // Owner decision 2026-08-14 — one business, one identity.
+  'site_tagline',
+  'logo',
+  'logo_dark',
+  'favicon',
+  'og_image',
+  'primary_color',
+  'default_item_image',
+  'show_social_links',
+  'social_instagram',
+  'social_facebook',
+  'social_tiktok',
+  'google_analytics_id',
+  'google_tag_manager_id',
+  'menu_new_days',
 ]);
 
 export function isOpsOwnedContentKey(key: string): boolean {

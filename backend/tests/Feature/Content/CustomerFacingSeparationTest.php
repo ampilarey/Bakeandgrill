@@ -42,55 +42,52 @@ class CustomerFacingSeparationTest extends TestCase
         Sanctum::actingAs($user, ['staff']);
     }
 
-    public function test_website_branding_edit_does_not_change_order_app_or_documents(): void
+    public function test_branding_is_one_business_record_for_both_apps_and_documents(): void
     {
+        // Owner decision 2026-08-14 — brand identity is a single business record.
         $this->actingAsOwner();
-        SiteSetting::set('logo', '/storage/site/order.png', 'order_app');
         SiteSetting::set('logo', '/storage/site/invoice.png', 'shared');
         SiteSetting::set('primary_color', '#111111', 'shared');
-        SiteSetting::set('site_name', 'Order Name', 'order_app');
         SiteSetting::set('site_name', 'Invoice Name', 'shared');
+        // Stale per-app rows must be ignored.
+        SiteSetting::set('logo', '/storage/site/order.png', 'order_app');
+        SiteSetting::set('logo', '/storage/site/web.png', 'website');
+        ContentResolver::bust();
 
-        $this->putJson('/api/admin/content', [
-            'locale' => 'en',
-            'changes' => [
-                ['key' => 'logo', 'scope' => 'website', 'value' => '/storage/site/web.png'],
-                ['key' => 'primary_color', 'scope' => 'website', 'value' => '#ABCDEF'],
-            ],
-        ])->assertOk();
-
-        $this->assertSame('/storage/site/web.png', ContentResolver::for('website')->get('logo'));
-        $this->assertSame('/storage/site/order.png', ContentResolver::for('order_app')->get('logo'));
-        $this->assertSame('/storage/site/invoice.png', SiteSetting::get('logo'));
-        // Trading name is Business Details–owned — both apps resolve the shared record.
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('order_app')->get('logo'));
         $this->assertSame('Invoice Name', ContentResolver::for('website')->get('site_name'));
         $this->assertSame('Invoice Name', ContentResolver::for('order_app')->get('site_name'));
+
         $brand = DocumentBrandView::variables();
         $this->assertSame('/storage/site/invoice.png', $brand['brandLogoWeb']);
         $this->assertSame('#111111', $brand['brandPrimary']);
         $this->assertSame('Invoice Name', $brand['brandSiteName']);
     }
 
-    public function test_order_app_branding_edit_does_not_change_website_or_documents(): void
+    public function test_content_api_rejects_per_app_branding_writes(): void
     {
         $this->actingAsOwner();
-        SiteSetting::set('logo', '/storage/site/web.png', 'website');
         SiteSetting::set('logo', '/storage/site/invoice.png', 'shared');
+        ContentResolver::bust();
 
-        $this->putJson('/api/admin/content', [
-            'locale' => 'en',
-            'changes' => [
-                ['key' => 'logo', 'scope' => 'order_app', 'value' => '/storage/site/order-new.png'],
-            ],
-        ])->assertOk();
+        foreach (['website', 'order_app'] as $scope) {
+            $this->putJson('/api/admin/content', [
+                'locale' => 'en',
+                'changes' => [
+                    ['key' => 'logo', 'scope' => $scope, 'value' => '/storage/site/nope.png'],
+                    ['key' => 'primary_color', 'scope' => $scope, 'value' => '#ABCDEF'],
+                ],
+            ])->assertUnprocessable();
+        }
 
-        $this->assertSame('/storage/site/web.png', ContentResolver::for('website')->get('logo'));
-        $this->assertSame('/storage/site/order-new.png', ContentResolver::for('order_app')->get('logo'));
-        $this->assertSame('/storage/site/invoice.png', SiteSetting::get('logo'));
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/storage/site/invoice.png', ContentResolver::for('order_app')->get('logo'));
     }
 
-    public function test_business_details_logo_changes_documents_only(): void
+    public function test_business_details_logo_changes_documents_and_both_apps(): void
     {
+        // One place to change the logo — it reaches documents, Website and Order App.
         $this->actingAsOwner();
         SiteSetting::set('logo', '/storage/site/web.png', 'website');
         SiteSetting::set('logo', '/storage/site/order.png', 'order_app');
@@ -102,8 +99,8 @@ class CustomerFacingSeparationTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('/storage/site/doc.png', SiteSetting::get('logo'));
-        $this->assertSame('/storage/site/web.png', ContentResolver::for('website')->get('logo'));
-        $this->assertSame('/storage/site/order.png', ContentResolver::for('order_app')->get('logo'));
+        $this->assertSame('/storage/site/doc.png', ContentResolver::for('website')->get('logo'));
+        $this->assertSame('/storage/site/doc.png', ContentResolver::for('order_app')->get('logo'));
         $this->assertSame('/storage/site/doc.png', DocumentBrandView::variables()['brandLogoWeb']);
     }
 
@@ -150,18 +147,17 @@ class CustomerFacingSeparationTest extends TestCase
         $this->assertSame('fallback', ContentResolver::for('website')->get('totally_unknown_key_xyz', 'fallback'));
     }
 
-    public function test_specials_blade_uses_website_logo_not_shared(): void
+    public function test_website_html_uses_the_business_record_logo(): void
     {
-        SiteSetting::set('logo', '/storage/site/invoice-only.png', 'shared');
-        SiteSetting::set('logo', '/storage/site/web-logo.png', 'website');
+        // The rendered page must follow the business record, not a stale
+        // per-app row. This is the end-to-end proof of the 2026-08-14 move.
+        SiteSetting::set('logo', '/storage/site/business-logo.png', 'shared');
+        SiteSetting::set('logo', '/storage/site/stale-website-logo.png', 'website');
         ContentResolver::bust();
 
-        // Smoke: homepage HTML should prefer website content logo when present.
         $html = $this->get('/')->assertOk()->getContent();
-        // When specials/offers render placeholders they use content('logo').
-        // Assert the website logo appears somewhere in brand chrome at least.
-        $this->assertStringContainsString('/storage/site/web-logo.png', $html);
-        $this->assertStringNotContainsString('/storage/site/invoice-only.png', $html);
+        $this->assertStringContainsString('/storage/site/business-logo.png', $html);
+        $this->assertStringNotContainsString('/storage/site/stale-website-logo.png', $html);
     }
 
     public function test_prayer_banner_placement_independent_per_app(): void
