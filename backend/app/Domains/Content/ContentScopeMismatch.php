@@ -27,8 +27,9 @@ final class ContentScopeMismatch
     public const KEYS = [
         // Marketing / catalog facts that may still differ per surface
         'site_tagline',
+        // delivery_time and delivery_threshold are both Ordering Control owned
+        // (Delivery Settings) — one value for both apps, so they cannot drift.
         'delivery_time',
-        // delivery_threshold is Ordering Control owned — not a content mismatch key.
         'menu_new_days',
         // Brand assets (6) — still independently scoped per surface
         'logo',
@@ -57,9 +58,12 @@ final class ContentScopeMismatch
                 continue;
             }
 
-            // Ops-owned Business Details keys always resolve from shared; leftover
-            // app-scoped rows must not look like "Website says … / Order app says …".
-            if (OpsOwnedContent::resolvesFromBusinessDetails($key)) {
+            // Any key with a single owner — Business Details or Delivery
+            // Settings — always resolves from that one place. Leftover or empty
+            // app-scoped rows must not be dressed up as
+            // "Website says (empty) / Order app says (empty)": nothing reads
+            // them, so there is nothing for the owner to fix.
+            if (OpsOwnedContent::isWriteForbidden($key)) {
                 continue;
             }
 

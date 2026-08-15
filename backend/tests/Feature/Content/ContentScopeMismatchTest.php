@@ -95,6 +95,45 @@ class ContentScopeMismatchTest extends TestCase
         $this->assertSame('/storage/site/invoice.png', ContentResolver::for('order_app')->get('logo'));
     }
 
+    public function test_delivery_time_never_reports_a_drift_it_cannot_have(): void
+    {
+        // Owner, 2026-08-15: "Who sets delivery time? Is it common for both app?"
+        // — Delivery Settings sets it, once, for both. The notice was still
+        // comparing the shared value against empty per-app rows and calling that
+        // a difference, which sent the owner looking for a setting to fix that
+        // does not exist.
+        $this->actingAsOwner();
+
+        SiteSetting::set('delivery_time', '30–45 min', 'shared');
+        SiteSetting::query()->where('key', 'delivery_time')->where('scope', 'website')->delete();
+        SiteSetting::query()->where('key', 'delivery_time')->where('scope', 'order_app')->delete();
+        SiteSetting::bust();
+        ContentResolver::bust();
+
+        $byKey = collect(ContentScopeMismatch::collect('en'))->keyBy('key');
+        $this->assertFalse($byKey->has('delivery_time'));
+
+        $content = $this->getJson('/api/admin/content?locale=en')->assertOk()->json('mismatches');
+        $this->assertNull(collect($content)->firstWhere('key', 'delivery_time'));
+
+        // And both apps show the one value Delivery Settings holds.
+        $this->assertSame('30–45 min', ContentResolver::for('website')->get('delivery_time'));
+        $this->assertSame('30–45 min', ContentResolver::for('order_app')->get('delivery_time'));
+    }
+
+    public function test_a_stale_per_app_delivery_time_is_still_not_reported(): void
+    {
+        // Even with old rows left behind, nothing reads them — so there is no
+        // difference to report.
+        SiteSetting::set('delivery_time', '30–45 min', 'shared');
+        SiteSetting::set('delivery_time', '20 min', 'website');
+        SiteSetting::set('delivery_time', '60 min', 'order_app');
+        SiteSetting::bust();
+
+        $byKey = collect(ContentScopeMismatch::collect('en'))->keyBy('key');
+        $this->assertFalse($byKey->has('delivery_time'));
+    }
+
     public function test_matching_scopes_produce_no_mismatch(): void
     {
         SiteSetting::set('site_tagline', 'Same Everywhere', 'shared');
