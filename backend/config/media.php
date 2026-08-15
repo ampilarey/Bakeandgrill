@@ -13,6 +13,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Alternate public asset host (ASSET_URL)
+    |--------------------------------------------------------------------------
+    |
+    | Used when matching stored media URLs whose host differs from APP_URL
+    | (CDN / asset domain). Read via config('media.asset_url'), never env().
+    |
+    */
+
+    'asset_url' => env('ASSET_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Disable FFmpeg pipeline (tests / hosts without binaries)
     |--------------------------------------------------------------------------
     */

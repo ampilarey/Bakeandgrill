@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MediaLibraryPage } from '../pages/MediaLibraryPage';
 import { renderWithRouter } from './testUtils';
 import * as api from '../api';
+
+/** Open detail drawer — click the inner open button, not the card wrapper (checkbox lives on the wrapper). */
+async function openAssetDetail(id: number, options?: { timeout?: number }) {
+  const card = await screen.findByTestId(`asset-card-${id}`, {}, options?.timeout ? { timeout: options.timeout } : undefined);
+  fireEvent.click(within(card).getByRole('button'));
+}
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -156,8 +162,7 @@ describe('MediaLibraryPage', () => {
 
   it('opens detail drawer when asset is clicked and shows edit modal save prompt', async () => {
     renderWithRouter(<MediaLibraryPage />);
-    const assetCard = await screen.findByTestId('asset-card-1');
-    fireEvent.click(assetCard);
+    await openAssetDetail(1);
 
     const drawer = await screen.findByTestId('detail-drawer');
     expect(drawer).toBeTruthy();
@@ -192,7 +197,7 @@ describe('MediaLibraryPage', () => {
     });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1', {}, { timeout: 5000 }));
+    await openAssetDetail(1, { timeout: 5000 });
     // Open resize tool, then Apply → save-mode modal
     const resizeBtns = await screen.findAllByRole('button', { name: /resize/i });
     fireEvent.click(resizeBtns[resizeBtns.length - 1]!);
@@ -217,7 +222,7 @@ describe('MediaLibraryPage', () => {
     });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     fireEvent.click(screen.getByRole('button', { name: /^resize$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /^apply$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /save as new copy/i }));
@@ -249,7 +254,7 @@ describe('MediaLibraryPage', () => {
 
   it('delete button in drawer opens delete confirm modal', async () => {
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     await screen.findByTestId('detail-drawer');
 
     // Find the red Trash2 icon button in drawer (aria-label is not set, find by variant=danger which renders a button)
@@ -275,7 +280,7 @@ describe('MediaLibraryPage', () => {
 
   it('detail drawer preview uses the full image url with cache buster', async () => {
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     const preview = await screen.findByTestId('detail-preview-img');
     expect(preview.getAttribute('src')).toBe('https://cdn.example.com/images/asset-1.jpg?v=checksum-1');
   });
@@ -288,7 +293,7 @@ describe('MediaLibraryPage', () => {
     });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     expect((await screen.findByTestId('detail-preview-img')).getAttribute('src')).toContain('v=checksum-1');
 
     fireEvent.click(screen.getByRole('button', { name: /resize/i }));
@@ -307,7 +312,7 @@ describe('MediaLibraryPage', () => {
     expect(await screen.findByTestId('collections-chip-row')).toBeTruthy();
     expect(screen.getByTestId('collections-sidebar').getAttribute('data-layout')).toBe('chips');
 
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     const drawer = await screen.findByTestId('detail-drawer');
     expect(drawer.getAttribute('data-mobile-overlay')).toBe('true');
     expect(screen.getByTestId('detail-drawer-backdrop')).toBeTruthy();
@@ -321,7 +326,7 @@ describe('MediaLibraryPage', () => {
     });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     expect(await screen.findByTestId('media-use-as')).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('media-use-as-apply'));
@@ -334,7 +339,7 @@ describe('MediaLibraryPage', () => {
 
   it('resize tool shows a live preview that updates with width', async () => {
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     fireEvent.click(screen.getByRole('button', { name: /^resize$/i }));
 
     expect(await screen.findByTestId('edit-live-preview')).toBeTruthy();
@@ -365,7 +370,7 @@ describe('MediaLibraryPage', () => {
     vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
 
     renderWithRouter(<MediaLibraryPage />);
-    fireEvent.click(await screen.findByTestId('asset-card-1'));
+    await openAssetDetail(1);
     fireEvent.click(await screen.findByTestId('export-download'));
 
     await waitFor(() => {

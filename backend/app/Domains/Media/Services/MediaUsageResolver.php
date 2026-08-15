@@ -664,14 +664,10 @@ final class MediaUsageResolver
             $storageUrl,
         ], static fn ($v) => is_string($v) && $v !== '');
 
-        $appUrl = rtrim((string) config('app.url'), '/');
-        if ($appUrl !== '' && is_string($storageUrl)) {
-            $variants[] = $appUrl . $storageUrl;
-        }
-
-        // Common production / test hosts may differ from APP_URL in stored rows.
-        foreach (['APP_URL', 'ASSET_URL'] as $envKey) {
-            $base = rtrim((string) env($envKey, ''), '/');
+        // Common production / test / CDN hosts may differ from APP_URL in stored rows.
+        // Read via config() — env() is null after deploy config:cache.
+        foreach ([config('app.url'), config('media.asset_url')] as $baseRaw) {
+            $base = rtrim((string) ($baseRaw ?? ''), '/');
             if ($base !== '' && is_string($storageUrl)) {
                 $variants[] = $base . $storageUrl;
             }

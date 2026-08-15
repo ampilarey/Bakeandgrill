@@ -48,6 +48,9 @@ class StaffRouteAuthCoverageTest extends TestCase
         'POST api/admin/media/video/probe' => 'api/admin/media/video/probe — VideoStudioController::authorizeStudio (media.manage|website.manage)',
         'POST api/admin/media/video/process' => 'api/admin/media/video/process — VideoStudioController::authorizeStudio (media.manage|website.manage)',
         'POST api/admin/media/{media}/use-as' => 'api/admin/media/{media}/use-as — media.manage|website.manage in MediaLibraryController::useAs',
+        // LIVE→TEST clone is intentionally owner-only (role:owner), not a assignable permission slug.
+        'GET api/admin/ops/clone-live-to-test' => 'api/admin/ops/clone-live-to-test — role:owner in staff.php (CloneLiveToTestController::status)',
+        'POST api/admin/ops/clone-live-to-test' => 'api/admin/ops/clone-live-to-test — role:owner in staff.php (CloneLiveToTestController::start)',
     ];
 
     #[Test]
