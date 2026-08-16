@@ -387,6 +387,11 @@ describe('HomeLayoutEditor', () => {
     // The text beside them keeps a floor, so the row wraps instead of crushing it.
     const text = head.firstElementChild as HTMLElement;
     expect(Number.parseInt(text.style.minWidth, 10)).toBeGreaterThanOrEqual(200);
+
+    // …and it must be reachable from CSS, because that floor is a WIDTH only
+    // while the header is a row. Stacked into a column the same flex-basis
+    // becomes a height, which opened a gap between "Draft saved" and Reorder.
+    expect(text.className).toContain('home-layout-head-text');
   });
 
   it('shows move controls only in Reorder mode', async () => {

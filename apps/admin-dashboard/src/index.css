@@ -5908,10 +5908,21 @@ a { text-decoration: none; color: inherit; }
   .home-layout-head {
     flex-direction: column !important;
     align-items: stretch !important;
+    gap: 10px;
+  }
+  /*
+   * Once the row becomes a column, `flex: 1 1 260px` stops meaning "at least
+   * 260px wide" and starts meaning "at least 260px TALL" — flex-basis follows
+   * the main axis. That left a block of empty space between "Draft saved" and
+   * the Reorder button. The basis is for the side-by-side layout only.
+   */
+  .home-layout-head-text {
+    flex: none !important;
+    min-width: 0 !important;
   }
   .home-layout-head-actions {
     width: 100%;
-    justify-content: stretch !important;
+    justify-content: flex-start !important;
   }
   .home-layout-head-actions > button {
     flex: 1 1 auto;

@@ -565,7 +565,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           marginBottom: 12,
         }}
       >
-        <div style={{ minWidth: 200, flex: '1 1 260px' }}>
+        <div className="home-layout-head-text" style={{ minWidth: 200, flex: '1 1 260px' }}>
           {surfaceFilter ? (
             <div
               data-testid="home-layout-surface-breadcrumb"
