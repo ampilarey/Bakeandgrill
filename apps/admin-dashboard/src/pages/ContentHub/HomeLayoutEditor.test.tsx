@@ -364,6 +364,31 @@ describe('HomeLayoutEditor', () => {
     expect(positionOf(13)).toBe(0);
   });
 
+  it('never lets the toolbar buttons stretch beside the text', async () => {
+    // Owner sent a screenshot, 2026-08-15: on a phone, Reorder / Publish
+    // changes / Discard draft had become three full-height columns with the
+    // heading text crushed to one character per line beside them.
+    //
+    // Two causes, both assertable without a layout engine: the row let its
+    // buttons stretch to the height of the text (no alignItems), and the text
+    // was allowed to shrink to nothing (minWidth 0) so the row never wrapped.
+    render(<HomeLayoutEditor initialApp="website" />);
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+
+    const actions = screen.getByTestId('home-layout-reorder-toggle').parentElement as HTMLElement;
+    expect(actions.className).toContain('home-layout-head-actions');
+    expect(actions.style.alignItems).toBe('flex-start');
+
+    const head = actions.parentElement as HTMLElement;
+    expect(head.className).toContain('home-layout-head');
+    expect(head.style.alignItems).toBe('flex-start');
+    expect(head.style.flexWrap).toBe('wrap');
+
+    // The text beside them keeps a floor, so the row wraps instead of crushing it.
+    const text = head.firstElementChild as HTMLElement;
+    expect(Number.parseInt(text.style.minWidth, 10)).toBeGreaterThanOrEqual(200);
+  });
+
   it('shows move controls only in Reorder mode', async () => {
     render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());

@@ -5899,6 +5899,26 @@ a { text-decoration: none; color: inherit; }
   }
 }
 
+/* ── Section order & visibility header ─────────────────────────
+   On a phone the heading text and the Reorder / Publish / Discard buttons
+   cannot share a line: the text is allowed to shrink and the buttons are not,
+   so the text was crushed to one character per line while the buttons grew
+   into full-height columns. Stack them. */
+@media (max-width: 767px) {
+  .home-layout-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .home-layout-head-actions {
+    width: 100%;
+    justify-content: stretch !important;
+  }
+  .home-layout-head-actions > button {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
 /* ── Section order & visibility: panels open in the page, not beside it ──
    Owner, 2026-08-15: "it opens right site, always our approach is to drop
    down." Add-component and Edit-component used to be side sheets. */

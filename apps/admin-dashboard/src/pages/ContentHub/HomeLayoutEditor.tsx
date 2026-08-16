@@ -551,8 +551,21 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
         overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
+      {/* alignItems matters as much as the wrap here: without it the buttons
+          stretch to the full height of the text beside them, which on a phone
+          turned Reorder / Publish / Discard into three full-screen columns. */}
+      <div
+        className="home-layout-head"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ minWidth: 200, flex: '1 1 260px' }}>
           {surfaceFilter ? (
             <div
               data-testid="home-layout-surface-breadcrumb"
@@ -594,7 +607,10 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
             {hasDraft ? 'Draft saved' : `${appLabel(activeApp)} published`}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div
+          className="home-layout-head-actions"
+          style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}
+        >
           <button
             type="button"
             data-testid="home-layout-reorder-toggle"
