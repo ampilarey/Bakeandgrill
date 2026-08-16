@@ -788,6 +788,7 @@ export function ContentHubPage() {
                 initialApp="website"
                 surfaceFilter={parseSurfaceId(surfaceId('website', 'mobile', 'home')) ?? undefined}
                 onLayoutDraftChange={handleLayoutDraftChange}
+                hidePublishControls
               />
             )}
           />
@@ -857,6 +858,7 @@ export function ContentHubPage() {
                 initialApp="website"
                 surfaceFilter={websiteWorkspaceSurface ?? surfaceFilter ?? undefined}
                 onLayoutDraftChange={handleLayoutDraftChange}
+                hidePublishControls
               />
             )}
           />

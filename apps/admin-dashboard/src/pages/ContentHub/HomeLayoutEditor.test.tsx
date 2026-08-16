@@ -432,6 +432,47 @@ describe('HomeLayoutEditor', () => {
     expect(screen.getByTestId('home-layout-move-down-10')).toBeTruthy();
   });
 
+  it('turning a hidden section back on saves BOTH the switch and the placement', async () => {
+    // Owner, 2026-08-15: "When i select it and change from hidden to home, its
+    // not selecting and not changing." Choosing Home has to do two things at
+    // once. They were two separate writes off the same stale copy of the
+    // settings, so the second discarded the first: placement saved, switch
+    // still off, dropdown snapped back to Hidden.
+    fetchAdminPageBlocks.mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [{
+        id: 10, app: 'website', page: 'home', block_type: 'hero', position: 0,
+        is_enabled: true, content_mode: 'own',
+        settings: { placement_desktop: 'home', placement_mobile: 'home', show_mobile: false },
+        label: 'Hero banner', description: '', removable: false, supports_shared_content: false,
+      }],
+      available_types: [], unknown_types: [], draft: false, version: 1, saved_at: null,
+    }));
+    updatePageBlock.mockResolvedValue({ version: 2, block: { id: 10 } });
+
+    render(
+      <HomeLayoutEditor
+        initialApp="website"
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'home' }}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId('home-layout-hidden-website.mobile.home.10'));
+    const select = await screen.findByTestId('home-layout-placement-mobile');
+    expect((select as HTMLSelectElement).value).toBe('off');
+
+    fireEvent.change(select, { target: { value: 'home' } });
+    // The dropdown must hold the choice — it used to bounce straight back.
+    expect((select as HTMLSelectElement).value).toBe('home');
+
+    fireEvent.click(screen.getByTestId('home-layout-save-settings-10'));
+    await waitFor(() => expect(updatePageBlock).toHaveBeenCalled());
+    const [, payload] = updatePageBlock.mock.calls[0];
+    expect(payload.settings.show_mobile).toBe(true);
+    expect(payload.settings.placement_mobile).toBe('home');
+  });
+
   it('shows move controls only in Reorder mode', async () => {
     render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());

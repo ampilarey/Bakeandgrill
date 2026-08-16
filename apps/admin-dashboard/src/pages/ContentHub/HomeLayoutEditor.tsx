@@ -57,6 +57,15 @@ type Props = {
   initialApp?: PageBlockApp;
   surfaceFilter?: SurfaceFilter;
   onLayoutDraftChange?: (signal: LayoutDraftSignal) => void;
+  /**
+   * Hide this panel's own Publish / Discard.
+   *
+   * Website Content already has one Publish for the whole screen, and it
+   * publishes layout drafts too. Two buttons that publish different amounts of
+   * your work is a way to publish half of it by accident (owner, 2026-08-15:
+   * "More than one place to publish").
+   */
+  hidePublishControls?: boolean;
 };
 
 type AppState = {
@@ -107,6 +116,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   initialApp = 'website',
   surfaceFilter,
   onLayoutDraftChange,
+  hidePublishControls = false,
 }: Props, ref) {
   const activeApp = surfaceFilter?.app ?? initialApp;
   const [appState, setAppState] = useState<AppState>(emptyApp);
@@ -604,7 +614,9 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               color: hasDraft ? 'var(--color-warning-strong)' : 'var(--color-success)',
             }}
           >
-            {hasDraft ? 'Draft saved' : `${appLabel(activeApp)} published`}
+            {/* "Draft saved" read as an action the screen had just taken. It is
+                a state: there are changes here that the site has not got yet. */}
+            {hasDraft ? 'Unpublished changes' : `${appLabel(activeApp)} published`}
           </div>
         </div>
         <div
@@ -623,7 +635,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
           >
             {reorderMode ? 'Done reordering' : 'Reorder'}
           </button>
-          {hasDraft ? (
+          {hasDraft && !hidePublishControls ? (
             <>
               <button type="button" data-testid="home-layout-publish-btn" disabled={busy} onClick={() => void publish()} style={btnPrimary}>
                 Publish changes
@@ -1168,6 +1180,7 @@ function AppInstancePanel({
           />
           <button
             type="button"
+            data-testid={`home-layout-save-settings-${block.id}`}
             disabled={busy}
             onClick={() => onSaveSettings(localSettings)}
             style={btnPrimary}
@@ -1201,6 +1214,17 @@ function DevicePlacementFields({
   device?: 'desktop' | 'mobile';
 }) {
   const set = (key: string, value: unknown) => onChange({ ...settings, [key]: value });
+  /**
+   * Both keys in ONE write.
+   *
+   * Choosing "Home" for a hidden section has to turn it back on AND set where
+   * it goes. Two separate `set` calls each spread the same stale `settings`,
+   * so the second overwrote the first: the placement was saved, the section
+   * stayed off, and the dropdown snapped straight back to Hidden. Owner,
+   * 2026-08-15: "its not selecting and not changing."
+   */
+  const setBoth = (showKey: string, showValue: boolean, placeKey: string, placeValue: string) =>
+    onChange({ ...settings, [showKey]: showValue, [placeKey]: placeValue });
 
   const desktopOptions: Array<{ value: string; label: string }> = [
     { value: 'home', label: 'Home' },
@@ -1241,10 +1265,7 @@ function DevicePlacementFields({
             onChange={(e) => {
               const v = e.target.value;
               if (v === 'off') set(field.showKey, false);
-              else {
-                set(field.showKey, true);
-                set(field.placeKey, v);
-              }
+              else setBoth(field.showKey, true, field.placeKey, v);
             }}
             style={selectStyle}
             data-testid={`home-layout-placement-${field.id}`}
