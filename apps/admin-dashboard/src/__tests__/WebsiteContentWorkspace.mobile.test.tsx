@@ -229,6 +229,20 @@ describe('Website Content workspace — phone', () => {
     expect(within(field).queryByRole('textbox')).toBeNull();
   });
 
+  it('gives the hero its phone layout, not the three-column desktop one', async () => {
+    // Owner, 2026-08-15: "contents are on 3 columns in hero which shrinks the
+    // content and difficult to see." The phone shell was built, but the field
+    // editors inside it were still being handed the desktop layout.
+    mount();
+    fireEvent.click(await screen.findByTestId('wcw-page-Home'));
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-hero'));
+
+    const body = await screen.findByTestId('wcw-section-body-hero');
+    expect(within(body).getByTestId('hero-slides-mobile')).toBeTruthy();
+    expect(within(body).queryByTestId('hero-slides-wide')).toBeNull();
+    expect(within(body).queryByTestId('hero-slides-wide-fields')).toBeNull();
+  });
+
   it('Section order & visibility is reachable, and arranges the phone layout', async () => {
     mount();
     fireEvent.click(await screen.findByTestId('wcw-page-Home'));

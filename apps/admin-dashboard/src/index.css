@@ -5714,6 +5714,13 @@ a { text-decoration: none; color: inherit; }
 }
 
 @media (max-width: 767px) {
+  /* Belt and braces: the wide hero editor sets its three columns as an inline
+     style, so only !important can beat it. A phone must never get three
+     columns, whichever path renders the editor. */
+  .hero-slides-wide-columns {
+    grid-template-columns: 1fr !important;
+  }
+
   /* One column, and the row meta drops to the settings count alone — a phone
      row has no room for a badge as well as a name and a description. */
   .wcw-sec-row { padding: 13px 13px; gap: 11px; }

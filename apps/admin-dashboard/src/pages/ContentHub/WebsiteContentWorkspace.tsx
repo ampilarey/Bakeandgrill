@@ -395,7 +395,13 @@ export function WebsiteContentWorkspace({
     const scopes = editorScopesForBlock(block, hubApp);
     const activeScope = preferredScopeTab(scopes, blockScopeTab[block.key]);
     const value = valueForScope(block, activeScope, drafts);
-    const body = renderEditorForScope(editorDeps, block, activeScope, { wideLayout: true });
+    // The hero (and any other editor with a wide, multi-column layout) must not
+    // be handed the desktop layout on a phone. Owner, 2026-08-15: "contents are
+    // on 3 columns in hero which shrinks the content and difficult to see."
+    const body = renderEditorForScope(editorDeps, block, activeScope, {
+      wideLayout: !isMobile,
+      mobileMode: isMobile,
+    });
     const editor = scopes.length > 1
       ? renderScopeTabs({ drafts, setBlockScopeTab }, block.key, scopes, activeScope, body)
       : body;

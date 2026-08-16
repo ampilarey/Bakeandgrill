@@ -214,10 +214,15 @@ export function renderEditorForScope(
   deps: SharedEditorDeps,
   block: ContentBlock,
   scope: ContentScope,
-  opts?: { wideLayout?: boolean },
+  opts?: { wideLayout?: boolean; mobileMode?: boolean },
 ): ReactNode {
   const val = valueForScope(block, scope, deps.drafts);
-  const visual = block.editor ? renderVisualEditor(deps, block, scope, val, { wideLayout: opts?.wideLayout }) : null;
+  const visual = block.editor
+    ? renderVisualEditor(deps, block, scope, val, {
+      wideLayout: opts?.wideLayout,
+      mobileMode: opts?.mobileMode,
+    })
+    : null;
   const descKey = seoDescriptionKey(block.key);
   const descBlock = descKey ? deps.contentBlocks.find((candidate) => candidate.key === descKey) : undefined;
   const isSeoTitle = Boolean(descKey);
