@@ -217,11 +217,10 @@ describe('Order App Content — desktop', () => {
 
   it('puts each small screen under its own heading on the Other pages tab', async () => {
     openOrderApp();
-    // Wait for the one-time landing on Home to settle before clicking away —
-    // otherwise the click races it and lands back on Home.
-    await waitFor(() => {
-      expect(screen.getByTestId('order-app-content-workspace').getAttribute('data-tab')).toBe('Home');
-    });
+    // Deliberately clicked as soon as the tabs exist, without waiting for the
+    // one-time "open Home" landing to settle. An explicit tab click claims the
+    // landing; before that fix this bounced straight back to Home.
+    await screen.findByTestId('wcw-tab-Other pages');
 
     fireEvent.click(screen.getByTestId('wcw-tab-Other pages'));
 

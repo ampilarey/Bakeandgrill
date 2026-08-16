@@ -6,7 +6,6 @@ import {
   blockSurfaceFor,
   heroPromoConflict,
 } from './surfaceRegistry';
-import { CONTENT_TASK_CLUSTERS } from './taskLandingConfig';
 import { HOME_COMPONENT_LIBRARY } from './homeComponentLibrary';
 
 describe('surfaceRegistry', () => {
@@ -49,31 +48,8 @@ describe('surfaceRegistry', () => {
   });
 });
 
-describe('Content task surface map IA', () => {
-  it('exposes Menu and status banners under Order App Home/Menu', () => {
-    const order = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'order_app')!;
-    expect(order.tasks.some((t) => t.id === 'order_menu' && t.group === 'Menu')).toBe(true);
-    expect(order.tasks.some((t) => t.id === 'status_banners' && t.group === 'Home')).toBe(true);
-  });
-
-  it('brand_profile now covers only the language switcher, not the business profile', () => {
-    // Logo, colours and site name moved to Business Details (2026-08-14), so the
-    // card must not advertise them — see taskLandingConfig.movedKeys.test.ts.
-    const global = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'global')!;
-    const card = global.tasks.find((t) => t.id === 'brand_profile')!;
-    expect(card).toBeTruthy();
-    expect(/language/i.test(card.title)).toBe(true);
-    expect(/moved to Business Details/i.test(card.description)).toBe(true);
-    expect(CONTENT_TASK_CLUSTERS.flatMap((c) => c.tasks).some((t) => /Technical content/i.test(t.title))).toBe(false);
-  });
-
-  it('puts About under Order App ownership', () => {
-    const order = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'order_app')!;
-    expect(order.tasks.some((t) => t.id === 'order_about' && t.group === 'About')).toBe(true);
-  });
-
-  it('lists Tools cluster for history / schedule / import', () => {
-    const tools = CONTENT_TASK_CLUSTERS.find((c) => c.id === 'tools')!;
-    expect(tools.tasks.map((t) => t.id).sort()).toEqual(['history', 'import_export', 'schedule']);
-  });
-});
+/**
+ * The "Content task surface map IA" block was removed on 2026-08-16 with the
+ * task cards it described. Both hubs open on their page tabs now; there is no
+ * landing screen and no CONTENT_TASK_CLUSTERS to arrange.
+ */

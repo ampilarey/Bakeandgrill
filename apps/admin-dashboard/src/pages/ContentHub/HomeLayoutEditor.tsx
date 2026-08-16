@@ -859,7 +859,10 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)', overflowWrap: 'anywhere' }}>
                     {comp.summary}
                   </span>
-                  <span className="hub-task-card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {/* Was .hub-task-card-meta; that family went with the task
+                      cards on 2026-08-16, so its three surviving properties
+                      (margin-top / min-width / max-width) moved here. */}
+                  <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, minWidth: 0, maxWidth: '100%' }}>
                     <span
                       data-testid={`home-comp-status-${rowKey}`}
                       className="hub-placement-chip hub-placement-chip--status"

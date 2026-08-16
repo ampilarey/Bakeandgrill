@@ -7,92 +7,43 @@ import { ScopeMismatchNotices } from '../../components/ScopeMismatchNotices';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useToast } from '../../components/ui';
 import { MediaPicker } from '../../components/MediaPicker';
-import { HubSurfaceLanding } from './HubSurfaceLanding';
-import { HubSectionList, buildHubRailSections } from './HubSectionList';
-import { HubSectionContent } from './HubSectionContent';
 import { HomeLayoutEditor } from './HomeLayoutEditor';
 import { ContentWorkspace } from './ContentWorkspace';
 import { workspaceConfigFor } from './contentWorkspaceConfig';
-import { HubEditorSheets } from './HubEditorSheets';
-import { HubPreviewHost } from './HubPreviewHost';
+import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
 import { ContentIntegrityPanel } from './ContentIntegrityPanel';
-import type { ContentTask } from './taskLandingConfig';
 import { defaultHomeSurface } from './canonicalCatalog';
-import {
-  parseSurfaceId,
-  surfaceId,
-  type SurfaceFilter,
-  type SurfaceRecord,
-} from './surfaceCatalog';
+import { parseSurfaceId, surfaceId, type SurfaceFilter } from './surfaceCatalog';
 import {
   LEGACY_PAGES_GROUP,
   contentViewForKey,
   isHomeSection,
   LEGACY_GROUP_ALIASES,
-  websitePageTaskByGroup,
 } from './websitePageTasks';
-import { useIsCompactAdmin, useIsMobile, useIsWideDesktop } from '../../hooks/useIsMobile';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import type { MediaAsset } from '../../api/media';
 import type { ContentBlock, ContentScope } from '../../api/content';
-import { parseDraftKey, labelForScope, contentAppFromPath } from './hubDraftUtils';
+import { labelForScope, contentAppFromPath } from './hubDraftUtils';
 import { useContentHubController } from './useContentHubController';
-
-/** Desktop layout prefs — Content Hub only. */
-const LS_PREVIEW_OPEN = 'bg_hub_preview_open';
-const LS_RAIL_COLLAPSED = 'bg_hub_rail_collapsed';
-/** Open the docked preview column by default only on wide desktop (≥1200). */
-const PREVIEW_DEFAULT_MIN_WIDTH = 1200;
-
-function readStoredBool(key: string): boolean | null {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw === '1' || raw === 'true') return true;
-    if (raw === '0' || raw === 'false') return false;
-  } catch {
-    /* private mode */
-  }
-  return null;
-}
-
-function writeStoredBool(key: string, value: boolean): void {
-  try {
-    window.localStorage.setItem(key, value ? '1' : '0');
-  } catch {
-    /* private mode */
-  }
-}
-
-function defaultPreviewOpen(): boolean {
-  const stored = readStoredBool(LS_PREVIEW_OPEN);
-  if (stored !== null) return stored;
-  return typeof window !== 'undefined' && window.innerWidth >= PREVIEW_DEFAULT_MIN_WIDTH;
-}
-
-function defaultRailCollapsed(): boolean {
-  return readStoredBool(LS_RAIL_COLLAPSED) === true;
-}
 
 export function ContentHubPage() {
   const { success, error } = useToast();
   const isMobile = useIsMobile();
-  const isCompactAdmin = useIsCompactAdmin();
-  const isWideDesktop = useIsWideDesktop();
   const location = useLocation();
   const hubAppFromPath = contentAppFromPath(location.pathname);
   /**
-   * Both Content & Branding screens use the page-tab workspace, on every screen
+   * Both Content & Branding screens are the page-tab workspace, on every screen
    * size — the Website since 2026-08-15, the Order App since the owner said
-   * "Let's start order app" the same week.
+   * "Let's start order app" the same week. The old surface landing, section
+   * rail, editor sheets and docked preview were deleted with the last screen
+   * that used them ("Del useless parts", 2026-08-16).
    */
-  const websiteWorkspace = hubAppFromPath === 'website' || hubAppFromPath === 'order_app';
-  const websiteDesktopNoLanding = !isMobile && websiteWorkspace;
+  /** A laptop has no landing screen: an empty ?group= means Home. */
+  const isDesktop = !isMobile;
   const workspaceConfig = workspaceConfigFor(hubAppFromPath);
 
-  const hub = useContentHubController(
-    { success, error },
-    { skipPreviewMint: websiteWorkspace },
-  );
+  const hub = useContentHubController({ success, error });
   const {
     hubApp,
     hubLabel,
@@ -110,11 +61,8 @@ export function ContentHubPage() {
     schedules,
     scheduleAt,
     setScheduleAt,
-    previewState,
-    previewLoading,
     layoutDraft,
     layoutRevision,
-    surfaceCounts,
     handleLayoutDraftChange,
     autosaving,
     autosaveFailed,
@@ -150,27 +98,21 @@ export function ContentHubPage() {
   const urlGroup = (searchParams.get('group') || searchParams.get('section') || '').trim();
 
   const [activeGroup, setActiveGroup] = useState<string | null>(() => urlGroup || null);
-  const [mobileEditorOpen, setMobileEditorOpen] = useState(() => Boolean(urlGroup));
   const [q, setQ] = useState('');
-  const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
-  const [desktopPreviewOpen, setDesktopPreviewOpen] = useState(defaultPreviewOpen);
-  const [railCollapsed, setRailCollapsed] = useState(defaultRailCollapsed);
   /** Per-block active scope tab for split editors (resets on section change). */
   const [blockScopeTab, setBlockScopeTab] = useState<Record<string, ContentScope>>({});
   const [mediaOpen, setMediaOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  /** Mobile: which visual block is open in a nested editor sheet. */
-  const [mobileBlockEditorKey, setMobileBlockEditorKey] = useState<string | null>(null);
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   /** Synchronous surface selection — avoids URL lag showing the full type library. */
   const [activeSurface, setActiveSurface] = useState<SurfaceFilter | null>(null);
-  /** Website desktop Stage B — selected component in the middle page list. */
+  /** Deep link from search: which field to scroll to and open. */
   const [focusedBlockKey, setFocusedBlockKey] = useState<string | null>(null);
   /** Survives the activeGroup effect that clears focus when navigating via search. */
   const pendingFocusKeyRef = useRef<string | null>(null);
-  /** Website desktop: the one-time landing on Home has already happened. */
+  /** The one-time landing on Home has already happened (or been claimed). */
   const autoSelectedRef = useRef(false);
-  /** Website desktop Stage D — Desktop | Mobile filter (default Desktop). */
+  /** Desktop | Mobile — which device's Home layout to arrange (default Desktop). */
   const [websiteDeviceFilter, setWebsiteDeviceFilter] = useState<'desktop' | 'mobile'>('desktop');
 
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -178,28 +120,19 @@ export function ContentHubPage() {
   const searchRef = useRef<HTMLDivElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
 
-  // Compact Admin (768–1199): keep the section rail collapsed so the editor stays usable.
-  useEffect(() => {
-    if (isCompactAdmin && !railCollapsed) {
-      setRailCollapsed(true);
-    }
-  }, [isCompactAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync URL group param → activeGroup (landing when cleared).
-  // Legacy ?group= aliases redirect to Stage 4 section names.
-  // Website desktop Stage A: no landing — empty/legacy Pages → Home.
+  // Sync URL ?group= → activeGroup. Legacy aliases redirect to real page
+  // names; on a laptop an empty or legacy group means Home, and on a phone it
+  // means the list of pages.
   useEffect(() => {
     if (!urlGroup) {
-      if (websiteDesktopNoLanding) {
-        setMobileEditorOpen(false);
-        return;
+      if (isDesktop) {
+            return;
       }
       setActiveGroup(null);
-      setMobileEditorOpen(false);
-      return;
+        return;
     }
     if (urlGroup === LEGACY_PAGES_GROUP || LEGACY_GROUP_ALIASES[urlGroup] === '') {
-      if (websiteDesktopNoLanding) {
+      if (isDesktop) {
         setSearchParams((prev) => {
           const p = new URLSearchParams(prev);
           p.delete('section');
@@ -209,8 +142,7 @@ export function ContentHubPage() {
         return;
       }
       setActiveGroup(null);
-      setMobileEditorOpen(false);
-      setSearchParams((prev) => {
+        setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
         p.delete('group');
         p.delete('section');
@@ -229,8 +161,7 @@ export function ContentHubPage() {
       return;
     }
     setActiveGroup(urlGroup);
-    setMobileEditorOpen(true);
-  }, [urlGroup, setSearchParams, websiteDesktopNoLanding]);
+  }, [urlGroup, setSearchParams, isDesktop]);
 
   // Per-block scope tabs reset when the active section changes.
   useEffect(() => {
@@ -240,16 +171,6 @@ export function ContentHubPage() {
     setFocusedBlockKey(pending);
   }, [activeGroup]);
 
-  const setDesktopPreviewOpenPersisted = (open: boolean) => {
-    setDesktopPreviewOpen(open);
-    writeStoredBool(LS_PREVIEW_OPEN, open);
-  };
-
-  const setRailCollapsedPersisted = (collapsed: boolean) => {
-    setRailCollapsed(collapsed);
-    writeStoredBool(LS_RAIL_COLLAPSED, collapsed);
-  };
-
   // Reject unknown ?group= deep links once sections have loaded — legacy/typo
   // values must not silently open a blank or wrong editor.
   useEffect(() => {
@@ -258,8 +179,8 @@ export function ContentHubPage() {
     if (orderedSectionNames.length === 0) return;
     if (orderedSectionNames.includes(urlGroup)) return;
     const t = window.setTimeout(() => {
-      error(`Unknown content section "${urlGroup}". Showing ${websiteDesktopNoLanding ? 'Home' : 'the overview'} instead.`);
-      if (websiteDesktopNoLanding) {
+      error(`Unknown content section "${urlGroup}". Showing ${isDesktop ? 'Home' : 'the overview'} instead.`);
+      if (isDesktop) {
         setSearchParams((prev) => {
           const p = new URLSearchParams(prev);
           p.delete('section');
@@ -269,8 +190,7 @@ export function ContentHubPage() {
         return;
       }
       setActiveGroup(null);
-      setMobileEditorOpen(false);
-      setSearchParams((prev) => {
+        setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
         p.delete('group');
         p.delete('section');
@@ -293,8 +213,6 @@ export function ContentHubPage() {
   }, [moreMenuOpen, isMobile]);
 
   const clearActiveGroup = () => {
-    setMobileBlockEditorKey(null);
-    setMobileEditorOpen(false);
     setActiveGroup(null);
     setActiveSurface(null);
     setSearchParams((prev) => {
@@ -312,10 +230,14 @@ export function ContentHubPage() {
       clearActiveGroup();
       return;
     }
+    // An explicit choice — a tab click, a deep link, a search hit — claims the
+    // one-time landing. The landing effect reads state captured at render, so
+    // without this a tab clicked in the frame before it flushes would be
+    // overwritten by "open Home" a moment later.
+    autoSelectedRef.current = true;
     setActiveGroup(next);
-    // Website desktop Stage B — switching sections always returns to page mode;
-    // callers that want a specific component focused (Hero pin, search) set
-    // focusedBlockKey again right after calling selectGroup.
+    // Switching pages clears any focused field; callers that want one focused
+    // (search) set focusedBlockKey again right after calling selectGroup.
     setFocusedBlockKey(null);
     const home = isHomeSection(next);
     let resolvedSurface = home ? (surface ?? null) : null;
@@ -348,23 +270,20 @@ export function ContentHubPage() {
 
   const handleSectionSelect = (name: string, homeAppHint?: 'website' | 'order_app', surface?: string) => {
     if (!name) {
-      if (websiteDesktopNoLanding) {
+      if (isDesktop) {
         selectGroup(orderedSectionNames.includes('Home') ? 'Home' : (orderedSectionNames[0] ?? 'Home'));
-        setMobileEditorOpen(true);
         return;
       }
       clearActiveGroup();
       return;
     }
     selectGroup(name, homeAppHint, surface);
-    setMobileEditorOpen(true);
   };
 
-  // Website desktop Stage A/B: opening /content/website selects Home immediately
-  // and — once Home is present — lands straight in component mode on the hero
-  // (owner: "usually hero"). Falls back to page mode if Home isn't available.
+  // A laptop has no landing screen, so arriving with no ?group= opens Home.
+  // Falls back to the first page that exists if Home has nothing in it.
   useEffect(() => {
-    if (!websiteDesktopNoLanding) return;
+    if (!isDesktop) return;
     // Landing happens once. Without this the effect could still be queued from
     // an earlier commit when the owner clicks a page tab, and would then
     // bounce them back to Home a frame later.
@@ -381,56 +300,7 @@ export function ContentHubPage() {
     // The Home tab opens with the Hero section already expanded — that is
     // handled by the workspace's defaultOpenSectionId, so nothing to focus here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [websiteDesktopNoLanding, loading, urlGroup, activeGroup, orderedSectionNames]);
-
-  const handleSurfaceSelect = (surface: SurfaceRecord) => {
-    handleSectionSelect('Home', surface.app, surface.id);
-  };
-
-  // Website desktop Stage B — ★ Hero pin: select Home and focus hero_slides,
-  // landing straight in component mode (the owner's own "usually hero" answer).
-  const handleHeroPinSelect = () => {
-    selectGroup('Home');
-    setMobileEditorOpen(true);
-    pendingFocusKeyRef.current = 'hero_slides';
-    setFocusedBlockKey('hero_slides');
-  };
-  const heroPinActive = Boolean(
-    websiteDesktopNoLanding
-      && activeGroup === 'Home'
-      && (focusedBlockKey === null || focusedBlockKey === 'hero_slides'),
-  );
-
-  const focusContentBlock = (blockKey: string) => {
-    window.setTimeout(() => {
-      setMobileBlockEditorKey(blockKey);
-      const el = document.querySelector(`[data-block-key="${blockKey}"]`);
-      if (el && typeof (el as HTMLElement).scrollIntoView === 'function') {
-        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 160);
-  };
-
-  const handleTaskSelect = (task: ContentTask) => {
-    if (task.advancedAction === 'history') {
-      handleSectionSelect('Everywhere');
-      success('Open ⋯ on any field to view and restore History.');
-      return;
-    }
-    if (task.advancedAction === 'schedule' || task.advancedAction === 'import_export') {
-      setMoreMenuOpen(true);
-      return;
-    }
-    if (!task.group) return;
-    handleSectionSelect(task.group, task.homeAppHint, task.surface);
-    if (task.focusBlockKey) {
-      focusContentBlock(task.focusBlockKey);
-    }
-  };
-
-  const handlePageSelect = (sectionName: string) => {
-    handleSectionSelect(sectionName);
-  };
+  }, [isDesktop, loading, urlGroup, activeGroup, orderedSectionNames]);
 
   const homeLayoutApp =
     searchParams.get('homeApp') === 'order_app' ? 'order_app' as const
@@ -440,10 +310,6 @@ export function ContentHubPage() {
   const surfaceFilter: SurfaceFilter | null = activeSurface
     ?? urlSurface
     ?? (isHomeSection(activeGroup) ? defaultHomeSurface(homeLayoutApp, isMobile ? 'mobile' : 'desktop') : null);
-  const previewEditorDevice = surfaceFilter?.device ?? null;
-  const previewEditorSurfaceId = surfaceFilter
-    ? surfaceId(surfaceFilter.app, surfaceFilter.device, surfaceFilter.slot)
-    : null;
 
   useEffect(() => {
     if (!urlSurface) return;
@@ -463,29 +329,6 @@ export function ContentHubPage() {
   const handleMobileBack = () => {
     clearActiveGroup();
   };
-
-  const railSections = useMemo(
-    () => buildHubRailSections(orderedSectionNames, contentBlocks, draftKeys, parseDraftKey, hubApp),
-    [orderedSectionNames, contentBlocks, draftKeys, hubApp],
-  );
-
-  const dirtyGroups = useMemo(
-    () => new Set(railSections.filter((s) => s.dirty).map((s) => s.name)),
-    [railSections],
-  );
-
-  const pageRows = useMemo(
-    () => orderedSectionNames
-      .filter((name) => name !== 'Home' && name !== 'Everywhere')
-      .map((name) => ({
-        name,
-        dirty: dirtyGroups.has(name),
-        count: contentBlocks.filter((b) => contentViewForKey(b.key, hubApp) === name).length,
-      })),
-    [orderedSectionNames, dirtyGroups, contentBlocks, hubApp],
-  );
-
-  const preferredDevice = isMobile ? 'mobile' as const : 'desktop' as const;
 
   const searchResults = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -507,11 +350,8 @@ export function ContentHubPage() {
       return;
     }
     selectGroup(view);
-    setMobileEditorOpen(true);
-    if (websiteWorkspace) {
-      pendingFocusKeyRef.current = block.key;
-      setFocusedBlockKey(block.key);
-    }
+    pendingFocusKeyRef.current = block.key;
+    setFocusedBlockKey(block.key);
     setQ('');
     setSearchOverlayOpen(false);
     window.setTimeout(() => {
@@ -539,10 +379,6 @@ export function ContentHubPage() {
     />
   );
 
-  const activeEditorTitle = activeGroup
-    ? (websitePageTaskByGroup(activeGroup)?.title ?? activeGroup)
-    : 'Section';
-
   const schedulePublishPanel = (
     <HubSchedulePublishPanel
       hubLabel={hubLabel}
@@ -560,55 +396,14 @@ export function ContentHubPage() {
     />
   );
 
-  const hubSectionContentProps = {
-    contentBlocks,
-    drafts,
-    locale,
-    hubApp,
-    hubLabel,
-    blockScopeTab,
-    setBlockScopeTab,
-    setDraft,
-    historyTarget,
-    setHistoryTarget,
-    revisions,
-    restore,
-    openHistory,
-    draftStatusNode,
-    makeTriggerUpload,
-    onUpload,
-    uploadCtx,
-    setMediaOpen,
-    setMobileBlockEditorKey,
-    homeLayoutEditorRef,
-    homeLayoutApp,
-    surfaceFilter,
-    onLayoutDraftChange: handleLayoutDraftChange,
-    onSectionSelectForAnnouncement: handleSectionSelect,
-    isMobile,
-    onBack: handleMobileBack,
-    focusedBlockKey: websiteDesktopNoLanding ? focusedBlockKey : null,
-    desktopSplit: websiteDesktopNoLanding,
-    onFocusBlockKey: websiteDesktopNoLanding
-      ? (key: string | null) => {
-          // Explicit Back / list select — clear any pending auto-focus so Home
-          // page mode is not immediately re-entered as hero component mode.
-          if (key === null) pendingFocusKeyRef.current = null;
-          setFocusedBlockKey(key);
-        }
-      : undefined,
-    deviceFilter: websiteDeviceFilter,
-    dirtyCount,
-    schedulePublishPanel,
-  };
-
-  // Website desktop: the Desktop|Mobile filter chooses which device's Home
-  // layout the "Section order & visibility" editor arranges. It is derived, not
-  // written to the URL — an effect that rewrote search params raced with tab
-  // clicks and could drag the owner back to the page they had just left.
-  const websiteWorkspaceSurface = websiteDesktopNoLanding
-    ? parseSurfaceId(surfaceId(hubApp, websiteDeviceFilter, 'home'))
-    : null;
+  // Which device's Home layout the "Section order & visibility" editor
+  // arranges: the Desktop|Mobile filter on a laptop, always mobile on a phone.
+  // Derived, not written to the URL — an effect that rewrote search params
+  // raced with tab clicks and could drag the owner back to the page they had
+  // just left.
+  const homeSurfaceFilter = parseSurfaceId(
+    surfaceId(hubApp, isMobile ? 'mobile' : websiteDeviceFilter, 'home'),
+  );
 
   const searchField = (
     <div className="hub-search-wrap" ref={searchRef}>
@@ -666,11 +461,6 @@ export function ContentHubPage() {
       locale={locale}
       setLocale={setLocale}
       draftStatusNode={draftStatusNode}
-      isCompactAdmin={isCompactAdmin}
-      previewSheetOpen={previewSheetOpen}
-      setPreviewSheetOpen={setPreviewSheetOpen}
-      desktopPreviewOpen={desktopPreviewOpen}
-      setDesktopPreviewOpenPersisted={setDesktopPreviewOpenPersisted}
       effectiveDirtyCount={effectiveDirtyCount}
       saving={saving}
       autosaveFailed={autosaveFailed}
@@ -693,12 +483,9 @@ export function ContentHubPage() {
         handleSectionSelect('Everywhere');
         success('Open ⋯ on any field to view and restore History.');
       }}
-      websiteDesktopChrome={websiteWorkspace}
-      liveSiteUrl={websiteWorkspace
-        ? `${window.location.origin}/${hubApp === 'order_app' ? 'order' : ''}`
-        : undefined}
-      deviceFilter={websiteDesktopNoLanding ? websiteDeviceFilter : undefined}
-      onDeviceFilterChange={websiteDesktopNoLanding ? setWebsiteDeviceFilter : undefined}
+      liveSiteUrl={`${window.location.origin}/${hubApp === 'order_app' ? 'order' : ''}`}
+      deviceFilter={isDesktop ? websiteDeviceFilter : undefined}
+      onDeviceFilterChange={isDesktop ? setWebsiteDeviceFilter : undefined}
     />
   );
 
@@ -755,260 +542,64 @@ export function ContentHubPage() {
           <ScopeMismatchNotices mismatches={mismatches} collapsible defaultOpen={false} />
         ) : null}
 
-        {websiteWorkspace ? (
-          <ContentIntegrityPanel appFilter={hubApp} onlyWhenIssues />
-        ) : null}
+        <ContentIntegrityPanel appFilter={hubApp} onlyWhenIssues />
 
-        {isMobile && websiteWorkspace ? (
-          <ContentWorkspace
-            config={workspaceConfig}
-            loading={loading}
-            skeleton={skeleton}
-            sectionNames={orderedSectionNames}
-            activeGroup={activeGroup}
-            onSelectGroup={(name: string) => handleSectionSelect(name)}
-            contentBlocks={contentBlocks}
-            drafts={drafts}
-            draftKeys={draftKeys}
-            locale={locale}
-            hubApp={hubApp}
-            setDraft={setDraft}
-            blockScopeTab={blockScopeTab}
-            setBlockScopeTab={setBlockScopeTab}
-            makeTriggerUpload={makeTriggerUpload}
-            onUpload={onUpload}
-            uploadCtx={uploadCtx}
-            setMediaOpen={setMediaOpen}
-            draftStatusNode={draftStatusNode}
-            historyTarget={historyTarget}
-            setHistoryTarget={setHistoryTarget}
-            revisions={revisions}
-            restore={restore}
-            openHistory={openHistory}
-            focusKey={focusedBlockKey}
-            onFocusHandled={() => setFocusedBlockKey(null)}
-            layoutRevision={layoutRevision}
-            onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
-            isMobile
-            onBack={handleMobileBack}
-            layoutEditor={(
-              <HomeLayoutEditor
-                ref={homeLayoutEditorRef}
-                initialApp={hubApp}
-                surfaceFilter={parseSurfaceId(surfaceId(hubApp, 'mobile', 'home')) ?? undefined}
-                onLayoutDraftChange={handleLayoutDraftChange}
-                hidePublishControls
-              />
-            )}
-          />
-        ) : isMobile ? (
-          <div className="hub-mobile-shell">
-            <div className="hub-mobile-overview">
-              <HubSurfaceLanding
-                loading={loading}
-                skeleton={skeleton}
-                appFilter={hubApp}
-                preferredDevice={preferredDevice}
-                pageRows={pageRows}
-                onSelectPage={handlePageSelect}
-                surfaceCounts={surfaceCounts}
-                dirtyGroups={dirtyGroups}
-                onSelectSurface={handleSurfaceSelect}
-                onSelectTask={handleTaskSelect}
-              />
-            </div>
-
-            <HubPreviewHost
-              mode="mobile-sheet"
-              lockedApp={hubApp}
-              websiteUrl={previewState.website}
-              orderAppUrl={previewState.orderApp}
-              loading={previewLoading}
-              open={previewSheetOpen}
-              onClose={() => setPreviewSheetOpen(false)}
-              draftStatus={draftStatusNode}
-              editorDevice={previewEditorDevice}
-              editorSurfaceId={previewEditorSurfaceId}
-            />
-          </div>
-        ) : websiteDesktopNoLanding ? (
-          <ContentWorkspace
-            config={workspaceConfig}
-            loading={loading}
-            skeleton={skeleton}
-            sectionNames={orderedSectionNames}
-            activeGroup={activeGroup}
-            onSelectGroup={(name: string) => handleSectionSelect(name)}
-            contentBlocks={contentBlocks}
-            drafts={drafts}
-            draftKeys={draftKeys}
-            locale={locale}
-            hubApp={hubApp}
-            setDraft={setDraft}
-            blockScopeTab={blockScopeTab}
-            setBlockScopeTab={setBlockScopeTab}
-            makeTriggerUpload={makeTriggerUpload}
-            onUpload={onUpload}
-            uploadCtx={uploadCtx}
-            setMediaOpen={setMediaOpen}
-            draftStatusNode={draftStatusNode}
-            historyTarget={historyTarget}
-            setHistoryTarget={setHistoryTarget}
-            revisions={revisions}
-            restore={restore}
-            openHistory={openHistory}
-            focusKey={focusedBlockKey}
-            onFocusHandled={() => setFocusedBlockKey(null)}
-            defaultOpenSectionId={workspaceConfig.defaultOpenSectionId}
-            layoutRevision={layoutRevision}
-            onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
-            layoutEditor={(
-              <HomeLayoutEditor
-                ref={homeLayoutEditorRef}
-                initialApp={hubApp}
-                surfaceFilter={websiteWorkspaceSurface ?? surfaceFilter ?? undefined}
-                onLayoutDraftChange={handleLayoutDraftChange}
-                hidePublishControls
-              />
-            )}
-          />
-        ) : (
-          <div
-            className={`hub-desktop-shell${railCollapsed ? ' hub-desktop-shell--rail-collapsed' : ''}${desktopPreviewOpen && !websiteDesktopNoLanding ? '' : ' hub-desktop-shell--preview-off'}${websiteDesktopNoLanding ? ' hub-desktop-shell--website' : ''}`}
-            data-testid="hub-desktop-shell"
-            data-preview={websiteDesktopNoLanding ? 'off' : (desktopPreviewOpen ? 'on' : 'off')}
-            data-rail={railCollapsed ? 'collapsed' : 'expanded'}
-            data-hub={hubApp}
-          >
-            <HubSectionList
-              app={hubApp}
-              orderedSectionNames={orderedSectionNames}
-              contentBlocks={contentBlocks}
-              draftKeys={draftKeys}
-              parseDraftKey={parseDraftKey}
-              active={activeGroup}
-              onSelect={handleSectionSelect}
-              collapsed={railCollapsed}
-              onToggleCollapsed={() => setRailCollapsedPersisted(!railCollapsed)}
-              hideOverview={websiteDesktopNoLanding}
-              heroPin={websiteDesktopNoLanding ? { active: heroPinActive, onSelect: handleHeroPinSelect } : undefined}
-            />
-
-            <div className="hub-editor-area" data-testid="hub-editor-area">
-              {activeGroup && !loading
-                ? (
-                  websiteDesktopNoLanding ? (
-                    <div
-                      className="hub-website-desktop-workspace"
-                      data-testid="website-desktop-workspace"
-                      data-mode={focusedBlockKey ? 'component' : 'page'}
-                    >
-                      <HubSectionContent
-                        sectionName={activeGroup}
-                        withBack={false}
-                        {...hubSectionContentProps}
-                      />
-                    </div>
-                  ) : (
-                    <HubSectionContent
-                      sectionName={activeGroup}
-                      withBack
-                      {...hubSectionContentProps}
-                    />
-                  )
-                )
-                : websiteDesktopNoLanding
-                  ? (loading ? skeleton : null)
-                  : (
-                    <HubSurfaceLanding
-                      loading={loading}
-                      skeleton={skeleton}
-                      appFilter={hubApp}
-                      preferredDevice={preferredDevice}
-                      desktopLayout
-                      pageRows={pageRows}
-                      onSelectPage={handlePageSelect}
-                      surfaceCounts={surfaceCounts}
-                      dirtyGroups={dirtyGroups}
-                      onSelectSurface={handleSurfaceSelect}
-                      onSelectTask={handleTaskSelect}
-                    />
-                  )}
-            </div>
-
-            {!websiteDesktopNoLanding && desktopPreviewOpen && isWideDesktop && !isCompactAdmin ? (
-              <HubPreviewHost
-                mode="desktop-column"
-                lockedApp={hubApp}
-                websiteUrl={previewState.website}
-                orderAppUrl={previewState.orderApp}
-                loading={previewLoading}
-                editorDevice={previewEditorDevice}
-                editorSurfaceId={previewEditorSurfaceId}
-              />
-            ) : null}
-          </div>
-        )}
-
-        {!isMobile && !websiteDesktopNoLanding && (isCompactAdmin || !isWideDesktop) ? (
-          <HubPreviewHost
-            mode="compact-sheet"
-            lockedApp={hubApp}
-            websiteUrl={previewState.website}
-            orderAppUrl={previewState.orderApp}
-            loading={previewLoading}
-            open={previewSheetOpen || (desktopPreviewOpen && isCompactAdmin)}
-            onClose={() => {
-              setPreviewSheetOpen(false);
-              if (desktopPreviewOpen && isCompactAdmin) {
-                setDesktopPreviewOpenPersisted(false);
-              }
-            }}
-            draftStatus={draftStatusNode}
-            editorDevice={previewEditorDevice}
-            editorSurfaceId={previewEditorSurfaceId}
-          />
-        ) : null}
-
-        <HubEditorSheets
-          isMobile={isMobile}
+        <ContentWorkspace
+          config={workspaceConfig}
           loading={loading}
-          mobileEditorOpen={mobileEditorOpen && !websiteWorkspace}
+          skeleton={skeleton}
+          sectionNames={orderedSectionNames}
           activeGroup={activeGroup}
-          activeEditorTitle={activeEditorTitle}
-          onCloseSection={handleMobileBack}
-          draftStatusNode={draftStatusNode}
-          locale={locale}
-          setLocale={setLocale}
-          onOpenPreview={() => setPreviewSheetOpen(true)}
-          moreMenuOpen={moreMenuOpen}
-          setMoreMenuOpen={setMoreMenuOpen}
-          effectiveDirtyCount={effectiveDirtyCount}
-          dirtyCount={dirtyCount}
-          saving={saving}
-          autosaveFailed={autosaveFailed}
-          publishFailed={publishFailed}
-          hubLabel={hubLabel}
-          onPublish={() => { void publish(); }}
-          schedulePublishPanel={schedulePublishPanel}
-          sectionContentProps={hubSectionContentProps}
-          searchOverlayOpen={searchOverlayOpen}
-          setSearchOverlayOpen={setSearchOverlayOpen}
-          searchToggleRef={searchToggleRef}
-          searchField={searchField}
-          mobileBlockEditorKey={mobileBlockEditorKey}
-          setMobileBlockEditorKey={setMobileBlockEditorKey}
+          onSelectGroup={(name: string) => handleSectionSelect(name)}
           contentBlocks={contentBlocks}
-          hubApp={hubApp}
           drafts={drafts}
+          draftKeys={draftKeys}
+          locale={locale}
+          hubApp={hubApp}
+          setDraft={setDraft}
           blockScopeTab={blockScopeTab}
           setBlockScopeTab={setBlockScopeTab}
-          setDraft={setDraft}
           makeTriggerUpload={makeTriggerUpload}
           onUpload={onUpload}
           uploadCtx={uploadCtx}
           setMediaOpen={setMediaOpen}
+          draftStatusNode={draftStatusNode}
+          historyTarget={historyTarget}
+          setHistoryTarget={setHistoryTarget}
+          revisions={revisions}
+          restore={restore}
+          openHistory={openHistory}
+          focusKey={focusedBlockKey}
+          onFocusHandled={() => setFocusedBlockKey(null)}
+          defaultOpenSectionId={isMobile ? null : workspaceConfig.defaultOpenSectionId}
+          layoutRevision={layoutRevision}
+          onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
+          isMobile={isMobile}
+          onBack={handleMobileBack}
+          layoutEditor={(
+            <HomeLayoutEditor
+              ref={homeLayoutEditorRef}
+              initialApp={hubApp}
+              surfaceFilter={homeSurfaceFilter ?? surfaceFilter ?? undefined}
+              onLayoutDraftChange={handleLayoutDraftChange}
+              hidePublishControls
+            />
+          )}
         />
+
+        {/* The only sheet left on a phone: search. Sections open in the page. */}
+        {isMobile ? (
+          <ContentEditorSheet
+            open={searchOverlayOpen}
+            title="Search"
+            onClose={() => setSearchOverlayOpen(false)}
+            layer={4}
+            testId="hub-search-overlay"
+            returnFocusTo={searchToggleRef.current}
+          >
+            {searchField}
+          </ContentEditorSheet>
+        ) : null}
 
         <HubStickyPublishBar
           effectiveDirtyCount={effectiveDirtyCount}

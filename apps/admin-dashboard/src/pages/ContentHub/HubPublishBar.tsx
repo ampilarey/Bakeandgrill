@@ -1,5 +1,5 @@
 import { useMemo, type Dispatch, type ReactNode, type RefObject, type SetStateAction } from 'react';
-import { Download, Eye, MoreHorizontal, Save, Search, Upload as UploadIcon } from 'lucide-react';
+import { Download, MoreHorizontal, Save, Search, Upload as UploadIcon } from 'lucide-react';
 import type { ContentApp, ContentLocale, ContentScheduleRow } from '../../api/content';
 import { Btn } from '../../components/SharedUI';
 import { DraftPublishStatus } from '../../components/DraftPublishStatus';
@@ -225,11 +225,6 @@ export type HubHeaderActionsProps = {
   locale: ContentLocale;
   setLocale: Dispatch<SetStateAction<ContentLocale>>;
   draftStatusNode: ReactNode;
-  isCompactAdmin: boolean;
-  previewSheetOpen: boolean;
-  setPreviewSheetOpen: Dispatch<SetStateAction<boolean>>;
-  desktopPreviewOpen: boolean;
-  setDesktopPreviewOpenPersisted: (open: boolean) => void;
   effectiveDirtyCount: number;
   saving: boolean;
   autosaveFailed: boolean;
@@ -248,12 +243,11 @@ export type HubHeaderActionsProps = {
   onImportClick: () => void;
   schedulePublishPanel: ReactNode;
   onOpenMediaLibrary: () => void;
-  /** Stage A — Publishing history tip (Website desktop tools left the landing). */
+  /** Publishing-history tip in the More menu. */
   onOpenHistory?: () => void;
-  /** Stage C — hide Preview column toggle; show View live site instead (Website desktop). */
-  websiteDesktopChrome?: boolean;
+  /** Where "View live site ↗" points — the app this hub edits. */
   liveSiteUrl?: string;
-  /** Stage D — Desktop | Mobile filter for the middle page list. */
+  /** Which device's Home layout the section-order editor arranges. */
   deviceFilter?: 'desktop' | 'mobile';
   onDeviceFilterChange?: (device: 'desktop' | 'mobile') => void;
 };
@@ -267,11 +261,6 @@ export function HubHeaderActions({
   locale,
   setLocale,
   draftStatusNode,
-  isCompactAdmin,
-  previewSheetOpen,
-  setPreviewSheetOpen,
-  desktopPreviewOpen,
-  setDesktopPreviewOpenPersisted,
   effectiveDirtyCount,
   saving,
   autosaveFailed,
@@ -291,7 +280,6 @@ export function HubHeaderActions({
   schedulePublishPanel,
   onOpenMediaLibrary,
   onOpenHistory,
-  websiteDesktopChrome = false,
   liveSiteUrl,
   deviceFilter,
   onDeviceFilterChange,
@@ -391,7 +379,7 @@ export function HubHeaderActions({
 
       {draftStatusNode}
 
-      {websiteDesktopChrome && deviceFilter && onDeviceFilterChange ? (
+      {deviceFilter && onDeviceFilterChange ? (
         <div className="hub-device-filter" role="group" aria-label="Device filter" data-testid="website-device-filter">
           {(['desktop', 'mobile'] as const).map((device) => (
             <button
@@ -408,7 +396,7 @@ export function HubHeaderActions({
         </div>
       ) : null}
 
-      {websiteDesktopChrome && liveSiteUrl ? (
+      {liveSiteUrl ? (
         <a
           href={liveSiteUrl}
           target="_blank"
@@ -418,24 +406,6 @@ export function HubHeaderActions({
         >
           View live site ↗
         </a>
-      ) : null}
-
-      {!isMobile && !websiteDesktopChrome ? (
-        <button
-          type="button"
-          data-testid="preview-toggle"
-          aria-pressed={isCompactAdmin ? previewSheetOpen : desktopPreviewOpen}
-          className={`hub-preview-toggle${(isCompactAdmin ? previewSheetOpen : desktopPreviewOpen) ? ' hub-preview-toggle--on' : ''}`}
-          onClick={() => {
-            if (isCompactAdmin) {
-              setPreviewSheetOpen((o) => !o);
-              return;
-            }
-            setDesktopPreviewOpenPersisted(!desktopPreviewOpen);
-          }}
-        >
-          <Eye size={14} /> Preview
-        </button>
       ) : null}
 
       {effectiveDirtyCount > 0 ? (

@@ -2,8 +2,6 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
-import { blockMatchesDevice } from '../pages/ContentHub/WebsiteDesktopPageList';
-import type { ContentBlock } from '../api/content';
 import * as contentApi from '../api/content';
 
 let isMobileFlag = false;
@@ -137,24 +135,12 @@ describe('Website desktop Stages C+D', () => {
     expect(screen.getByTestId('wcw-field-hero_slides')).toBeTruthy();
   });
 
-  it('Stage D: blockMatchesDevice hides mobile-only keys on Desktop', () => {
-    const mobileOnly = {
-      key: 'mobile_bottom_nav_label',
-      label: 'Mobile only tab',
-    } as ContentBlock;
-    const desktopOnly = {
-      key: 'desktop_header_cta',
-      label: 'Desktop header',
-    } as ContentBlock;
-    const shared = { key: 'hero_slides', label: 'Hero' } as ContentBlock;
-    expect(blockMatchesDevice(mobileOnly, 'desktop')).toBe(false);
-    expect(blockMatchesDevice(mobileOnly, 'mobile')).toBe(true);
-    expect(blockMatchesDevice(desktopOnly, 'mobile')).toBe(false);
-    expect(blockMatchesDevice(desktopOnly, 'desktop')).toBe(true);
-    expect(blockMatchesDevice(shared, 'desktop')).toBe(true);
-    expect(blockMatchesDevice(shared, 'mobile')).toBe(true);
-  });
-
+  /**
+   * "blockMatchesDevice hides mobile-only keys on Desktop" was removed on
+   * 2026-08-16 with WebsiteDesktopPageList. The Desktop|Mobile filter now
+   * chooses which device's Home layout the section-order editor arranges; it
+   * no longer filters the fields on screen.
+   */
   it('Order App desktop gets the same chrome as the website', async () => {
     // Same trade the website made: the docked preview column goes, and a
     // "View live site" link plus the Desktop|Mobile filter take its place.

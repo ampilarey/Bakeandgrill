@@ -56,7 +56,7 @@ async function walkTsFiles(dir: string): Promise<string[]> {
 }
 
 describe('canonicalCatalog single source of truth', () => {
-  it('hub controller and HomeLayoutEditor import listConfiguredOnSurface / surfaceCountLabel from canonicalCatalog', async () => {
+  it('the page and HomeLayoutEditor take their surface lists from canonicalCatalog', async () => {
     const fs = await loadFs();
     const page = fs.readFileSync(path.join(HUB_DIR, 'ContentHubPage.tsx'), 'utf8');
     const controller = fs.readFileSync(path.join(HUB_DIR, 'useContentHubController.ts'), 'utf8');
@@ -67,8 +67,8 @@ describe('canonicalCatalog single source of truth', () => {
     expect(page).not.toMatch(/countBlocksOnSurface/);
     expect(page).not.toMatch(/listBlocksOnSurface/);
 
-    expect(controller).toMatch(/from ['"]\.\/canonicalCatalog['"]/);
-    expect(controller).toMatch(/surfaceCountLabel/);
+    // The controller stopped counting surfaces on 2026-08-16 — the landing tree
+    // those counts labelled is gone. It must still never grow its own counter.
     expect(controller).not.toMatch(/countBlocksOnSurface/);
     expect(controller).not.toMatch(/listBlocksOnSurface/);
 

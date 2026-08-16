@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  createContentPreviewToken,
   discardContentDrafts,
   exportContent,
   getContentBlocks,
@@ -28,9 +27,7 @@ import {
 } from '../../api/pageBlocks';
 import { ApiRequestError } from '@shared/api';
 import { type HomeLayoutEditorHandle, type LayoutDraftSignal } from './HomeLayoutEditor';
-import type { UploadContextRef } from './HubSectionContent';
-import { surfaceCountLabel } from './canonicalCatalog';
-import { surfaceId } from './surfaceCatalog';
+import type { UploadContextRef } from './hubBlockEditors';
 import { orderSectionNames } from './hubLayoutConfig';
 import { visibleContentGroups } from './websitePageTasks';
 import { isOpsOwnedContentKey } from './opsOwnedContentKeys';
@@ -42,14 +39,12 @@ import {
   type DraftsByLocale,
   type LocaleMetaMap,
   type HistoryTarget,
-  type PreviewState,
   draftKey,
   parseDraftKey,
   collectChanges,
   uploadAppFor,
   labelForScope,
   hubAppLabel,
-  valueForScope,
   isDeprecatedBlock,
   contentAppFromPath,
 } from './hubDraftUtils';
@@ -82,13 +77,7 @@ function formatContentActionError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-export type ContentHubControllerOptions = {
-  /** Stage C — Website desktop has no preview column; skip token minting. */
-  skipPreviewMint?: boolean;
-};
-
-export function useContentHubController(toast: ContentHubToast, options: ContentHubControllerOptions = {}) {
-  const { skipPreviewMint = false } = options;
+export function useContentHubController(toast: ContentHubToast) {
   const { success, error } = toast;
   const location = useLocation();
   const hubApp = contentAppFromPath(location.pathname);
@@ -104,8 +93,6 @@ export function useContentHubController(toast: ContentHubToast, options: Content
   const [revisions, setRevisions] = useState<ContentRevision[]>([]);
   const [schedules, setSchedules] = useState<ContentScheduleRow[]>([]);
   const [scheduleAt, setScheduleAt] = useState('');
-  const [previewState, setPreviewState] = useState<PreviewState>({ website: null, orderApp: null });
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [lastSavedAtByLocale, setLastSavedAtByLocale] = useState<LocaleMetaMap<string | null>>(() => ({ ...FALSE_BY_LOCALE }));
   const [autosaving, setAutosaving] = useState(false);
   const [autosaveFailed, setAutosaveFailed] = useState(false);
@@ -114,10 +101,8 @@ export function useContentHubController(toast: ContentHubToast, options: Content
   const [serverDraftSyncedByLocale, setServerDraftSyncedByLocale] = useState<LocaleMetaMap<boolean>>(() => ({ ...TRUE_BY_LOCALE }));
   /** Homepage layout draft — merged into global publish status. */
   const [layoutDraft, setLayoutDraft] = useState(false);
-  /** Bumps when layout draft versions change so the docked preview remints. */
+  /** Bumps when layout draft versions change, so readers re-fetch. */
   const [layoutRevision, setLayoutRevision] = useState(0);
-  /** Component count labels per surface for the landing overview. */
-  const [surfaceCounts, setSurfaceCounts] = useState<Record<string, string>>({});
 
   const handleLayoutDraftChange = (signal: LayoutDraftSignal) => {
     setLayoutDraft(signal.hasDraft);
@@ -208,36 +193,23 @@ export function useContentHubController(toast: ContentHubToast, options: Content
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale, hubApp]);
 
-  // Surface component counts for the landing tree.
+  // Does this hub have an unpublished layout draft? The Publish bar needs to
+  // know: reordering or hiding a section is unpublished work even when no
+  // wording changed. Only this hub's app counts — a website draft must not
+  // light up Publish on the Order App.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [w, o] = await Promise.all([
-          fetchAdminPageBlocks('website'),
-          fetchAdminPageBlocks('order_app'),
-        ]);
+        const res = await fetchAdminPageBlocks(hubApp);
         if (cancelled) return;
-        // Only the current hub app's layout draft counts toward this hub's Publish bar.
-        setLayoutDraft(Boolean(hubApp === 'website' ? w.draft : o.draft));
-        const counts: Record<string, string> = {};
-        for (const app of ['website', 'order_app'] as const) {
-          const pageBlocks = app === 'website' ? (w.blocks ?? []) : (o.blocks ?? []);
-          for (const device of ['desktop', 'mobile'] as const) {
-            for (const slot of ['header', 'home', 'footer', 'bottom_navigation'] as const) {
-              if (device === 'desktop' && slot === 'bottom_navigation') continue;
-              const filter = { app, device, slot };
-              counts[surfaceId(app, device, slot)] = surfaceCountLabel(pageBlocks, filter).label;
-            }
-          }
-        }
-        setSurfaceCounts(counts);
+        setLayoutDraft(Boolean(res.draft));
       } catch {
-        if (!cancelled) setSurfaceCounts({});
+        /* best effort — a failed read must not claim there are no drafts */
       }
     })();
     return () => { cancelled = true; };
-    // layoutRevision bumps on every draft mutate so card counts refresh immediately.
+    // layoutRevision bumps on every draft mutate so the bar refreshes at once.
   }, [hubApp, layoutDraft, layoutRevision]);
 
   const contentBlocks = useMemo(
@@ -269,43 +241,6 @@ export function useContentHubController(toast: ContentHubToast, options: Content
     setAutosaveErrorDetail(null);
     setPublishFailed(false);
   };
-
-  // Preview token for THIS hub app only — never mint/cross-load the other app.
-  // include_layout is always on; layoutRevision remints when page-block drafts change.
-  // Stage C: Website desktop dropped the preview column — skip minting (View live site instead).
-  useEffect(() => {
-    if (skipPreviewMint) {
-      setPreviewState({ website: null, orderApp: null });
-      setPreviewLoading(false);
-      return;
-    }
-    const t = window.setTimeout(() => {
-      const overrides: Record<string, string> = {};
-      for (const block of contentBlocks) {
-        if (!block.apps.includes(hubApp)) continue;
-        overrides[block.key] = valueForScope(block, hubApp, drafts);
-      }
-      // Layout-only drafts still need a token (empty overrides + include_layout).
-      if (Object.keys(overrides).length === 0 && !layoutDraft) {
-        return;
-      }
-      setPreviewLoading(true);
-      void createContentPreviewToken(hubApp, overrides, locale, true)
-        .then((res) => {
-          setPreviewState({
-            website: hubApp === 'website' ? (res.website_url || null) : null,
-            orderApp: hubApp === 'order_app' ? (res.order_app_url || null) : null,
-          });
-        })
-        .catch(() => {
-          setPreviewState({ website: null, orderApp: null });
-          error(`Could not load ${hubLabel} live preview. Try again.`);
-        })
-        .finally(() => setPreviewLoading(false));
-    }, 600);
-    return () => window.clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drafts, contentBlocks, locale, layoutDraft, layoutRevision, hubApp, skipPreviewMint]);
 
   const persistDrafts = async (loc: ContentLocale = locale): Promise<boolean> => {
     const gen = saveGeneration.current;
@@ -640,11 +575,8 @@ export function useContentHubController(toast: ContentHubToast, options: Content
     schedules,
     scheduleAt,
     setScheduleAt,
-    previewState,
-    previewLoading,
     layoutDraft,
     layoutRevision,
-    surfaceCounts,
     handleLayoutDraftChange,
     autosaving,
     autosaveFailed,

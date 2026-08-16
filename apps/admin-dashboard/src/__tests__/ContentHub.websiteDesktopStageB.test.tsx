@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { summarizeBlockValue, blockDisplayName } from '../pages/ContentHub/summarizeBlockValue';
-import { buildWebsiteDesktopPageRows } from '../pages/ContentHub/WebsiteDesktopPageList';
 import type { ContentBlock } from '../api/content';
 
 function blk(partial: Partial<ContentBlock> & { key: string }): ContentBlock {
@@ -91,22 +90,9 @@ describe('summarizeBlockValue (Stage B)', () => {
   });
 });
 
-describe('buildWebsiteDesktopPageRows', () => {
-  it('puts hero first and keeps subgroup headings', () => {
-    const blocks = [
-      blk({ key: 'order_mode_delivery_title', label: 'Delivery', group: 'Home' }),
-      blk({
-        key: 'hero_slides',
-        label: 'Hero banners',
-        editor: 'hero',
-        type: 'json',
-        shared: '[]',
-      }),
-      blk({ key: 'trust_items', label: 'Trust strip', editor: 'trust', type: 'json', shared: '[]' }),
-    ];
-    const rows = buildWebsiteDesktopPageRows('Home', blocks, 'website', {});
-    const blockIds = rows.filter((r) => r.kind === 'block').map((r) => r.id);
-    expect(blockIds[0]).toBe('hero_slides');
-    expect(rows.some((r) => r.kind === 'heading' && r.label === 'Order buttons')).toBe(true);
-  });
-});
+/**
+ * The "buildWebsiteDesktopPageRows" block went with WebsiteDesktopPageList on
+ * 2026-08-16. The middle page list it built rows for was replaced by the
+ * workspace's sections — hero-first ordering and the sub-headings are now
+ * asserted in websiteFieldGroups.test.ts and ContentWorkspace.test.tsx.
+ */

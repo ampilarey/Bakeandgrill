@@ -18,10 +18,6 @@ export type HistoryTarget = {
   label: string;
 } | null;
 
-export type PreviewState = {
-  website: string | null;
-  orderApp: string | null;
-};
 
 export const ALL_SCOPES: ContentScope[] = ['shared', 'website', 'order_app'];
 export const EMPTY_DRAFTS_BY_LOCALE: DraftsByLocale = { en: {}, dv: {} };
