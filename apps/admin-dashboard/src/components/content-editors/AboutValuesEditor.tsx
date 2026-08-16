@@ -20,8 +20,8 @@ export function AboutValuesEditor({ label, description, value, onChange }: Conte
         itemLabel="value"
         renderItem={(item, _idx, update) => (
           <>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input value={item.initial} onChange={(e) => update({ initial: e.target.value })} placeholder="F" title="Initial letter"
+            <div className="content-editor-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input className="content-editor-icon" value={item.initial} onChange={(e) => update({ initial: e.target.value })} placeholder="F" title="Initial letter"
                 style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none', flexShrink: 0 }} />
               <input value={item.title} onChange={(e) => update({ title: e.target.value })} placeholder="Title"
                 style={{ flex: 1, minWidth: 120, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />

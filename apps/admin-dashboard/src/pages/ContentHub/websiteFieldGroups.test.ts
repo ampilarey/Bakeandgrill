@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -162,7 +162,16 @@ describe('groupBlocks', () => {
 describe('every repeater editor opts into the phone stacking rule', () => {
   it('carries content-editor-row on its row', () => {
     const dir = join(dirname(fileURLToPath(import.meta.url)), '../../components/content-editors');
-    for (const name of ['TrustItemsEditor', 'CategoriesEditor', 'ProofDetailsEditor', 'FooterLinksEditor']) {
+    for (const name of [
+      'TrustItemsEditor',
+      'CategoriesEditor',
+      'ProofDetailsEditor',
+      'FooterLinksEditor',
+      // Order App only (About page). It was the one repeater this list missed —
+      // found on 2026-08-16 when the owner asked whether the Order App's phone
+      // view was finished, which is exactly how FooterLinksEditor was caught.
+      'AboutValuesEditor',
+    ]) {
       const source = readFileSync(join(dir, `${name}.tsx`), 'utf8');
       // The class on the element, not the words in a comment — the first
       // version of this test passed on its own explanatory comment.
@@ -171,5 +180,36 @@ describe('every repeater editor opts into the phone stacking rule', () => {
         `[${name}] must carry className="content-editor-row" so its row stacks on a phone`,
       ).toBe(true);
     }
+  });
+
+  /**
+   * The list above must name every repeater that ships, or a new one can skip
+   * the rule unnoticed — which is how AboutValuesEditor slipped through.
+   *
+   * BusinessHoursEditor is deliberately absent: its row is a day name beside
+   * that day's hours, and stacking a day above its own times reads worse than
+   * the 90px label it has now. It is not a repeater of like-sized fields.
+   */
+  it('names every repeater that exists, so a new one cannot skip the rule', () => {
+    const dir = join(dirname(fileURLToPath(import.meta.url)), '../../components/content-editors');
+    const covered = new Set([
+      'TrustItemsEditor',
+      'CategoriesEditor',
+      'ProofDetailsEditor',
+      'FooterLinksEditor',
+      'AboutValuesEditor',
+    ]);
+    const exempt = new Set(['BusinessHoursEditor', 'PreorderStepsEditor']);
+
+    const repeaters = readdirSync(dir)
+      .filter((f) => f.endsWith('Editor.tsx'))
+      .map((f) => f.replace(/\.tsx$/, ''))
+      .filter((name) => readFileSync(join(dir, `${name}.tsx`), 'utf8').includes('<RepeaterShell'));
+
+    const unclassified = repeaters.filter((n) => !covered.has(n) && !exempt.has(n));
+    expect(
+      unclassified,
+      `new repeater editor(s) not yet checked for phone stacking: ${unclassified.join(', ')}`,
+    ).toEqual([]);
   });
 });
