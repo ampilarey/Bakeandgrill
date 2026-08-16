@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  headingLengthBand,
   heroMediaOpacityMobile,
   isHeroSlideInScheduleWindow,
   legacyDimMediaOpacityMobile,
@@ -120,5 +121,40 @@ describe('isHeroSlideInScheduleWindow', () => {
   it('restaurantLocalStamp is Maldives wall time', () => {
     const utc = new Date('2026-03-20T23:00:00Z');
     expect(restaurantLocalStamp(utc)).toBe('2026-03-21T04:00:00');
+  });
+});
+
+/**
+ * Hero heading fit — owner audit, 2026-08-16. Must stay in lockstep with
+ * HeroSlides::headingLengthBand() and ['panelled'] on the PHP side, which is
+ * covered by backend/tests/Unit/HeroHeadingFitTest.php with the same cases.
+ */
+describe('heading fit', () => {
+  it('steps on plain-text length, at the same boundaries as PHP', () => {
+    expect(headingLengthBand('')).toBe('');
+    expect(headingLengthBand('Bake & Grill')).toBe('');
+    expect(headingLengthBand('a'.repeat(26))).toBe('');
+    expect(headingLengthBand('a'.repeat(27))).toBe('long');
+    expect(headingLengthBand('a'.repeat(46))).toBe('long');
+    expect(headingLengthBand('a'.repeat(47))).toBe('xlong');
+    expect(headingLengthBand('Dhivehi Breakfast and Artisan Baking')).toBe('long');
+  });
+
+  it('ignores markup, line breaks and entities', () => {
+    expect(headingLengthBand('<em><strong>Bake</strong></em> <span>Grill</span>')).toBe('');
+    expect(headingLengthBand('Bake and Grill<br>Maldives Malé'))
+      .toBe(headingLengthBand('Bake and Grill Maldives Malé'));
+    expect(headingLengthBand('Bake &amp; Grill Mal&eacute;')).toBe('');
+  });
+
+  it('marks a slide panelled only when the heading or subheading has a real panel', () => {
+    expect(resolveHeroSlidePresentation({ photo_brightness: 60, text_background: 70 }).panelled).toBe(false);
+    expect(resolveHeroSlidePresentation({ title_bg: 'glass' }).panelled).toBe(true);
+    expect(resolveHeroSlidePresentation({ subtitle_bg: 'dark' }).panelled).toBe(true);
+    // "none" is transparent — no box to nest, so the gradient must stay.
+    expect(resolveHeroSlidePresentation({ title_bg: 'none' }).panelled).toBe(false);
+    // A pill on the eyebrow or a CTA button is not a nested panel.
+    expect(resolveHeroSlidePresentation({ eyebrow_bg: 'glass' }).panelled).toBe(false);
+    expect(resolveHeroSlidePresentation({ cta1_bg: 'glass' }).panelled).toBe(false);
   });
 });

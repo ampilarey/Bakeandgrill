@@ -189,6 +189,18 @@ final class HeroSlides
             $elements[$key] = self::resolveElementBackground($slide, $key);
         }
 
+        // One background, not three. When the heading or subheading carries its
+        // own panel, the copy scrim behind the whole stack is a second box
+        // around the first — the "too large" look the owner reported
+        // (2026-08-16). The renderer drops the scrim when this is true.
+        $panelled = false;
+        foreach (['title', 'subtitle'] as $key) {
+            $css = $elements[$key]['css'] ?? null;
+            if ($css !== null && $css !== '' && $css !== 'transparent') {
+                $panelled = true;
+            }
+        }
+
         return [
             'photo_brightness' => $photoBrightness,
             'text_background' => $textBackground,
@@ -196,6 +208,7 @@ final class HeroSlides
             'scrim' => $textBackground / 100.0,
             'text_position' => $textPosition,
             'elements' => $elements,
+            'panelled' => $panelled,
         ];
     }
 
@@ -312,6 +325,32 @@ final class HeroSlides
      *
      * @return list<string>
      */
+    /**
+     * How hard the heading has to shrink to fit a fixed-height banner.
+     *
+     * Owner chose "words shrink to fit the banner" over "banner grows"
+     * (2026-08-16), so a long heading steps down instead of wrapping to four
+     * lines and pushing the panel out of the top of the banner. Bands are on
+     * plain-text length, which is what actually drives the wrap — markup and
+     * entities are stripped first so <em>bold</em> does not count as content.
+     *
+     * Returns '' (normal), 'long' or 'xlong'.
+     */
+    public static function headingLengthBand(string $html): string
+    {
+        $text = trim(html_entity_decode(strip_tags(str_ireplace(['<br>', '<br/>', '<br />'], ' ', $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $len = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text);
+
+        if ($len > 46) {
+            return 'xlong';
+        }
+        if ($len > 26) {
+            return 'long';
+        }
+
+        return '';
+    }
+
     public static function splitRichTextLines(string $html): array
     {
         $parts = preg_split('/<br\s*\/?>/i', $html);

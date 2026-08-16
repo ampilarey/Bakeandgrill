@@ -42,6 +42,8 @@ export type HeroSlidePresentation = {
   photo_brightness: number;
   text_background: number;
   elements: Record<HeroElementKey, HeroElementBackground>;
+  /** Heading or subheading carries its own panel — drop the copy scrim. */
+  panelled: boolean;
 };
 
 type SlideLike = {
@@ -177,6 +179,15 @@ export function resolveHeroSlidePresentation(
     elements[key] = resolveElementBackground(row, key);
   }
 
+  // One background, not three. When the heading or subheading carries its own
+  // panel, the copy scrim behind the whole stack is a second box around the
+  // first — the "too large" look the owner reported (2026-08-16). Lockstep
+  // with HeroSlides::presentation()['panelled'].
+  const panelled = (['title', 'subtitle'] as const).some((key) => {
+    const css = elements[key]?.css;
+    return css != null && css !== '' && css !== 'transparent';
+  });
+
   return {
     photo_brightness: photoBrightness,
     text_background: textBackground,
@@ -184,6 +195,7 @@ export function resolveHeroSlidePresentation(
     scrim: textBackground / 100,
     text_position,
     elements,
+    panelled,
   };
 }
 
@@ -310,4 +322,27 @@ export function formatHeroSlideScheduleLabel(
     return untilRaw ? `Showing until ${fmt(untilRaw, 'until')}` : `Showing since ${fmt(fromRaw, 'from')}`;
   }
   return `Showing until ${fmt(untilRaw, 'until')}`;
+}
+
+/**
+ * How hard the heading has to shrink to fit a fixed-height banner.
+ *
+ * Owner chose "words shrink to fit the banner" over "banner grows"
+ * (2026-08-16), so a long heading steps down instead of wrapping to four lines
+ * and pushing the panel out of the top of the banner. Bands are on plain-text
+ * length, which is what drives the wrap — markup is stripped first so
+ * <em>emphasis</em> does not count as content.
+ *
+ * Lockstep with HeroSlides::headingLengthBand().
+ */
+export function headingLengthBand(html: string): '' | 'long' | 'xlong' {
+  const text = String(html ?? '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&[a-z]+;|&#\d+;/gi, ' ')
+    .trim();
+
+  if (text.length > 46) return 'xlong';
+  if (text.length > 26) return 'long';
+  return '';
 }

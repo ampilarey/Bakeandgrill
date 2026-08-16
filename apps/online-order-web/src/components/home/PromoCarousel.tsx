@@ -5,6 +5,7 @@ import type { HeroSlideRow } from '../../context/SiteSettingsContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
 import {
+  headingLengthBand,
   resolveHeroSlidePresentation,
   splitHeroRichTextLines,
   type HeroElementBackground,
@@ -90,8 +91,17 @@ function HeroTextBlock({
   }
 
   if (isTitle) {
+    // Long headings shrink rather than wrap and burst out of a fixed-height
+    // banner. Owner's choice, 2026-08-16. Lockstep with the website's
+    // data-len bands.
+    const band = headingLengthBand(html);
     return (
-      <Tag className={className} data-testid={testId} {...contrastProps}>
+      <Tag
+        className={className}
+        data-testid={testId}
+        {...(band ? { 'data-len': band } : {})}
+        {...contrastProps}
+      >
         {titleLineNodes(clean)}
       </Tag>
     );
@@ -363,7 +373,10 @@ export function PromoCarousel({
                 data-text-position={presentation.text_position}
                 data-testid={`hero-overlay-${i}`}
               >
-                <div className="home-promo-hero__copy">
+                <div
+                  className="home-promo-hero__copy"
+                  {...(presentation.panelled ? { 'data-panelled': '1' as const } : {})}
+                >
                 {eyebrow ? (
                   <span className="home-promo-hero__eyebrow" {...elementBgProps(presentation.elements.eyebrow)}>
                     {eyebrow}

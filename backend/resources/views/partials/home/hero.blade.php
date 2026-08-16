@@ -60,6 +60,8 @@
                         $cta2Raw = trim((string) ($slide['cta2_url'] ?? ''));
                         $cta1Href = safe_public_url($cta1Raw !== '' ? $cta1Raw : '/order/') ?? '#';
                         $cta2Href = safe_public_url($cta2Raw !== '' ? normalize_public_menu_link($cta2Raw) : '/order/menu') ?? '#';
+                        // Shrink-to-fit band for the heading (owner, 2026-08-16).
+                        $titleBand = \App\Domains\Content\HeroSlides::headingLengthBand($titleHtml);
                         $el = $heroPres['elements'] ?? [];
                         $eyebrowEl = $el['eyebrow'] ?? ['css' => null];
                         $titleEl = $el['title'] ?? ['css' => null, 'full_width' => false];
@@ -67,7 +69,7 @@
                         $cta1El = $el['cta1'] ?? ['css' => null];
                         $cta2El = $el['cta2'] ?? ['css' => null];
                     @endphp
-                    <div class="banner-copy">
+                    <div class="banner-copy" @if(!empty($heroPres['panelled'])) data-panelled="1" @endif>
                     @if($eyebrow !== '')
                         <span
                             class="banner-eyebrow"
@@ -81,6 +83,7 @@
                         {{-- Glass panel, full-width bar, or outline/halo — never per-line boxes. --}}
                         <h2
                             class="banner-title"
+                            @if($titleBand !== '') data-len="{{ $titleBand }}" @endif
                             @if(!empty($titleEl['css']))
                                 @if(($titleEl['token'] ?? '') === 'glass')
                                     data-bg-glass="1"

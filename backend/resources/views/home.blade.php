@@ -90,7 +90,10 @@
     align-items: center;
     justify-content: flex-end;
     text-align: center;
-    padding: 1.75rem 1.25rem 2.75rem;
+    /* Top padding clears the absolutely-positioned open/closed badge
+       (top: 1.5rem + ~1.75rem tall). Before this the copy slid underneath it
+       and the badge sat on the heading — owner, 2026-08-16. */
+    padding: 3.5rem 1.25rem 2.75rem;
     z-index: 2;
     background: none;
     pointer-events: none;
@@ -103,6 +106,11 @@
     flex-direction: column;
     align-items: center;
     max-width: 100%;
+    /* Never taller than the space the overlay gives it. Without this the copy
+       grew past the banner and was clipped by .hero-banner{overflow:hidden} —
+       the heading lost its first line. */
+    max-height: 100%;
+    min-height: 0;
     padding: 0.85rem 1rem 1rem;
     border-radius: 16px;
     pointer-events: auto;
@@ -112,6 +120,16 @@
         rgba(28,20,8, calc(0.72 * var(--hero-scrim, 1))) 55%,
         rgba(28,20,8, calc(0.92 * var(--hero-scrim, 1))) 100%
     );
+}
+/*
+ * One background, not three. When the heading or subheading carries its own
+ * panel, this gradient was a second box drawn around the first — the "too
+ * large" look. Owner's choice, 2026-08-16: the gradient steps back.
+ */
+.banner-copy[data-panelled="1"] {
+    background: none;
+    padding: 0;
+    border-radius: 0;
 }
 
 /* Eyebrow / title / sub — keep in lockstep with order-app .home-promo-hero__* */
@@ -131,14 +149,19 @@
     margin-bottom: 0.75rem;
 }
 .banner-title {
-    font-size: 1.7rem;
+    /* Shrink to fit rather than wrap to four lines and burst out of the
+       banner. Owner chose "words shrink" over "banner grows", 2026-08-16. */
+    font-size: clamp(1.15rem, 6.4vw, 1.7rem);
     font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 1.08;
+    line-height: 1.12;
     color: #fff;
     margin: 0 0 0.5rem;
     text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
+/* Long headings step down again — length is what drives the wrap. */
+.banner-title[data-len="long"]  { font-size: clamp(1.05rem, 5.4vw, 1.5rem); }
+.banner-title[data-len="xlong"] { font-size: clamp(0.95rem, 4.6vw, 1.3rem); letter-spacing: -0.03em; }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
  * §7.2 non-bar title/subtitle contrast: letter outline + soft halo from
@@ -217,7 +240,7 @@
     background: var(--hero-el-bg);
 }
 .banner-sub {
-    font-size: 0.8rem;
+    font-size: clamp(0.72rem, 3.2vw, 0.8rem);
     color: rgba(255, 255, 255, 0.78);
     margin: 0 0 1.25rem;
     font-weight: 400;
@@ -435,6 +458,9 @@
         margin-bottom: 1rem;
         animation: banner-fade-up 0.75s ease 0.06s both;
     }
+    /* Long headings step down on desktop too — same bands as the phone. */
+    .banner-title[data-len="long"]  { font-size: clamp(2.1rem, 3.1vw, 3rem); }
+    .banner-title[data-len="xlong"] { font-size: clamp(1.75rem, 2.6vw, 2.5rem); }
     /* Each CMS <br> segment stays one line on desktop (mobile may still soft-wrap). */
     .banner-title .hero-title-line {
         white-space: nowrap;
