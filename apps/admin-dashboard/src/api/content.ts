@@ -11,7 +11,6 @@ export type ContentEditorHint =
   | 'trust'
   | 'proof'
   | 'about_values'
-  | 'preorder_steps'
   | 'footer_links'
   | 'business_hours';
 

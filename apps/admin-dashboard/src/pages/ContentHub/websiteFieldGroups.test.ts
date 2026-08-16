@@ -199,7 +199,7 @@ describe('every repeater editor opts into the phone stacking rule', () => {
       'FooterLinksEditor',
       'AboutValuesEditor',
     ]);
-    const exempt = new Set(['BusinessHoursEditor', 'PreorderStepsEditor']);
+    const exempt = new Set(['BusinessHoursEditor']);
 
     const repeaters = readdirSync(dir)
       .filter((f) => f.endsWith('Editor.tsx'))

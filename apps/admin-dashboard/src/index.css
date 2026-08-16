@@ -2609,11 +2609,6 @@ work area is a single column that
   font-weight: 800;
   flex-shrink: 0;
 }
-.visual-block-preview__steps {
-  margin: 0;
-  padding-left: 18px;
-}
-.visual-block-preview__steps li { margin-bottom: 6px; }
 .visual-block-preview__hours {
   display: grid;
   grid-template-columns: 80px 1fr;

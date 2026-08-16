@@ -5,7 +5,6 @@ import {
   CategoriesEditor,
   FooterLinksEditor,
   HeroSlidesEditor,
-  PreorderStepsEditor,
   ProofDetailsEditor,
   RichTextEditor,
   SeoSnippetPreview,
@@ -90,8 +89,6 @@ export function renderVisualEditor(
       return <ProofDetailsEditor {...common} />;
     case 'about_values':
       return <AboutValuesEditor {...common} />;
-    case 'preorder_steps':
-      return <PreorderStepsEditor {...common} />;
     case 'footer_links':
       return <FooterLinksEditor {...common} />;
     case 'business_hours':

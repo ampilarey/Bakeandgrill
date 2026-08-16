@@ -117,16 +117,6 @@ function renderPreview(editor: string, value: string, fallbackLabel?: string) {
         </div>
       );
     }
-    case 'preorder_steps': {
-      const items = safeParse<{ text: string }[]>(value, []);
-      return (
-        <ol className="visual-block-preview__steps">
-          {items.map((item, i) => (
-            <li key={i}>{item.text || '—'}</li>
-          ))}
-        </ol>
-      );
-    }
     case 'footer_links': {
       const items = safeParse<{ label: string; url: string }[]>(value, []);
       return (
