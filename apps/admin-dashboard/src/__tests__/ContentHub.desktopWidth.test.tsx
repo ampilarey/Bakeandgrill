@@ -172,9 +172,8 @@ describe('ContentHub desktop width', () => {
     expect(screen.queryByTestId('scope-tabs-announcement_enabled')).toBeNull();
   });
 
-  // Per-field History still moved out of the block face and into the header's
-  // ⋯ menu (Stage A) — order_app desktop keeps the classic block ⋯ menu this
-  // covers; the underlying openHistory/scope-resolution logic is shared code.
+  // History must ask for the scope of the hub you are in, not the shared one —
+  // restoring a website revision onto the Order App would be silent corruption.
   it('History opens for the current destination scope', async () => {
     mockBlocks([splitPhone]);
     vi.mocked(contentApi.getContentRevisions).mockResolvedValue({ revisions: [] });
@@ -184,11 +183,8 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-home_specials_title'));
-    const sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    fireEvent.click(screen.getByTestId('block-more-home_specials_title'));
-    fireEvent.click(screen.getByRole('menuitem', { name: /History/i }));
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    fireEvent.click(await screen.findByTestId('wcw-history-open-home_specials_title'));
 
     await waitFor(() => {
       expect(contentApi.getContentRevisions).toHaveBeenCalledWith('home_specials_title', 'order_app', 'en');
@@ -212,61 +208,27 @@ describe('ContentHub desktop width', () => {
     expect(screen.getByTestId('view-live-site')).toBeTruthy();
   });
 
-  it('Order App preview toggle docks/undocks and persists across remount', async () => {
+  it('Order App desktop has no Preview column either, at any width', async () => {
+    // The two docked-preview tests that used to sit here went with the pane
+    // itself when the Order App moved onto the page-tab workspace. A stored
+    // "preview open" preference must not resurrect it.
     mockBlocks([sharedPhone]);
     window.localStorage.setItem('bg_hub_preview_open', '1');
 
-    const { unmount } = render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await screen.findByTestId('hub-desktop-shell');
-    expect(screen.getByTestId('preview-pane')).toBeTruthy();
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('on');
-
-    fireEvent.click(screen.getByTestId('preview-toggle'));
-    await waitFor(() => {
+    for (const width of [1100, 1280, 1600]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      const view = render(
+        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
+          <ContentHubPage />
+        </MemoryRouter>,
+      );
+      await screen.findByTestId('order-app-content-workspace');
+      expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
       expect(screen.queryByTestId('preview-pane')).toBeNull();
-      expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
-    });
-    expect(window.localStorage.getItem('bg_hub_preview_open')).toBe('0');
-
-    unmount();
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-    await screen.findByTestId('hub-desktop-shell');
-    expect(screen.queryByTestId('preview-pane')).toBeNull();
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
-  });
-
-  it('Order App defaults preview ON at >=1280 and OFF below when nothing stored', async () => {
-    mockBlocks([sharedPhone]);
-
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
-    const wide = render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-    await screen.findByTestId('hub-desktop-shell');
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('on');
-    expect(screen.getByTestId('preview-pane')).toBeTruthy();
-    wide.unmount();
-
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-    await screen.findByTestId('hub-desktop-shell');
-    expect(screen.getByTestId('hub-desktop-shell').getAttribute('data-preview')).toBe('off');
-    expect(screen.queryByTestId('preview-pane')).toBeNull();
+      expect(screen.queryByTestId('preview-toggle')).toBeNull();
+      expect(screen.getByTestId('view-live-site')).toBeTruthy();
+      view.unmount();
+    }
   });
 
   it('Website desktop has page tabs instead of a section rail', async () => {
@@ -283,7 +245,7 @@ describe('ContentHub desktop width', () => {
     expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
   });
 
-  it('Order App still has its section rail, and it still collapses', async () => {
+  it('Order App desktop has page tabs instead of a section rail', async () => {
     mockBlocks([sharedPhone]);
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
@@ -291,12 +253,12 @@ describe('ContentHub desktop width', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-rail');
-    expect(screen.getByTestId('section-rail').getAttribute('data-collapsed')).toBe('false');
-
-    fireEvent.click(screen.getByTestId('rail-collapse-btn'));
-    expect(screen.getByTestId('section-rail').getAttribute('data-collapsed')).toBe('true');
-    expect(window.localStorage.getItem('bg_hub_rail_collapsed')).toBe('1');
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.queryByTestId('section-rail')).toBeNull();
+    expect(screen.queryByTestId('rail-collapse-btn')).toBeNull();
+    expect(screen.getByTestId('wcw-tab-Home')).toBeTruthy();
+    // Three tabs, not eight — the small screens share "Other pages".
+    expect(screen.queryByTestId('wcw-tab-Menu')).toBeNull();
   });
 });
 
@@ -308,24 +270,22 @@ describe('ContentHub desktop width — mobile unchanged', () => {
     mockBlocks([sharedPhone]);
   });
 
-  it('Order App keeps its card grid, no preview column, sheet still works', async () => {
+  it('Order App on a phone opens the page it was deep-linked to, with a way back', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('surface-builder-landing')).toBeTruthy();
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.getByTestId('wcw-mobile-back')).toBeTruthy();
+    expect(screen.getByTestId('wcw-sections')).toBeTruthy();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
     expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
-    expect(screen.queryByTestId('preview-pane')).toBeNull();
-    expect(screen.queryByTestId('preview-toggle')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('preview-sheet-btn'));
-    await screen.findByTestId('preview-sheet');
-    fireEvent.click(screen.getByTestId('preview-sheet-close'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('preview-sheet')).toBeNull();
-    });
+    fireEvent.click(screen.getByTestId('wcw-mobile-back'));
+    await screen.findByTestId('wcw-pagelist');
+    // This fixture only has a Home setting, so Home is the only page listed.
+    expect(screen.getByTestId('wcw-page-Home')).toBeTruthy();
   });
 });

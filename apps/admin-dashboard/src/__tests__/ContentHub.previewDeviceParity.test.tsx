@@ -117,58 +117,11 @@ describe('Content Hub preview device parity (matrix 13)', () => {
     });
   }, 10000);
 
-  it('Order App locks preview device to the editor surface (desktop home)', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.desktop.home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    const pane = await screen.findByTestId('preview-pane', {}, { timeout: 5000 });
-    expect(pane.getAttribute('data-editor-app')).toBe('order_app');
-    expect(pane.getAttribute('data-editor-device')).toBe('desktop');
-    expect(pane.getAttribute('data-editor-surface')).toBe('order_app.desktop.home');
-
-    const frame = screen.getByTestId('live-preview-frame');
-    expect(frame.getAttribute('data-device')).toBe('desktop');
-    expect(frame.getAttribute('data-device-locked')).toBe('1');
-    expect(frame.getAttribute('data-logical-width')).toBe('1280');
-
-    fireEvent.click(screen.getByTestId('preview-device-mobile'));
-    expect(frame.getAttribute('data-device')).toBe('desktop');
-  }, 10000);
-
-  it('Order App switches locked preview device when the surface query becomes mobile', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.mobile.home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    const pane = await screen.findByTestId('preview-pane', {}, { timeout: 5000 });
-    expect(pane.getAttribute('data-editor-device')).toBe('mobile');
-    expect(pane.getAttribute('data-editor-surface')).toBe('order_app.mobile.home');
-
-    const frame = screen.getByTestId('live-preview-frame');
-    expect(frame.getAttribute('data-device')).toBe('mobile');
-    expect(frame.getAttribute('data-logical-width')).toBe('390');
-  }, 10000);
-
-  it('shows visual hero preview in the focused block editor', async () => {
-    // Website desktop's wide hero editor (Stage C) has its own slide strip and
-    // intentionally suppresses VisualBlockPreview (would duplicate the strip).
-    // Order App still uses the mobile-style focused sheet + VisualBlockPreview.
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Home&surface=order_app.desktop.home']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => expect(screen.getByTestId('edit-hero_slides')).toBeTruthy(), { timeout: 5000 });
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-
-    expect(await screen.findByTestId('content-live-preview', {}, { timeout: 5000 })).toBeTruthy();
-    expect(screen.getByTestId('hero-visual-preview')).toBeTruthy();
-    expect(screen.getByTestId('content-live-preview').getAttribute('data-editor')).toBe('hero');
-  }, 10000);
+  /**
+   * The Order App's three docked-preview tests were removed on 2026-08-15.
+   * It moved onto the same page-tab workspace as the website, which has no
+   * preview pane to lock a device on — the Desktop|Mobile filter above does
+   * that job for both hubs now. Nothing here was silently dropped: the
+   * behaviour itself is gone, so a passing test for it would have been fiction.
+   */
 });

@@ -92,47 +92,36 @@ describe('Content Hub Overview → Edit', () => {
   });
 
   it.each([320, 375, 390, 1280, 1440])(
-    'keeps overview cards simple and opens a focused editor at %spx',
+    'opens a section in place, at full width, without sideways scroll at %spx',
     async (width) => {
       setViewport(width);
-      // Compact-card + focused-sheet editing is the Order App / mobile pattern.
-      // Website desktop replaced it with the page list + component editor
-      // (Stage B/C) — covered by the websiteDesktopStage* tests.
+      // The compact card + focused sheet went when the Order App joined the
+      // page-tab workspace: a section now opens in place, one at a time.
       render(
         <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
           <ContentHubPage />
         </MemoryRouter>,
       );
 
-      const card = await screen.findByTestId('block-card-hero_slides');
-      expect(card.getAttribute('data-compact')).toBe('true');
-      expect(within(card).getByTestId('edit-hero_slides')).toBeTruthy();
-      expect(within(card).getByTestId('block-visibility-hero_slides').textContent).toMatch(/Showing|Hidden/);
-      expect(within(card).queryByTestId('scope-tabs-hero_slides')).toBeNull();
-      expect(within(card).queryByLabelText(/Move .* up/i)).toBeNull();
-      expect(within(card).queryByLabelText(/Remove/i)).toBeNull();
+      const toggle = await screen.findByTestId('wcw-section-toggle-hero');
+      expect(screen.getByTestId('wcw-section-hero').getAttribute('data-open')).toBe('no');
+      expect(screen.queryByTestId('block-card-hero_slides')).toBeNull();
+
+      fireEvent.click(toggle);
+      const body = await screen.findByTestId('wcw-section-body-hero');
+      expect(within(body).getByTestId('wcw-field-hero_slides')).toBeTruthy();
+      expect(within(body).queryByTestId('scope-tabs-hero_slides')).toBeNull();
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
 
-      fireEvent.click(within(card).getByTestId('edit-hero_slides'));
-      const sheet = await screen.findByTestId('hero-editor-sheet');
-      expect(sheet.getAttribute('role')).toBe('dialog');
-      expect(within(sheet).getByText(/Edit Hero Slides/i)).toBeTruthy();
-
-      // Reorder controls appear only after enabling reorder mode.
-      expect(within(sheet).queryByTestId('hero-slide-move-up-0')).toBeNull();
-      fireEvent.click(within(sheet).getByTestId('hero-reorder-toggle'));
+      // Opening one section closes it again on a second click — never two open.
+      fireEvent.click(toggle);
       await waitFor(() => {
-        expect(within(sheet).getByTestId('hero-slide-move-up-0')).toBeTruthy();
-      });
-
-      fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-      await waitFor(() => {
-        expect(screen.queryByTestId('hero-editor-sheet')).toBeNull();
+        expect(screen.getByTestId('wcw-section-hero').getAttribute('data-open')).toBe('no');
       });
     },
   );
 
-  it('preserves draft after closing the focused editor', async () => {
+  it('preserves draft after closing the section it was typed in', async () => {
     setViewport(1280);
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
@@ -140,20 +129,20 @@ describe('Content Hub Overview → Edit', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-home_specials_title'));
-    let sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
-    fireEvent.change(within(sheet).getByDisplayValue('30–45 min'), {
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    let field = await screen.findByTestId('wcw-field-home_specials_title');
+    fireEvent.change(within(field).getByDisplayValue('30–45 min'), {
       target: { value: 'DRAFT KEEP ETA' },
     });
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).not.toMatch(/All published/);
 
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    await waitFor(() => expect(screen.queryByTestId('block-editor-sheet-home_specials_title')).toBeNull());
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-specials'));
+    await waitFor(() => expect(screen.queryByTestId('wcw-field-home_specials_title')).toBeNull());
 
     expect(screen.getAllByTestId('draft-save-status')[0].textContent).toMatch(/Draft saved|Saving draft/);
-    fireEvent.click(screen.getByTestId('edit-home_specials_title'));
-    sheet = await screen.findByTestId('block-editor-sheet-home_specials_title');
-    expect(within(sheet).getByDisplayValue('DRAFT KEEP ETA')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-specials'));
+    field = await screen.findByTestId('wcw-field-home_specials_title');
+    expect(within(field).getByDisplayValue('DRAFT KEEP ETA')).toBeTruthy();
   });
 });

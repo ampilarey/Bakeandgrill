@@ -146,37 +146,22 @@ describe('ContentHub preview + schedule fixes', () => {
     cleanup();
   });
 
-  it('Order App still docks Preview and remints when content drafts change', async () => {
+  it('Order App does not mint preview tokens either — not even when a layout draft appears', async () => {
+    // The Order App joined the page-tab workspace, so like the website it has
+    // no docked preview and nothing to mint a token for. A layout draft used to
+    // trigger a remint; it must not wake the minting path back up.
     openHub('/content/order-app?group=Home');
+    await screen.findByTestId('order-app-content-workspace');
     await screen.findByTestId('home-layout-editor-stub');
-    expect(screen.getByTestId('preview-toggle')).toBeTruthy();
+    expect(screen.queryByTestId('preview-toggle')).toBeNull();
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(contentApi.createContentPreviewToken).toHaveBeenCalled();
-    }, { timeout: 5000 });
-    const callsAfterMount = vi.mocked(contentApi.createContentPreviewToken).mock.calls.length;
-    expect(callsAfterMount).toBeGreaterThan(0);
-    expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.every((c) => c[0] === 'order_app')).toBe(true);
-
-    // Remint path: draft map change (same debounce effect as layoutRevision).
-    vi.mocked(contentApi.getContentDrafts).mockResolvedValue({
-      drafts: { delivery_time: 'Updated ETA' },
-      saved_at: '2026-08-12T12:00:00Z',
-    });
-    // Trigger a drafts reload by toggling locale EN→DV→EN is heavy; bump layout revision instead.
     expect(layoutSignalHandler).toBeTruthy();
     layoutSignalHandler?.({ hasDraft: true, revision: 99 });
 
-    await waitFor(
-      () => {
-        expect(vi.mocked(contentApi.createContentPreviewToken).mock.calls.length).toBeGreaterThan(callsAfterMount);
-      },
-      { timeout: 5000 },
-    );
-    const calls = vi.mocked(contentApi.createContentPreviewToken).mock.calls;
-    const lastCall = calls[calls.length - 1];
-    expect(lastCall?.[0]).toBe('order_app');
-    expect(lastCall?.[3]).toBe(true);
+    // Allow the 600ms preview debounce to fire if it were still wired.
+    await new Promise((r) => setTimeout(r, 800));
+    expect(contentApi.createContentPreviewToken).not.toHaveBeenCalled();
   });
 
   it('Website desktop does not mint preview tokens after Stage C (View live site)', async () => {

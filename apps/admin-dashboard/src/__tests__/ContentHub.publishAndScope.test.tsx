@@ -8,17 +8,15 @@ import { ApiRequestError } from '@shared/api';
 
 // Website desktop opens the section in place; Order App keeps the
 // compact-card + focused-sheet pattern.
-async function openCtaEditor(mode: 'website' | 'order_app' = 'website') {
-  if (mode === 'website') {
-    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
-    const editor = await screen.findByTestId('wcw-field-offers_headline');
-    await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-    return editor;
-  }
-  fireEvent.click(await screen.findByTestId('edit-offers_headline'));
-  const sheet = await screen.findByTestId('block-editor-sheet-offers_headline');
-  await waitFor(() => expect(within(sheet).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
-  return sheet;
+/**
+ * Both hubs now use the same page-tab workspace, so "open the offers headline"
+ * is one path: expand Today's Specials on Home and edit it in place.
+ */
+async function openCtaEditor() {
+  fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+  const editor = await screen.findByTestId('wcw-field-offers_headline');
+  await waitFor(() => expect(within(editor).getAllByTestId('rich-text-editor').length).toBeGreaterThan(0));
+  return editor;
 }
 
 const toast = { success: vi.fn(), error: vi.fn() };
@@ -242,7 +240,7 @@ describe('Content Hub publish reliability + app scope', () => {
       </MemoryRouter>,
     );
 
-    const sheet = await openCtaEditor('order_app');
+    const sheet = await openCtaEditor();
     const editor = within(sheet).getAllByTestId('rich-text-editor')[0];
     editor.innerHTML = 'Order only edit';
     fireEvent.input(editor);

@@ -215,9 +215,12 @@ describe('Website desktop Stage A — rail is the only map', () => {
     expect(screen.queryByTestId('content-integrity-panel')).toBeNull();
   });
 
-  it('Order App desktop still shows the surface landing', async () => {
+  it('Order App desktop now gets the same workspace — no landing, no rail', async () => {
+    // Owner, 2026-08-15: "Let's start order app." Both hubs land straight on
+    // their page tabs; the surface landing and the section rail are gone.
     openWebsiteDesktop('/content/order-app');
-    expect(await screen.findByTestId('surface-builder-landing')).toBeTruthy();
-    expect(screen.getByTestId('section-rail-tasks-home')).toBeTruthy();
+    expect(await screen.findByTestId('order-app-content-workspace')).toBeTruthy();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
+    expect(screen.queryByTestId('section-rail-tasks-home')).toBeNull();
   });
 });

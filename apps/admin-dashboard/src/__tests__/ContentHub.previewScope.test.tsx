@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -97,20 +97,24 @@ describe('Content Hub preview is app-locked', () => {
     expect(contentApi.createContentPreviewToken).not.toHaveBeenCalled();
   }, 10000);
 
-  it('Order App hub mints only order_app preview tokens and locks the pane', async () => {
+  it('Order App desktop has no Preview host either; View live site points at /order', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(contentApi.createContentPreviewToken).toHaveBeenCalled(), { timeout: 5000 });
-    const apps = vi.mocked(contentApi.createContentPreviewToken).mock.calls.map((c) => c[0]);
-    expect(apps.every((a) => a === 'order_app')).toBe(true);
-    expect(apps.some((a) => a === 'website')).toBe(false);
-
-    expect(await screen.findByTestId('preview-app-locked-order_app')).toBeTruthy();
-    expect(screen.queryByTestId('preview-app-website')).toBeNull();
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
+    expect(screen.queryByTestId('preview-app-locked-order_app')).toBeNull();
     expect(screen.getByRole('heading', { name: /Editing Order App/i })).toBeTruthy();
+
+    // The link must not send the owner to the website by mistake.
+    const live = screen.getByTestId('view-live-site') as HTMLAnchorElement;
+    expect(live.getAttribute('href')).toMatch(/\/order$/);
+
+    // No docked preview → no token mint here either.
+    expect(contentApi.createContentPreviewToken).not.toHaveBeenCalled();
   }, 10000);
 });

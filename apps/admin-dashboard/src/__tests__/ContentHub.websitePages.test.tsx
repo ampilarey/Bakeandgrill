@@ -168,12 +168,15 @@ describe('ContentHub Website pages focused tasks', () => {
     expect(within(form).queryByTestId('wcw-field-contact_page_title')).toBeNull();
   });
 
-  it('About sheet shows only about fields on Order App', async () => {
+  it('About shows only about fields on Order App', async () => {
+    // The Order App's small screens share one "Other pages" tab, each under its
+    // own heading — so About and Hours are on screen together but never mixed.
     openHub('/content/order-app?group=About');
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('block-card-about_values')).toBeTruthy();
-    expect(within(sheet).getByTestId('block-card-about_page_title')).toBeTruthy();
-    expect(within(sheet).queryByTestId('block-card-hours_page_title')).toBeNull();
+    const form = await screen.findByTestId('wcw-form-Other pages');
+    const about = within(form).getByTestId('wcw-group-About').parentElement as HTMLElement;
+    expect(within(about).getByTestId('wcw-field-about_values')).toBeTruthy();
+    expect(within(about).getByTestId('wcw-field-about_page_title')).toBeTruthy();
+    expect(within(about).queryByTestId('wcw-field-hours_page_title')).toBeNull();
   });
 
   it('Home sheet includes events band fields', async () => {
@@ -207,17 +210,18 @@ describe('ContentHub Website pages focused tasks', () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
     openHub('/content/order-app?group=Home');
-    await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('block-card-office_orders_headline')).toBeTruthy();
-    expect(screen.queryByTestId('block-card-order_checkout_title')).toBeNull();
+    await screen.findByTestId('wcw-sections');
+    fireEvent.click(screen.getByTestId('wcw-section-toggle-office_orders'));
+    expect(await screen.findByTestId('wcw-field-office_orders_headline')).toBeTruthy();
+    expect(screen.queryByTestId('wcw-field-order_checkout_title')).toBeNull();
   });
 
   it('Order App Ordering receives checkout fields', async () => {
     isMobileFlag = false;
     window.localStorage.setItem('bg_hub_preview_open', '0');
     openHub('/content/order-app?group=Ordering');
-    await screen.findByTestId('section-editor');
-    expect(screen.getByTestId('block-card-order_checkout_title')).toBeTruthy();
+    const form = await screen.findByTestId('wcw-form-Other pages');
+    expect(within(form).getByTestId('wcw-field-order_checkout_title')).toBeTruthy();
   });
 
   it('Home receives remapped home content fields', async () => {

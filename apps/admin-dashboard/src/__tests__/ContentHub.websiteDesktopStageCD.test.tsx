@@ -155,15 +155,17 @@ describe('Website desktop Stages C+D', () => {
     expect(blockMatchesDevice(shared, 'mobile')).toBe(true);
   });
 
-  it('Order App desktop still has Preview toggle (HubPreviewHost preserved)', async () => {
+  it('Order App desktop gets the same chrome as the website', async () => {
+    // Same trade the website made: the docked preview column goes, and a
+    // "View live site" link plus the Desktop|Mobile filter take its place.
     render(
       <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
-    await screen.findByTestId('surface-builder-landing');
-    expect(screen.getByTestId('preview-toggle')).toBeTruthy();
-    expect(screen.queryByTestId('view-live-site')).toBeNull();
-    expect(screen.queryByTestId('website-device-filter')).toBeNull();
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.queryByTestId('preview-toggle')).toBeNull();
+    expect(screen.getByTestId('view-live-site')).toBeTruthy();
+    expect(screen.getByTestId('website-device-filter')).toBeTruthy();
   });
 });

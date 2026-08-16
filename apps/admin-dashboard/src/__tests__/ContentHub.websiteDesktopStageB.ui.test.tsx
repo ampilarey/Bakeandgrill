@@ -163,13 +163,14 @@ describe('Website desktop Stage B — page list with summaries', () => {
     expect(within(field).queryByRole('textbox')).toBeNull();
   });
 
-  it('does not change Order App desktop (no page list)', async () => {
+  it('Order App desktop opens on its own tabs, not the website ones', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
-    expect(await screen.findByTestId('surface-builder-landing')).toBeTruthy();
-    expect(screen.queryByTestId('website-desktop-page-list')).toBeNull();
+    expect(await screen.findByTestId('order-app-content-workspace')).toBeTruthy();
+    expect(screen.queryByTestId('website-content-workspace')).toBeNull();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
   });
 });

@@ -108,28 +108,31 @@ describe('ContentHub mobile audit fixes', () => {
     expect(screen.queryByTestId('task-card-hero')).toBeNull();
   });
 
-  it('Order App on a phone still opens on its task cards', async () => {
+  it('Order App on a phone opens on its pages too, not a card grid', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
-    await screen.findByTestId('surface-builder-landing');
-    expect(screen.getByTestId('task-card-hero')).toBeTruthy();
+    await screen.findByTestId('wcw-pagelist');
+    expect(screen.getByTestId('wcw-page-Everywhere')).toBeTruthy();
+    expect(screen.queryByTestId('surface-builder-landing')).toBeNull();
+    expect(screen.queryByTestId('task-card-hero')).toBeNull();
   });
 
-  it('layout-only draft enables Publish in the section sheet footer', async () => {
+  it('layout-only draft still enables Publish on a phone', async () => {
+    // Reordering or hiding a section is a draft even though no wording changed.
+    // Publish must not sit there greyed out with that work unpublished.
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Everywhere']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    // No content key drafts — only Home layout draft from page-blocks mock.
-    expect(await within(sheet).findByTestId('publish-live-btn-sheet')).toBeTruthy();
-    expect(within(sheet).getByTestId('publish-live-btn-sheet').hasAttribute('disabled')).toBe(false);
+    await screen.findByTestId('order-app-content-workspace');
+    const publish = await screen.findByTestId('publish-live-btn-mobile');
+    expect(publish.hasAttribute('disabled')).toBe(false);
 
-    fireEvent.click(within(sheet).getByTestId('publish-live-btn-sheet'));
+    fireEvent.click(publish);
     await waitFor(() => {
       expect(pageBlocksApi.publishPageBlocks).toHaveBeenCalledWith({ app: 'order_app', version: 3 });
     });
@@ -142,8 +145,8 @@ describe('ContentHub mobile audit fixes', () => {
         <ContentHubPage />
       </MemoryRouter>,
     );
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    fireEvent.click(within(sheet).getByTestId('hub-sheet-more-btn'));
+    await screen.findByTestId('order-app-content-workspace');
+    fireEvent.click(screen.getByRole('button', { name: /More actions/i }));
     const menu = await screen.findByTestId('hub-more-menu-mobile');
     expect(menu).toBeTruthy();
 
@@ -158,17 +161,9 @@ describe('ContentHub mobile audit fixes', () => {
     confirmSpy.mockRestore();
   });
 
-  it('preview sheet portals above the editor (higher stacking root)', async () => {
-    render(
-      <MemoryRouter initialEntries={['/content/order-app?group=Everywhere']}>
-        <ContentHubPage />
-      </MemoryRouter>,
-    );
-    const sheetRoot = await screen.findByTestId('content-editor-sheet-root');
-    fireEvent.click(screen.getByTestId('preview-sheet-btn'));
-    const preview = await screen.findByTestId('preview-sheet');
-    const sheetZ = Number.parseInt(sheetRoot.style.zIndex || '0', 10);
-    const previewZ = Number.parseInt(preview.style.zIndex || '0', 10);
-    expect(previewZ).toBeGreaterThan(sheetZ);
-  });
+  /**
+   * "preview sheet portals above the editor" was removed on 2026-08-15. The
+   * Order App phone no longer stacks a preview sheet over an editor sheet —
+   * there is neither sheet now, just the page and a View live site link.
+   */
 });

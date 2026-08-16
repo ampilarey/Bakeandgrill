@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import type { ContentBlock } from '../api/content';
@@ -135,45 +135,34 @@ describe('Content Hub responsive bands', () => {
     }
   });
 
-  it.each([768, 1024, 1199] as const)(
-    'Order App compact Admin preview toggle opens a sheet, never a docked column @ %ipx',
-    async (width) => {
-      mockViewport(width);
-      window.localStorage.setItem('bg_hub_preview_open', '0');
-      render(
-        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-          <ContentHubPage />
-        </MemoryRouter>,
-      );
-      await screen.findByTestId('hub-desktop-shell');
-      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+  /**
+   * The Order App moved onto the same page-tab workspace as the website
+   * (owner, 2026-08-15: "Let's start order app"), so it made the same trade:
+   * no docked preview column, a "View live site" link instead. What still has
+   * to hold at every width is that nothing scrolls sideways.
+   */
+  it.each(WIDTHS)('Order App has no sideways scroll and no docked preview @ %ipx', async (width) => {
+    mockViewport(width);
+    window.localStorage.setItem('bg_hub_preview_open', '1');
+    const { container } = render(
+      <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
+        <ContentHubPage />
+      </MemoryRouter>,
+    );
 
-      fireEvent.click(screen.getByTestId('preview-toggle'));
-      await waitFor(() => {
-        expect(screen.getByTestId('preview-sheet')).toBeTruthy();
-      });
-      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
-    },
-  );
+    await screen.findByTestId('order-app-content-workspace');
 
-  it.each([1200, 1366] as const)(
-    'Order App wide desktop preview toggle docks a column @ %ipx',
-    async (width) => {
-      mockViewport(width);
-      window.localStorage.setItem('bg_hub_preview_open', '0');
-      render(
-        <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
-          <ContentHubPage />
-        </MemoryRouter>,
-      );
-      await screen.findByTestId('hub-desktop-shell');
-      expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+    const page = container.querySelector('.hub-page, .content-studio-page') as HTMLElement | null;
+    expect(page).toBeTruthy();
+    expect(page!.scrollWidth).toBeLessThanOrEqual(Math.max(page!.clientWidth + 1, width + 1) || width);
 
-      fireEvent.click(screen.getByTestId('preview-toggle'));
-      await waitFor(() => {
-        expect(document.querySelector('.hub-preview-pane--column')).toBeTruthy();
-      });
-      expect(screen.queryByTestId('preview-sheet')).toBeNull();
-    },
-  );
+    expect(screen.queryByTestId('hub-desktop-shell')).toBeNull();
+    expect(document.querySelector('.hub-preview-pane--column')).toBeNull();
+    expect(screen.queryByTestId('preview-toggle')).toBeNull();
+
+    if (width > 767) {
+      const tabs = screen.getByRole('tablist', { name: /order app screens/i });
+      expect(tabs.scrollWidth).toBeLessThanOrEqual(Math.max(tabs.clientWidth, width) + 1);
+    }
+  });
 });

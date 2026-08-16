@@ -178,33 +178,22 @@ describe('ContentHub layout — desktop (useIsMobile=false)', () => {
     expect(screen.getByTestId('wcw-field-home_specials_title')).toBeTruthy();
   });
 
-  it('block face has no key·type meta line; ⋯ menu has History and key', async () => {
-    // Per-block ⋯ / History menu lives on the classic BlockCard list, which the
-    // Website desktop redesign replaced with the page list + component editor.
-    // Order App still uses BlockCard, so this generic Content Hub rule is
-    // exercised there — Website desktop coverage is in the Stage B/C tests.
+  it('a field shows its plain name, never its content key, and offers History', async () => {
+    // The old block face printed "home_specials_title · text" under the label
+    // and hid History in a ⋯ menu. The workspace shows the human name and puts
+    // History on the field itself — the key must not leak back in.
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('section-editor');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
+    const field = await screen.findByTestId('wcw-field-home_specials_title');
 
-    // Face should NOT contain "home_specials_title · text"
-    expect(screen.queryByText(/home_specials_title\s*·\s*text/i)).toBeNull();
-
-    // Open ⋯ menu
-    const moreBtn = screen.getByTestId('block-more-home_specials_title');
-    fireEvent.click(moreBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('block-menu-home_specials_title')).toBeTruthy();
-    });
-
-    const menu = screen.getByTestId('block-menu-home_specials_title');
-    expect(menu.textContent).toMatch(/History/i);
-    expect(menu.textContent).toContain('home_specials_title');
+    expect(within(field).queryByText(/home_specials_title\s*·\s*text/i)).toBeNull();
+    expect(field.textContent).not.toContain('home_specials_title');
+    expect(within(field).getByTestId('wcw-history-open-home_specials_title')).toBeTruthy();
   });
 
   it('section-enable card face has no content key either', async () => {
@@ -262,50 +251,41 @@ describe('ContentHub layout — mobile (useIsMobile=true)', () => {
     expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 
-  it('Order App on a phone still taps a task card into an editor sheet', async () => {
+  it('Order App on a phone opens a page from the list and comes back', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    await screen.findByTestId('surface-builder-landing');
-
-    expect(screen.queryByTestId('section-editor')).toBeNull();
+    await screen.findByTestId('wcw-pagelist');
+    expect(screen.queryByTestId('wcw-form-Everywhere')).toBeNull();
     expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('task-card-brand_profile'));
+    fireEvent.click(screen.getByTestId('wcw-page-Everywhere'));
 
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Everywhere');
-    expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
+    const form = await screen.findByTestId('wcw-form-Everywhere');
+    expect(within(form).getByTestId('wcw-field-logo')).toBeTruthy();
+    expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
 
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
+    fireEvent.click(screen.getByTestId('wcw-mobile-back'));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
-      expect(screen.queryByTestId('section-editor')).toBeNull();
+      expect(screen.getByTestId('wcw-pagelist')).toBeTruthy();
+      expect(screen.queryByTestId('wcw-form-Everywhere')).toBeNull();
     });
   });
 
-  it('Order App preview sheet opens and closes via the sheet header', async () => {
+  it('Order App on a phone has no preview sheet — View live site replaces it', async () => {
     render(
       <MemoryRouter initialEntries={['/content/order-app?group=Home']}>
         <ContentHubPage />
       </MemoryRouter>,
     );
 
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(within(sheet).queryByTestId('preview-pane')).toBeNull();
-
-    // Preview lives in the portaled sheet header (above the editor stack).
-    fireEvent.click(within(sheet).getByTestId('preview-sheet-btn'));
-    await screen.findByTestId('preview-sheet');
-    expect(screen.getByTestId('preview-pane')).toBeTruthy();
-
-    fireEvent.click(screen.getByTestId('preview-sheet-close'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('preview-sheet')).toBeNull();
-    });
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
+    expect(screen.queryByTestId('preview-sheet-btn')).toBeNull();
+    expect(screen.queryByTestId('preview-pane')).toBeNull();
   });
 });

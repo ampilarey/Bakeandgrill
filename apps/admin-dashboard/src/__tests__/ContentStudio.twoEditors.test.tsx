@@ -172,17 +172,18 @@ describe('Content Hub dual-app editing', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByTestId('edit-hero_slides'));
-    const sheet = await screen.findByTestId('hero-editor-sheet');
-    expect(within(sheet).queryByTestId('scope-tabs-hero_slides')).toBeNull();
-    fireEvent.click(await within(sheet).findByTestId('hero-slide-overview-0'));
-    const slideSheet = await screen.findByTestId('hero-slide-editor-sheet');
+    // The Order App uses the same page-tab workspace as the website: open the
+    // Hero banner section and edit the slide in place.
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-hero'));
+    const field = await screen.findByTestId('wcw-field-hero_slides');
+    expect(within(field).queryByTestId('scope-tabs-hero_slides')).toBeNull();
 
+    const words = await within(field).findByTestId('hero-slide-wide-words-0');
     await waitFor(() => {
-      expect(within(slideSheet).getByDisplayValue('Order eyebrow')).toBeTruthy();
+      expect(within(words).getByDisplayValue('Order eyebrow')).toBeTruthy();
     });
 
-    fireEvent.change(within(slideSheet).getByDisplayValue('Order eyebrow'), {
+    fireEvent.change(within(words).getByDisplayValue('Order eyebrow'), {
       target: { value: 'Edited order eyebrow' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Publish/i })[0]);

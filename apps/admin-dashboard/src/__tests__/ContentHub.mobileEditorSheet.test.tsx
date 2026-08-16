@@ -138,11 +138,11 @@ function mockBlocks(blocks: unknown[] = [heroEnable, heroSlides]) {
   });
 }
 
-// These cover the phone editor-sheet mechanics — portal, dialog a11y, body
-// scroll lock, focus return. Website Content on a phone no longer uses sheets
-// (it is the page list + sections that open in place, see
-// WebsiteContentWorkspace.mobile.test.tsx), so the sheet contract is exercised
-// where it still ships: the Order App.
+// Neither hub wraps a section in an editor sheet any more — both open their
+// sections in place inside the page (2026-08-15). Two sheet mechanics still
+// ship on a phone and are covered below: the per-slide hero editor, and the
+// More action sheet's focus return. The body-scroll-lock test went with the
+// section sheet it belonged to; nothing left locks the body.
 function openHub(path = '/content/order-app') {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -166,67 +166,51 @@ describe('ContentHub mobile editor sheet', () => {
     document.body.style.overflow = '';
   });
 
-  it('opens Hero in a portaled dialog sheet with draft status and compact overview', async () => {
-    // Surface Builder landing no longer has a Hero task card — open Hero via deep link.
+  it('a phone opens Hero in the page, never in a dialog', async () => {
     openHub('/content/order-app?group=Home');
 
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    expect(sheet.getAttribute('role')).toBe('dialog');
-    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    await screen.findByTestId('order-app-content-workspace');
+    expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
+
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-hero'));
+    const body = await screen.findByTestId('wcw-section-body-hero');
+    expect(body.closest('[role="dialog"]')).toBeNull();
+
+    // The phone gets the stacked hero editor, not the three-column wide one.
+    expect(within(body).getByTestId('hero-slides-mobile')).toBeTruthy();
+    expect(within(body).queryByTestId('hero-slides-wide')).toBeNull();
+    expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
+  });
+
+  it('the More action sheet takes focus on open and hands it back on close', async () => {
+    openHub('/content/order-app?group=Home');
+    await screen.findByTestId('order-app-content-workspace');
+
+    const moreBtn = screen.getByRole('button', { name: /More actions/i });
+    fireEvent.click(moreBtn);
+
+    const sheet = await screen.findByTestId('hub-more-menu-mobile');
     expect(document.body.contains(sheet)).toBe(true);
-
-    expect(within(sheet).getByTestId('section-editor').getAttribute('data-section')).toBe('Home');
-    expect(within(sheet).getByTestId('draft-save-status')).toBeTruthy();
-
-    // Compact hero overview — full inline editor must not be expanded
-    expect(within(sheet).getByTestId('block-card-hero_slides')).toBeTruthy();
-    expect(within(sheet).getByTestId('edit-hero_slides')).toBeTruthy();
-    expect(within(sheet).queryByTestId('hero-slide-0')).toBeNull();
-    expect(within(sheet).queryByTestId('content-mode-hero_slides')).toBeNull();
-  });
-
-  it('locks body scroll while the sheet is open and restores it on close', async () => {
-    document.body.style.overflow = 'auto';
-    openHub('/content/order-app?group=Home');
-
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    await waitFor(() => {
-      expect(document.body.style.overflow).toBe('hidden');
-    });
-
-    fireEvent.click(within(sheet).getByTestId('content-editor-sheet-close'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
-    });
-    expect(document.body.style.overflow).toBe('auto');
-  });
-
-  it('moves focus to the close control on open and returns it to the surface landing on close', async () => {
-    openHub('/content/order-app?group=Home');
-
-    const sheet = await screen.findByTestId('content-editor-sheet');
-    const closeBtn = within(sheet).getByTestId('content-editor-sheet-close');
+    const closeBtn = within(sheet).getByRole('button', { name: /close/i });
     await waitFor(() => {
       expect(document.activeElement).toBe(closeBtn);
     });
 
     fireEvent.click(closeBtn);
     await waitFor(() => {
-      expect(screen.queryByTestId('content-editor-sheet')).toBeNull();
+      expect(screen.queryByTestId('hub-more-menu-mobile')).toBeNull();
     });
-    expect(await screen.findByTestId('surface-builder-landing')).toBeTruthy();
+    await waitFor(() => {
+      expect(document.activeElement).toBe(moreBtn);
+    });
   });
 
-  it('Edit Hero opens slide overview sheet; slide tap opens slide editor; draft state preserved', async () => {
+  it('a slide tap opens the slide editor and the draft survives closing it', async () => {
     openHub('/content/order-app?group=Home');
-    await screen.findByTestId('content-editor-sheet');
+    await screen.findByTestId('order-app-content-workspace');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-hero'));
 
-    fireEvent.click(screen.getByTestId('edit-hero_slides'));
-    const heroSheet = await screen.findByTestId('hero-editor-sheet');
-    expect(document.body.contains(heroSheet)).toBe(true);
-    expect(heroSheet.getAttribute('role')).toBe('dialog');
-    expect(within(heroSheet).getByTestId('draft-save-status')).toBeTruthy();
-    expect(within(heroSheet).queryByTestId('content-mode-hero_slides')).toBeNull();
+    const heroSheet = await screen.findByTestId('hero-slides-mobile');
     expect(within(heroSheet).getByTestId('hero-slide-overview-0')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1')).toBeTruthy();
     expect(within(heroSheet).getByTestId('hero-slide-overview-1').textContent).toMatch(/Hidden/);
@@ -251,25 +235,20 @@ describe('ContentHub mobile editor sheet', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('hero-slide-editor-sheet')).toBeNull();
     });
-    fireEvent.click(within(screen.getByTestId('hero-editor-sheet')).getByTestId('content-editor-sheet-close'));
-    await waitFor(() => {
-      expect(screen.queryByTestId('hero-editor-sheet')).toBeNull();
-    });
 
     expect(contentApi.updateContent).not.toHaveBeenCalled();
     const statuses = screen.getAllByTestId('draft-save-status');
     expect(statuses.some((el) => /Draft saved|Saving draft/i.test(el.textContent || ''))).toBe(true);
   });
 
-  it('block ⋯ menu uses a collision-safe mobile action sheet', async () => {
+  it('the More menu uses a collision-safe mobile action sheet', async () => {
     openHub('/content/order-app?group=Home');
-    await screen.findByTestId('content-editor-sheet');
+    await screen.findByTestId('order-app-content-workspace');
 
-    fireEvent.click(screen.getByTestId('block-more-hero_slides'));
-    const actionSheet = await screen.findByTestId('block-menu-hero_slides');
+    fireEvent.click(screen.getByRole('button', { name: /More actions/i }));
+    const actionSheet = await screen.findByTestId('hub-more-menu-mobile');
     expect(actionSheet.className).toMatch(/hub-mobile-action-sheet|content-mobile-action-sheet/);
-    expect(actionSheet.textContent).toContain('History');
-    expect(actionSheet.textContent).toContain('hero_slides');
+    expect(actionSheet.textContent).toMatch(/Export Order App/i);
   });
 
   it('mobile header keeps language + publish status readable; search can open overlay', async () => {

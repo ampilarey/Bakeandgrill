@@ -11,7 +11,8 @@ import { HubSurfaceLanding } from './HubSurfaceLanding';
 import { HubSectionList, buildHubRailSections } from './HubSectionList';
 import { HubSectionContent } from './HubSectionContent';
 import { HomeLayoutEditor } from './HomeLayoutEditor';
-import { WebsiteContentWorkspace } from './WebsiteContentWorkspace';
+import { ContentWorkspace } from './ContentWorkspace';
+import { workspaceConfigFor } from './contentWorkspaceConfig';
 import { HubEditorSheets } from './HubEditorSheets';
 import { HubPreviewHost } from './HubPreviewHost';
 import { HubDraftStatus, HubHeaderActions, HubSchedulePublishPanel, HubStickyPublishBar } from './HubPublishBar';
@@ -79,9 +80,14 @@ export function ContentHubPage() {
   const isWideDesktop = useIsWideDesktop();
   const location = useLocation();
   const hubAppFromPath = contentAppFromPath(location.pathname);
-  /** Website Content uses the page-tab workspace on every screen size. */
-  const websiteWorkspace = hubAppFromPath === 'website';
+  /**
+   * Both Content & Branding screens use the page-tab workspace, on every screen
+   * size — the Website since 2026-08-15, the Order App since the owner said
+   * "Let's start order app" the same week.
+   */
+  const websiteWorkspace = hubAppFromPath === 'website' || hubAppFromPath === 'order_app';
   const websiteDesktopNoLanding = !isMobile && websiteWorkspace;
+  const workspaceConfig = workspaceConfigFor(hubAppFromPath);
 
   const hub = useContentHubController(
     { success, error },
@@ -601,7 +607,7 @@ export function ContentHubPage() {
   // written to the URL — an effect that rewrote search params raced with tab
   // clicks and could drag the owner back to the page they had just left.
   const websiteWorkspaceSurface = websiteDesktopNoLanding
-    ? parseSurfaceId(surfaceId('website', websiteDeviceFilter, 'home'))
+    ? parseSurfaceId(surfaceId(hubApp, websiteDeviceFilter, 'home'))
     : null;
 
   const searchField = (
@@ -688,7 +694,9 @@ export function ContentHubPage() {
         success('Open ⋯ on any field to view and restore History.');
       }}
       websiteDesktopChrome={websiteWorkspace}
-      liveSiteUrl={websiteWorkspace ? `${window.location.origin}/` : undefined}
+      liveSiteUrl={websiteWorkspace
+        ? `${window.location.origin}/${hubApp === 'order_app' ? 'order' : ''}`
+        : undefined}
       deviceFilter={websiteDesktopNoLanding ? websiteDeviceFilter : undefined}
       onDeviceFilterChange={websiteDesktopNoLanding ? setWebsiteDeviceFilter : undefined}
     />
@@ -748,16 +756,17 @@ export function ContentHubPage() {
         ) : null}
 
         {websiteWorkspace ? (
-          <ContentIntegrityPanel appFilter="website" onlyWhenIssues />
+          <ContentIntegrityPanel appFilter={hubApp} onlyWhenIssues />
         ) : null}
 
         {isMobile && websiteWorkspace ? (
-          <WebsiteContentWorkspace
+          <ContentWorkspace
+            config={workspaceConfig}
             loading={loading}
             skeleton={skeleton}
             sectionNames={orderedSectionNames}
             activeGroup={activeGroup}
-            onSelectGroup={(name) => handleSectionSelect(name)}
+            onSelectGroup={(name: string) => handleSectionSelect(name)}
             contentBlocks={contentBlocks}
             drafts={drafts}
             draftKeys={draftKeys}
@@ -785,8 +794,8 @@ export function ContentHubPage() {
             layoutEditor={(
               <HomeLayoutEditor
                 ref={homeLayoutEditorRef}
-                initialApp="website"
-                surfaceFilter={parseSurfaceId(surfaceId('website', 'mobile', 'home')) ?? undefined}
+                initialApp={hubApp}
+                surfaceFilter={parseSurfaceId(surfaceId(hubApp, 'mobile', 'home')) ?? undefined}
                 onLayoutDraftChange={handleLayoutDraftChange}
                 hidePublishControls
               />
@@ -823,12 +832,13 @@ export function ContentHubPage() {
             />
           </div>
         ) : websiteDesktopNoLanding ? (
-          <WebsiteContentWorkspace
+          <ContentWorkspace
+            config={workspaceConfig}
             loading={loading}
             skeleton={skeleton}
             sectionNames={orderedSectionNames}
             activeGroup={activeGroup}
-            onSelectGroup={(name) => handleSectionSelect(name)}
+            onSelectGroup={(name: string) => handleSectionSelect(name)}
             contentBlocks={contentBlocks}
             drafts={drafts}
             draftKeys={draftKeys}
@@ -849,13 +859,13 @@ export function ContentHubPage() {
             openHistory={openHistory}
             focusKey={focusedBlockKey}
             onFocusHandled={() => setFocusedBlockKey(null)}
-            defaultOpenSectionId="hero"
+            defaultOpenSectionId={workspaceConfig.defaultOpenSectionId}
             layoutRevision={layoutRevision}
             onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
             layoutEditor={(
               <HomeLayoutEditor
                 ref={homeLayoutEditorRef}
-                initialApp="website"
+                initialApp={hubApp}
                 surfaceFilter={websiteWorkspaceSurface ?? surfaceFilter ?? undefined}
                 onLayoutDraftChange={handleLayoutDraftChange}
                 hidePublishControls

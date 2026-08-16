@@ -323,30 +323,26 @@ describe('ContentHub mobile polish — stacking CSS + structure', () => {
     mockBlocks();
   });
 
-  it('mobile structure exposes title containers on Homepage content cards', async () => {
+  it('a phone field keeps its name and its help text in separate containers', async () => {
+    // The stacking itself is CSS and is asserted in Playwright against real
+    // rules. jsdom can only check the hooks the CSS needs are in the DOM —
+    // which is how the footer-links editor was caught not stacking.
     openSection('Home', 'order-app');
-    await screen.findByTestId('section-editor');
-    await screen.findByTestId('home-layout-editor');
+    await screen.findByTestId('order-app-content-workspace');
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-specials'));
 
-    // Layout (flex stack / 100% width) is asserted in Playwright against real CSS.
-    // jsdom here only checks that the stacking hooks exist in the DOM.
-    expect(screen.queryByTestId('section-enable-section_proof_enabled')).toBeNull();
+    const field = await screen.findByTestId('wcw-field-home_specials_title');
+    expect(field.querySelector('.wcw-field-label')).toBeTruthy();
 
-    const blockCard = screen.getByTestId('block-card-home_specials_title');
-    expect(blockCard.querySelector('.hub-block-card-titles')).toBeTruthy();
-    expect(blockCard.querySelector('.hub-block-card-top')).toBeTruthy();
-
-    const helper = within(blockCard).getByText(
-      /Large heading shown above the offers row/i,
-    );
+    const helper = within(field).getByText(/Large heading shown above the offers row/i);
+    expect(helper.classList.contains('wcw-field-help')).toBe(true);
     expect(helper.textContent!.trim().split(/\s+/).length).toBeGreaterThanOrEqual(4);
   });
 
-  it('mobile structure exposes section-enable face containers', async () => {
+  it('an on/off setting is one labelled switch on a phone', async () => {
     openSection('Everywhere', 'order-app');
-    await screen.findByTestId('section-enable-language_switcher_enabled');
-
-    const enableCard = screen.getByTestId('section-enable-language_switcher_enabled');
-    expect(enableCard.querySelector('.hub-section-enable-face')).toBeTruthy();
+    const field = await screen.findByTestId('wcw-field-language_switcher_enabled');
+    expect(within(field).getAllByRole('checkbox')).toHaveLength(1);
+    expect(field.querySelector('.wcw-field-label')).toBeTruthy();
   });
 });
