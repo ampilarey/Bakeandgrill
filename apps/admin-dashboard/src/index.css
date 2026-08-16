@@ -3955,6 +3955,19 @@ work area is a single column that
   overflow-x: auto;
   margin-bottom: 14px;
 }
+/**
+ * Narrow laptop / tablet: the website's five tabs need ~680px but the editor
+ * column is ~500px at 768, so two of them hid behind a sideways scroll. Owner's
+ * own rule, twice over: a row that does not fit becomes rows, and a page you
+ * have to swipe to find is a page you never open. Found by the real-browser
+ * band test, which jsdom could never have caught.
+ */
+@media (max-width: 1023px) {
+  .wcw-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
 .wcw-tab {
   appearance: none;
   background: none;
@@ -4126,6 +4139,25 @@ work area is a single column that
   color: var(--color-text-muted);
 }
 .wcw-sec-where:hover { border-color: currentColor; }
+
+/**
+ * 320px (iPhone SE / Mini): name + count + the Showing pill need ~354px on one
+ * line, so the pill ran 34px off the right edge. The row wraps here and the
+ * meta drops under the section name, lined up with it. Only at this width —
+ * 375 and up still fit on one line. Found by the real-browser phone test;
+ * jsdom has no layout engine and could never have measured it.
+ */
+@media (max-width: 360px) {
+  .wcw-sec-head {
+    flex-wrap: wrap;
+    padding-right: 8px;
+  }
+  .wcw-sec-meta {
+    padding: 0 0 12px 46px;
+    flex-wrap: wrap;
+  }
+}
+
 .wcw-sec-where[disabled] { opacity: 0.5; cursor: default; }
 .wcw-sec-body {
   padding: 4px 18px 22px;

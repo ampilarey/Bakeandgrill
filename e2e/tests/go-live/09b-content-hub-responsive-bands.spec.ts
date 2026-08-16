@@ -1,9 +1,13 @@
 /**
- * Content Hub Stage 5 — compact + desktop bands (real Chromium layout).
+ * Content & Branding — compact + desktop bands (real Chromium layout).
  * LOCAL project only.
  *
- * Matrix row 15: no permanently docked preview at 768 / 1024 / 1199.
- * Desktop: optional docked preview at 1200 / 1366 (§7.2).
+ * Matrix row 15. Rewritten 2026-08-16: there is no docked preview column at any
+ * width any more, on either hub. Both moved to the page-tab workspace, which
+ * dropped the preview pane in favour of a "View live site" link and the
+ * Desktop|Mobile filter. What this row now guards is that the tab row and the
+ * open section stay inside every band without scrolling sideways — a row of
+ * five tabs is the thing most likely to overflow a narrow laptop.
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -13,24 +17,39 @@ import { expectNoDocumentHorizontalOverflow } from '../../helpers/mobileLayout';
 
 const COMPACT_WIDTHS = [768, 1024, 1199] as const;
 const DESKTOP_WIDTHS = [1200, 1366] as const;
+const ALL_WIDTHS = [...COMPACT_WIDTHS, ...DESKTOP_WIDTHS];
 
-async function openWebsiteHub(page: Page): Promise<void> {
-  await gotoAdminAuthenticated(page, '/admin/content/website');
-  await expect(page.getByTestId('surface-builder-landing')).toBeVisible({ timeout: 30_000 });
+type Hub = { path: string; root: string; tabsLabel: RegExp; tabCount: number };
+
+const HUBS: Hub[] = [
+  {
+    path: '/admin/content/website',
+    root: 'website-content-workspace',
+    tabsLabel: /website pages/i,
+    tabCount: 5,
+  },
+  {
+    path: '/admin/content/order-app',
+    root: 'order-app-content-workspace',
+    tabsLabel: /order app screens/i,
+    tabCount: 3,
+  },
+];
+
+/** A laptop has no landing screen — it opens straight on Home. */
+async function openHub(page: Page, hub: Hub): Promise<void> {
+  await gotoAdminAuthenticated(page, hub.path);
+  await expect(page.getByTestId(hub.root)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId(hub.root)).toHaveAttribute('data-tab', 'Home', { timeout: 15_000 });
+  await expect(page.getByTestId('wcw-sections')).toBeVisible({ timeout: 15_000 });
 }
 
-async function openHomeEditorDesktop(page: Page): Promise<void> {
-  await page.goto('/admin/content/website?group=Home', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByTestId('hub-desktop-shell')).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId('section-editor')).toBeVisible({ timeout: 15_000 });
-}
-
-test.describe('Content Hub compact Admin (no docked preview)', () => {
+test.describe('Content & Branding desktop bands', () => {
   test.beforeAll(({ baseURL }) => {
     assertLocalOnlyBaseUrl(baseURL);
   });
 
-  for (const width of COMPACT_WIDTHS) {
+  for (const width of ALL_WIDTHS) {
     test.describe(`${width}px`, () => {
       test.use({
         viewport: { width, height: 900 },
@@ -38,62 +57,74 @@ test.describe('Content Hub compact Admin (no docked preview)', () => {
         hasTouch: false,
       });
 
-      test(`shell collapses rail and never docks preview column @ ${width}`, async ({ page }) => {
-        await openWebsiteHub(page);
-        await openHomeEditorDesktop(page);
+      for (const hub of HUBS) {
+        const app = hub.root.replace('-content-workspace', '');
 
-        const shell = page.getByTestId('hub-desktop-shell');
-        await expect(shell).toHaveAttribute('data-rail', 'collapsed');
-        await expect(page.locator('.hub-preview-pane--column')).toHaveCount(0);
-        await expectNoDocumentHorizontalOverflow(page);
+        test(`${app}: tabs fit without sideways scroll @ ${width}`, async ({ page }) => {
+          // A stale "preview open" preference must not resurrect the column.
+          await page.addInitScript(() => {
+            window.localStorage.setItem('bg_hub_preview_open', '1');
+          });
 
-        // Preview toggle must open a sheet, not a permanent column.
-        await page.getByTestId('preview-toggle').click();
-        await expect(page.getByTestId('preview-sheet')).toBeVisible({ timeout: 10_000 });
-        await expect(page.locator('.hub-preview-pane--column')).toHaveCount(0);
-        await expectNoDocumentHorizontalOverflow(page);
+          await openHub(page, hub);
 
-        await page.getByTestId('preview-sheet-close').click();
-        await expect(page.getByTestId('preview-sheet')).toBeHidden();
-      });
-    });
-  }
-});
+          const tabs = page.getByRole('tablist', { name: hub.tabsLabel });
+          await expect(tabs).toBeVisible();
+          await expect(tabs.getByRole('tab')).toHaveCount(hub.tabCount);
 
-test.describe('Content Hub wide desktop (optional docked preview)', () => {
-  test.beforeAll(({ baseURL }) => {
-    assertLocalOnlyBaseUrl(baseURL);
-  });
+          // The tab row itself must not scroll internally.
+          const { scrollWidth, clientWidth } = await tabs.evaluate((el) => ({
+            scrollWidth: el.scrollWidth,
+            clientWidth: el.clientWidth,
+          }));
+          expect(
+            scrollWidth,
+            `tab row scrolls sideways at ${width}px (${scrollWidth} > ${clientWidth})`,
+          ).toBeLessThanOrEqual(clientWidth + 1);
 
-  for (const width of DESKTOP_WIDTHS) {
-    test.describe(`${width}px`, () => {
-      test.use({
-        viewport: { width, height: 900 },
-        isMobile: false,
-        hasTouch: false,
-      });
-
-      test(`optional preview column can dock @ ${width}`, async ({ page }) => {
-        // Clear persisted preview preference so the toggle starts from a known state.
-        await page.addInitScript(() => {
-          window.localStorage.setItem('bg_hub_preview_open', '0');
+          await expectNoDocumentHorizontalOverflow(page);
         });
 
-        await openWebsiteHub(page);
-        await openHomeEditorDesktop(page);
+        test(`${app}: no docked preview at any width @ ${width}`, async ({ page }) => {
+          await page.addInitScript(() => {
+            window.localStorage.setItem('bg_hub_preview_open', '1');
+          });
 
-        await expect(page.getByTestId('hub-desktop-shell')).toBeVisible();
-        await expect(page.locator('.hub-preview-pane--column')).toHaveCount(0);
-        await expectNoDocumentHorizontalOverflow(page);
+          await openHub(page, hub);
 
-        await page.getByTestId('preview-toggle').click();
-        await expect(page.locator('.hub-preview-pane--column')).toBeVisible({ timeout: 10_000 });
-        await expect(page.getByTestId('preview-sheet')).toHaveCount(0);
-        await expectNoDocumentHorizontalOverflow(page);
+          await expect(page.locator('.hub-preview-pane--column')).toHaveCount(0);
+          await expect(page.getByTestId('preview-toggle')).toHaveCount(0);
+          await expect(page.getByTestId('hub-desktop-shell')).toHaveCount(0);
+          await expect(page.getByTestId('view-live-site')).toBeVisible();
+          await expectNoDocumentHorizontalOverflow(page);
+        });
 
-        await page.getByTestId('preview-toggle').click();
-        await expect(page.locator('.hub-preview-pane--column')).toHaveCount(0);
-      });
+        test(`${app}: an open section fits the band @ ${width}`, async ({ page }) => {
+          await openHub(page, hub);
+
+          // Each hub opens one section already expanded (the website's hero,
+          // the Order App's greeting). Only click when it is still closed —
+          // clicking an open section closes it.
+          const section = page.getByTestId('wcw-section-hero');
+          await expect(section).toBeVisible({ timeout: 15_000 });
+          if ((await section.getAttribute('data-open')) !== 'yes') {
+            await page.getByTestId('wcw-section-toggle-hero').click();
+          }
+          const body = page.getByTestId('wcw-section-body-hero');
+          await expect(body).toBeVisible({ timeout: 15_000 });
+
+          // A laptop gets the wide hero editor; it must still fit the band.
+          await expect(page.getByTestId('hero-slides-wide')).toBeVisible({ timeout: 15_000 });
+          const box = await body.boundingBox();
+          expect(box, 'section body must have a box').toBeTruthy();
+          expect(
+            box!.x + box!.width,
+            `open section overflows the ${width}px band`,
+          ).toBeLessThanOrEqual(width + 1);
+
+          await expectNoDocumentHorizontalOverflow(page);
+        });
+      }
     });
   }
 });

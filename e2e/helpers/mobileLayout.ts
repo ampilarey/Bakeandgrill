@@ -66,8 +66,12 @@ export async function expectLocatorsFitViewport(
 export async function expectContentHubChromeInViewport(page: Page): Promise<void> {
   await expectNoDocumentHorizontalOverflow(page);
 
+  // The section and block editor sheets were deleted on 2026-08-16 — both hubs
+  // open their pages in place now. What remains that can still paint outside
+  // the viewport: the workspace itself, the hero's own slide sheet, the media
+  // picker, the crop dialog, and the More action sheet.
   const hubRoot = page.locator(
-    '.hub-page, .content-studio-page, [data-testid="content-editor-sheet"], [data-testid="hero-editor-sheet"], [data-testid="hero-slide-editor-sheet"], [data-testid="media-picker-modal"], .hub-mobile-action-sheet, .content-mobile-action-sheet, [data-testid="block-menu-hero_slides"]',
+    '.hub-page, .content-studio-page, [data-testid="website-content-workspace"], [data-testid="order-app-content-workspace"], [data-testid="hero-slide-editor-sheet"], [data-testid="media-picker-modal"], .hub-mobile-action-sheet, .content-mobile-action-sheet',
   );
 
   await expectLocatorsFitViewport(
@@ -79,13 +83,17 @@ export async function expectContentHubChromeInViewport(page: Page): Promise<void
       page.locator('[role="group"][aria-label="Language"]'),
       page.locator('[data-testid="hub-search-toggle"]'),
       page.locator('[data-testid="hub-search-overlay"]'),
-      page.locator('[data-testid="content-editor-sheet"]'),
-      page.locator('[data-testid="hero-editor-sheet"]'),
+      page.locator('[data-testid="website-content-workspace"]'),
+      page.locator('[data-testid="order-app-content-workspace"]'),
+      // The phone's list of screens, and the rows inside it.
+      page.locator('[data-testid="wcw-pagelist"]'),
+      page.locator('.wcw-pagelist-row'),
+      // A section head carries the name, the count and the Showing/Hidden pill.
+      page.locator('.wcw-sec-head'),
       page.locator('[data-testid="hero-slide-editor-sheet"]'),
       page.locator('[data-testid="media-picker-modal"]'),
       page.locator('[data-testid="media-picker-footer"]'),
       page.locator('[role="dialog"]').filter({ hasText: /Crop|framed area/i }),
-      page.locator('[data-testid="block-menu-hero_slides"]'),
       page.locator('.hub-mobile-action-sheet, .content-mobile-action-sheet'),
       hubRoot.locator('button, a, img, input, textarea, select, footer'),
     ],
