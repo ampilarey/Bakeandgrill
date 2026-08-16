@@ -779,6 +779,7 @@ export function ContentHubPage() {
             focusKey={focusedBlockKey}
             onFocusHandled={() => setFocusedBlockKey(null)}
             layoutRevision={layoutRevision}
+            onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
             isMobile
             onBack={handleMobileBack}
             layoutEditor={(
@@ -849,6 +850,7 @@ export function ContentHubPage() {
             onFocusHandled={() => setFocusedBlockKey(null)}
             defaultOpenSectionId="hero"
             layoutRevision={layoutRevision}
+            onLayoutChanged={() => { void homeLayoutEditorRef.current?.reload?.(); }}
             layoutEditor={(
               <HomeLayoutEditor
                 ref={homeLayoutEditorRef}

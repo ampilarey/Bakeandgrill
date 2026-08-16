@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import { ContentHubPage } from '../pages/ContentHub/ContentHubPage';
 import * as contentApi from '../api/content';
+import * as pageBlocksApi from '../api/pageBlocks';
 
 /**
  * Website Content, desktop — the owner's layout.
@@ -214,6 +215,51 @@ describe('Website Content workspace — desktop', () => {
     expect(within(field).getByTestId('ops-owned-delivery_time')).toBeTruthy();
     expect(within(field).queryByRole('textbox')).toBeNull();
     expect(field.querySelector('.wcw-field-owner')?.textContent).toMatch(/Delivery Settings/);
+  });
+
+  it('turns a section off from its own row', async () => {
+    // Owner, 2026-08-15: "if i want to hide hero banner for a short period of
+    // time … now i have to go to section order and visibility tab to do that."
+    vi.mocked(pageBlocksApi.updatePageBlock).mockResolvedValue({
+      version: 1,
+      block: { id: 1, is_enabled: false },
+    } as never);
+
+    mount();
+    const toggle = await screen.findByTestId('wcw-section-where-hero');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle.textContent).toBe('Desktop + mobile');
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(pageBlocksApi.updatePageBlock).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ app: 'website', page: 'home', is_enabled: false }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('wcw-section-where-hero').textContent).toBe('Hidden');
+    });
+    expect(screen.getByTestId('wcw-section-where-hero').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('turning a section off does not open or close it', async () => {
+    vi.mocked(pageBlocksApi.updatePageBlock).mockResolvedValue({
+      version: 1,
+      block: { id: 2, is_enabled: false },
+    } as never);
+
+    mount();
+    fireEvent.click(await screen.findByTestId('wcw-section-toggle-categories'));
+    await waitFor(() => expect(screen.getByTestId('wcw-section-categories').dataset.open).toBe('yes'));
+
+    fireEvent.click(screen.getByTestId('wcw-section-where-categories'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wcw-section-where-categories').textContent).toBe('Hidden');
+    });
+    // Still open — hiding a section is not a reason to close its editor.
+    expect(screen.getByTestId('wcw-section-categories').dataset.open).toBe('yes');
   });
 
   it('says where each section shows, from the real layout', async () => {

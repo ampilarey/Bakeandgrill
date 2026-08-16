@@ -4,6 +4,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from 'react';
@@ -21,7 +22,6 @@ import {
   type PageBlockRow,
   type PageBlockType,
 } from '../../api/pageBlocks';
-import { ContentEditorSheet } from '../../components/ContentEditorSheet';
 import { GenericBlockSettingsForm, isGenericBlockType, type BlockSettings } from './GenericBlockSettingsForm';
 import {
   HOME_COMPONENT_LIBRARY,
@@ -115,6 +115,14 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
   const [busy, setBusy] = useState(false);
   const [previewMsg, setPreviewMsg] = useState('');
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
+  /**
+   * Owner, 2026-08-15: "it opens right site, always our approach is to drop
+   * down." These used to fly in from the right as a sheet over the page. They
+   * are now part of the page, opening below the list — and scrolling
+   * themselves into view, since a panel that opens off-screen is no better
+   * than one that opens somewhere else.
+   */
+  const inlinePanelRef = useRef<HTMLDivElement | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
 
@@ -200,6 +208,22 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     if (!surfaceFilter) return [];
     return listHiddenOnSurface(appState.blocks, surfaceFilter);
   }, [appState.blocks, surfaceFilter]);
+
+  /**
+   * The rows actually drawn in Reorder mode, in the order they are drawn.
+   *
+   * The arrows used to hand their on-screen index to a function that indexed
+   * the FULL block list — which also holds everything on the header, footer
+   * and bottom bar. One announcement in the header was enough to make every
+   * arrow move a different row than the one pressed (owner, 2026-08-15).
+   */
+  const reorderableBlocks = useMemo((): PageBlockRow[] => {
+    const list = surfaceFilter
+      ? appState.blocks.filter((b) => surfaceComponents.some((c) => c.block_id === b.id)
+        || hiddenComponents.some((c) => c.block_id === b.id))
+      : appState.blocks;
+    return list.slice().sort((a, b) => a.position - b.position);
+  }, [appState.blocks, surfaceFilter, surfaceComponents, hiddenComponents]);
 
   const singletonDupes = useMemo(() => {
     if (!surfaceFilter) return [];
@@ -410,14 +434,28 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
     }
   };
 
-  const move = (index: number, dir: -1 | 1) => {
-    const list = [...appState.blocks].sort((a, b) => a.position - b.position);
-    const j = index + dir;
-    if (j < 0 || j >= list.length) return;
-    const tmp = list[index];
-    list[index] = list[j];
-    list[j] = tmp;
-    void persistOrder(list);
+  /**
+   * Swap a row with the row above or below it ON SCREEN.
+   *
+   * Identified by block id, never by index: the visible list and the full list
+   * do not line up whenever anything sits on another surface. Only the two
+   * swapped rows change place; every other block keeps its relative position.
+   */
+  const move = (blockId: number, dir: -1 | 1) => {
+    const visible = reorderableBlocks;
+    const from = visible.findIndex((b) => b.id === blockId);
+    if (from === -1) return;
+    const neighbour = visible[from + dir];
+    if (!neighbour) return;
+
+    const full = [...appState.blocks].sort((a, b) => a.position - b.position);
+    const a = full.findIndex((b) => b.id === blockId);
+    const c = full.findIndex((b) => b.id === neighbour.id);
+    if (a === -1 || c === -1) return;
+    const next = [...full];
+    next[a] = full[c];
+    next[c] = full[a];
+    void persistOrder(next);
   };
 
   const publish = async () => {
@@ -481,6 +519,16 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       setBusy(false);
     }
   };
+
+  // Bring a freshly opened panel into view — it opens below a list that can be
+  // longer than the screen.
+  useEffect(() => {
+    if (!editingSession && !addPickerOpen) return;
+    const el = inlinePanelRef.current;
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [editingSession, addPickerOpen]);
 
   const editingComp = editingSession ? library.find((c) => c.type === editingSession.type) ?? null : null;
   const editingBlock = editingSession?.blockId != null
@@ -613,11 +661,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       ) : reorderMode ? (
         <ReorderList
           app={activeApp}
-          blocks={(surfaceFilter
-            ? appState.blocks.filter((b) => surfaceComponents.some((c) => c.block_id === b.id)
-              || hiddenComponents.some((c) => c.block_id === b.id))
-            : appState.blocks
-          ).slice().sort((a, b) => a.position - b.position)}
+          blocks={reorderableBlocks}
           busy={busy}
           onMove={move}
         />
@@ -870,13 +914,17 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
       )}
 
       {addPickerOpen && surfaceFilter ? (
-        <ContentEditorSheet
-          open
-          title={`Add component · ${surfaceBreadcrumb(surfaceFilter)}`}
-          onClose={() => setAddPickerOpen(false)}
-          layer={1}
-          testId="home-layout-add-picker"
-        >
+        <div className="home-layout-inline-panel" data-testid="home-layout-add-picker" ref={inlinePanelRef}>
+          <div className="home-layout-inline-panel-head">
+            <h4>{`Add component · ${surfaceBreadcrumb(surfaceFilter)}`}</h4>
+            <button
+              type="button"
+              data-testid="home-layout-add-picker-close"
+              onClick={() => setAddPickerOpen(false)}
+            >
+              Close
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="home-layout-add-picker-list">
             {addableTypes.length === 0 ? (
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>
@@ -919,17 +967,23 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               })
             )}
           </div>
-        </ContentEditorSheet>
+        </div>
       ) : null}
 
       {editingComp ? (
-        <ContentEditorSheet
-          open
-          title={editingSession?.isAddSlot ? `Add another ${editingComp.name}` : `Edit ${editingComp.name}`}
-          onClose={() => setEditingSession(null)}
-          layer={1}
-          testId="home-layout-section-editor"
-        >
+        <div className="home-layout-inline-panel" data-testid="home-layout-section-editor" ref={inlinePanelRef}>
+          <div className="home-layout-inline-panel-head">
+            <h4>
+              {editingSession?.isAddSlot ? `Add another ${editingComp.name}` : `Edit ${editingComp.name}`}
+            </h4>
+            <button
+              type="button"
+              data-testid="home-layout-section-editor-close"
+              onClick={() => setEditingSession(null)}
+            >
+              Close
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>{editingComp.summary}</p>
             {editingComp.flowWarning ? (
@@ -958,7 +1012,7 @@ export const HomeLayoutEditor = forwardRef<HomeLayoutEditorHandle, Props>(functi
               onSaveSettings={(settings) => editingBlock && void saveSettings(editingBlock, settings)}
             />
           </div>
-        </ContentEditorSheet>
+        </div>
       ) : null}
     </div>
   );
@@ -973,7 +1027,7 @@ function ReorderList({
   app: HomeApp;
   blocks: PageBlockRow[];
   busy: boolean;
-  onMove: (index: number, dir: -1 | 1) => void;
+  onMove: (blockId: number, dir: -1 | 1) => void;
 }) {
   return (
     <div data-testid="home-layout-reorder-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1009,7 +1063,7 @@ function ReorderList({
               aria-label={`Move ${block.label} up`}
               data-testid={`home-layout-move-up-${block.id}`}
               disabled={busy || index === 0}
-              onClick={() => onMove(index, -1)}
+              onClick={() => onMove(block.id, -1)}
               style={btnTiny}
             >
               ↑
@@ -1019,7 +1073,7 @@ function ReorderList({
               aria-label={`Move ${block.label} down`}
               data-testid={`home-layout-move-down-${block.id}`}
               disabled={busy || index === blocks.length - 1}
-              onClick={() => onMove(index, 1)}
+              onClick={() => onMove(block.id, 1)}
               style={btnTiny}
             >
               ↓

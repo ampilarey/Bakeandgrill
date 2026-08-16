@@ -251,6 +251,119 @@ describe('HomeLayoutEditor', () => {
     expect(within(sheet).getByTestId('home-layout-visibility-switch-10')).toBeTruthy();
   });
 
+  it('moves the row you pressed, not whichever row shares its number', async () => {
+    // Owner, 2026-08-15: "reorder does not work correctly i think" — he was
+    // right. The arrows carried the position of a row in the ON-SCREEN list
+    // into the FULL list of blocks, which also holds everything sitting on the
+    // header, the footer and the bottom bar. One announcement in the header
+    // was enough to make every arrow move the wrong thing.
+    fetchAdminPageBlocks.mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [
+        // Not on Home — lives in the header, and is invisible in this list.
+        {
+          id: 13, app: 'website', page: 'home', block_type: 'announcement', position: 0,
+          is_enabled: true, content_mode: 'own', settings: { placement_desktop: 'header' },
+          label: 'Announcement banner', description: '', removable: true, supports_shared_content: false,
+        },
+        {
+          id: 10, app: 'website', page: 'home', block_type: 'hero', position: 1,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Hero banner', description: '', removable: false, supports_shared_content: false,
+        },
+        {
+          id: 11, app: 'website', page: 'home', block_type: 'trust_strip', position: 2,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Trust strip', description: '', removable: true, supports_shared_content: false,
+        },
+        {
+          id: 14, app: 'website', page: 'home', block_type: 'greeting', position: 3,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Greeting', description: '', removable: true, supports_shared_content: false,
+        },
+      ],
+      available_types: [],
+      unknown_types: [],
+      draft: false,
+      version: 4,
+      saved_at: null,
+    }));
+    reorderPageBlocks.mockResolvedValue({ version: 5 });
+
+    render(
+      <HomeLayoutEditor
+        initialApp="website"
+        surfaceFilter={{ app: 'website', device: 'desktop', slot: 'home' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('home-layout-reorder-toggle'));
+
+    // Hero is first on screen. Send it down — it should end up below the
+    // trust strip.
+    fireEvent.click(screen.getByTestId('home-layout-move-down-10'));
+
+    await waitFor(() => expect(reorderPageBlocks).toHaveBeenCalled());
+    const sent = reorderPageBlocks.mock.calls[0][0].blocks as Array<{ id: number; position: number }>;
+    const positionOf = (id: number) => sent.find((b) => b.id === id)!.position;
+
+    expect(positionOf(10)).toBeGreaterThan(positionOf(11));
+    // And the header block nobody touched stays exactly where it was.
+    expect(positionOf(13)).toBe(0);
+  });
+
+  it('leaves rows on other surfaces alone when reordering Home', async () => {
+    fetchAdminPageBlocks.mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [
+        {
+          id: 13, app: 'website', page: 'home', block_type: 'announcement', position: 0,
+          is_enabled: true, content_mode: 'own', settings: { placement_desktop: 'header' },
+          label: 'Announcement banner', description: '', removable: true, supports_shared_content: false,
+        },
+        {
+          id: 10, app: 'website', page: 'home', block_type: 'hero', position: 1,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Hero banner', description: '', removable: false, supports_shared_content: false,
+        },
+        {
+          id: 11, app: 'website', page: 'home', block_type: 'trust_strip', position: 2,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Trust strip', description: '', removable: true, supports_shared_content: false,
+        },
+      ],
+      available_types: [],
+      unknown_types: [],
+      draft: false,
+      version: 4,
+      saved_at: null,
+    }));
+    reorderPageBlocks.mockResolvedValue({ version: 5 });
+
+    render(
+      <HomeLayoutEditor
+        initialApp="website"
+        surfaceFilter={{ app: 'website', device: 'desktop', slot: 'home' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('home-layout-reorder-toggle'));
+
+    // The trust strip is last on screen, so Down is not offered.
+    expect(screen.getByTestId('home-layout-move-down-11').hasAttribute('disabled')).toBe(true);
+    // Hero is first, so Up is not offered either.
+    expect(screen.getByTestId('home-layout-move-up-10').hasAttribute('disabled')).toBe(true);
+
+    fireEvent.click(screen.getByTestId('home-layout-move-up-11'));
+    await waitFor(() => expect(reorderPageBlocks).toHaveBeenCalled());
+    const sent = reorderPageBlocks.mock.calls[0][0].blocks as Array<{ id: number; position: number }>;
+    const positionOf = (id: number) => sent.find((b) => b.id === id)!.position;
+    expect(positionOf(11)).toBeLessThan(positionOf(10));
+    expect(positionOf(13)).toBe(0);
+  });
+
   it('shows move controls only in Reorder mode', async () => {
     render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());

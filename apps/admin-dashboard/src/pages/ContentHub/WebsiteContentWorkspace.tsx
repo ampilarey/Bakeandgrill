@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchAdminPageBlocks } from '../../api/pageBlocks';
+import { fetchAdminPageBlocks, updatePageBlock } from '../../api/pageBlocks';
 import { OpsOwnedSummary } from '../../components/OpsOwnedSummary';
 import { RevisionDiff } from '../../components/content-editors';
 import type {
@@ -72,17 +72,29 @@ const TAB_BLURB: Record<string, string> = {
   Everywhere: 'Header, announcement bar, footer and search wording — on every page.',
 };
 
-type DeviceVisibility = { desktop: boolean; mobile: boolean };
+type DeviceVisibility = {
+  /** page_blocks row id — needed to turn the section off from its own row. */
+  id: number;
+  showing: boolean;
+  desktop: boolean;
+  mobile: boolean;
+};
 
 /**
- * Where each Home section currently shows, read from `page_blocks`.
+ * Where each Home section currently shows, read from `page_blocks`, plus the
+ * ability to turn one off without leaving the row.
  *
- * Best-effort: if the request fails the badges are simply omitted rather than
+ * Owner, 2026-08-15: "if i want to hide hero banner for a short period of
+ * time … now i have to go to section order and visibility tab to do that."
+ *
+ * Best-effort on read: if the request fails the badges are omitted rather than
  * guessed, because a badge claiming "Desktop + mobile" about a hidden section
  * is worse than no badge at all.
  */
 function useHomeSectionVisibility(enabled: boolean, layoutRevision: number) {
   const [byType, setByType] = useState<Record<string, DeviceVisibility> | null>(null);
+  const [version, setVersion] = useState(0);
+  const [busyType, setBusyType] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
@@ -93,11 +105,14 @@ function useHomeSectionVisibility(enabled: boolean, layoutRevision: number) {
         const next: Record<string, DeviceVisibility> = {};
         for (const row of res.blocks ?? []) {
           next[row.block_type] = {
+            id: row.id,
+            showing: row.is_enabled,
             desktop: row.is_enabled && row.settings?.show_desktop !== false,
             mobile: row.is_enabled && row.settings?.show_mobile !== false,
           };
         }
         setByType(next);
+        setVersion(res.version ?? 0);
       })
       .catch(() => {
         if (!cancelled) setByType(null);
@@ -105,7 +120,38 @@ function useHomeSectionVisibility(enabled: boolean, layoutRevision: number) {
     return () => { cancelled = true; };
   }, [enabled, layoutRevision]);
 
-  return byType;
+  const setShowing = async (blockType: string, showing: boolean): Promise<boolean> => {
+    const row = byType?.[blockType];
+    if (!row) return false;
+    setBusyType(blockType);
+    try {
+      const res = await updatePageBlock(row.id, {
+        app: 'website',
+        page: 'home',
+        version,
+        is_enabled: showing,
+      });
+      setVersion(res.version ?? version);
+      setByType((prev) => (prev
+        ? {
+          ...prev,
+          [blockType]: {
+            ...prev[blockType],
+            showing,
+            desktop: showing && prev[blockType].desktop !== false,
+            mobile: showing && prev[blockType].mobile !== false,
+          },
+        }
+        : prev));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setBusyType(null);
+    }
+  };
+
+  return { byType, setShowing, busyType };
 }
 
 function visibilityLabel(v: DeviceVisibility | undefined): string | null {
@@ -150,6 +196,9 @@ export type WebsiteContentWorkspaceProps = {
   layoutEditor?: ReactNode;
   /** Bumps when a layout draft changes, so the device badges refresh. */
   layoutRevision?: number;
+  /** Called after a section is shown/hidden from its own row, so the layout
+   *  editor reloads and the Publish bar learns there is a draft. */
+  onLayoutChanged?: () => void;
   /** Phone: the five pages are a list, and a page opens with a Back arrow. */
   isMobile?: boolean;
   /** Phone: leave the page and return to the list of five. */
@@ -184,6 +233,7 @@ export function WebsiteContentWorkspace({
   onFocusHandled,
   layoutEditor,
   layoutRevision = 0,
+  onLayoutChanged,
   defaultOpenSectionId = null,
   isMobile = false,
   onBack,
@@ -245,7 +295,10 @@ export function WebsiteContentWorkspace({
     return set;
   }, [draftKeys]);
 
-  const visibilityByType = useHomeSectionVisibility(isHome && !loading, layoutRevision);
+  const { byType: visibilityByType, setShowing, busyType } = useHomeSectionVisibility(
+    isHome && !loading,
+    layoutRevision,
+  );
 
   // Switching page tabs starts from a closed list — the tab's own content is
   // the answer to "where am I", not whatever was open on the last page.
@@ -473,7 +526,9 @@ export function WebsiteContentWorkspace({
           {homeSections.map((section) => {
             const open = openSectionId === section.id;
             const dirty = section.blocks.some((b) => dirtyKeys.has(b.key));
-            const where = section.blockType ? visibilityLabel(visibilityByType?.[section.blockType]) : null;
+            const visibility = section.blockType ? visibilityByType?.[section.blockType] : undefined;
+            const where = visibilityLabel(visibility);
+            const showing = visibility?.showing ?? null;
             return (
               <section
                 key={section.id}
@@ -482,33 +537,48 @@ export function WebsiteContentWorkspace({
                 data-testid={`wcw-section-${section.id}`}
                 data-open={open ? 'yes' : 'no'}
               >
-                <button
-                  type="button"
-                  className="wcw-sec-row"
-                  aria-expanded={open}
-                  data-testid={`wcw-section-toggle-${section.id}`}
-                  onClick={() => toggleSection(section.id)}
-                >
-                  <ChevronRight size={18} className="wcw-sec-chev" aria-hidden />
-                  <span className="wcw-sec-main">
-                    <span className="wcw-sec-name">{section.label}</span>
-                    <span className="wcw-sec-desc">{section.description}</span>
-                  </span>
-                  <span className="wcw-sec-meta">
+                <div className="wcw-sec-head">
+                  <button
+                    type="button"
+                    className="wcw-sec-row"
+                    aria-expanded={open}
+                    data-testid={`wcw-section-toggle-${section.id}`}
+                    onClick={() => toggleSection(section.id)}
+                  >
+                    <ChevronRight size={18} className="wcw-sec-chev" aria-hidden />
+                    <span className="wcw-sec-main">
+                      <span className="wcw-sec-name">{section.label}</span>
+                      <span className="wcw-sec-desc">{section.description}</span>
+                    </span>
+                  </button>
+                  <div className="wcw-sec-meta">
                     {dirty ? <span className="wcw-sec-dirty" data-testid={`wcw-section-dirty-${section.id}`}>Unsaved</span> : null}
                     <span className="wcw-sec-count">
                       {section.blocks.length} setting{section.blocks.length === 1 ? '' : 's'}
                     </span>
-                    {where ? (
-                      <span
-                        className={`wcw-sec-where wcw-sec-where--${where === 'Hidden' ? 'off' : 'on'}`}
+                    {showing !== null && section.blockType ? (
+                      <button
+                        type="button"
+                        className={`wcw-sec-where wcw-sec-where--${showing ? 'on' : 'off'}`}
                         data-testid={`wcw-section-where-${section.id}`}
+                        aria-pressed={showing}
+                        disabled={busyType === section.blockType}
+                        title={showing
+                          ? `Hide ${section.label} from the website`
+                          : `Show ${section.label} on the website`}
+                        onClick={() => {
+                          void setShowing(section.blockType as string, !showing)
+                            .then((ok) => { if (ok) onLayoutChanged?.(); });
+                        }}
                       >
-                        {where}
-                      </span>
+                        {showing
+                          ? <Eye size={13} aria-hidden />
+                          : <EyeOff size={13} aria-hidden />}
+                        {showing ? (where ?? 'Showing') : 'Hidden'}
+                      </button>
                     ) : null}
-                  </span>
-                </button>
+                  </div>
+                </div>
                 {open ? (
                   <div className="wcw-sec-body" data-testid={`wcw-section-body-${section.id}`}>
                     {renderGroups(section.groups)}
