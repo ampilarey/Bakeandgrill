@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { ContentBlock } from '../../api/content';
 import { WEBSITE_HUB_GROUP_BY_KEY } from './contentHubGroupMap';
@@ -139,5 +142,34 @@ describe('groupBlocks', () => {
       { label: 'Known', keys: ['a'] },
     ]);
     expect(grouped.map((g) => g.label)).toEqual(['Known']);
+  });
+});
+
+
+/**
+ * Phone layout audit, 2026-08-15 — owner: "Did u check the all the pages of
+ * mobile view?"
+ *
+ * The rule the phone relies on is a CSS one: a repeater row carrying
+ * `content-editor-row` stacks its controls at 767px and below. jsdom cannot
+ * check CSS, but it CAN check that every repeater editor asks for the class —
+ * which is how the footer links editor was caught squeezing a label and a URL
+ * into 340px while every other repeater stacked.
+ *
+ * Read from disk, not imported: a bundled `?raw` import is cached between runs
+ * and would happily pass against a stale copy of the file.
+ */
+describe('every repeater editor opts into the phone stacking rule', () => {
+  it('carries content-editor-row on its row', () => {
+    const dir = join(dirname(fileURLToPath(import.meta.url)), '../../components/content-editors');
+    for (const name of ['TrustItemsEditor', 'CategoriesEditor', 'ProofDetailsEditor', 'FooterLinksEditor']) {
+      const source = readFileSync(join(dir, `${name}.tsx`), 'utf8');
+      // The class on the element, not the words in a comment — the first
+      // version of this test passed on its own explanatory comment.
+      expect(
+        source.includes('className="content-editor-row"'),
+        `[${name}] must carry className="content-editor-row" so its row stacks on a phone`,
+      ).toBe(true);
+    }
   });
 });

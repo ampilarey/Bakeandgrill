@@ -18,8 +18,10 @@ export function FooterLinksEditor({ label, description, value, onChange }: Conte
         onChange={(next) => onChange(JSON.stringify(next))}
         createItem={empty}
         itemLabel="link"
+        // content-editor-row is what makes a repeater row stack on a phone.
+        // This editor was missing it, so a label and a URL shared 340px.
         renderItem={(item, _idx, update) => (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="content-editor-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input value={item.label} onChange={(e) => update({ label: e.target.value })} placeholder="Label"
               style={{ flex: 1, minWidth: 100, height: 32, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)' }} />
             <input value={item.url} onChange={(e) => update({ url: e.target.value })} placeholder="/privacy"
