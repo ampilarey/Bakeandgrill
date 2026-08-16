@@ -9,7 +9,8 @@
  */
 
 import {
-  blockOnSurface,
+  blockPlacedOnSlot,
+  blockShownOnDevice,
   surfaceId,
   typesForSlot,
   type BlockLike,
@@ -78,8 +79,11 @@ export function isSingletonSurfaceType(type: string): boolean {
 }
 
 /**
- * Exact instances placed on a surface (enabled or not).
- * Filters by app (caller passes app-scoped blocks), device visibility, and slot placement.
+ * Exact instances placed on a surface, whether or not they are showing.
+ *
+ * Placement only — a section switched off for this device is still ON this
+ * surface, it is simply hidden. Filtering it out here is what made hiding a
+ * section on phones a one-way door (owner, 2026-08-15).
  */
 export function listPlacedOnSurface(
   blocks: BlockInstance[],
@@ -88,7 +92,7 @@ export function listPlacedOnSurface(
 ): CanonicalComponent[] {
   const allowed = new Set(typesForSlot(filter.slot));
   return blocks
-    .filter((b) => blockOnSurface(b.settings, filter.device, filter.slot))
+    .filter((b) => blockPlacedOnSlot(b.settings, filter.device, filter.slot))
     .slice()
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map((b) => toCanonical(b, filter, page, allowed.has(b.block_type)));
@@ -137,7 +141,9 @@ function toCanonical(
     surface: filter.slot,
     viewport: device,
     position: b.position ?? 0,
-    enabled: b.is_enabled,
+    // Showing here means both switches agree: the block is on, AND it is not
+    // hidden for this device.
+    enabled: b.is_enabled && blockShownOnDevice(b.settings, device),
     owner: 'content_branding',
     label: b.label ?? b.block_type,
     block_id: b.id,

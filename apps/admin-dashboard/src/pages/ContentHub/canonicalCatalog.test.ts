@@ -210,3 +210,70 @@ describe('canonicalCatalog', () => {
     ).toBe(0);
   });
 });
+
+
+/**
+ * Owner, 2026-08-15: "I changed the hero banner to hidden in mobile. When I
+ * published it, in Section order & visibility doesn't show the hero at all
+ * now. But in home tab hero is shown with desktop only."
+ *
+ * Hiding a section on one device must not delete it from that device's editor.
+ * It was a one-way door: the only control that could bring it back had itself
+ * disappeared.
+ */
+describe('a section hidden on one device is still listed for that device', () => {
+  const heroHiddenOnPhones = [
+    {
+      id: 10,
+      block_type: 'hero',
+      is_enabled: true,
+      position: 0,
+      label: 'Hero banner',
+      settings: { placement_desktop: 'home', placement_mobile: 'home', show_mobile: false },
+    },
+    {
+      id: 11,
+      block_type: 'trust_strip',
+      is_enabled: true,
+      position: 1,
+      label: 'Trust strip',
+      settings: {},
+    },
+  ];
+
+  const mobileHome = { app: 'website' as const, device: 'mobile' as const, slot: 'home' as const };
+  const desktopHome = { app: 'website' as const, device: 'desktop' as const, slot: 'home' as const };
+
+  it('shows it under Hidden, so it can be switched back on', () => {
+    const hidden = listHiddenOnSurface(heroHiddenOnPhones, mobileHome).map((c) => c.component_type);
+    expect(hidden).toContain('hero');
+  });
+
+  it('does not count it as showing on that device', () => {
+    const showing = listConfiguredOnSurface(heroHiddenOnPhones, mobileHome).map((c) => c.component_type);
+    expect(showing).not.toContain('hero');
+    expect(showing).toContain('trust_strip');
+  });
+
+  it('leaves the other device alone', () => {
+    const showing = listConfiguredOnSurface(heroHiddenOnPhones, desktopHome).map((c) => c.component_type);
+    expect(showing).toContain('hero');
+    expect(listHiddenOnSurface(heroHiddenOnPhones, desktopHome).map((c) => c.component_type)).not.toContain('hero');
+  });
+
+  it('a section moved to another slot is still not on this one', () => {
+    const inHeader = [{
+      id: 12,
+      block_type: 'announcement',
+      is_enabled: true,
+      position: 0,
+      label: 'Announcement',
+      settings: { placement_mobile: 'header' },
+    }];
+    const onHome = [
+      ...listConfiguredOnSurface(inHeader, mobileHome),
+      ...listHiddenOnSurface(inHeader, mobileHome),
+    ];
+    expect(onHome).toHaveLength(0);
+  });
+});

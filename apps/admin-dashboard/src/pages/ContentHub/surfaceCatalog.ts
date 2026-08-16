@@ -153,20 +153,43 @@ function boolSetting(settings: Record<string, unknown>, key: string, fallback = 
 }
 
 /** Whether a page_block instance is visible on a device + slot. */
-export function blockOnSurface(
+/**
+ * Where a block sits on a device — ignoring whether it is switched on there.
+ *
+ * Placement and visibility are separate questions, and conflating them cost
+ * the owner his hero: hiding it on phones removed it from the phone editor
+ * entirely, including the control that would have brought it back.
+ */
+export function blockPlacedOnSlot(
   settings: Record<string, unknown> | undefined,
   device: SurfaceDevice,
   slot: SurfaceSlot,
 ): boolean {
   const s = settings ?? {};
-  const visible = device === 'desktop'
-    ? boolSetting(s, 'show_desktop', true)
-    : boolSetting(s, 'show_mobile', true);
-  if (!visible) return false;
   const placement = device === 'desktop'
     ? slotSetting(s, 'placement_desktop', 'home')
     : slotSetting(s, 'placement_mobile', 'home');
   return placement === slot;
+}
+
+/** Is this block switched on for this device? */
+export function blockShownOnDevice(
+  settings: Record<string, unknown> | undefined,
+  device: SurfaceDevice,
+): boolean {
+  const s = settings ?? {};
+  return device === 'desktop'
+    ? boolSetting(s, 'show_desktop', true)
+    : boolSetting(s, 'show_mobile', true);
+}
+
+/** Placed here AND switched on here — what a visitor actually sees. */
+export function blockOnSurface(
+  settings: Record<string, unknown> | undefined,
+  device: SurfaceDevice,
+  slot: SurfaceSlot,
+): boolean {
+  return blockShownOnDevice(settings, device) && blockPlacedOnSlot(settings, device, slot);
 }
 
 export type BlockLike = {

@@ -394,6 +394,44 @@ describe('HomeLayoutEditor', () => {
     expect(text.className).toContain('home-layout-head-text');
   });
 
+  it('keeps a section hidden on phones listed under Hidden, so it can come back', async () => {
+    // Owner, 2026-08-15: he set the hero to Hidden on mobile, published, and
+    // the hero vanished from Section order & visibility altogether — the only
+    // control that could undo it had removed itself.
+    fetchAdminPageBlocks.mockImplementation(async (app: string) => ({
+      app,
+      page: 'home',
+      blocks: [
+        {
+          id: 10, app: 'website', page: 'home', block_type: 'hero', position: 0,
+          is_enabled: true, content_mode: 'own',
+          settings: { placement_desktop: 'home', placement_mobile: 'home', show_mobile: false },
+          label: 'Hero banner', description: '', removable: false, supports_shared_content: false,
+        },
+        {
+          id: 11, app: 'website', page: 'home', block_type: 'trust_strip', position: 1,
+          is_enabled: true, content_mode: 'own', settings: {},
+          label: 'Trust strip', description: '', removable: true, supports_shared_content: false,
+        },
+      ],
+      available_types: [], unknown_types: [], draft: false, version: 1, saved_at: null,
+    }));
+
+    render(
+      <HomeLayoutEditor
+        initialApp="website"
+        surfaceFilter={{ app: 'website', device: 'mobile', slot: 'home' }}
+      />,
+    );
+
+    const hiddenSection = await screen.findByTestId('home-layout-hidden-section');
+    expect(hiddenSection.textContent).toMatch(/Hero banner/);
+
+    // Still reorderable, so it does not silently drop out of the running order.
+    fireEvent.click(screen.getByTestId('home-layout-reorder-toggle'));
+    expect(screen.getByTestId('home-layout-move-down-10')).toBeTruthy();
+  });
+
   it('shows move controls only in Reorder mode', async () => {
     render(<HomeLayoutEditor initialApp="website" />);
     await waitFor(() => expect(screen.getByTestId('home-components-overview')).toBeInTheDocument());
