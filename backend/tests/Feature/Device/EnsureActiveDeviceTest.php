@@ -231,4 +231,78 @@ class EnsureActiveDeviceTest extends TestCase
             'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
         ])->assertUnauthorized();
     }
+
+    /**
+     * Owner, 2026-08-17: "When i login to pos, it says device is not
+     * registered but when i refresh it, it opens."
+     *
+     * Two code paths could create a Device row and they disagreed. This
+     * middleware created one inactive+pending whenever APP_ENV was production,
+     * then rejected it on the very next line — while /devices/self-register,
+     * which the POS fires six seconds after login from the same authenticated
+     * staff session, created or patched the same device to approved. So the
+     * first request after login always failed and a refresh always worked.
+     */
+    public function test_a_brand_new_device_is_not_blocked_on_its_first_request_in_production(): void
+    {
+        config(['app.env' => 'production']);
+        $this->app['env'] = 'production';
+
+        $identifier = 'FRESH-TABLET';
+        $this->assertNull(Device::where('identifier', $identifier)->first());
+
+        $response = $this->withHeader('X-Device-Identifier', $identifier)
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ]);
+
+        $response->assertSuccessful();
+
+        // Created to match what self-register would have made it anyway.
+        $device = Device::where('identifier', $identifier)->firstOrFail();
+        $this->assertTrue((bool) $device->is_active);
+        $this->assertSame('approved', $device->status);
+    }
+
+    public function test_strict_approval_still_gates_a_brand_new_device(): void
+    {
+        // The real gate is the setting, not the environment.
+        config(['app.env' => 'production', 'pos.strict_device_approval' => true]);
+        $this->app['env'] = 'production';
+
+        $response = $this->withHeader('X-Device-Identifier', 'STRICT-TABLET')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ]);
+
+        $response->assertForbidden()->assertJsonPath('code', 'device_not_approved');
+
+        $device = Device::where('identifier', 'STRICT-TABLET')->firstOrFail();
+        $this->assertFalse((bool) $device->is_active);
+        $this->assertSame('pending', $device->status);
+    }
+
+    public function test_a_never_approved_device_is_not_described_as_disabled(): void
+    {
+        // "Disabled" sends the owner looking for a switch they never touched.
+        Device::create([
+            'name' => 'Pending POS',
+            'identifier' => 'PENDING-POS',
+            'type' => 'pos',
+            'is_active' => false,
+            'status' => 'pending',
+        ]);
+        config(['pos.strict_device_approval' => true]);
+
+        $this->withHeader('X-Device-Identifier', 'PENDING-POS')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_not_approved')
+            ->assertJsonPath('message', 'This POS device is waiting for approval. Ask the owner to approve it in Settings → Devices.');
+    }
 }

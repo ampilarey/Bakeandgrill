@@ -43,13 +43,25 @@ class EnsureActiveDevice
         $device = Device::where('identifier', $identifier)->first();
 
         if (!$device) {
-            $autoApprove = config('app.env') !== 'production' && !config('pos.strict_device_approval', false);
+            // A device this middleware creates must match what
+            // /devices/self-register would create for the same request — that
+            // endpoint sits behind the same auth:sanctum + staff.token group
+            // and approves unconditionally, so disagreeing here gated nothing
+            // and only broke the first request.
+            //
+            // Owner, 2026-08-17: "When i login to pos, it says device is not
+            // registered but when i refresh it, it opens." In production the
+            // old rule created the row inactive, the very next line rejected
+            // it, and the POS's fire-and-forget self-register approved it six
+            // seconds later — so a refresh always worked and the first attempt
+            // never did. POS_STRICT_DEVICE_APPROVAL remains the real gate.
+            $strict = (bool) config('pos.strict_device_approval', false);
             $device = Device::create([
                 'name' => 'POS ' . $identifier,
                 'identifier' => $identifier,
                 'type' => 'pos',
-                'is_active' => $autoApprove,
-                'status' => $autoApprove ? 'approved' : 'pending',
+                'is_active' => ! $strict,
+                'status' => $strict ? 'pending' : 'approved',
                 'last_seen_at' => now(),
                 'ip_address' => $request->ip(),
                 'last_user_id' => $user?->id,
@@ -77,7 +89,17 @@ class EnsureActiveDevice
             }
         }
 
-        if (!$device->is_active) {
+        // A terminal that has never been approved is not the same as one the
+        // owner switched off, and saying "disabled" sends them looking for a
+        // switch they never touched.
+        if (! $device->is_active && $device->status === 'pending') {
+            return response()->json([
+                'message' => 'This POS device is waiting for approval. Ask the owner to approve it in Settings → Devices.',
+                'code' => 'device_not_approved',
+            ], 403);
+        }
+
+        if (! $device->is_active) {
             return response()->json([
                 'message' => 'This POS device has been disabled. Contact your manager.',
                 'code' => 'device_disabled',
