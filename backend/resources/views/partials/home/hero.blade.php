@@ -28,8 +28,11 @@
                 $heroPhoto = $heroPres['photo'];
                 $heroScrim = $heroPres['scrim'];
                 $heroTextPos = $heroPres['text_position'];
+                // Motion is a per-slide choice and is needed by the slide, the
+                // overlay and both text elements (2026-08-17).
+                $motion = $heroPres['motion'];
             @endphp
-            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" style="background:#1C1408;--hero-photo:{{ $heroPhoto }};--hero-scrim:{{ $heroScrim }};">
+            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" data-photo-anim="{{ $motion['photo'] }}" style="background:#1C1408;--hero-photo:{{ $heroPhoto }};--hero-scrim:{{ $heroScrim }};--hero-speed:{{ $motion['speed'] }};">
                 @if(!empty($slide['video']))
                     <video
                         class="banner-video"
@@ -47,7 +50,13 @@
                         style="object-position:{{ $focalX }}% {{ $focalY }}%;"
                     >
                 @endif
-                <div class="banner-overlay" data-text-position="{{ $heroTextPos }}" data-text-align="{{ \App\Domains\Content\HeroSlides::resolveTextAlign($slide) }}">
+                <div
+                    class="banner-overlay"
+                    data-text-position="{{ $heroTextPos }}"
+                    data-text-align="{{ \App\Domains\Content\HeroSlides::resolveTextAlign($slide) }}"
+                    data-text-anim="{{ $motion['text'] }}"
+                    style="--hero-stagger: {{ $motion['delay_step'] }}ms; --hero-speed: {{ $motion['speed'] }};"
+                >
                     @php
                         $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
                         $titleHtml = (string) ($slide['title'] ?? '');
@@ -96,10 +105,11 @@
                             @endif
                             {{-- Outline and border are independent of the shape, so a
                                  box can carry a letter outline too. --}}
+                            @if($motion['box'] !== 'none') data-box-anim="{{ $motion['box'] }}" @endif
                             @if(!empty($titleStyle['outline'])) data-outline="1" @endif
                             @if(!empty($titleStyle['border'])) data-border="1" @endif
                             @if($titleVars !== '') style="{{ $titleVars }}" @endif
-                        >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line">{!! $titleLine !!}</span>@endforeach</h2>
+                        >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line" style="--hero-line-i: {{ $lineIdx }};">{!! $motion['text'] === 'word' ? \App\Domains\Content\HeroSlides::splitWordSpans($titleLine) : $titleLine !!}</span>@endforeach</h2>
                     @endif
                     @if($subtitle !== '')
                         <p
@@ -109,12 +119,13 @@
                                 data-bg-shape="{{ $subEl['shape'] }}"
                                 @if(($subEl['token'] ?? '') === 'glass') data-bg-glass="1" @endif
                             @endif
+                            @if($motion['box'] !== 'none') data-box-anim="{{ $motion['box'] }}" @endif
                             @if(!empty($subStyle['outline'])) data-outline="1" @endif
                             @if(!empty($subStyle['border'])) data-border="1" @endif
                             @if($subVars !== '') style="{{ $subVars }}" @endif
                         {{-- The inline span is what the per-line shape paints; a
                              block element can only ever draw one box. --}}
-                        ><span class="hero-sub-line">{{ $subtitle }}</span></p>
+                        ><span class="hero-sub-line" style="--hero-line-i: 0;">{!! $motion['text'] === 'word' ? \App\Domains\Content\HeroSlides::splitWordSpans(e($subtitle)) : e($subtitle) !!}</span></p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">

@@ -433,6 +433,71 @@ export function HeroSlidesEditor({
             background, so you never get a box inside a box.
           </p>
         </div>
+        {/* ── Motion (owner, 2026-08-17) ─────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, gridColumn: '1 / -1' }}>
+          {([
+            ['text_anim', 'How the text arrives', [
+              ['fade', 'Fade & rise'], ['line', 'Line by line'], ['word', 'Word by word'], ['zoom', 'Zoom in'], ['none', 'No animation'],
+            ], 'fade'],
+            ['box_anim', 'Movement on the text boxes', [
+              ['none', 'None'], ['glow', 'Glow'], ['drift', 'Colour drift'], ['sheen', 'Sheen'],
+            ], 'none'],
+            ['photo_anim', 'Movement on the photo', [
+              ['none', 'None'], ['zoom', 'Slow zoom'], ['pan', 'Slow pan'],
+            ], 'none'],
+          ] as const).map(([field, label, options, fallback]) => {
+            const current = String((slide as Record<string, unknown>)[field] ?? fallback);
+            return (
+              <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                  {label}
+                </span>
+                <div role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {options.map(([value, optLabel]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={current === value}
+                      data-testid={`hero-${field.replace('_', '-')}-${idx}-${value}`}
+                      onClick={() => applyPresentation(idx, { [field]: value } as unknown as HeroPresentationPatch)}
+                      style={{
+                        ...btnStyle,
+                        fontWeight: current === value ? 700 : 600,
+                        background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                        borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
+                      }}
+                    >
+                      {optLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label
+              htmlFor={`hero-${idx}-motion-speed`}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+            >
+              Motion speed — lower is calmer
+            </label>
+            <input
+              id={`hero-${idx}-motion-speed`}
+              type="range"
+              min={0}
+              max={100}
+              data-testid={`hero-motion-speed-${idx}`}
+              value={Number((slide as Record<string, unknown>).motion_speed ?? 33)}
+              onChange={(e) => applyPresentation(idx, { motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
+              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+            />
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Anyone whose phone is set to reduce motion sees none of this — their
+            setting wins, which is as it should be.
+          </p>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
             Text alignment

@@ -57,6 +57,8 @@ export type HeroSlidePresentation = {
   styles: Record<HeroStyledKey, HeroElementStyle>;
   /** Slide-level horizontal alignment for the copy stack. */
   text_align: HeroTextAlign;
+  /** Text, box and photo motion for this slide. */
+  motion: HeroMotion;
 };
 
 type SlideLike = {
@@ -263,6 +265,7 @@ export function resolveHeroSlidePresentation(
       subtitle: resolveHeroElementStyle(row as Record<string, unknown>, 'subtitle'),
     },
     text_align: resolveHeroTextAlign(row as Record<string, unknown>),
+    motion: resolveHeroMotion(row as Record<string, unknown>),
   };
 }
 
@@ -553,4 +556,83 @@ export function heroElementStyleVars(
 export function resolveHeroTextAlign(slide: Record<string, unknown> | null | undefined): HeroTextAlign {
   const raw = String((slide ?? {})['text_align'] ?? 'center').trim().toLowerCase();
   return raw === 'left' || raw === 'right' ? raw : 'center';
+}
+
+/** How the text arrives when a slide appears. Lockstep with HeroSlides. */
+export const HERO_TEXT_ANIMS = ['none', 'fade', 'line', 'word', 'zoom'] as const;
+export const HERO_BOX_ANIMS = ['none', 'glow', 'drift', 'sheen'] as const;
+export const HERO_PHOTO_ANIMS = ['none', 'zoom', 'pan'] as const;
+
+export type HeroTextAnim = (typeof HERO_TEXT_ANIMS)[number];
+export type HeroBoxAnim = (typeof HERO_BOX_ANIMS)[number];
+export type HeroPhotoAnim = (typeof HERO_PHOTO_ANIMS)[number];
+
+export type HeroMotion = {
+  text: HeroTextAnim;
+  delay_step: number;
+  box: HeroBoxAnim;
+  photo: HeroPhotoAnim;
+  speed: string;
+};
+
+/**
+ * Motion settings — lockstep with HeroSlides::resolveMotion().
+ *
+ * Defaults keep today's behaviour: the hero already fades-and-rises, so 'fade'
+ * is the default and nothing moves in the background unless asked. Reduced
+ * motion is honoured in the stylesheet, not here.
+ */
+export function resolveHeroMotion(slide: Record<string, unknown> | null | undefined): HeroMotion {
+  const row = (slide ?? {}) as Record<string, unknown>;
+  const pick = <T extends string>(key: string, allowed: readonly T[], fallback: T): T => {
+    const raw = String(row[key] ?? '').trim().toLowerCase();
+    return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+  };
+
+  const stagger = Number(row.text_anim_stagger);
+  const speedRaw = Number(row.motion_speed);
+
+  return {
+    text: pick('text_anim', HERO_TEXT_ANIMS, 'fade'),
+    delay_step: Number.isFinite(stagger) && row.text_anim_stagger != null && row.text_anim_stagger !== ''
+      ? Math.max(0, Math.min(400, Math.round(stagger)))
+      : 90,
+    box: pick('box_anim', HERO_BOX_ANIMS, 'none'),
+    photo: pick('photo_anim', HERO_PHOTO_ANIMS, 'none'),
+    speed:
+      Number.isFinite(speedRaw) && row.motion_speed != null && row.motion_speed !== ''
+        ? String(Number((0.5 + (clamp100(speedRaw) / 100) * 1.5).toFixed(4)))
+        : '1',
+  };
+}
+
+/**
+ * Split one line's HTML into word spans for the word-by-word animation.
+ * Tags pass through untouched so <em> keeps working and its colour still
+ * applies; splitting the whole string on spaces would shred the markup.
+ * Lockstep with HeroSlides::splitWordSpans().
+ */
+export function splitHeroWordSpans(html: string): string {
+  const parts = String(html ?? '').split(/(<[^>]+>)/);
+  let out = '';
+  let i = 0;
+
+  for (const part of parts) {
+    if (part === '') continue;
+    if (part.startsWith('<')) {
+      out += part;
+      continue;
+    }
+    for (const chunk of part.split(/(\s+)/)) {
+      if (chunk === '') continue;
+      if (chunk.trim() === '') {
+        out += chunk;
+        continue;
+      }
+      out += `<span class="hero-word" style="--hero-word-i: ${i};">${chunk}</span>`;
+      i += 1;
+    }
+  }
+
+  return out;
 }

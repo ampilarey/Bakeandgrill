@@ -622,6 +622,163 @@
         height: min(82vh, 820px);
     }
 }
+/* ── Hero motion (owner, 2026-08-17) ────────────────────────────────────────
+ * Text arrivals and background movement, all opt-in per slide. --hero-speed is
+ * a multiplier (0.5 calm … 2 brisk) and --hero-stagger is the per-line/word
+ * delay, so one set of keyframes serves every speed.
+ *
+ * Everything here is switched off wholesale under prefers-reduced-motion at the
+ * bottom of this block. A viewer who has asked their device for less motion has
+ * asked everyone, and that is not the owner's setting to overrule.
+ */
+@keyframes hero-fade-up   { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hero-zoom-in   { from { opacity: 0; transform: scale(0.9); }      to { opacity: 1; transform: none; } }
+@keyframes hero-photo-zoom { from { transform: scale(1); } to { transform: scale(1.12); } }
+@keyframes hero-photo-pan  { from { transform: scale(1.1) translateX(-2%); } to { transform: scale(1.1) translateX(2%); } }
+@keyframes hero-box-glow  { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+@keyframes hero-box-drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes hero-box-sheen { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+
+/*
+ * An element can only carry one `animation` property, and an entrance and a
+ * looping box effect both want it. Naming the entrance in a custom property
+ * lets the box rules compose the two instead of one silently beating the other
+ * on specificity — which is what happened first time round: choosing Glow with
+ * the one-box shape did nothing at all.
+ */
+.banner-overlay[data-text-anim="fade"] .banner-title,
+.banner-overlay[data-text-anim="fade"] .banner-sub { --hero-entrance: hero-fade-up; }
+.banner-overlay[data-text-anim="zoom"] .banner-title,
+.banner-overlay[data-text-anim="zoom"] .banner-sub { --hero-entrance: hero-zoom-in; }
+.banner-overlay[data-text-anim="line"] .hero-title-line,
+.banner-overlay[data-text-anim="line"] .hero-sub-line,
+.banner-overlay[data-text-anim="word"] .hero-word { --hero-entrance: hero-fade-up; }
+
+.banner-overlay[data-text-anim="fade"] .banner-title,
+.banner-overlay[data-text-anim="fade"] .banner-sub,
+.banner-overlay[data-text-anim="zoom"] .banner-title,
+.banner-overlay[data-text-anim="zoom"] .banner-sub {
+    animation: var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both;
+}
+.banner-overlay[data-text-anim="fade"] .banner-sub,
+.banner-overlay[data-text-anim="zoom"] .banner-sub {
+    animation-delay: calc(0.12s / var(--hero-speed, 1));
+}
+
+/*
+ * Line by line and word by word stagger off an index the renderer stamps on
+ * each part, so the delay is pure CSS — no per-slide JavaScript, and it keeps
+ * working when the text rewraps at a different width.
+ */
+.banner-overlay[data-text-anim="line"] .hero-title-line,
+.banner-overlay[data-text-anim="line"] .hero-sub-line,
+.banner-overlay[data-text-anim="word"] .hero-word {
+    display: inline-block;
+    animation: var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both;
+}
+.banner-overlay[data-text-anim="line"] .hero-title-line,
+.banner-overlay[data-text-anim="line"] .hero-sub-line {
+    animation-delay: calc(var(--hero-line-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
+}
+.banner-overlay[data-text-anim="word"] .hero-word {
+    animation-delay: calc(var(--hero-word-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
+}
+/*
+ * inline-block would break the per-line background, which needs inline runs to
+ * clone their box onto every visual line. Keep the run inline and let the words
+ * inside it carry the motion instead.
+ */
+.banner-overlay[data-text-anim="line"] .banner-title[data-bg-shape="line"] .hero-title-line,
+.banner-overlay[data-text-anim="line"] .banner-sub[data-bg-shape="line"] .hero-sub-line {
+    display: inline;
+}
+
+/* "None" has to actively stop the stylesheet's own long-standing fade, which
+   is declared unconditionally on these elements. */
+.banner-overlay[data-text-anim="none"] .banner-eyebrow,
+.banner-overlay[data-text-anim="none"] .banner-title,
+.banner-overlay[data-text-anim="none"] .banner-sub,
+.banner-overlay[data-text-anim="none"] .banner-ctas {
+    animation: none;
+}
+
+/* Background motion on the coloured boxes — composed with the entrance above. */
+/* [data-has-bg] is not decoration — it lifts this above the entrance rule,
+   which is one selector more specific and would otherwise win outright. */
+.banner-title[data-box-anim="glow"][data-has-bg],
+.banner-sub[data-box-anim="glow"][data-has-bg] {
+    animation:
+        var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+        hero-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.banner-title[data-box-anim="glow"] .hero-title-line,
+.banner-sub[data-box-anim="glow"] .hero-sub-line {
+    animation:
+        var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both,
+        hero-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+/* Drift needs somewhere to travel, so the fill is stretched wider than the box. */
+.banner-title[data-box-anim="drift"][data-has-bg],
+.banner-sub[data-box-anim="drift"][data-has-bg] {
+    background-size: 300% 100%;
+    animation:
+        var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+        hero-box-drift calc(9s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.banner-title[data-box-anim="drift"] .hero-title-line,
+.banner-sub[data-box-anim="drift"] .hero-sub-line {
+    background-size: 300% 100%;
+    animation:
+        var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both,
+        hero-box-drift calc(9s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.banner-title[data-box-anim="sheen"][data-bg-shape="hug"],
+.banner-title[data-box-anim="sheen"][data-bg-shape="full"],
+.banner-sub[data-box-anim="sheen"][data-bg-shape="hug"],
+.banner-sub[data-box-anim="sheen"][data-bg-shape="full"] {
+    background-image: linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.35) 45%, transparent 70%), var(--hero-el-bg, none);
+    background-size: 220% 100%, auto;
+    background-repeat: no-repeat;
+    animation:
+        var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+        hero-box-sheen calc(5s / var(--hero-speed, 1)) linear infinite;
+}
+.banner-title[data-box-anim="sheen"] .hero-title-line,
+.banner-sub[data-box-anim="sheen"] .hero-sub-line {
+    background-image: linear-gradient(100deg, transparent 20%, rgba(255,255,255,0.35) 45%, transparent 70%), var(--hero-el-bg, none);
+    background-size: 220% 100%, auto;
+    background-repeat: no-repeat;
+    animation:
+        var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both,
+        hero-box-sheen calc(5s / var(--hero-speed, 1)) linear infinite;
+}
+
+/* Photo motion. */
+.banner-slide[data-photo-anim="zoom"] img,
+.banner-slide[data-photo-anim="zoom"] .banner-video {
+    animation: hero-photo-zoom calc(18s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+}
+.banner-slide[data-photo-anim="pan"] img,
+.banner-slide[data-photo-anim="pan"] .banner-video {
+    animation: hero-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .banner-overlay[data-text-anim] .banner-title,
+    .banner-overlay[data-text-anim] .banner-sub,
+    .banner-overlay[data-text-anim] .hero-title-line,
+    .banner-overlay[data-text-anim] .hero-sub-line,
+    .banner-overlay[data-text-anim] .hero-word,
+    .banner-title[data-box-anim],
+    .banner-sub[data-box-anim],
+    .banner-title[data-box-anim] .hero-title-line,
+    .banner-sub[data-box-anim] .hero-sub-line,
+    .banner-slide[data-photo-anim] img,
+    .banner-slide[data-photo-anim] .banner-video {
+        animation: none !important;
+    }
+}
+
 @keyframes banner-fade-up {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }

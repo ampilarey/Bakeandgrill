@@ -203,4 +203,74 @@ class HeroElementStyleTest extends TestCase
         $this->assertArrayHasKey('title', HeroSlides::presentation([])['styles']);
         $this->assertArrayNotHasKey('eyebrow', HeroSlides::presentation([])['styles']);
     }
+
+    public function test_motion_defaults_keep_todays_behaviour(): void
+    {
+        // The hero has always faded-and-risen, and nothing has ever moved in
+        // the background. Adding the controls must not change either.
+        $m = HeroSlides::resolveMotion([]);
+
+        $this->assertSame('fade', $m['text']);
+        $this->assertSame('none', $m['box']);
+        $this->assertSame('none', $m['photo']);
+        $this->assertSame('1', $m['speed']);
+    }
+
+    public static function motionProvider(): array
+    {
+        return [
+            'text' => ['text_anim', 'word', 'text', 'word'],
+            'box' => ['box_anim', 'sheen', 'box', 'sheen'],
+            'photo' => ['photo_anim', 'pan', 'photo', 'pan'],
+            'messy casing' => ['text_anim', '  ZOOM ', 'text', 'zoom'],
+            'unknown text falls back' => ['text_anim', 'explode', 'text', 'fade'],
+            'unknown box falls back' => ['box_anim', 'disco', 'box', 'none'],
+        ];
+    }
+
+    #[DataProvider('motionProvider')]
+    public function test_motion_choices_resolve_and_fall_back(string $field, mixed $raw, string $out, string $expected): void
+    {
+        $this->assertSame($expected, HeroSlides::resolveMotion([$field => $raw])[$out]);
+    }
+
+    public function test_speed_runs_from_calm_to_brisk(): void
+    {
+        $this->assertSame('0.5', HeroSlides::resolveMotion(['motion_speed' => 0])['speed']);
+        $this->assertSame('2', HeroSlides::resolveMotion(['motion_speed' => 100])['speed']);
+        // Out of range and nonsense must not produce a broken CSS duration.
+        $this->assertSame('2', HeroSlides::resolveMotion(['motion_speed' => 9999])['speed']);
+        $this->assertSame('1', HeroSlides::resolveMotion(['motion_speed' => 'fast'])['speed']);
+    }
+
+    public function test_stagger_is_clamped_to_something_watchable(): void
+    {
+        $this->assertSame(90, HeroSlides::resolveMotion([])['delay_step']);
+        $this->assertSame(400, HeroSlides::resolveMotion(['text_anim_stagger' => 5000])['delay_step']);
+        $this->assertSame(0, HeroSlides::resolveMotion(['text_anim_stagger' => -50])['delay_step']);
+    }
+
+    public function test_word_splitting_keeps_markup_intact(): void
+    {
+        // Splitting the whole string on spaces would shred the <em>, taking its
+        // colour with it.
+        $out = HeroSlides::splitWordSpans('Dhivehi <em>Breakfast</em> and Baking');
+
+        $this->assertStringContainsString('<em><span class="hero-word" style="--hero-word-i: 1;">Breakfast</span></em>', $out);
+        $this->assertSame(4, substr_count($out, 'class="hero-word"'));
+        // Indexes run in reading order so the stagger reads left to right.
+        foreach ([0, 1, 2, 3] as $i) {
+            $this->assertStringContainsString("--hero-word-i: {$i};", $out);
+        }
+    }
+
+    public function test_word_splitting_leaves_plain_text_words_countable(): void
+    {
+        $this->assertSame(0, substr_count(HeroSlides::splitWordSpans(''), 'class="hero-word"'));
+        $this->assertSame(1, substr_count(HeroSlides::splitWordSpans('Solo'), 'class="hero-word"'));
+        // Runs of whitespace are preserved rather than collapsed into a word.
+        $out = HeroSlides::splitWordSpans('Two   words');
+        $this->assertSame(2, substr_count($out, 'class="hero-word"'));
+        $this->assertStringContainsString('</span>   <span', $out);
+    }
 }

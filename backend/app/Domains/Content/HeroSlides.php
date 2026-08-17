@@ -237,7 +237,104 @@ final class HeroSlides
             'copy_scrim' => $copyScrim,
             'styles' => $styles,
             'text_align' => self::resolveTextAlign($slide),
+            'motion' => self::resolveMotion($slide),
         ];
+    }
+
+    /**
+     * Split one line's HTML into word spans for the word-by-word animation.
+     *
+     * Text nodes are split on whitespace and wrapped; tags are passed through
+     * untouched so <em> keeps working and its colour still applies. Splitting
+     * naively on spaces across the whole string would shred the markup.
+     */
+    public static function splitWordSpans(string $html): string
+    {
+        $parts = preg_split('/(<[^>]+>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $html;
+        }
+
+        $out = '';
+        $i = 0;
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if ($part[0] === '<') {
+                $out .= $part;
+
+                continue;
+            }
+            foreach (preg_split('/(\s+)/u', $part, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [] as $chunk) {
+                if ($chunk === '') {
+                    continue;
+                }
+                if (trim($chunk) === '') {
+                    $out .= $chunk;
+
+                    continue;
+                }
+                $out .= '<span class="hero-word" style="--hero-word-i: '.$i.';">'.$chunk.'</span>';
+                $i++;
+            }
+        }
+
+        return $out;
+    }
+
+    /** How the text arrives when a slide appears. */
+    public const TEXT_ANIMS = ['none', 'fade', 'line', 'word', 'zoom'];
+
+    /** What moves on the coloured boxes behind the words. */
+    public const BOX_ANIMS = ['none', 'glow', 'drift', 'sheen'];
+
+    /** What the photo itself does. */
+    public const PHOTO_ANIMS = ['none', 'zoom', 'pan'];
+
+    /**
+     * Motion settings — owner asked for animations on both the text and the
+     * background (2026-08-17) and picked every option offered.
+     *
+     * Defaults keep today's behaviour: the hero already fades-and-rises via a
+     * plain CSS animation, so 'fade' is the default text motion and nothing
+     * moves in the background unless asked. Everything is switched off wholesale
+     * under prefers-reduced-motion in the stylesheet, which is where that
+     * belongs — a viewer's accessibility setting is not the owner's to override.
+     *
+     * @param  array<string, mixed>  $slide
+     * @return array{text: string, delay_step: int, box: string, photo: string, speed: string}
+     */
+    public static function resolveMotion(array $slide): array
+    {
+        $pick = function (string $key, array $allowed, string $default) use ($slide): string {
+            $raw = strtolower(trim((string) ($slide[$key] ?? '')));
+
+            return in_array($raw, $allowed, true) ? $raw : $default;
+        };
+
+        // Per-line and per-word need a stagger; the others ignore it.
+        $step = self::intInRange($slide['text_anim_stagger'] ?? null, 90, 0, 400);
+
+        return [
+            'text' => $pick('text_anim', self::TEXT_ANIMS, 'fade'),
+            'delay_step' => $step,
+            'box' => $pick('box_anim', self::BOX_ANIMS, 'none'),
+            'photo' => $pick('photo_anim', self::PHOTO_ANIMS, 'none'),
+            'speed' => self::motionSpeed($slide['motion_speed'] ?? null),
+        ];
+    }
+
+    /** 0–100 slider → a CSS duration multiplier from calm to brisk. */
+    private static function motionSpeed(mixed $raw): string
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return '1';
+        }
+
+        // 0 = half speed (slower, calmer), 100 = double speed.
+        return self::trimFloat(0.5 + (self::clamp100($n) / 100.0) * 1.5);
     }
 
     /** Elements that carry the full text-style controls. */

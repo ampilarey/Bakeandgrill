@@ -7,6 +7,8 @@ import { safePublicUrl } from '../../utils/safePublicUrl';
 import {
   headingLengthBand,
   heroElementStyleVars,
+  splitHeroWordSpans,
+  type HeroMotion,
   resolveHeroSlidePresentation,
   type HeroElementStyle,
   splitHeroRichTextLines,
@@ -41,12 +43,18 @@ function sanitizeHeroHtml(html: string): string {
 }
 
 /** Wrap each hard <br> segment so desktop can keep intentional line breaks. */
-function titleLineNodes(html: string): ReactNode {
+function titleLineNodes(html: string, wordSplit = false): ReactNode {
   const lines = splitHeroRichTextLines(html);
   return lines.map((line, i) => (
     <Fragment key={i}>
       {i > 0 ? <br /> : null}
-      <span className="hero-title-line" dangerouslySetInnerHTML={{ __html: line }} />
+      <span
+        className="hero-title-line"
+        // The index drives the line-by-line stagger in pure CSS, so it keeps
+        // working when the text rewraps at a different width.
+        style={{ ['--hero-line-i' as string]: String(i) } as CSSProperties}
+        dangerouslySetInnerHTML={{ __html: wordSplit ? splitHeroWordSpans(line) : line }}
+      />
     </Fragment>
   ));
 }
@@ -63,6 +71,7 @@ function HeroTextBlock({
   el,
   style,
   styleVars,
+  motion,
   testId,
 }: {
   as: 'h2' | 'p';
@@ -71,6 +80,7 @@ function HeroTextBlock({
   el: HeroElementBackground;
   style?: HeroElementStyle;
   styleVars?: Record<string, string>;
+  motion?: HeroMotion;
   testId?: string;
 }) {
   const clean = sanitizeHeroHtml(html);
@@ -84,6 +94,7 @@ function HeroTextBlock({
     'data-has-bg'?: '1';
     'data-outline'?: '1';
     'data-border'?: '1';
+    'data-box-anim'?: string;
     style?: CSSProperties;
   } = {};
   if (el.css) {
@@ -93,6 +104,7 @@ function HeroTextBlock({
   }
   // Outline and border are independent of the shape, so a box can carry a
   // letter outline too — the thing that was impossible before 2026-08-17.
+  if (motion && motion.box !== 'none') contrastProps['data-box-anim'] = motion.box;
   if (style?.outline) contrastProps['data-outline'] = '1';
   if (style?.border) contrastProps['data-border'] = '1';
   if (styleVars && Object.keys(styleVars).length > 0) {
@@ -111,7 +123,7 @@ function HeroTextBlock({
         {...(band ? { 'data-len': band } : {})}
         {...contrastProps}
       >
-        {titleLineNodes(clean)}
+        {titleLineNodes(clean, motion?.text === 'word')}
       </Tag>
     );
   }
@@ -120,7 +132,11 @@ function HeroTextBlock({
   // only ever draw one box around all the lines.
   return (
     <Tag className={className} data-testid={testId} {...contrastProps}>
-      <span className="hero-sub-line" dangerouslySetInnerHTML={{ __html: clean }} />
+      <span
+        className="hero-sub-line"
+        style={{ ['--hero-line-i' as string]: '0' } as CSSProperties}
+        dangerouslySetInnerHTML={{ __html: motion?.text === 'word' ? splitHeroWordSpans(clean) : clean }}
+      />
     </Tag>
   );
 }
@@ -339,11 +355,13 @@ export function PromoCarousel({
             <div
               key={i}
               className="home-promo-hero__slide"
+              data-photo-anim={presentation.motion.photo}
               style={{
                 flex: `0 0 ${100 / n}%`,
                 ...( {
                   '--hero-photo': String(presentation.photo),
                   '--hero-scrim': String(presentation.scrim),
+                  '--hero-speed': presentation.motion.speed,
                 } as CSSProperties ),
               }}
             >
@@ -380,6 +398,11 @@ export function PromoCarousel({
                 className="home-promo-hero__overlay"
                 data-text-position={presentation.text_position}
                 data-text-align={presentation.text_align}
+                data-text-anim={presentation.motion.text}
+                style={{
+                  ['--hero-stagger' as string]: `${presentation.motion.delay_step}ms`,
+                  ['--hero-speed' as string]: presentation.motion.speed,
+                } as CSSProperties}
                 data-testid={`hero-overlay-${i}`}
               >
                 <div
@@ -399,6 +422,7 @@ export function PromoCarousel({
                     el={presentation.elements.title}
                     style={presentation.styles.title}
                     styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'title')}
+                    motion={presentation.motion}
                     testId={`hero-title-${i}`}
                   />
                 ) : null}
@@ -410,6 +434,7 @@ export function PromoCarousel({
                     el={presentation.elements.subtitle}
                     style={presentation.styles.subtitle}
                     styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'subtitle')}
+                    motion={presentation.motion}
                     testId={`hero-sub-${i}`}
                   />
                 ) : null}
