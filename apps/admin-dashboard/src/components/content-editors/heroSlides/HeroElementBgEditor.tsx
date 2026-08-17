@@ -1,5 +1,13 @@
+import type { CSSProperties } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { resolveHeroSlidePresentation, type HeroElementKey, type HeroPresentationPatch } from '../../../utils/heroSlidePresentation';
+import { HeroColorField } from './HeroColorField';
+import { heroContrast } from '../../../utils/heroContrast';
+import {
+  resolveHeroElementStyle,
+  resolveHeroSlidePresentation,
+  type HeroElementKey,
+  type HeroPresentationPatch,
+} from '../../../utils/heroSlidePresentation';
 import { BG_SWATCHES, btnStyle, ELEMENT_LABELS, type HeroSlideRow } from './heroSlidesModel';
 
 export type HeroElementBgEditorProps = {
@@ -13,6 +21,72 @@ export type HeroElementBgEditorProps = {
   applyPresentation: (idx: number, patch: HeroPresentationPatch) => void;
 };
 
+const groupStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 10,
+  borderRadius: 8,
+  border: '1px solid var(--color-border-light)',
+  background: 'var(--color-surface)',
+};
+
+const groupTitleStyle: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: 'var(--color-text-muted)',
+};
+
+const checkRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 12,
+  color: 'var(--color-text)',
+  minHeight: 44,
+};
+
+const hintStyle: CSSProperties = { margin: 0, fontSize: 11, color: 'var(--color-text-muted)' };
+
+/** 0–100 slider unless a range is given; the resolver maps it to a length. */
+function SliderRow({
+  id,
+  label,
+  value,
+  onChange,
+  testId,
+  min = 0,
+  max = 100,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  testId: string;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label htmlFor={id} style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        value={Number.isFinite(value) ? value : min}
+        data-testid={testId}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+      />
+    </div>
+  );
+}
+
 export function HeroElementBgEditor({
   slide,
   idx,
@@ -24,6 +98,13 @@ export function HeroElementBgEditor({
   applyPresentation,
 }: HeroElementBgEditorProps) {
   const el = resolveHeroSlidePresentation(slide).elements[key];
+  const st = resolveHeroElementStyle(slide as Record<string, unknown>, key);
+  const row = slide as Record<string, unknown>;
+  const styled = key === 'title' || key === 'subtitle';
+  /** Patch one field, keeping the background token so the row stays coherent. */
+  const setField = (field: string, value: unknown) =>
+    applyPresentation(idx, { [field]: value } as unknown as HeroPresentationPatch);
+  const contrast = styled ? heroContrast(st.text_color, el.css) : null;
   const storedToken = String((slide as Record<string, unknown>)[`${key}_bg`] ?? '').trim().toLowerCase();
   const strength = el.strength ?? 70;
   const isCustomHex = Boolean(storedToken) && !['none', 'dark', 'light', 'amber', 'brand_dark', 'glass'].includes(storedToken);
@@ -203,6 +284,194 @@ export function HeroElementBgEditor({
                       : 'No box — the letters get a coloured outline and soft halo instead.'}
               </p>
             </div>
+          ) : null}
+          {styled ? (
+            <>
+              {/* ── Colours ─────────────────────────────────────────────── */}
+              <div style={groupStyle}>
+                <span style={groupTitleStyle}>Colours</span>
+                <HeroColorField
+                  id={`hero-${idx}-${key}-text-color`}
+                  label="Text colour"
+                  value={row[`${key}_text_color`] as string | undefined}
+                  placeholder={key === 'title' ? 'White' : 'Soft white'}
+                  onChange={(v) => setField(`${key}_text_color`, v)}
+                  testIdPrefix={`hero-text-color-${idx}-${key}`}
+                />
+                <HeroColorField
+                  id={`hero-${idx}-${key}-em-color`}
+                  label="Emphasis colour — the <em> part"
+                  value={row[`${key}_em_color`] as string | undefined}
+                  placeholder="Same as text"
+                  onChange={(v) => setField(`${key}_em_color`, v)}
+                  testIdPrefix={`hero-em-color-${idx}-${key}`}
+                />
+                <HeroColorField
+                  id={`hero-${idx}-${key}-bg-color2`}
+                  label="Second background colour — blends into a gradient"
+                  value={row[`${key}_bg_color2`] as string | undefined}
+                  placeholder="No gradient"
+                  onChange={(v) => setField(`${key}_bg_color2`, v)}
+                  testIdPrefix={`hero-bg2-${idx}-${key}`}
+                />
+                {contrast ? (
+                  <p
+                    data-testid={`hero-contrast-${idx}-${key}`}
+                    data-level={contrast.level}
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color:
+                        contrast.level === 'poor'
+                          ? 'var(--color-danger)'
+                          : contrast.level === 'ok'
+                            ? 'var(--color-warning)'
+                            : 'var(--color-success)',
+                    }}
+                  >
+                    {contrast.message}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* ── Outline & border ────────────────────────────────────── */}
+              <div style={groupStyle}>
+                <span style={groupTitleStyle}>Outline &amp; border</span>
+                <label style={checkRowStyle}>
+                  <input
+                    type="checkbox"
+                    data-testid={`hero-outline-${idx}-${key}`}
+                    checked={st.outline}
+                    onChange={(e) => setField(`${key}_outline`, e.target.checked ? '1' : '0')}
+                  />
+                  Outline around the letters
+                </label>
+                {st.outline ? (
+                  <>
+                    <HeroColorField
+                      id={`hero-${idx}-${key}-outline-color`}
+                      label="Letter outline colour"
+                      value={row[`${key}_outline_color`] as string | undefined}
+                      placeholder="Background colour"
+                      onChange={(v) => setField(`${key}_outline_color`, v)}
+                      testIdPrefix={`hero-outline-color-${idx}-${key}`}
+                    />
+                    <SliderRow
+                      id={`hero-${idx}-${key}-outline-width`}
+                      label="Outline thickness"
+                      value={Number(row[`${key}_outline_width`] ?? 30)}
+                      onChange={(v) => setField(`${key}_outline_width`, v)}
+                      testId={`hero-outline-width-${idx}-${key}`}
+                    />
+                  </>
+                ) : null}
+                <label style={checkRowStyle}>
+                  <input
+                    type="checkbox"
+                    data-testid={`hero-border-${idx}-${key}`}
+                    checked={st.border}
+                    onChange={(e) => setField(`${key}_border`, e.target.checked ? '1' : '0')}
+                  />
+                  Border around the background box
+                </label>
+                {st.border ? (
+                  <>
+                    <HeroColorField
+                      id={`hero-${idx}-${key}-border-color`}
+                      label="Box border colour"
+                      value={row[`${key}_border_color`] as string | undefined}
+                      placeholder="Soft white"
+                      onChange={(v) => setField(`${key}_border_color`, v)}
+                      testIdPrefix={`hero-border-color-${idx}-${key}`}
+                    />
+                    <SliderRow
+                      id={`hero-${idx}-${key}-border-width`}
+                      label="Border thickness"
+                      value={Number(row[`${key}_border_width`] ?? 20)}
+                      onChange={(v) => setField(`${key}_border_width`, v)}
+                      testId={`hero-border-width-${idx}-${key}`}
+                    />
+                  </>
+                ) : null}
+                <p style={hintStyle}>
+                  These are separate on purpose — a background box can carry a letter
+                  outline too, each in its own colour.
+                </p>
+              </div>
+
+              {/* ── Shape & spacing ─────────────────────────────────────── */}
+              <div style={groupStyle}>
+                <span style={groupTitleStyle}>Box roundness &amp; padding</span>
+                <SliderRow
+                  id={`hero-${idx}-${key}-radius`}
+                  label="Corner roundness"
+                  value={Number(row[`${key}_bg_radius`] ?? 27)}
+                  onChange={(v) => setField(`${key}_bg_radius`, v)}
+                  testId={`hero-radius-${idx}-${key}`}
+                />
+                <SliderRow
+                  id={`hero-${idx}-${key}-pad-x`}
+                  label="Side padding"
+                  value={Number(row[`${key}_bg_pad_x`] ?? 20)}
+                  onChange={(v) => setField(`${key}_bg_pad_x`, v)}
+                  testId={`hero-pad-x-${idx}-${key}`}
+                />
+                <SliderRow
+                  id={`hero-${idx}-${key}-pad-y`}
+                  label="Top and bottom padding"
+                  value={Number(row[`${key}_bg_pad_y`] ?? 8)}
+                  onChange={(v) => setField(`${key}_bg_pad_y`, v)}
+                  testId={`hero-pad-y-${idx}-${key}`}
+                />
+              </div>
+
+              {/* ── Type ────────────────────────────────────────────────── */}
+              <div style={groupStyle}>
+                <span style={groupTitleStyle}>Size &amp; weight</span>
+                <SliderRow
+                  id={`hero-${idx}-${key}-font-scale`}
+                  label={`Size — ${Number(row[`${key}_font_scale`] ?? 100)}% of normal`}
+                  value={Number(row[`${key}_font_scale`] ?? 100)}
+                  min={50}
+                  max={200}
+                  onChange={(v) => setField(`${key}_font_scale`, v)}
+                  testId={`hero-font-scale-${idx}-${key}`}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                    Weight
+                  </span>
+                  <div role="radiogroup" aria-label="Font weight" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {([400, 600, 700, 800, 900] as const).map((w) => (
+                      <button
+                        key={w}
+                        type="button"
+                        role="radio"
+                        aria-checked={(st.font_weight ?? (key === 'title' ? 800 : 400)) === w}
+                        data-testid={`hero-font-weight-${idx}-${key}-${w}`}
+                        onClick={() => setField(`${key}_font_weight`, w)}
+                        style={{
+                          ...btnStyle,
+                          height: 36,
+                          fontWeight: w,
+                          background:
+                            (st.font_weight ?? (key === 'title' ? 800 : 400)) === w
+                              ? 'var(--color-warning-bg)'
+                              : 'var(--color-surface)',
+                          borderColor:
+                            (st.font_weight ?? (key === 'title' ? 800 : 400)) === w
+                              ? 'var(--color-primary)'
+                              : 'var(--color-border)',
+                        }}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
           ) : null}
           <div>
             <button

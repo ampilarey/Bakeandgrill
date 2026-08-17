@@ -47,7 +47,7 @@
                         style="object-position:{{ $focalX }}% {{ $focalY }}%;"
                     >
                 @endif
-                <div class="banner-overlay" data-text-position="{{ $heroTextPos }}">
+                <div class="banner-overlay" data-text-position="{{ $heroTextPos }}" data-text-align="{{ \App\Domains\Content\HeroSlides::resolveTextAlign($slide) }}">
                     @php
                         $eyebrow = trim((string) ($slide['eyebrow'] ?? ''));
                         $titleHtml = (string) ($slide['title'] ?? '');
@@ -62,6 +62,11 @@
                         $cta2Href = safe_public_url($cta2Raw !== '' ? normalize_public_menu_link($cta2Raw) : '/order/menu') ?? '#';
                         // Shrink-to-fit band for the heading (owner, 2026-08-16).
                         $titleBand = \App\Domains\Content\HeroSlides::headingLengthBand($titleHtml);
+                        // Colours, outlines, borders, geometry and type (2026-08-17).
+                        $titleStyle = \App\Domains\Content\HeroSlides::resolveElementStyle($slide, 'title');
+                        $subStyle = \App\Domains\Content\HeroSlides::resolveElementStyle($slide, 'subtitle');
+                        $titleVars = \App\Domains\Content\HeroSlides::elementStyleAttr($slide, 'title');
+                        $subVars = \App\Domains\Content\HeroSlides::elementStyleAttr($slide, 'subtitle');
                         $el = $heroPres['elements'] ?? [];
                         $eyebrowEl = $el['eyebrow'] ?? ['css' => null];
                         $titleEl = $el['title'] ?? ['css' => null, 'full_width' => false];
@@ -88,8 +93,12 @@
                                 data-has-bg="1"
                                 data-bg-shape="{{ $titleEl['shape'] }}"
                                 @if(($titleEl['token'] ?? '') === 'glass') data-bg-glass="1" @endif
-                                style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @endif
+                            {{-- Outline and border are independent of the shape, so a
+                                 box can carry a letter outline too. --}}
+                            @if(!empty($titleStyle['outline'])) data-outline="1" @endif
+                            @if(!empty($titleStyle['border'])) data-border="1" @endif
+                            @if($titleVars !== '') style="{{ $titleVars }}" @endif
                         >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line">{!! $titleLine !!}</span>@endforeach</h2>
                     @endif
                     @if($subtitle !== '')
@@ -99,8 +108,10 @@
                                 data-has-bg="1"
                                 data-bg-shape="{{ $subEl['shape'] }}"
                                 @if(($subEl['token'] ?? '') === 'glass') data-bg-glass="1" @endif
-                                style="--hero-el-bg: {{ $subEl['css'] }};"
                             @endif
+                            @if(!empty($subStyle['outline'])) data-outline="1" @endif
+                            @if(!empty($subStyle['border'])) data-border="1" @endif
+                            @if($subVars !== '') style="{{ $subVars }}" @endif
                         {{-- The inline span is what the per-line shape paints; a
                              block element can only ever draw one box. --}}
                         ><span class="hero-sub-line">{{ $subtitle }}</span></p>

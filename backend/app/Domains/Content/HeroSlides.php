@@ -189,6 +189,11 @@ final class HeroSlides
             $elements[$key] = self::resolveElementBackground($slide, $key);
         }
 
+        $styles = [];
+        foreach (self::STYLED_KEYS as $key) {
+            $styles[$key] = self::resolveElementStyle($slide, $key);
+        }
+
         // One background, not three. When the heading or subheading carries its
         // own panel, the copy scrim behind the whole stack is a second box
         // around the first — the "too large" look the owner reported
@@ -230,7 +235,244 @@ final class HeroSlides
             'panelled' => $panelled,
             'copy_scrim_mode' => $mode,
             'copy_scrim' => $copyScrim,
+            'styles' => $styles,
+            'text_align' => self::resolveTextAlign($slide),
         ];
+    }
+
+    /** Elements that carry the full text-style controls. */
+    public const STYLED_KEYS = ['title', 'subtitle'];
+
+    public const TEXT_ALIGNMENTS = ['left', 'center', 'right'];
+
+    /**
+     * Per-element text style — colours, outlines, borders, geometry and type.
+     *
+     * Owner, 2026-08-17, asking for the settings the hero was still missing:
+     *   "separate outline options for font and the background box also and
+     *    option to select outline colors … there is font outline options but
+     *    when background is selected cant add font outline and its color is
+     *    limited … can't select font color. Need to change normal font color
+     *    and <em> part font color … more color options for background."
+     *
+     * Two structural problems sat behind that list. The letter outline was a
+     * SHAPE, so choosing a box removed it — the two could never coexist. And
+     * every colour on the element was derived from the one background token, so
+     * the outline could not have a colour of its own and the text could not be
+     * coloured at all.
+     *
+     * Outline and border are now independent switches with their own colours,
+     * and the text has its own colours. Everything returns null when unset so
+     * the renderer leaves the stylesheet default alone, which is what keeps
+     * existing slides looking exactly as they do.
+     *
+     * @param  array<string, mixed>  $slide
+     * @return array{
+     *     text_color: ?string, em_color: ?string,
+     *     outline: bool, outline_color: ?string, outline_width: ?string,
+     *     border: bool, border_color: ?string, border_width: ?string,
+     *     bg_color2: ?string, bg_angle: int, radius: ?string, pad_x: ?string, pad_y: ?string,
+     *     font_scale: ?string, font_weight: ?int
+     * }
+     */
+    public static function resolveElementStyle(array $slide, string $key): array
+    {
+        $bg = self::resolveElementBackground($slide, $key);
+
+        // The outline used to be implied by the shape. Keep that reading when
+        // the owner has not said otherwise, so upgrading changes nothing.
+        $outlineRaw = $slide["{$key}_outline"] ?? null;
+        $outline = ($outlineRaw === null || $outlineRaw === '')
+            ? ($bg['shape'] === self::SHAPE_OUTLINE && $bg['css'] !== null && $bg['css'] !== 'transparent')
+            : self::truthyFlag($outlineRaw);
+
+        // …and it used to borrow the background's colour, for the same reason.
+        $outlineColor = self::cssColor($slide["{$key}_outline_color"] ?? null);
+        if ($outline && $outlineColor === null) {
+            $outlineColor = $bg['css'] !== 'transparent' ? $bg['css'] : null;
+        }
+
+        $border = self::truthyFlag($slide["{$key}_border"] ?? false);
+        $borderColor = self::cssColor($slide["{$key}_border_color"] ?? null);
+
+        return [
+            'text_color' => self::cssColor($slide["{$key}_text_color"] ?? null),
+            'em_color' => self::cssColor($slide["{$key}_em_color"] ?? null),
+            'outline' => $outline,
+            'outline_color' => $outlineColor,
+            'outline_width' => self::emStep($slide["{$key}_outline_width"] ?? null, 0.02, 0.005, 0.06),
+            'border' => $border,
+            'border_color' => $borderColor ?? 'rgba(255,255,255,0.28)',
+            'border_width' => self::pxStep($slide["{$key}_border_width"] ?? null, 1.5, 0.0, 8.0),
+            'bg_color2' => self::cssColor($slide["{$key}_bg_color2"] ?? null),
+            'bg_angle' => self::intInRange($slide["{$key}_bg_angle"] ?? null, 135, 0, 360),
+            'radius' => self::pxStep($slide["{$key}_bg_radius"] ?? null, null, 0.0, 40.0),
+            'pad_x' => self::emStep($slide["{$key}_bg_pad_x"] ?? null, null, 0.0, 2.0),
+            'pad_y' => self::emStep($slide["{$key}_bg_pad_y"] ?? null, null, 0.0, 1.5),
+            'font_scale' => self::ratio($slide["{$key}_font_scale"] ?? null, 50, 200),
+            'font_weight' => self::fontWeight($slide["{$key}_font_weight"] ?? null),
+        ];
+    }
+
+    /**
+     * The element's style as CSS custom properties.
+     *
+     * Everything unset is simply omitted, so the stylesheet's own value wins
+     * and a slide that has never been styled renders byte-for-byte as before.
+     * Lockstep with heroElementStyleVars() in heroSlidePresentation.ts.
+     *
+     * @param  array<string, mixed>  $slide
+     * @return array<string, string>
+     */
+    public static function elementStyleVars(array $slide, string $key): array
+    {
+        $bg = self::resolveElementBackground($slide, $key);
+        $st = self::resolveElementStyle($slide, $key);
+        $vars = [];
+
+        // A second colour turns the flat fill into a gradient.
+        if ($bg['css'] !== null && $bg['css'] !== 'transparent') {
+            $vars['--hero-el-bg'] = $st['bg_color2'] !== null
+                ? 'linear-gradient('.$st['bg_angle'].'deg, '.$bg['css'].', '.$st['bg_color2'].')'
+                : $bg['css'];
+        }
+
+        if ($st['text_color'] !== null) {
+            $vars['--hero-el-text'] = $st['text_color'];
+        }
+        if ($st['em_color'] !== null) {
+            $vars['--hero-el-em'] = $st['em_color'];
+        }
+        if ($st['outline'] && $st['outline_color'] !== null) {
+            $vars['--hero-el-outline'] = $st['outline_color'];
+            $vars['--hero-el-outline-w'] = $st['outline_width'];
+        }
+        if ($st['border']) {
+            $vars['--hero-el-border'] = $st['border_color'];
+            $vars['--hero-el-border-w'] = $st['border_width'];
+        }
+        foreach ([['radius', '--hero-el-radius'], ['pad_x', '--hero-el-pad-x'], ['pad_y', '--hero-el-pad-y'], ['font_scale', '--hero-el-scale']] as [$from, $to]) {
+            if ($st[$from] !== null) {
+                $vars[$to] = (string) $st[$from];
+            }
+        }
+        if ($st['font_weight'] !== null) {
+            $vars['--hero-el-weight'] = (string) $st['font_weight'];
+        }
+
+        return $vars;
+    }
+
+    /** The same properties as a ready-to-print inline style attribute value. */
+    public static function elementStyleAttr(array $slide, string $key): string
+    {
+        $out = [];
+        foreach (self::elementStyleVars($slide, $key) as $k => $v) {
+            $out[] = $k.': '.$v.';';
+        }
+
+        return implode(' ', $out);
+    }
+
+    /** Slide-level horizontal alignment for the whole copy stack. */
+    public static function resolveTextAlign(array $slide): string
+    {
+        $raw = strtolower(trim((string) ($slide['text_align'] ?? 'center')));
+
+        return in_array($raw, self::TEXT_ALIGNMENTS, true) ? $raw : 'center';
+    }
+
+    /**
+     * Accept #rgb, #rrggbb or an rgba() we produced ourselves; reject anything
+     * else so a stored value can never break out of the style attribute.
+     */
+    private static function cssColor(mixed $raw): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $v = trim((string) $raw);
+        if ($v === '') {
+            return null;
+        }
+        if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $v) === 1) {
+            return strtolower($v);
+        }
+        if (preg_match('/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)$/i', $v) === 1) {
+            return $v;
+        }
+
+        return null;
+    }
+
+    /** 0–100 slider → an em length, or the default when unset. */
+    private static function emStep(mixed $raw, ?float $default, float $min, float $max): ?string
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return $default === null ? null : self::trimFloat($default).'em';
+        }
+        $v = $min + (self::clamp100($n) / 100.0) * ($max - $min);
+
+        return self::trimFloat($v).'em';
+    }
+
+    /** 0–100 slider → a px length, or the default when unset. */
+    private static function pxStep(mixed $raw, ?float $default, float $min, float $max): ?string
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return $default === null ? null : self::trimFloat($default).'px';
+        }
+        $v = $min + (self::clamp100($n) / 100.0) * ($max - $min);
+
+        return self::trimFloat($v).'px';
+    }
+
+    /** Percentage stored 50–200 → a unitless CSS multiplier. */
+    private static function ratio(mixed $raw, float $min, float $max): ?string
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return null;
+        }
+
+        return self::trimFloat(max($min, min($max, $n)) / 100.0);
+    }
+
+    private static function fontWeight(mixed $raw): ?int
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return null;
+        }
+        $w = (int) round($n / 100.0) * 100;
+
+        return max(100, min(900, $w));
+    }
+
+    private static function intInRange(mixed $raw, int $default, int $min, int $max): int
+    {
+        $n = self::numberOrNull($raw);
+        if ($n === null) {
+            return $default;
+        }
+
+        return (int) max($min, min($max, round($n)));
+    }
+
+    private static function numberOrNull(mixed $raw): ?float
+    {
+        if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+            return null;
+        }
+
+        return (float) $raw;
+    }
+
+    private static function trimFloat(float $v): string
+    {
+        return rtrim(rtrim(number_format($v, 4, '.', ''), '0'), '.') ?: '0';
     }
 
     /** Background shapes for the heading and subheading. */

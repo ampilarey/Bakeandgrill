@@ -53,6 +53,10 @@ export type HeroSlidePresentation = {
   copy_scrim_mode: HeroCopyScrimMode;
   /** Resolved: whether that shade is actually painted. */
   copy_scrim: boolean;
+  /** Colours, outlines, borders, geometry and type for heading and subheading. */
+  styles: Record<HeroStyledKey, HeroElementStyle>;
+  /** Slide-level horizontal alignment for the copy stack. */
+  text_align: HeroTextAlign;
 };
 
 type SlideLike = {
@@ -254,6 +258,11 @@ export function resolveHeroSlidePresentation(
     panelled,
     copy_scrim_mode,
     copy_scrim,
+    styles: {
+      title: resolveHeroElementStyle(row as Record<string, unknown>, 'title'),
+      subtitle: resolveHeroElementStyle(row as Record<string, unknown>, 'subtitle'),
+    },
+    text_align: resolveHeroTextAlign(row as Record<string, unknown>),
   };
 }
 
@@ -403,4 +412,145 @@ export function headingLengthBand(html: string): '' | 'long' | 'xlong' {
   if (text.length > 46) return 'xlong';
   if (text.length > 26) return 'long';
   return '';
+}
+
+/** Elements that carry the full text-style controls. */
+export const HERO_STYLED_KEYS = ['title', 'subtitle'] as const;
+export type HeroStyledKey = (typeof HERO_STYLED_KEYS)[number];
+
+export type HeroTextAlign = 'left' | 'center' | 'right';
+
+export type HeroElementStyle = {
+  text_color: string | null;
+  em_color: string | null;
+  outline: boolean;
+  outline_color: string | null;
+  outline_width: string | null;
+  border: boolean;
+  border_color: string | null;
+  border_width: string | null;
+  bg_color2: string | null;
+  bg_angle: number;
+  radius: string | null;
+  pad_x: string | null;
+  pad_y: string | null;
+  font_scale: string | null;
+  font_weight: number | null;
+};
+
+/** Accept #rgb/#rrggbb or an rgba() we produced; reject anything else. */
+function cssColor(raw: unknown): string | null {
+  if (raw == null) return null;
+  const v = String(raw).trim();
+  if (v === '') return null;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return v.toLowerCase();
+  if (/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)$/i.test(v)) return v;
+  return null;
+}
+
+function numberOrNull(raw: unknown): number | null {
+  if (raw == null || raw === '' || Number.isNaN(Number(raw))) return null;
+  return Number(raw);
+}
+
+function trimFloat(v: number): string {
+  return String(Number(v.toFixed(4)));
+}
+
+function lengthStep(raw: unknown, def: number | null, min: number, max: number, unit: string): string | null {
+  const n = numberOrNull(raw);
+  if (n === null) return def === null ? null : `${trimFloat(def)}${unit}`;
+  return `${trimFloat(min + (clamp100(n) / 100) * (max - min))}${unit}`;
+}
+
+/**
+ * Per-element text style — lockstep with HeroSlides::resolveElementStyle().
+ *
+ * Owner, 2026-08-17: the letter outline used to be a SHAPE, so choosing a box
+ * removed it and the two could never coexist; and every colour came from the
+ * one background token, so the outline had no colour of its own and the text
+ * could not be coloured at all. Outline and border are now independent
+ * switches with their own colours. Unset values return null so the stylesheet
+ * default wins and existing slides are untouched.
+ */
+export function resolveHeroElementStyle(
+  slide: Record<string, unknown> | null | undefined,
+  key: HeroElementKey,
+): HeroElementStyle {
+  const row = (slide ?? {}) as Record<string, unknown>;
+  const bg = resolveElementBackground(row as SlideLike, key);
+
+  const outlineRaw = row[`${key}_outline`];
+  const outline = outlineRaw == null || outlineRaw === ''
+    ? bg.shape === 'outline' && bg.css !== null && bg.css !== 'transparent'
+    : truthyFlag(outlineRaw);
+
+  let outlineColor = cssColor(row[`${key}_outline_color`]);
+  if (outline && outlineColor === null) {
+    outlineColor = bg.css !== 'transparent' ? bg.css : null;
+  }
+
+  const scaleRaw = numberOrNull(row[`${key}_font_scale`]);
+  const weightRaw = numberOrNull(row[`${key}_font_weight`]);
+  const angleRaw = numberOrNull(row[`${key}_bg_angle`]);
+
+  return {
+    text_color: cssColor(row[`${key}_text_color`]),
+    em_color: cssColor(row[`${key}_em_color`]),
+    outline,
+    outline_color: outlineColor,
+    outline_width: lengthStep(row[`${key}_outline_width`], 0.02, 0.005, 0.06, 'em'),
+    border: truthyFlag(row[`${key}_border`]),
+    border_color: cssColor(row[`${key}_border_color`]) ?? 'rgba(255,255,255,0.28)',
+    border_width: lengthStep(row[`${key}_border_width`], 1.5, 0, 8, 'px'),
+    bg_color2: cssColor(row[`${key}_bg_color2`]),
+    bg_angle: angleRaw === null ? 135 : Math.max(0, Math.min(360, Math.round(angleRaw))),
+    radius: lengthStep(row[`${key}_bg_radius`], null, 0, 40, 'px'),
+    pad_x: lengthStep(row[`${key}_bg_pad_x`], null, 0, 2, 'em'),
+    pad_y: lengthStep(row[`${key}_bg_pad_y`], null, 0, 1.5, 'em'),
+    font_scale: scaleRaw === null ? null : trimFloat(Math.max(50, Math.min(200, scaleRaw)) / 100),
+    font_weight: weightRaw === null ? null : Math.max(100, Math.min(900, Math.round(weightRaw / 100) * 100)),
+  };
+}
+
+/**
+ * The element's style as CSS custom properties. Everything unset is omitted so
+ * the stylesheet's own value wins. Lockstep with HeroSlides::elementStyleVars().
+ */
+export function heroElementStyleVars(
+  slide: Record<string, unknown> | null | undefined,
+  key: HeroElementKey,
+): Record<string, string> {
+  const row = (slide ?? {}) as Record<string, unknown>;
+  const bg = resolveElementBackground(row as SlideLike, key);
+  const st = resolveHeroElementStyle(row, key);
+  const vars: Record<string, string> = {};
+
+  if (bg.css !== null && bg.css !== 'transparent') {
+    vars['--hero-el-bg'] = st.bg_color2
+      ? `linear-gradient(${st.bg_angle}deg, ${bg.css}, ${st.bg_color2})`
+      : bg.css;
+  }
+  if (st.text_color) vars['--hero-el-text'] = st.text_color;
+  if (st.em_color) vars['--hero-el-em'] = st.em_color;
+  if (st.outline && st.outline_color) {
+    vars['--hero-el-outline'] = st.outline_color;
+    if (st.outline_width) vars['--hero-el-outline-w'] = st.outline_width;
+  }
+  if (st.border) {
+    if (st.border_color) vars['--hero-el-border'] = st.border_color;
+    if (st.border_width) vars['--hero-el-border-w'] = st.border_width;
+  }
+  if (st.radius) vars['--hero-el-radius'] = st.radius;
+  if (st.pad_x) vars['--hero-el-pad-x'] = st.pad_x;
+  if (st.pad_y) vars['--hero-el-pad-y'] = st.pad_y;
+  if (st.font_scale) vars['--hero-el-scale'] = st.font_scale;
+  if (st.font_weight) vars['--hero-el-weight'] = String(st.font_weight);
+
+  return vars;
+}
+
+export function resolveHeroTextAlign(slide: Record<string, unknown> | null | undefined): HeroTextAlign {
+  const raw = String((slide ?? {})['text_align'] ?? 'center').trim().toLowerCase();
+  return raw === 'left' || raw === 'right' ? raw : 'center';
 }

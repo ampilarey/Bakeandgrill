@@ -152,37 +152,25 @@
 .banner-title {
     /* Shrink to fit rather than wrap to four lines and burst out of the
        banner. Owner chose "words shrink" over "banner grows", 2026-08-16. */
-    font-size: clamp(1.15rem, 6.4vw, 1.7rem);
-    font-weight: 800;
+    --hero-title-base: clamp(1.15rem, 6.4vw, 1.7rem);
+    font-size: calc(var(--hero-title-base) * var(--hero-el-scale, 1));
+    font-weight: var(--hero-el-weight, 800);
     letter-spacing: -0.04em;
     line-height: 1.12;
-    color: #fff;
+    color: var(--hero-el-text, #fff);
     margin: 0 0 0.5rem;
     text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
 /* Long headings step down again — length is what drives the wrap. */
-.banner-title[data-len="long"]  { font-size: clamp(1.05rem, 5.4vw, 1.5rem); }
-.banner-title[data-len="xlong"] { font-size: clamp(0.95rem, 4.6vw, 1.3rem); letter-spacing: -0.03em; }
+.banner-title[data-len="long"]  { --hero-title-base: clamp(1.05rem, 5.4vw, 1.5rem); }
+.banner-title[data-len="xlong"] { --hero-title-base: clamp(0.95rem, 4.6vw, 1.3rem); letter-spacing: -0.03em; }
 .banner-title em { font-style: normal; color: #F0A96A; }
 /*
  * §7.2 non-bar title/subtitle contrast: letter outline + soft halo from
  * --hero-el-bg (no per-line background boxes — those fought line layout).
  */
-.banner-title[data-bg-shape="outline"],
-.banner-sub[data-bg-shape="outline"] {
-    -webkit-text-stroke: 0.02em var(--hero-el-bg);
-    paint-order: stroke fill;
-    text-shadow:
-        -0.035em -0.035em 0 var(--hero-el-bg),
-         0.035em -0.035em 0 var(--hero-el-bg),
-        -0.035em  0.035em 0 var(--hero-el-bg),
-         0.035em  0.035em 0 var(--hero-el-bg),
-        -0.035em 0 0 var(--hero-el-bg),
-         0.035em 0 0 var(--hero-el-bg),
-         0 -0.035em 0 var(--hero-el-bg),
-         0  0.035em 0 var(--hero-el-bg),
-         0 0.08em 0.28em rgba(0, 0, 0, 0.55);
-}
+/* (the letter outline now lives on data-outline — independent of the shape,
+   so a box can carry one too. See the hero text styling block below.) */
 /* One box hugging the whole text — what glass has always drawn, now available
    in any colour and named as a shape. */
 .banner-title[data-bg-shape="hug"],
@@ -215,10 +203,12 @@
     background: none;
     text-shadow: none;
     -webkit-text-stroke: 0;
-    /* Padded inline boxes do not grow the line box. At 1.5 the boxes touch
-       edge to edge and read as one shape again — the very thing this shape
-       exists to avoid — so leave a visible gap between them. */
-    line-height: 1.75;
+    /* Padded inline boxes do not grow the line box, so the spacing has to be
+       made from the box's own parts or the boxes touch and read as one shape
+       again — the very thing this shape exists to avoid. Deriving it from the
+       padding and border keeps a gap at any setting; a fixed 1.75 lost it the
+       moment a border was switched on. */
+    line-height: calc(1.35em + 2 * var(--hero-el-pad-y, 0.12em) + 2 * var(--hero-el-border-w, 0px));
 }
 .banner-title[data-bg-shape="line"] .hero-title-line,
 .banner-sub[data-bg-shape="line"] .hero-sub-line {
@@ -260,6 +250,75 @@
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.5);
 }
+/* ── Hero text styling (owner, 2026-08-17) ──────────────────────────────────
+ * Colours, outlines, borders, geometry and type, all driven by --hero-el-*
+ * custom properties the renderer only emits when the owner has set them. Every
+ * rule below falls back to the value the stylesheet already used, so a slide
+ * that has never been styled renders exactly as it did before.
+ *
+ * The letter outline used to be a SHAPE, which meant choosing a box removed it.
+ * data-outline and data-border are now independent of data-bg-shape, so a box
+ * can carry an outline and each has its own colour.
+ */
+.banner-title[data-outline="1"],
+.banner-sub[data-outline="1"] {
+    -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28,20,8,0.7));
+    paint-order: stroke fill;
+    text-shadow:
+        calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+        calc( 1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+        calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc( 1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+        calc( 1.75 * var(--hero-el-outline-w, 0.02em)) calc( 1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+        0 0.08em 0.28em rgba(0, 0, 0, 0.55);
+}
+/* A box shape clears the stylesheet's own stroke; re-assert the owner's. */
+.banner-title[data-bg-shape="hug"][data-outline="1"],
+.banner-sub[data-bg-shape="hug"][data-outline="1"],
+.banner-title[data-bg-shape="full"][data-outline="1"],
+.banner-sub[data-bg-shape="full"][data-outline="1"],
+.banner-title[data-bg-shape="line"][data-outline="1"] .hero-title-line,
+.banner-sub[data-bg-shape="line"][data-outline="1"] .hero-sub-line {
+    -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28,20,8,0.7));
+    paint-order: stroke fill;
+}
+/* Border on the box itself — separate colour from the letter outline. */
+.banner-title[data-border="1"][data-bg-shape="hug"],
+.banner-sub[data-border="1"][data-bg-shape="hug"],
+.banner-title[data-border="1"][data-bg-shape="full"],
+.banner-sub[data-border="1"][data-bg-shape="full"],
+.banner-title[data-border="1"][data-bg-shape="line"] .hero-title-line,
+.banner-sub[data-border="1"][data-bg-shape="line"] .hero-sub-line {
+    border: var(--hero-el-border-w, 1.5px) solid var(--hero-el-border, rgba(255,255,255,0.28));
+}
+/* Text colour, and a separate colour for the <em> part. */
+.banner-title em,
+.banner-sub em {
+    color: var(--hero-el-em, inherit);
+    font-style: inherit;
+}
+/* Box geometry — roundness and padding. */
+.banner-title[data-bg-shape="hug"],
+.banner-sub[data-bg-shape="hug"],
+.banner-title[data-bg-shape="full"],
+.banner-sub[data-bg-shape="full"] {
+    border-radius: var(--hero-el-radius, 11px);
+    padding: var(--hero-el-pad-y, 0.4em) var(--hero-el-pad-x, 0.75em);
+}
+.banner-title[data-bg-shape="line"] .hero-title-line,
+.banner-sub[data-bg-shape="line"] .hero-sub-line {
+    border-radius: var(--hero-el-radius, 10px);
+    padding: var(--hero-el-pad-y, 0.12em) var(--hero-el-pad-x, 0.4em);
+}
+/* Slide-level horizontal alignment for the whole copy stack. */
+.banner-overlay[data-text-align="left"] { align-items: flex-start; text-align: left; }
+.banner-overlay[data-text-align="right"] { align-items: flex-end; text-align: right; }
+.banner-overlay[data-text-align="left"] .banner-copy { align-items: flex-start; }
+.banner-overlay[data-text-align="right"] .banner-copy { align-items: flex-end; }
+.banner-overlay[data-text-align="left"] .banner-title[data-bg-shape="hug"],
+.banner-overlay[data-text-align="left"] .banner-sub[data-bg-shape="hug"] { margin-left: 0; margin-right: auto; }
+.banner-overlay[data-text-align="right"] .banner-title[data-bg-shape="hug"],
+.banner-overlay[data-text-align="right"] .banner-sub[data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
+
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
 .banner-title[data-bg-shape="full"],
 .banner-sub[data-bg-shape="full"] {
@@ -280,10 +339,11 @@
     background: var(--hero-el-bg);
 }
 .banner-sub {
-    font-size: clamp(0.72rem, 3.2vw, 0.8rem);
-    color: rgba(255, 255, 255, 0.78);
+    --hero-sub-base: clamp(0.72rem, 3.2vw, 0.8rem);
+    font-size: calc(var(--hero-sub-base) * var(--hero-el-scale, 1));
+    color: var(--hero-el-text, rgba(255, 255, 255, 0.78));
     margin: 0 0 1.25rem;
-    font-weight: 400;
+    font-weight: var(--hero-el-weight, 400);
     line-height: 1.55;
 }
 .banner-ctas {
@@ -491,7 +551,7 @@
         animation: banner-fade-up 0.7s ease both;
     }
     .banner-title {
-        font-size: clamp(2.55rem, 3.8vw, 3.65rem);
+        --hero-title-base: clamp(2.55rem, 3.8vw, 3.65rem);
         max-width: 100%;
         margin-left: auto;
         margin-right: auto;
@@ -499,19 +559,19 @@
         animation: banner-fade-up 0.75s ease 0.06s both;
     }
     /* Long headings step down on desktop too — same bands as the phone. */
-    .banner-title[data-len="long"]  { font-size: clamp(2.1rem, 3.1vw, 3rem); }
-    .banner-title[data-len="xlong"] { font-size: clamp(1.75rem, 2.6vw, 2.5rem); }
+    .banner-title[data-len="long"]  { --hero-title-base: clamp(2.1rem, 3.1vw, 3rem); }
+    .banner-title[data-len="xlong"] { --hero-title-base: clamp(1.75rem, 2.6vw, 2.5rem); }
     /* Each CMS <br> segment stays one line on desktop (mobile may still soft-wrap). */
     .banner-title .hero-title-line {
         white-space: nowrap;
     }
     .banner-sub {
-        font-size: 1.15rem;
+        --hero-sub-base: 1.15rem;
         max-width: 560px;
         margin-left: auto;
         margin-right: auto;
         margin-bottom: 2rem;
-        color: rgba(255, 248, 240, 0.82);
+        color: var(--hero-el-text, rgba(255, 248, 240, 0.82));
         animation: banner-fade-up 0.8s ease 0.12s both;
     }
     .banner-ctas {

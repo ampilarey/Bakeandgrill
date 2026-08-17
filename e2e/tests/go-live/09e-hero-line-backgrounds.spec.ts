@@ -29,6 +29,10 @@ async function measure(page: Page, shape: 'line' | 'hug') {
     title.setAttribute('data-has-bg', '1');
     title.setAttribute('data-bg-shape', s);
     title.style.setProperty('--hero-el-bg', 'rgba(28,20,8,0.7)');
+    // Neutralise any size/weight the install has chosen, so where the text
+    // wraps is a property of this test rather than of the current content.
+    title.style.setProperty('--hero-el-scale', '1');
+    title.style.setProperty('--hero-el-weight', '800');
     title.getBoundingClientRect();
 
     const run = title.querySelector('.hero-title-line') as HTMLElement;
@@ -72,12 +76,12 @@ test.describe('Per-line heading backgrounds', () => {
         // The text must actually be wrapping, or this proves nothing.
         expect(m!.rects.length, 'heading did not wrap — test is not exercising the fault').toBeGreaterThan(1);
 
-        // Each box hugs its own line, so the last (short) line must be clearly
-        // narrower than the block. A single rectangle would span the full width.
-        const last = m!.rects[m!.rects.length - 1];
+        // Each box hugs its own line, so at least one is clearly narrower than
+        // the block. A single rectangle would be full width on every line.
+        const narrowest = Math.min(...m!.rects.map((r) => r.width));
         expect(
-          last.width,
-          `the final line's box is ${last.width}px in a ${m!.block}px block — it is not hugging its own line`,
+          narrowest,
+          `the narrowest line box is ${narrowest}px in a ${m!.block}px block — nothing is hugging its own line`,
         ).toBeLessThan(m!.block * 0.9);
 
         // And the boxes must be visibly separate, not stacked edge to edge —

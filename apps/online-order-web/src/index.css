@@ -404,17 +404,18 @@ img.brand-logo--dark { display: none; }
 .home-promo-hero__title {
   /* Shrink to fit rather than wrap to four lines and burst out of the banner.
      Owner chose "words shrink" over "banner grows", 2026-08-16. */
-  font-size: clamp(1.15rem, 6.4vw, 1.7rem);
-  font-weight: 800;
-  color: #fff;
+  --hero-title-base: clamp(1.15rem, 6.4vw, 1.7rem);
+  font-size: calc(var(--hero-title-base) * var(--hero-el-scale, 1));
+  font-weight: var(--hero-el-weight, 800);
+  color: var(--hero-el-text, #fff);
   margin: 0 0 0.5rem;
   line-height: 1.12;
   letter-spacing: -0.04em;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
 }
 /* Long headings step down again — length is what drives the wrap. */
-.home-promo-hero__title[data-len="long"]  { font-size: clamp(1.05rem, 5.4vw, 1.5rem); }
-.home-promo-hero__title[data-len="xlong"] { font-size: clamp(0.95rem, 4.6vw, 1.3rem); letter-spacing: -0.03em; }
+.home-promo-hero__title[data-len="long"]  { --hero-title-base: clamp(1.05rem, 5.4vw, 1.5rem); }
+.home-promo-hero__title[data-len="xlong"] { --hero-title-base: clamp(0.95rem, 4.6vw, 1.3rem); letter-spacing: -0.03em; }
 .home-promo-hero__title em {
   font-style: normal;
   color: #f0a96a;
@@ -423,21 +424,8 @@ img.brand-logo--dark { display: none; }
  * §7.2 non-bar title/subtitle contrast: letter outline + soft halo
  * (no per-line background boxes).
  */
-.home-promo-hero__title[data-bg-shape="outline"],
-.home-promo-hero__sub[data-bg-shape="outline"] {
-  -webkit-text-stroke: 0.02em var(--hero-el-bg);
-  paint-order: stroke fill;
-  text-shadow:
-    -0.035em -0.035em 0 var(--hero-el-bg),
-     0.035em -0.035em 0 var(--hero-el-bg),
-    -0.035em  0.035em 0 var(--hero-el-bg),
-     0.035em  0.035em 0 var(--hero-el-bg),
-    -0.035em 0 0 var(--hero-el-bg),
-     0.035em 0 0 var(--hero-el-bg),
-     0 -0.035em 0 var(--hero-el-bg),
-     0  0.035em 0 var(--hero-el-bg),
-     0 0.08em 0.28em rgba(0, 0, 0, 0.55);
-}
+/* (the letter outline now lives on data-outline — independent of the shape,
+   so a box can carry one too. See the hero text styling block below.) */
 /* One box hugging the whole text — what glass has always drawn, now available
    in any colour and named as a shape. */
 .home-promo-hero__title[data-bg-shape="hug"],
@@ -470,10 +458,12 @@ img.brand-logo--dark { display: none; }
   background: none;
   text-shadow: none;
   -webkit-text-stroke: 0;
-  /* Padded inline boxes do not grow the line box. At 1.5 the boxes touch
-     edge to edge and read as one shape again — the very thing this shape
-     exists to avoid — so leave a visible gap between them. */
-  line-height: 1.75;
+  /* Padded inline boxes do not grow the line box, so the spacing has to be
+     made from the box's own parts or the boxes touch and read as one shape
+     again — the very thing this shape exists to avoid. Deriving it from the
+     padding and border keeps a gap at any setting; a fixed 1.75 lost it the
+     moment a border was switched on. */
+  line-height: calc(1.35em + 2 * var(--hero-el-pad-y, 0.12em) + 2 * var(--hero-el-border-w, 0px));
 }
 .home-promo-hero__title[data-bg-shape="line"] .hero-title-line,
 .home-promo-hero__sub[data-bg-shape="line"] .hero-sub-line {
@@ -515,6 +505,65 @@ img.brand-logo--dark { display: none; }
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
 }
+/* ── Hero text styling (owner, 2026-08-17) ──────────────────────────────────
+ * Lockstep with the website Blade. Colours, outlines, borders, geometry and
+ * type, driven by --hero-el-* properties the renderer only emits when set, so
+ * an unstyled slide renders exactly as before.
+ */
+.home-promo-hero__title[data-outline="1"],
+.home-promo-hero__sub[data-outline="1"] {
+  -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28,20,8,0.7));
+  paint-order: stroke fill;
+  text-shadow:
+    calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+    calc( 1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+    calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc( 1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+    calc( 1.75 * var(--hero-el-outline-w, 0.02em)) calc( 1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28,20,8,0.7)),
+    0 0.08em 0.28em rgba(0, 0, 0, 0.55);
+}
+.home-promo-hero__title[data-bg-shape="hug"][data-outline="1"],
+.home-promo-hero__sub[data-bg-shape="hug"][data-outline="1"],
+.home-promo-hero__title[data-bg-shape="full"][data-outline="1"],
+.home-promo-hero__sub[data-bg-shape="full"][data-outline="1"],
+.home-promo-hero__title[data-bg-shape="line"][data-outline="1"] .hero-title-line,
+.home-promo-hero__sub[data-bg-shape="line"][data-outline="1"] .hero-sub-line {
+  -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28,20,8,0.7));
+  paint-order: stroke fill;
+}
+.home-promo-hero__title[data-border="1"][data-bg-shape="hug"],
+.home-promo-hero__sub[data-border="1"][data-bg-shape="hug"],
+.home-promo-hero__title[data-border="1"][data-bg-shape="full"],
+.home-promo-hero__sub[data-border="1"][data-bg-shape="full"],
+.home-promo-hero__title[data-border="1"][data-bg-shape="line"] .hero-title-line,
+.home-promo-hero__sub[data-border="1"][data-bg-shape="line"] .hero-sub-line {
+  border: var(--hero-el-border-w, 1.5px) solid var(--hero-el-border, rgba(255,255,255,0.28));
+}
+.home-promo-hero__title em,
+.home-promo-hero__sub em {
+  color: var(--hero-el-em, inherit);
+  font-style: inherit;
+}
+.home-promo-hero__title[data-bg-shape="hug"],
+.home-promo-hero__sub[data-bg-shape="hug"],
+.home-promo-hero__title[data-bg-shape="full"],
+.home-promo-hero__sub[data-bg-shape="full"] {
+  border-radius: var(--hero-el-radius, 11px);
+  padding: var(--hero-el-pad-y, 0.4em) var(--hero-el-pad-x, 0.75em);
+}
+.home-promo-hero__title[data-bg-shape="line"] .hero-title-line,
+.home-promo-hero__sub[data-bg-shape="line"] .hero-sub-line {
+  border-radius: var(--hero-el-radius, 10px);
+  padding: var(--hero-el-pad-y, 0.12em) var(--hero-el-pad-x, 0.4em);
+}
+.home-promo-hero__overlay[data-text-align="left"] { align-items: flex-start; text-align: left; }
+.home-promo-hero__overlay[data-text-align="right"] { align-items: flex-end; text-align: right; }
+.home-promo-hero__overlay[data-text-align="left"] .home-promo-hero__copy { align-items: flex-start; }
+.home-promo-hero__overlay[data-text-align="right"] .home-promo-hero__copy { align-items: flex-end; }
+.home-promo-hero__overlay[data-text-align="left"] .home-promo-hero__title[data-bg-shape="hug"],
+.home-promo-hero__overlay[data-text-align="left"] .home-promo-hero__sub[data-bg-shape="hug"] { margin-left: 0; margin-right: auto; }
+.home-promo-hero__overlay[data-text-align="right"] .home-promo-hero__title[data-bg-shape="hug"],
+.home-promo-hero__overlay[data-text-align="right"] .home-promo-hero__sub[data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
+
 .home-promo-hero__title[data-bg-shape="full"],
 .home-promo-hero__sub[data-bg-shape="full"] {
   display: block;
@@ -534,8 +583,10 @@ img.brand-logo--dark { display: none; }
   background: var(--hero-el-bg);
 }
 .home-promo-hero__sub {
-  font-size: clamp(0.72rem, 3.2vw, 0.8rem);
-  color: rgba(255, 255, 255, 0.78);
+  --hero-sub-base: clamp(0.72rem, 3.2vw, 0.8rem);
+  font-size: calc(var(--hero-sub-base) * var(--hero-el-scale, 1));
+  color: var(--hero-el-text, rgba(255, 255, 255, 0.78));
+  font-weight: var(--hero-el-weight, inherit);
   margin: 0 0 1.25rem;
   line-height: 1.55;
 }
@@ -693,25 +744,25 @@ img.brand-logo--dark { display: none; }
     margin-bottom: 1.35rem;
   }
   .home-promo-hero__title {
-    font-size: clamp(2.55rem, 3.8vw, 3.65rem);
+    --hero-title-base: clamp(2.55rem, 3.8vw, 3.65rem);
     max-width: 100%;
     margin-left: auto;
     margin-right: auto;
     margin-bottom: 1rem;
   }
   /* Long headings step down on desktop too — same bands as the phone. */
-  .home-promo-hero__title[data-len="long"]  { font-size: clamp(2.1rem, 3.1vw, 3rem); }
-  .home-promo-hero__title[data-len="xlong"] { font-size: clamp(1.75rem, 2.6vw, 2.5rem); }
+  .home-promo-hero__title[data-len="long"]  { --hero-title-base: clamp(2.1rem, 3.1vw, 3rem); }
+  .home-promo-hero__title[data-len="xlong"] { --hero-title-base: clamp(1.75rem, 2.6vw, 2.5rem); }
   .home-promo-hero__title .hero-title-line {
     white-space: nowrap;
   }
   .home-promo-hero__sub {
-    font-size: 1.15rem;
+    --hero-sub-base: 1.15rem;
     max-width: 560px;
     margin-left: auto;
     margin-right: auto;
     margin-bottom: 2rem;
-    color: rgba(255, 248, 240, 0.82);
+    color: var(--hero-el-text, rgba(255, 248, 240, 0.82));
   }
   .home-promo-hero__ctas {
     flex-direction: column;

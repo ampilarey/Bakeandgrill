@@ -6,7 +6,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { safePublicUrl } from '../../utils/safePublicUrl';
 import {
   headingLengthBand,
+  heroElementStyleVars,
   resolveHeroSlidePresentation,
+  type HeroElementStyle,
   splitHeroRichTextLines,
   type HeroElementBackground,
 } from '../../utils/heroSlidePresentation';
@@ -59,12 +61,16 @@ function HeroTextBlock({
   className,
   html,
   el,
+  style,
+  styleVars,
   testId,
 }: {
   as: 'h2' | 'p';
   className: string;
   html: string;
   el: HeroElementBackground;
+  style?: HeroElementStyle;
+  styleVars?: Record<string, string>;
   testId?: string;
 }) {
   const clean = sanitizeHeroHtml(html);
@@ -76,13 +82,21 @@ function HeroTextBlock({
     'data-bg-glass'?: '1';
     'data-bg-shape'?: string;
     'data-has-bg'?: '1';
+    'data-outline'?: '1';
+    'data-border'?: '1';
     style?: CSSProperties;
   } = {};
   if (el.css) {
     contrastProps['data-has-bg'] = '1';
     contrastProps['data-bg-shape'] = el.shape;
     if (el.token === 'glass') contrastProps['data-bg-glass'] = '1';
-    contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
+  }
+  // Outline and border are independent of the shape, so a box can carry a
+  // letter outline too — the thing that was impossible before 2026-08-17.
+  if (style?.outline) contrastProps['data-outline'] = '1';
+  if (style?.border) contrastProps['data-border'] = '1';
+  if (styleVars && Object.keys(styleVars).length > 0) {
+    contrastProps.style = styleVars as CSSProperties;
   }
 
   if (isTitle) {
@@ -365,6 +379,7 @@ export function PromoCarousel({
               <div
                 className="home-promo-hero__overlay"
                 data-text-position={presentation.text_position}
+                data-text-align={presentation.text_align}
                 data-testid={`hero-overlay-${i}`}
               >
                 <div
@@ -382,6 +397,8 @@ export function PromoCarousel({
                     className="home-promo-hero__title"
                     html={slide.title}
                     el={presentation.elements.title}
+                    style={presentation.styles.title}
+                    styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'title')}
                     testId={`hero-title-${i}`}
                   />
                 ) : null}
@@ -391,6 +408,8 @@ export function PromoCarousel({
                     className="home-promo-hero__sub"
                     html={slide.subtitle}
                     el={presentation.elements.subtitle}
+                    style={presentation.styles.subtitle}
+                    styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'subtitle')}
                     testId={`hero-sub-${i}`}
                   />
                 ) : null}

@@ -435,6 +435,45 @@ export function HeroSlidesEditor({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            Text alignment
+          </span>
+          <div
+            role="radiogroup"
+            aria-label="Text alignment"
+            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+          >
+            {([
+              ['left', 'Left'],
+              ['center', 'Centre'],
+              ['right', 'Right'],
+            ] as const).map(([value, label]) => {
+              const current = String((slide as Record<string, unknown>).text_align ?? 'center');
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={current === value}
+                  data-testid={`hero-text-align-${idx}-${value}`}
+                  onClick={() => applyPresentation(idx, { text_align: value } as unknown as HeroPresentationPatch)}
+                  style={{
+                    ...btnStyle,
+                    fontWeight: current === value ? 700 : 600,
+                    background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                    borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Left or right reads better on a phone when the heading is long.
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
             Text position
           </span>
           <div
