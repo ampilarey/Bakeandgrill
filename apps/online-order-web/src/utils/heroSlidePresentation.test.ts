@@ -157,4 +157,19 @@ describe('heading fit', () => {
     expect(resolveHeroSlidePresentation({ eyebrow_bg: 'glass' }).panelled).toBe(false);
     expect(resolveHeroSlidePresentation({ cta1_bg: 'glass' }).panelled).toBe(false);
   });
+
+  it('lets the owner override the automatic rule in both directions', () => {
+    // Default stays the behaviour the owner first approved.
+    expect(resolveHeroSlidePresentation({}).copy_scrim_mode).toBe('auto');
+    expect(resolveHeroSlidePresentation({ title_bg: 'glass' }).copy_scrim).toBe(false);
+
+    // "Always" must beat the automatic rule, not merely lose to it.
+    expect(resolveHeroSlidePresentation({ title_bg: 'glass', copy_scrim_mode: 'always' }).copy_scrim).toBe(true);
+    // "Off" removes it even with no panel in play.
+    expect(resolveHeroSlidePresentation({ text_background: 100, copy_scrim_mode: 'off' }).copy_scrim).toBe(false);
+
+    // Messy stored values fall back rather than breaking the slide.
+    expect(resolveHeroSlidePresentation({ copy_scrim_mode: '  Always ' }).copy_scrim_mode).toBe('always');
+    expect(resolveHeroSlidePresentation({ copy_scrim_mode: 'nonsense' }).copy_scrim_mode).toBe('auto');
+  });
 });

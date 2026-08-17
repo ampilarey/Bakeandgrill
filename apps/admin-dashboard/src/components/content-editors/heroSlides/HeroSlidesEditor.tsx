@@ -355,7 +355,11 @@ export function HeroSlidesEditor({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
             htmlFor={`hero-${idx}-text-background`}
-            style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: presentation.copy_scrim ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
+            }}
           >
             Text background — {presentation.text_background}%
           </label>
@@ -366,11 +370,67 @@ export function HeroSlidesEditor({
             max={100}
             value={presentation.text_background}
             onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
-            style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+            style={{
+              width: '100%',
+              maxWidth: 320,
+              accentColor: 'var(--color-primary)',
+              // Not disabled — the value is still yours to set, it just is not
+              // being painted right now. Greying it out says so without
+              // throwing away the setting.
+              opacity: presentation.copy_scrim ? 1 : 0.45,
+            }}
             aria-label="Text background"
           />
+          <p
+            data-testid={`hero-text-background-note-${idx}`}
+            style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}
+          >
+            {presentation.copy_scrim
+              ? 'Dark panel behind the words only — the photo stays untouched.'
+              : presentation.copy_scrim_mode === 'off'
+                ? 'Not shown — the shade below is set to Off.'
+                : 'Not shown — your heading or subheading has its own background, so this would draw a box inside a box. Set the shade below to Always to force it back.'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            Shade behind all the text
+          </span>
+          <div
+            role="radiogroup"
+            aria-label="Shade behind all the text"
+            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+          >
+            {([
+              ['auto', 'Auto'],
+              ['always', 'Always'],
+              ['off', 'Off'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={presentation.copy_scrim_mode === value}
+                data-testid={`hero-copy-scrim-${idx}-${value}`}
+                onClick={() => applyPresentation(idx, { copy_scrim_mode: value })}
+                style={{
+                  ...btnStyle,
+                  fontWeight: presentation.copy_scrim_mode === value ? 700 : 600,
+                  background: presentation.copy_scrim_mode === value
+                    ? 'var(--color-warning-bg)'
+                    : 'var(--color-surface)',
+                  borderColor: presentation.copy_scrim_mode === value
+                    ? 'var(--color-primary)'
+                    : 'var(--color-border)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Dark panel behind the words only — the photo stays untouched.
+            Auto hides the shade when your heading or subheading already has its own
+            background, so you never get a box inside a box.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

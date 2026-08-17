@@ -375,7 +375,7 @@ export function PromoCarousel({
               >
                 <div
                   className="home-promo-hero__copy"
-                  {...(presentation.panelled ? { 'data-panelled': '1' as const } : {})}
+                  {...(presentation.copy_scrim ? {} : { 'data-copy-scrim': 'off' as const })}
                 >
                 {eyebrow ? (
                   <span className="home-promo-hero__eyebrow" {...elementBgProps(presentation.elements.eyebrow)}>

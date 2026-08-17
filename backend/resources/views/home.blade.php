@@ -122,11 +122,12 @@
     );
 }
 /*
- * One background, not three. When the heading or subheading carries its own
- * panel, this gradient was a second box drawn around the first — the "too
- * large" look. Owner's choice, 2026-08-16: the gradient steps back.
+ * One background, not three. Driven by the "Shade behind all the text" control
+ * in Website Content → Hero (auto / always / off). On auto the shade steps
+ * back when the heading or subheading has its own panel, which would otherwise
+ * draw a second box around the first — the "too large" look.
  */
-.banner-copy[data-panelled="1"] {
+.banner-copy[data-copy-scrim="off"] {
     background: none;
     padding: 0;
     border-radius: 0;

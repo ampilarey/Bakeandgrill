@@ -192,7 +192,7 @@ final class HeroSlides
         // One background, not three. When the heading or subheading carries its
         // own panel, the copy scrim behind the whole stack is a second box
         // around the first — the "too large" look the owner reported
-        // (2026-08-16). The renderer drops the scrim when this is true.
+        // (2026-08-16).
         $panelled = false;
         foreach (['title', 'subtitle'] as $key) {
             $css = $elements[$key]['css'] ?? null;
@@ -200,6 +200,20 @@ final class HeroSlides
                 $panelled = true;
             }
         }
+
+        // The owner asked to drive this themselves rather than have it happen
+        // silently (2026-08-17). 'auto' is the behaviour they first approved:
+        // the shade steps back only when it would nest inside a panel.
+        $mode = strtolower(trim((string) ($slide['copy_scrim_mode'] ?? 'auto')));
+        if (! in_array($mode, ['auto', 'always', 'off'], true)) {
+            $mode = 'auto';
+        }
+
+        $copyScrim = match ($mode) {
+            'off' => false,
+            'always' => true,
+            default => ! $panelled,
+        };
 
         return [
             'photo_brightness' => $photoBrightness,
@@ -209,6 +223,8 @@ final class HeroSlides
             'text_position' => $textPosition,
             'elements' => $elements,
             'panelled' => $panelled,
+            'copy_scrim_mode' => $mode,
+            'copy_scrim' => $copyScrim,
         ];
     }
 

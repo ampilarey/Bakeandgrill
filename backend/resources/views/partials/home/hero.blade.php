@@ -69,7 +69,7 @@
                         $cta1El = $el['cta1'] ?? ['css' => null];
                         $cta2El = $el['cta2'] ?? ['css' => null];
                     @endphp
-                    <div class="banner-copy" @if(!empty($heroPres['panelled'])) data-panelled="1" @endif>
+                    <div class="banner-copy" @if(empty($heroPres['copy_scrim'])) data-copy-scrim="off" @endif>
                     @if($eyebrow !== '')
                         <span
                             class="banner-eyebrow"

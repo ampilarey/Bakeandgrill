@@ -70,11 +70,12 @@ class HeroHeadingFitTest extends TestCase
         $this->assertSame('', HeroSlides::headingLengthBand('Bake &amp; Grill Mal&eacute;'));
     }
 
-    public function test_plain_slide_is_not_panelled(): void
+    public function test_plain_slide_is_not_panelled_and_keeps_its_shade(): void
     {
         $pres = HeroSlides::presentation(['photo_brightness' => 60, 'text_background' => 70]);
 
         $this->assertFalse($pres['panelled']);
+        $this->assertTrue($pres['copy_scrim']);
     }
 
     public static function panelProvider(): array
@@ -93,9 +94,10 @@ class HeroHeadingFitTest extends TestCase
     {
         $pres = HeroSlides::presentation($slide);
 
-        $this->assertTrue(
-            $pres['panelled'],
-            'a panel on the heading or subheading must switch the whole-block gradient off',
+        $this->assertTrue($pres['panelled']);
+        $this->assertFalse(
+            $pres['copy_scrim'],
+            'on auto, a panel on the heading or subheading must switch the whole-block shade off',
         );
     }
 
@@ -108,6 +110,7 @@ class HeroHeadingFitTest extends TestCase
 
         $this->assertSame('transparent', $pres['elements']['title']['css']);
         $this->assertFalse($pres['panelled']);
+        $this->assertTrue($pres['copy_scrim']);
     }
 
     public function test_a_panel_on_eyebrow_or_cta_alone_does_not_strip_the_gradient(): void
@@ -117,6 +120,42 @@ class HeroHeadingFitTest extends TestCase
         foreach (['eyebrow_bg', 'cta1_bg', 'cta2_bg'] as $key) {
             $pres = HeroSlides::presentation([$key => 'glass']);
             $this->assertFalse($pres['panelled'], "[{$key}] must not strip the copy gradient");
+            $this->assertTrue($pres['copy_scrim'], "[{$key}] must not strip the copy gradient");
         }
+    }
+
+    public function test_default_mode_is_auto(): void
+    {
+        $this->assertSame('auto', HeroSlides::presentation([])['copy_scrim_mode']);
+    }
+
+    public function test_always_forces_the_shade_back_over_a_panel(): void
+    {
+        // The owner wanted to drive this themselves (2026-08-17), so "Always"
+        // must beat the automatic rule, not merely lose to it.
+        $pres = HeroSlides::presentation(['title_bg' => 'glass', 'copy_scrim_mode' => 'always']);
+
+        $this->assertTrue($pres['panelled']);
+        $this->assertTrue($pres['copy_scrim']);
+    }
+
+    public function test_off_removes_the_shade_even_without_a_panel(): void
+    {
+        $pres = HeroSlides::presentation(['text_background' => 100, 'copy_scrim_mode' => 'off']);
+
+        $this->assertFalse($pres['panelled']);
+        $this->assertFalse($pres['copy_scrim']);
+    }
+
+    public function test_unknown_or_messy_mode_falls_back_to_auto(): void
+    {
+        foreach (['', 'nonsense', null, '  AUTO  ', 'Always'] as $raw) {
+            $pres = HeroSlides::presentation(['copy_scrim_mode' => $raw]);
+            $this->assertContains($pres['copy_scrim_mode'], ['auto', 'always']);
+        }
+
+        // Casing and padding are tolerated rather than silently discarded.
+        $this->assertSame('always', HeroSlides::presentation(['copy_scrim_mode' => '  Always '])['copy_scrim_mode']);
+        $this->assertSame('auto', HeroSlides::presentation(['copy_scrim_mode' => 'nonsense'])['copy_scrim_mode']);
     }
 }

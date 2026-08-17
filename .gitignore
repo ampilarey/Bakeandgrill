@@ -25,6 +25,9 @@ apps/**/.env.*
 /apps/**/node_modules
 /print-proxy/node_modules
 /packages/**/node_modules
+# Catch-all: the list above missed backend/, and a stray `npm install` run from
+# that directory staged ~3.7k dependency files (2026-08-17).
+**/node_modules/
 /vendor
 /backend/vendor
 /auth.json

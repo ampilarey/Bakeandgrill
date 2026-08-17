@@ -32,6 +32,9 @@ export type HeroElementBackground = {
   css: string | null;
 };
 
+/** Owner control for the shade behind the whole text block. */
+export type HeroCopyScrimMode = 'auto' | 'always' | 'off';
+
 export type HeroSlidePresentation = {
   /** 0–1, 1 = full bright (no knock-back). */
   photo: number;
@@ -42,8 +45,12 @@ export type HeroSlidePresentation = {
   photo_brightness: number;
   text_background: number;
   elements: Record<HeroElementKey, HeroElementBackground>;
-  /** Heading or subheading carries its own panel — drop the copy scrim. */
+  /** Heading or subheading carries its own panel. */
   panelled: boolean;
+  /** Owner's choice for the shade behind the whole text block. */
+  copy_scrim_mode: HeroCopyScrimMode;
+  /** Resolved: whether that shade is actually painted. */
+  copy_scrim: boolean;
 };
 
 type SlideLike = {
@@ -188,6 +195,15 @@ export function resolveHeroSlidePresentation(
     return css != null && css !== '' && css !== 'transparent';
   });
 
+  // The owner asked to drive this themselves rather than have it happen
+  // silently (2026-08-17). 'auto' is the behaviour they first approved: the
+  // shade steps back only when it would nest inside a panel.
+  const rawMode = String((row as Record<string, unknown> | null)?.copy_scrim_mode ?? 'auto').toLowerCase().trim();
+  const copy_scrim_mode: HeroCopyScrimMode =
+    rawMode === 'always' || rawMode === 'off' ? rawMode : 'auto';
+  const copy_scrim =
+    copy_scrim_mode === 'off' ? false : copy_scrim_mode === 'always' ? true : !panelled;
+
   return {
     photo_brightness: photoBrightness,
     text_background: textBackground,
@@ -196,6 +212,8 @@ export function resolveHeroSlidePresentation(
     text_position,
     elements,
     panelled,
+    copy_scrim_mode,
+    copy_scrim,
   };
 }
 

@@ -27,7 +27,7 @@ type Rects = {
   copyBottom: number;
   slideBottom: number;
   badgeOverlapsHeading: boolean;
-  panelled: boolean;
+  scrimOff: boolean;
   copyHasBackground: boolean;
   headingFontPx: number;
   headingBand: string | null;
@@ -59,7 +59,7 @@ async function readHero(page: Page): Promise<Rects | null> {
       copyTop: c.top,
       copyBottom: c.bottom,
       badgeOverlapsHeading: overlaps,
-      panelled: copy.getAttribute('data-panelled') === '1',
+      scrimOff: copy.getAttribute('data-copy-scrim') === 'off',
       copyHasBackground: copyBg !== 'none' && copyBg !== '',
       headingFontPx: heading ? parseFloat(getComputedStyle(heading).fontSize) : 0,
       headingBand: heading?.getAttribute('data-len') ?? null,
@@ -95,17 +95,18 @@ test.describe('Hero heading fit (real engine)', () => {
         expect(r!.badgeOverlapsHeading, 'the open/closed badge is sitting on the heading').toBe(false);
       });
 
-      test(`a panelled slide draws one background, not two @ ${width}`, async ({ page }) => {
+      test(`a slide with the shade off draws one background, not two @ ${width}`, async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' });
         const r = await readHero(page);
         test.skip(r === null, 'no hero slide configured on this install');
-        test.skip(!r!.panelled, 'this slide has no heading/subheading panel');
+        test.skip(!r!.scrimOff, 'this slide is set to keep its whole-block shade');
 
-        // Owner's choice: when the heading carries its own panel the gradient
-        // behind the whole block steps back, or you get a box inside a box.
+        // Driven by the "Shade behind all the text" control (auto/always/off).
+        // When it resolves to off, the block gradient must not be painted, or
+        // you get a box inside a box.
         expect(
           r!.copyHasBackground,
-          'heading has its own panel AND the block gradient is still painted — box inside a box',
+          'the shade resolved to off AND the block gradient is still painted — box inside a box',
         ).toBe(false);
       });
 
