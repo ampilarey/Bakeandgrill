@@ -41,9 +41,11 @@ export type HeroSlideRow = {
   title_bg?: string;
   title_bg_strength?: number | string;
   title_bg_full_width?: boolean | string | number;
+  title_bg_shape?: string;
   subtitle_bg?: string;
   subtitle_bg_strength?: number | string;
   subtitle_bg_full_width?: boolean | string | number;
+  subtitle_bg_shape?: string;
   cta1_bg?: string;
   cta1_bg_strength?: number | string;
   cta2_bg?: string;

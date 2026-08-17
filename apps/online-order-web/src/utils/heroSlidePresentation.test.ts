@@ -150,7 +150,9 @@ describe('heading fit', () => {
   it('marks a slide panelled only when the heading or subheading has a real panel', () => {
     expect(resolveHeroSlidePresentation({ photo_brightness: 60, text_background: 70 }).panelled).toBe(false);
     expect(resolveHeroSlidePresentation({ title_bg: 'glass' }).panelled).toBe(true);
-    expect(resolveHeroSlidePresentation({ subtitle_bg: 'dark' }).panelled).toBe(true);
+    expect(resolveHeroSlidePresentation({ subtitle_bg: 'dark', subtitle_bg_shape: 'hug' }).panelled).toBe(true);
+    // A solid with no shape stored is a letter outline, not a box.
+    expect(resolveHeroSlidePresentation({ subtitle_bg: 'dark' }).panelled).toBe(false);
     // "none" is transparent — no box to nest, so the gradient must stay.
     expect(resolveHeroSlidePresentation({ title_bg: 'none' }).panelled).toBe(false);
     // A pill on the eyebrow or a CTA button is not a nested panel.
@@ -171,5 +173,43 @@ describe('heading fit', () => {
     // Messy stored values fall back rather than breaking the slide.
     expect(resolveHeroSlidePresentation({ copy_scrim_mode: '  Always ' }).copy_scrim_mode).toBe('always');
     expect(resolveHeroSlidePresentation({ copy_scrim_mode: 'nonsense' }).copy_scrim_mode).toBe('auto');
+  });
+});
+
+/**
+ * Background shape — owner, 2026-08-17: "If there are 2 lines background is
+ * like a box. I need separate small background for each line." Lockstep with
+ * HeroSlides::resolveElementShape(), same cases as HeroHeadingFitTest.
+ */
+describe('background shape', () => {
+  const shapeOf = (slide: Record<string, unknown>, key: 'title' | 'subtitle' = 'title') =>
+    resolveHeroSlidePresentation(slide).elements[key].shape;
+
+  it('preserves the existing look when nothing is stored', () => {
+    expect(shapeOf({ title_bg: 'glass' })).toBe('hug');
+    expect(shapeOf({ title_bg: 'dark' })).toBe('outline');
+    expect(shapeOf({ title_bg: '#123456' })).toBe('outline');
+    expect(shapeOf({ title_bg: 'dark', title_bg_full_width: true })).toBe('full');
+    expect(shapeOf({ title_bg: 'glass', title_bg_full_width: true })).toBe('full');
+  });
+
+  it('lets a stored shape win over the legacy flag, and tolerates mess', () => {
+    expect(shapeOf({ title_bg: 'dark', title_bg_full_width: true, title_bg_shape: 'line' })).toBe('line');
+    expect(shapeOf({ title_bg: 'dark', title_bg_shape: '  LINE ' })).toBe('line');
+    expect(shapeOf({ title_bg: 'glass', title_bg_shape: 'wat' })).toBe('hug');
+  });
+
+  it('offers per-line to the subheading, but not to pills', () => {
+    expect(shapeOf({ subtitle_bg: 'dark', subtitle_bg_shape: 'line' }, 'subtitle')).toBe('line');
+    for (const key of ['eyebrow', 'cta1', 'cta2'] as const) {
+      expect(resolveHeroSlidePresentation({ [`${key}_bg`]: 'glass' }).elements[key].shape).toBe('hug');
+    }
+  });
+
+  it('treats an outline as no box, but per-line boxes as boxes', () => {
+    // Nothing for the block shade to nest inside, so it stays.
+    expect(resolveHeroSlidePresentation({ title_bg: 'dark' }).copy_scrim).toBe(true);
+    // Small boxes are still boxes.
+    expect(resolveHeroSlidePresentation({ title_bg: 'dark', title_bg_shape: 'line' }).copy_scrim).toBe(false);
   });
 });

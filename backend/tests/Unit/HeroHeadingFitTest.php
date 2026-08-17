@@ -82,10 +82,10 @@ class HeroHeadingFitTest extends TestCase
     {
         return [
             'title glass' => [['title_bg' => 'glass']],
-            'title solid' => [['title_bg' => 'dark']],
+            'title solid box' => [['title_bg' => 'dark', 'title_bg_shape' => 'hug']],
             'subtitle glass' => [['subtitle_bg' => 'glass']],
-            'subtitle solid' => [['subtitle_bg' => 'light']],
-            'both' => [['title_bg' => 'glass', 'subtitle_bg' => 'dark']],
+            'subtitle solid box' => [['subtitle_bg' => 'light', 'subtitle_bg_shape' => 'full']],
+            'both' => [['title_bg' => 'glass', 'subtitle_bg' => 'dark', 'subtitle_bg_shape' => 'line']],
         ];
     }
 
@@ -99,6 +99,17 @@ class HeroHeadingFitTest extends TestCase
             $pres['copy_scrim'],
             'on auto, a panel on the heading or subheading must switch the whole-block shade off',
         );
+    }
+
+    public function test_the_outline_shape_is_not_a_panel(): void
+    {
+        // A letter outline paints no box, so there is nothing for the block
+        // shade to nest inside and it must stay.
+        $pres = HeroSlides::presentation(['title_bg' => 'dark']);
+
+        $this->assertSame('outline', $pres['elements']['title']['shape']);
+        $this->assertFalse($pres['panelled']);
+        $this->assertTrue($pres['copy_scrim']);
     }
 
     public function test_transparent_is_not_a_panel(): void
@@ -157,5 +168,55 @@ class HeroHeadingFitTest extends TestCase
         // Casing and padding are tolerated rather than silently discarded.
         $this->assertSame('always', HeroSlides::presentation(['copy_scrim_mode' => '  Always '])['copy_scrim_mode']);
         $this->assertSame('auto', HeroSlides::presentation(['copy_scrim_mode' => 'nonsense'])['copy_scrim_mode']);
+    }
+
+    public static function shapeBackCompatProvider(): array
+    {
+        // Nothing stored: the shape the slide has always drawn, so upgrading
+        // changes nothing on screen.
+        return [
+            'glass, no flag → one box' => [['title_bg' => 'glass'], 'hug'],
+            'solid, no flag → outline' => [['title_bg' => 'dark'], 'outline'],
+            'custom hex, no flag → outline' => [['title_bg' => '#123456'], 'outline'],
+            'solid + full flag → bar' => [['title_bg' => 'dark', 'title_bg_full_width' => true], 'full'],
+            'glass + full flag → bar' => [['title_bg' => 'glass', 'title_bg_full_width' => true], 'full'],
+            'stored shape wins over the flag' => [
+                ['title_bg' => 'dark', 'title_bg_full_width' => true, 'title_bg_shape' => 'line'],
+                'line',
+            ],
+            'messy stored shape' => [['title_bg' => 'dark', 'title_bg_shape' => '  LINE '], 'line'],
+            'unknown stored shape falls back' => [['title_bg' => 'glass', 'title_bg_shape' => 'wat'], 'hug'],
+        ];
+    }
+
+    #[DataProvider('shapeBackCompatProvider')]
+    public function test_element_shape_preserves_the_existing_look(array $slide, string $expected): void
+    {
+        $this->assertSame($expected, HeroSlides::resolveElementBackground($slide, 'title')['shape']);
+    }
+
+    public function test_per_line_is_available_to_the_subheading_too(): void
+    {
+        $pres = HeroSlides::presentation(['subtitle_bg' => 'dark', 'subtitle_bg_shape' => 'line']);
+
+        $this->assertSame('line', $pres['elements']['subtitle']['shape']);
+    }
+
+    public function test_shape_is_a_heading_and_subheading_concept_only(): void
+    {
+        // Eyebrow and CTAs are single-line pills; there is no line to split.
+        foreach (['eyebrow', 'cta1', 'cta2'] as $key) {
+            $shape = HeroSlides::resolveElementBackground([$key.'_bg' => 'glass'], $key)['shape'];
+            $this->assertSame('hug', $shape, "[{$key}] must not take a per-line shape");
+        }
+    }
+
+    public function test_a_per_line_heading_still_counts_as_a_panel(): void
+    {
+        // Small boxes are still boxes — the block shade would sit behind them.
+        $pres = HeroSlides::presentation(['title_bg' => 'dark', 'title_bg_shape' => 'line']);
+
+        $this->assertTrue($pres['panelled']);
+        $this->assertFalse($pres['copy_scrim']);
     }
 }

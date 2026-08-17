@@ -162,8 +162,9 @@ describe('PromoCarousel', () => {
 
     const heading = screen.getByTestId('hero-title-0');
     expect(heading.tagName).toBe('H2');
-    expect(heading).not.toHaveAttribute('data-has-bg');
-    expect(heading).toHaveAttribute('data-bg-hug', '1');
+    // A solid colour with no shape stored is still the letter outline it has
+    // always been — the shape model must not change existing slides.
+    expect(heading).toHaveAttribute('data-bg-shape', 'outline');
     expect(heading.querySelectorAll('.hero-title-line')).toHaveLength(2);
     expect(heading.innerHTML).toContain('<br>');
     expect(heading.innerHTML).toContain('<em>meets</em>');
@@ -212,7 +213,54 @@ describe('PromoCarousel', () => {
 
     const heading = screen.getByTestId('hero-title-0');
     expect(heading).toHaveAttribute('data-has-bg', '1');
-    expect(heading).toHaveAttribute('data-bg-full', '1');
+    expect(heading).toHaveAttribute('data-bg-shape', 'full');
     expect(heading.querySelector('.hero-text-bg')).toBeNull();
+  });
+
+  it('marks the heading per-line when that shape is chosen', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Dhivehi breakfast<br>and artisan baking',
+              title_bg: 'dark',
+              title_bg_strength: 70,
+              title_bg_shape: 'line',
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const heading = screen.getByTestId('hero-title-0');
+    expect(heading).toHaveAttribute('data-bg-shape', 'line');
+    // The inline runs are what the per-line shape paints; the actual box-per-
+    // line geometry needs a layout engine and is covered by
+    // e2e/tests/go-live/09e-hero-line-backgrounds.spec.ts.
+    expect(heading.querySelectorAll('.hero-title-line')).toHaveLength(2);
+  });
+
+  it('wraps the subheading in an inline run so a per-line shape can paint it', () => {
+    render(
+      <MemoryRouter>
+        <PromoCarousel
+          slides={[
+            slide({
+              title: 'Bake & Grill',
+              subtitle: 'Real food, proper char',
+              subtitle_bg: 'dark',
+              subtitle_bg_shape: 'line',
+            }),
+          ]}
+          apiOrigin="https://example.test"
+        />
+      </MemoryRouter>,
+    );
+
+    const sub = screen.getByTestId('hero-sub-0');
+    expect(sub).toHaveAttribute('data-bg-shape', 'line');
+    expect(sub.querySelector('.hero-sub-line')).not.toBeNull();
   });
 });

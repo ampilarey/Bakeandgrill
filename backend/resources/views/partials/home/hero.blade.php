@@ -85,15 +85,9 @@
                             class="banner-title"
                             @if($titleBand !== '') data-len="{{ $titleBand }}" @endif
                             @if(!empty($titleEl['css']))
-                                @if(($titleEl['token'] ?? '') === 'glass')
-                                    data-bg-glass="1"
-                                    @if(!empty($titleEl['full_width'])) data-bg-full="1" @endif
-                                @elseif(!empty($titleEl['full_width']))
-                                    data-has-bg="1"
-                                    data-bg-full="1"
-                                @else
-                                    data-bg-hug="1"
-                                @endif
+                                data-has-bg="1"
+                                data-bg-shape="{{ $titleEl['shape'] }}"
+                                @if(($titleEl['token'] ?? '') === 'glass') data-bg-glass="1" @endif
                                 style="--hero-el-bg: {{ $titleEl['css'] }};"
                             @endif
                         >@foreach(\App\Domains\Content\HeroSlides::splitRichTextLines($titleHtml) as $lineIdx => $titleLine)@if($lineIdx > 0)<br>@endif<span class="hero-title-line">{!! $titleLine !!}</span>@endforeach</h2>
@@ -102,18 +96,14 @@
                         <p
                             class="banner-sub"
                             @if(!empty($subEl['css']))
-                                @if(($subEl['token'] ?? '') === 'glass')
-                                    data-bg-glass="1"
-                                    @if(!empty($subEl['full_width'])) data-bg-full="1" @endif
-                                @elseif(!empty($subEl['full_width']))
-                                    data-has-bg="1"
-                                    data-bg-full="1"
-                                @else
-                                    data-bg-hug="1"
-                                @endif
+                                data-has-bg="1"
+                                data-bg-shape="{{ $subEl['shape'] }}"
+                                @if(($subEl['token'] ?? '') === 'glass') data-bg-glass="1" @endif
                                 style="--hero-el-bg: {{ $subEl['css'] }};"
                             @endif
-                        >{{ $subtitle }}</p>
+                        {{-- The inline span is what the per-line shape paints; a
+                             block element can only ever draw one box. --}}
+                        ><span class="hero-sub-line">{{ $subtitle }}</span></p>
                     @endif
                     @if($cta1Text !== '' || $cta2Text !== '')
                     <div class="banner-ctas">

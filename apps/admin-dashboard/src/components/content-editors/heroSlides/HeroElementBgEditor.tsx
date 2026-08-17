@@ -75,7 +75,9 @@ export function HeroElementBgEditor({
               onClick={() => applyPresentation(idx, {
                 [`${key}_bg`]: null,
                 [`${key}_bg_strength`]: null,
-                ...(key === 'title' || key === 'subtitle' ? { [`${key}_bg_full_width`]: null } : {}),
+                ...(key === 'title' || key === 'subtitle'
+                  ? { [`${key}_bg_full_width`]: null, [`${key}_bg_shape`]: null }
+                  : {}),
               } as HeroPresentationPatch)}
               style={{
                 ...btnStyle,
@@ -150,18 +152,57 @@ export function HeroElementBgEditor({
             </div>
           ) : null}
           {(key === 'title' || key === 'subtitle') && storedToken && storedToken !== 'none' ? (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-text)', minHeight: 44 }}>
-              <input
-                type="checkbox"
-                checked={el.full_width}
-                onChange={(e) => applyPresentation(idx, {
-                  [`${key}_bg`]: storedToken,
-                  [`${key}_bg_strength`]: strength,
-                  [`${key}_bg_full_width`]: e.target.checked,
-                } as HeroPresentationPatch)}
-              />
-              Full-width bar (off = {storedToken === 'glass' ? 'glass panel around the words' : 'letter outline / halo — no box'})
-            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                Background shape
+              </span>
+              <div
+                role="radiogroup"
+                aria-label={`${ELEMENT_LABELS[key]} background shape`}
+                style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+              >
+                {([
+                  ['line', 'Each line'],
+                  ['hug', 'One box'],
+                  ['full', 'Full width'],
+                  ['outline', 'Outline only'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={el.shape === value}
+                    data-testid={`hero-bg-shape-${idx}-${key}-${value}`}
+                    onClick={() => applyPresentation(idx, {
+                      [`${key}_bg`]: storedToken,
+                      [`${key}_bg_strength`]: strength,
+                      [`${key}_bg_shape`]: value,
+                      // Keep the legacy flag agreeing with the shape so older
+                      // readers of the slide do not disagree with this one.
+                      [`${key}_bg_full_width`]: value === 'full',
+                    } as HeroPresentationPatch)}
+                    style={{
+                      ...btnStyle,
+                      height: 36,
+                      fontWeight: el.shape === value ? 700 : 600,
+                      background: el.shape === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                      borderColor: el.shape === value ? 'var(--color-primary)' : 'var(--color-border)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                {el.shape === 'line'
+                  ? 'Every line gets its own small background that hugs just that line — including when the words wrap on a phone.'
+                  : el.shape === 'hug'
+                    ? 'One box around all the words. Two lines share a single rectangle.'
+                    : el.shape === 'full'
+                      ? 'An edge-to-edge bar across the banner.'
+                      : 'No box — the letters get a coloured outline and soft halo instead.'}
+              </p>
+            </div>
           ) : null}
           <div>
             <button

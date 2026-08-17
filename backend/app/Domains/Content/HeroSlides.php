@@ -193,10 +193,15 @@ final class HeroSlides
         // own panel, the copy scrim behind the whole stack is a second box
         // around the first — the "too large" look the owner reported
         // (2026-08-16).
+        // Only shapes that actually draw a box count. The outline shape paints
+        // letter edges, not a panel, so there is nothing for the block shade to
+        // nest inside and it must stay — otherwise picking a solid colour would
+        // silently strip readability with no box to show for it.
         $panelled = false;
         foreach (['title', 'subtitle'] as $key) {
             $css = $elements[$key]['css'] ?? null;
-            if ($css !== null && $css !== '' && $css !== 'transparent') {
+            $shape = $elements[$key]['shape'] ?? self::SHAPE_OUTLINE;
+            if ($css !== null && $css !== '' && $css !== 'transparent' && $shape !== self::SHAPE_OUTLINE) {
                 $panelled = true;
             }
         }
@@ -228,9 +233,55 @@ final class HeroSlides
         ];
     }
 
+    /** Background shapes for the heading and subheading. */
+    public const SHAPE_LINE = 'line';
+
+    public const SHAPE_HUG = 'hug';
+
+    public const SHAPE_FULL = 'full';
+
+    public const SHAPE_OUTLINE = 'outline';
+
+    public const SHAPES = [self::SHAPE_LINE, self::SHAPE_HUG, self::SHAPE_FULL, self::SHAPE_OUTLINE];
+
+    /**
+     * What shape the element's background is drawn in.
+     *
+     * Owner, 2026-08-17: "If there are 2 lines background is like a box. I need
+     * separate small background for each line." Until now the shape was implied
+     * by two other settings — glass meant one box around the whole heading, and
+     * the full-width flag meant an edge-to-edge bar — so a two-line heading
+     * could only ever be one rectangle. Shape is now its own choice.
+     *
+     * When nothing is stored the old implication is reproduced exactly, so no
+     * existing slide changes appearance:
+     *   full-width flag set  → full
+     *   glass, no flag       → hug   (the single panel it has always drawn)
+     *   solid, no flag       → outline (letter outline + halo, no box)
+     *
+     * @param  array<string, mixed>  $slide
+     */
+    private static function resolveElementShape(array $slide, string $key, string $token, bool $fullWidth): string
+    {
+        if ($key !== 'title' && $key !== 'subtitle') {
+            return self::SHAPE_HUG;
+        }
+
+        $stored = strtolower(trim((string) ($slide["{$key}_bg_shape"] ?? '')));
+        if (in_array($stored, self::SHAPES, true)) {
+            return $stored;
+        }
+
+        if ($fullWidth) {
+            return self::SHAPE_FULL;
+        }
+
+        return $token === 'glass' ? self::SHAPE_HUG : self::SHAPE_OUTLINE;
+    }
+
     /**
      * @param  array<string, mixed>  $slide
-     * @return array{token: ?string, strength: ?int, full_width: bool, css: ?string}
+     * @return array{token: ?string, strength: ?int, full_width: bool, shape: string, css: ?string}
      */
     public static function resolveElementBackground(array $slide, string $key): array
     {
@@ -240,7 +291,7 @@ final class HeroSlides
 
         $raw = $slide[$bgKey] ?? null;
         if ($raw === null || $raw === '') {
-            return ['token' => null, 'strength' => null, 'full_width' => false, 'css' => null];
+            return ['token' => null, 'strength' => null, 'full_width' => false, 'shape' => self::SHAPE_OUTLINE, 'css' => null];
         }
 
         $token = strtolower(trim((string) $raw));
@@ -250,9 +301,10 @@ final class HeroSlides
         if ($key === 'title' || $key === 'subtitle') {
             $fullWidth = self::truthyFlag($slide[$fullKey] ?? false);
         }
+        $shape = self::resolveElementShape($slide, $key, $token, $fullWidth);
 
         if ($token === 'none') {
-            return ['token' => 'none', 'strength' => $strength, 'full_width' => $fullWidth, 'css' => 'transparent'];
+            return ['token' => 'none', 'strength' => $strength, 'full_width' => $fullWidth, 'shape' => $shape, 'css' => 'transparent'];
         }
 
         // Frosted glass — same family as secondary CTA (white wash + blur via CSS).
@@ -264,13 +316,14 @@ final class HeroSlides
                 'token' => 'glass',
                 'strength' => $strength,
                 'full_width' => $fullWidth,
+                'shape' => $shape,
                 'css' => 'rgba(255,255,255,'.$alpha.')',
             ];
         }
 
         $rgb = self::BG_TOKEN_RGB[$token] ?? self::hexToRgb($token);
         if ($rgb === null) {
-            return ['token' => null, 'strength' => null, 'full_width' => false, 'css' => null];
+            return ['token' => null, 'strength' => null, 'full_width' => false, 'shape' => self::SHAPE_OUTLINE, 'css' => null];
         }
 
         $alpha = $strength / 100.0;
@@ -279,6 +332,7 @@ final class HeroSlides
             'token' => $token,
             'strength' => $strength,
             'full_width' => $fullWidth,
+            'shape' => $shape,
             'css' => "rgba({$rgb},{$alpha})",
         ];
     }

@@ -70,24 +70,19 @@ function HeroTextBlock({
   const clean = sanitizeHeroHtml(html);
   const isTitle = Tag === 'h2';
 
+  // Shape drives the look; glass is a material that layers onto it. Lockstep
+  // with the website Blade and HeroSlides::resolveElementShape().
   const contrastProps: {
     'data-bg-glass'?: '1';
-    'data-bg-full'?: '1';
-    'data-bg-hug'?: '1';
+    'data-bg-shape'?: string;
     'data-has-bg'?: '1';
     style?: CSSProperties;
   } = {};
   if (el.css) {
-    if (el.token === 'glass') {
-      contrastProps['data-bg-glass'] = '1';
-      if (el.full_width) contrastProps['data-bg-full'] = '1';
-      contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
-    } else if (el.full_width) {
-      Object.assign(contrastProps, elementBgProps(el));
-    } else {
-      contrastProps['data-bg-hug'] = '1';
-      contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
-    }
+    contrastProps['data-has-bg'] = '1';
+    contrastProps['data-bg-shape'] = el.shape;
+    if (el.token === 'glass') contrastProps['data-bg-glass'] = '1';
+    contrastProps.style = { ['--hero-el-bg' as string]: el.css } as CSSProperties;
   }
 
   if (isTitle) {
@@ -107,13 +102,12 @@ function HeroTextBlock({
     );
   }
 
+  // The inline span is what the per-line shape paints; a block element can
+  // only ever draw one box around all the lines.
   return (
-    <Tag
-      className={className}
-      data-testid={testId}
-      {...contrastProps}
-      dangerouslySetInnerHTML={{ __html: clean }}
-    />
+    <Tag className={className} data-testid={testId} {...contrastProps}>
+      <span className="hero-sub-line" dangerouslySetInnerHTML={{ __html: clean }} />
+    </Tag>
   );
 }
 

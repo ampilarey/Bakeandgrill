@@ -168,8 +168,8 @@
  * §7.2 non-bar title/subtitle contrast: letter outline + soft halo from
  * --hero-el-bg (no per-line background boxes — those fought line layout).
  */
-.banner-title[data-bg-hug="1"],
-.banner-sub[data-bg-hug="1"] {
+.banner-title[data-bg-shape="outline"],
+.banner-sub[data-bg-shape="outline"] {
     -webkit-text-stroke: 0.02em var(--hero-el-bg);
     paint-order: stroke fill;
     text-shadow:
@@ -183,9 +183,10 @@
          0  0.035em 0 var(--hero-el-bg),
          0 0.08em 0.28em rgba(0, 0, 0, 0.55);
 }
-/* Frosted glass — same recipe as default secondary CTA; optional on any element. */
-.banner-title[data-bg-glass="1"],
-.banner-sub[data-bg-glass="1"] {
+/* One box hugging the whole text — what glass has always drawn, now available
+   in any colour and named as a shape. */
+.banner-title[data-bg-shape="hug"],
+.banner-sub[data-bg-shape="hug"] {
     display: block;
     width: fit-content;
     max-width: 100%;
@@ -194,17 +195,55 @@
     box-sizing: border-box;
     padding: 0.4em 0.75em;
     background: var(--hero-el-bg);
-    border: 1.5px solid rgba(255, 255, 255, 0.28);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     border-radius: 11px;
     text-shadow: none;
     -webkit-text-stroke: 0;
 }
-.banner-title[data-bg-glass="1"][data-bg-full="1"],
-.banner-sub[data-bg-glass="1"][data-bg-full="1"] {
-    width: 100%;
-    align-self: stretch;
+/*
+ * A separate small background on every line — owner, 2026-08-17: "If there are
+ * 2 lines background is like a box. I need separate small background for each
+ * line."
+ *
+ * The box has to be painted on an INLINE box, not the heading: a block or
+ * inline-block can only ever draw one rectangle around all the lines. Inline +
+ * box-decoration-break:clone repeats the padding, radius and border on every
+ * visual line, so it works for soft wraps as well as explicit <br> — which is
+ * the case that matters on a phone.
+ */
+.banner-title[data-bg-shape="line"],
+.banner-sub[data-bg-shape="line"] {
+    background: none;
+    text-shadow: none;
+    -webkit-text-stroke: 0;
+    /* Padded inline boxes do not grow the line box. At 1.5 the boxes touch
+       edge to edge and read as one shape again — the very thing this shape
+       exists to avoid — so leave a visible gap between them. */
+    line-height: 1.75;
+}
+.banner-title[data-bg-shape="line"] .hero-title-line,
+.banner-sub[data-bg-shape="line"] .hero-sub-line {
+    display: inline;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    background: var(--hero-el-bg);
+    padding: 0.12em 0.4em;
+    border-radius: 10px;
+}
+/* Frosted glass is a material, not a shape — it layers onto whichever shape
+   is painting the surface. */
+.banner-title[data-bg-glass="1"][data-bg-shape="hug"],
+.banner-sub[data-bg-glass="1"][data-bg-shape="hug"],
+.banner-title[data-bg-glass="1"][data-bg-shape="full"],
+.banner-sub[data-bg-glass="1"][data-bg-shape="full"] {
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.banner-title[data-bg-glass="1"][data-bg-shape="line"] .hero-title-line,
+.banner-sub[data-bg-glass="1"][data-bg-shape="line"] .hero-sub-line {
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 .banner-eyebrow[data-bg-glass="1"],
 .banner-cta-primary[data-bg-glass="1"],
@@ -222,8 +261,8 @@
     border-color: rgba(255, 255, 255, 0.5);
 }
 /* Full-width bar stays on the heading/paragraph (intentional rectangle). */
-.banner-title[data-has-bg="1"][data-bg-full="1"],
-.banner-sub[data-has-bg="1"][data-bg-full="1"] {
+.banner-title[data-bg-shape="full"],
+.banner-sub[data-bg-shape="full"] {
     display: block;
     align-self: stretch;
     width: 100%;

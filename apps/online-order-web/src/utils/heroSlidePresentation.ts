@@ -28,6 +28,8 @@ export type HeroElementBackground = {
   strength: number | null;
   /** Title/subtitle only — full-width bar vs wrap-with-text. */
   full_width: boolean;
+  /** How the background is drawn: per line, one box, full-width bar, or outline only. */
+  shape: HeroBgShape;
   /** Ready-to-paint CSS background, or null to leave stylesheet default. */
   css: string | null;
 };
@@ -66,9 +68,11 @@ type SlideLike = {
   title_bg?: string | null;
   title_bg_strength?: number | string | null;
   title_bg_full_width?: boolean | string | number | null;
+  title_bg_shape?: string | null;
   subtitle_bg?: string | null;
   subtitle_bg_strength?: number | string | null;
   subtitle_bg_full_width?: boolean | string | number | null;
+  subtitle_bg_shape?: string | null;
   cta1_bg?: string | null;
   cta1_bg_strength?: number | string | null;
   cta2_bg?: string | null;
@@ -98,6 +102,35 @@ function truthyFlag(v: unknown): boolean {
   return false;
 }
 
+/** Background shapes for the heading and subheading. */
+export const HERO_SHAPES = ['line', 'hug', 'full', 'outline'] as const;
+export type HeroBgShape = (typeof HERO_SHAPES)[number];
+
+/**
+ * What shape the element's background is drawn in.
+ *
+ * Owner, 2026-08-17: "If there are 2 lines background is like a box. I need
+ * separate small background for each line." Shape used to be implied by two
+ * other settings — glass meant one box, the full-width flag meant a bar — so a
+ * two-line heading could only ever be one rectangle. Lockstep with
+ * HeroSlides::resolveElementShape(); when nothing is stored the old implication
+ * is reproduced exactly, so no existing slide changes appearance.
+ */
+function resolveElementShape(
+  row: Record<string, unknown> | null | undefined,
+  key: HeroElementKey,
+  token: string,
+  fullWidth: boolean,
+): HeroBgShape {
+  if (key !== 'title' && key !== 'subtitle') return 'hug';
+
+  const stored = String(row?.[`${key}_bg_shape`] ?? '').trim().toLowerCase();
+  if ((HERO_SHAPES as readonly string[]).includes(stored)) return stored as HeroBgShape;
+
+  if (fullWidth) return 'full';
+  return token === 'glass' ? 'hug' : 'outline';
+}
+
 function resolveElementBackground(slide: SlideLike | null | undefined, key: HeroElementKey): HeroElementBackground {
   const row = slide as Record<string, unknown> | null | undefined;
   const bgKey = `${key}_bg`;
@@ -106,7 +139,7 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
   const raw = row?.[bgKey];
   const hasBg = raw !== undefined && raw !== null && String(raw).trim() !== '';
   if (!hasBg) {
-    return { token: null, strength: null, full_width: false, css: null };
+    return { token: null, strength: null, full_width: false, shape: 'outline', css: null };
   }
 
   const token = String(raw).trim().toLowerCase();
@@ -116,9 +149,10 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
   const full_width = key === 'title' || key === 'subtitle'
     ? truthyFlag(row?.[fullKey])
     : false;
+  const shape = resolveElementShape(row, key, token, full_width);
 
   if (token === 'none') {
-    return { token: 'none', strength, full_width, css: 'transparent' };
+    return { token: 'none', strength, full_width, shape, css: 'transparent' };
   }
 
   // Frosted glass — strength → white fill opacity (10 ≈ secondary CTA look).
@@ -128,6 +162,7 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
       token: 'glass',
       strength,
       full_width,
+      shape,
       css: `rgba(255,255,255,${alpha})`,
     };
   }
@@ -139,7 +174,7 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
     rgb = hexToRgb(token.startsWith('#') ? token : `#${token}`);
   }
   if (!rgb) {
-    return { token: null, strength: null, full_width: false, css: null };
+    return { token: null, strength: null, full_width: false, shape: 'outline', css: null };
   }
 
   const alpha = strength / 100;
@@ -147,6 +182,7 @@ function resolveElementBackground(slide: SlideLike | null | undefined, key: Hero
     token,
     strength,
     full_width,
+    shape,
     css: `rgba(${rgb},${alpha})`,
   };
 }
@@ -190,9 +226,13 @@ export function resolveHeroSlidePresentation(
   // panel, the copy scrim behind the whole stack is a second box around the
   // first — the "too large" look the owner reported (2026-08-16). Lockstep
   // with HeroSlides::presentation()['panelled'].
+  // Only shapes that actually draw a box count — the outline shape paints
+  // letter edges, not a panel, so there is nothing for the block shade to nest
+  // inside and it must stay.
   const panelled = (['title', 'subtitle'] as const).some((key) => {
-    const css = elements[key]?.css;
-    return css != null && css !== '' && css !== 'transparent';
+    const el = elements[key];
+    const css = el?.css;
+    return css != null && css !== '' && css !== 'transparent' && el?.shape !== 'outline';
   });
 
   // The owner asked to drive this themselves rather than have it happen
