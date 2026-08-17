@@ -267,8 +267,10 @@ describe('Content Hub publish reliability + app scope', () => {
 
     const editor = await screen.findByTestId('wcw-field-hero_slides');
     await within(editor).findByTestId('hero-slides-wide');
-    const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
-    const title = within(wordsCol).getByLabelText(/Title \(HTML/i) as HTMLTextAreaElement;
+    // The editor is grouped by part now, so the heading field lives under the
+    // heading rather than in a shared "Words" column.
+    const headingPart = within(editor).getByTestId('hero-part-title-0');
+    const title = within(headingPart).getByLabelText(/Title \(HTML/i) as HTMLTextAreaElement;
     fireEvent.change(title, { target: { value: 'Website hero only' } });
 
     await waitFor(() => expect(contentApi.saveContentDrafts).toHaveBeenCalled(), { timeout: 5000 });

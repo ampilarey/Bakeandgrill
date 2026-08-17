@@ -238,6 +238,10 @@ final class HeroSlides
             'styles' => $styles,
             'text_align' => self::resolveTextAlign($slide),
             'motion' => self::resolveMotion($slide),
+            'parts' => array_combine(
+                self::ELEMENT_KEYS,
+                array_map(fn (string $k) => self::resolveElementMotion($slide, $k), self::ELEMENT_KEYS),
+            ),
         ];
     }
 
@@ -335,6 +339,41 @@ final class HeroSlides
 
         // 0 = half speed (slower, calmer), 100 = double speed.
         return self::trimFloat(0.5 + (self::clamp100($n) / 100.0) * 1.5);
+    }
+
+    /**
+     * Motion and alignment for one part of the slide.
+     *
+     * Owner, 2026-08-17: "Setting that can be separated make it separate for
+     * each part … I think alignment also be separated. Why not?" Animation and
+     * alignment used to be one choice for the whole slide, which meant the
+     * heading and subheading had to behave identically.
+     *
+     * Each falls back to the slide-wide value, so a slide that has only ever
+     * set the slide-wide one keeps behaving exactly as it did, and the
+     * slide-wide control still works as a way to set everything at once.
+     *
+     * @param  array<string, mixed>  $slide
+     * @return array{text: string, box: string, align: string}
+     */
+    public static function resolveElementMotion(array $slide, string $key): array
+    {
+        $slideMotion = self::resolveMotion($slide);
+
+        $pick = function (string $field, array $allowed, string $default) use ($slide): string {
+            $raw = strtolower(trim((string) ($slide[$field] ?? '')));
+
+            return in_array($raw, $allowed, true) ? $raw : $default;
+        };
+
+        return [
+            'text' => $pick("{$key}_anim", self::TEXT_ANIMS, $slideMotion['text']),
+            // Only the heading and subheading draw boxes worth animating.
+            'box' => in_array($key, self::STYLED_KEYS, true)
+                ? $pick("{$key}_box_anim", self::BOX_ANIMS, $slideMotion['box'])
+                : 'none',
+            'align' => $pick("{$key}_align", self::TEXT_ALIGNMENTS, self::resolveTextAlign($slide)),
+        ];
     }
 
     /** Elements that carry the full text-style controls. */

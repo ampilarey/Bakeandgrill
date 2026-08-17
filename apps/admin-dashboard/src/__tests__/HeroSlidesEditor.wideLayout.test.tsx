@@ -91,7 +91,7 @@ describe('HeroSlidesEditor wideLayout (Stage C — rev3)', () => {
     expect(within(card1).getByText('Hidden')).toBeTruthy();
   });
 
-  it('renders the slide strip on top and 3 columns (Picture / Words / Look) below for the selected slide', () => {
+  it('renders the slide strip on top and the parts of the selected slide below', () => {
     const onChange = vi.fn();
     render(
       <HeroSlidesEditor
@@ -104,13 +104,22 @@ describe('HeroSlidesEditor wideLayout (Stage C — rev3)', () => {
     );
 
     expect(screen.getByTestId('hero-slides-wide-rail')).toBeTruthy();
-    expect(screen.getByTestId('hero-slide-wide-picture-0')).toBeTruthy();
-    expect(screen.getByTestId('hero-slide-wide-words-0')).toBeTruthy();
-    expect(screen.getByTestId('hero-slide-wide-look-0')).toBeTruthy();
+
+    // Grouped by part rather than by kind of setting — owner, 2026-08-17:
+    // "Under photo everything related to its settings … Under heading 1: Text,
+    // text color ext. animation, background ext."
+    expect(screen.getByTestId('hero-common-0')).toBeTruthy();
+    for (const part of ['photo', 'eyebrow', 'title', 'subtitle', 'buttons']) {
+      expect(screen.getByTestId(`hero-part-${part}-0`)).toBeTruthy();
+    }
+    // The old split must be gone, not merely hidden.
+    expect(screen.queryByTestId('hero-slide-wide-picture-0')).toBeNull();
+    expect(screen.queryByTestId('hero-slide-wide-words-0')).toBeNull();
+    expect(screen.queryByTestId('hero-slide-wide-look-0')).toBeNull();
     expect(screen.getByTestId('hero-slides-wide-foot')).toBeTruthy();
   });
 
-  it('selecting a different card loads that slide values into the columns', () => {
+  it('selecting a different card loads that slide values into the parts', () => {
     const onChange = vi.fn();
     render(
       <HeroSlidesEditor
@@ -122,16 +131,16 @@ describe('HeroSlidesEditor wideLayout (Stage C — rev3)', () => {
       />,
     );
 
-    // First slide's Words column shows its title text.
-    expect(within(screen.getByTestId('hero-slide-wide-words-0')).getByDisplayValue('First slide')).toBeTruthy();
-    expect(screen.queryByTestId('hero-slide-wide-picture-1')).toBeNull();
+    // The first slide's heading part holds its title text.
+    expect(within(screen.getByTestId('hero-part-title-0')).getByDisplayValue('First slide')).toBeTruthy();
+    expect(screen.queryByTestId('hero-part-title-1')).toBeNull();
 
     fireEvent.click(screen.getByTestId('hero-slide-wide-1'));
 
-    expect(screen.queryByTestId('hero-slide-wide-picture-0')).toBeNull();
-    expect(within(screen.getByTestId('hero-slide-wide-words-1')).getByDisplayValue('Second slide')).toBeTruthy();
-    // Second slide is Hidden — the Look column's visibility toggle reflects it.
-    expect(within(screen.getByTestId('hero-slide-wide-look-1')).getByText('Hidden')).toBeTruthy();
+    expect(screen.queryByTestId('hero-part-title-0')).toBeNull();
+    expect(within(screen.getByTestId('hero-part-title-1')).getByDisplayValue('Second slide')).toBeTruthy();
+    // Second slide is Hidden — the slide-wide group's toggle reflects it.
+    expect(within(screen.getByTestId('hero-common-1')).getByText('Hidden')).toBeTruthy();
   });
 
   it('photo brightness / text position / swatches still write the same values as the default layout', () => {
@@ -146,8 +155,9 @@ describe('HeroSlidesEditor wideLayout (Stage C — rev3)', () => {
       />,
     );
 
-    const lookCol = screen.getByTestId('hero-slide-wide-look-0');
-    const brightness = within(lookCol).getByLabelText('Photo brightness');
+    // Brightness belongs to the photo now, not to a general "Look" column.
+    const photoPart = screen.getByTestId('hero-part-photo-0');
+    const brightness = within(photoPart).getByLabelText('Photo brightness');
     fireEvent.change(brightness, { target: { value: '42' } });
 
     expect(onChange).toHaveBeenCalled();
@@ -155,7 +165,8 @@ describe('HeroSlidesEditor wideLayout (Stage C — rev3)', () => {
     expect(next[0].photo_brightness).toBe(42);
     expect(next[0].title).toBe('First slide');
 
-    fireEvent.click(within(lookCol).getByTestId('hero-text-position-0-top'));
+    // Where the text sits is genuinely slide-wide, so it lives in the common group.
+    fireEvent.click(within(screen.getByTestId('hero-common-0')).getByTestId('hero-text-position-0-top'));
     next = JSON.parse(onChange.mock.calls[onChange.mock.calls.length - 1][0] as string);
     expect(next[0].text_position).toBe('top');
   });

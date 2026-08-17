@@ -1,7 +1,5 @@
-import { useRef, useState, type ReactNode } from 'react';
-import {
-  ChevronDown, ChevronUp, Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2,
-} from 'lucide-react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { ChevronDown, ChevronRight, ChevronUp, Clapperboard, Copy, EyeOff, Film, Images, Plus, Trash2 } from 'lucide-react';
 import type { ContentEditorWithUploadProps } from '../types';
 import { RepeaterShell } from '../RepeaterShell';
 import { ContentImageField, type ContentImageUploadResult } from '../ContentImageField';
@@ -16,6 +14,7 @@ import {
   withHeroPresentationFields,
   type HeroElementKey,
   type HeroPresentationPatch,
+  resolveHeroPartMotion,
 } from '../../../utils/heroSlidePresentation';
 import { HeroElementBgEditor } from './HeroElementBgEditor';
 import {
@@ -53,6 +52,10 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
 };
 
 /** Unlimited hero slides array editor (replaces fixed hero_slide_1/2/3). */
+const labelStyle: CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' };
+const mutedStyle: CSSProperties = { margin: 0, fontSize: 11, color: 'var(--color-text-muted)' };
+const rangeStyle: CSSProperties = { width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' };
+
 export function HeroSlidesEditor({
   label, description, value, onChange, triggerUpload, uploadImage, uploadVideo,
   mobileMode = false,
@@ -166,6 +169,8 @@ export function HeroSlidesEditor({
     // Replace the row so legacy `dim` cannot linger after merge.
     commitSlides(items.map((s, i) => (i === idx ? withHeroPresentationFields(s, patch) : s)));
   };
+
+  const [openParts, setOpenParts] = useState<Record<string, boolean>>({});
 
   const renderElementBgEditor = (slide: HeroSlideRow, idx: number, key: HeroElementKey) => {
     const panelKey = `${idx}-${key}`;
@@ -324,18 +329,20 @@ export function HeroSlidesEditor({
 
   /** Photo brightness, text background, text position, per-element swatches.
    *  Reused by the default/mobile stack and the wide LOOK column. */
-  const renderPresentationBlock = (slide: HeroSlideRow, idx: number) => {
+  /**
+   * Photo settings — brightness and what the photo itself does.
+   *
+   * Owner, 2026-08-17: "Under photo everything related to its settings like
+   * effects also." These used to sit in a general "Look" column alongside
+   * settings for the text, so nothing told you which knob affected the picture.
+   */
+  const renderPhotoBlock = (slide: HeroSlideRow, idx: number) => {
     const presentation = resolveHeroSlidePresentation(slide);
+    const current = String((slide as Record<string, unknown>).photo_anim ?? 'none');
     return (
-      <div
-        data-testid={`hero-slide-presentation-${idx}`}
-        style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '8px 0' }}
-      >
+      <div data-testid={`hero-photo-settings-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label
-            htmlFor={`hero-${idx}-photo-brightness`}
-            style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
-          >
+          <label htmlFor={`hero-${idx}-photo-brightness`} style={labelStyle}>
             Photo brightness — {presentation.photo_brightness}%
           </label>
           <input
@@ -345,23 +352,98 @@ export function HeroSlidesEditor({
             max={100}
             value={presentation.photo_brightness}
             onChange={(e) => applyPresentation(idx, { photo_brightness: Number(e.target.value) })}
-            style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
+            style={rangeStyle}
             aria-label="Photo brightness"
           />
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Higher keeps the photo looking like the photo. Lower knocks it back.
-          </p>
+          <p style={mutedStyle}>Higher keeps the photo looking like the photo. Lower knocks it back.</p>
         </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelStyle}>Movement</span>
+          <div role="radiogroup" aria-label="Photo movement" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {([['none', 'None'], ['zoom', 'Slow zoom'], ['pan', 'Slow pan']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={current === value}
+                data-testid={`hero-photo-anim-${idx}-${value}`}
+                onClick={() => applyPresentation(idx, { photo_anim: value } as unknown as HeroPresentationPatch)}
+                style={{
+                  ...btnStyle,
+                  fontWeight: current === value ? 700 : 600,
+                  background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                  borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /**
+   * The settings that genuinely cover the whole slide.
+   *
+   * Owner, 2026-08-17: "Common setting combined before all the parts." What is
+   * left here is only what cannot sensibly be per-part — where the copy sits in
+   * the banner, the shade behind all of it, how fast everything moves — plus
+   * the defaults each part inherits until it is given its own.
+   */
+  const renderSlideWideBlock = (slide: HeroSlideRow, idx: number) => {
+    const presentation = resolveHeroSlidePresentation(slide);
+    const row = slide as Record<string, unknown>;
+
+    const radios = (
+      field: string,
+      label: string,
+      options: ReadonlyArray<readonly [string, string]>,
+      current: string,
+      testPrefix: string,
+    ) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span style={labelStyle}>{label}</span>
+        <div role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {options.map(([value, optLabel]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={current === value}
+              data-testid={`${testPrefix}-${idx}-${value}`}
+              onClick={() => applyPresentation(idx, { [field]: value } as unknown as HeroPresentationPatch)}
+              style={{
+                ...btnStyle,
+                fontWeight: current === value ? 700 : 600,
+                background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
+              }}
+            >
+              {optLabel}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <div data-testid={`hero-slide-presentation-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {radios('text_position', 'Where the text sits', [
+          ['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom'],
+        ], presentation.text_position, 'hero-text-position')}
+
+        {radios('text_align', 'Alignment — every part starts from this', [
+          ['left', 'Left'], ['center', 'Centre'], ['right', 'Right'],
+        ], String(row.text_align ?? 'center'), 'hero-text-align')}
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
             htmlFor={`hero-${idx}-text-background`}
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: presentation.copy_scrim ? 'var(--color-text-secondary)' : 'var(--color-text-muted)',
-            }}
+            style={{ ...labelStyle, color: presentation.copy_scrim ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}
           >
-            Text background — {presentation.text_background}%
+            Shade behind all the text — {presentation.text_background}%
           </label>
           <input
             id={`hero-${idx}-text-background`}
@@ -370,42 +452,11 @@ export function HeroSlidesEditor({
             max={100}
             value={presentation.text_background}
             onChange={(e) => applyPresentation(idx, { text_background: Number(e.target.value) })}
-            style={{
-              width: '100%',
-              maxWidth: 320,
-              accentColor: 'var(--color-primary)',
-              // Not disabled — the value is still yours to set, it just is not
-              // being painted right now. Greying it out says so without
-              // throwing away the setting.
-              opacity: presentation.copy_scrim ? 1 : 0.45,
-            }}
+            style={{ ...rangeStyle, opacity: presentation.copy_scrim ? 1 : 0.45 }}
             aria-label="Text background"
           />
-          <p
-            data-testid={`hero-text-background-note-${idx}`}
-            style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}
-          >
-            {presentation.copy_scrim
-              ? 'Dark panel behind the words only — the photo stays untouched.'
-              : presentation.copy_scrim_mode === 'off'
-                ? 'Not shown — the shade below is set to Off.'
-                : 'Not shown — your heading or subheading has its own background, so this would draw a box inside a box. Set the shade below to Always to force it back.'}
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-            Shade behind all the text
-          </span>
-          <div
-            role="radiogroup"
-            aria-label="Shade behind all the text"
-            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
-          >
-            {([
-              ['auto', 'Auto'],
-              ['always', 'Always'],
-              ['off', 'Off'],
-            ] as const).map(([value, label]) => (
+          <div role="radiogroup" aria-label="Shade behind all the text" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {([['auto', 'Auto'], ['always', 'Always'], ['off', 'Off']] as const).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -416,177 +467,48 @@ export function HeroSlidesEditor({
                 style={{
                   ...btnStyle,
                   fontWeight: presentation.copy_scrim_mode === value ? 700 : 600,
-                  background: presentation.copy_scrim_mode === value
-                    ? 'var(--color-warning-bg)'
-                    : 'var(--color-surface)',
-                  borderColor: presentation.copy_scrim_mode === value
-                    ? 'var(--color-primary)'
-                    : 'var(--color-border)',
+                  background: presentation.copy_scrim_mode === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                  borderColor: presentation.copy_scrim_mode === value ? 'var(--color-primary)' : 'var(--color-border)',
                 }}
               >
                 {label}
               </button>
             ))}
           </div>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Auto hides the shade when your heading or subheading already has its own
-            background, so you never get a box inside a box.
+          <p data-testid={`hero-text-background-note-${idx}`} style={mutedStyle}>
+            {presentation.copy_scrim
+              ? 'Dark panel behind the words only — the photo stays untouched.'
+              : presentation.copy_scrim_mode === 'off'
+                ? 'Not shown — set to Off.'
+                : 'Not shown — your heading or subheading has its own background, so this would draw a box inside a box. Set Always to force it back.'}
           </p>
-        </div>
-        {/* ── Motion (owner, 2026-08-17) ─────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, gridColumn: '1 / -1' }}>
-          {([
-            ['text_anim', 'How the text arrives', [
-              ['fade', 'Fade & rise'], ['line', 'Line by line'], ['word', 'Word by word'], ['zoom', 'Zoom in'], ['none', 'No animation'],
-            ], 'fade'],
-            ['box_anim', 'Movement on the text boxes', [
-              ['none', 'None'], ['glow', 'Glow'], ['drift', 'Colour drift'], ['sheen', 'Sheen'],
-            ], 'none'],
-            ['photo_anim', 'Movement on the photo', [
-              ['none', 'None'], ['zoom', 'Slow zoom'], ['pan', 'Slow pan'],
-            ], 'none'],
-          ] as const).map(([field, label, options, fallback]) => {
-            const current = String((slide as Record<string, unknown>)[field] ?? fallback);
-            return (
-              <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                  {label}
-                </span>
-                <div role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {options.map(([value, optLabel]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={current === value}
-                      data-testid={`hero-${field.replace('_', '-')}-${idx}-${value}`}
-                      onClick={() => applyPresentation(idx, { [field]: value } as unknown as HeroPresentationPatch)}
-                      style={{
-                        ...btnStyle,
-                        fontWeight: current === value ? 700 : 600,
-                        background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
-                        borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
-                      }}
-                    >
-                      {optLabel}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label
-              htmlFor={`hero-${idx}-motion-speed`}
-              style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}
-            >
-              Motion speed — lower is calmer
-            </label>
-            <input
-              id={`hero-${idx}-motion-speed`}
-              type="range"
-              min={0}
-              max={100}
-              data-testid={`hero-motion-speed-${idx}`}
-              value={Number((slide as Record<string, unknown>).motion_speed ?? 33)}
-              onChange={(e) => applyPresentation(idx, { motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
-              style={{ width: '100%', maxWidth: 320, accentColor: 'var(--color-primary)' }}
-            />
-          </div>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Anyone whose phone is set to reduce motion sees none of this — their
-            setting wins, which is as it should be.
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-            Text alignment
-          </span>
-          <div
-            role="radiogroup"
-            aria-label="Text alignment"
-            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
-          >
-            {([
-              ['left', 'Left'],
-              ['center', 'Centre'],
-              ['right', 'Right'],
-            ] as const).map(([value, label]) => {
-              const current = String((slide as Record<string, unknown>).text_align ?? 'center');
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={current === value}
-                  data-testid={`hero-text-align-${idx}-${value}`}
-                  onClick={() => applyPresentation(idx, { text_align: value } as unknown as HeroPresentationPatch)}
-                  style={{
-                    ...btnStyle,
-                    fontWeight: current === value ? 700 : 600,
-                    background: current === value ? 'var(--color-warning-bg)' : 'var(--color-surface)',
-                    borderColor: current === value ? 'var(--color-primary)' : 'var(--color-border)',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Left or right reads better on a phone when the heading is long.
-          </p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-            Text position
-          </span>
-          <div
-            role="radiogroup"
-            aria-label="Text position"
-            style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
-          >
-            {([
-              ['top', 'Top'],
-              ['middle', 'Middle'],
-              ['bottom', 'Bottom'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={presentation.text_position === value}
-                data-testid={`hero-text-position-${idx}-${value}`}
-                onClick={() => applyPresentation(idx, { text_position: value })}
-                style={{
-                  ...btnStyle,
-                  fontWeight: presentation.text_position === value ? 700 : 600,
-                  background: presentation.text_position === value
-                    ? 'var(--color-warning-bg)'
-                    : 'var(--color-surface)',
-                  borderColor: presentation.text_position === value
-                    ? 'var(--color-primary)'
-                    : 'var(--color-border)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
 
-        <div
-          data-testid={`hero-element-bg-group-${idx}`}
-          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-        >
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>
-            Per-element backgrounds
+        {radios('text_anim', 'Animation — every part starts from this', [
+          ['fade', 'Fade & rise'], ['line', 'Line by line'], ['word', 'Word by word'], ['zoom', 'Zoom in'], ['none', 'None'],
+        ], String(row.text_anim ?? 'fade'), 'hero-text-anim')}
+
+        {radios('box_anim', 'Background movement — every part starts from this', [
+          ['none', 'None'], ['glow', 'Glow'], ['drift', 'Colour drift'], ['sheen', 'Sheen'],
+        ], String(row.box_anim ?? 'none'), 'hero-box-anim')}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label htmlFor={`hero-${idx}-motion-speed`} style={labelStyle}>
+            Motion speed — lower is calmer
+          </label>
+          <input
+            id={`hero-${idx}-motion-speed`}
+            type="range"
+            min={0}
+            max={100}
+            data-testid={`hero-motion-speed-${idx}`}
+            value={Number(row.motion_speed ?? 33)}
+            onChange={(e) => applyPresentation(idx, { motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
+            style={rangeStyle}
+          />
+          <p style={mutedStyle}>
+            Anyone whose phone is set to reduce motion sees none of this — their setting wins.
           </p>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>
-            Leave on Default to keep today’s look. Open only the pieces you want to change.
-          </p>
-          {(['eyebrow', 'title', 'subtitle', 'cta1', 'cta2'] as HeroElementKey[]).map((key) =>
-            renderElementBgEditor(slide, idx, key))}
         </div>
       </div>
     );
@@ -753,115 +675,281 @@ export function HeroSlidesEditor({
 
   /** Eyebrow / title / subtitle / CTA1 / CTA2 text + URL fields. Reused by
    *  the default/mobile grid and the wide WORDS column (stacked). */
-  const renderWordsFieldsBlock = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => (
-    <div className="form-grid-2 hero-slide-fields" style={{ display: 'grid', gridTemplateColumns: multiline ? '1fr' : '1fr 1fr', gap: 10 }}>
-      {FIELDS.map((f) => {
-        const useArea = multiline || f.multiline;
-        return (
-          <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: (!multiline && f.col === 'full') || useArea ? '1 / -1' : undefined }}>
-            <label htmlFor={`hero-${idx}-${f.key}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{f.label}</label>
-            {useArea ? (
-              <textarea
-                id={`hero-${idx}-${f.key}`}
-                value={String(slide[f.key] ?? '')}
-                onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
-                placeholder={f.placeholder}
-                rows={f.key === 'title' || f.key === 'subtitle' ? 3 : 2}
-                style={{
-                  minHeight: 44,
-                  borderRadius: 8,
-                  border: '1px solid var(--color-border)',
-                  background: 'var(--color-surface)',
-                  padding: '8px 10px',
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  color: 'var(--color-text)',
-                  resize: 'vertical',
-                  width: '100%',
-                  overflowWrap: 'anywhere',
-                }}
-              />
-            ) : (
-              <input
-                id={`hero-${idx}-${f.key}`}
-                value={String(slide[f.key] ?? '')}
-                onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
-                placeholder={f.placeholder}
-                style={{ height: 32, borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: '0 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', color: 'var(--color-text)', width: '100%' }}
-              />
+
+  /**
+   * Motion and alignment for one part.
+   *
+   * Owner, 2026-08-17: "Setting that can be separated make it separate for each
+   * part … I think alignment also be separated. Why not?" Each control offers
+   * "Same as slide" so a part inherits until you deliberately give it its own —
+   * that is what keeps the common settings above worth having.
+   */
+  const renderPartMotion = (slide: HeroSlideRow, idx: number, key: HeroElementKey) => {
+    const row = slide as Record<string, unknown>;
+    const part = resolveHeroPartMotion(row, key);
+    const styled = key === 'title' || key === 'subtitle';
+
+    const group = (
+      field: string,
+      label: string,
+      options: ReadonlyArray<readonly [string, string]>,
+      inherited: string,
+    ) => {
+      const stored = String(row[field] ?? '');
+      return (
+        <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{label}</span>
+          <div role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {([['', `Same as slide (${inherited})`], ...options] as ReadonlyArray<readonly [string, string]>).map(
+              ([value, optLabel]) => {
+                const on = stored === value;
+                return (
+                  <button
+                    key={value || 'inherit'}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    data-testid={`hero-part-${field}-${idx}-${value || 'inherit'}`}
+                    onClick={() => applyPresentation(idx, { [field]: value || null } as unknown as HeroPresentationPatch)}
+                    style={{
+                      ...btnStyle,
+                      height: 34,
+                      fontSize: 12,
+                      fontWeight: on ? 700 : 600,
+                      background: on ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                      borderColor: on ? 'var(--color-primary)' : 'var(--color-border)',
+                    }}
+                  >
+                    {optLabel}
+                  </button>
+                );
+              },
             )}
           </div>
-        );
-      })}
-    </div>
-  );
+        </div>
+      );
+    };
 
-  /** Original single-column stack — mobile sheet + default RepeaterShell.
-   *  Composes the same sub-blocks the wide layout's 3 columns use below. */
-  const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, multiline: boolean) => {
-    const showing = isHeroSlideShowing(slide);
     return (
-      <div
-        data-testid={`hero-slide-${idx}`}
-        data-showing={showing ? 'true' : 'false'}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          opacity: showing ? 1 : 0.72,
-        }}
-      >
-        {renderVisibilityAndSchedule(slide, idx, update)}
-        {renderImageBlock(slide, idx, update)}
-        {renderPresentationBlock(slide, idx)}
-        {renderVideoBlock(slide, idx, update)}
-        {renderWordsFieldsBlock(slide, idx, update, multiline)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {group(`${key}_anim`, 'Animation', [
+          ['fade', 'Fade & rise'], ['line', 'Line by line'], ['word', 'Word by word'], ['zoom', 'Zoom in'], ['none', 'None'],
+        ], part.text)}
+        {group(`${key}_align`, 'Alignment', [
+          ['left', 'Left'], ['center', 'Centre'], ['right', 'Right'],
+        ], part.align)}
+        {styled
+          ? group(`${key}_box_anim`, 'Background movement', [
+              ['none', 'None'], ['glow', 'Glow'], ['drift', 'Colour drift'], ['sheen', 'Sheen'],
+            ], part.box)
+          : null}
       </div>
     );
   };
 
-  /** Small caps heading shared by the three wide-layout columns. */
-  const renderColumnHeading = (text: string) => (
-    <p
-      style={{
-        margin: 0,
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-        color: 'var(--color-text-muted)',
-      }}
-    >
-      {text}
-    </p>
-  );
+  /** One collapsible part of the slide, holding everything that belongs to it. */
+  const renderPart = (
+    idx: number,
+    key: string,
+    title: string,
+    summary: string,
+    body: ReactNode,
+  ) => {
+    const openKey = `${idx}-part-${key}`;
+    // Open by default: the part's own text is content, not an advanced
+    // setting, and hiding it behind a tap makes the common job slower. The
+    // styling and motion inside each part are what stay folded away.
+    const isOpen = openParts[openKey] ?? true;
+    return (
+      <div
+        key={key}
+        data-testid={`hero-part-${key}-${idx}`}
+        data-open={isOpen ? 'yes' : 'no'}
+        style={{
+          border: '1px solid var(--color-border)',
+          borderRadius: 10,
+          background: 'var(--color-bg)',
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          data-testid={`hero-part-toggle-${key}-${idx}`}
+          aria-expanded={isOpen}
+          onClick={() => setOpenParts((p) => ({ ...p, [openKey]: !p[openKey] }))}
+          style={{
+            width: '100%',
+            minHeight: 48,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            background: 'transparent',
+            border: 0,
+            cursor: 'pointer',
+            textAlign: 'left',
+            color: 'var(--color-text)',
+          }}
+        >
+          {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <span style={{ fontSize: 13, fontWeight: 700, flex: 1, minWidth: 0 }}>{title}</span>
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--color-text-muted)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: '45%',
+            }}
+          >
+            {summary}
+          </span>
+        </button>
+        {isOpen ? <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 12 }}>{body}</div> : null}
+      </div>
+    );
+  };
 
-  /** Website desktop Stage C — PICTURE column: image + video, full width. */
-  const renderPictureColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
-    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-picture-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-      {renderColumnHeading('Picture')}
-      {renderImageBlock(slide, idx, update)}
-      {renderVideoBlock(slide, idx, update)}
-    </div>
-  );
+  /** One text field from FIELDS, on its own. */
+  const renderField = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void, fieldKey: keyof HeroSlideRow) => {
+    const f = FIELDS.find((x) => x.key === fieldKey);
+    if (!f) return null;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label htmlFor={`hero-${idx}-${f.key}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          {f.label}
+        </label>
+        <textarea
+          id={`hero-${idx}-${f.key}`}
+          value={String(slide[f.key] ?? '')}
+          onChange={(e) => update({ [f.key]: e.target.value } as Partial<HeroSlideRow>)}
+          placeholder={f.placeholder}
+          rows={f.key === 'title' || f.key === 'subtitle' ? 3 : 2}
+          style={{
+            minHeight: 44,
+            borderRadius: 8,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            padding: '8px 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            outline: 'none',
+            color: 'var(--color-text)',
+            resize: 'vertical',
+            width: '100%',
+            overflowWrap: 'anywhere',
+          }}
+        />
+      </div>
+    );
+  };
 
-  /** Website desktop Stage C — WORDS column: eyebrow/title/subtitle/CTAs, stacked. */
-  const renderWordsColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
-    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-words-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-      {renderColumnHeading('Words')}
-      {renderWordsFieldsBlock(slide, idx, update, true)}
-    </div>
-  );
+  /**
+   * The slide editor, grouped by PART rather than by kind of setting.
+   *
+   * Owner, 2026-08-17: "Can u simplify more hero settings … Under photo
+   * everything related to its settings like effects also. Under heading 1:
+   * Text, text color ext. animation, background ext."
+   *
+   * It used to be split the other way — Picture / Words / Look — so styling a
+   * heading meant visiting three places and knowing which of them held the
+   * setting you wanted. Now each part owns everything about it, and only the
+   * genuinely slide-wide settings sit on their own, first.
+   */
+  const renderPartsStack = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => {
+    const row = slide as Record<string, unknown>;
+    const showing = isHeroSlideShowing(slide);
+    const text = (v: unknown, fallback: string) => {
+      const t = String(v ?? '').replace(/<[^>]*>/g, '').trim();
+      return t === '' ? fallback : t.length > 28 ? `${t.slice(0, 28)}…` : t;
+    };
 
-  /** Website desktop Stage C — LOOK column: brightness/text bg/position/swatches + Showing/dates. */
-  const renderLookColumn = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => (
-    <div className="hero-slides-wide-col" data-testid={`hero-slide-wide-look-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-      {renderColumnHeading('Look')}
-      {renderVisibilityAndSchedule(slide, idx, update)}
-      {renderPresentationBlock(slide, idx)}
-    </div>
-  );
+    return (
+      <div
+        data-testid={`hero-slide-${idx}`}
+        data-showing={showing ? 'true' : 'false'}
+        style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: showing ? 1 : 0.72 }}
+      >
+        {/* Common first — the frame everything else sits in. */}
+        <div
+          data-testid={`hero-common-${idx}`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            padding: 12,
+            borderRadius: 10,
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+            Whole slide
+          </span>
+          {renderVisibilityAndSchedule(slide, idx, update)}
+          {renderSlideWideBlock(slide, idx)}
+        </div>
+
+        {renderPart(idx, 'photo', 'Photo', row.image ? 'Set' : 'No image', (
+          <>
+            {renderImageBlock(slide, idx, update)}
+            {renderVideoBlock(slide, idx, update)}
+            {renderPhotoBlock(slide, idx)}
+          </>
+        ))}
+
+        {renderPart(idx, 'eyebrow', 'Eyebrow', text(row.eyebrow, 'Empty'), (
+          <>
+            {renderField(slide, idx, update, 'eyebrow')}
+            {renderElementBgEditor(slide, idx, 'eyebrow')}
+            {renderPartMotion(slide, idx, 'eyebrow')}
+          </>
+        ))}
+
+        {renderPart(idx, 'title', 'Heading', text(row.title, 'Empty'), (
+          <>
+            {renderField(slide, idx, update, 'title')}
+            {renderElementBgEditor(slide, idx, 'title')}
+            {renderPartMotion(slide, idx, 'title')}
+          </>
+        ))}
+
+        {renderPart(idx, 'subtitle', 'Subheading', text(row.subtitle, 'Empty'), (
+          <>
+            {renderField(slide, idx, update, 'subtitle')}
+            {renderElementBgEditor(slide, idx, 'subtitle')}
+            {renderPartMotion(slide, idx, 'subtitle')}
+          </>
+        ))}
+
+        {renderPart(idx, 'buttons', 'Buttons', text(row.cta_text, 'None'), (
+          <>
+            {renderField(slide, idx, update, 'cta_text')}
+            {renderField(slide, idx, update, 'cta_url')}
+            {renderElementBgEditor(slide, idx, 'cta1')}
+            {renderPartMotion(slide, idx, 'cta1')}
+            <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)', margin: '4px 0' }} />
+            {renderField(slide, idx, update, 'cta2_text')}
+            {renderField(slide, idx, update, 'cta2_url')}
+            {renderElementBgEditor(slide, idx, 'cta2')}
+            {renderPartMotion(slide, idx, 'cta2')}
+          </>
+        ))}
+      </div>
+    );
+  };
+
+  /** Original single-column stack — mobile sheet + default RepeaterShell.
+   *  Composes the same sub-blocks the wide layout's 3 columns use below. */
+  // The parts stack carries the slide's testid and dimming itself, so this is
+  // now just a pass-through kept for the call sites.
+  const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) =>
+    renderPartsStack(slide, idx, update);
+
+
+
+
 
   const sharedChrome = (
     <>
@@ -1082,7 +1170,7 @@ export function HeroSlidesEditor({
                   {scheduleSlot}
                 </div>
               ) : null}
-              {renderSlideFields(editing, editingIdx, (patch) => updateAt(editingIdx, patch), true)}
+              {renderSlideFields(editing, editingIdx, (patch) => updateAt(editingIdx, patch))}
             </>
           ) : null}
         </ContentEditorSheet>
@@ -1205,9 +1293,9 @@ export function HeroSlidesEditor({
                 alignItems: 'start',
               }}
             >
-              {renderPictureColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
-              {renderWordsColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
-              {renderLookColumn(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
+              {/* One stack, grouped by part — the same on a laptop as on a
+                  phone, so there is one place to learn rather than two. */}
+              {renderPartsStack(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
             </div>
             <div
               className="hero-slides-wide-foot"
@@ -1270,7 +1358,7 @@ export function HeroSlidesEditor({
         onChange={(next) => onChange(JSON.stringify(next))}
         createItem={emptySlide}
         itemLabel="slide"
-        renderItem={(slide, idx, update) => renderSlideFields(slide, idx, update, false)}
+        renderItem={(slide, idx, update) => renderSlideFields(slide, idx, update)}
       />
     </div>
   );

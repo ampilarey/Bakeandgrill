@@ -59,6 +59,8 @@ export type HeroSlidePresentation = {
   text_align: HeroTextAlign;
   /** Text, box and photo motion for this slide. */
   motion: HeroMotion;
+  /** Per-part motion and alignment, each falling back to the slide-wide value. */
+  parts: Record<HeroElementKey, HeroPartMotion>;
 };
 
 type SlideLike = {
@@ -266,6 +268,9 @@ export function resolveHeroSlidePresentation(
     },
     text_align: resolveHeroTextAlign(row as Record<string, unknown>),
     motion: resolveHeroMotion(row as Record<string, unknown>),
+    parts: Object.fromEntries(
+      HERO_ELEMENT_KEYS.map((k) => [k, resolveHeroPartMotion(row as Record<string, unknown>, k)]),
+    ) as Record<HeroElementKey, HeroPartMotion>,
   };
 }
 
@@ -635,4 +640,42 @@ export function splitHeroWordSpans(html: string): string {
   }
 
   return out;
+}
+
+export type HeroPartMotion = {
+  text: HeroTextAnim;
+  box: HeroBoxAnim;
+  align: HeroTextAlign;
+};
+
+/**
+ * Motion and alignment for one part of the slide — lockstep with
+ * HeroSlides::resolveElementMotion().
+ *
+ * Owner, 2026-08-17: "Setting that can be separated make it separate for each
+ * part … I think alignment also be separated." Each falls back to the
+ * slide-wide value, so a slide that only set the slide-wide one is unchanged
+ * and that control still works as a way to set everything at once.
+ */
+export function resolveHeroPartMotion(
+  slide: Record<string, unknown> | null | undefined,
+  key: HeroElementKey,
+): HeroPartMotion {
+  const row = (slide ?? {}) as Record<string, unknown>;
+  const slideMotion = resolveHeroMotion(row);
+  const slideAlign = resolveHeroTextAlign(row);
+
+  const pick = <T extends string>(field: string, allowed: readonly T[], fallback: T): T => {
+    const raw = String(row[field] ?? '').trim().toLowerCase();
+    return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
+  };
+
+  return {
+    text: pick(`${key}_anim`, HERO_TEXT_ANIMS, slideMotion.text),
+    // Only the heading and subheading draw boxes worth animating.
+    box: (HERO_STYLED_KEYS as readonly string[]).includes(key)
+      ? pick(`${key}_box_anim`, HERO_BOX_ANIMS, slideMotion.box)
+      : 'none',
+    align: pick(`${key}_align`, ['left', 'center', 'right'] as const, slideAlign),
+  };
 }

@@ -178,7 +178,8 @@ describe('Content Hub dual-app editing', () => {
     const field = await screen.findByTestId('wcw-field-hero_slides');
     expect(within(field).queryByTestId('scope-tabs-hero_slides')).toBeNull();
 
-    const words = await within(field).findByTestId('hero-slide-wide-words-0');
+    // The editor is grouped by part now; the eyebrow lives in its own group.
+    const words = await within(field).findByTestId('hero-part-eyebrow-0');
     await waitFor(() => {
       expect(within(words).getByDisplayValue('Order eyebrow')).toBeTruthy();
     });

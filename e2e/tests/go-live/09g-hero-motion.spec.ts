@@ -5,6 +5,10 @@
  * and picked every option offered. Two things here can only be checked by a
  * real engine, and both bit during the build:
  *
+ * Motion became a per-PART setting on 2026-08-17 ("Setting that can be
+ * separated make it separate for each part"), so these attributes sit on the
+ * heading and subheading rather than on the overlay.
+ *
  *  1. An element carries ONE `animation` property, and an entrance and a
  *     looping box effect both want it. The first cut lost the box effect to the
  *     entrance on specificity — choosing Glow with the one-box shape did
@@ -25,12 +29,12 @@ async function probe(
   opts: { text?: string; box?: string; photo?: string; shape?: string },
 ): Promise<Probe | null> {
   return page.evaluate((o) => {
-    const overlay = document.querySelector('.banner-overlay') as HTMLElement | null;
     const title = document.querySelector('.banner-title') as HTMLElement | null;
     const slide = document.querySelector('.banner-slide') as HTMLElement | null;
-    if (!overlay || !title || !slide) return null;
+    if (!title || !slide) return null;
 
-    overlay.setAttribute('data-text-anim', o.text ?? 'fade');
+    // Motion hangs off the part itself now, not the overlay.
+    title.setAttribute('data-anim', o.text ?? 'fade');
     title.setAttribute('data-has-bg', '1');
     title.setAttribute('data-bg-shape', o.shape ?? 'line');
     title.style.setProperty('--hero-el-bg', 'rgba(28,20,8,0.7)');
@@ -88,6 +92,43 @@ test.describe('Hero motion', () => {
       }
     });
   }
+
+  test('the heading and subheading can animate differently', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    const r = await page.evaluate(() => {
+      const title = document.querySelector('.banner-title') as HTMLElement | null;
+      const sub = document.querySelector('.banner-sub') as HTMLElement | null;
+      if (!title || !sub) return null;
+
+      // The whole point of splitting motion per part: these differ.
+      title.setAttribute('data-anim', 'zoom');
+      sub.setAttribute('data-anim', 'fade');
+      title.setAttribute('data-align', 'left');
+      sub.setAttribute('data-align', 'right');
+
+      const cs = (e: HTMLElement) => getComputedStyle(e);
+      return {
+        titleAnim: cs(title).animationName,
+        subAnim: cs(sub).animationName,
+        titleAlign: cs(title).textAlign,
+        subAlign: cs(sub).textAlign,
+        titleSelf: cs(title).alignSelf,
+        subSelf: cs(sub).alignSelf,
+      };
+    });
+    test.skip(r === null, 'no hero slide configured on this install');
+
+    expect(r!.titleAnim).toContain('hero-zoom-in');
+    expect(r!.subAnim).toContain('hero-fade-up');
+    expect(r!.titleAnim).not.toBe(r!.subAnim);
+
+    // Alignment is per part too, so a heading can sit left of its subheading.
+    expect(r!.titleAlign).toBe('left');
+    expect(r!.subAlign).toBe('right');
+    expect(r!.titleSelf).toBe('flex-start');
+    expect(r!.subSelf).toBe('flex-end');
+  });
 
   test('the photo can zoom or pan, and stop', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });

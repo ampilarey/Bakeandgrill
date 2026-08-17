@@ -126,7 +126,8 @@ describe('Content Hub visual editors', () => {
 
     const editor = await screen.findByTestId('wcw-field-hero_slides');
     await within(editor).findByTestId('hero-slides-wide');
-    const wordsCol = within(editor).getByTestId('hero-slide-wide-words-0');
+    // The editor is grouped by part now; the eyebrow lives in its own group.
+    const wordsCol = within(editor).getByTestId('hero-part-eyebrow-0');
     await waitFor(() => {
       expect(within(wordsCol).getByDisplayValue('Shared eyebrow')).toBeTruthy();
     });

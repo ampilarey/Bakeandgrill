@@ -640,28 +640,33 @@
 @keyframes hero-box-sheen { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
 
 /*
+ * Motion is now a property of each PART, not of the slide — owner, 2026-08-17:
+ * "Setting that can be separated make it separate for each part." The selectors
+ * therefore hang off the element rather than the overlay.
+ *
  * An element can only carry one `animation` property, and an entrance and a
  * looping box effect both want it. Naming the entrance in a custom property
  * lets the box rules compose the two instead of one silently beating the other
  * on specificity — which is what happened first time round: choosing Glow with
  * the one-box shape did nothing at all.
  */
-.banner-overlay[data-text-anim="fade"] .banner-title,
-.banner-overlay[data-text-anim="fade"] .banner-sub { --hero-entrance: hero-fade-up; }
-.banner-overlay[data-text-anim="zoom"] .banner-title,
-.banner-overlay[data-text-anim="zoom"] .banner-sub { --hero-entrance: hero-zoom-in; }
-.banner-overlay[data-text-anim="line"] .hero-title-line,
-.banner-overlay[data-text-anim="line"] .hero-sub-line,
-.banner-overlay[data-text-anim="word"] .hero-word { --hero-entrance: hero-fade-up; }
+.banner-title[data-anim="fade"],
+.banner-sub[data-anim="fade"] { --hero-entrance: hero-fade-up; }
+.banner-title[data-anim="zoom"],
+.banner-sub[data-anim="zoom"] { --hero-entrance: hero-zoom-in; }
+.banner-title[data-anim="line"] .hero-title-line,
+.banner-sub[data-anim="line"] .hero-sub-line,
+.banner-title[data-anim="word"] .hero-word,
+.banner-sub[data-anim="word"] .hero-word { --hero-entrance: hero-fade-up; }
 
-.banner-overlay[data-text-anim="fade"] .banner-title,
-.banner-overlay[data-text-anim="fade"] .banner-sub,
-.banner-overlay[data-text-anim="zoom"] .banner-title,
-.banner-overlay[data-text-anim="zoom"] .banner-sub {
+.banner-title[data-anim="fade"],
+.banner-sub[data-anim="fade"],
+.banner-title[data-anim="zoom"],
+.banner-sub[data-anim="zoom"] {
     animation: var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both;
 }
-.banner-overlay[data-text-anim="fade"] .banner-sub,
-.banner-overlay[data-text-anim="zoom"] .banner-sub {
+.banner-sub[data-anim="fade"],
+.banner-sub[data-anim="zoom"] {
     animation-delay: calc(0.12s / var(--hero-speed, 1));
 }
 
@@ -670,17 +675,19 @@
  * each part, so the delay is pure CSS — no per-slide JavaScript, and it keeps
  * working when the text rewraps at a different width.
  */
-.banner-overlay[data-text-anim="line"] .hero-title-line,
-.banner-overlay[data-text-anim="line"] .hero-sub-line,
-.banner-overlay[data-text-anim="word"] .hero-word {
+.banner-title[data-anim="line"] .hero-title-line,
+.banner-sub[data-anim="line"] .hero-sub-line,
+.banner-title[data-anim="word"] .hero-word,
+.banner-sub[data-anim="word"] .hero-word {
     display: inline-block;
     animation: var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both;
 }
-.banner-overlay[data-text-anim="line"] .hero-title-line,
-.banner-overlay[data-text-anim="line"] .hero-sub-line {
+.banner-title[data-anim="line"] .hero-title-line,
+.banner-sub[data-anim="line"] .hero-sub-line {
     animation-delay: calc(var(--hero-line-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
 }
-.banner-overlay[data-text-anim="word"] .hero-word {
+.banner-title[data-anim="word"] .hero-word,
+.banner-sub[data-anim="word"] .hero-word {
     animation-delay: calc(var(--hero-word-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
 }
 /*
@@ -688,17 +695,17 @@
  * clone their box onto every visual line. Keep the run inline and let the words
  * inside it carry the motion instead.
  */
-.banner-overlay[data-text-anim="line"] .banner-title[data-bg-shape="line"] .hero-title-line,
-.banner-overlay[data-text-anim="line"] .banner-sub[data-bg-shape="line"] .hero-sub-line {
+.banner-title[data-anim="line"][data-bg-shape="line"] .hero-title-line,
+.banner-sub[data-anim="line"][data-bg-shape="line"] .hero-sub-line {
     display: inline;
 }
 
 /* "None" has to actively stop the stylesheet's own long-standing fade, which
    is declared unconditionally on these elements. */
-.banner-overlay[data-text-anim="none"] .banner-eyebrow,
-.banner-overlay[data-text-anim="none"] .banner-title,
-.banner-overlay[data-text-anim="none"] .banner-sub,
-.banner-overlay[data-text-anim="none"] .banner-ctas {
+.banner-eyebrow[data-anim="none"],
+.banner-title[data-anim="none"],
+.banner-sub[data-anim="none"],
+.banner-ctas[data-anim="none"] {
     animation: none;
 }
 
@@ -753,6 +760,16 @@
         hero-box-sheen calc(5s / var(--hero-speed, 1)) linear infinite;
 }
 
+/* Alignment is per part too, so a short heading can sit left while the
+   subheading stays centred. */
+.banner-copy [data-align="left"]  { align-self: flex-start; text-align: left; }
+.banner-copy [data-align="center"] { align-self: center; text-align: center; }
+.banner-copy [data-align="right"] { align-self: flex-end; text-align: right; }
+.banner-copy .banner-title[data-align="left"][data-bg-shape="hug"],
+.banner-copy .banner-sub[data-align="left"][data-bg-shape="hug"] { margin-left: 0; margin-right: auto; }
+.banner-copy .banner-title[data-align="right"][data-bg-shape="hug"],
+.banner-copy .banner-sub[data-align="right"][data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
+
 /* Photo motion. */
 .banner-slide[data-photo-anim="zoom"] img,
 .banner-slide[data-photo-anim="zoom"] .banner-video {
@@ -764,11 +781,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .banner-overlay[data-text-anim] .banner-title,
-    .banner-overlay[data-text-anim] .banner-sub,
-    .banner-overlay[data-text-anim] .hero-title-line,
-    .banner-overlay[data-text-anim] .hero-sub-line,
-    .banner-overlay[data-text-anim] .hero-word,
+    .banner-eyebrow[data-anim],
+    .banner-title[data-anim],
+    .banner-sub[data-anim],
+    .banner-ctas[data-anim],
+    .banner-title .hero-title-line,
+    .banner-sub .hero-sub-line,
+    .hero-word,
     .banner-title[data-box-anim],
     .banner-sub[data-box-anim],
     .banner-title[data-box-anim] .hero-title-line,

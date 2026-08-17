@@ -8,7 +8,7 @@ import {
   headingLengthBand,
   heroElementStyleVars,
   splitHeroWordSpans,
-  type HeroMotion,
+  type HeroPartMotion,
   resolveHeroSlidePresentation,
   type HeroElementStyle,
   splitHeroRichTextLines,
@@ -71,7 +71,7 @@ function HeroTextBlock({
   el,
   style,
   styleVars,
-  motion,
+  part,
   testId,
 }: {
   as: 'h2' | 'p';
@@ -80,7 +80,7 @@ function HeroTextBlock({
   el: HeroElementBackground;
   style?: HeroElementStyle;
   styleVars?: Record<string, string>;
-  motion?: HeroMotion;
+  part?: HeroPartMotion;
   testId?: string;
 }) {
   const clean = sanitizeHeroHtml(html);
@@ -95,6 +95,8 @@ function HeroTextBlock({
     'data-outline'?: '1';
     'data-border'?: '1';
     'data-box-anim'?: string;
+    'data-anim'?: string;
+    'data-align'?: string;
     style?: CSSProperties;
   } = {};
   if (el.css) {
@@ -104,7 +106,11 @@ function HeroTextBlock({
   }
   // Outline and border are independent of the shape, so a box can carry a
   // letter outline too — the thing that was impossible before 2026-08-17.
-  if (motion && motion.box !== 'none') contrastProps['data-box-anim'] = motion.box;
+  if (part) {
+    contrastProps['data-anim'] = part.text;
+    contrastProps['data-align'] = part.align;
+    if (part.box !== 'none') contrastProps['data-box-anim'] = part.box;
+  }
   if (style?.outline) contrastProps['data-outline'] = '1';
   if (style?.border) contrastProps['data-border'] = '1';
   if (styleVars && Object.keys(styleVars).length > 0) {
@@ -123,7 +129,7 @@ function HeroTextBlock({
         {...(band ? { 'data-len': band } : {})}
         {...contrastProps}
       >
-        {titleLineNodes(clean, motion?.text === 'word')}
+        {titleLineNodes(clean, part?.text === 'word')}
       </Tag>
     );
   }
@@ -135,7 +141,7 @@ function HeroTextBlock({
       <span
         className="hero-sub-line"
         style={{ ['--hero-line-i' as string]: '0' } as CSSProperties}
-        dangerouslySetInnerHTML={{ __html: motion?.text === 'word' ? splitHeroWordSpans(clean) : clean }}
+        dangerouslySetInnerHTML={{ __html: part?.text === 'word' ? splitHeroWordSpans(clean) : clean }}
       />
     </Tag>
   );
@@ -398,7 +404,6 @@ export function PromoCarousel({
                 className="home-promo-hero__overlay"
                 data-text-position={presentation.text_position}
                 data-text-align={presentation.text_align}
-                data-text-anim={presentation.motion.text}
                 style={{
                   ['--hero-stagger' as string]: `${presentation.motion.delay_step}ms`,
                   ['--hero-speed' as string]: presentation.motion.speed,
@@ -422,7 +427,7 @@ export function PromoCarousel({
                     el={presentation.elements.title}
                     style={presentation.styles.title}
                     styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'title')}
-                    motion={presentation.motion}
+                    part={presentation.parts.title}
                     testId={`hero-title-${i}`}
                   />
                 ) : null}
@@ -434,7 +439,7 @@ export function PromoCarousel({
                     el={presentation.elements.subtitle}
                     style={presentation.styles.subtitle}
                     styleVars={heroElementStyleVars(slide as Record<string, unknown>, 'subtitle')}
-                    motion={presentation.motion}
+                    part={presentation.parts.subtitle}
                     testId={`hero-sub-${i}`}
                   />
                 ) : null}
