@@ -49,6 +49,9 @@ class PosBootstrapController extends Controller
         return response()->json([
             'categories' => $menu['categories'],
             'items' => $menu['items'],
+            // anchor item id => suggested item ids, ranked by lift. Travels
+            // with the menu so the chips survive an offline till.
+            'pairings' => $menu['pairings'],
             'shift' => $shift,
             'sms_notifications' => [
                 'send_bill' => SmsNotificationSettings::isEnabled(SmsNotificationSettings::POS_SEND_BILL),

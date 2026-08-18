@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
+import { SuggestionChips } from '../components/SuggestionChips';
 import { SendBillPanel } from '../components/SendBillPanel';
 import { NotePickerModal } from '../components/NotePickerModal';
 import { PackagingReconcileModal } from '../components/PackagingReconcileModal';
@@ -398,6 +399,17 @@ export function PosShellLayout() {
             </div>
           ) : (
           <>
+            {/* Above the ticket, in the cashier's line of sight while they are
+                still talking to the customer — the moment an upsell lands. */}
+            <SuggestionChips
+              items={menu.items}
+              pairings={menu.pairings}
+              cartItems={cart.cartItems}
+              addToCart={cart.addToCart}
+              handleSelectItem={cart.handleSelectItem}
+              readOnly={order.resumedOrderId !== null && !order.isEditingActive}
+              packagingEligible={orderType !== "Dine-in"}
+            />
             <OrderCart
               orderType={orderType}
               setOrderType={handleOrderTypeToggle}

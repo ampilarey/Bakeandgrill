@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
+use App\Domains\Marketing\Services\ItemAffinityService;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
@@ -20,10 +21,11 @@ class PosMenuBuilder
         private readonly KitchenMenuResolver $kitchenMenuResolver,
         private readonly SpecialPricingService $specialPricing,
         private readonly EffectivePriceService $effectivePricing,
+        private readonly ItemAffinityService $affinity,
     ) {}
 
     /**
-     * @return array{categories: \Illuminate\Support\Collection, items: \Illuminate\Support\Collection<int, array<string, mixed>>}
+     * @return array{categories: \Illuminate\Support\Collection, items: \Illuminate\Support\Collection<int, array<string, mixed>>, pairings: array<int, list<int>>}
      */
     public function build(string $channel): array
     {
@@ -208,9 +210,26 @@ class PosMenuBuilder
             return $row;
         })->values();
 
+        // Suggestions travel with the menu, not on their own request. The till
+        // caches this payload for offline service, and a "goes well with" chip
+        // that needs a round trip disappears exactly when the connection does —
+        // which at a counter, mid-queue, is the worst possible moment.
+        // Restricted to items the cashier can actually ring up right now.
+        // Channel-blocked and sold-out items still travel in the payload,
+        // flagged unavailable, so filtering on presence alone is not enough —
+        // a chip that cannot be tapped is worse than no chip at all.
+        $pairings = $this->affinity->topPairsForItems(
+            $transformed
+                ->filter(fn (array $row) => ($row['availability']['available'] ?? false) === true)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+        );
+
         return [
             'categories' => $categories,
             'items' => $transformed,
+            'pairings' => $pairings,
         ];
     }
 

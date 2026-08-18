@@ -141,6 +141,7 @@ export function validateManualDiscountInput(opts: {
 export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
+  pairings: PosPairings;
   shift: PosBootstrapShift | null;
   smsNotifications: PosSmsNotifications;
   discountControls: PosDiscountControls;
@@ -151,32 +152,62 @@ export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
     categories: Category[];
     items: Item[];
     shift: PosBootstrapShift | null;
+    pairings?: PosPairings;
     sms_notifications?: PosSmsNotifications;
     discount_controls?: unknown;
   }>(`/pos/bootstrap?${params.toString()}`);
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
+    pairings: data.pairings ?? {},
     shift: data.shift ?? null,
     smsNotifications: normalizePosSmsNotifications(data.sms_notifications),
     discountControls: normalizePosDiscountControls(data.discount_controls),
   };
 }
 
+/**
+ * Suggestion chips, as anchor item id -> suggested item ids (best first).
+ *
+ * Shipped inside the menu payload rather than fetched per item: the till
+ * caches the menu for offline service, and a chip that needs its own round
+ * trip disappears exactly when the connection does — which behind a counter,
+ * mid-queue, is the worst possible moment. The server has already filtered
+ * these to items the cashier can actually ring up on this channel.
+ */
+export type PosPairings = Record<number, number[]>;
+
 /** Single round-trip menu load for the POS register (channel changes). */
 export async function fetchPosMenu(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
+  pairings: PosPairings;
 }> {
   const params = new URLSearchParams();
   if (channel) params.set("channel", channel);
-  const data = await request<{ categories: Category[]; items: Item[] }>(
+  const data = await request<{ categories: Category[]; items: Item[]; pairings?: PosPairings }>(
     `/pos/menu?${params.toString()}`,
   );
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
+    pairings: data.pairings ?? {},
   };
+}
+
+/**
+ * Tell the server a chip was shown, or tapped.
+ *
+ * Fire-and-forget and deliberately silent: this feeds the admin's suggestion
+ * report, and a failed tally must never get between a cashier and a sale.
+ * Skipped entirely when offline — the queue matters more than the metric.
+ */
+export function trackPosSuggestion(action: "shown" | "accepted", itemIds: number[]): void {
+  if (itemIds.length === 0) return;
+  void request("/recommendations/track", {
+    method: "POST",
+    body: JSON.stringify({ surface: "pos", action, item_ids: itemIds }),
+  }).catch(() => { /* never surfaced */ });
 }
 export type PosSalesChannel = "dine_in" | "takeaway" | "online_pickup" | "delivery";
 

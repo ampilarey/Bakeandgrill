@@ -9,9 +9,11 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Models\MenuGroup;
+use App\Models\Order;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -200,5 +202,215 @@ class PosMenuTest extends TestCase
                 "[{$url}] the sub-category must point at its parent, or the POS draws one flat row",
             );
         }
+    }
+
+    /**
+     * Suggestion chips ride along with the menu instead of asking per item.
+     *
+     * The till caches this payload for offline service; a chip that needs its
+     * own round trip vanishes the moment the connection drops, which behind a
+     * counter is exactly when nobody can wait for it.
+     */
+    public function test_pos_menu_carries_pairings_for_the_suggestion_chips(): void
+    {
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
+        $category = Category::create(['name' => 'Pairs', 'slug' => 'pos-pairs', 'is_active' => true]);
+
+        $make = function (string $name, float $price) use ($category) {
+            $item = Item::create([
+                'category_id' => $category->id,
+                'name' => $name,
+                'base_price' => $price,
+                'sku' => 'PAIR-' . strtoupper(substr(md5($name), 0, 5)),
+                'is_active' => true,
+                'is_available' => true,
+            ]);
+            ItemChannelAvailability::query()->updateOrCreate(
+                ['item_id' => $item->id, 'channel' => 'dine_in'],
+                ['is_enabled' => true],
+            );
+
+            return $item;
+        };
+
+        $burger = $make('Pair Burger', 60);
+        $fries = $make('Pair Fries', 25);
+
+        // Enough orders to clear the support floor, or nothing is suggested.
+        for ($i = 0; $i < 5; $i++) {
+            $order = Order::create([
+                'order_number' => 'POSPAIR-' . str()->random(6),
+                'type' => 'dine_in',
+                'status' => 'paid',
+                'payment_status' => 'paid',
+                'subtotal' => 85,
+                'total' => 85,
+            ]);
+            foreach ([$burger, $fries] as $line) {
+                DB::table('order_items')->insert([
+                    'order_id' => $order->id,
+                    'item_id' => $line->id,
+                    'item_name' => $line->name,
+                    'quantity' => 1,
+                    'unit_price' => $line->base_price,
+                    'total_price' => $line->base_price,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+        app(\App\Domains\Marketing\Services\ItemAffinityService::class)->recompute(90);
+
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
+        $staff = User::create([
+            'name' => 'Pairing Cashier',
+            'email' => 'pos-pairing@test.local',
+            'password' => Hash::make('password'),
+            'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        Sanctum::actingAs($staff, ['staff']);
+
+        foreach (['/api/pos/menu?channel=dine_in', '/api/pos/bootstrap?channel=dine_in'] as $url) {
+            $pairings = $this->getJson($url)->assertOk()->json('pairings');
+
+            $this->assertIsArray($pairings, "[{$url}] pairings missing from the payload");
+            $this->assertSame([$fries->id], $pairings[$burger->id] ?? null, "[{$url}] burger should suggest fries");
+            $this->assertSame([$burger->id], $pairings[$fries->id] ?? null, "[{$url}] and the reverse");
+        }
+    }
+
+    /**
+     * A chip the cashier cannot tap is worse than no chip.
+     *
+     * Two ways an item becomes untappable, and they behave differently:
+     * a channel-blocked item is dropped from the payload entirely, while a
+     * sold-out or snoozed one still travels in it flagged unavailable. The
+     * pairings are therefore built from the available set, not from presence.
+     * This covers the first; test_pairings_skip_a_sold_out_item covers the second.
+     */
+    public function test_pairings_never_point_at_an_item_absent_from_this_channel(): void
+    {
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
+        $category = Category::create(['name' => 'Channel', 'slug' => 'pos-channel', 'is_active' => true]);
+
+        $onMenu = Item::create([
+            'category_id' => $category->id, 'name' => 'On Menu', 'base_price' => 30,
+            'sku' => 'CH-ON', 'is_active' => true, 'is_available' => true,
+        ]);
+        $offMenu = Item::create([
+            'category_id' => $category->id, 'name' => 'Online Only', 'base_price' => 20,
+            'sku' => 'CH-OFF', 'is_active' => true, 'is_available' => true,
+        ]);
+        ItemChannelAvailability::query()->updateOrCreate(
+            ['item_id' => $onMenu->id, 'channel' => 'dine_in'],
+            ['is_enabled' => true],
+        );
+        // Item::booted() enables every channel on create, so taking one away
+        // has to be explicit.
+        ItemChannelAvailability::query()->updateOrCreate(
+            ['item_id' => $offMenu->id, 'channel' => 'dine_in'],
+            ['is_enabled' => false],
+        );
+
+        for ($i = 0; $i < 5; $i++) {
+            $order = Order::create([
+                'order_number' => 'POSCH-' . str()->random(6),
+                'type' => 'delivery', 'status' => 'paid', 'payment_status' => 'paid',
+                'subtotal' => 50, 'total' => 50,
+            ]);
+            foreach ([$onMenu, $offMenu] as $line) {
+                DB::table('order_items')->insert([
+                    'order_id' => $order->id, 'item_id' => $line->id, 'item_name' => $line->name,
+                    'quantity' => 1, 'unit_price' => $line->base_price, 'total_price' => $line->base_price,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        }
+        app(\App\Domains\Marketing\Services\ItemAffinityService::class)->recompute(90);
+
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
+        $staff = User::create([
+            'name' => 'Channel Cashier', 'email' => 'pos-channel@test.local',
+            'password' => Hash::make('password'), 'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'), 'is_active' => true,
+        ]);
+        Sanctum::actingAs($staff, ['staff']);
+
+        $body = $this->getJson('/api/pos/menu?channel=dine_in')->assertOk()->json();
+
+        $servedIds = collect($body['items'])->pluck('id')->all();
+        $this->assertNotContains($offMenu->id, $servedIds, 'precondition: the item is not on the dine-in menu');
+
+        foreach ($body['pairings'] ?? [] as $suggested) {
+            $this->assertNotContains(
+                $offMenu->id,
+                $suggested,
+                'a chip must never point at something this channel cannot sell',
+            );
+        }
+    }
+
+    /**
+     * The case presence alone would miss: a sold-out item is still in the
+     * payload, just flagged unavailable. Suggesting it puts a chip on screen
+     * that does nothing when the cashier taps it.
+     */
+    public function test_pairings_skip_a_sold_out_item(): void
+    {
+        MenuGroup::firstOrCreate(['slug' => 'default'], ['name' => 'Default', 'is_active' => true]);
+        $category = Category::create(['name' => 'Stock', 'slug' => 'pos-stock', 'is_active' => true]);
+
+        $burger = Item::create([
+            'category_id' => $category->id, 'name' => 'Stock Burger', 'base_price' => 60,
+            'sku' => 'ST-BRG', 'is_active' => true, 'is_available' => true,
+        ]);
+        $fries = Item::create([
+            'category_id' => $category->id, 'name' => 'Stock Fries', 'base_price' => 25,
+            'sku' => 'ST-FRY', 'is_active' => true, 'is_available' => true,
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            $order = Order::create([
+                'order_number' => 'POSST-' . str()->random(6),
+                'type' => 'dine_in', 'status' => 'paid', 'payment_status' => 'paid',
+                'subtotal' => 85, 'total' => 85,
+            ]);
+            foreach ([$burger, $fries] as $line) {
+                DB::table('order_items')->insert([
+                    'order_id' => $order->id, 'item_id' => $line->id, 'item_name' => $line->name,
+                    'quantity' => 1, 'unit_price' => $line->base_price, 'total_price' => $line->base_price,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        }
+        app(\App\Domains\Marketing\Services\ItemAffinityService::class)->recompute(90);
+
+        // Fries run out after the pairs were computed — the usual case.
+        $fries->update(['is_available' => false]);
+
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
+        $staff = User::create([
+            'name' => 'Stock Cashier', 'email' => 'pos-stock@test.local',
+            'password' => Hash::make('password'), 'role_id' => $role->id,
+            'pin_hash' => Hash::make('1234'), 'is_active' => true,
+        ]);
+        Sanctum::actingAs($staff, ['staff']);
+
+        $body = $this->getJson('/api/pos/menu?channel=dine_in')->assertOk()->json();
+
+        $friesRow = collect($body['items'])->firstWhere('id', $fries->id);
+        $this->assertNotNull($friesRow, 'precondition: a sold-out item still travels in the payload');
+        $this->assertFalse($friesRow['availability']['available'], 'precondition: flagged unavailable');
+
+        $this->assertArrayNotHasKey(
+            $burger->id,
+            $body['pairings'] ?? [],
+            'the only pairing pointed at a sold-out item, so the burger should offer nothing',
+        );
     }
 }

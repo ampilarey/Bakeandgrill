@@ -49,6 +49,14 @@ export type CachedMenuRecord = {
   channel: string;
   categories: unknown[];
   items: unknown[];
+  /**
+   * Suggestion chips, anchor item id -> suggested item ids. Cached with the
+   * menu on purpose: the whole reason they ship inside the payload is so the
+   * till can still suggest when it is offline.
+   *
+   * Optional because caches written before this existed have no such key.
+   */
+  pairings?: Record<number, number[]>;
   tax_rate?: number;
   cached_at: string;
 };

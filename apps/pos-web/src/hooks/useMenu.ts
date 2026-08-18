@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPosBootstrap, fetchPosMenu, type PosDiscountControls, type PosSmsNotifications } from "../api";
+import { fetchPosBootstrap, fetchPosMenu, type PosDiscountControls, type PosPairings, type PosSmsNotifications } from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { PosOrderType } from "../orderTypes";
 import type { Category, Item } from "../types";
@@ -50,6 +50,7 @@ export function useMenu(
 ) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [pairings, setPairings] = useState<PosPairings>({});
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -86,6 +87,8 @@ export function useMenu(
   const applyCachedMenu = useCallback((cached: NonNullable<Awaited<ReturnType<typeof loadCachedMenu>>>) => {
     setCategories((cached.categories ?? []) as Category[]);
     setItems((cached.items ?? []) as Item[]);
+    // Older caches predate pairings; an empty map just means no chips.
+    setPairings((cached.pairings ?? {}) as PosPairings);
     setUsingCachedMenu(true);
     const savedAtMs = Date.parse(cached.cached_at);
     setLastRefreshedAt(savedAtMs);
@@ -140,12 +143,13 @@ export function useMenu(
           const its = boot.items;
           setCategories(cats);
           setItems(its);
+          setPairings(boot.pairings ?? {});
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: boot.pairings ?? {} });
           attemptRef.current = 0;
           bootstrapDoneRef.current = true;
           onBootstrapShiftRef.current?.(boot.shift ?? null);
@@ -159,12 +163,13 @@ export function useMenu(
           if (ch !== channelRef.current) return;
           setCategories(cats);
           setItems(its);
+          setPairings(menu.pairings ?? {});
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: menu.pairings ?? {} });
           attemptRef.current = 0;
           if (mode === "initial") {
             setSelectedCategoryId(null);
@@ -256,6 +261,7 @@ export function useMenu(
   return {
     categories,
     items,
+    pairings,
     selectedCategoryId,
     setSelectedCategoryId,
     isLoading,

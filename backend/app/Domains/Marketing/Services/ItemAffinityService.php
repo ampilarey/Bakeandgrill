@@ -98,6 +98,48 @@ final class ItemAffinityService
             ->values();
     }
 
+    /**
+     * Top pairings for many anchors at once, as anchor id → paired item ids.
+     *
+     * Built for the POS, which ships this inside the menu payload rather than
+     * asking per item: the till already caches the menu for offline service,
+     * and a suggestion that needs a round trip is a suggestion that vanishes
+     * the moment the connection drops — which at a counter is exactly when
+     * nobody has time to wait for it.
+     *
+     * @param  list<int>  $itemIds  anchors to look up — usually the whole menu
+     * @return array<int, list<int>>
+     */
+    public function topPairsForItems(array $itemIds, int $perItem = 3): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $itemIds))));
+        if ($ids === [] || $perItem < 1) {
+            return [];
+        }
+
+        // One pass over the table rather than a query per item. Ranking happens
+        // in PHP because "top N per group" is awkward and non-portable in SQL,
+        // and the row count here is bounded by the menu, not by order history.
+        $rows = ItemPairStat::query()
+            ->select('item_id', 'paired_item_id', 'lift')
+            ->whereIn('item_id', $ids)
+            ->whereIn('paired_item_id', $ids)
+            ->where('pair_count', '>=', self::minPairSupport())
+            ->orderByDesc('lift')
+            ->get();
+
+        $pairs = [];
+        foreach ($rows as $row) {
+            $anchor = (int) $row->item_id;
+            if (count($pairs[$anchor] ?? []) >= $perItem) {
+                continue;
+            }
+            $pairs[$anchor][] = (int) $row->paired_item_id;
+        }
+
+        return $pairs;
+    }
+
     public function recompute(int $lookbackDays = 90): int
     {
         $since = now()->subDays(max(1, $lookbackDays));
