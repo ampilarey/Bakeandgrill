@@ -52,8 +52,33 @@ describe('generic home blocks', () => {
     expect(el).toHaveAttribute('loop');
   });
 
-  it('renders nothing for the website-only FAQ list', () => {
-    const { container } = draw('faq_list', { items: [{ question: 'Open?', answer: 'Yes' }] });
+  /**
+   * The FAQ list used to be website-only, and this asserted the order app
+   * drew nothing for it. FaqListBlock and its case in renderGenericBlock
+   * arrived together in 79ffe187 — the block was deliberately brought over,
+   * and only this assertion was left behind describing the old world.
+   */
+  it('renders the FAQ list as collapsible questions', () => {
+    draw('faq_list', {
+      items: [
+        { question: 'Are you open on Fridays?', answer: 'From 2pm.' },
+        { question: 'Do you deliver?', answer: 'Across Malé.' },
+      ],
+    });
+
+    expect(document.querySelector('[data-home-block="faq_list"]')).toBeTruthy();
+    // Default heading when the block does not set one.
+    expect(screen.getByText('FAQ')).toBeInTheDocument();
+
+    // Answers collapsed behind <summary>, not laid out flat.
+    const entries = document.querySelectorAll('[data-home-block="faq_list"] details');
+    expect(entries).toHaveLength(2);
+    expect(screen.getByText('Are you open on Fridays?').tagName).toBe('SUMMARY');
+    expect(screen.getByText('From 2pm.')).toBeInTheDocument();
+  });
+
+  it('renders nothing for an FAQ block with no questions in it', () => {
+    const { container } = draw('faq_list', { items: [] });
     expect(container).toBeEmptyDOMElement();
   });
 
