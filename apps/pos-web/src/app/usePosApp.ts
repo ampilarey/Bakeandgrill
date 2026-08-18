@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { itemsForCategory } from "../utils/categoryTree";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
 import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
@@ -501,29 +502,12 @@ export function usePosApp() {
    *   • Selected id is a leaf (no children, or a sub-category itself)
    *     → exact match only.
    *
-   * Builds a `descendants` set once per render rather than recomputing
-   * per item.
+   * The walk itself lives in utils/categoryTree so it can be tested.
    */
-  const filteredItems = useMemo(() => {
-    if (menu.selectedCategoryId == null) return menu.items;
-    const matchIds = new Set<number>([menu.selectedCategoryId]);
-    // Recursively collect descendants — supports any nesting depth even
-    // though admin currently only exposes one level.
-    let frontier: number[] = [menu.selectedCategoryId];
-    for (let depth = 0; depth < 16 && frontier.length; depth++) {
-      const next: number[] = [];
-      for (const c of menu.categories) {
-        if (c.parent_id != null && frontier.includes(c.parent_id) && !matchIds.has(c.id)) {
-          matchIds.add(c.id);
-          next.push(c.id);
-        }
-      }
-      frontier = next;
-    }
-    return menu.items.filter(
-      (item) => item.category_id != null && matchIds.has(item.category_id),
-    );
-  }, [menu.items, menu.categories, menu.selectedCategoryId]);
+  const filteredItems = useMemo(
+    () => itemsForCategory(menu.items, menu.categories, menu.selectedCategoryId),
+    [menu.items, menu.categories, menu.selectedCategoryId],
+  );
 
   const refreshOpenTickets = useCallback(async () => {
     if (!isLoggedIn) return;
