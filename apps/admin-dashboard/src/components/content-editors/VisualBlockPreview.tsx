@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react';
-import { resolveHeroSlidePresentation } from '../../utils/heroSlidePresentation';
+import { Fragment, useEffect, useState } from 'react';
+import {
+  heroElementStyleVars,
+  resolveHeroSlidePresentation,
+  splitHeroRichTextLines,
+  splitHeroWordSpans,
+  type HeroElementKey,
+} from '../../utils/heroSlidePresentation';
 
 function isShowing(slide: { showing?: boolean }): boolean {
   return slide.showing !== false;
@@ -178,6 +184,19 @@ type HeroSlide = Record<string, unknown> & {
   showing?: boolean;
 };
 
+/**
+ * The hero as the website actually draws it.
+ *
+ * This deliberately emits the same class names, data attributes and
+ * --hero-el-* custom properties as partials/home/hero.blade.php, and the
+ * preview stylesheet ports the matching rules from home.blade.php. That is the
+ * only way roughly thirty styling controls — per-line backgrounds, outlines,
+ * borders, gradients, geometry, per-part alignment — can be judged without
+ * saving and reloading the public site.
+ *
+ * Motion is represented as final state, not replayed: an editor that
+ * re-animates on every keystroke is unusable.
+ */
 function HeroVisualPreview({ value }: { value: string }) {
   const parsed = safeParse<unknown>(value, []);
   const slides = (Array.isArray(parsed)
@@ -187,7 +206,8 @@ function HeroVisualPreview({ value }: { value: string }) {
       : []) as HeroSlide[];
 
   const showing = slides.filter((s) => isShowing(s));
-  const slide = showing[0] || slides[0] || {};
+  const slide = (showing[0] || slides[0] || {}) as HeroSlide;
+  const row = slide as Record<string, unknown>;
   const presentation = resolveHeroSlidePresentation(slide);
   const media = String(slide.video_poster || slide.image || '').trim();
   const hasVideo = Boolean(String(slide.video || '').trim());
@@ -197,13 +217,35 @@ function HeroVisualPreview({ value }: { value: string }) {
     ? `${fx}% ${fy}%`
     : '50% 50%';
 
+  const el = presentation.elements;
+  const part = presentation.parts;
+  const styles = presentation.styles;
+
+  /** Element background attributes, exactly as the Blade partial sets them. */
+  const bgAttrs = (key: HeroElementKey) => {
+    const bg = el[key];
+    if (!bg?.css) return {};
+    return {
+      ...(bg.token === 'glass' ? { 'data-bg-glass': '1' } : { 'data-has-bg': '1' }),
+      'data-bg-shape': bg.shape,
+    };
+  };
+
+  const styleVars = (key: HeroElementKey) =>
+    heroElementStyleVars(row, key) as React.CSSProperties;
+
+  const titleHtml = String(slide.title || 'Hero title');
+  const subtitle = String(slide.subtitle || '');
+  const titleLines = splitHeroRichTextLines(titleHtml);
+
   return (
     <div
-      className={`visual-block-preview__hero visual-block-preview__hero--${presentation.text_position}`}
+      className={`visual-block-preview__hero hero-preview visual-block-preview__hero--${presentation.text_position}`}
       data-testid="hero-visual-preview"
       data-showing-count={showing.length}
       data-slide-count={slides.length}
       data-has-video={hasVideo ? '1' : '0'}
+      data-photo-anim={presentation.motion.photo}
     >
       {media ? (
         <img
@@ -212,6 +254,7 @@ function HeroVisualPreview({ value }: { value: string }) {
           className="visual-block-preview__hero-media"
           style={{
             opacity: Math.max(0.15, presentation.photo),
+            filter: `brightness(${presentation.photo_brightness})`,
             objectPosition,
           }}
         />
@@ -231,26 +274,82 @@ function HeroVisualPreview({ value }: { value: string }) {
           {slides.length !== showing.length ? ` · ${slides.length} total` : ''}
           {hasVideo ? ' · video' : ''}
         </div>
-        {slide.eyebrow ? (
-          <div className="visual-block-preview__hero-eyebrow">{String(slide.eyebrow)}</div>
-        ) : null}
         <div
-          className="visual-block-preview__hero-title"
-          dangerouslySetInnerHTML={{ __html: String(slide.title || 'Hero title') }}
-        />
-        {slide.subtitle ? (
-          <p className="visual-block-preview__hero-subtitle">{String(slide.subtitle)}</p>
-        ) : null}
-        <div className="visual-block-preview__hero-ctas">
-          {slide.cta_text ? (
-            <span className="visual-block-preview__cta visual-block-preview__cta--primary">
-              {String(slide.cta_text)}
+          className="banner-copy"
+          {...(presentation.copy_scrim ? {} : { 'data-copy-scrim': 'off' })}
+        >
+          {slide.eyebrow ? (
+            <span
+              className="banner-eyebrow"
+              data-align={part.eyebrow.align}
+              {...bgAttrs('eyebrow')}
+              style={styleVars('eyebrow')}
+            >
+              {String(slide.eyebrow)}
             </span>
           ) : null}
-          {slide.cta2_text ? (
-            <span className="visual-block-preview__cta visual-block-preview__cta--ghost">
-              {String(slide.cta2_text)}
-            </span>
+          <h2
+            className="banner-title"
+            data-align={part.title.align}
+            data-anim={part.title.text}
+            {...(part.title.box !== 'none' ? { 'data-box-anim': part.title.box } : {})}
+            {...(styles.title.outline ? { 'data-outline': '1' } : {})}
+            {...(styles.title.border ? { 'data-border': '1' } : {})}
+            {...bgAttrs('title')}
+            style={styleVars('title')}
+          >
+            {titleLines.map((line, i) => (
+              <Fragment key={i}>
+                {i > 0 ? <br /> : null}
+                <span
+                  className="hero-title-line"
+                  style={{ '--hero-line-i': i } as React.CSSProperties}
+                  dangerouslySetInnerHTML={{
+                    __html: part.title.text === 'word' ? splitHeroWordSpans(line) : line,
+                  }}
+                />
+              </Fragment>
+            ))}
+          </h2>
+          {subtitle ? (
+            <p
+              className="banner-sub"
+              data-align={part.subtitle.align}
+              data-anim={part.subtitle.text}
+              {...(part.subtitle.box !== 'none' ? { 'data-box-anim': part.subtitle.box } : {})}
+              {...(styles.subtitle.outline ? { 'data-outline': '1' } : {})}
+              {...(styles.subtitle.border ? { 'data-border': '1' } : {})}
+              {...bgAttrs('subtitle')}
+              style={styleVars('subtitle')}
+            >
+              <span
+                className="hero-sub-line"
+                style={{ '--hero-line-i': 0 } as React.CSSProperties}
+                dangerouslySetInnerHTML={{
+                  __html: part.subtitle.text === 'word' ? splitHeroWordSpans(subtitle) : subtitle,
+                }}
+              />
+            </p>
+          ) : null}
+          {slide.cta_text || slide.cta2_text ? (
+            <div className="banner-ctas" data-align={part.cta1.align}>
+              {slide.cta_text ? (
+                <span
+                  className="visual-block-preview__cta visual-block-preview__cta--primary"
+                  style={styleVars('cta1')}
+                >
+                  {String(slide.cta_text)}
+                </span>
+              ) : null}
+              {slide.cta2_text ? (
+                <span
+                  className="visual-block-preview__cta visual-block-preview__cta--ghost"
+                  style={styleVars('cta2')}
+                >
+                  {String(slide.cta2_text)}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

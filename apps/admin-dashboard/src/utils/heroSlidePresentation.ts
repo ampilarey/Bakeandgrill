@@ -412,6 +412,31 @@ export function isHeroSlideInScheduleWindow(
   return true;
 }
 
+/**
+ * Split rich hero copy on <br> into non-empty line fragments.
+ * Lockstep with HeroSlides::splitRichTextLines and the order app's copy.
+ *
+ * The admin needs this so the preview can build the same per-line spans the
+ * website does — the per-line background shape paints on those spans, so a
+ * preview without them cannot show what "line" actually looks like.
+ */
+export function splitHeroRichTextLines(html: string): string[] {
+  const parts = html.split(/<br\s*\/?>/i);
+  const lines = parts.filter((part) => {
+    const text = part
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .trim();
+    return text.length > 0;
+  });
+  if (lines.length === 0) return html !== '' ? [html] : [];
+  return lines;
+}
+
 export function formatHeroSlideScheduleLabel(
   slide: { showing?: boolean; show_from?: string | null; show_until?: string | null },
   now: Date = new Date(),

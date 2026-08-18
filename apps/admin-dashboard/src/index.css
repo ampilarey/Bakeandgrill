@@ -2700,6 +2700,205 @@ work area is a single column that
   color: var(--color-bg);
 }
 
+/* ── Hero preview: the banner as the website draws it ─────────────────
+ *
+ * Ported from backend/resources/views/home.blade.php, scoped under
+ * .hero-preview. Same class names, same data attributes, same --hero-el-*
+ * custom properties, so a rule that changes there can be found and changed
+ * here. Roughly thirty hero controls are otherwise invisible until the site
+ * is saved and reloaded.
+ *
+ * Deliberately different from the site in three ways, all of them scale:
+ * type is smaller (the preview is a card, not a viewport), the copy stack has
+ * tighter margins, and motion is shown as final state rather than replayed —
+ * an editor that re-animates on every keystroke is unusable.
+ */
+.hero-preview .banner-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(28, 20, 8, 0.22) 0%,
+    rgba(28, 20, 8, 0.72) 55%,
+    rgba(28, 20, 8, 0.92) 100%
+  );
+}
+.hero-preview .banner-copy[data-copy-scrim="off"] {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.hero-preview .banner-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(212, 129, 58, 0.22);
+  border: 1px solid rgba(212, 129, 58, 0.4);
+  color: #f0a96a;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.hero-preview .banner-eyebrow[data-has-bg="1"],
+.hero-preview .banner-eyebrow[data-bg-glass="1"] {
+  background: var(--hero-el-bg);
+}
+.hero-preview .banner-eyebrow[data-bg-glass="1"] {
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+}
+
+/* Title / sub base. --hero-title-base is the site's own hook, so the owner's
+   font-scale multiplies the same way it does in production — only the base is
+   sized for a card. */
+.hero-preview .banner-title {
+  --hero-title-base: 17px;
+  font-size: calc(var(--hero-title-base) * var(--hero-el-scale, 1));
+  font-weight: var(--hero-el-weight, 800);
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  color: var(--hero-el-text, #fff);
+  margin: 0 0 0.35rem;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.4);
+}
+.hero-preview .banner-title[data-len="long"] { --hero-title-base: 15px; }
+.hero-preview .banner-title[data-len="xlong"] { --hero-title-base: 13px; letter-spacing: -0.03em; }
+.hero-preview .banner-title em { font-style: normal; color: var(--hero-el-em, #f0a96a); }
+.hero-preview .banner-sub {
+  --hero-sub-base: 11px;
+  font-size: calc(var(--hero-sub-base) * var(--hero-el-scale, 1));
+  color: var(--hero-el-text, rgba(255, 255, 255, 0.78));
+  margin: 0 0 0.5rem;
+  font-weight: var(--hero-el-weight, 400);
+  line-height: 1.55;
+}
+.hero-preview .banner-sub em { color: var(--hero-el-em, inherit); font-style: inherit; }
+
+/* One box hugging the whole text. */
+.hero-preview .banner-title[data-bg-shape="hug"],
+.hero-preview .banner-sub[data-bg-shape="hug"] {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  background: var(--hero-el-bg);
+  border-radius: var(--hero-el-radius, 11px);
+  padding: var(--hero-el-pad-y, 0.4em) var(--hero-el-pad-x, 0.75em);
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+
+/* A separate small background per line. Painted on the inline span, with
+   box-decoration-break:clone, or a block element draws one rectangle around
+   every line — the exact complaint this shape exists to answer. */
+.hero-preview .banner-title[data-bg-shape="line"],
+.hero-preview .banner-sub[data-bg-shape="line"] {
+  background: none;
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+  line-height: calc(1.35em + 2 * var(--hero-el-pad-y, 0.12em) + 2 * var(--hero-el-border-w, 0px));
+}
+.hero-preview .banner-title[data-bg-shape="line"] .hero-title-line,
+.hero-preview .banner-sub[data-bg-shape="line"] .hero-sub-line {
+  display: inline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  background: var(--hero-el-bg);
+  border-radius: var(--hero-el-radius, 10px);
+  padding: var(--hero-el-pad-y, 0.12em) var(--hero-el-pad-x, 0.4em);
+}
+
+/* Full-width bar — an intentional rectangle on the block itself. */
+.hero-preview .banner-title[data-bg-shape="full"],
+.hero-preview .banner-sub[data-bg-shape="full"] {
+  display: block;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--hero-el-bg);
+  border-radius: var(--hero-el-radius, 10px);
+  padding: var(--hero-el-pad-y, 0.35em) var(--hero-el-pad-x, 0.55em);
+  text-shadow: none;
+  -webkit-text-stroke: 0;
+}
+
+/* Glass is a material, not a shape — it layers onto whichever shape paints. */
+.hero-preview .banner-title[data-bg-glass="1"][data-bg-shape="hug"],
+.hero-preview .banner-sub[data-bg-glass="1"][data-bg-shape="hug"],
+.hero-preview .banner-title[data-bg-glass="1"][data-bg-shape="full"],
+.hero-preview .banner-sub[data-bg-glass="1"][data-bg-shape="full"],
+.hero-preview .banner-title[data-bg-glass="1"][data-bg-shape="line"] .hero-title-line,
+.hero-preview .banner-sub[data-bg-glass="1"][data-bg-shape="line"] .hero-sub-line {
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Letter outline — independent of the shape, so a box can carry one too. */
+.hero-preview .banner-title[data-outline="1"],
+.hero-preview .banner-sub[data-outline="1"] {
+  -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28, 20, 8, 0.7));
+  paint-order: stroke fill;
+  text-shadow:
+    calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28, 20, 8, 0.7)),
+    calc(1.75 * var(--hero-el-outline-w, 0.02em)) calc(-1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28, 20, 8, 0.7)),
+    calc(-1.75 * var(--hero-el-outline-w, 0.02em)) calc(1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28, 20, 8, 0.7)),
+    calc(1.75 * var(--hero-el-outline-w, 0.02em)) calc(1.75 * var(--hero-el-outline-w, 0.02em)) 0 var(--hero-el-outline, rgba(28, 20, 8, 0.7)),
+    0 0.08em 0.28em rgba(0, 0, 0, 0.55);
+}
+/* A box shape clears the stroke above; re-assert the owner's. */
+.hero-preview .banner-title[data-bg-shape="hug"][data-outline="1"],
+.hero-preview .banner-sub[data-bg-shape="hug"][data-outline="1"],
+.hero-preview .banner-title[data-bg-shape="full"][data-outline="1"],
+.hero-preview .banner-sub[data-bg-shape="full"][data-outline="1"],
+.hero-preview .banner-title[data-bg-shape="line"][data-outline="1"] .hero-title-line,
+.hero-preview .banner-sub[data-bg-shape="line"][data-outline="1"] .hero-sub-line {
+  -webkit-text-stroke: var(--hero-el-outline-w, 0.02em) var(--hero-el-outline, rgba(28, 20, 8, 0.7));
+  paint-order: stroke fill;
+}
+
+/* Border on the box — its own colour, separate from the letter outline. */
+.hero-preview .banner-title[data-border="1"][data-bg-shape="hug"],
+.hero-preview .banner-sub[data-border="1"][data-bg-shape="hug"],
+.hero-preview .banner-title[data-border="1"][data-bg-shape="full"],
+.hero-preview .banner-sub[data-border="1"][data-bg-shape="full"],
+.hero-preview .banner-title[data-border="1"][data-bg-shape="line"] .hero-title-line,
+.hero-preview .banner-sub[data-border="1"][data-bg-shape="line"] .hero-sub-line {
+  border: var(--hero-el-border-w, 1.5px) solid var(--hero-el-border, rgba(255, 255, 255, 0.28));
+}
+
+/* Per-part alignment. */
+.hero-preview .banner-copy [data-align="left"] { align-self: flex-start; text-align: left; }
+.hero-preview .banner-copy [data-align="center"] { align-self: center; text-align: center; }
+.hero-preview .banner-copy [data-align="right"] { align-self: flex-end; text-align: right; }
+.hero-preview .banner-copy .banner-title[data-align="left"][data-bg-shape="hug"],
+.hero-preview .banner-copy .banner-sub[data-align="left"][data-bg-shape="hug"] { margin-left: 0; margin-right: auto; }
+.hero-preview .banner-copy .banner-title[data-align="right"][data-bg-shape="hug"],
+.hero-preview .banner-copy .banner-sub[data-align="right"][data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
+
+.hero-preview .banner-ctas {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
 /* ── Sheet header tools (locale / Preview / More inside editor sheet) ─ */
 .content-editor-sheet-header-actions {
   display: inline-flex;
