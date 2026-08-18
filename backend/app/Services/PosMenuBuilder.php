@@ -31,11 +31,18 @@ class PosMenuBuilder
             $channel = 'dine_in';
         }
 
+        // parent_id is not optional trim — the POS builds its two-row category
+        // strip from it (top-level pills, then the selected parent's children)
+        // and walks it to gather an item's descendants. Owner, 2026-08-18:
+        // "i have category and subcategory, but still in pos they are in same
+        // line." The nesting was correct in the database and correct in the
+        // POS; it was simply never selected here, so every category arrived
+        // looking top-level.
         $categories = Category::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_dv', 'sort_order', 'image_url']);
+            ->get(['id', 'parent_id', 'name', 'name_dv', 'sort_order', 'image_url']);
 
         $query = Item::query()
             ->with(['category:id,name', 'variants', 'modifiers', 'packagingOptions'])
