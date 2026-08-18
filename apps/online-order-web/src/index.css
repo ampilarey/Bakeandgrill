@@ -3916,23 +3916,11 @@ textarea.field-input {
   display: none;
 }
 
-.menu-cat-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--color-dark);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.menu-cat-title__bar {
-  width: 4px;
-  height: 1.1em;
-  border-radius: 2px;
-  background: var(--color-primary);
-  flex-shrink: 0;
-}
+/*
+ * .menu-cat-title / .menu-cat-title__bar lived here: a second copy of the
+ * category name, with an accent bar, directly beneath the banner that already
+ * named it. Removed 2026-08-18 — the banner title is the section heading now.
+ */
 
 /* Subcategory header — smaller / lighter than parent section title */
 .menu-subcategory {

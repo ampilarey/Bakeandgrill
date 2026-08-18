@@ -163,9 +163,12 @@ describe('MenuPage subcategory sub-headers', () => {
     const titles = screen.getAllByTestId('menu-subcat-title');
     expect(titles.map((t) => t.textContent)).toEqual(['Chicken', 'Beef']);
 
-    // Sub-title is lighter than parent accent title (class contract)
+    // Sub-title is lighter than the parent's banner title (class contract)
     expect(titles[0].className).toContain('menu-subcat-title');
     expect(titles[0].className).not.toContain('section-accent');
-    expect(document.querySelector('.menu-cat-title')).toBeTruthy();
+    expect(document.querySelector('.menu-cat-promo__title')).toBeTruthy();
+
+    // The parent is named once, on its banner — not again above its items.
+    expect(screen.getAllByText('Grill')).toHaveLength(1);
   });
 });

@@ -21,9 +21,18 @@ function tintFromId(id: number): string {
 }
 
 /**
- * ZUS-style category section header: wide promo banner, then accent title + items.
- * Uses category.image_url when set; otherwise a branded gradient so every
- * category still gets the same visual treatment.
+ * Category section header: one banner carrying the category name, then items.
+ *
+ * The banner used to be followed by a second, accent-barred <h2> with the same
+ * name — a leftover from when the banner was a tall promo image and its caption
+ * read as a caption. Once the banner shrank to a strip the two labels ended up
+ * stacked eight pixels apart. Owner, 2026-08-18: "main category name is in the
+ * banner and below the photo also … name in the banner is enough."
+ *
+ * So the banner's title is now the section's only heading, and it is a real
+ * <h2>: the sub-category titles under it are <h3>s and need a parent in the
+ * outline. Uses category.image_url when set; otherwise a branded gradient so
+ * every category still gets the same treatment.
  */
 export function MenuSectionHeader({ category, id, active = false }: Props) {
   const img = resolveImageUrl(category.image_url);
@@ -39,9 +48,13 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
         scrollMarginTop: 'calc(var(--menu-sticky-offset, var(--menu-header-height)) + 4px)',
       }}
     >
+      {/*
+        Not aria-hidden, even without an image: the name inside is the section's
+        only heading now, so hiding the band would hide the category itself from
+        a screen reader. The decorative parts opt out individually.
+      */}
       <div
         className="menu-cat-promo"
-        aria-hidden={img ? undefined : true}
         style={img ? undefined : { background: tintFromId(category.id) }}
       >
         {img ? (
@@ -53,21 +66,16 @@ export function MenuSectionHeader({ category, id, active = false }: Props) {
             decoding="async"
           />
         ) : null}
-        <div className="menu-cat-promo__scrim" />
+        <div className="menu-cat-promo__scrim" aria-hidden="true" />
         <div className="menu-cat-promo__copy">
           <p className="menu-cat-promo__eyebrow">Category</p>
-          <p className="menu-cat-promo__title">{category.name}</p>
+          <h2 className="menu-cat-promo__title">{category.name}</h2>
           {/* Description kept in DOM for a11y/tests; CSS hides it on the thin strip */}
           {description ? (
             <p className="menu-cat-promo__desc">{description}</p>
           ) : null}
         </div>
       </div>
-
-      <h2 className="menu-cat-title section-accent">
-        <span className="menu-cat-title__bar" aria-hidden="true" />
-        {category.name}
-      </h2>
     </header>
   );
 }
