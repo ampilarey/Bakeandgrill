@@ -118,6 +118,7 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:customers.analytics'])->group(function () {
         Route::get('/admin/marketing/item-pairs', [App\Http\Controllers\Api\ItemPairAdminController::class, 'index']);
+        Route::get('/admin/marketing/suggestion-performance', [App\Http\Controllers\Api\ItemPairAdminController::class, 'performance']);
     });
 
     // ─── Push Notification Subscriptions ─────────────────────────────────────────

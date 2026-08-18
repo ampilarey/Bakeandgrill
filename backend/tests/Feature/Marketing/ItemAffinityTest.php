@@ -19,14 +19,22 @@ class ItemAffinityTest extends TestCase
         $b = $this->makeItem(false, 10, ['name' => 'Croissant']);
         $c = $this->makeItem(false, 10, ['name' => 'Tea']);
 
-        $order1 = Order::factory()->create(['status' => 'paid']);
-        OrderItem::create(['order_id' => $order1->id, 'item_id' => $a->id, 'item_name' => $a->name, 'quantity' => 1, 'unit_price' => 30, 'total_price' => 30]);
-        OrderItem::create(['order_id' => $order1->id, 'item_id' => $b->id, 'item_name' => $b->name, 'quantity' => 1, 'unit_price' => 20, 'total_price' => 20]);
+        // Coffee + Croissant in every order; Tea in one of them. Repeated to
+        // clear ItemAffinityService::minPairSupport() — a pair seen once or
+        // twice is now stored but not allowed to advise a customer, so a
+        // two-order fixture would correctly return nothing.
+        for ($i = 0; $i < 3; $i++) {
+            $order = Order::factory()->create(['status' => 'paid']);
+            OrderItem::create(['order_id' => $order->id, 'item_id' => $a->id, 'item_name' => $a->name, 'quantity' => 1, 'unit_price' => 30, 'total_price' => 30]);
+            OrderItem::create(['order_id' => $order->id, 'item_id' => $b->id, 'item_name' => $b->name, 'quantity' => 1, 'unit_price' => 20, 'total_price' => 20]);
+        }
 
-        $order2 = Order::factory()->create(['status' => 'completed']);
-        OrderItem::create(['order_id' => $order2->id, 'item_id' => $a->id, 'item_name' => $a->name, 'quantity' => 1, 'unit_price' => 30, 'total_price' => 30]);
-        OrderItem::create(['order_id' => $order2->id, 'item_id' => $b->id, 'item_name' => $b->name, 'quantity' => 1, 'unit_price' => 20, 'total_price' => 20]);
-        OrderItem::create(['order_id' => $order2->id, 'item_id' => $c->id, 'item_name' => $c->name, 'quantity' => 1, 'unit_price' => 15, 'total_price' => 15]);
+        for ($i = 0; $i < 3; $i++) {
+            $order = Order::factory()->create(['status' => 'completed']);
+            OrderItem::create(['order_id' => $order->id, 'item_id' => $a->id, 'item_name' => $a->name, 'quantity' => 1, 'unit_price' => 30, 'total_price' => 30]);
+            OrderItem::create(['order_id' => $order->id, 'item_id' => $b->id, 'item_name' => $b->name, 'quantity' => 1, 'unit_price' => 20, 'total_price' => 20]);
+            OrderItem::create(['order_id' => $order->id, 'item_id' => $c->id, 'item_name' => $c->name, 'quantity' => 1, 'unit_price' => 15, 'total_price' => 15]);
+        }
 
         $this->artisan('insights:compute-item-pairs', ['--days' => 90])
             ->assertSuccessful();
@@ -34,7 +42,13 @@ class ItemAffinityTest extends TestCase
         $this->assertDatabaseHas('item_pair_stats', [
             'item_id' => $a->id,
             'paired_item_id' => $b->id,
-            'pair_count' => 2,
+            'pair_count' => 6,
+        ]);
+        // Both directions, as the name promises.
+        $this->assertDatabaseHas('item_pair_stats', [
+            'item_id' => $b->id,
+            'paired_item_id' => $a->id,
+            'pair_count' => 6,
         ]);
 
         $response = $this->postJson('/api/recommendations/cart', [

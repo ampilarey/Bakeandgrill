@@ -4,11 +4,12 @@ import {
   fetchCustomerGrowthMetrics, fetchCustomerSegments, fetchCustomerSegment,
   fetchCustomerDataQuality,
   fetchMarketingAutomation, updateMarketingAutomation,
-  fetchItemPairs,
+  fetchItemPairs, fetchSuggestionPerformance,
   fetchVipSettings, updateVipSettings, syncVipTags,
   type CustomerGrowthMetrics, type CustomerSegmentMeta, type CustomerSegmentRow,
   type CustomerDataQualityReport, type MarketingAutomationSettings,
-  type ItemPairRow, type VipSettings,
+  type ItemPairRow, type ItemPairMeta, type VipSettings,
+  type SuggestionPerfRow, type SuggestionPerfMeta,
 } from '../api';
 import { Customer360Drawer } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -49,8 +50,15 @@ export function CustomerGrowthPage() {
   const [automationSaving, setAutomationSaving] = useState(false);
   const [automationMsg, setAutomationMsg] = useState('');
   const [itemPairs, setItemPairs] = useState<ItemPairRow[]>([]);
-  const [pairsMeta, setPairsMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [pairsMeta, setPairsMeta] = useState<ItemPairMeta>({
+    current_page: 1, last_page: 1, total: 0, sort: 'lift', min_support: 3, computed_at: null,
+  });
   const [pairsPage, setPairsPage] = useState(1);
+  const [pairsSort, setPairsSort] = useState<'lift' | 'count'>('lift');
+  const [suggestionPerf, setSuggestionPerf] = useState<SuggestionPerfRow[]>([]);
+  const [suggestionPerfMeta, setSuggestionPerfMeta] = useState<SuggestionPerfMeta>({
+    days: 30, shown: 0, accepted: 0, take_rate: 0, revenue: 0,
+  });
   const [vipSettings, setVipSettings] = useState<VipSettings | null>(null);
   const [vipSaving, setVipSaving] = useState(false);
   const [vipMsg, setVipMsg] = useState('');
@@ -120,14 +128,26 @@ export function CustomerGrowthPage() {
   useEffect(() => {
     if (tab !== 'pairs' || !canAnalytics) return;
     setLoading(true);
-    fetchItemPairs({ page: pairsPage })
+    fetchItemPairs({ page: pairsPage, sort: pairsSort })
       .then((r) => {
         setItemPairs(r.data ?? []);
-        setPairsMeta(r.meta ?? { current_page: 1, last_page: 1, total: 0 });
+        if (r.meta) setPairsMeta(r.meta);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [tab, pairsPage, canAnalytics]);
+  }, [tab, pairsPage, pairsSort, canAnalytics]);
+
+  // Separate from the pairs query: the panels' own scorecard is a different
+  // question, and a slow or empty one must not hold up the table above it.
+  useEffect(() => {
+    if (tab !== 'pairs' || !canAnalytics) return;
+    fetchSuggestionPerformance(30)
+      .then((r) => {
+        setSuggestionPerf(r.data ?? []);
+        if (r.meta) setSuggestionPerfMeta(r.meta);
+      })
+      .catch(() => { /* the pairs table is still worth showing */ });
+  }, [tab, canAnalytics]);
 
   const saveAutomation = async () => {
     if (!automation) return;
@@ -452,41 +472,127 @@ export function CustomerGrowthPage() {
         !canAnalytics ? (
           <Card><EmptyState message="You need customers.analytics permission to view item pairs." /></Card>
         ) : loading && itemPairs.length === 0 ? <Spinner /> : (
-          <TableCard>
-            <p style={{ padding: '12px 14px 0', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              Frequently bought together — based on completed orders (run nightly via insights:compute-item-pairs).
-            </p>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {['Item', 'Often paired with', 'Times together'].map((h) => (
-                    <th key={h} style={TH}>{h}</th>
+          <>
+            <TableCard>
+              <div style={{ padding: '12px 14px 0', display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', flex: '1 1 320px' }}>
+                  Frequently bought together — from every counted sale (the same statuses your revenue
+                  reports use), recomputed nightly at 04:00.
+                  {' '}
+                  <strong>Lift</strong> is how much more often a pair happens than chance alone
+                  would explain: 1.0 means no real relationship, 3.0 means three times more often
+                  than you would expect. Ranking by lift instead of raw count is what stops your
+                  bestseller from being listed against everything.
+                </p>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {(['lift', 'count'] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => { setPairsSort(s); setPairsPage(1); }}
+                      style={{
+                        fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', padding: '5px 10px',
+                        borderRadius: 6, border: '1px solid var(--color-border)',
+                        background: pairsSort === s ? 'var(--color-primary)' : 'transparent',
+                        color: pairsSort === s ? '#fff' : 'var(--color-text-secondary)',
+                        fontWeight: pairsSort === s ? 700 : 500,
+                      }}
+                    >
+                      {s === 'lift' ? 'Strongest pairing' : 'Most frequent'}
+                    </button>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {itemPairs.length === 0 ? (
-                  <tr><td colSpan={3}><EmptyState message="No pair stats yet — needs order history." /></td></tr>
-                ) : itemPairs.map((row) => (
-                  <tr key={`${row.item_id}-${row.paired_item_id}`}>
-                    <td style={TD}>{row.item_name}</td>
-                    <td style={TD}>{row.paired_item_name}</td>
-                    <td style={{ ...TD, fontWeight: 700 }}>{row.pair_count}</td>
+                </div>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Item', 'Often paired with', 'Lift', 'Together', 'Of its orders', 'Revenue'].map((h) => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <p style={{ padding: 12, fontSize: 12, color: 'var(--color-text-muted)' }}>
-              {pairsMeta.total} pairs
-              {pairsMeta.last_page > 1 && (
-                <>
-                  {' · '}
-                  <button type="button" disabled={pairsPage <= 1} onClick={() => setPairsPage((p) => p - 1)} style={{ marginRight: 8, fontFamily: 'inherit', cursor: 'pointer' }}>Prev</button>
-                  <button type="button" disabled={pairsPage >= pairsMeta.last_page} onClick={() => setPairsPage((p) => p + 1)} style={{ fontFamily: 'inherit', cursor: 'pointer' }}>Next</button>
-                </>
-              )}
-            </p>
-          </TableCard>
+                </thead>
+                <tbody>
+                  {itemPairs.length === 0 ? (
+                    <tr><td colSpan={6}><EmptyState message={`No pairs yet — a pairing needs at least ${pairsMeta.min_support} orders before it appears.`} /></td></tr>
+                  ) : itemPairs.map((row) => (
+                    <tr key={`${row.item_id}-${row.paired_item_id}`}>
+                      <td style={TD}>{row.item_name}</td>
+                      <td style={TD}>{row.paired_item_name}</td>
+                      <td style={{ ...TD, fontWeight: 700, color: row.lift >= 2 ? 'var(--color-success)' : 'var(--color-text)' }}>
+                        {row.lift.toFixed(1)}×
+                      </td>
+                      <td style={TD}>{row.pair_count}</td>
+                      <td style={TD}>{row.confidence.toFixed(0)}%</td>
+                      <td style={{ ...TD, fontWeight: 600 }}>MVR {row.pair_revenue.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ padding: 12, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {pairsMeta.total} pairs
+                {pairsMeta.computed_at && ` · last computed ${new Date(pairsMeta.computed_at).toLocaleString()}`}
+                {pairsMeta.last_page > 1 && (
+                  <>
+                    {' · '}
+                    <button type="button" disabled={pairsPage <= 1} onClick={() => setPairsPage((p) => p - 1)} style={{ marginRight: 8, fontFamily: 'inherit', cursor: 'pointer' }}>Prev</button>
+                    <button type="button" disabled={pairsPage >= pairsMeta.last_page} onClick={() => setPairsPage((p) => p + 1)} style={{ fontFamily: 'inherit', cursor: 'pointer' }}>Next</button>
+                  </>
+                )}
+              </p>
+            </TableCard>
+
+            {/* The table above describes customers; this one describes the
+                feature — whether the suggestions were ever taken. */}
+            <TableCard>
+              <p style={{ padding: '12px 14px 0', margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                <strong>Did the suggestions work?</strong> How often the “Goes well with” panels were
+                shown, and how often a customer took one — last {suggestionPerfMeta.days} days.
+              </p>
+              <div style={{ display: 'flex', gap: 24, padding: '12px 14px', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shown</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{suggestionPerfMeta.shown.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Taken</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{suggestionPerfMeta.accepted.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Take rate</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>{suggestionPerfMeta.take_rate.toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Added</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-success)' }}>MVR {suggestionPerfMeta.revenue.toFixed(2)}</div>
+                </div>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Suggested item', 'Where', 'Shown', 'Taken', 'Take rate', 'Revenue'].map((h) => (
+                      <th key={h} style={TH}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {suggestionPerf.length === 0 ? (
+                    <tr><td colSpan={6}><EmptyState message="Nothing recorded yet — this fills in as customers see and take suggestions." /></td></tr>
+                  ) : suggestionPerf.map((row) => (
+                    <tr key={`${row.item_id}-${row.surface}`}>
+                      <td style={TD}>{row.item_name}</td>
+                      <td style={TD}>
+                        {row.surface === 'cart' ? 'Cart' : row.surface === 'item_sheet' ? 'Item page' : 'POS'}
+                      </td>
+                      <td style={TD}>{row.shown}</td>
+                      <td style={TD}>{row.accepted}</td>
+                      <td style={{ ...TD, fontWeight: 700 }}>{row.take_rate.toFixed(1)}%</td>
+                      <td style={{ ...TD, fontWeight: 600 }}>MVR {row.revenue.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableCard>
+          </>
         )
       )}
 

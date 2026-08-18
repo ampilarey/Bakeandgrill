@@ -344,15 +344,63 @@ export type ItemPairRow = {
   paired_item_id: number;
   paired_item_name: string;
   pair_count: number;
+  /** Money the two items themselves took in orders holding both. */
+  pair_revenue: number;
+  /** Percentage of the anchor's orders that also held the pair. */
+  confidence: number;
+  /** 1.0 = no relationship beyond the paired item being popular. */
+  lift: number;
+  anchor_orders: number;
 };
 
-export async function fetchItemPairs(params?: { page?: number; per_page?: number }): Promise<{
-  data: ItemPairRow[];
-  meta: { current_page: number; last_page: number; total: number };
-}> {
+export type ItemPairMeta = {
+  current_page: number;
+  last_page: number;
+  total: number;
+  sort: 'lift' | 'count';
+  min_support: number;
+  computed_at: string | null;
+};
+
+export async function fetchItemPairs(params?: {
+  page?: number;
+  per_page?: number;
+  sort?: 'lift' | 'count';
+}): Promise<{ data: ItemPairRow[]; meta: ItemPairMeta }> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set('page', String(params.page));
   if (params?.per_page) qs.set('per_page', String(params.per_page));
+  if (params?.sort) qs.set('sort', params.sort);
   const query = qs.toString() ? `?${qs}` : '';
   return req(`/admin/marketing/item-pairs${query}`);
+}
+
+export type SuggestionPerfRow = {
+  item_id: number;
+  item_name: string;
+  surface: string;
+  shown: number;
+  accepted: number;
+  /** Accepted ÷ shown, as a percentage. */
+  take_rate: number;
+  revenue: number;
+};
+
+export type SuggestionPerfMeta = {
+  days: number;
+  shown: number;
+  accepted: number;
+  take_rate: number;
+  revenue: number;
+};
+
+/**
+ * How the suggestion panels performed — the only figures that say whether the
+ * "Goes well with" block earns its screen space.
+ */
+export async function fetchSuggestionPerformance(days = 30): Promise<{
+  data: SuggestionPerfRow[];
+  meta: SuggestionPerfMeta;
+}> {
+  return req(`/admin/marketing/suggestion-performance?days=${days}`);
 }

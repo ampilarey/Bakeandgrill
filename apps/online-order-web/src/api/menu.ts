@@ -411,6 +411,27 @@ export async function fetchCartRecommendations(itemIds: number[], limit = 3): Pr
   });
 }
 
+export type SuggestionSurface = 'cart' | 'item_sheet';
+
+/**
+ * Tell the server a suggestion was seen, or taken.
+ *
+ * Deliberately fire-and-forget and deliberately silent: this exists to answer
+ * "is the upsell panel worth its space", and a failed tally must never get
+ * between a customer and their order.
+ */
+export function trackSuggestion(
+  surface: SuggestionSurface,
+  action: 'shown' | 'accepted',
+  itemIds: number[],
+): void {
+  if (itemIds.length === 0) return;
+  void request('/recommendations/track', {
+    method: 'POST',
+    body: JSON.stringify({ surface, action, item_ids: itemIds }),
+  }).catch(() => { /* never surfaced */ });
+}
+
 export type GstBootstrap = {
   default_tax_rate_bp: number;
   tax_rate_percent: number;

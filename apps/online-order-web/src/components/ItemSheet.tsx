@@ -3,7 +3,7 @@
  * edit-mode props call CartContext.updateEntry when editIndex is set.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { fetchCartRecommendations, getItemReviews, getItemPhotos } from '../api';
+import { fetchCartRecommendations, trackSuggestion, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { PlatterSelection, Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
@@ -144,6 +144,8 @@ export function ItemSheet({
   const [avgRating, setAvgRating] = useState<number | null>(null);
   const [photos, setPhotos] = useState<ItemPhoto[]>(() => item.photos ?? []);
   const [pairings, setPairings] = useState<Item[]>([]);
+  /** Last set of pairing ids reported as shown — see the pairings effect. */
+  const shownSignature = useRef('');
 
   const slides = useMemo(
     () => buildItemSlides(
@@ -167,7 +169,18 @@ export function ItemSheet({
       .catch(() => {});
     if (!viewOnly) {
       fetchCartRecommendations([item.id], 3)
-        .then(({ items: recs }) => { if (!cancelled) setPairings(recs ?? []); })
+        .then(({ items: recs }) => {
+          if (cancelled) return;
+          setPairings(recs ?? []);
+          // Same guard as the cart: this effect keys partly off item.photos,
+          // which is a new array on each render, so an unguarded call would
+          // report the same panel as shown many times over.
+          const signature = (recs ?? []).map((r) => r.id).join(',');
+          if (signature && shownSignature.current !== signature) {
+            shownSignature.current = signature;
+            trackSuggestion('item_sheet', 'shown', (recs ?? []).map((r) => r.id));
+          }
+        })
         .catch(() => {});
     }
     return () => { cancelled = true; };
@@ -698,7 +711,10 @@ export function ItemSheet({
                       </span>
                       <button
                         type="button"
-                        onClick={() => addItem(rec, 1, [], null)}
+                        onClick={() => {
+                          addItem(rec, 1, [], null);
+                          trackSuggestion('item_sheet', 'accepted', [rec.id]);
+                        }}
                         style={{
                           flexShrink: 0, padding: '0.3rem 0.7rem', background: 'var(--color-primary)', color: 'white',
                           border: 'none', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',

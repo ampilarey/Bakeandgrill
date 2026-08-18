@@ -31,6 +31,8 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::get('/categories/{id}', [CategoryController::class, 'show']);
         Route::get('/items', [ItemController::class, 'index']);
         Route::post('/recommendations/cart', [App\Http\Controllers\Api\ItemRecommendationsController::class, 'forCart']);
+        // Shown / accepted tallies behind the admin's suggestion report.
+        Route::post('/recommendations/track', [App\Http\Controllers\Api\ItemRecommendationsController::class, 'track']);
         Route::get('/items/{id}', [ItemController::class, 'show']);
         Route::get('/items/barcode/{barcode}', [ItemController::class, 'lookupByBarcode']);
     });

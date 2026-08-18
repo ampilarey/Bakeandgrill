@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchItems, fetchCartRecommendations, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate, getOrderDay } from '../api';
+import { fetchItems, fetchCartRecommendations, trackSuggestion, getLoyaltyAccount, getMyFavourites, toggleFavourite, getWaitTimeEstimate, getOrderDay } from '../api';
 import type { Item, Modifier } from '../api';
 import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
@@ -51,6 +51,8 @@ export function CartDrawer({
   const [favouriteIds, setFavouriteIds] = useState<Set<number>>(new Set());
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
   const hasFetched = useRef(false);
+  /** Last set of suggestion ids reported as shown — see the upsell effect. */
+  const shownSignature = useRef('');
   const [editLine, setEditLine] = useState<{ index: number; entry: CartEntry } | null>(null);
   const [editMods, setEditMods] = useState<Modifier[]>([]);
   const [editQty, setEditQty] = useState(1);
@@ -159,6 +161,15 @@ export function CartDrawer({
       .then(({ items }) => {
         if (items.length > 0) {
           setUpsellItems(items);
+          // Report a set once. This effect re-runs on every cart change — and
+          // `cart` is a fresh array on each render — so tracking here
+          // unguarded counts the same three suggestions over and over and
+          // quietly destroys the take rate the admin report is built on.
+          const signature = items.map((i) => i.id).join(',');
+          if (shownSignature.current !== signature) {
+            shownSignature.current = signature;
+            trackSuggestion('cart', 'shown', items.map((i) => i.id));
+          }
           return;
         }
         if (hasFetched.current) return;
@@ -475,6 +486,7 @@ export function CartDrawer({
                   type="button"
                   onClick={() => {
                     addItem(item as any, 1, [], null);
+                    trackSuggestion('cart', 'accepted', [item.id]);
                     setUpsellItems((prev) => prev.filter((u) => u.id !== item.id));
                   }}
                   style={{ flexShrink: 0, padding: '0.3rem 0.7rem', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
