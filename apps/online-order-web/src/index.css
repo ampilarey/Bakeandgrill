@@ -267,6 +267,10 @@ img.brand-logo--dark { display: none; }
   min-height: 340px;
   overflow: hidden;
   background: #1c1408;
+  /* Inset card at every width — phone margins below, the rail plus gutters
+     above — so it carries the same trimmed corners at both. Lockstep with the
+     website's .hero-banner. */
+  border-radius: 1.25rem;
 }
 .home-promo-hero--empty {
   display: flex;
@@ -291,7 +295,6 @@ img.brand-logo--dark { display: none; }
   .home-promo-hero {
     width: auto;
     margin: 0.5rem 1rem 0;
-    border-radius: 1.25rem;
     border: none;
     height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
     height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
@@ -709,7 +712,6 @@ img.brand-logo--dark { display: none; }
     );
     max-width: calc(var(--layout-max) - 2 * var(--page-gutter));
     margin-inline: auto;
-    border-radius: 0;
     box-sizing: border-box;
     height: min(78vh, 760px);
     min-height: 560px;

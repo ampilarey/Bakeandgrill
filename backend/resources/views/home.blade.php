@@ -33,13 +33,17 @@
     height: 600px;
     overflow: hidden;
     background: var(--inverse-section-bg);
+    /* The hero is an inset card at EVERY width — phone margins below, the
+       1280px rail plus gutters above. Only the phone was rounded, so the same
+       card had trimmed corners on a phone and square ones on a laptop. One
+       declaration here keeps them the same shape. */
+    border-radius: 1.25rem;
 }
 /* Mobile: inset rounded container (no border), soft portrait 4:5 */
 @media (max-width: 768px) {
     .hero-banner {
         width: auto;
         margin: 0.5rem 1rem 0;
-        border-radius: 1.25rem;
         border: none;
         height: min(68vh, calc((100vw - 2rem) * 1.25), 500px);
         height: min(68dvh, calc((100vw - 2rem) * 1.25), 500px);
