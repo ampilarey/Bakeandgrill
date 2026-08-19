@@ -78,6 +78,7 @@ export function ContentHubPage() {
     publish,
     schedulePublish,
     discardAllContentDrafts,
+    discardBlockDraft,
     onUpload,
     makeTriggerUpload,
     handleEmbedFile,
@@ -564,6 +565,7 @@ export function ContentHubPage() {
           uploadCtx={uploadCtx}
           setMediaOpen={setMediaOpen}
           draftStatusNode={draftStatusNode}
+          onDiscardBlockDraft={(key: string) => { if (draftKeys.includes(key)) void discardBlockDraft(key); }}
           historyTarget={historyTarget}
           setHistoryTarget={setHistoryTarget}
           revisions={revisions}

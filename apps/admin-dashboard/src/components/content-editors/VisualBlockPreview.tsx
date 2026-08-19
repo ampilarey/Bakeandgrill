@@ -21,6 +21,11 @@ type PreviewProps = {
    * (§6.4: `home_proof_eyebrow` is not something anyone can picture from its key).
    */
   fallbackLabel?: string;
+  /**
+   * Bump to replay the hero's animations. Undefined / 0 renders the settled
+   * final state, which is what an editor wants while you are typing.
+   */
+  playToken?: number;
 };
 
 function safeParse<T>(raw: string, fallback: T): T {
@@ -36,7 +41,7 @@ function stripHtml(html: string): string {
 }
 
 /** Read-only live preview for visual Content Studio blocks (active draft). */
-export function VisualBlockPreview({ editor, value, appLabel, fallbackLabel }: PreviewProps) {
+export function VisualBlockPreview({ editor, value, appLabel, fallbackLabel, playToken }: PreviewProps) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(value), 200);
@@ -52,15 +57,15 @@ export function VisualBlockPreview({ editor, value, appLabel, fallbackLabel }: P
       <div className="visual-block-preview__eyebrow">
         Live preview · {appLabel}
       </div>
-      {renderPreview(editor, debounced, fallbackLabel)}
+      {renderPreview(editor, debounced, fallbackLabel, playToken)}
     </div>
   );
 }
 
-function renderPreview(editor: string, value: string, fallbackLabel?: string) {
+function renderPreview(editor: string, value: string, fallbackLabel?: string, playToken?: number) {
   switch (editor) {
     case 'hero':
-      return <HeroVisualPreview value={value} />;
+      return <HeroVisualPreview value={value} playToken={playToken} />;
     case 'trust': {
       const items = safeParse<{ icon: string; heading: string; subtext: string }[]>(value, []);
       return (
@@ -198,7 +203,7 @@ type HeroSlide = Record<string, unknown> & {
  * Motion is represented as final state, not replayed: an editor that
  * re-animates on every keystroke is unusable.
  */
-function HeroVisualPreview({ value }: { value: string }) {
+function HeroVisualPreview({ value, playToken }: { value: string; playToken?: number }) {
   const parsed = safeParse<unknown>(value, []);
   const slides = (Array.isArray(parsed)
     ? parsed
@@ -252,6 +257,10 @@ function HeroVisualPreview({ value }: { value: string }) {
       data-slide-count={slides.length}
       data-has-video={hasVideo ? '1' : '0'}
       data-photo-anim={presentation.motion.photo}
+      // Motion runs only while playing, so the editor is not re-animating on
+      // every keystroke; the key restarts the CSS animations on replay.
+      data-playing={playToken ? 'yes' : 'no'}
+      key={playToken ?? 'static'}
       style={{
         // The site paints #1C1408 behind the photo, so a slide with no image
         // reads as a dark banner rather than a white card.
@@ -259,6 +268,10 @@ function HeroVisualPreview({ value }: { value: string }) {
         // The copy shade is drawn from this on the site; without it the
         // "shade behind all the text" strength slider does nothing here.
         ['--hero-scrim' as string]: String(presentation.scrim),
+        // Both feed the site's animation timing; without them every effect
+        // would run at the default speed and stagger.
+        ['--hero-speed' as string]: presentation.motion.speed,
+        ['--hero-stagger' as string]: `${presentation.motion.delay_step}ms`,
       } as React.CSSProperties}
     >
       {media ? (

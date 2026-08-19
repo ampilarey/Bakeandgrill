@@ -53,6 +53,8 @@ export type SharedEditorDeps = {
   uploadCtx: UploadContextRef;
   setMediaOpen: (open: boolean) => void;
   draftStatusNode: ReactNode;
+  /** Discard one block's draft. Absent when the block has none. */
+  onDiscardBlockDraft?: (key: string) => void;
 };
 
 /** Visual (rich) editors keyed off `block.editor`. */
@@ -78,6 +80,7 @@ export function renderVisualEditor(
           mobileMode={Boolean(opts?.mobileMode)}
           wideLayout={Boolean(opts?.wideLayout)}
           draftStatus={deps.draftStatusNode}
+          onDiscardDraft={deps.onDiscardBlockDraft ? () => deps.onDiscardBlockDraft?.(block.key) : undefined}
           scheduleSlot={opts?.scheduleSlot}
         />
       );

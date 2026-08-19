@@ -256,8 +256,16 @@ class ContentController extends Controller
         $data = $request->validate([
             'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
             'scope' => ['sometimes', 'nullable', 'string', Rule::in(ContentRegistry::APPS)],
+            // Narrow to a single block. Without this the only way to abandon
+            // one bad hero draft was to discard every unpublished change for
+            // the whole app, which is not a trade anyone should have to make.
+            'key' => ['sometimes', 'nullable', 'string'],
         ]);
         $locale = $data['locale'] ?? 'en';
+
+        if (! empty($data['key']) && ! ContentRegistry::has($data['key'])) {
+            return response()->json(['message' => 'Unknown content key.'], 404);
+        }
         $user = $request->user();
         if (! $user instanceof User) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
@@ -269,6 +277,9 @@ class ContentController extends Controller
         if (! empty($data['scope'])) {
             $query->where('scope', $data['scope']);
         }
+        if (! empty($data['key'])) {
+            $query->where('key', $data['key']);
+        }
 
         $deleted = $query->count();
         $query->delete();
@@ -279,7 +290,7 @@ class ContentController extends Controller
             modelId: null,
             oldValues: [],
             newValues: ['count' => $deleted],
-            meta: ['locale' => $locale, 'scope' => $data['scope'] ?? null],
+            meta: ['locale' => $locale, 'scope' => $data['scope'] ?? null, 'key' => $data['key'] ?? null],
             request: $request,
         );
 
@@ -287,6 +298,7 @@ class ContentController extends Controller
             'message' => 'Drafts discarded.',
             'locale' => $locale,
             'scope' => $data['scope'] ?? null,
+            'key' => $data['key'] ?? null,
             'deleted' => $deleted,
         ]);
     }

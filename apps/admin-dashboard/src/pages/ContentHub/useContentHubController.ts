@@ -525,6 +525,34 @@ export function useContentHubController(toast: ContentHubToast) {
     }
   };
 
+  /**
+   * Discard ONE block's draft.
+   *
+   * Owner, 2026-08-19: "there is no way to discard saved draft in hero." The
+   * only discard was all-or-nothing per app, so abandoning one bad hero draft
+   * meant throwing away every other unpublished change with it.
+   */
+  const discardBlockDraft = async (key: string) => {
+    if (!drafts[key]) return;
+    if (!window.confirm(`Discard the unpublished draft for this block? It goes back to what is published now.`)) return;
+    setSaving(true);
+    try {
+      await discardContentDrafts(locale, hubApp, key);
+      saveGeneration.current += 1;
+      // Drop just this key locally; the rest of the drafts stand.
+      const remaining = { ...drafts };
+      delete remaining[key];
+      replaceLocaleDrafts(locale, remaining);
+      setAutosaveFailed(false);
+      setAutosaveErrorDetail(null);
+      success('Draft discarded');
+    } catch (e) {
+      error(e instanceof Error ? e.message : 'Could not discard the draft');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Unified discard — current hub app only (never the other app's drafts).
   const discardAllContentDrafts = async () => {
     const hasContentDrafts = dirtyCount > 0;
@@ -587,6 +615,7 @@ export function useContentHubController(toast: ContentHubToast) {
     effectiveDirtyCount,
     orderedSectionNames,
     draftKeys,
+    discardBlockDraft,
     setDraft,
     persistDrafts,
     publish,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Play } from 'lucide-react';
 
 import { VisualBlockPreview } from '../VisualBlockPreview';
 
@@ -37,6 +37,12 @@ function readMinimized(): boolean {
  */
 export function HeroPreviewDock({ slide, slideNumber }: Props) {
   const [minimized, setMinimized] = useState(readMinimized);
+  /**
+   * Animations play on demand rather than continuously. Replaying on every
+   * keystroke would make the editor unusable, but never showing them at all
+   * means the motion settings cannot be judged — so this is a button.
+   */
+  const [playToken, setPlayToken] = useState(0);
 
   useEffect(() => {
     try {
@@ -52,20 +58,35 @@ export function HeroPreviewDock({ slide, slideNumber }: Props) {
       data-testid="hero-preview-dock"
       data-minimized={minimized ? 'yes' : 'no'}
     >
-      <button
-        type="button"
-        className="hero-preview-dock__bar"
-        data-testid="hero-preview-dock-toggle"
-        aria-expanded={!minimized}
-        aria-label={minimized ? 'Show hero preview' : 'Hide hero preview'}
-        onClick={() => setMinimized((v) => !v)}
-      >
-        <span className="hero-preview-dock__title">
-          Preview
-          {slideNumber ? <span className="hero-preview-dock__slide"> · Slide {slideNumber}</span> : null}
-        </span>
-        {minimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
+      <div className="hero-preview-dock__bar">
+        <button
+          type="button"
+          className="hero-preview-dock__toggle"
+          data-testid="hero-preview-dock-toggle"
+          aria-expanded={!minimized}
+          aria-label={minimized ? 'Show hero preview' : 'Hide hero preview'}
+          onClick={() => setMinimized((v) => !v)}
+        >
+          <span className="hero-preview-dock__title">
+            Preview
+            {slideNumber ? <span className="hero-preview-dock__slide"> · Slide {slideNumber}</span> : null}
+          </span>
+          {minimized ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        {minimized ? null : (
+          <button
+            type="button"
+            className="hero-preview-dock__play"
+            data-testid="hero-preview-dock-play"
+            aria-label="Play the slide's animations"
+            title="Play animations"
+            onClick={() => setPlayToken((n) => n + 1)}
+          >
+            <Play size={13} />
+            Play
+          </button>
+        )}
+      </div>
       {minimized ? null : (
         <div className="hero-preview-dock__body" data-testid="hero-preview-dock-body">
           <VisualBlockPreview
@@ -74,6 +95,7 @@ export function HeroPreviewDock({ slide, slideNumber }: Props) {
             // style before switching it on.
             value={JSON.stringify([{ ...slide, showing: true }])}
             appLabel="Website"
+            playToken={playToken}
           />
         </div>
       )}

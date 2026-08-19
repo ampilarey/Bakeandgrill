@@ -49,6 +49,12 @@ export type HeroSlidesEditorProps = ContentEditorWithUploadProps & {
   wideLayout?: boolean;
   /** Publish-state banner shown inside nested slide sheets. */
   draftStatus?: ReactNode;
+  /**
+   * Throw away this block's unpublished draft and fall back to what is live.
+   * Absent when there is no draft to discard, so the control is only offered
+   * when it would actually do something.
+   */
+  onDiscardDraft?: () => void;
   /** Content Hub schedule controls — surfaced inside the slide sheet on mobile. */
   scheduleSlot?: ReactNode;
 };
@@ -63,6 +69,7 @@ export function HeroSlidesEditor({
   mobileMode = false,
   wideLayout = false,
   draftStatus,
+  onDiscardDraft,
   scheduleSlot,
 }: HeroSlidesEditorProps) {
   let items: HeroSlideRow[] = [];
@@ -912,9 +919,26 @@ export function HeroSlidesEditor({
             background: 'var(--color-surface)',
           }}
         >
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
-            Whole slide
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+              Whole slide
+            </span>
+            {onDiscardDraft ? (
+              <button
+                type="button"
+                data-testid="hero-discard-draft"
+                onClick={onDiscardDraft}
+                style={{
+                  fontFamily: 'inherit', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  padding: '5px 10px', borderRadius: 8,
+                  border: '1px solid var(--color-border)',
+                  background: 'transparent', color: 'var(--color-danger)',
+                }}
+              >
+                Discard draft
+              </button>
+            ) : null}
+          </div>
           {renderVisibilityAndSchedule(slide, idx, update)}
           {renderSlideWideBlock(slide, idx)}
         </div>

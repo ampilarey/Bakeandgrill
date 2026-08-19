@@ -2700,6 +2700,123 @@ work area is a single column that
   color: var(--color-bg);
 }
 
+/* ── Hero preview motion ──────────────────────────────────────────────
+ *
+ * Ported from home.blade.php. Entrances are named in --hero-entrance so a
+ * looping box effect can compose with them: an element carries one `animation`
+ * property, and without the custom property one silently beats the other on
+ * specificity — which is how Glow with the one-box shape once did nothing.
+ *
+ * Motion only runs while the dock is playing (data-playing="yes"), so the
+ * editor is not re-animating on every keystroke. The replay button restarts it.
+ */
+@keyframes hero-preview-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hero-preview-zoom-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes hero-preview-photo-zoom { from { transform: scale(1); } to { transform: scale(1.12); } }
+@keyframes hero-preview-photo-pan { from { transform: scale(1.1) translateX(-2%); } to { transform: scale(1.1) translateX(2%); } }
+@keyframes hero-preview-box-glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+@keyframes hero-preview-box-drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes hero-preview-box-sheen { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
+
+.hero-preview[data-playing="yes"] .banner-title[data-anim="fade"],
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="fade"] { --hero-entrance: hero-preview-fade-up; }
+.hero-preview[data-playing="yes"] .banner-title[data-anim="zoom"],
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="zoom"] { --hero-entrance: hero-preview-zoom-in; }
+.hero-preview[data-playing="yes"] .banner-title[data-anim="line"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"] .hero-sub-line,
+.hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word { --hero-entrance: hero-preview-fade-up; }
+
+.hero-preview[data-playing="yes"] .banner-title[data-anim="fade"],
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="fade"],
+.hero-preview[data-playing="yes"] .banner-title[data-anim="zoom"],
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="zoom"] {
+  animation: var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both;
+}
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="fade"],
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="zoom"] {
+  animation-delay: calc(0.12s / var(--hero-speed, 1));
+}
+
+.hero-preview[data-playing="yes"] .banner-title[data-anim="line"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"] .hero-sub-line,
+.hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word {
+  display: inline-block;
+  animation: var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both;
+}
+.hero-preview[data-playing="yes"] .banner-title[data-anim="line"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"] .hero-sub-line {
+  animation-delay: calc(var(--hero-line-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
+}
+.hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word {
+  animation-delay: calc(var(--hero-word-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
+}
+/* inline-block would break the per-line background, which needs inline runs
+   to clone their box onto every visual line. */
+.hero-preview[data-playing="yes"] .banner-title[data-anim="line"][data-bg-shape="line"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"][data-bg-shape="line"] .hero-sub-line {
+  display: inline;
+}
+
+/* [data-has-bg] lifts these above the entrance rule, which is otherwise one
+   selector more specific and would win outright. */
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="glow"][data-has-bg],
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="glow"][data-has-bg] {
+  animation:
+    var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+    hero-preview-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="glow"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="glow"] .hero-sub-line {
+  animation:
+    var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both,
+    hero-preview-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="drift"][data-has-bg],
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="drift"][data-has-bg],
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="drift"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="drift"] .hero-sub-line {
+  background-size: 300% 100%;
+  animation:
+    var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+    hero-preview-box-drift calc(9s / var(--hero-speed, 1)) ease-in-out infinite;
+}
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"][data-bg-shape="hug"],
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"][data-bg-shape="full"],
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"][data-bg-shape="hug"],
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"][data-bg-shape="full"],
+.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"] .hero-title-line,
+.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"] .hero-sub-line {
+  background-image: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 45%, transparent 70%), var(--hero-el-bg, none);
+  background-size: 220% 100%, auto;
+  background-repeat: no-repeat;
+  animation:
+    var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
+    hero-preview-box-sheen calc(5s / var(--hero-speed, 1)) linear infinite;
+}
+
+.hero-preview[data-playing="yes"][data-photo-anim="zoom"] .visual-block-preview__hero-media {
+  animation: hero-preview-photo-zoom calc(18s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+}
+.hero-preview[data-playing="yes"][data-photo-anim="pan"] .visual-block-preview__hero-media {
+  animation: hero-preview-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+}
+
+/* A viewer who asked their device for less motion asked everyone; the site
+   honours that wholesale and so does the preview. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-preview[data-playing="yes"] .banner-title,
+  .hero-preview[data-playing="yes"] .banner-sub,
+  .hero-preview[data-playing="yes"] .hero-title-line,
+  .hero-preview[data-playing="yes"] .hero-sub-line,
+  .hero-preview[data-playing="yes"] .hero-word,
+  .hero-preview[data-playing="yes"] .visual-block-preview__hero-media {
+    animation: none !important;
+  }
+}
+
 /* ── Hero preview dock — floats over the editor, minimisable ──────────
  *
  * In the scroll flow the preview pushed every control down; on a phone it
@@ -2743,20 +2860,45 @@ work area is a single column that
 .hero-preview-dock__bar {
   display: flex;
   align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: var(--color-bg);
+  padding-right: 8px;
+}
+.hero-preview-dock__toggle {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   /* Comfortable tap target — this is the control people reach for most. */
   min-height: 44px;
   padding: 8px 12px;
   border: 0;
-  background: var(--color-bg);
+  background: transparent;
   color: var(--color-text);
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   text-align: left;
+}
+.hero-preview-dock__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .hero-preview-dock__slide {
   font-weight: 500;
@@ -2768,7 +2910,7 @@ work area is a single column that
   max-height: 46vh;
   overflow-y: auto;
 }
-.hero-preview-dock--minimized .hero-preview-dock__bar {
+.hero-preview-dock--minimized .hero-preview-dock__toggle {
   border-radius: 12px;
 }
 /* Minimised on a laptop shrinks to a pill rather than a full-width bar. */

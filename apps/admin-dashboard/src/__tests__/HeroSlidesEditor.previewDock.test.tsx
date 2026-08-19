@@ -133,3 +133,62 @@ describe('hero settings layout on desktop', () => {
     expect(stack.className).not.toContain('hero-slides-parts--columns');
   });
 });
+
+describe('hero preview motion', () => {
+  it('holds still until asked, so the editor is not re-animating as you type', () => {
+    render(<ControlledEditor wideLayout />);
+    expect(screen.getByTestId('hero-visual-preview').getAttribute('data-playing')).toBe('no');
+  });
+
+  it('plays the animations on demand', () => {
+    render(<ControlledEditor wideLayout />);
+
+    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
+
+    expect(screen.getByTestId('hero-visual-preview').getAttribute('data-playing')).toBe('yes');
+  });
+
+  it('restarts on a second press rather than doing nothing', () => {
+    // CSS animations do not re-run on an element that is already animating;
+    // the token changes the React key so the node is genuinely remade.
+    render(<ControlledEditor wideLayout />);
+
+    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
+    const first = screen.getByTestId('hero-visual-preview');
+    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
+    const second = screen.getByTestId('hero-visual-preview');
+
+    expect(second).not.toBe(first);
+  });
+
+  it('offers no play button while minimized', () => {
+    render(<ControlledEditor wideLayout />);
+    fireEvent.click(screen.getByTestId('hero-preview-dock-toggle'));
+    expect(screen.queryByTestId('hero-preview-dock-play')).toBeNull();
+  });
+});
+
+describe('hero draft discard', () => {
+  it('offers no discard control when there is no draft to discard', () => {
+    // The editor is handed the callback only for blocks that have a draft.
+    render(<ControlledEditor wideLayout />);
+    expect(screen.queryByTestId('hero-discard-draft')).toBeNull();
+  });
+
+  it('discards this block only, when one exists', () => {
+    const onDiscardDraft = vi.fn();
+    render(
+      <HeroSlidesEditor
+        label="Hero"
+        value={JSON.stringify([{ title: 'Draft', showing: true }])}
+        onChange={() => {}}
+        triggerUpload={() => {}}
+        wideLayout
+        onDiscardDraft={onDiscardDraft}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('hero-discard-draft'));
+    expect(onDiscardDraft).toHaveBeenCalledTimes(1);
+  });
+});

@@ -173,6 +173,8 @@ export type ContentWorkspaceProps = {
   uploadCtx: UploadContextRef;
   setMediaOpen: (open: boolean) => void;
   draftStatusNode: ReactNode;
+  /** Discard one block's draft; only called for blocks that have one. */
+  onDiscardBlockDraft?: (key: string) => void;
   historyTarget: HistoryTarget;
   setHistoryTarget: (target: HistoryTarget) => void;
   revisions: ContentRevision[];
@@ -216,6 +218,7 @@ export function ContentWorkspace({
   uploadCtx,
   setMediaOpen,
   draftStatusNode,
+  onDiscardBlockDraft,
   historyTarget,
   setHistoryTarget,
   revisions,
@@ -253,6 +256,7 @@ export function ContentWorkspace({
     uploadCtx,
     setMediaOpen,
     draftStatusNode,
+    onDiscardBlockDraft,
   };
 
   /**

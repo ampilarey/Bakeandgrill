@@ -141,9 +141,13 @@ export async function saveContentDrafts(
 export async function discardContentDrafts(
   locale: ContentLocale = 'en',
   scope?: ContentScope,
-): Promise<{ message: string; locale: string; scope: ContentScope | null; deleted: number }> {
+  /** Narrow to one block, so abandoning a bad hero draft does not throw away
+   *  every other unpublished change for the app. */
+  key?: string,
+): Promise<{ message: string; locale: string; scope: ContentScope | null; key: string | null; deleted: number }> {
   const q = new URLSearchParams({ locale });
   if (scope) q.set('scope', scope);
+  if (key) q.set('key', key);
   return req(`/admin/content/drafts?${q}`, { method: 'DELETE' });
 }
 
