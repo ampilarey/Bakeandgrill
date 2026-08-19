@@ -58,9 +58,15 @@
                         @if($item->description ?? null)
                             <div class="product-desc">{{ Str::limit($item->description, 60) }}</div>
                         @endif
+                        @php($priceInfo = $item->displayPriceInfo())
                         <div class="product-price-row">
+                            {{-- An item with sizes keeps its money on the variants, so
+                                 base_price is 0 and printing it read "MVR 0.00". --}}
+                            @if($priceInfo['from'])
+                                <span class="product-from">From</span>
+                            @endif
                             <span class="product-currency">MVR</span>
-                            <span class="product-price">{{ number_format($item->base_price, 2) }}</span>
+                            <span class="product-price">{{ number_format($priceInfo['price'], 2) }}</span>
                         </div>
 
                         <a href="/order/menu" class="add-btn">Order Now →</a>

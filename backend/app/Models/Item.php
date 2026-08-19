@@ -155,6 +155,31 @@ class Item extends Model
     }
 
     /**
+     * The price to show on a card, and whether it is a "from" price.
+     *
+     * An item with sizes carries base_price 0 — the money lives on its
+     * variants — so printing base_price shows a real product at MVR 0.00.
+     * Owner, 2026-08-19: the website's featured strip said "Coke MVR 0.00"
+     * while the order app's item sheet correctly said "From 15.00/-".
+     *
+     * Mirrors the order app's ProductCard: lowest ACTIVE variant, since an
+     * inactive size is not something a customer can buy.
+     *
+     * @return array{price: float, from: bool}
+     */
+    public function displayPriceInfo(): array
+    {
+        if ($this->has_variants && $this->relationLoaded('variants')) {
+            $active = $this->variants->where('is_active', true);
+            if ($active->isNotEmpty()) {
+                return ['price' => (float) $active->min('price'), 'from' => true];
+            }
+        }
+
+        return ['price' => (float) $this->base_price, 'from' => false];
+    }
+
+    /**
      * URL to use for display (direct local cafe image or original for external).
      */
     public function getDisplayImageUrlAttribute(): ?string

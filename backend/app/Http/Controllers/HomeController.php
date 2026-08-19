@@ -20,7 +20,7 @@ class HomeController extends Controller
         // Get best selling items (most ordered)
         $bestSellers = Item::where('is_active', true)
             ->where('is_available', true)
-            ->with('category')
+            ->with(['category', 'variants'])
             ->withCount(['orderItems' => function ($q) {
                 $q->whereHas('order', function ($query) {
                     $query->where('status', '!=', 'cancelled')
@@ -34,7 +34,7 @@ class HomeController extends Controller
         // Fallback to random items if no orders yet
         $featuredItems = $bestSellers->count() > 0 ? $bestSellers : Item::where('is_active', true)
             ->where('is_available', true)
-            ->with('category')
+            ->with(['category', 'variants'])
             ->inRandomOrder()
             ->limit(6)
             ->get();

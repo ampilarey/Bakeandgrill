@@ -42,7 +42,8 @@ class ContentWebsitePreviewController extends Controller
         $bestSellers = Item::query()
             ->where('is_active', true)
             ->where('is_available', true)
-            ->with('category')
+            // variants: the featured card shows a "from" price for sized items.
+            ->with(['category', 'variants'])
             ->limit(6)
             ->get();
         $featuredItems = $bestSellers;
