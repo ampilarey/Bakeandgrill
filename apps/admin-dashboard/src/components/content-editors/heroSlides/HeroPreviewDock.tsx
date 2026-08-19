@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronUp, Play } from 'lucide-react';
 
@@ -38,11 +38,31 @@ function readMinimized(): boolean {
 export function HeroPreviewDock({ slide, slideNumber }: Props) {
   const [minimized, setMinimized] = useState(readMinimized);
   /**
-   * Animations play on demand rather than continuously. Replaying on every
-   * keystroke would make the editor unusable, but never showing them at all
-   * means the motion settings cannot be judged — so this is a button.
+   * Entrances replay by themselves whenever a MOTION setting changes, and on
+   * opening a slide. Keystrokes in the heading are deliberately not a trigger:
+   * re-firing the entrance on every character makes the editor unusable, which
+   * is the whole reason this is not simply "always animate".
+   *
+   * Looping effects need no token at all — they run continuously in CSS.
    */
-  const [playToken, setPlayToken] = useState(0);
+  const [playToken, setPlayToken] = useState(1);
+
+  // Only the fields that actually change how motion looks.
+  const motionSignature = useMemo(() => {
+    const row = (slide ?? {}) as Record<string, unknown>;
+    return [
+      'text_anim', 'title_anim', 'subtitle_anim', 'eyebrow_anim',
+      'box_anim', 'title_box_anim', 'subtitle_box_anim',
+      'photo_anim', 'motion_speed', 'text_anim_stagger',
+    ].map((k) => String(row[k] ?? '')).join('|') + `#${slideNumber ?? ''}`;
+  }, [slide, slideNumber]);
+
+  const lastSignature = useRef(motionSignature);
+  useEffect(() => {
+    if (lastSignature.current === motionSignature) return;
+    lastSignature.current = motionSignature;
+    setPlayToken((n) => n + 1);
+  }, [motionSignature]);
 
   useEffect(() => {
     try {
@@ -78,12 +98,12 @@ export function HeroPreviewDock({ slide, slideNumber }: Props) {
             type="button"
             className="hero-preview-dock__play"
             data-testid="hero-preview-dock-play"
-            aria-label="Play the slide's animations"
-            title="Play animations"
+            aria-label="Replay the slide's animations"
+            title="Replay animations"
             onClick={() => setPlayToken((n) => n + 1)}
           >
             <Play size={13} />
-            Play
+            Replay
           </button>
         )}
       </div>

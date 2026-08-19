@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { HeroSlidesEditor } from '../components/content-editors/HeroSlidesEditor';
+import { HeroPreviewDock } from '../components/content-editors/heroSlides/HeroPreviewDock';
 
 vi.mock('../components/MediaPicker', () => ({ MediaPicker: () => null }));
 vi.mock('../components/VideoStudioModal', () => ({ VideoStudioModal: () => null }));
@@ -135,33 +136,56 @@ describe('hero settings layout on desktop', () => {
 });
 
 describe('hero preview motion', () => {
-  it('holds still until asked, so the editor is not re-animating as you type', () => {
+  it('animates on open without waiting to be asked', () => {
+    // Owner: "now i have to click play to in order to see animations."
     render(<ControlledEditor wideLayout />);
-    expect(screen.getByTestId('hero-visual-preview').getAttribute('data-playing')).toBe('no');
-  });
-
-  it('plays the animations on demand', () => {
-    render(<ControlledEditor wideLayout />);
-
-    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
-
     expect(screen.getByTestId('hero-visual-preview').getAttribute('data-playing')).toBe('yes');
   });
 
-  it('restarts on a second press rather than doing nothing', () => {
-    // CSS animations do not re-run on an element that is already animating;
-    // the token changes the React key so the node is genuinely remade.
-    render(<ControlledEditor wideLayout />);
+  it('replays when a motion setting changes, but not when other copy does', () => {
+    const slide = (extra: Record<string, unknown>) => ({
+      title: 'Hello', showing: true, ...extra,
+    });
 
-    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
+    const { rerender } = render(<HeroPreviewDock slide={slide({ title_anim: 'fade' })} slideNumber={1} />);
     const first = screen.getByTestId('hero-visual-preview');
-    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
-    const second = screen.getByTestId('hero-visual-preview');
 
-    expect(second).not.toBe(first);
+    // A different entrance — the owner wants to see it immediately.
+    rerender(<HeroPreviewDock slide={slide({ title_anim: 'zoom' })} slideNumber={1} />);
+    const afterMotionChange = screen.getByTestId('hero-visual-preview');
+    expect(afterMotionChange).not.toBe(first);
+
+    // Changing the wording is not a motion change.
+    rerender(<HeroPreviewDock slide={{ title: 'Hello there', showing: true, title_anim: 'zoom' }} slideNumber={1} />);
+    expect(screen.getByTestId('hero-visual-preview')).toBe(afterMotionChange);
   });
 
-  it('offers no play button while minimized', () => {
+  it('does NOT replay while you type in the heading', async () => {
+    // The reason this is not simply "always animate": re-firing the entrance
+    // on every character makes the editor unusable.
+    render(<ControlledEditor wideLayout />);
+    const node = screen.getByTestId('hero-visual-preview');
+
+    const field = document.querySelector('#hero-0-title') as HTMLTextAreaElement;
+    await act(async () => {
+      fireEvent.change(field, { target: { value: 'Typing away' } });
+    });
+
+    expect(screen.getByTestId('hero-visual-preview')).toBe(node);
+  });
+
+  it('forces a replay on demand', () => {
+    // CSS animations do not re-run on an element already animating, so the
+    // node must genuinely be remade.
+    render(<ControlledEditor wideLayout />);
+    const first = screen.getByTestId('hero-visual-preview');
+
+    fireEvent.click(screen.getByTestId('hero-preview-dock-play'));
+
+    expect(screen.getByTestId('hero-visual-preview')).not.toBe(first);
+  });
+
+  it('offers no replay button while minimized', () => {
     render(<ControlledEditor wideLayout />);
     fireEvent.click(screen.getByTestId('hero-preview-dock-toggle'));
     expect(screen.queryByTestId('hero-preview-dock-play')).toBeNull();

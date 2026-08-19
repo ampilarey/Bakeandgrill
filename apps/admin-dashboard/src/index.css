@@ -2707,8 +2707,15 @@ work area is a single column that
  * property, and without the custom property one silently beats the other on
  * specificity — which is how Glow with the one-box shape once did nothing.
  *
- * Motion only runs while the dock is playing (data-playing="yes"), so the
- * editor is not re-animating on every keystroke. The replay button restarts it.
+ * Looping effects — glow, drift, sheen, photo zoom and pan — run continuously,
+ * because they are ambient on the live site and there is nothing to "replay".
+ *
+ * ENTRANCES are different: they are a one-shot, and re-firing them on every
+ * keystroke would make the editor unusable. So only the --hero-entrance NAME
+ * is gated behind data-playing. When it is not set the entrance resolves to
+ * `none` and contributes nothing, while the looping half of the same
+ * `animation` shorthand keeps running. The dock replays entrances by itself
+ * whenever a motion setting changes, and the Play button forces one on demand.
  */
 @keyframes hero-preview-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes hero-preview-zoom-in { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
@@ -2727,68 +2734,68 @@ work area is a single column that
 .hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
 .hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word { --hero-entrance: hero-preview-fade-up; }
 
-.hero-preview[data-playing="yes"] .banner-title[data-anim="fade"],
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="fade"],
-.hero-preview[data-playing="yes"] .banner-title[data-anim="zoom"],
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="zoom"] {
+.hero-preview .banner-title[data-anim="fade"],
+.hero-preview .banner-sub[data-anim="fade"],
+.hero-preview .banner-title[data-anim="zoom"],
+.hero-preview .banner-sub[data-anim="zoom"] {
   animation: var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both;
 }
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="fade"],
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="zoom"] {
+.hero-preview .banner-sub[data-anim="fade"],
+.hero-preview .banner-sub[data-anim="zoom"] {
   animation-delay: calc(0.12s / var(--hero-speed, 1));
 }
 
-.hero-preview[data-playing="yes"] .banner-title[data-anim="line"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"] .hero-sub-line,
-.hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word {
+.hero-preview .banner-title[data-anim="line"] .hero-title-line,
+.hero-preview .banner-sub[data-anim="line"] .hero-sub-line,
+.hero-preview .banner-title[data-anim="word"] .hero-word,
+.hero-preview .banner-sub[data-anim="word"] .hero-word {
   display: inline-block;
   animation: var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both;
 }
-.hero-preview[data-playing="yes"] .banner-title[data-anim="line"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"] .hero-sub-line {
+.hero-preview .banner-title[data-anim="line"] .hero-title-line,
+.hero-preview .banner-sub[data-anim="line"] .hero-sub-line {
   animation-delay: calc(var(--hero-line-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
 }
-.hero-preview[data-playing="yes"] .banner-title[data-anim="word"] .hero-word,
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="word"] .hero-word {
+.hero-preview .banner-title[data-anim="word"] .hero-word,
+.hero-preview .banner-sub[data-anim="word"] .hero-word {
   animation-delay: calc(var(--hero-word-i, 0) * var(--hero-stagger, 90ms) / var(--hero-speed, 1));
 }
 /* inline-block would break the per-line background, which needs inline runs
    to clone their box onto every visual line. */
-.hero-preview[data-playing="yes"] .banner-title[data-anim="line"][data-bg-shape="line"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-anim="line"][data-bg-shape="line"] .hero-sub-line {
+.hero-preview .banner-title[data-anim="line"][data-bg-shape="line"] .hero-title-line,
+.hero-preview .banner-sub[data-anim="line"][data-bg-shape="line"] .hero-sub-line {
   display: inline;
 }
 
 /* [data-has-bg] lifts these above the entrance rule, which is otherwise one
    selector more specific and would win outright. */
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="glow"][data-has-bg],
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="glow"][data-has-bg] {
+.hero-preview .banner-title[data-box-anim="glow"][data-has-bg],
+.hero-preview .banner-sub[data-box-anim="glow"][data-has-bg] {
   animation:
     var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
     hero-preview-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
 }
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="glow"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="glow"] .hero-sub-line {
+.hero-preview .banner-title[data-box-anim="glow"] .hero-title-line,
+.hero-preview .banner-sub[data-box-anim="glow"] .hero-sub-line {
   animation:
     var(--hero-entrance, none) calc(0.6s / var(--hero-speed, 1)) ease both,
     hero-preview-box-glow calc(3.2s / var(--hero-speed, 1)) ease-in-out infinite;
 }
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="drift"][data-has-bg],
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="drift"][data-has-bg],
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="drift"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="drift"] .hero-sub-line {
+.hero-preview .banner-title[data-box-anim="drift"][data-has-bg],
+.hero-preview .banner-sub[data-box-anim="drift"][data-has-bg],
+.hero-preview .banner-title[data-box-anim="drift"] .hero-title-line,
+.hero-preview .banner-sub[data-box-anim="drift"] .hero-sub-line {
   background-size: 300% 100%;
   animation:
     var(--hero-entrance, none) calc(0.75s / var(--hero-speed, 1)) ease both,
     hero-preview-box-drift calc(9s / var(--hero-speed, 1)) ease-in-out infinite;
 }
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"][data-bg-shape="hug"],
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"][data-bg-shape="full"],
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"][data-bg-shape="hug"],
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"][data-bg-shape="full"],
-.hero-preview[data-playing="yes"] .banner-title[data-box-anim="sheen"] .hero-title-line,
-.hero-preview[data-playing="yes"] .banner-sub[data-box-anim="sheen"] .hero-sub-line {
+.hero-preview .banner-title[data-box-anim="sheen"][data-bg-shape="hug"],
+.hero-preview .banner-title[data-box-anim="sheen"][data-bg-shape="full"],
+.hero-preview .banner-sub[data-box-anim="sheen"][data-bg-shape="hug"],
+.hero-preview .banner-sub[data-box-anim="sheen"][data-bg-shape="full"],
+.hero-preview .banner-title[data-box-anim="sheen"] .hero-title-line,
+.hero-preview .banner-sub[data-box-anim="sheen"] .hero-sub-line {
   background-image: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 45%, transparent 70%), var(--hero-el-bg, none);
   background-size: 220% 100%, auto;
   background-repeat: no-repeat;
@@ -2797,22 +2804,22 @@ work area is a single column that
     hero-preview-box-sheen calc(5s / var(--hero-speed, 1)) linear infinite;
 }
 
-.hero-preview[data-playing="yes"][data-photo-anim="zoom"] .visual-block-preview__hero-media {
+.hero-preview[data-photo-anim="zoom"] .visual-block-preview__hero-media {
   animation: hero-preview-photo-zoom calc(18s / var(--hero-speed, 1)) ease-in-out infinite alternate;
 }
-.hero-preview[data-playing="yes"][data-photo-anim="pan"] .visual-block-preview__hero-media {
+.hero-preview[data-photo-anim="pan"] .visual-block-preview__hero-media {
   animation: hero-preview-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
 }
 
 /* A viewer who asked their device for less motion asked everyone; the site
    honours that wholesale and so does the preview. */
 @media (prefers-reduced-motion: reduce) {
-  .hero-preview[data-playing="yes"] .banner-title,
-  .hero-preview[data-playing="yes"] .banner-sub,
-  .hero-preview[data-playing="yes"] .hero-title-line,
-  .hero-preview[data-playing="yes"] .hero-sub-line,
-  .hero-preview[data-playing="yes"] .hero-word,
-  .hero-preview[data-playing="yes"] .visual-block-preview__hero-media {
+  .hero-preview .banner-title,
+  .hero-preview .banner-sub,
+  .hero-preview .hero-title-line,
+  .hero-preview .hero-sub-line,
+  .hero-preview .hero-word,
+  .hero-preview .visual-block-preview__hero-media {
     animation: none !important;
   }
 }
