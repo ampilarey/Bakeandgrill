@@ -267,8 +267,13 @@ function HeroVisualPreview({ value }: { value: string }) {
           alt=""
           className="visual-block-preview__hero-media"
           style={{
-            opacity: Math.max(0.15, presentation.photo),
-            filter: `brightness(${presentation.photo_brightness})`,
+            // Exactly the site's rule for .banner-slide img:
+            //   opacity: calc(0.45 + 0.55 * var(--hero-photo, 0))
+            // presentation.photo is the 0-1 form. The previous version passed
+            // photo_brightness — which is 0-100 — into a CSS brightness()
+            // filter, so a normal slide rendered at brightness(100): the photo
+            // loaded fine and was blown out to solid white.
+            opacity: 0.45 + 0.55 * presentation.photo,
             objectPosition,
           }}
         />

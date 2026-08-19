@@ -235,3 +235,33 @@ describe('hero preview — fidelity with the live banner', () => {
     expect(primary.style.getPropertyValue('--hero-el-bg')).not.toBe('');
   });
 });
+
+describe('hero preview — the photo', () => {
+  const media = () => document.querySelector('.visual-block-preview__hero-media') as HTMLImageElement;
+
+  it('shows the photo instead of blowing it out to white', () => {
+    // The regression the owner hit twice: photo_brightness is 0-100, and it
+    // was being passed into a CSS brightness() filter. A normal slide became
+    // brightness(100) — the image loaded and rendered as solid white, which
+    // read as "the photo is not showing".
+    drawHero({ image: '/storage/media/hero.jpg', photo_brightness: 100 });
+
+    expect(media().style.filter).toBe('');
+  });
+
+  it('uses the site formula for photo opacity, not its own', () => {
+    // Site: .banner-slide img { opacity: calc(0.45 + 0.55 * var(--hero-photo)) }
+    drawHero({ image: '/storage/media/hero.jpg', photo_brightness: 100 });
+    expect(Number(media().style.opacity)).toBeCloseTo(1, 2);
+
+    document.body.innerHTML = '';
+    drawHero({ image: '/storage/media/hero.jpg', photo_brightness: 0 });
+    // Never fully transparent — the site floors it at 0.45.
+    expect(Number(media().style.opacity)).toBeCloseTo(0.45, 2);
+  });
+
+  it('honours the focal point the owner picked', () => {
+    drawHero({ image: '/storage/media/hero.jpg', image_focal_x: 30, image_focal_y: 70 });
+    expect(media().style.objectPosition).toBe('30% 70%');
+  });
+});
