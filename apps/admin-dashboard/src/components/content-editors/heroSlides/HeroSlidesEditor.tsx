@@ -8,6 +8,7 @@ import { VideoStudioModal } from '../../VideoStudioModal';
 import type { MediaAsset } from '../../../api';
 import { Button, Toggle } from '../../ui';
 import { ContentEditorSheet } from '../../ContentEditorSheet';
+import { VisualBlockPreview } from '../VisualBlockPreview';
 import {
   formatHeroSlideScheduleLabel,
   resolveHeroSlidePresentation,
@@ -871,6 +872,18 @@ export function HeroSlidesEditor({
         data-showing={showing ? 'true' : 'false'}
         style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: showing ? 1 : 0.72 }}
       >
+        {/* The slide as the website will draw it, above its own controls.
+            Every layout funnels through renderPartsStack, so mounting it here
+            puts it in front of whichever slide is being edited rather than
+            always the first one. */}
+        <div data-testid={`hero-slide-preview-${idx}`}>
+          <VisualBlockPreview
+            editor="hero"
+            value={JSON.stringify([{ ...slide, showing: true }])}
+            appLabel="Website"
+          />
+        </div>
+
         {/* Common first — the frame everything else sits in. */}
         <div
           data-testid={`hero-common-${idx}`}
