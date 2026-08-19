@@ -771,13 +771,16 @@
 .banner-copy .banner-sub[data-align="right"][data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
 
 /* Photo motion. */
+/* The photo has its own tempo: --hero-photo-speed, falling back to the text
+   speed for slides saved before the two were split. A drifting background and
+   an arriving heading rarely want the same pace. */
 .banner-slide[data-photo-anim="zoom"] img,
 .banner-slide[data-photo-anim="zoom"] .banner-video {
-    animation: hero-photo-zoom calc(18s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+    animation: hero-photo-zoom calc(18s / var(--hero-photo-speed, var(--hero-speed, 1))) ease-in-out infinite alternate;
 }
 .banner-slide[data-photo-anim="pan"] img,
 .banner-slide[data-photo-anim="pan"] .banner-video {
-    animation: hero-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+    animation: hero-photo-pan calc(22s / var(--hero-photo-speed, var(--hero-speed, 1))) ease-in-out infinite alternate;
 }
 
 @media (prefers-reduced-motion: reduce) {

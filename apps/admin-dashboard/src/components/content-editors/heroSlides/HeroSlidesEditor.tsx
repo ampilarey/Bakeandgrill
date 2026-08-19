@@ -347,7 +347,8 @@ export function HeroSlidesEditor({
    */
   const renderPhotoBlock = (slide: HeroSlideRow, idx: number) => {
     const presentation = resolveHeroSlidePresentation(slide);
-    const current = String((slide as Record<string, unknown>).photo_anim ?? 'none');
+    const row = slide as Record<string, unknown>;
+    const current = String(row.photo_anim ?? 'none');
     return (
       <div data-testid={`hero-photo-settings-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -389,6 +390,26 @@ export function HeroSlidesEditor({
             ))}
           </div>
         </div>
+        {current === 'none' ? null : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label htmlFor={`hero-${idx}-photo-speed`} style={labelStyle}>
+              Photo speed — lower is calmer
+            </label>
+            <input
+              id={`hero-${idx}-photo-speed`}
+              type="range"
+              min={0}
+              max={100}
+              data-testid={`hero-photo-speed-${idx}`}
+              // Falls back to the text speed, so a slide saved before the two
+              // were split keeps moving at exactly one tempo until touched.
+              value={Number(row.photo_motion_speed ?? row.motion_speed ?? 33)}
+              onChange={(e) => applyPresentation(idx, { photo_motion_speed: Number(e.target.value) } as unknown as HeroPresentationPatch)}
+              style={rangeStyle}
+            />
+            <p style={mutedStyle}>A drift usually wants to be slower than the words.</p>
+          </div>
+        )}
       </div>
     );
   };
@@ -496,7 +517,7 @@ export function HeroSlidesEditor({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label htmlFor={`hero-${idx}-motion-speed`} style={labelStyle}>
-            Motion speed — lower is calmer
+            Text speed — lower is calmer
           </label>
           <input
             id={`hero-${idx}-motion-speed`}
@@ -509,7 +530,9 @@ export function HeroSlidesEditor({
             style={rangeStyle}
           />
           <p style={mutedStyle}>
-            Anyone whose phone is set to reduce motion sees none of this — their setting wins.
+            How fast the copy arrives and any background effects move. The photo has
+            its own speed, under Photo. Anyone whose phone is set to reduce motion
+            sees none of this — their setting wins.
           </p>
         </div>
       </div>

@@ -2805,10 +2805,10 @@ work area is a single column that
 }
 
 .hero-preview[data-photo-anim="zoom"] .visual-block-preview__hero-media {
-  animation: hero-preview-photo-zoom calc(18s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+  animation: hero-preview-photo-zoom calc(18s / var(--hero-photo-speed, var(--hero-speed, 1))) ease-in-out infinite alternate;
 }
 .hero-preview[data-photo-anim="pan"] .visual-block-preview__hero-media {
-  animation: hero-preview-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
+  animation: hero-preview-photo-pan calc(22s / var(--hero-photo-speed, var(--hero-speed, 1))) ease-in-out infinite alternate;
 }
 
 /* A viewer who asked their device for less motion asked everyone; the site

@@ -271,6 +271,7 @@ function HeroVisualPreview({ value, playToken }: { value: string; playToken?: nu
         // Both feed the site's animation timing; without them every effect
         // would run at the default speed and stagger.
         ['--hero-speed' as string]: presentation.motion.speed,
+        ['--hero-photo-speed' as string]: presentation.motion.photo_speed,
         ['--hero-stagger' as string]: `${presentation.motion.delay_step}ms`,
       } as React.CSSProperties}
     >

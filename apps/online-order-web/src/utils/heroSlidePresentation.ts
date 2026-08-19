@@ -578,6 +578,8 @@ export type HeroMotion = {
   box: HeroBoxAnim;
   photo: HeroPhotoAnim;
   speed: string;
+  /** The photo's own tempo; falls back to `speed` when never set. */
+  photo_speed: string;
 };
 
 /**
@@ -595,7 +597,6 @@ export function resolveHeroMotion(slide: Record<string, unknown> | null | undefi
   };
 
   const stagger = Number(row.text_anim_stagger);
-  const speedRaw = Number(row.motion_speed);
 
   return {
     text: pick('text_anim', HERO_TEXT_ANIMS, 'fade'),
@@ -604,11 +605,24 @@ export function resolveHeroMotion(slide: Record<string, unknown> | null | undefi
       : 90,
     box: pick('box_anim', HERO_BOX_ANIMS, 'none'),
     photo: pick('photo_anim', HERO_PHOTO_ANIMS, 'none'),
-    speed:
-      Number.isFinite(speedRaw) && row.motion_speed != null && row.motion_speed !== ''
-        ? String(Number((0.5 + (clamp100(speedRaw) / 100) * 1.5).toFixed(4)))
-        : '1',
+    speed: motionSpeed(row.motion_speed),
+    // A separate dial for the photo. One value used to govern the heading
+    // arriving AND a slow background drift, so "snappy copy over a calm photo"
+    // could not be expressed. Unset falls back to the text speed, leaving
+    // slides saved before the split untouched.
+    photo_speed: motionSpeed(
+      row.photo_motion_speed != null && row.photo_motion_speed !== ''
+        ? row.photo_motion_speed
+        : row.motion_speed,
+    ),
   };
+}
+
+/** 0-100 slider -> a CSS duration multiplier, 0.5x (calm) to 2x (brisk). */
+function motionSpeed(raw: unknown): string {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || raw == null || raw === '') return '1';
+  return String(Number((0.5 + (clamp100(n) / 100) * 1.5).toFixed(4)));
 }
 
 /**

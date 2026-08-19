@@ -130,3 +130,58 @@ describe('slides saved before the change', () => {
     expect(next[0].text_align).toBe('right');
   });
 });
+
+/**
+ * Owner, 2026-08-19, on the last slide-wide dial: one speed drove the copy
+ * arriving AND a slow background drift, so a snappy heading over a calm photo
+ * could not be expressed. Split in two rather than five — the real case is
+ * "photo slower than the words", not five independent tempos.
+ */
+describe('text speed and photo speed are separate', () => {
+  it('offers a photo speed only once the photo actually moves', () => {
+    // A slider that changes nothing is worse than no slider.
+    draw({ title: 'Hi' });
+    expect(screen.queryByTestId('hero-photo-speed-0')).toBeNull();
+  });
+
+  it('offers it as soon as a photo movement is chosen', () => {
+    draw({ title: 'Hi', photo_anim: 'pan' });
+    expect(screen.getByTestId('hero-photo-speed-0')).toBeTruthy();
+  });
+
+  it('starts the photo at the text speed rather than at zero', () => {
+    // Falling back means a slide saved before the split keeps one tempo until
+    // the photo is deliberately given its own.
+    draw({ title: 'Hi', photo_anim: 'pan', motion_speed: 80 });
+
+    const photo = screen.getByTestId('hero-photo-speed-0') as HTMLInputElement;
+    expect(photo.value).toBe('80');
+  });
+
+  it('writes the photo its own value, leaving the text speed alone', () => {
+    const onChange = vi.fn();
+    render(
+      <HeroSlidesEditor
+        label="Hero"
+        value={JSON.stringify([{ showing: true, title: 'Hi', photo_anim: 'pan', motion_speed: 80 }])}
+        onChange={onChange}
+        triggerUpload={() => {}}
+        wideLayout
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('hero-photo-speed-0'), { target: { value: '10' } });
+
+    const next = JSON.parse(onChange.mock.calls[onChange.mock.calls.length - 1][0] as string);
+    expect(next[0].photo_motion_speed).toBe(10);
+    expect(next[0].motion_speed).toBe(80);
+  });
+
+  it('hands the stylesheet both tempos', () => {
+    draw({ title: 'Hi', photo_anim: 'pan', motion_speed: 100, photo_motion_speed: 0 });
+
+    const hero = screen.getByTestId('hero-visual-preview');
+    expect(hero.style.getPropertyValue('--hero-speed')).toBe('2');
+    expect(hero.style.getPropertyValue('--hero-photo-speed')).toBe('0.5');
+  });
+});

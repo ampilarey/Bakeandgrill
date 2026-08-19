@@ -326,6 +326,16 @@ final class HeroSlides
             'box' => $pick('box_anim', self::BOX_ANIMS, 'none'),
             'photo' => $pick('photo_anim', self::PHOTO_ANIMS, 'none'),
             'speed' => self::motionSpeed($slide['motion_speed'] ?? null),
+            // The photo keeps its own tempo. One dial governed the heading
+            // arriving AND a slow background drift, so "snappy copy over a calm
+            // photo" could not be expressed — pushing it up sped both.
+            // Unset falls back to the text speed, so slides saved before this
+            // are untouched.
+            'photo_speed' => self::motionSpeed(
+                ($slide['photo_motion_speed'] ?? null) !== null && ($slide['photo_motion_speed'] ?? '') !== ''
+                    ? $slide['photo_motion_speed']
+                    : ($slide['motion_speed'] ?? null),
+            ),
         ];
     }
 

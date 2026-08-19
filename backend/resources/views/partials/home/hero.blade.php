@@ -35,7 +35,7 @@
                 // falling back to the slide-wide choice.
                 $part = $heroPres['parts'];
             @endphp
-            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" data-photo-anim="{{ $motion['photo'] }}" style="background:#1C1408;--hero-photo:{{ $heroPhoto }};--hero-scrim:{{ $heroScrim }};--hero-speed:{{ $motion['speed'] }};">
+            <div class="banner-slide {{ $sIdx === 0 ? 'active' : '' }}" data-photo-anim="{{ $motion['photo'] }}" style="background:#1C1408;--hero-photo:{{ $heroPhoto }};--hero-scrim:{{ $heroScrim }};--hero-speed:{{ $motion['speed'] }};--hero-photo-speed:{{ $motion['photo_speed'] }};">
                 @if(!empty($slide['video']))
                     <video
                         class="banner-video"
