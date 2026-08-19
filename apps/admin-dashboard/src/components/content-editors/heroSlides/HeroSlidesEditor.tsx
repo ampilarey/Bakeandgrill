@@ -396,10 +396,15 @@ export function HeroSlidesEditor({
   /**
    * The settings that genuinely cover the whole slide.
    *
-   * Owner, 2026-08-17: "Common setting combined before all the parts." What is
-   * left here is only what cannot sensibly be per-part — where the copy sits in
-   * the banner, the shade behind all of it, how fast everything moves — plus
-   * the defaults each part inherits until it is given its own.
+   * Owner, 2026-08-17: "Common setting combined before all the parts."
+   * Owner, 2026-08-19: "If there is setting for each place separately, then no
+   * need a common setting for all."
+   *
+   * So this holds ONLY what has no per-part equivalent: where the copy sits,
+   * the shade behind all of it, and how fast everything moves. Alignment,
+   * animation and background movement used to live here too as defaults, which
+   * meant every one of them existed in two places at once — the duplication the
+   * owner asked to remove. They now belong to their parts and nowhere else.
    */
   const renderSlideWideBlock = (slide: HeroSlideRow, idx: number) => {
     const presentation = resolveHeroSlidePresentation(slide);
@@ -442,10 +447,6 @@ export function HeroSlidesEditor({
         {radios('text_position', 'Where the text sits', [
           ['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom'],
         ], presentation.text_position, 'hero-text-position')}
-
-        {radios('text_align', 'Alignment — every part starts from this', [
-          ['left', 'Left'], ['center', 'Centre'], ['right', 'Right'],
-        ], String(row.text_align ?? 'center'), 'hero-text-align')}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
@@ -492,14 +493,6 @@ export function HeroSlidesEditor({
                 : 'Not shown — your heading or subheading has its own background, so this would draw a box inside a box. Set Always to force it back.'}
           </p>
         </div>
-
-        {radios('text_anim', 'Animation — every part starts from this', [
-          ['fade', 'Fade & rise'], ['line', 'Line by line'], ['word', 'Word by word'], ['zoom', 'Zoom in'], ['none', 'None'],
-        ], String(row.text_anim ?? 'fade'), 'hero-text-anim')}
-
-        {radios('box_anim', 'Background movement — every part starts from this', [
-          ['none', 'None'], ['glow', 'Glow'], ['drift', 'Colour drift'], ['sheen', 'Sheen'],
-        ], String(row.box_anim ?? 'none'), 'hero-box-anim')}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label htmlFor={`hero-${idx}-motion-speed`} style={labelStyle}>
@@ -689,9 +682,20 @@ export function HeroSlidesEditor({
    * Motion and alignment for one part.
    *
    * Owner, 2026-08-17: "Setting that can be separated make it separate for each
-   * part … I think alignment also be separated. Why not?" Each control offers
-   * "Same as slide" so a part inherits until you deliberately give it its own —
-   * that is what keeps the common settings above worth having.
+   * part … I think alignment also be separated. Why not?"
+   * Owner, 2026-08-19: "If there is setting for each place separately, then no
+   * need a common setting for all."
+   *
+   * So there is no "Same as slide" option any more: the part owns the setting,
+   * full stop. Two buttons that did the same thing — "None" and "Same as slide
+   * (none)" — were indistinguishable anyway.
+   *
+   * What each control SHOWS is the effective value from resolveHeroPartMotion,
+   * which still falls back to the old slide-wide field. That is deliberate: a
+   * slide saved before this change has text_align/text_anim/box_anim set and
+   * its parts empty, so reading the effective value means it displays, and
+   * renders, exactly as it does today. Touching a control writes the explicit
+   * per-part field and the legacy one stops mattering for that part.
    */
   const renderPartMotion = (slide: HeroSlideRow, idx: number, key: HeroElementKey) => {
     const row = slide as Record<string, unknown>;
@@ -702,24 +706,26 @@ export function HeroSlidesEditor({
       field: string,
       label: string,
       options: ReadonlyArray<readonly [string, string]>,
-      inherited: string,
+      effective: string,
     ) => {
-      const stored = String(row[field] ?? '');
+      // Selected on the EFFECTIVE value, so a slide saved before per-part
+      // settings existed shows what it actually renders rather than nothing.
+      const stored = String(row[field] ?? '') || effective;
       return (
         <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{label}</span>
           <div role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-            {([['', `Same as slide (${inherited})`], ...options] as ReadonlyArray<readonly [string, string]>).map(
+            {options.map(
               ([value, optLabel]) => {
                 const on = stored === value;
                 return (
                   <button
-                    key={value || 'inherit'}
+                    key={value}
                     type="button"
                     role="radio"
                     aria-checked={on}
-                    data-testid={`hero-part-${field}-${idx}-${value || 'inherit'}`}
-                    onClick={() => applyPresentation(idx, { [field]: value || null } as unknown as HeroPresentationPatch)}
+                    data-testid={`hero-part-${field}-${idx}-${value}`}
+                    onClick={() => applyPresentation(idx, { [field]: value } as unknown as HeroPresentationPatch)}
                     style={{
                       ...btnStyle,
                       height: 34,
