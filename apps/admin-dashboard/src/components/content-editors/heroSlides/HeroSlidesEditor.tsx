@@ -9,6 +9,7 @@ import type { MediaAsset } from '../../../api';
 import { Button, Toggle } from '../../ui';
 import { ContentEditorSheet } from '../../ContentEditorSheet';
 import { VisualBlockPreview } from '../VisualBlockPreview';
+import { HeroPreviewDock } from './HeroPreviewDock';
 import {
   formatHeroSlideScheduleLabel,
   resolveHeroSlidePresentation,
@@ -858,7 +859,13 @@ export function HeroSlidesEditor({
    * setting you wanted. Now each part owns everything about it, and only the
    * genuinely slide-wide settings sit on their own, first.
    */
-  const renderPartsStack = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) => {
+  const renderPartsStack = (
+    slide: HeroSlideRow,
+    idx: number,
+    update: (patch: Partial<HeroSlideRow>) => void,
+    opts: { columns?: boolean; inlinePreview?: boolean } = {},
+  ) => {
+    const { columns = false, inlinePreview = false } = opts;
     const row = slide as Record<string, unknown>;
     const showing = isHeroSlideShowing(slide);
     const text = (v: unknown, fallback: string) => {
@@ -870,23 +877,31 @@ export function HeroSlidesEditor({
       <div
         data-testid={`hero-slide-${idx}`}
         data-showing={showing ? 'true' : 'false'}
-        style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: showing ? 1 : 0.72 }}
+        data-columns={columns ? 'two' : 'one'}
+        className={columns ? 'hero-slides-parts hero-slides-parts--columns' : 'hero-slides-parts'}
+        style={
+          columns
+            ? { opacity: showing ? 1 : 0.72 }
+            : { display: 'flex', flexDirection: 'column', gap: 10, opacity: showing ? 1 : 0.72 }
+        }
       >
-        {/* The slide as the website will draw it, above its own controls.
-            Every layout funnels through renderPartsStack, so mounting it here
-            puts it in front of whichever slide is being edited rather than
-            always the first one. */}
-        <div data-testid={`hero-slide-preview-${idx}`}>
-          <VisualBlockPreview
-            editor="hero"
-            value={JSON.stringify([{ ...slide, showing: true }])}
-            appLabel="Website"
-          />
-        </div>
+        {/* Only the fallback repeater shows the preview in the flow; the
+            mobile and wide layouts float it instead, so it stays in view
+            while these settings scroll. */}
+        {inlinePreview ? (
+          <div data-testid={`hero-slide-preview-${idx}`}>
+            <VisualBlockPreview
+              editor="hero"
+              value={JSON.stringify([{ ...slide, showing: true }])}
+              appLabel="Website"
+            />
+          </div>
+        ) : null}
 
         {/* Common first — the frame everything else sits in. */}
         <div
           data-testid={`hero-common-${idx}`}
+          className="hero-slides-parts__common"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -957,8 +972,12 @@ export function HeroSlidesEditor({
    *  Composes the same sub-blocks the wide layout's 3 columns use below. */
   // The parts stack carries the slide's testid and dimming itself, so this is
   // now just a pass-through kept for the call sites.
-  const renderSlideFields = (slide: HeroSlideRow, idx: number, update: (patch: Partial<HeroSlideRow>) => void) =>
-    renderPartsStack(slide, idx, update);
+  const renderSlideFields = (
+    slide: HeroSlideRow,
+    idx: number,
+    update: (patch: Partial<HeroSlideRow>) => void,
+    opts: { columns?: boolean; inlinePreview?: boolean } = {},
+  ) => renderPartsStack(slide, idx, update, opts);
 
 
 
@@ -1184,6 +1203,8 @@ export function HeroSlidesEditor({
                 </div>
               ) : null}
               {renderSlideFields(editing, editingIdx, (patch) => updateAt(editingIdx, patch))}
+              {/* Floating, so it does not push the fields down the screen. */}
+              <HeroPreviewDock slide={editing as Record<string, unknown>} slideNumber={editingIdx + 1} />
             </>
           ) : null}
         </ContentEditorSheet>
@@ -1296,20 +1317,19 @@ export function HeroSlidesEditor({
         </div>
         {selected && items.length > 0 ? (
           <>
-            <div
-              className="hero-slides-wide-columns"
-              data-testid="hero-slides-wide-fields"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: 20,
-                alignItems: 'start',
-              }}
-            >
-              {/* One stack, grouped by part — the same on a laptop as on a
-                  phone, so there is one place to learn rather than two. */}
-              {renderPartsStack(selected, selectedIdx, (patch) => updateAt(selectedIdx, patch))}
+            {/* The stack lays itself out in two columns here. The wrapper
+                used to declare repeat(3, 1fr) around a single child, which
+                gave the whole editor one third of the width and pushed almost
+                everything below the fold. */}
+            <div className="hero-slides-wide-columns" data-testid="hero-slides-wide-fields">
+              {renderPartsStack(
+                selected,
+                selectedIdx,
+                (patch) => updateAt(selectedIdx, patch),
+                { columns: true },
+              )}
             </div>
+            <HeroPreviewDock slide={selected as Record<string, unknown>} slideNumber={selectedIdx + 1} />
             <div
               className="hero-slides-wide-foot"
               data-testid="hero-slides-wide-foot"
@@ -1371,7 +1391,7 @@ export function HeroSlidesEditor({
         onChange={(next) => onChange(JSON.stringify(next))}
         createItem={emptySlide}
         itemLabel="slide"
-        renderItem={(slide, idx, update) => renderSlideFields(slide, idx, update)}
+        renderItem={(slide, idx, update) => renderSlideFields(slide, idx, update, { inlinePreview: true })}
       />
     </div>
   );

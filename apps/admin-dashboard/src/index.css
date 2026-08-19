@@ -2700,6 +2700,98 @@ work area is a single column that
   color: var(--color-bg);
 }
 
+/* ── Hero preview dock — floats over the editor, minimisable ──────────
+ *
+ * In the scroll flow the preview pushed every control down; on a phone it
+ * filled the screen before a single field was reachable. Floating keeps it in
+ * view while the settings scroll underneath.
+ *
+ * Above the content editor sheet, which stacks at 50 + layer*2.
+ */
+.hero-preview-dock {
+  position: fixed;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28);
+}
+
+/* Phone: a strip across the bottom. Fixed bottom sits behind the on-screen
+   keyboard while typing and reappears when it closes, which is the moment you
+   actually want to look at it. */
+.hero-preview-dock {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+}
+
+/* Laptop: out of the way in the corner, narrow enough to leave the two
+   columns of settings usable. */
+@media (min-width: 900px) {
+  .hero-preview-dock {
+    left: auto;
+    right: 18px;
+    bottom: 18px;
+    width: 340px;
+  }
+}
+
+.hero-preview-dock__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  /* Comfortable tap target — this is the control people reach for most. */
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.hero-preview-dock__slide {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+.hero-preview-dock__body {
+  padding: 10px;
+  /* Never taller than half the screen, so it cannot swallow the editor. */
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.hero-preview-dock--minimized .hero-preview-dock__bar {
+  border-radius: 12px;
+}
+/* Minimised on a laptop shrinks to a pill rather than a full-width bar. */
+@media (min-width: 900px) {
+  .hero-preview-dock--minimized { width: auto; }
+}
+
+/* Two-column settings on a laptop. The parts stack is ONE element, so the
+   older `repeat(3, 1fr)` grid on its wrapper gave it a single track and left
+   two empty — the settings ended up in a third of the width with everything
+   below the fold. The stack lays out its own parts instead. */
+.hero-slides-parts--columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+/* Whole-slide settings are the frame the parts sit in, so they read as one
+   row across the top rather than as a sibling of Heading. */
+.hero-slides-parts--columns > .hero-slides-parts__common {
+  grid-column: 1 / -1;
+}
+
 /* ── Hero preview: the banner as the website draws it ─────────────────
  *
  * Ported from backend/resources/views/home.blade.php, scoped under
