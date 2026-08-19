@@ -56,10 +56,31 @@ export function ContentItemEditor({
   const narrow = useIsMobile();
   const mode = presentation === 'auto' ? (narrow ? 'fullscreen' : 'drawer') : presentation;
 
+  // Held in refs so the effect below can use the latest values without
+  // listing them as dependencies. See the comment on that effect.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const returnFocusToRef = useRef(returnFocusTo);
+  returnFocusToRef.current = returnFocusTo;
+
+  /**
+   * Open / close only.
+   *
+   * Owner, mobile: "cannot edit/write text in hero banner parts, after one
+   * character keyboard lost." This effect used to depend on `onClose` and
+   * `returnFocusTo`, and every caller passes an inline arrow — a new identity
+   * on every render. Typing re-renders the parent, so the effect tore down and
+   * re-ran on each keystroke, and its first act is to focus the close button.
+   * Focus left the textarea, and on a phone the keyboard closes with it.
+   *
+   * Nothing in here should re-run while the sheet stays open, so `open` is the
+   * only real dependency; the callbacks are read from refs at the moment they
+   * are needed.
+   */
   useEffect(() => {
     if (!open) return undefined;
     previouslyFocused.current =
-      returnFocusTo
+      returnFocusToRef.current
       ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -67,7 +88,7 @@ export function ContentItemEditor({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
     document.addEventListener('keydown', onKey);
@@ -79,7 +100,7 @@ export function ContentItemEditor({
         window.setTimeout(() => target.focus(), 0);
       }
     };
-  }, [open, onClose, returnFocusTo]);
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
 
