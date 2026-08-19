@@ -2984,11 +2984,62 @@ work area is a single column that
 .hero-preview .banner-copy .banner-title[data-align="right"][data-bg-shape="hug"],
 .hero-preview .banner-copy .banner-sub[data-align="right"][data-bg-shape="hug"] { margin-left: auto; margin-right: 0; }
 
+/* The site stacks the two buttons vertically and styles them itself; the old
+   preview classes drew a row of generic chips, which is why an amber primary
+   and a glass secondary came out looking swapped. */
 .hero-preview .banner-ctas {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
   margin-top: 2px;
+}
+.hero-preview .banner-cta-primary,
+.hero-preview .banner-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: auto;
+  max-width: 100%;
+  /* Scaled for the dock; proportions match the site. */
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.hero-preview .banner-cta-primary {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 18px rgba(212, 129, 58, 0.4);
+}
+.hero-preview .banner-cta-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #fff;
+  font-weight: 600;
+}
+/* An owner-set background wins over both, exactly as on the site. */
+.hero-preview .banner-cta-primary[data-has-bg="1"],
+.hero-preview .banner-cta-secondary[data-has-bg="1"],
+.hero-preview .banner-cta-primary[data-bg-glass="1"],
+.hero-preview .banner-cta-secondary[data-bg-glass="1"] {
+  background: var(--hero-el-bg);
+}
+.hero-preview .banner-cta-primary[data-bg-glass="1"],
+.hero-preview .banner-cta-secondary[data-bg-glass="1"] {
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: none;
+  color: #fff;
+}
+
+/* A slide with no photo is a dark banner on the site, not a white card. */
+.hero-preview .visual-block-preview__hero-media--empty {
+  background: transparent;
 }
 
 /* ── Sheet header tools (locale / Preview / More inside editor sheet) ─ */

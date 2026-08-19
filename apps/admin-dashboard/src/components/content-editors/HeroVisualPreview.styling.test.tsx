@@ -184,3 +184,54 @@ describe('hero preview — the shade behind the copy', () => {
     expect(document.querySelector('.banner-copy')?.getAttribute('data-copy-scrim')).toBeNull();
   });
 });
+
+/**
+ * Fidelity gaps found by comparing the dock against the live site, 2026-08-19.
+ *
+ * The ported CSS was correct — verified in a browser, per-line boxes and all.
+ * What was wrong was what the preview fed it, and what it invented.
+ */
+describe('hero preview — fidelity with the live banner', () => {
+  it('never invents a heading the site would not draw', () => {
+    // It used to fall back to "Hero title", so a slide with only buttons
+    // previewed a heading that never appears.
+    drawHero({ title: '', cta_text: 'Order' });
+    expect(document.querySelector('.banner-title')).toBeNull();
+  });
+
+  it('keeps the dark banner base so a photoless slide is not a white card', () => {
+    const hero = drawHero({ title: 'No photo' });
+    expect(hero.style.background).toContain('rgb(28, 20, 8)');
+  });
+
+  it('feeds the copy-shade strength through, so the slider does something', () => {
+    const hero = drawHero({ title: 'Shaded', text_background: 80 });
+    const scrim = hero.style.getPropertyValue('--hero-scrim');
+    expect(scrim).not.toBe('');
+    expect(Number(scrim)).toBeGreaterThan(0);
+  });
+
+  it('steps a long heading down the way the site does', () => {
+    drawHero({ title: 'A very long heading that will certainly wrap across several lines on a phone' });
+    expect(title().getAttribute('data-len')).toBeTruthy();
+  });
+
+  it('leaves data-len off a short heading', () => {
+    drawHero({ title: 'Short' });
+    expect(title().getAttribute('data-len')).toBeNull();
+  });
+
+  it('draws the buttons with the site classes, so their colours apply', () => {
+    // The old generic chip classes ignored cta background settings entirely,
+    // which made an amber primary and a glass secondary look swapped.
+    drawHero({ cta_text: 'Order now', cta2_text: 'View menu', cta1_bg: 'glass' });
+
+    const primary = document.querySelector('.banner-cta-primary') as HTMLElement;
+    const secondary = document.querySelector('.banner-cta-secondary') as HTMLElement;
+
+    expect(primary?.textContent).toBe('Order now');
+    expect(secondary?.textContent).toBe('View menu');
+    expect(primary.getAttribute('data-bg-glass')).toBe('1');
+    expect(primary.style.getPropertyValue('--hero-el-bg')).not.toBe('');
+  });
+});

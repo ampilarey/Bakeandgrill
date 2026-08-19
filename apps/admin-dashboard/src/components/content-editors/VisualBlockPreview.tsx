@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import {
   heroElementStyleVars,
   resolveHeroSlidePresentation,
+  headingLengthBand,
   splitHeroRichTextLines,
   splitHeroWordSpans,
   type HeroElementKey,
@@ -234,9 +235,14 @@ function HeroVisualPreview({ value }: { value: string }) {
   const styleVars = (key: HeroElementKey) =>
     heroElementStyleVars(row, key) as React.CSSProperties;
 
-  const titleHtml = String(slide.title || 'Hero title');
+  // No placeholder heading: the site renders nothing when there is no
+  // heading, and inventing "Hero title" showed copy that will never appear.
+  const titleHtml = String(slide.title ?? '').trim();
   const subtitle = String(slide.subtitle || '');
   const titleLines = splitHeroRichTextLines(titleHtml);
+  // Long headings step down on the site; without this the preview shows a
+  // size the visitor will not get.
+  const titleBand = headingLengthBand(titleHtml);
 
   return (
     <div
@@ -246,6 +252,14 @@ function HeroVisualPreview({ value }: { value: string }) {
       data-slide-count={slides.length}
       data-has-video={hasVideo ? '1' : '0'}
       data-photo-anim={presentation.motion.photo}
+      style={{
+        // The site paints #1C1408 behind the photo, so a slide with no image
+        // reads as a dark banner rather than a white card.
+        background: '#1C1408',
+        // The copy shade is drawn from this on the site; without it the
+        // "shade behind all the text" strength slider does nothing here.
+        ['--hero-scrim' as string]: String(presentation.scrim),
+      } as React.CSSProperties}
     >
       {media ? (
         <img
@@ -288,8 +302,10 @@ function HeroVisualPreview({ value }: { value: string }) {
               {String(slide.eyebrow)}
             </span>
           ) : null}
+          {titleHtml ? (
           <h2
             className="banner-title"
+            {...(titleBand ? { 'data-len': titleBand } : {})}
             data-align={part.title.align}
             data-anim={part.title.text}
             {...(part.title.box !== 'none' ? { 'data-box-anim': part.title.box } : {})}
@@ -311,6 +327,7 @@ function HeroVisualPreview({ value }: { value: string }) {
               </Fragment>
             ))}
           </h2>
+          ) : null}
           {subtitle ? (
             <p
               className="banner-sub"
@@ -334,18 +351,12 @@ function HeroVisualPreview({ value }: { value: string }) {
           {slide.cta_text || slide.cta2_text ? (
             <div className="banner-ctas" data-align={part.cta1.align}>
               {slide.cta_text ? (
-                <span
-                  className="visual-block-preview__cta visual-block-preview__cta--primary"
-                  style={styleVars('cta1')}
-                >
+                <span className="banner-cta-primary" {...bgAttrs('cta1')} style={styleVars('cta1')}>
                   {String(slide.cta_text)}
                 </span>
               ) : null}
               {slide.cta2_text ? (
-                <span
-                  className="visual-block-preview__cta visual-block-preview__cta--ghost"
-                  style={styleVars('cta2')}
-                >
+                <span className="banner-cta-secondary" {...bgAttrs('cta2')} style={styleVars('cta2')}>
                   {String(slide.cta2_text)}
                 </span>
               ) : null}
