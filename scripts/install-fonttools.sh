@@ -8,25 +8,21 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-python3 - <<'PY'
-import sys
-try:
-    import brotli  # noqa: F401
-    import fontTools  # noqa: F401
-except ImportError:
-    sys.exit(1)
-sys.exit(0)
-PY
-already=$?
-
-if [[ "$already" -eq 0 ]]; then
+# `if cmd` is required here: with `set -e`, a bare `python3 …; already=$?`
+# exits the script on ImportError before pip can run (that is what failed CI).
+if python3 -c "import brotli, fontTools" 2>/dev/null; then
   echo "fontTools + brotli already available."
   exit 0
 fi
 
-python3 -m pip install --user --disable-pip-version-check fonttools brotli
-python3 - <<'PY'
-import brotli  # noqa: F401
-import fontTools  # noqa: F401
-print("fontTools + brotli installed.")
-PY
+if ! python3 -m pip --version >/dev/null 2>&1; then
+  echo "python3-pip is required. On Ubuntu: apt-get install -y python3-pip" >&2
+  exit 1
+fi
+
+# Ubuntu 24.04+ (GitHub-hosted runners) marks system Python as externally managed.
+if ! python3 -m pip install --user --disable-pip-version-check fonttools brotli; then
+  python3 -m pip install --user --break-system-packages --disable-pip-version-check fonttools brotli
+fi
+
+python3 -c "import brotli, fontTools; print('fontTools + brotli installed.')"
