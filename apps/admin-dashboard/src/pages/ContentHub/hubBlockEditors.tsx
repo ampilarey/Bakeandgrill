@@ -131,7 +131,7 @@ export function renderPlainEditor(
     );
   }
   if (block.type === 'font') {
-    const safeFontUrl = /^\/storage\/fonts\/[A-Za-z0-9._-]+$/.test(val) ? val : '';
+    const safeFontUrl = /^\/storage\/fonts\/[a-f0-9]{64}\.(woff2|woff|ttf|otf)$/.test(val) ? val : '';
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p
@@ -181,6 +181,9 @@ export function renderPlainEditor(
             style={{ flex: 1, minWidth: 180, height: 40, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }}
           />
         </div>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          TTF/OTF always work. WOFF/WOFF2 need the server fontTools inspector; a TTF is converted to WOFF2 when that inspector is present.
+        </p>
       </div>
     );
   }

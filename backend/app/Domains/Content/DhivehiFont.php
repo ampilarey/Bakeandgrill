@@ -30,6 +30,10 @@ final class DhivehiFont
 
     public const CONTENT_KEY = 'dhivehi_font';
 
+    public const CANNOT_INSPECT_COMPRESSED = 'This server cannot inspect WOFF2 files — upload a TTF or OTF instead.';
+
+    public const NO_THAANA = 'This font has no Thaana (Dhivehi) letters. Upload a Thaana-capable TTF, OTF, WOFF or WOFF2.';
+
     /**
      * @return array{url: string, format: string, bytes: int}
      */
@@ -59,6 +63,7 @@ final class DhivehiFont
             'url' => '/storage/' . $relative,
             'format' => $ext === 'ttf' ? 'truetype' : ($ext === 'otf' ? 'opentype' : $ext),
             'bytes' => strlen($payload),
+            'converted' => $kind !== 'woff2' && $ext === 'woff2',
         ];
     }
 
@@ -98,11 +103,16 @@ CSS;
 
     public static function isSafePublicUrl(string $url): bool
     {
-        if (str_starts_with($url, '/storage/fonts/')) {
-            return (bool) preg_match('#^/storage/fonts/[A-Za-z0-9._-]+$#', $url);
-        }
+        return (bool) preg_match('#^/storage/fonts/[a-f0-9]{64}\.(woff2|woff|ttf|otf)$#', $url);
+    }
 
-        return false;
+    /**
+     * WOFF/WOFF2 cmap (and TTF→WOFF2 conversion) need Python fontTools + brotli.
+     * That pair is a deploy dependency — see scripts/install-fonttools.sh.
+     */
+    public static function canInspectCompressedFonts(): bool
+    {
+        return self::pythonBin() !== null;
     }
 
     public static function cssFormatFromUrl(string $url): string
@@ -139,7 +149,12 @@ CSS;
     public static function thaanaCodepoints(string $bytes, string $kind): array
     {
         if (in_array($kind, ['ttf', 'otf'], true)) {
-            return self::thaanaFromSfntCmap($bytes);
+            $cps = self::thaanaFromSfntCmap($bytes);
+            if ($cps !== []) {
+                return $cps;
+            }
+
+            return self::thaanaViaFonttoolsTemp($bytes, $kind);
         }
 
         return self::thaanaViaFonttoolsTemp($bytes, $kind);
@@ -147,14 +162,16 @@ CSS;
 
     private static function assertHasThaana(string $bytes, string $kind, string $path): void
     {
+        if (in_array($kind, ['woff', 'woff2'], true) && !self::canInspectCompressedFonts()) {
+            throw new InvalidArgumentException(self::CANNOT_INSPECT_COMPRESSED);
+        }
+
         $cps = self::thaanaCodepoints($bytes, $kind);
         if ($cps === [] && in_array($kind, ['woff', 'woff2'], true) && $path !== '') {
             $cps = self::thaanaViaFonttoolsPath($path);
         }
         if ($cps === []) {
-            throw new InvalidArgumentException(
-                'This font has no Thaana (Dhivehi) letters. Upload a Thaana-capable TTF, OTF, WOFF or WOFF2.',
-            );
+            throw new InvalidArgumentException(self::NO_THAANA);
         }
     }
 
@@ -264,7 +281,7 @@ PY;
         if ($bin === '') {
             return null;
         }
-        exec(escapeshellarg($bin) . ' -c "import fontTools" 2>/dev/null', $ignored, $code);
+        exec(escapeshellarg($bin) . ' -c "import fontTools, brotli" 2>/dev/null', $ignored, $code);
 
         return $code === 0 ? $bin : null;
     }

@@ -422,7 +422,11 @@ export function useContentHubController(toast: ContentHubToast) {
       if (block.type === 'font') {
         const res = await uploadContentFont(block.key, uploadAppFor(scope), file, locale);
         setDraft(scope, block.key, res.url);
-        success('Font uploaded');
+        success(
+          res.converted
+            ? 'Font uploaded and converted to WOFF2'
+            : `Font uploaded (${res.format ?? 'webfont'})`,
+        );
         return;
       }
       const res = await uploadContentImage(block.key, uploadAppFor(scope), file, undefined, locale);

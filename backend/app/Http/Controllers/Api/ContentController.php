@@ -715,6 +715,7 @@ class ContentController extends Controller
         return response()->json([
             'url' => $stored['url'],
             'format' => $stored['format'],
+            'converted' => $stored['converted'],
             'key' => $key,
             'scope' => $scope,
             'locale' => $locale,

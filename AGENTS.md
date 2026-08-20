@@ -55,6 +55,7 @@ items.
 Standard commands also live in `README.md`, `backend/README.md`,
 `backend/composer.json` scripts, and each app's `package.json`.
 
+- Dhivehi WOFF2 inspector: `bash scripts/install-fonttools.sh` (Python `fontTools` + `brotli`). Required for Content Hub WOFF/WOFF2 uploads and the font PHPUnit tests.
 - Backend tests: `php artisan test` (full, SQLite) or `composer test:readiness`
   (fast curated subset). Backend lint/format: `./vendor/bin/pint` (use `--test`
   to check without writing). Note: `pint --test` currently reports pre-existing

@@ -135,6 +135,9 @@ jobs:
         working-directory: backend
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Install fontTools (Dhivehi WOFF2 inspector)
+        run: bash scripts/install-fonttools.sh
+
       - name: Copy .env
         working-directory: backend
         run: cp .env.example .env
@@ -198,6 +201,9 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install fontTools (Dhivehi WOFF2 inspector)
+        run: bash scripts/install-fonttools.sh
 
       - name: Copy .env
         working-directory: backend

@@ -19,7 +19,7 @@ const KEY_HELPERS: Record<string, string> = {
   logo: 'Logo for light backgrounds (header and navigation).',
   logo_dark: 'Logo for dark backgrounds; falls back to the light logo if empty.',
   favicon: 'Small icon in the browser tab and on phone home screens.',
-  dhivehi_font: 'Thaana webfont for Dhivehi pages. Upload a TTF/OTF/WOFF/WOFF2 with Thaana letters. Empty uses shipped A_Faruma. Edit separately for Website vs Order App.',
+  dhivehi_font: 'Thaana webfont for Dhivehi pages. Upload a TTF/OTF/WOFF/WOFF2 with Thaana letters. WOFF/WOFF2 need the server fontTools inspector. Empty uses shipped A_Faruma. Edit separately for Website vs Order App.',
   og_image: 'Image used when someone shares your site link on social apps.',
   primary_color: 'Brand accent colour for buttons and highlights on this app only.',
   default_item_image: 'Photo shown for menu items that do not have their own image.',

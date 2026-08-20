@@ -156,7 +156,7 @@ export async function uploadContentFont(
   scope: ContentScope,
   file: File,
   locale: ContentLocale = 'en',
-): Promise<{ url: string; format?: string; embed?: boolean }> {
+): Promise<{ url: string; format?: string; converted?: boolean; embed?: boolean }> {
   const form = new FormData();
   form.append('key', key);
   form.append('scope', scope);

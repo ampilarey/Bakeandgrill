@@ -45,6 +45,14 @@ compatibility suite; site_settings migrations collapse duplicates with
 `havingRaw('COUNT(*) > 1')` so PostgreSQL accepts them (aliases in `HAVING` are
 rejected). Automated default tests use SQLite in-memory via `phpunit.xml`.
 
+## Dhivehi webfont inspector
+
+Content Hub `dhivehi_font` accepts TTF/OTF natively. WOFF/WOFF2 inspection and
+TTF→WOFF2 conversion need Python `fontTools` + `brotli` (`scripts/install-fonttools.sh`).
+That pair is a deploy dependency (CI, TEST, production). The CSS override route
+`GET /css/dhivehi-font.css` is registered outside the `web` group so it stays
+cookie-less.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners

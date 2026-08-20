@@ -66,9 +66,10 @@ class ContentValidationServiceTest extends TestCase
         $validator = app(ContentValidationService::class);
 
         $this->assertSame('', $validator->normalizeForWrite('dhivehi_font', 'website', '  '));
+        $url = '/storage/fonts/' . str_repeat('ab', 32) . '.woff2';
         $this->assertSame(
-            '/storage/fonts/abc123.woff2',
-            $validator->normalizeForWrite('dhivehi_font', 'website', '/storage/fonts/abc123.woff2'),
+            $url,
+            $validator->normalizeForWrite('dhivehi_font', 'website', $url),
         );
     }
 

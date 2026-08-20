@@ -97,8 +97,46 @@ class DhivehiFontUploadTest extends TestCase
             ->assertJsonFragment(['message' => 'That file is not a real font (TTF, OTF, WOFF or WOFF2).']);
     }
 
+    public function test_upload_accepts_a_faruma_woff2_and_stores_it(): void
+    {
+        $this->assertTrue(
+            DhivehiFont::canInspectCompressedFonts(),
+            'fontTools + brotli must be installed (scripts/install-fonttools.sh)',
+        );
+        $this->actingAsOwner();
+        Storage::fake('public');
+
+        $tmp = tempnam(sys_get_temp_dir(), 'dvwoff');
+        $this->assertNotFalse($tmp);
+        file_put_contents($tmp, file_get_contents(public_path('fonts/a_faruma.woff2')));
+        $file = new UploadedFile($tmp, 'a_faruma.woff2', 'font/woff2', null, true);
+
+        $res = $this->post('/api/admin/content/upload-font', [
+            'key' => 'dhivehi_font',
+            'scope' => 'website',
+            'locale' => 'en',
+            'file' => $file,
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->json();
+
+        $this->assertTrue(DhivehiFont::isSafePublicUrl($res['url']));
+        $this->assertSame('woff2', $res['format']);
+        $relative = ltrim((string) parse_url((string) $res['url'], PHP_URL_PATH), '/');
+        $relative = preg_replace('#^storage/#', '', (string) $relative) ?? '';
+        Storage::disk('public')->assertExists($relative);
+        $this->assertTrue(
+            SiteSetting::getScoped('dhivehi_font', 'website') === null
+            || SiteSetting::getScoped('dhivehi_font', 'website') === '',
+        );
+    }
+
     public function test_upload_rejects_latin_only_woff2(): void
     {
+        $this->assertTrue(
+            DhivehiFont::canInspectCompressedFonts(),
+            'latin WOFF2 rejection is only meaningful when fontTools actually inspected the cmap',
+        );
         $this->actingAsOwner();
         $tmp = tempnam(sys_get_temp_dir(), 'latin');
         file_put_contents($tmp, file_get_contents(public_path('fonts/plus-jakarta-sans-400.woff2')));
@@ -110,7 +148,7 @@ class DhivehiFontUploadTest extends TestCase
             'file' => $file,
         ], ['Accept' => 'application/json'])
             ->assertStatus(422)
-            ->assertJsonFragment(['message' => 'This font has no Thaana (Dhivehi) letters. Upload a Thaana-capable TTF, OTF, WOFF or WOFF2.']);
+            ->assertJsonFragment(['message' => DhivehiFont::NO_THAANA]);
     }
 
     public function test_css_route_defaults_until_a_safe_url_is_published(): void
@@ -121,22 +159,34 @@ class DhivehiFontUploadTest extends TestCase
             ->assertSee('default A_Faruma', false)
             ->assertDontSee('@font-face', false);
 
-        SiteSetting::set('dhivehi_font', '/storage/fonts/abc123def456.woff2', 'website', 'en');
-        SiteSetting::set('dhivehi_font', '/storage/fonts/order789.woff2', 'order_app', 'en');
+        $websiteUrl = '/storage/fonts/' . str_repeat('ab', 32) . '.woff2';
+        $orderUrl = '/storage/fonts/' . str_repeat('cd', 32) . '.woff2';
+        SiteSetting::set('dhivehi_font', $websiteUrl, 'website', 'en');
+        SiteSetting::set('dhivehi_font', $orderUrl, 'order_app', 'en');
 
         $website = $this->get('/css/dhivehi-font.css?app=website')
             ->assertOk()
             ->getContent();
         $this->assertStringContainsString('@font-face', $website);
-        $this->assertStringContainsString('/storage/fonts/abc123def456.woff2', $website);
+        $this->assertStringContainsString($websiteUrl, $website);
         $this->assertStringContainsString("--font-dhivehi: 'BakeDhivehi'", $website);
-        $this->assertStringNotContainsString('order789', $website);
+        $this->assertStringNotContainsString(str_repeat('cd', 32), $website);
 
         $order = $this->get('/css/dhivehi-font.css?app=order_app')
             ->assertOk()
             ->getContent();
-        $this->assertStringContainsString('/storage/fonts/order789.woff2', $order);
-        $this->assertStringNotContainsString('abc123def456', $order);
+        $this->assertStringContainsString($orderUrl, $order);
+        $this->assertStringNotContainsString(str_repeat('ab', 32), $order);
+    }
+
+    public function test_css_route_sets_no_session_cookie(): void
+    {
+        $response = $this->get('/css/dhivehi-font.css?app=website')->assertOk();
+        $cache = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('public', $cache);
+        $this->assertStringContainsString('max-age=60', $cache);
+        $this->assertFalse($response->headers->has('Set-Cookie'));
+        $this->assertSame([], $response->headers->getCookies());
     }
 
     public function test_css_route_ignores_unsafe_published_urls(): void

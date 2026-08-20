@@ -9,10 +9,6 @@ use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
 use Illuminate\Support\Facades\Route;
 
-// Owner-uploaded Dhivehi webfont override (empty CSS when unset).
-Route::get('/css/dhivehi-font.css', [App\Http\Controllers\DhivehiFontCssController::class, 'show'])
-    ->name('css.dhivehi-font');
-
 // Thumbnails for local cafe images (faster load)
 Route::get('/thumb/{path}', [ImageThumbController::class, 'show'])
     ->where('path', '.*')

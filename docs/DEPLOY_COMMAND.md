@@ -6,6 +6,12 @@ Once enabled, `test.bakeandgrill.mv` pulls `main` **immediately** after GitHub A
 
 See [TEST_AUTO_DEPLOY.md](./TEST_AUTO_DEPLOY.md) for the one-time secret + cron setup.
 
+Dhivehi WOFF2 uploads need Python `fontTools` + `brotli` once per install:
+
+```bash
+bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-fonttools.sh
+```
+
 ---
 
 ## Manual TEST deploy
