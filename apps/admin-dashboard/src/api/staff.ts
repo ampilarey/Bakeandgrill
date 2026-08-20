@@ -11,6 +11,7 @@ export type StaffMember = {
   role_id: number | null;
   is_active: boolean;
   has_pin: boolean;
+  two_factor_enabled: boolean;
   last_login_at: string | null;
   created_at: string;
 };
@@ -40,6 +41,15 @@ export async function updateStaff(
 
 export async function resetStaffPin(id: number, pin: string): Promise<void> {
   await req(`/admin/staff/${id}/pin`, { method: 'POST', body: JSON.stringify({ pin }) });
+}
+
+/**
+ * Lost-phone recovery: clear a staff member's second factor so they can sign
+ * in with their password and enrol a new phone. Also drops their device
+ * tokens, since the missing phone may be in someone else's hands.
+ */
+export async function resetStaffTwoFactor(id: number): Promise<{ message: string; staff?: StaffMember }> {
+  return req(`/admin/staff/${id}/two-factor`, { method: 'DELETE' });
 }
 
 export async function deleteStaff(id: number): Promise<void> {

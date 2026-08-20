@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  phoneLogin, pinLogin, staffPasswordResetRequest, staffPasswordResetVerify,
+  needsTwoFactor, phoneLogin, pinLogin, staffPasswordResetRequest, staffPasswordResetVerify,
+  twoFactorChallenge,
   type StaffUser,
 } from '../api';
 
-type Screen = 'login' | 'reset-phone' | 'reset-otp';
+type Screen = 'login' | 'two-factor' | 'reset-phone' | 'reset-otp';
 type LoginMode = 'password' | 'pin';
 
 const INPUT: React.CSSProperties = {
@@ -44,6 +45,13 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // Second factor — only reached when the account has one enrolled.
+  const [challenge, setChallenge]   = useState('');
+  const [code, setCode]             = useState('');
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [codeError, setCodeError]   = useState('');
+  const [codeLoading, setCodeLoading] = useState(false);
+
   // Reset — step 1
   const [resetPhone, setResetPhone]   = useState('');
   const [resetMsg, setResetMsg]       = useState('');
@@ -68,12 +76,55 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
       const res = loginMode === 'pin'
         ? await pinLogin(phone.trim(), pin.trim())
         : await phoneLogin(phone.trim(), password);
+
+      if (needsTwoFactor(res)) {
+        // The password was right, but nothing is signed in yet.
+        setChallenge(res.challenge);
+        setCode('');
+        setUseRecovery(false);
+        setCodeError('');
+        setScreen('two-factor');
+        return;
+      }
+
       onLogin(res.user, returnTo);
     } catch (err) {
       setLoginError((err as Error).message);
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const handleTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setCodeError('');
+    setCodeLoading(true);
+    try {
+      const res = await twoFactorChallenge(challenge, code.trim());
+      if (res.recovery_code_used) {
+        // They got in without the phone, so the phone is gone. Say it out
+        // loud — otherwise the codes get burned one at a time until none are
+        // left and the account is locked for good.
+        window.alert(res.message);
+      }
+      onLogin(res.user, returnTo);
+    } catch (err) {
+      setCodeError((err as Error).message);
+      setCode('');
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  const backToPassword = () => {
+    // The challenge is spent either way; make them start over cleanly.
+    setScreen('login');
+    setChallenge('');
+    setCode('');
+    setCodeError('');
+    setPassword('');
+    setPin('');
   };
 
   const handleResetRequest = async (e: React.FormEvent) => {
@@ -237,6 +288,75 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
                 Forgot password?
               </button>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Second factor ───────────────────────────────────────────────────────────
+  if (screen === 'two-factor') {
+    return (
+      <div style={wrap}>
+        <div style={card}>
+          {logo}
+          <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
+            Two-Factor Code
+          </h2>
+          <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
+            {useRecovery
+              ? 'Enter one of the recovery codes you saved when you set this up.'
+              : 'Open your authenticator app and enter the 6-digit code.'}
+          </p>
+
+          <form onSubmit={handleTwoFactor} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <input
+              type="text"
+              inputMode={useRecovery ? 'text' : 'numeric'}
+              value={code}
+              onChange={(e) => setCode(
+                useRecovery
+                  ? e.target.value.toUpperCase().slice(0, 12)
+                  : e.target.value.replace(/\D/g, '').slice(0, 6),
+              )}
+              placeholder={useRecovery ? 'XXXXX-XXXXX' : '000000'}
+              // The code is on the phone in the user's hand; a password
+              // manager has nothing useful to offer here.
+              autoComplete="one-time-code"
+              autoFocus
+              style={{
+                ...INPUT,
+                letterSpacing: '0.3em',
+                textAlign: 'center',
+                fontSize: 22,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            />
+
+            {codeError && (
+              <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-strong)', borderRadius: 10, padding: '10px 14px', fontSize: 13, textAlign: 'center' }}>
+                {codeError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={codeLoading || code.trim().length < (useRecovery ? 10 : 6)}
+              style={{ ...BTN_PRIMARY, opacity: (codeLoading || code.trim().length < (useRecovery ? 10 : 6)) ? 0.6 : 1 }}
+            >
+              {codeLoading ? 'Checking…' : 'Verify →'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button style={BTN_GHOST} onClick={backToPassword}>← Back</button>
+            {/* The way back in when the phone is lost, broken, or at home. */}
+            <button
+              style={BTN_GHOST}
+              onClick={() => { setUseRecovery((v) => !v); setCode(''); setCodeError(''); }}
+            >
+              {useRecovery ? 'Use authenticator app' : 'Lost your phone?'}
+            </button>
           </div>
         </div>
       </div>

@@ -140,6 +140,7 @@ class StaffController extends Controller
             'is_active' => $user->is_active,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
             'has_pin' => !is_null($user->pin_hash),
+            'two_factor_enabled' => $user->hasTwoFactorEnabled(),
             'created_at' => $user->created_at->toIso8601String(),
         ];
     }
@@ -310,6 +311,44 @@ class StaffController extends Controller
         });
 
         return response()->json(['message' => 'PIN updated successfully.']);
+    }
+
+    /**
+     * DELETE /api/admin/staff/{id}/two-factor
+     *
+     * Someone lost their phone. Without this, a staff member with 2FA on and a
+     * handset at the bottom of the harbour is locked out of the admin panel
+     * until they find a recovery code — and nobody keeps those.
+     *
+     * It is a reset, not a bypass: their next sign-in is single-factor, and
+     * they are expected to enrol a new phone from My Account. Loudly audited,
+     * because "an owner cleared someone's second factor" is precisely the
+     * event worth being able to find later.
+     */
+    public function resetTwoFactor(Request $request, int $id, \App\Services\TwoFactorService $twoFactor): JsonResponse
+    {
+        $this->authorizePermission($request, 'staff.update');
+
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $user = User::with('role')->findOrFail($id);
+        $this->assertCanManageTarget($actor, $user);
+
+        if (!$user->hasTwoFactorEnabled() && $user->two_factor_secret === null) {
+            return response()->json(['message' => 'Two-factor was not set up on this account.']);
+        }
+
+        $twoFactor->disable($user, $actor, $request);
+
+        // A lost phone may be a lost phone in someone else's hands, so cut the
+        // account's other sessions at the same time.
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Two-factor reset. They can sign in with their password and set up a new phone.',
+            'staff' => $this->formatUser($user->fresh()->load('role')),
+        ]);
     }
 
     /** DELETE /api/admin/staff/{id} */

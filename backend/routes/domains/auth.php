@@ -30,6 +30,10 @@ Route::prefix('auth/staff')->group(function () {
         ->middleware('throttle:staff-login');
     Route::post('/login', [StaffAuthController::class, 'phoneLogin'])
         ->middleware('throttle:staff-login');
+    // Second step of an admin sign-in. Anonymous by necessity — nothing is
+    // signed in until this succeeds; the challenge token is the only handle.
+    Route::post('/two-factor-challenge', [StaffAuthController::class, 'twoFactorChallenge'])
+        ->middleware('throttle:staff-login');
     Route::post('/password/reset-request', [StaffAuthController::class, 'passwordResetRequest'])
         ->middleware('throttle:5,1');
     Route::post('/password/reset-verify', [StaffAuthController::class, 'passwordResetVerify'])
@@ -97,6 +101,15 @@ Route::prefix('auth/customer')
 Route::middleware(['auth:sanctum', 'staff.token'])->post('/auth/logout', [StaffAuthController::class, 'logout']);
 // Kill every token this account holds — for a lost phone or a till left signed in.
 Route::middleware(['auth:sanctum', 'staff.token'])->post('/auth/logout-everywhere', [StaffAuthController::class, 'logoutEverywhere']);
+
+// Managing your own second factor, from My Account in the admin panel.
+Route::middleware(['auth:sanctum', 'staff.token'])->prefix('auth/two-factor')->group(function (): void {
+    Route::get('/', [App\Http\Controllers\Api\Auth\TwoFactorController::class, 'status']);
+    Route::post('/setup', [App\Http\Controllers\Api\Auth\TwoFactorController::class, 'setup']);
+    Route::post('/confirm', [App\Http\Controllers\Api\Auth\TwoFactorController::class, 'confirm']);
+    Route::post('/recovery-codes', [App\Http\Controllers\Api\Auth\TwoFactorController::class, 'regenerateRecoveryCodes']);
+    Route::delete('/', [App\Http\Controllers\Api\Auth\TwoFactorController::class, 'disable']);
+});
 
 // Customer API logout — revokes the current Sanctum token
 Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logout', [CustomerAuthController::class, 'logout']);

@@ -3,6 +3,7 @@ import { UserCircle } from 'lucide-react';
 import { getMe, updateMyPreferences } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
+import { TwoFactorCard } from '../components/TwoFactorCard';
 import { Button, Card } from '../components/ui';
 
 const LOCK_OPTIONS: Array<{ value: number; label: string }> = [
@@ -70,7 +71,7 @@ export function MyAccountPage() {
     <div>
       <PageHeader section="Team"
         title="My Account"
-        subtitle="Personal preferences — these apply when you sign in on POS"
+        subtitle="Your preferences and sign-in security"
       />
 
       {error && (
@@ -128,6 +129,10 @@ export function MyAccountPage() {
           </Button>
         </div>
       </Card>
+
+      <div style={{ marginTop: 16 }}>
+        <TwoFactorCard />
+      </div>
       </div>
     </div>
 

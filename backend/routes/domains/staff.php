@@ -163,6 +163,9 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
         Route::post('/', [App\Http\Controllers\Api\StaffController::class, 'store'])->middleware('permission:staff.create');
         Route::patch('/{id}', [App\Http\Controllers\Api\StaffController::class, 'update'])->middleware('permission:staff.update');
         Route::post('/{id}/pin', [App\Http\Controllers\Api\StaffController::class, 'resetPin'])->middleware('permission:staff.update');
+        // Lost-phone recovery — clears their second factor so they can sign in
+        // with a password and enrol a new one.
+        Route::delete('/{id}/two-factor', [App\Http\Controllers\Api\StaffController::class, 'resetTwoFactor'])->middleware('permission:staff.update');
         Route::delete('/{id}', [App\Http\Controllers\Api\StaffController::class, 'destroy'])->middleware('permission:staff.delete');
     });
 

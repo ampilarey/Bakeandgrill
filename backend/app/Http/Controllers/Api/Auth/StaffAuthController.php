@@ -12,12 +12,14 @@ use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\StaffAuthRateLimit;
 use App\Services\StaffUserLookup;
+use App\Services\TwoFactorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\TransientToken;
 
@@ -55,7 +57,15 @@ class StaffAuthController extends Controller
                 // Needed to answer "which account was being tried"; the audit
                 // log already records the IP alongside it.
                 'identity' => $identityKey,
-                'surface' => $field === 'pin' ? 'pos_pin' : ($field === 'phone' ? 'admin' : 'pos_password'),
+                'surface' => match ($field) {
+                    'pin' => 'pos_pin',
+                    'phone' => 'admin',
+                    // The second step of an admin sign-in — worth telling
+                    // apart from a wrong password, since a failure here means
+                    // someone already had the password.
+                    'code' => 'admin_two_factor',
+                    default => 'pos_password',
+                },
             ],
             request: $request,
         );
@@ -553,10 +563,15 @@ class StaffAuthController extends Controller
 
     /**
      * Admin SPA login — Sanctum stateful session cookie (no PAT in localStorage).
+     *
+     * This is where the second factor sits, and only here. The POS keeps its
+     * PIN: a cook at a till during service is not going to read a code off a
+     * phone, and the till already has device approval and a shift behind it.
+     * The admin panel is the surface where one stolen password reaches the
+     * takings, the customer list, and the staff accounts.
      */
     private function issueAdminStaffSession(Request $request, User $user, string $errorField = 'phone'): JsonResponse
     {
-        $user->update(['last_login_at' => now()]);
         $user->loadMissing('role');
 
         if (!app(\App\Services\PermissionService::class)->hasPermission($user, 'admin.access')) {
@@ -564,6 +579,143 @@ class StaffAuthController extends Controller
                 $errorField => ['You do not have permission to access the admin panel.'],
             ]);
         }
+
+        if ($user->hasTwoFactorEnabled()) {
+            return $this->beginTwoFactorChallenge($request, $user, $errorField);
+        }
+
+        if ((bool) config('twofactor.required_for_admin')) {
+            // Only reachable once the venue has switched the policy on. Says
+            // plainly what to do, because the person reading it has a correct
+            // password and no idea why it stopped working.
+            throw ValidationException::withMessages([
+                $errorField => ['This account needs two-factor authentication set up before it can sign in. Ask an owner to set it up from Admin → Staff.'],
+            ]);
+        }
+
+        return $this->completeAdminStaffSession($request, $user);
+    }
+
+    /**
+     * The password was right; the second factor has not been shown yet.
+     *
+     * Nothing is signed in at this point — no session, no cookie. The
+     * challenge is an opaque handle to a half-finished sign-in held in the
+     * cache for a few minutes, and it carries no privileges of its own.
+     */
+    private function beginTwoFactorChallenge(Request $request, User $user, string $errorField): JsonResponse
+    {
+        $token = Str::random(64);
+
+        Cache::put(
+            self::twoFactorChallengeKey($token),
+            ['user_id' => $user->id, 'attempts' => 0, 'field' => $errorField],
+            now()->addSeconds((int) config('twofactor.challenge_ttl_seconds')),
+        );
+
+        return response()->json([
+            'two_factor_required' => true,
+            'challenge' => $token,
+            'message' => 'Enter the 6-digit code from your authenticator app.',
+        ]);
+    }
+
+    /**
+     * Second step of an admin sign-in: the code off the phone, or a recovery
+     * code for when the phone is gone.
+     */
+    public function twoFactorChallenge(Request $request, TwoFactorService $twoFactor): JsonResponse
+    {
+        $request->validate([
+            'challenge' => 'required|string|max:128',
+            'code' => 'required|string|max:32',
+        ]);
+
+        $cacheKey = self::twoFactorChallengeKey($request->string('challenge')->toString());
+        $state = Cache::get($cacheKey);
+
+        if (!is_array($state) || !isset($state['user_id'])) {
+            // Covers expired, already-consumed, and never-existed alike —
+            // there is nothing useful to tell them apart for.
+            throw ValidationException::withMessages([
+                'code' => ['That sign-in has expired. Enter your password again.'],
+            ]);
+        }
+
+        $user = User::query()->where('is_active', true)->find($state['user_id']);
+
+        if (!$user || !$user->hasTwoFactorEnabled()) {
+            // The account was deactivated, or an owner cleared its 2FA, while
+            // the challenge was open.
+            Cache::forget($cacheKey);
+            throw ValidationException::withMessages([
+                'code' => ['That sign-in has expired. Enter your password again.'],
+            ]);
+        }
+
+        $identityKey = StaffUserLookup::canonicalIdentityKey((string) ($user->phone ?: $user->email));
+        $method = $twoFactor->verify($user, $request->string('code')->toString(), $request);
+
+        if ($method === null) {
+            $attempts = (int) ($state['attempts'] ?? 0) + 1;
+            $max = (int) config('twofactor.max_attempts_per_challenge');
+
+            if ($attempts >= $max) {
+                // Burn the challenge: whoever is guessing has to get past the
+                // password again before they get another handful of tries.
+                Cache::forget($cacheKey);
+                $this->rejectSignIn(
+                    $request,
+                    'code',
+                    'Too many incorrect codes. Enter your password again.',
+                    'two_factor_challenge_burned',
+                    $identityKey,
+                    $user,
+                );
+            }
+
+            $state['attempts'] = $attempts;
+            Cache::put($cacheKey, $state, now()->addSeconds((int) config('twofactor.challenge_ttl_seconds')));
+
+            $this->rejectSignIn(
+                $request,
+                'code',
+                'That code is not right. Check your authenticator app and try again.',
+                'wrong_two_factor_code',
+                $identityKey,
+                $user,
+            );
+        }
+
+        // Single use — a challenge is spent the moment it succeeds.
+        Cache::forget($cacheKey);
+
+        $response = $this->completeAdminStaffSession($request, $user);
+
+        if ($method === 'recovery') {
+            $remaining = $twoFactor->remainingRecoveryCodes($user);
+            $payload = $response->getData(true);
+            $payload['recovery_code_used'] = true;
+            $payload['recovery_codes_remaining'] = $remaining;
+            // Signing in this way means the phone is gone. Say so, with the
+            // count, or someone burns all eight without noticing.
+            $payload['message'] = $remaining > 0
+                ? "Signed in with a recovery code. {$remaining} left — set up your authenticator app again from My Account."
+                : 'Signed in with your last recovery code. Set up your authenticator app again from My Account now.';
+
+            return response()->json($payload);
+        }
+
+        return $response;
+    }
+
+    /** The actual sign-in, once every factor the account requires is proved. */
+    private function completeAdminStaffSession(Request $request, User $user): JsonResponse
+    {
+        // Recorded here rather than at the password step, so last_login_at
+        // means "got in" and not "typed a password".
+        $user->forceFill(['last_login_at' => now()])->save();
+        $user->loadMissing('role');
 
         Auth::guard('web')->login($user);
         if ($request->hasSession()) {
@@ -574,6 +726,15 @@ class StaffAuthController extends Controller
             'message' => 'Login successful',
             'user' => $this->serializeStaffUser($user),
         ]);
+    }
+
+    /**
+     * Hashed so the cache holds no usable handle: someone who can read the
+     * cache still cannot present a challenge token.
+     */
+    private static function twoFactorChallengeKey(string $token): string
+    {
+        return '2fa:challenge:' . hash('sha256', $token);
     }
 
     /**

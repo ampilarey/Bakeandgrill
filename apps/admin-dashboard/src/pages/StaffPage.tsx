@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import {
-  fetchStaff, createStaff, updateStaff, resetStaffPin, deleteStaff,
+  fetchStaff, createStaff, updateStaff, resetStaffPin, resetStaffTwoFactor, deleteStaff,
   getUserPermissions, updateUserPermissions,
   getStaffNotificationPrefs, updateStaffNotificationPrefs,
   type StaffMember, type StaffRole, type PermissionItem, type StaffNotificationPref,
@@ -706,6 +706,30 @@ export function StaffPage() {
     await load();
   };
 
+  /**
+   * Lost-phone recovery.
+   *
+   * Without this, a staff member with 2FA on and no phone is locked out of the
+   * admin panel until they find a recovery code — and nobody keeps those. It
+   * is a reset, not a bypass: their next sign-in is single-factor and they are
+   * expected to enrol a new phone.
+   */
+  const handleResetTwoFactor = (member: StaffMember) => {
+    askConfirm({
+      title: 'Reset Two-Factor',
+      message: `${member.name} will be able to sign in with just their password until they set up a new authenticator app. Their signed-in devices will be logged out. Only do this if you are sure who you are talking to.`,
+      confirmLabel: 'Reset',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await resetStaffTwoFactor(member.id);
+          toast.success('Two-factor reset. They can sign in with their password.');
+          await load();
+        } catch (e) { setError((e as Error).message); }
+      },
+    });
+  };
+
   const handleDelete = (member: StaffMember) => {
     askConfirm({
       title: 'Remove Staff Member',
@@ -828,6 +852,16 @@ export function StaffPage() {
                           danger: m.is_active,
                         });
                         menuItems.push({ label: 'SMS prefs', onClick: () => setNotifPrefsUser(m) });
+                        if (m.two_factor_enabled) {
+                          // Only offered when there is something to clear —
+                          // otherwise it reads as a setting rather than the
+                          // lost-phone recovery it is.
+                          menuItems.push({
+                            label: 'Reset two-factor',
+                            onClick: () => handleResetTwoFactor(m),
+                            danger: true,
+                          });
+                        }
                       }
                       if (m.role !== 'owner' && canManagePerms) {
                         menuItems.push({ label: 'Permissions', onClick: () => setPermissionsUser(m) });
@@ -853,6 +887,13 @@ export function StaffPage() {
                               ? <span style={{ color: 'var(--color-success)', fontSize: 13, fontWeight: 700 }}>Set</span>
                               : <span style={{ color: 'var(--color-warning)', fontSize: 13, fontWeight: 700 }}>Not set</span>
                             }
+                            {m.two_factor_enabled && (
+                              // So an owner can see at a glance who is covered
+                              // — and who to chase.
+                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-success)', marginTop: 2 }}>
+                                2FA on
+                              </div>
+                            )}
                           </td>
                           <td style={TD}>
                             <Badge label={m.is_active ? 'Active' : 'Inactive'} color={m.is_active ? 'green' : 'gray'} />

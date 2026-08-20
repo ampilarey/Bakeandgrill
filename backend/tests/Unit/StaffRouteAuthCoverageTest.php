@@ -25,6 +25,17 @@ class StaffRouteAuthCoverageTest extends TestCase
         'POST api/auth/logout-everywhere' => 'api/auth/logout-everywhere — any signed-in staff; revokes only their OWN tokens',
         'GET api/auth/me' => 'api/auth/me — any signed-in staff; returns own identity + permissions',
         'PATCH api/auth/me/preferences' => 'api/auth/me/preferences — any signed-in staff; updates own prefs only',
+        // Two-factor management is self-service by design: every one of these
+        // reads or writes $request->user()'s own second factor and cannot name
+        // another account. Clearing someone ELSE's 2FA is a different route,
+        // DELETE api/admin/staff/{id}/two-factor, and that one is gated on
+        // staff.update. The two destructive ones here additionally require the
+        // account password inside TwoFactorController.
+        'GET api/auth/two-factor' => 'api/auth/two-factor — any signed-in staff; own 2FA status only',
+        'POST api/auth/two-factor/setup' => 'api/auth/two-factor/setup — any signed-in staff; enrols own account, enforces nothing until confirmed',
+        'POST api/auth/two-factor/confirm' => 'api/auth/two-factor/confirm — any signed-in staff; turns on own 2FA after proving a code',
+        'POST api/auth/two-factor/recovery-codes' => 'api/auth/two-factor/recovery-codes — any signed-in staff; own codes, password-confirmed',
+        'DELETE api/auth/two-factor' => 'api/auth/two-factor — any signed-in staff; turns off own 2FA, password-confirmed',
         'POST api/devices/self-register' => 'api/devices/self-register — any signed-in staff; DeviceController::selfRegister (own device)',
         'GET api/devices/self-status' => 'api/devices/self-status — any signed-in staff; DeviceController::selfStatus (own device)',
         'GET api/pos/bootstrap' => 'api/pos/bootstrap — any signed-in staff; PosBootstrapController, no privileged writes',
