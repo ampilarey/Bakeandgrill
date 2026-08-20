@@ -21,6 +21,7 @@ vi.mock('../api/content', () => ({
   discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: null, deleted: 0 })),
   updateContent: vi.fn(),
   uploadContentImage: vi.fn(),
+  uploadContentFont: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
   getContentRevisions: vi.fn(async () => ({ revisions: [] })),

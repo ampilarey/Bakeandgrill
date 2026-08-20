@@ -60,4 +60,23 @@ class ContentValidationServiceTest extends TestCase
         $this->expectException(ValidationException::class);
         $validator->normalizeForWrite('hero_slides', 'website', '{"title":"Not a list"}');
     }
+
+    public function test_dhivehi_font_accepts_empty_or_hashed_storage_url(): void
+    {
+        $validator = app(ContentValidationService::class);
+
+        $this->assertSame('', $validator->normalizeForWrite('dhivehi_font', 'website', '  '));
+        $this->assertSame(
+            '/storage/fonts/abc123.woff2',
+            $validator->normalizeForWrite('dhivehi_font', 'website', '/storage/fonts/abc123.woff2'),
+        );
+    }
+
+    public function test_dhivehi_font_rejects_external_or_unsafe_urls(): void
+    {
+        $validator = app(ContentValidationService::class);
+
+        $this->expectException(ValidationException::class);
+        $validator->normalizeForWrite('dhivehi_font', 'website', 'https://evil.example/font.woff2');
+    }
 }

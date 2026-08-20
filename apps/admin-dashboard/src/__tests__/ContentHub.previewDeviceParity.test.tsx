@@ -23,6 +23,7 @@ vi.mock('../api/content', () => ({
   updateContent: vi.fn(async () => ({ blocks: [] })),
   discardContentDrafts: vi.fn(async () => ({ message: 'ok', locale: 'en', scope: 'website', deleted: 0 })),
   uploadContentImage: vi.fn(),
+  uploadContentFont: vi.fn(),
   exportContent: vi.fn(async () => ({ version: 1, exported_at: '', locale: 'en', entries: [] })),
   importContent: vi.fn(),
   getContentRevisions: vi.fn(async () => ({ revisions: [] })),

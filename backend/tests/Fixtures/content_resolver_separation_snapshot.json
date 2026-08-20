@@ -1,6 +1,6 @@
 {
     "meta": {
-        "key_count": 176,
+        "key_count": 177,
         "apps": [
             "website",
             "order_app"
@@ -9,7 +9,7 @@
             "en",
             "dv"
         ],
-        "combinations": 704
+        "combinations": 708
     },
     "values": {
         "website": {
@@ -55,6 +55,7 @@
                 "default_item_image": "",
                 "delivery_threshold": "MVR 200",
                 "delivery_time": "30–45 min",
+                "dhivehi_font": "",
                 "events_section_blurb": "Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.",
                 "events_section_browse_cta": "Browse catering menu",
                 "events_section_headline": "Events & Catering",
@@ -233,6 +234,7 @@
                 "default_item_image": "",
                 "delivery_threshold": "MVR 200",
                 "delivery_time": "30–45 min",
+                "dhivehi_font": "",
                 "events_section_blurb": "Plan office breakfasts, celebrations, and catering trays with a structured quote — not just a same-day order.",
                 "events_section_browse_cta": "Browse catering menu",
                 "events_section_headline": "Events & Catering",
@@ -413,6 +415,7 @@
                 "default_item_image": "",
                 "delivery_threshold": "MVR 200",
                 "delivery_time": "30–45 min",
+                "dhivehi_font": "",
                 "events_section_blurb": "Trays and packages for offices, parties and celebrations.",
                 "events_section_browse_cta": "Browse catering",
                 "events_section_headline": "Catering & Events",
@@ -591,6 +594,7 @@
                 "default_item_image": "",
                 "delivery_threshold": "MVR 200",
                 "delivery_time": "30–45 min",
+                "dhivehi_font": "",
                 "events_section_blurb": "Trays and packages for offices, parties and celebrations.",
                 "events_section_browse_cta": "Browse catering",
                 "events_section_headline": "Catering & Events",

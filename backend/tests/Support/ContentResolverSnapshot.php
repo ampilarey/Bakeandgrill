@@ -13,12 +13,12 @@ use App\Domains\Content\ContentResolver;
  */
 final class ContentResolverSnapshot
 {
-    /** 176 non-deprecated keys × 2 apps × 2 locales (updated when content.php grows). */
-    public const EXPECTED_COMBINATIONS = 704;
+    /** 177 non-deprecated keys × 2 apps × 2 locales (updated when content.php grows). */
+    public const EXPECTED_COMBINATIONS = 708;
 
     public static function fixturePath(): string
     {
-        return dirname(__DIR__).'/Fixtures/content_resolver_separation_snapshot.json';
+        return dirname(__DIR__) . '/Fixtures/content_resolver_separation_snapshot.json';
     }
 
     /**
@@ -28,7 +28,7 @@ final class ContentResolverSnapshot
     {
         $keys = [];
         foreach (ContentRegistry::blocks() as $key => $block) {
-            if (! empty($block['deprecated'])) {
+            if (!empty($block['deprecated'])) {
                 continue;
             }
             $keys[] = (string) $key;
@@ -94,8 +94,8 @@ final class ContentResolverSnapshot
     }
 
     /**
-     * @param  array<string, mixed>  $expected
-     * @param  array<string, mixed>  $actual
+     * @param array<string, mixed> $expected
+     * @param array<string, mixed> $actual
      * @return list<string> human-readable diffs (empty if identical)
      */
     public static function diff(array $expected, array $actual): array
@@ -127,11 +127,11 @@ final class ContentResolverSnapshot
     private static function preview(mixed $value): string
     {
         $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if (! is_string($encoded)) {
+        if (!is_string($encoded)) {
             return '<unencodable>';
         }
         if (strlen($encoded) > 120) {
-            return substr($encoded, 0, 117).'...';
+            return substr($encoded, 0, 117) . '...';
         }
 
         return $encoded;

@@ -2,7 +2,7 @@
     "generated_for_commit": "a377ebc37",
     "audited_at": "2026-08-13",
     "website": {
-        "page_count_keys": 152,
+        "page_count_keys": 153,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (layout chrome)",
@@ -49,7 +49,8 @@
                     "social_instagram",
                     "social_tiktok",
                     "nav_order_cta_text",
-                    "home_chat_label"
+                    "home_chat_label",
+                    "dhivehi_font"
                 ],
                 "renderers": {
                     "language_switcher_enabled": "layout.blade.php header",
@@ -92,7 +93,8 @@
                     "social_instagram": "layout site_footer chrome",
                     "social_tiktok": "layout site_footer chrome",
                     "nav_order_cta_text": "layout HEADER Order CTA (group=Footer mismatch)",
-                    "home_chat_label": "layout footer chat (group=Homepage mismatch)"
+                    "home_chat_label": "layout footer chat (group=Homepage mismatch)",
+                    "dhivehi_font": "layout.blade.php + /css/dhivehi-font.css?app=website"
                 }
             },
             "home": {
@@ -1463,11 +1465,18 @@
                 "label": "Eat here mode card photo",
                 "group": "Home",
                 "renderer": "backend/resources/views/home.blade.php + partials/home/* + ModeEntryCardsPresenter"
+            },
+            "dhivehi_font": {
+                "page": "everywhere",
+                "order": 42,
+                "label": "Dhivehi font",
+                "group": "Everywhere",
+                "renderer": "layout.blade.php + /css/dhivehi-font.css?app=website"
             }
         }
     },
     "order_app": {
-        "page_count_keys": 91,
+        "page_count_keys": 92,
         "pages": {
             "everywhere": {
                 "title": "Everywhere (shell chrome)",
@@ -1509,7 +1518,8 @@
                     "social_instagram",
                     "social_tiktok",
                     "nav_order_cta_text",
-                    "home_chat_label"
+                    "home_chat_label",
+                    "dhivehi_font"
                 ],
                 "renderers": {
                     "language_switcher_enabled": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
@@ -1547,7 +1557,8 @@
                     "social_instagram": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
                     "social_tiktok": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
                     "nav_order_cta_text": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
-                    "home_chat_label": "apps/online-order-web/src/components/shell/* + SiteSettingsContext"
+                    "home_chat_label": "apps/online-order-web/src/components/shell/* + SiteSettingsContext",
+                    "dhivehi_font": "index.html + /css/dhivehi-font.css?app=order_app (content key dhivehi_font)"
                 }
             },
             "home": {
@@ -2397,6 +2408,13 @@
                 "label": "Eat here mode card photo",
                 "group": "Home",
                 "renderer": "apps/online-order-web/src/pages/HomePage.tsx + components/home/*"
+            },
+            "dhivehi_font": {
+                "page": "everywhere",
+                "order": 37,
+                "label": "Dhivehi font",
+                "group": "Everywhere",
+                "renderer": "index.html + /css/dhivehi-font.css?app=order_app (content key dhivehi_font)"
             }
         }
     },

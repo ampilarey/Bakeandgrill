@@ -10,6 +10,7 @@ use App\Domains\Content\ContentResolver;
 use App\Domains\Content\ContentScopeMismatch;
 use App\Domains\Content\ContentValidationService;
 use App\Domains\Content\ContentWriter;
+use App\Domains\Content\DhivehiFont;
 use App\Domains\Media\Services\MediaLibraryService;
 use App\Domains\Media\Services\VideoProcessor;
 use App\Http\Controllers\Controller;
@@ -17,8 +18,8 @@ use App\Http\Requests\UpdateContentRequest;
 use App\Http\Resources\ContentBlockResource;
 use App\Models\ContentDraft;
 use App\Models\ContentRevision;
-use App\Models\Media;
 use App\Models\ContentSchedule;
+use App\Models\Media;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AuditLogService;
@@ -135,7 +136,7 @@ class ContentController extends Controller
         ]);
         $locale = $data['locale'] ?? 'en';
         $user = $request->user();
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -177,7 +178,7 @@ class ContentController extends Controller
 
         $locale = $data['locale'] ?? 'en';
         $user = $request->user();
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
         $userId = $user->id;
@@ -263,21 +264,21 @@ class ContentController extends Controller
         ]);
         $locale = $data['locale'] ?? 'en';
 
-        if (! empty($data['key']) && ! ContentRegistry::has($data['key'])) {
+        if (!empty($data['key']) && !ContentRegistry::has($data['key'])) {
             return response()->json(['message' => 'Unknown content key.'], 404);
         }
         $user = $request->user();
-        if (! $user instanceof User) {
+        if (!$user instanceof User) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         $query = ContentDraft::query()
             ->where('user_id', $user->id)
             ->where('locale', $locale);
-        if (! empty($data['scope'])) {
+        if (!empty($data['scope'])) {
             $query->where('scope', $data['scope']);
         }
-        if (! empty($data['key'])) {
+        if (!empty($data['key'])) {
             $query->where('key', $data['key']);
         }
 
@@ -499,7 +500,7 @@ class ContentController extends Controller
         }
 
         $scopeFilter = $request->query('scope');
-        if ($scopeFilter !== null && $scopeFilter !== '' && ! in_array((string) $scopeFilter, ContentRegistry::APPS, true)) {
+        if ($scopeFilter !== null && $scopeFilter !== '' && !in_array((string) $scopeFilter, ContentRegistry::APPS, true)) {
             return response()->json(['message' => 'Invalid scope. Use website or order_app.'], 422);
         }
         $scopeFilter = $scopeFilter !== null && $scopeFilter !== '' ? (string) $scopeFilter : null;
@@ -511,7 +512,7 @@ class ContentController extends Controller
                 if ($scopeFilter !== null && $scope !== $scopeFilter) {
                     continue;
                 }
-                if (! in_array($scope, $block['apps'] ?? [], true)) {
+                if (!in_array($scope, $block['apps'] ?? [], true)) {
                     continue;
                 }
                 $value = SiteSetting::getScoped((string) $key, $scope, $locale);
@@ -582,7 +583,7 @@ class ContentController extends Controller
         SiteSetting::bust();
 
         return response()->json([
-            'message' => "Imported {$applied} entries.".($skipped > 0 ? " Skipped {$skipped} ops-owned keys." : ''),
+            'message' => "Imported {$applied} entries." . ($skipped > 0 ? " Skipped {$skipped} ops-owned keys." : ''),
             'applied' => $applied,
             'skipped' => $skipped,
             'blocks' => ContentBlockResource::collectionFromRegistry('en'),
@@ -676,6 +677,52 @@ class ContentController extends Controller
     }
 
     /**
+     * Dhivehi webfont upload — validated as a real font with Thaana glyphs.
+     * Draft-safe: returns a URL; publish writes the content key.
+     */
+    public function uploadFont(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', Rule::in([DhivehiFont::CONTENT_KEY])],
+            'scope' => ['required', 'string', Rule::in(ContentRegistry::APPS)],
+            'locale' => ['sometimes', 'string', Rule::in(ContentRegistry::LOCALES)],
+            'file' => ['required', 'file', 'max:2048'],
+        ]);
+
+        $key = $data['key'];
+        $scope = $data['scope'];
+        $locale = $data['locale'] ?? 'en';
+        if (ContentRegistry::type($key) !== 'font') {
+            return response()->json(['message' => 'Key is not a font block.'], 422);
+        }
+
+        try {
+            $stored = DhivehiFont::storeUpload($request->file('file'));
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $this->audit->log(
+            action: 'content.uploaded',
+            modelType: SiteSetting::class,
+            modelId: null,
+            oldValues: [],
+            newValues: ['url' => $stored['url']],
+            meta: ['setting_key' => $key, 'scope' => $scope, 'locale' => $locale, 'kind' => 'font'],
+            request: $request,
+        );
+
+        return response()->json([
+            'url' => $stored['url'],
+            'format' => $stored['format'],
+            'key' => $key,
+            'scope' => $scope,
+            'locale' => $locale,
+            'embed' => true,
+        ], 201);
+    }
+
+    /**
      * Hero video upload — muted autoplay background (reuses MenuImageProcessor raw + poster).
      */
     public function uploadVideo(Request $request): JsonResponse
@@ -690,7 +737,7 @@ class ContentController extends Controller
             'poster_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
-        if (! $request->hasFile('poster') && blank($data['poster_url'] ?? null)) {
+        if (!$request->hasFile('poster') && blank($data['poster_url'] ?? null)) {
             return response()->json([
                 'message' => 'A poster image file or poster_url is required.',
             ], 422);
@@ -794,14 +841,14 @@ class ContentController extends Controller
         ?string $thumbWebpUrl = null,
     ): ?Media {
         try {
-            if (! Schema::hasTable('media_assets')) {
+            if (!Schema::hasTable('media_assets')) {
                 return null;
             }
 
             return $this->library->registerPath(
                 $path,
                 'content',
-                $request->user() instanceof \App\Models\User ? $request->user() : null,
+                $request->user() instanceof User ? $request->user() : null,
                 $title,
                 $thumbUrl,
                 $originalUrl,

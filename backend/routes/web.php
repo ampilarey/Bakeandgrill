@@ -9,6 +9,10 @@ use App\Http\Controllers\PosPayPageController;
 use App\Http\Controllers\ReceiptPageController;
 use Illuminate\Support\Facades\Route;
 
+// Owner-uploaded Dhivehi webfont override (empty CSS when unset).
+Route::get('/css/dhivehi-font.css', [App\Http\Controllers\DhivehiFontCssController::class, 'show'])
+    ->name('css.dhivehi-font');
+
 // Thumbnails for local cafe images (faster load)
 Route::get('/thumb/{path}', [ImageThumbController::class, 'show'])
     ->where('path', '.*')
@@ -129,11 +133,11 @@ Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
 
 // Online Order SPA — redirect bare /order to /order/ then catch-all for React Router
-Route::get('/order', function (\Illuminate\Http\Request $request) {
+Route::get('/order', function (Illuminate\Http\Request $request) {
     $target = '/order/';
     $qs = $request->getQueryString();
     if ($qs) {
-        $target .= '?'.$qs;
+        $target .= '?' . $qs;
     }
 
     return redirect($target);

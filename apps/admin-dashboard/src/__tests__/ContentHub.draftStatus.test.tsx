@@ -20,6 +20,7 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: '2026-07-23T12:00:00Z' })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
   uploadContentImage: vi.fn(),
+  uploadContentFont: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
   getContentRevisions: vi.fn(async () => ({ revisions: [] })),

@@ -513,6 +513,18 @@ return [
             'validate' => 'nullable|string|max:2048',
             'default' => '',
         ],
+        'dhivehi_font' => [
+            'label' => 'Dhivehi font',
+            'group' => 'Everywhere',
+            'type' => 'font',
+            'apps' => ['website', 'order_app'],
+            'shareable' => true,
+            'public' => true,
+            'rich' => false,
+            'description' => 'Thaana webfont for Dhivehi pages. Empty = shipped A_Faruma. Website and Order App each keep their own file.',
+            'validate' => 'nullable|string|max:2048',
+            'default' => '',
+        ],
         'footer_contact_heading' => [
             'label' => 'Footer — Contact Heading',
             'group' => 'Everywhere',

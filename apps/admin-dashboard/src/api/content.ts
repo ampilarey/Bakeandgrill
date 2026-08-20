@@ -151,6 +151,20 @@ export async function discardContentDrafts(
   return req(`/admin/content/drafts?${q}`, { method: 'DELETE' });
 }
 
+export async function uploadContentFont(
+  key: string,
+  scope: ContentScope,
+  file: File,
+  locale: ContentLocale = 'en',
+): Promise<{ url: string; format?: string; embed?: boolean }> {
+  const form = new FormData();
+  form.append('key', key);
+  form.append('scope', scope);
+  form.append('locale', locale);
+  form.append('file', file);
+  return req('/admin/content/upload-font', { method: 'POST', body: form });
+}
+
 export async function uploadContentImage(
   key: string,
   scope: ContentScope,

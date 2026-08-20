@@ -29,6 +29,7 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(),
   uploadContentImage: vi.fn(),
+  uploadContentFont: vi.fn(),
   uploadContentVideo: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),

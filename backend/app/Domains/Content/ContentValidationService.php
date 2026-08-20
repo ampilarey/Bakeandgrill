@@ -54,6 +54,10 @@ final class ContentValidationService
             return $this->normalizeHeroSlides($value);
         }
 
+        if ($key === DhivehiFont::CONTENT_KEY) {
+            return $this->normalizeDhivehiFont($value);
+        }
+
         if ($this->isPublicUrlKey($key)) {
             $this->validatePublicUrlValue($value, ContentRegistry::label($key));
         }
@@ -63,19 +67,19 @@ final class ContentValidationService
 
     public function assertScopeAllowed(string $key, string $scope): void
     {
-        if (! ContentRegistry::has($key)) {
+        if (!ContentRegistry::has($key)) {
             $this->fail('key', 'Unknown content key.');
         }
 
-        if (! in_array($scope, ContentRegistry::SCOPES, true)) {
+        if (!in_array($scope, ContentRegistry::SCOPES, true)) {
             $this->fail('scope', 'Invalid content scope.');
         }
 
         // Shared is only for Business Details / Media "document logo" writers —
         // never for ordinary Content Hub publish of customer-facing content.
         if ($scope === 'shared') {
-            if (! BusinessDetailsKeys::isAllowed($key)
-                && ! in_array($key, ['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image', 'primary_color'], true)
+            if (!BusinessDetailsKeys::isAllowed($key)
+                && !in_array($key, ['logo', 'logo_dark', 'favicon', 'og_image', 'default_item_image', 'primary_color'], true)
             ) {
                 $this->fail('scope', 'Shared scope is only for the business record (Business Details), not Content Hub.');
             }
@@ -83,8 +87,8 @@ final class ContentValidationService
             return;
         }
 
-        if (! ContentRegistry::targetsApp($key, $scope)) {
-            $this->fail('scope', ContentRegistry::label($key).' is not available for '.$scope.'.');
+        if (!ContentRegistry::targetsApp($key, $scope)) {
+            $this->fail('scope', ContentRegistry::label($key) . ' is not available for ' . $scope . '.');
         }
     }
 
@@ -127,7 +131,7 @@ final class ContentValidationService
     private function validateRegistryRule(string $key, string $value): void
     {
         $validator = Validator::make(['value' => $value], ['value' => ContentRegistry::validateRule($key)]);
-        if (! $validator->fails()) {
+        if (!$validator->fails()) {
             return;
         }
 
@@ -144,7 +148,7 @@ final class ContentValidationService
         }
 
         if (preg_match('/^#([0-9a-fA-F]{3})$/', $value, $m) === 1) {
-            return '#'.strtoupper($m[1][0].$m[1][0].$m[1][1].$m[1][1].$m[1][2].$m[1][2]);
+            return '#' . strtoupper($m[1][0] . $m[1][0] . $m[1][1] . $m[1][1] . $m[1][2] . $m[1][2]);
         }
 
         if (preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1) {
@@ -152,6 +156,20 @@ final class ContentValidationService
         }
 
         $this->fail('value', 'Primary Color must be a hex colour in #RGB or #RRGGBB format.');
+    }
+
+    private function normalizeDhivehiFont(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (!DhivehiFont::isSafePublicUrl($value)) {
+            $this->fail('value', 'Dhivehi font must be a file uploaded through Content Hub.');
+        }
+
+        return $value;
     }
 
     private function normalizeHeroSlides(string $value): string
@@ -162,42 +180,42 @@ final class ContentValidationService
         }
 
         $slides = json_decode($value, true);
-        if (! is_array($slides) || ! array_is_list($slides)) {
+        if (!is_array($slides) || !array_is_list($slides)) {
             $this->fail('value', 'Hero Slides must be a JSON list of slide objects.');
         }
 
         foreach ($slides as $index => $slide) {
-            if (! is_array($slide)) {
-                $this->fail('value', 'Hero Slides item '.($index + 1).' must be an object.');
+            if (!is_array($slide)) {
+                $this->fail('value', 'Hero Slides item ' . ($index + 1) . ' must be an object.');
             }
 
-            if (array_key_exists('showing', $slide) && ! is_bool($slide['showing'])) {
-                $this->fail('value', 'Hero Slides item '.($index + 1).' showing must be true or false.');
+            if (array_key_exists('showing', $slide) && !is_bool($slide['showing'])) {
+                $this->fail('value', 'Hero Slides item ' . ($index + 1) . ' showing must be true or false.');
             }
 
             foreach (['photo_brightness', 'text_background', 'dim'] as $numericField) {
-                if (! array_key_exists($numericField, $slide) || $slide[$numericField] === null || $slide[$numericField] === '') {
+                if (!array_key_exists($numericField, $slide) || $slide[$numericField] === null || $slide[$numericField] === '') {
                     continue;
                 }
-                if (! is_numeric($slide[$numericField])) {
-                    $this->fail('value', 'Hero Slides item '.($index + 1)." {$numericField} must be a number from 0 to 100.");
+                if (!is_numeric($slide[$numericField])) {
+                    $this->fail('value', 'Hero Slides item ' . ($index + 1) . " {$numericField} must be a number from 0 to 100.");
                 }
                 $n = (float) $slide[$numericField];
                 if ($n < 0 || $n > 100) {
-                    $this->fail('value', 'Hero Slides item '.($index + 1)." {$numericField} must be a number from 0 to 100.");
+                    $this->fail('value', 'Hero Slides item ' . ($index + 1) . " {$numericField} must be a number from 0 to 100.");
                 }
             }
 
             if (array_key_exists('text_position', $slide) && $slide['text_position'] !== null && $slide['text_position'] !== '') {
                 $pos = strtolower(trim((string) $slide['text_position']));
-                if (! in_array($pos, ['top', 'middle', 'bottom'], true)) {
-                    $this->fail('value', 'Hero Slides item '.($index + 1).' text_position must be top, middle, or bottom.');
+                if (!in_array($pos, ['top', 'middle', 'bottom'], true)) {
+                    $this->fail('value', 'Hero Slides item ' . ($index + 1) . ' text_position must be top, middle, or bottom.');
                 }
                 $slides[$index]['text_position'] = $pos;
             }
 
             foreach (self::JSON_PUBLIC_URL_FIELDS['hero_slides'] as $field) {
-                if (! array_key_exists($field, $slide)) {
+                if (!array_key_exists($field, $slide)) {
                     continue;
                 }
 
@@ -207,7 +225,7 @@ final class ContentValidationService
                 }
                 $safe = self::safePublicUrl($raw);
                 if ($safe === null) {
-                    $this->fail('value', 'Hero Slides item '.($index + 1)." {$field} must be a safe public URL.");
+                    $this->fail('value', 'Hero Slides item ' . ($index + 1) . " {$field} must be a safe public URL.");
                 }
                 $slides[$index][$field] = $safe;
             }
@@ -218,22 +236,22 @@ final class ContentValidationService
 
     private function validateJsonUrlFields(string $key, string $value): string
     {
-        if (! array_key_exists($key, self::JSON_PUBLIC_URL_FIELDS) || trim($value) === '') {
+        if (!array_key_exists($key, self::JSON_PUBLIC_URL_FIELDS) || trim($value) === '') {
             return $value;
         }
 
         $decoded = json_decode($value, true);
-        if (! is_array($decoded)) {
+        if (!is_array($decoded)) {
             return $value;
         }
 
         $changed = false;
         foreach ($decoded as $index => $row) {
-            if (! is_array($row)) {
+            if (!is_array($row)) {
                 continue;
             }
             foreach (self::JSON_PUBLIC_URL_FIELDS[$key] as $field) {
-                if (! array_key_exists($field, $row)) {
+                if (!array_key_exists($field, $row)) {
                     continue;
                 }
                 $raw = $this->stringify($row[$field]);
@@ -242,7 +260,7 @@ final class ContentValidationService
                 }
                 $safe = self::safePublicUrl($raw);
                 if ($safe === null) {
-                    $this->fail('value', ContentRegistry::label($key).' item '.((int) $index + 1)." {$field} must be a safe public URL.");
+                    $this->fail('value', ContentRegistry::label($key) . ' item ' . ((int) $index + 1) . " {$field} must be a safe public URL.");
                 }
                 if ($safe !== $raw) {
                     $decoded[$index][$field] = $safe;

@@ -209,7 +209,7 @@ export function PrayerTimesWidget({
     borderRadius: 14,
     padding:      '1.25rem',
     color:        'var(--text)',
-    fontFamily:   "'MV Faseyha','MV Waheed',serif",
+    fontFamily:   'var(--font-dhivehi)',
     direction:    'rtl',
   };
 
