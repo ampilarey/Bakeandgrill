@@ -99,7 +99,7 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
     {
         $this->postJson(
             "/api/admin/staff/{$this->owner->id}/pin",
-            ['pin' => '9999'],
+            ['pin' => '8362'],
             $this->staffHeaders($this->manager),
         )->assertForbidden();
 
@@ -165,11 +165,11 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
 
         $this->postJson(
             "/api/admin/staff/{$secondOwner->id}/pin",
-            ['pin' => '5555'],
+            ['pin' => '4718'],
             $this->staffHeaders($this->owner),
         )->assertOk();
 
-        $this->assertTrue(Hash::check('5555', $secondOwner->fresh()->pin_hash));
+        $this->assertTrue(Hash::check('4718', $secondOwner->fresh()->pin_hash));
     }
 
     public function test_last_active_owner_cannot_be_demoted_or_deactivated(): void
@@ -284,7 +284,7 @@ class StaffOwnerPrivilegeEscalationTest extends TestCase
                 'name' => 'Rogue Owner',
                 'email' => 'rogue-owner@test.local',
                 'role_id' => $this->ownerRoleId,
-                'pin' => '1212',
+                'pin' => '6284',
             ],
             $this->staffHeaders($this->manager),
         )->assertForbidden();

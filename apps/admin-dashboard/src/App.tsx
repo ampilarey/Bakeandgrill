@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
-import { getMe, logout as apiLogout, type StaffUser } from './api';
+import { getMe, logout as apiLogout, logoutEverywhere as apiLogoutEverywhere, type StaffUser } from './api';
 import { ToastProvider } from './components/ui';
 import { AppShell } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
@@ -191,6 +191,20 @@ export default function App() {
     navigate('/login');
   };
 
+  /**
+   * For a lost or stolen device. Confirmed first because it signs the owner
+   * out of every till as well, which mid-service is disruptive.
+   */
+  const handleLogoutEverywhere = async () => {
+    if (!window.confirm(
+      'Sign out on ALL devices? Every till and phone signed in as you will need to sign in again.',
+    )) return;
+    try { await apiLogoutEverywhere(); } catch (_) { /* still clear locally */ }
+    clearCurrentUserPermissionCache();
+    setUser(null);
+    navigate('/login');
+  };
+
   if (checking) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
@@ -209,7 +223,7 @@ export default function App() {
         path="/*"
         element={
           <AuthGuard user={user}>
-            <AppShell user={user!} onLogout={handleLogout} onSearch={() => setPaletteOpen(true)}>
+            <AppShell user={user!} onLogout={handleLogout} onLogoutEverywhere={handleLogoutEverywhere} onSearch={() => setPaletteOpen(true)}>
               <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route index element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />

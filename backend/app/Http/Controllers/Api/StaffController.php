@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
+use App\Rules\StrongStaffPin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -167,7 +168,7 @@ class StaffController extends Controller
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
             'role_id' => 'required|exists:roles,id',
-            'pin' => 'required|digits_between:4,8',
+            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin()],
         ]);
 
         if (!$this->actorIsOwner($actor) && $this->roleIdIsOwner((int) $validated['role_id'])) {
@@ -294,7 +295,7 @@ class StaffController extends Controller
         $actor = $request->user();
 
         $validated = $request->validate([
-            'pin' => 'required|digits_between:4,8',
+            'pin' => ['required', 'digits_between:4,8', new StrongStaffPin()],
         ]);
 
         DB::transaction(function () use ($actor, $id, $validated, $request): void {

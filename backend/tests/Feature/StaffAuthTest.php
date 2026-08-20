@@ -72,7 +72,13 @@ class StaffAuthTest extends TestCase
         ])->assertOk();
     }
 
-    public function test_pin_login_without_pin_set_returns_helpful_error(): void
+    /**
+     * Used to assert a "No PIN is set on this account" message. That was
+     * genuinely helpful and also told anyone working through phone numbers
+     * which accounts exist. The hint moved to Admin -> Staff, which shows
+     * has_pin per member and is only visible to someone already signed in.
+     */
+    public function test_pin_login_without_pin_set_does_not_reveal_the_account_exists(): void
     {
         $role = Role::firstOrCreate(
             ['slug' => 'owner'],
@@ -97,9 +103,19 @@ class StaffAuthTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['pin']);
-        $this->assertStringContainsString(
-            'No PIN is set on this account',
+
+        // Byte-identical to the message an unknown number gets.
+        $this->assertSame('Invalid mobile/email or PIN.', (string) $response->json('errors.pin.0'));
+
+        $unknown = $this->postJson('/api/auth/staff/pin-login', [
+            'username' => '7820000',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ]);
+        $this->assertSame(
+            (string) $unknown->json('errors.pin.0'),
             (string) $response->json('errors.pin.0'),
+            'a real account and an unknown one must be indistinguishable',
         );
     }
 

@@ -155,7 +155,7 @@ class InactiveTokenRejectionTest extends TestCase
         $this->forgetAuth();
         $this->patchJson(
             "/api/delivery/drivers/{$this->driver->id}",
-            ['pin' => '9999'],
+            ['pin' => '8362'],
             $this->staffHeaders($owner),
         )->assertOk();
 
@@ -299,12 +299,12 @@ class InactiveTokenRejectionTest extends TestCase
         $this->forgetAuth();
         $this->postJson(
             "/api/admin/staff/{$this->staff->id}/pin",
-            ['pin' => '9876'],
+            ['pin' => '5297'],
             $this->staffHeaders($owner),
         )->assertOk();
 
         $this->assertSame(0, $this->staff->tokens()->count());
-        $this->assertTrue(Hash::check('9876', $this->staff->fresh()->pin_hash));
+        $this->assertTrue(Hash::check('5297', $this->staff->fresh()->pin_hash));
         $this->forgetAuth();
         $this->getJson('/api/auth/me', $this->bearer($this->staffToken))
             ->assertUnauthorized();

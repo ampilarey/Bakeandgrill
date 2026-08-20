@@ -9,6 +9,7 @@ use App\Domains\Notifications\Services\CustomerSmsMessageBuilder;
 use App\Domains\Notifications\Services\SmsService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\StaffAuthRateLimit;
 use App\Services\StaffUserLookup;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,68 @@ use Laravel\Sanctum\TransientToken;
 
 class StaffAuthController extends Controller
 {
+    public function __construct(private readonly AuditLogService $audit) {}
+
+    /**
+     * Record a rejected sign-in, then fail with a message that says nothing
+     * about whether the account exists.
+     *
+     * Every failure path goes through here for two reasons. Nothing was
+     * audited before, so "did someone try the admin panel last night" had no
+     * answer. And the messages used to differ: a real account with no PIN was
+     * told "No PIN is set on this account", which confirmed the account to
+     * anyone typing in phone numbers. The owner can already see who has a PIN
+     * in Admin -> Staff, which is where that hint belongs.
+     */
+    private function rejectSignIn(
+        Request $request,
+        string $field,
+        string $message,
+        string $reason,
+        string $identityKey,
+        ?User $user = null,
+    ): never {
+        $this->audit->log(
+            action: 'auth.staff_login_failed',
+            modelType: User::class,
+            modelId: $user?->id,
+            oldValues: [],
+            newValues: [],
+            meta: [
+                'reason' => $reason,
+                // Needed to answer "which account was being tried"; the audit
+                // log already records the IP alongside it.
+                'identity' => $identityKey,
+                'surface' => $field === 'pin' ? 'pos_pin' : ($field === 'phone' ? 'admin' : 'pos_password'),
+            ],
+            request: $request,
+        );
+
+        throw ValidationException::withMessages([$field => [$message]]);
+    }
+
+    /** A tripped limiter is the signal worth alerting on, so it is its own action. */
+    private function rejectLockedOut(
+        Request $request,
+        string $field,
+        int $seconds,
+        string $identityKey,
+    ): never {
+        $this->audit->log(
+            action: 'auth.staff_login_locked',
+            modelType: User::class,
+            modelId: null,
+            oldValues: [],
+            newValues: [],
+            meta: ['identity' => $identityKey, 'locked_for_seconds' => $seconds],
+            request: $request,
+        );
+
+        throw ValidationException::withMessages([
+            $field => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
+        ]);
+    }
+
     /**
      * PIN login for staff users.
      * Requires both email/username and PIN so the candidate is identified first,
@@ -53,9 +116,7 @@ class StaffAuthController extends Controller
                 RateLimiter::availableIn($rateKey),
                 RateLimiter::availableIn($acctKey),
             );
-            throw ValidationException::withMessages([
-                'pin' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
-            ]);
+            $this->rejectLockedOut($request, 'pin', $seconds, $identityKey);
         }
 
         $user = $this->findActiveStaffByUsername($request->username);
@@ -63,25 +124,21 @@ class StaffAuthController extends Controller
         if (!$user) {
             RateLimiter::hit($rateKey, 600);
             RateLimiter::hit($acctKey, 600);
-            throw ValidationException::withMessages([
-                'pin' => ['Invalid mobile/email or PIN.'],
-            ]);
+            $this->rejectSignIn($request, 'pin', 'Invalid mobile/email or PIN.', 'unknown_identity', $identityKey);
         }
 
         if ($user->pin_hash === null) {
             RateLimiter::hit($rateKey, 600);
             RateLimiter::hit($acctKey, 600);
-            throw ValidationException::withMessages([
-                'pin' => ['No PIN is set on this account. Use Owner / admin sign-in with your admin password, or set a PIN in Admin → Staff.'],
-            ]);
+            // Same wording as a wrong PIN: saying "no PIN is set" confirms the
+            // account exists to anyone working through phone numbers.
+            $this->rejectSignIn($request, 'pin', 'Invalid mobile/email or PIN.', 'no_pin_set', $identityKey, $user);
         }
 
         if (!Hash::check($pin, $user->pin_hash)) {
             RateLimiter::hit($rateKey, 600);
             RateLimiter::hit($acctKey, 600);
-            throw ValidationException::withMessages([
-                'pin' => ['Invalid mobile/email or PIN.'],
-            ]);
+            $this->rejectSignIn($request, 'pin', 'Invalid mobile/email or PIN.', 'wrong_pin', $identityKey, $user);
         }
 
         RateLimiter::clear($rateKey);
@@ -110,19 +167,21 @@ class StaffAuthController extends Controller
         $rateKey = StaffAuthRateLimit::posPasswordIp($identityKey, (string) $request->ip());
 
         if (RateLimiter::tooManyAttempts($rateKey, 8)) {
-            $seconds = RateLimiter::availableIn($rateKey);
-            throw ValidationException::withMessages([
-                'password' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
-            ]);
+            $this->rejectLockedOut($request, 'password', RateLimiter::availableIn($rateKey), $identityKey);
         }
 
         $user = $this->findActiveStaffByUsername($request->username);
 
         if (!$user || !$this->verifyStaffPassword($user, $request->password)) {
             RateLimiter::hit($rateKey, 600);
-            throw ValidationException::withMessages([
-                'password' => ['Invalid mobile/email or password.'],
-            ]);
+            $this->rejectSignIn(
+                $request,
+                'password',
+                'Invalid mobile/email or password.',
+                $user ? 'wrong_password' : 'unknown_identity',
+                $identityKey,
+                $user,
+            );
         }
 
         RateLimiter::clear($rateKey);
@@ -146,33 +205,26 @@ class StaffAuthController extends Controller
         $rateKey = StaffAuthRateLimit::phoneLoginIp($identityKey, (string) $request->ip());
 
         if (RateLimiter::tooManyAttempts($rateKey, 8)) {
-            $seconds = RateLimiter::availableIn($rateKey);
-            throw ValidationException::withMessages([
-                'phone' => ['Too many attempts. Try again in ' . ceil($seconds / 60) . ' minutes.'],
-            ]);
+            $this->rejectLockedOut($request, 'phone', RateLimiter::availableIn($rateKey), $identityKey);
         }
 
         $user = $this->findActiveStaffByUsername($login);
 
         if (!$user) {
             RateLimiter::hit($rateKey, 600);
-            throw ValidationException::withMessages([
-                'phone' => ['Invalid mobile/email or password.'],
-            ]);
+            $this->rejectSignIn($request, 'phone', 'Invalid mobile/email or password.', 'unknown_identity', $identityKey);
         }
 
         if (!$this->staffHasAdminPassword($user)) {
             RateLimiter::hit($rateKey, 600);
-            throw ValidationException::withMessages([
-                'phone' => ['No admin password is set. Use PIN sign-in, Forgot password, or ask another owner to set one in Staff.'],
-            ]);
+            // Same wording again — "no admin password is set" confirmed the
+            // account to anyone guessing at the admin login.
+            $this->rejectSignIn($request, 'phone', 'Invalid mobile/email or password.', 'no_admin_password', $identityKey, $user);
         }
 
         if (!$this->verifyStaffPassword($user, $request->password)) {
             RateLimiter::hit($rateKey, 600);
-            throw ValidationException::withMessages([
-                'phone' => ['Invalid mobile/email or password.'],
-            ]);
+            $this->rejectSignIn($request, 'phone', 'Invalid mobile/email or password.', 'wrong_password', $identityKey, $user);
         }
 
         RateLimiter::clear($rateKey);
@@ -309,6 +361,42 @@ class StaffAuthController extends Controller
     /**
      * Get current staff user.
      */
+    /**
+     * Revoke every token this account holds, on every device.
+     *
+     * logout() drops only the token in hand, so a till left signed in — or a
+     * lost phone — stayed valid until its 72h TTL ran out, with no way to cut
+     * it short. This is the button for that.
+     */
+    public function logoutEverywhere(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user instanceof User) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $revoked = $user->tokens()->count();
+        $user->tokens()->delete();
+
+        $this->audit->log(
+            action: 'auth.staff_tokens_revoked',
+            modelType: User::class,
+            modelId: $user->id,
+            oldValues: [],
+            newValues: [],
+            meta: ['revoked' => $revoked],
+            request: $request,
+        );
+
+        Auth::guard('web')->logout();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        return response()->json(['message' => 'Signed out on all devices', 'revoked' => $revoked]);
+    }
+
     public function me(Request $request)
     {
         if ($denied = $this->denyUnlessStaffActor($request)) {

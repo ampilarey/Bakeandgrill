@@ -54,3 +54,14 @@ export async function updateMyPreferences(data: {
 export async function logout(): Promise<void> {
   await req('/auth/logout', { method: 'POST' });
 }
+
+/**
+ * Revoke every token this account holds, on every device.
+ *
+ * Ordinary logout drops only the credential in hand, so a lost phone or a till
+ * left signed in stayed valid until its 72h expiry. This is the way to cut
+ * those off without waiting.
+ */
+export async function logoutEverywhere(): Promise<{ message: string; revoked: number }> {
+  return req('/auth/logout-everywhere', { method: 'POST' });
+}

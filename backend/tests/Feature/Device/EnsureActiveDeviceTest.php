@@ -245,6 +245,11 @@ class EnsureActiveDeviceTest extends TestCase
      */
     public function test_a_brand_new_device_is_not_blocked_on_its_first_request_in_production(): void
     {
+        // Strict approval is the default now, and the sibling test below covers
+        // it. This one is specifically about the relaxed setting: the original
+        // bug was a new till being rejected on its first request and working
+        // after a refresh, which must stay fixed for anyone running relaxed.
+        config(['pos.strict_device_approval' => false]);
         config(['app.env' => 'production']);
         $this->app['env'] = 'production';
 

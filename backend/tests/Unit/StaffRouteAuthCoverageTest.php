@@ -22,6 +22,7 @@ class StaffRouteAuthCoverageTest extends TestCase
      */
     private const ALLOWLIST = [
         'POST api/auth/logout' => 'api/auth/logout — any signed-in staff; StaffAuthController::logout',
+        'POST api/auth/logout-everywhere' => 'api/auth/logout-everywhere — any signed-in staff; revokes only their OWN tokens',
         'GET api/auth/me' => 'api/auth/me — any signed-in staff; returns own identity + permissions',
         'PATCH api/auth/me/preferences' => 'api/auth/me/preferences — any signed-in staff; updates own prefs only',
         'POST api/devices/self-register' => 'api/devices/self-register — any signed-in staff; DeviceController::selfRegister (own device)',

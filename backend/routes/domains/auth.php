@@ -95,6 +95,8 @@ Route::prefix('auth/customer')
 
 // Staff logout — requires a staff Sanctum token
 Route::middleware(['auth:sanctum', 'staff.token'])->post('/auth/logout', [StaffAuthController::class, 'logout']);
+// Kill every token this account holds — for a lost phone or a till left signed in.
+Route::middleware(['auth:sanctum', 'staff.token'])->post('/auth/logout-everywhere', [StaffAuthController::class, 'logoutEverywhere']);
 
 // Customer API logout — revokes the current Sanctum token
 Route::middleware(['auth:sanctum', 'customer.token'])->post('/auth/customer/logout', [CustomerAuthController::class, 'logout']);

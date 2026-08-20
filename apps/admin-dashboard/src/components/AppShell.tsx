@@ -141,12 +141,14 @@ function NotificationsBell() {
 interface AppShellProps {
   user: StaffUser;
   onLogout: () => void;
+  /** Revoke every token this account holds — for a lost or stolen device. */
+  onLogoutEverywhere?: () => void;
   children: React.ReactNode;
   onSearch?: () => void;
 }
 
 /** Two-level admin shell: top section tabs + left rail (desktop) / bottom tabs + sheet (mobile). */
-export function AppShell({ user, onLogout, children, onSearch }: AppShellProps) {
+export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearch }: AppShellProps) {
   const band = useViewportBand();
   const isMobile = band === 'mobile';
   const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed());
@@ -379,6 +381,18 @@ export function AppShell({ user, onLogout, children, onSearch }: AppShellProps) 
               <LogOut size={16} />
               {!collapsed && 'Log out'}
             </button>
+            {onLogoutEverywhere && !collapsed ? (
+              <button
+                type="button"
+                className="admin-sidebar-footer-btn admin-sidebar-footer-btn--danger"
+                data-testid="admin-logout-everywhere"
+                onClick={onLogoutEverywhere}
+                title="Sign out on every device signed in as you"
+              >
+                <LogOut size={16} />
+                Log out everywhere
+              </button>
+            ) : null}
             <button
               type="button"
               className={`admin-sidebar-footer-btn${collapsed ? ' admin-sidebar-footer-btn--collapsed' : ''}`}
