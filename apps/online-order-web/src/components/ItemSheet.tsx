@@ -16,7 +16,7 @@ import {
   itemUnavailableLabel,
 } from '../utils/itemAvailability';
 import { buildItemSlides } from '../utils/itemMedia';
-import { formatCardPrice, formatSavingsLabel } from '../utils/money';
+import { formatCardPrice, formatSavingsLabel, itemDisplayPrice } from '../utils/money';
 import {
   isPlatterSelectionValid,
   platterPickHint,
@@ -707,7 +707,7 @@ export function ItemSheet({
                     <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', flex: 1, lineHeight: 1.3 }}>{rec.name}</span>
                       <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                        MVR {Number(rec.base_price).toFixed(2)}
+                        {itemDisplayPrice(rec).from ? 'From ' : ''}MVR {itemDisplayPrice(rec).price.toFixed(2)}
                       </span>
                       <button
                         type="button"

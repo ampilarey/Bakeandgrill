@@ -8,7 +8,7 @@ import { useCart, type CartEntry } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSiteSettings } from '../context/SiteSettingsContext';
 import { estimateEarnPointsForSubtotalMvr } from '../utils/loyalty';
-import { formatCardPrice, formatSavingsLabel } from '../utils/money';
+import { formatCardPrice, formatSavingsLabel, itemDisplayPrice } from '../utils/money';
 import { cartCheckoutCta } from '../utils/collectOn';
 import { ItemSheet } from './ItemSheet';
 import { CartRewardPrompt } from './CartRewardPrompt';
@@ -481,7 +481,9 @@ export function CartDrawer({
             {upsellItems.map((item) => (
               <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--color-text)', flex: 1, lineHeight: 1.3 }}>{item.name}</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>MVR {Number(item.base_price).toFixed(2)}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                  {itemDisplayPrice(item).from ? 'From ' : ''}MVR {itemDisplayPrice(item).price.toFixed(2)}
+                </span>
                 <button
                   type="button"
                   onClick={() => {

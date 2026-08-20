@@ -14,7 +14,7 @@ import {
   itemTomorrowLowLabel,
   itemUnavailableLabel,
 } from '../../utils/itemAvailability';
-import { formatCardPrice } from '../../utils/money';
+import { formatCardPrice, itemDisplayPrice } from '../../utils/money';
 import { MenuImageSlider } from './MenuImageSlider';
 
 export type ProductCardProps = {
@@ -122,12 +122,15 @@ export function ProductCard({
   const discountedVariants = activeVariants.filter(
     (v) => v.effective_price != null && Number(v.effective_price) < Number(v.price),
   );
-  const lowestVariantPrice = activeVariants.length > 0
-    ? Math.min(...activeVariants.map((v) => Number(v.effective_price ?? v.price)))
-    : null;
-  const showFromPrice = item.has_variants && lowestVariantPrice != null;
+  // The card's own rule, now shared: itemDisplayPrice() is the same logic and
+  // is what every other surface uses, so a sized item cannot read 0.00 on one
+  // screen and "From 15.00" on another.
+  const cardPrice = itemDisplayPrice(item);
+  const showFromPrice = cardPrice.from;
+  // A special only ever discounts the base price; a sized item's discount
+  // already rides on the variant, which itemDisplayPrice() has taken.
   const displayPrice = showFromPrice
-    ? lowestVariantPrice
+    ? cardPrice.price
     : Number(special?.effective_price ?? item.base_price);
   const originalPrice = showFromPrice
     ? (discountedVariants.length > 0

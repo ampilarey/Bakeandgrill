@@ -45,6 +45,7 @@ import {
 } from '../utils/menuCatering';
 import { formatTomorrowDateLabel } from '../utils/collectOn';
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
+import { itemSortPrice } from '../utils/money';
 const MENU_VIEW_KEY = 'bg-menu-view';
 type MenuViewMode = 'grid' | 'list';
 
@@ -93,8 +94,10 @@ function sortMenuItems(list: Item[], sortBy: string): Item[] {
   const byAvailThen = (primary: (a: Item, b: Item) => number) =>
     [...list].sort((a, b) => itemAvailableRank(a) - itemAvailableRank(b) || primary(a, b));
 
-  if (sortBy === 'price-low') return byAvailThen((a, b) => Number(a.base_price) - Number(b.base_price));
-  if (sortBy === 'price-high') return byAvailThen((a, b) => Number(b.base_price) - Number(a.base_price));
+  // By the cheapest size, not base_price: a sized item carries base_price 0,
+  // so "cheapest first" used to put every drink and platter above a 5.00 bun.
+  if (sortBy === 'price-low') return byAvailThen((a, b) => itemSortPrice(a) - itemSortPrice(b));
+  if (sortBy === 'price-high') return byAvailThen((a, b) => itemSortPrice(b) - itemSortPrice(a));
   if (sortBy === 'bestseller') {
     return byAvailThen((a, b) => salesCount(b) - salesCount(a) || a.name.localeCompare(b.name));
   }

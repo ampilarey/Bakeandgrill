@@ -32,6 +32,7 @@ import {
 } from './AccountPage/accountShared';
 import { useAccountAddresses } from './AccountPage/useAccountAddresses';
 import { useAccountProfile } from './AccountPage/useAccountProfile';
+import { itemDisplayPrice } from '../utils/money';
 
 type PanelId =
   | 'profile'
@@ -365,7 +366,9 @@ export function AccountPage() {
                         {item.category && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{item.category}</p>}
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-primary)' }}>MVR {Number(item.base_price).toFixed(2)}</p>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-primary)' }}>
+                          {itemDisplayPrice(item).from ? 'From ' : ''}MVR {itemDisplayPrice(item).price.toFixed(2)}
+                        </p>
                         {!item.is_available && <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{t('account.unavailable')}</p>}
                       </div>
                     </div>

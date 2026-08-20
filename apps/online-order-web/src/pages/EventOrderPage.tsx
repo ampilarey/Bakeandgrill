@@ -31,6 +31,7 @@ import {
   type WizardStep,
 } from './eventOrderHelpers';
 import type { CSSProperties } from 'react';
+import { itemDisplayPrice } from '../utils/money';
 
 export function EventOrderPage() {
   usePageTitle('Plan your event');
@@ -387,7 +388,7 @@ export function EventOrderPage() {
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 700 }}>{item.name}</div>
                               <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                MVR {Number(item.base_price).toFixed(2)}
+                                {itemDisplayPrice(item).from ? 'From ' : ''}MVR {itemDisplayPrice(item).price.toFixed(2)}
                                 {item.is_catering ? ' · Catering' : ''}
                                 {item.has_variants ? ' · Options' : ''}
                               </div>
