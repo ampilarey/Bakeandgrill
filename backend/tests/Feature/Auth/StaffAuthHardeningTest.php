@@ -183,14 +183,44 @@ class StaffAuthHardeningTest extends TestCase
 
     public function test_device_approval_is_required_by_default(): void
     {
-        // Left off, a correct PIN from any laptop opened a till.
-        // Assert the code default, not the resolved value: CI copies
-        // .env.example which sets POS_STRICT_DEVICE_APPROVAL=false for the café.
-        $src = (string) file_get_contents(config_path('pos.php'));
-        $this->assertMatchesRegularExpression(
-            "/env\(\s*'POS_STRICT_DEVICE_APPROVAL'\s*,\s*true\s*\)/",
-            $src,
-            'strict device approval must default ON',
+        // Left off, a correct PIN from any laptop opened a till. This asserts
+        // what the application actually resolves, not what a file says: a
+        // grep of config/pos.php passes just as happily while the running
+        // system has the flag off.
+        $this->assertTrue(
+            (bool) config('pos.strict_device_approval'),
+            'strict device approval must be ON',
+        );
+    }
+
+    public function test_the_env_template_does_not_ship_device_approval_disabled(): void
+    {
+        // The hole the test above could not see.
+        //
+        // config/pos.php was changed to default this ON, and that was reported
+        // as "strict device approval now defaults ON". It did not: .env.example
+        // still carried POS_STRICT_DEVICE_APPROVAL=false, and both CI and every
+        // deployment seed themselves from that file with `cp .env.example .env`
+        // (three times in .github/workflows/ci.yml). The env value wins, so the
+        // code default was never reached anywhere it mattered.
+        //
+        // Asserting the resolved config alone would not have caught it either —
+        // it passes locally, where there is no .env at all and the code default
+        // does apply. Only the template itself tells the truth about what a
+        // fresh deployment gets.
+        $template = (string) file_get_contents(base_path('.env.example'));
+
+        if (preg_match('/^POS_STRICT_DEVICE_APPROVAL\s*=\s*(\S*)/m', $template, $m) !== 1) {
+            // Absent is fine — the code default applies and is ON.
+            $this->addToAssertionCount(1);
+
+            return;
+        }
+
+        $this->assertTrue(
+            filter_var(trim($m[1], "\"'"), FILTER_VALIDATE_BOOL),
+            '.env.example must not ship with device approval disabled — a deployment '
+            . 'seeded from it would accept a till from any laptop',
         );
     }
 
