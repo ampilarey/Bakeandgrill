@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Marketing\Services;
 
+use App\Domains\Marketing\Support\ItemNameSimilarity;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Models\Item;
 use App\Models\ItemPairStat;
@@ -74,6 +75,20 @@ final class ItemAffinityService
             ->get()
             ->keyBy('id');
 
+        // Never offer the same product in another size. `whereNotIn` above
+        // already excludes the exact items in the basket, but "Burger small"
+        // and "Burger (big)" are two ids, so it lets the twin straight through
+        // — and a till offering the big burger to someone who just chose the
+        // small one reads as broken rather than helpful.
+        // keyBy again: Eloquent's only() returns array_values(), so the id keys
+        // the lookup below depends on would be replaced by positions.
+        $items = $items->only(
+            ItemNameSimilarity::rejectNearDuplicates(
+                $items->mapWithKeys(fn (Item $item) => [(int) $item->id => (string) $item->name])->all(),
+                Item::query()->whereIn('id', $ids)->pluck('name')->map('strval')->all(),
+            ),
+        )->keyBy('id');
+
         return $rows
             ->map(function ($row) use ($items) {
                 $item = $items->get((int) $row->paired_item_id);
@@ -128,13 +143,32 @@ final class ItemAffinityService
             ->orderByDesc('lift')
             ->get();
 
+        // Names, to keep a size-twin off its own chip row. The till builds
+        // these once into the cached menu payload, so the check has to happen
+        // here rather than at tap time.
+        $names = Item::query()
+            ->whereIn('id', $ids)
+            ->pluck('name', 'id')
+            ->map('strval')
+            ->all();
+
         $pairs = [];
         foreach ($rows as $row) {
             $anchor = (int) $row->item_id;
+            $paired = (int) $row->paired_item_id;
+
             if (count($pairs[$anchor] ?? []) >= $perItem) {
                 continue;
             }
-            $pairs[$anchor][] = (int) $row->paired_item_id;
+
+            if (
+                isset($names[$anchor], $names[$paired])
+                && ItemNameSimilarity::areNearDuplicates($names[$anchor], $names[$paired])
+            ) {
+                continue;
+            }
+
+            $pairs[$anchor][] = $paired;
         }
 
         return $pairs;

@@ -273,4 +273,108 @@ class ItemAffinityTest extends TestCase
         $this->assertNotContains($soldOut->id, $ids, 'never suggest something the kitchen cannot make');
         $this->assertNotContains($anchor->id, $ids, 'never suggest what is already in the cart');
     }
+
+    // ── The same product in another size ──────────────────────────────────
+
+    /**
+     * `whereNotIn` keeps the exact item out of its own suggestions, but a size
+     * twin is a different id and walked straight past it. Offering "Burger
+     * (big)" to someone who just chose "Burger small" is not an upsell — it is
+     * the till arguing about the order that was just placed.
+     */
+    public function test_the_cart_is_never_offered_the_same_item_in_another_size(): void
+    {
+        $small = $this->item('Burger small', 45);
+        $big = $this->item('Burger (big)', 65);
+        $chips = $this->item('Chicken n chips', 40);
+
+        // Both really are bought alongside the small burger, so both earn a
+        // pair row — the filter, not the data, has to keep the twin out.
+        foreach (range(1, 4) as $i) {
+            $this->order('completed', [$small, $big]);
+            $this->order('completed', [$small, $chips]);
+        }
+
+        app(ItemAffinityService::class)->recompute(90);
+
+        $ids = app(ItemAffinityService::class)
+            ->recommendationsForCart([$small->id])
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotContains($big->id, $ids, 'the big burger is the same product, not an upsell');
+        $this->assertContains($chips->id, $ids, 'the genuine upsell must survive the filter');
+    }
+
+    /**
+     * The rule this replaced would have broken this case.
+     *
+     * An earlier plan was to suppress pairings within a category. Against this
+     * menu that is backwards: Shorteats is the biggest category and
+     * shorteats-with-shorteats is the normal basket — nobody buys one gulha.
+     */
+    public function test_two_different_shorteats_still_pair(): void
+    {
+        $fishGulha = $this->item('F.gulha', 5);
+        $meatGulha = $this->item('H.gulha', 5);
+        $bajiya = $this->item('Bajiya', 5);
+
+        foreach (range(1, 4) as $i) {
+            $this->order('completed', [$fishGulha, $meatGulha, $bajiya]);
+        }
+
+        app(ItemAffinityService::class)->recompute(90);
+
+        $ids = app(ItemAffinityService::class)
+            ->recommendationsForCart([$fishGulha->id])
+            ->pluck('id')
+            ->all();
+
+        $this->assertContains($meatGulha->id, $ids, 'a different filling is a different product');
+        $this->assertContains($bajiya->id, $ids);
+    }
+
+    public function test_the_pos_chip_row_does_not_offer_an_items_own_size_twin(): void
+    {
+        // The till caches this inside the menu payload, so the check has to
+        // happen when the payload is built, not when the chip is tapped.
+        $small = $this->item('Club sandwich S', 50);
+        $full = $this->item('Club sandwich full', 80);
+        $tea = $this->item('Black tea', 10);
+
+        foreach (range(1, 4) as $i) {
+            $this->order('completed', [$small, $full]);
+            $this->order('completed', [$small, $tea]);
+        }
+
+        app(ItemAffinityService::class)->recompute(90);
+
+        $pairs = app(ItemAffinityService::class)
+            ->topPairsForItems([$small->id, $full->id, $tea->id]);
+
+        $this->assertNotContains($full->id, $pairs[$small->id] ?? []);
+        $this->assertContains($tea->id, $pairs[$small->id] ?? []);
+    }
+
+    public function test_a_cart_holding_two_sizes_still_gets_its_other_suggestions(): void
+    {
+        // Filtering must not collapse the whole list when the basket happens to
+        // contain a twin pair already.
+        $small = $this->item('Coke small', 15);
+        $large = $this->item('Coke large', 25);
+        $bajiya = $this->item('Bajiya', 5);
+
+        foreach (range(1, 4) as $i) {
+            $this->order('completed', [$small, $large, $bajiya]);
+        }
+
+        app(ItemAffinityService::class)->recompute(90);
+
+        $ids = app(ItemAffinityService::class)
+            ->recommendationsForCart([$small->id, $large->id])
+            ->pluck('id')
+            ->all();
+
+        $this->assertContains($bajiya->id, $ids);
+    }
 }
