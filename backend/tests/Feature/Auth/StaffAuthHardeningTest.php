@@ -184,8 +184,12 @@ class StaffAuthHardeningTest extends TestCase
     public function test_device_approval_is_required_by_default(): void
     {
         // Left off, a correct PIN from any laptop opened a till.
-        $this->assertTrue(
-            (bool) config('pos.strict_device_approval'),
+        // Assert the code default, not the resolved value: CI copies
+        // .env.example which sets POS_STRICT_DEVICE_APPROVAL=false for the café.
+        $src = (string) file_get_contents(config_path('pos.php'));
+        $this->assertMatchesRegularExpression(
+            "/env\(\s*'POS_STRICT_DEVICE_APPROVAL'\s*,\s*true\s*\)/",
+            $src,
             'strict device approval must default ON',
         );
     }
