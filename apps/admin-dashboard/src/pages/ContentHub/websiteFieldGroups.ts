@@ -139,6 +139,7 @@ export const WEBSITE_PAGE_GROUPS: Record<string, FieldGroup[]> = {
   ],
   Everywhere: [
     { label: 'Header', keys: ['nav_order_cta_text', 'language_switcher_enabled'] },
+    { label: 'Dhivehi type', keys: ['dhivehi_font'] },
     {
       label: 'Announcement bar',
       keys: ['announcement_enabled', 'announcement_text', 'announcement_style', 'announcement_url'],

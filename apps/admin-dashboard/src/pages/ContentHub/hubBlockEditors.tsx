@@ -130,6 +130,63 @@ export function renderPlainEditor(
       </label>
     );
   }
+  if (block.type === 'font') {
+    const safeFontUrl = /^\/storage\/fonts\/[a-f0-9]{64}\.(woff2|woff|ttf|otf)$/.test(val) ? val : '';
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <p
+          lang="dv"
+          dir="rtl"
+          style={{
+            margin: 0,
+            fontFamily: safeFontUrl ? 'BakeDhivehi, var(--font-dhivehi)' : 'var(--font-dhivehi)',
+            fontSize: 22,
+            lineHeight: 1.5,
+          }}
+        >
+          ދިވެހި ބަސް
+        </p>
+        {safeFontUrl ? (
+          <style>{`@font-face{font-family:'BakeDhivehi';src:url('${safeFontUrl}');font-display:swap;unicode-range:U+0780-U+07BF;}`}</style>
+        ) : null}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="file"
+            accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void deps.onUpload(block, scope, file);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => deps.setDraft(scope, block.key, '')}
+            style={{
+              height: 40,
+              padding: '0 12px',
+              borderRadius: 10,
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Use default
+          </button>
+          <input
+            value={val}
+            onChange={(e) => deps.setDraft(scope, block.key, e.target.value)}
+            placeholder="Empty = A_Faruma"
+            style={{ flex: 1, minWidth: 180, height: 40, borderRadius: 10, border: '1px solid var(--color-border)', padding: '0 10px', fontFamily: 'inherit' }}
+          />
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          TTF/OTF always work. WOFF/WOFF2 need the server fontTools inspector; a TTF is converted to WOFF2 when that inspector is present.
+        </p>
+      </div>
+    );
+  }
   if (block.type === 'image') {
     return (
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

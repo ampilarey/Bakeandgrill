@@ -16,6 +16,19 @@ There are **two installs** of the app on `sg-s2`. **Always deploy to TEST first.
 
 If the user just says "pull?" with no environment qualifier → **TEST only**. Confirm before touching production.
 
+## One-time: Dhivehi WOFF2 inspector
+
+Content Hub font uploads inspect/convert WOFF2 with Python `fontTools` + `brotli`.
+Install once per environment (not on every pull):
+
+```bash
+bash /home/bakeandgrill/test.bakeandgrill.mv/scripts/install-fonttools.sh
+# production, only when going live with this feature:
+# bash /home/bakeandgrill/public_html/scripts/install-fonttools.sh
+```
+
+Without that pair, TTF/OTF still work; WOFF/WOFF2 are rejected with a message that says so.
+
 ## TEST auto-deploy
 
 Preferred path: after CI is green, GitHub Actions calls `POST /api/deploy/test-pull` for an immediate pull. Cron (`scripts/self-update-test.sh`) remains the fallback. Setup: `docs/TEST_AUTO_DEPLOY.md`. Production is never auto-deployed.

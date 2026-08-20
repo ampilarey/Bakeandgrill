@@ -24,25 +24,25 @@ class ContentResolverSeparationSnapshotTest extends TestCase
     public function test_resolver_snapshot_matches_committed_fixture_for_all_680_combinations(): void
     {
         $keys = ContentResolverSnapshot::nonDeprecatedKeys();
-        $this->assertCount(176, $keys, 'Expected 176 non-deprecated content.php keys');
+        $this->assertCount(177, $keys, 'Expected 177 non-deprecated content.php keys');
 
         $actual = ContentResolverSnapshot::capture();
         $this->assertSame(
             ContentResolverSnapshot::EXPECTED_COMBINATIONS,
             $actual['meta']['combinations'],
-            'Expected 176 keys × 2 apps × 2 locales = 704 combinations',
+            'Expected 177 keys × 2 apps × 2 locales = 708 combinations',
         );
 
         $path = ContentResolverSnapshot::fixturePath();
 
         if (env('GENERATE_CONTENT_RESOLVER_SNAPSHOT') === '1') {
             $dir = dirname($path);
-            if (! is_dir($dir)) {
+            if (!is_dir($dir)) {
                 mkdir($dir, 0777, true);
             }
             file_put_contents(
                 $path,
-                json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n",
+                json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n",
             );
             $this->assertFileExists($path);
 
@@ -65,8 +65,8 @@ class ContentResolverSeparationSnapshotTest extends TestCase
         $this->assertSame(
             [],
             $diffs,
-            "ContentResolver snapshot drifted (".count($diffs)." differences).\n"
-            .implode("\n", array_slice($diffs, 0, 40)),
+            'ContentResolver snapshot drifted (' . count($diffs) . " differences).\n"
+            . implode("\n", array_slice($diffs, 0, 40)),
         );
     }
 }

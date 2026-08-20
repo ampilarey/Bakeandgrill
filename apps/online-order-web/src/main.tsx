@@ -18,6 +18,7 @@ import { AbandonedCartTracker } from './components/AbandonedCartTracker';
 import { ScrollToTop } from './components/ScrollToTop';
 import { ServiceUnavailableModal } from './components/ServiceUnavailableModal';
 import '@shared/styles/fonts.css';
+// Custom Thaana override: /css/dhivehi-font.css?app=order_app reads content key dhivehi_font.
 import './index.css';
 
 // Apply saved theme before first paint — useTheme only mounts on Account.

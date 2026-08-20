@@ -31,6 +31,8 @@ describe('shared typography (fonts.css)', () => {
     expect(fontsCss).toMatch(/\[lang=["']dv["']\]/);
     expect(fontsCss).toMatch(/\[dir=["']rtl["']\]/);
     expect(fontsCss).toMatch(/font-family:\s*var\(--font-dhivehi\)/);
+    expect(fontsCss).toContain("url('/fonts/a_faruma.woff2')");
+    expect(fontsCss).toContain('unicode-range: U+0780-U+07BF');
 
     const publicCopy = fs.readFileSync(path.join(repoRoot, 'backend/public/css/fonts.css'), 'utf8');
     expect(publicCopy).toBe(fontsCss);

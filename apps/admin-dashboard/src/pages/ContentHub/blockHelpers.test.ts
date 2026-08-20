@@ -45,4 +45,9 @@ describe('Content Hub mode-card helpers', () => {
     expect(helperForBlock(block('order_mode_pickup_image'))).toMatch(/Pickup/i);
     expect(helperForBlock(block('order_mode_dine_in_image'))).toMatch(/Eat here/i);
   });
+
+  it('registers the Dhivehi webfont helper', () => {
+    expect(helperForBlock(block('dhivehi_font'))).toMatch(/Thaana webfont/i);
+    expect(helperForBlock(block('dhivehi_font'))).toMatch(/A_Faruma/);
+  });
 });

@@ -17,6 +17,7 @@ vi.mock('../api/content', () => ({
   saveContentDrafts: vi.fn(async () => ({ drafts: {}, saved_at: null })),
   updateContent: vi.fn(async () => ({ blocks: [] })),
   uploadContentImage: vi.fn(),
+  uploadContentFont: vi.fn(),
   exportContent: vi.fn(),
   importContent: vi.fn(),
   getContentRevisions: vi.fn(async () => ({ revisions: [] })),
@@ -130,7 +131,8 @@ describe('Content Hub responsive bands', () => {
       expect(screen.getByTestId('view-live-site')).toBeTruthy();
       expect(screen.getAllByTestId('draft-save-status').length).toBeGreaterThan(0);
 
-      const tabs = screen.getByRole('tablist', { name: /website pages/i });
+      // Workspace testid is also present on the loading skeleton — wait for tabs.
+      const tabs = await screen.findByRole('tablist', { name: /website pages/i });
       expect(tabs.scrollWidth).toBeLessThanOrEqual(Math.max(tabs.clientWidth, width) + 1);
     }
   });
@@ -161,7 +163,8 @@ describe('Content Hub responsive bands', () => {
     expect(screen.queryByTestId('preview-toggle')).toBeNull();
 
     if (width > 767) {
-      const tabs = screen.getByRole('tablist', { name: /order app screens/i });
+      // Workspace testid is also present on the loading skeleton — wait for tabs.
+      const tabs = await screen.findByRole('tablist', { name: /order app screens/i });
       expect(tabs.scrollWidth).toBeLessThanOrEqual(Math.max(tabs.clientWidth, width) + 1);
     }
   });

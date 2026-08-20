@@ -8,8 +8,8 @@ Audited from **renderers** (Blade templates and Order App components), not from 
 | Audited at | 2026-08-13 (settings-context correction same day) |
 | Commit | `a377ebc37` + this correction |
 | Machine index | `docs/content_surface_inventory.json` (source of truth for the coverage test) |
-| Website keys inventoried | 149 non-deprecated registry keys targeting `website` |
-| Order App keys inventoried | 88 non-deprecated registry keys targeting `order_app` |
+| Website keys inventoried | 153 non-deprecated registry keys targeting `website` |
+| Order App keys inventoried | 92 non-deprecated registry keys targeting `order_app` |
 
 **Structural surfaces stay distinct:** Website global footer ≠ Order App footer ≠ Mobile bottom navigation. They are never one “footer”.
 
@@ -151,6 +151,7 @@ These come from `SurfaceCatalog` / live `page_blocks` placement. **Three footers
 | 39 | `social_tiktok` | TikTok URL | Footer | layout site_footer chrome |
 | 40 | `nav_order_cta_text` | Nav — Order CTA Button | Footer | layout HEADER Order CTA (group=Footer mismatch) |
 | 41 | `home_chat_label` | Home — Chat label | Homepage | layout footer chat (group=Homepage mismatch) |
+| 42 | `dhivehi_font` | Dhivehi font | Everywhere | layout.blade.php + /css/dhivehi-font.css?app=website |
 
 ### 2.home — Home
 
@@ -381,6 +382,7 @@ Provisional Stage-2 list was Home, Menu, Ordering, Order history, Gift cards. Th
 | 34 | `social_tiktok` | TikTok URL | Footer | apps/online-order-web/src/components/shell/* + SiteSettingsContext |
 | 35 | `nav_order_cta_text` | Nav — Order CTA Button | Footer | apps/online-order-web/src/components/shell/* + SiteSettingsContext |
 | 36 | `home_chat_label` | Home — Chat label | Homepage | apps/online-order-web/src/components/shell/* + SiteSettingsContext |
+| 37 | `dhivehi_font` | Dhivehi font | Everywhere | index.html + /css/dhivehi-font.css?app=order_app |
 
 ### 3.home — Home
 

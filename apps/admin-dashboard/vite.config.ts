@@ -23,6 +23,7 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
       '/sanctum': { target: 'http://localhost:8000', changeOrigin: true },
+      '/css': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },
   build: {

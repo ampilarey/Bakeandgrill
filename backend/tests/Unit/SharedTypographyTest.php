@@ -13,12 +13,12 @@ final class SharedTypographyTest extends TestCase
 {
     public function test_fonts_css_uses_absolute_self_hosted_paths(): void
     {
-        $css = file_get_contents(dirname(__DIR__, 3).'/packages/shared/src/styles/fonts.css');
+        $css = file_get_contents(dirname(__DIR__, 3) . '/packages/shared/src/styles/fonts.css');
         $this->assertIsString($css);
         $this->assertSame(
             $css,
-            file_get_contents(dirname(__DIR__, 2).'/public/css/fonts.css'),
-            'backend/public/css/fonts.css must match packages/shared/src/styles/fonts.css'
+            file_get_contents(dirname(__DIR__, 2) . '/public/css/fonts.css'),
+            'backend/public/css/fonts.css must match packages/shared/src/styles/fonts.css',
         );
 
         preg_match_all("/url\\((['\"]?)([^'\")]+)\\1\\)/", $css, $matches);
@@ -27,17 +27,19 @@ final class SharedTypographyTest extends TestCase
             $this->assertStringStartsWith('/fonts/', $url);
             $this->assertStringNotContainsString('fonts.googleapis.com', $url);
             $this->assertStringNotContainsString('fonts.gstatic.com', $url);
-            $path = dirname(__DIR__, 2).'/public'.$url;
+            $path = dirname(__DIR__, 2) . '/public' . $url;
             $this->assertFileExists($path, "Missing self-hosted font file for {$url}");
         }
 
         foreach (['--font-ui', '--font-display', '--font-dhivehi', '--font-mono'] as $var) {
-            $this->assertMatchesRegularExpression('/'.preg_quote($var, '/').'\s*:\s*[^;]+;/', $css);
+            $this->assertMatchesRegularExpression('/' . preg_quote($var, '/') . '\s*:\s*[^;]+;/', $css);
         }
 
         $this->assertStringContainsString('[lang="dv"]', $css);
         $this->assertStringContainsString('[dir="rtl"]', $css);
         $this->assertStringContainsString('var(--font-dhivehi)', $css);
+        $this->assertStringContainsString("url('/fonts/a_faruma.woff2')", $css);
+        $this->assertStringContainsString('unicode-range: U+0780-U+07BF', $css);
     }
 
     public function test_csp_no_longer_allows_google_fonts_hosts(): void

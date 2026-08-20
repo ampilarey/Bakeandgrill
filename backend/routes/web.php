@@ -129,11 +129,11 @@ Route::get('/invoices/{token}/pdf', [InvoicePageController::class, 'pdf'])
 Route::get('/payments/bml/return', [App\Http\Controllers\Api\PaymentController::class, 'bmlReturn'])->name('bml.return');
 
 // Online Order SPA — redirect bare /order to /order/ then catch-all for React Router
-Route::get('/order', function (\Illuminate\Http\Request $request) {
+Route::get('/order', function (Illuminate\Http\Request $request) {
     $target = '/order/';
     $qs = $request->getQueryString();
     if ($qs) {
-        $target .= '?'.$qs;
+        $target .= '?' . $qs;
     }
 
     return redirect($target);

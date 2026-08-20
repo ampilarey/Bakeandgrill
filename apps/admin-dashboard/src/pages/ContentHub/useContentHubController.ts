@@ -13,6 +13,7 @@ import {
   scheduleContent,
   updateContent,
   uploadContentImage,
+  uploadContentFont,
   type ContentBlock,
   type ContentLocale,
   type ContentRevision,
@@ -418,6 +419,16 @@ export function useContentHubController(toast: ContentHubToast) {
 
   const onUpload = async (block: ContentBlock, scope: ContentScope, file: File) => {
     try {
+      if (block.type === 'font') {
+        const res = await uploadContentFont(block.key, uploadAppFor(scope), file, locale);
+        setDraft(scope, block.key, res.url);
+        success(
+          res.converted
+            ? 'Font uploaded and converted to WOFF2'
+            : `Font uploaded (${res.format ?? 'webfont'})`,
+        );
+        return;
+      }
       const res = await uploadContentImage(block.key, uploadAppFor(scope), file, undefined, locale);
       setDraft(scope, block.key, res.url);
       success('Image uploaded');

@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__ . '/../routes/api.php',
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
+        then: function (): void {
+            // Cookie-less: public Cache-Control + no session. Do not move into web.php.
+            Illuminate\Support\Facades\Route::get('/css/dhivehi-font.css', [App\Http\Controllers\DhivehiFontCssController::class, 'show'])
+                ->name('css.dhivehi-font');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Trust reverse proxies for correct HTTPS / client IP behind nginx or Cloudflare.
