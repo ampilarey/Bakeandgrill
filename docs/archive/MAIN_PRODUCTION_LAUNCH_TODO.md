@@ -1,4 +1,17 @@
 # Main Production Launch — TODO
+
+> **⚠ ARCHIVED — the paths below are wrong. Do not copy commands from this file.**
+>
+> This was written before launch, when production was expected to live at
+> `/home/bakeandgrill/bakeandgrill.mv` on a separate server. It did not: production
+> shares `sg-s2` with TEST and lives at `/home/bakeandgrill/public_html`. That
+> directory never existed, so the crontab and systemd entries in section D point at
+> nothing — a `cd` to a missing directory fails silently in cron, and every
+> scheduled job simply never runs.
+>
+> Use [`../DEPLOY_COMMAND.md`](../DEPLOY_COMMAND.md) for real paths and commands.
+> Kept only as a record of what was planned.
+
 **Target:** https://bakeandgrill.mv (separate production server)  
 **Current state:** All development done on UAT (test.bakeandgrill.mv). Production server not yet provisioned.  
 **Prerequisite:** Complete UAT sign-off first. This checklist is for the later production go-live.
