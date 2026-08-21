@@ -87,17 +87,70 @@ php artisan tinker --execute="echo App\Domains\Content\DhivehiFont::canInspectCo
 Without it, WOFF2 uploads are refused with "this server cannot inspect WOFF2"
 and TTF uploads are stored uncompressed instead of converted.
 
-**Scheduled tasks and the queue worker** must point at the right directory. A
-wrong path here fails silently — cron reports nothing, and every scheduled job
-simply never runs (`insights:compute-item-pairs`, stale-order cancellation,
-loyalty expiry, reorder alerts, scheduled SMS). Check what is installed:
+**Scheduled tasks and the queue worker.** Check what is installed:
 
 ```bash
 crontab -l | grep -E "schedule:run|queue:work"
 ```
 
-Every path in the output must be a directory that exists. Production is
-`/home/bakeandgrill/public_html/backend`.
+It should match the three lines below exactly. These were repaired on
+2026-08-21 after both the scheduler and the queue worker were found dead —
+see "Why these lines look the way they do".
+
+```
+* * * * * /bin/flock -n /home/bakeandgrill/public_html/backend/storage/queue-worker.lock -c 'cd /home/bakeandgrill/public_html/backend && exec /opt/alt/php84/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600' >> /home/bakeandgrill/public_html/backend/storage/logs/queue-worker.log 2>&1
+* * * * * /bin/flock -n /home/bakeandgrill/test.bakeandgrill.mv/backend/storage/queue-worker.lock -c 'cd /home/bakeandgrill/test.bakeandgrill.mv/backend && exec /opt/alt/php84/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600' >> /home/bakeandgrill/test.bakeandgrill.mv/backend/storage/logs/queue-worker.log 2>&1
+* * * * * cd /home/bakeandgrill/public_html/backend && /opt/alt/php84/usr/bin/php artisan schedule:run > /dev/null 2>> storage/logs/schedule-error.log
+```
+
+Edit them by writing a file, never by pasting into a shell — a bare `*` at the
+start of a line is a glob, and bash will expand it against your home directory:
+
+```bash
+crontab -l > /tmp/cron.new     # edit /tmp/cron.new, then:
+crontab /tmp/cron.new && crontab -l
+```
+
+Confirm afterwards. Expect exactly two PHP processes, both `/opt/alt/php84`:
+
+```bash
+ps -eo args | grep "[a]rtisan queue:work" | grep -v flock | grep -v "sh -c"
+```
+
+Changing the cron line does not replace a running worker — `--max-time=3600`
+keeps it alive for up to an hour and flock stops a replacement starting. To
+apply a change now: `pkill -f "artisan queue:work"` and wait a minute.
+
+### Why these lines look the way they do
+
+Three deliberate details, each of which was a real failure:
+
+**Absolute path to PHP.** Bare `php` under cron resolved to
+`/opt/cpanel/ea-php84/root/usr/bin/php`, which no longer exists after a cPanel
+PHP update — so every invocation failed. `/usr/local/bin/php` is not safe
+either: it reports 8.4 interactively but resolves to **ea-php81** without a
+TTY, which is below the `^8.2` this project requires and is past end of life.
+`/opt/alt/php84/usr/bin/php` is the binary Laravel's own scheduler picks for
+sub-processes.
+
+**`flock`, not `pgrep`.** The previous guard was
+`pgrep -f "queue:work.*public_html" || cd … && nohup php …`, which failed twice
+over. The working directory is not part of a process's argv, so the pattern
+could never match; and `A || B && C` runs `C` whether or not `A` succeeds, so
+the guard did nothing in either direction. `flock -n` holds a real lock for the
+worker's lifetime and cannot be fooled by what is or isn't in a command line.
+
+**stderr is logged, stdout is not.** The scheduler previously ended in
+`>> /dev/null 2>&1`, which is why a command failing every minute for an unknown
+length of time produced no evidence anywhere. Sending stdout to `/dev/null` and
+stderr to a file keeps the log empty while healthy and captures failures.
+
+A quick health check any time:
+
+```bash
+cat /home/bakeandgrill/public_html/backend/storage/logs/schedule-error.log   # want empty
+ps -eo args | grep -c "[a]rtisan queue:work.*php84"                          # want 2
+```
 
 ---
 
