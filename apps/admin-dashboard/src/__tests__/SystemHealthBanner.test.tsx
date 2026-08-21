@@ -40,10 +40,8 @@ const healthy = {
 };
 
 describe('SystemHealthBanner', () => {
-  // mockClear, not mockReset: under vitest 4 resetting a mock that returns
-  // a promise detaches its rejection tracking, and a later rejected probe
-  // surfaces as an unhandled rejection. Every test sets its own
-  // implementation, so clearing call history is all that is needed.
+  // Every test sets its own implementation, so call history is all that
+  // needs clearing.
   beforeEach(() => getSystemHealth.mockClear());
 
   it('says nothing while everything is running', async () => {
@@ -117,11 +115,11 @@ describe('SystemHealthBanner', () => {
   });
 
   it('stays quiet when health could not be read', async () => {
-    // The component's queryFn catches a failed probe and returns null, so
-    // "could not read health" and "health is fine" both reach the render as
-    // no banner. Staff without permission to read health, and a momentary
-    // blip, are both reasons to stay quiet rather than put a red bar across
-    // everyone's screen.
+    // The component catches a failed probe and stores null, so "could not
+    // read health" and "health is fine" both reach the render as no banner.
+    // Staff without permission to read health, and a momentary blip, are both
+    // reasons to stay quiet rather than put a red bar across everyone's
+    // screen.
     //
     // Asserted via a null payload rather than a throwing mock: vitest 4
     // reports a mock that throws as a test error even when the caller catches
