@@ -156,7 +156,28 @@ where a 4-hour browser TTL is correct.
 
 ---
 
-## 5. Alerting for a dead scheduler or queue worker
+## 5. Alerting for a dead scheduler or queue worker — **done**
+
+Both halves are in place as of 2026-08-21:
+
+- **In the panel** — `SystemHealthBanner` shows a red bar on every admin page
+  when the scheduler, queue, database, redis or storage probe reports trouble,
+  naming the consequence rather than the status. Replaces a grey Dashboard
+  tile that was indistinguishable from a healthy one.
+- **Outside the server** — `HEALTHCHECK_URL` is set in production's `.env`,
+  so `scheduler:heartbeat` pings healthchecks.io every minute and the service
+  alerts by email when the pings stop. This needed no code:
+  `SchedulerRunTracker::pingExternalHeartbeat()` already existed and was
+  waiting on the env var.
+
+The banner only helps when someone is looking; the ping is what catches it at
+3am, or when the whole server is down. Keep both.
+
+**Not set on TEST**, deliberately: TEST has no `schedule:run` in cron, so it
+would never ping and would alert constantly.
+
+<details>
+<summary>Original text</summary>
 
 **Why.** On 2026-08-21 both the scheduler and the queue worker were found dead
 on production. Three independent faults, none of which left any trace, and it
@@ -190,6 +211,8 @@ proves nothing about the alert path.
 
 **Watch out for** alert fatigue: a check that fires during every deploy will be
 muted within a week and then it may as well not exist.
+
+</details>
 
 ---
 
