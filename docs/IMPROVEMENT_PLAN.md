@@ -178,36 +178,76 @@ muted within a week and then it may as well not exist.
 
 ---
 
-## 6. One server-rendered `/menu` page
+## 6. Move the dine-in menu to the Blade site, server-rendered
 
-**Why.** `/order/menu` returns `<body><div id="root"></div></body>`. There is no
-per-item URL at all — items are a query parameter (`?item=123`) that opens a
-sheet — so there is nothing for an individual product to rank as. Meanwhile
-`layout.blade.php` tells Google `"hasMenu": ".../order"`, pointing the crawler
-at that empty div.
+**Read this first — it replaces an earlier version of this item that said
+"build a new `/menu` page". A dine-in menu already exists.**
+`apps/online-order-web/src/pages/MenuViewPage.tsx` (508 lines, plus a 234-line
+stylesheet) is served at **`/order/view`** and describes itself as a
+"Standalone dine-in digital menu — view only (no cart, login, or AppShell)".
+Building a second menu page would duplicate it. **Replace it, do not add
+alongside it.**
 
-**Deliberately one page, not 58 item pages.** Per-item URLs are a bigger job
-with an unproven return — see item 8's note on measuring first.
+Nothing links to `/order/view` from the site — it is reached by scanning a QR
+code, generated in `SettingsPage/WebsiteSettingsSubPage.tsx` and used as the
+default QR target in `signage/SignageDesigner.tsx`.
+
+**Why move it to Blade.** Two reasons, and the second matters more than SEO:
+
+1. It is inside the React app, so a crawler sees `<div id="root"></div>`.
+   Meanwhile `layout.blade.php` tells Google `"hasMenu": ".../order"` —
+   pointing it at that same empty div.
+2. **Dine-in is the bigger win.** Someone scanning a QR code at a table is on a
+   phone, indoors, possibly on weak mobile data, and currently waits for a
+   large JS bundle before a single item appears. Server-rendered HTML shows
+   immediately.
+
+**Server-rendered does not mean no JavaScript.** The content must be in the
+initial HTML; the tap-for-details sheet, category scroll-spy and language
+toggle can still be layered on with JS, the way `prayer-times.blade.php`
+already works.
 
 **Files**
 - `backend/routes/web.php` — new `GET /menu`
-- `backend/resources/views/` — new `menu.blade.php` extending `layout.blade.php`
-- Existing server-rendered pages to copy the shape from: `/contact`, `/hours`,
-  `/prayer-times`
+- `backend/resources/views/menu.blade.php` — new, extending `layout.blade.php`
+- Shape to copy: `prayer-times.blade.php` (server-rendered, interactive,
+  handles Dhivehi)
+- Behaviour to port from `MenuViewPage.tsx`: category rail with scroll-spy,
+  item sheet, offers, "new item" badges (`isItemNew`, capped at
+  `NEW_ITEMS_CAP`), Dhivehi names (`card_name_dv` / `name_dv` fallbacks),
+  language switcher gating (`isLanguageSwitcherEnabled`)
+- Then repoint: `apps/admin-dashboard/src/pages/SettingsPage/WebsiteSettingsSubPage.tsx`
+  (~line 16) and `apps/admin-dashboard/src/pages/signage/SignageDesigner.tsx`
+  (~line 179)
 
 **Approach**
-- Real HTML: every active item with name, description, price, image, grouped by
-  category. No JS required to read it.
+- Build `/menu` in Blade with every active item — name, description, price,
+  image — grouped by category, all present in the HTML.
 - `Menu` + `MenuItem` JSON-LD alongside the existing `Restaurant` block.
-- Each item gets an "Order" button linking to `/order/menu?item={id}` — the
-  handoff into the SPA, where cart and checkout stay.
-- Dhivehi: the page must respect `[lang="dv"]` like the rest of the Blade site.
+- Each item gets an **"Order"** button linking to `/order/menu?item={id}`.
+  Browsing is a reading task and belongs on the site; cart and checkout stay in
+  the SPA. That is the same boundary we decided to keep when the question of
+  merging the two apps came up.
+- Repoint the QR generator and the signage default at `/menu`.
+- Make `/order/view` **redirect** to `/menu` — cheap insurance for any QR code
+  already printed.
+- Delete `MenuViewPage.tsx` / `.css` / `.test.tsx` only once the redirect is
+  live and the QR sources are repointed. Not in the same PR.
 
-**Done when** `curl https://bakeandgrill.mv/menu | grep -i bajiya` finds the item
-without executing any JavaScript.
+**Done when**
+- `curl https://bakeandgrill.mv/menu | grep -i bajiya` finds the item, with no
+  JavaScript executed.
+- Scanning the table QR lands on `/menu` and the first item is visible before
+  any bundle finishes loading.
+- A Dhivehi visitor sees Dhivehi names, and the page still works with JS
+  disabled (degraded, but readable).
 
-**Watch out for** caching — this page changes whenever the menu does. Don't put
-a long `max-age` on it without a bust mechanism.
+**Watch out for**
+- Caching: the page changes whenever the menu does. Do not give it a long
+  `max-age` without a bust mechanism — and note Cloudflare overrides browser
+  TTL to 4 hours by default (see item 4).
+- Do not lose the offers section or the "new" badges in the port; they are easy
+  to overlook because they are conditional.
 
 ---
 
