@@ -95,7 +95,20 @@ copies of security code *will* drift, and this is also the honest answer to
 
 ---
 
-## 3. Dedupe `fonts.css`
+## 3. Dedupe `fonts.css` — **already done, nothing to build**
+
+Checked after writing this plan: `backend/tests/Unit/SharedTypographyTest.php`
+already asserts the two files are byte-identical, and goes further — every URL
+must be self-hosted under `/fonts/`, each font file must exist on disk, all four
+CSS variables must be defined, and the Dhivehi rules must be present. That is
+why the copies have not drifted.
+
+The "preferred" version below (generating one from the other) would add build
+machinery for a problem a passing test already prevents. **Skip this item.**
+Left here so it is not re-proposed.
+
+<details>
+<summary>Original text</summary>
 
 **Why.** Two copies kept in sync by hand — the file's own header says so:
 `packages/shared/src/styles/fonts.css` is called the canonical copy, and
@@ -118,6 +131,8 @@ they diverge.
 **Watch out for** the absolute `/fonts/…` URLs — the comment at the top explains
 they must stay absolute because the sheet is bundled into `/admin/assets/` and
 `/order/assets/` where relative paths break.
+
+</details>
 
 ---
 
@@ -251,7 +266,18 @@ already works.
 
 ---
 
-## 7. Fix `hasMenu`, add `sitemap.xml`
+## 7. Fix `hasMenu` — **the sitemap half is done**
+
+`sitemap.xml` is built and live: `SitemapController`, routed at
+`/sitemap.xml`, referenced from `robots.txt`, covered by
+`backend/tests/Feature/SitemapTest.php`. It lists the six server-rendered
+pages with `hreflang` alternates for English and Dhivehi, and deliberately
+omits the SPA routes. Tests guard that every advertised URL returns 200 and
+that no `/order/*` or staff path is ever listed.
+
+**What is left** is the `hasMenu` fix, which depends on item 6 — and adding
+`/menu` to `SitemapController::PAGES` once that page exists. It is the page
+most worth indexing on the site, and its absence is noted in the controller.
 
 **Why.** Small, and closes the loop on item 6.
 

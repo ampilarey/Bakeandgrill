@@ -29,6 +29,12 @@ use App\Http\Controllers\PrayerTimesWebController;
 
 Route::get('/prayer-times', [PrayerTimesWebController::class, 'index'])->name('prayer-times.index');
 
+// sitemap.xml — deliberately outside the service.banner group. A crawler
+// asking for the sitemap during a maintenance window should get the sitemap,
+// not the branded 503 page rendered as XML.
+Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])
+    ->name('sitemap');
+
 // Public Website Pages (Customer-facing only)
 // `service.banner` shares $serviceBanner with layout.blade.php and returns the
 // branded maintenance view (503) when the `marketing_site` service key is off.
