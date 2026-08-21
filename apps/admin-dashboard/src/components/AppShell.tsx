@@ -21,6 +21,7 @@ import { SectionBar, rememberSectionPath } from './SectionBar';
 import { SectionRail } from './SectionRail';
 import { MobileTabBar } from './MobileTabBar';
 import { MobileSectionSheet } from './MobileSectionSheet';
+import { SystemHealthBanner } from './SystemHealthBanner';
 
 const SIDEBAR_COLLAPSED_KEY = 'bg_sidebar_collapsed';
 
@@ -293,6 +294,8 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
           </div>
         </header>
 
+        <SystemHealthBanner />
+
         <main className="admin-shell-main admin-shell-main--mobile">
           {children}
         </main>
@@ -407,6 +410,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
         </aside>
 
         <div className="admin-main admin-shell-content" style={{ marginLeft: railW }}>
+          <SystemHealthBanner />
           <main className="admin-shell-main">
             {children}
           </main>
