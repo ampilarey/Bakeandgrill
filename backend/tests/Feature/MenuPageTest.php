@@ -153,6 +153,95 @@ class MenuPageTest extends TestCase
         );
     }
 
+    // ── Layout: the rail, the bands, the outline ──────────────────────────
+
+    /** Just the menu, without the shared header/footer chrome around it. */
+    private function menuShell(): string
+    {
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $start = strpos($html, '<div class="menu-shell">');
+        $end = strpos($html, '<div class="menu-cta">');
+        $this->assertNotFalse($start, 'the menu shell must be in the HTML');
+        $this->assertNotFalse($end, 'the closing CTA must follow the menu');
+
+        return substr($html, $start, $end - $start);
+    }
+
+    public function test_the_rail_lists_every_section_with_its_count(): void
+    {
+        // Mirrors the order app's left category rail. The count is what tells
+        // someone whether a section is worth the tap.
+        $shorteats = $this->category('Shorteats', 1);
+        $this->item($shorteats, 'Bajiya', 5);
+        $this->item($shorteats, 'Cutlet', 6);
+        $drinks = $this->category('Drinks', 2);
+        $this->item($drinks, 'Coke', 15);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertNotEmpty($rail, 'the category rail must be in the HTML');
+
+        $this->assertStringContainsString('href="#cat-' . $shorteats->id . '"', $rail[0]);
+        $this->assertStringContainsString('href="#cat-' . $drinks->id . '"', $rail[0]);
+        // Spoken as "Shorteats 3" without this — the numeral needs a noun.
+        $this->assertStringContainsString('aria-label="Shorteats, 2 items"', $rail[0]);
+        $this->assertStringContainsString('aria-label="Drinks, 1 item"', $rail[0]);
+    }
+
+    public function test_a_category_without_art_never_renders_an_empty_image(): void
+    {
+        // src="" re-requests the page itself in some browsers, and shows a
+        // broken-image glyph in the band either way.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $shell = $this->menuShell();
+
+        // Scoped to the menu itself: the shared layout renders the brand logo
+        // with an empty src when no logo setting is stored, which is its own
+        // problem and would make this assertion fail for the wrong reason.
+        $this->assertStringNotContainsString('src=""', $shell);
+        $this->assertStringNotContainsString('srcset=""', $shell);
+        // The band is still there, carrying its own tint instead of a photo.
+        $this->assertMatchesRegularExpression(
+            '#<header class="menu-cat-band" id="cat-' . $cat->id . '"\s+style="background: linear-gradient#',
+            $shell,
+        );
+    }
+
+    public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
+    {
+        // h1 page → h2 category → h3 item. Item names were spans first, which
+        // renders the same and tells a crawler nothing about the structure.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        preg_match('#<div class="menu-main">.*#s', $html, $main);
+        $this->assertNotEmpty($main);
+
+        $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Shorteats\s*</h2>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h3 class="menu-card-name"[^>]*>Bajiya</h3>#', $main[0]);
+    }
+
+    public function test_the_whole_card_is_the_link_not_a_caption_beside_it(): void
+    {
+        // The photo is the biggest thing on the card; a separate "Order →"
+        // caption made the small text the only tap target.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '#<a class="menu-card" href="/order/menu\?item=' . $item->id . '">\s*<div class="menu-card-circle">#',
+            $html,
+        );
+    }
+
     // ── What search engines get ───────────────────────────────────────────
 
     public function test_it_publishes_menu_structured_data(): void
@@ -238,6 +327,25 @@ class MenuPageTest extends TestCase
         $this->get('/menu?lang=dv')
             ->assertOk()
             ->assertSee('ބަޖިޔާ', false);
+    }
+
+    public function test_a_dhivehi_visitor_gets_dhivehi_category_names(): void
+    {
+        // The rail and the band are the page's navigation. Leaving them English
+        // on a Dhivehi page is the half-translation that reads worst.
+        $this->enableDhivehi();
+        $cat = Category::create([
+            'name' => 'Shorteats',
+            'name_dv' => 'ހެދިކާ',
+            'slug' => 'shorteats',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $this->item($cat, 'Bajiya', 5);
+
+        $this->get('/menu?lang=dv')
+            ->assertOk()
+            ->assertSee('ހެދިކާ', false);
     }
 
     public function test_an_item_with_no_dhivehi_name_still_appears_in_dhivehi(): void
