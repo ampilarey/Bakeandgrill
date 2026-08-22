@@ -83,6 +83,9 @@
     font-size: 2.75rem;
     margin-bottom: 1.15rem;
 }
+/* <picture> is an inline wrapper with no size of its own — without this the
+   img sizes against a shrink-to-fit box and object-fit has nothing to cover. */
+.menu-item-hero picture { display: block; width: 100%; height: 100%; }
 .menu-item-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .menu-item-page .menu-fav {
     display: none;

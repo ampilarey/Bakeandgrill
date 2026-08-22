@@ -655,7 +655,12 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('site-service-banner', $html);
         $this->assertStringContainsString('data-service-key="online_ordering"', $html);
         $this->assertStringContainsString('Online ordering is paused today.', $html);
-        $this->assertStringContainsString('read the menu', $html);
+        // The owner set no alternatives, so none are offered. An earlier
+        // version invented "(Try: read the menu, order for tomorrow, call)"
+        // and shipped it to production, where "read the menu" was advice to
+        // do the thing the visitor was already doing.
+        $this->assertStringNotContainsString('read the menu', $html);
+        $this->assertStringNotContainsString('(Try:', $html);
 
         $home = $this->get('/')->assertOk()->getContent();
         $this->assertStringNotContainsString('site-service-banner', $home);
@@ -681,7 +686,49 @@ class MenuPageTest extends TestCase
 
         $this->assertStringContainsString('site-service-banner', $html);
         $this->assertStringContainsString($reopen->timezone($tz)->format('g:i A'), $html);
-        $this->assertStringContainsString('read the menu', $html);
+        $this->assertStringNotContainsString('(Try:', $html);
+    }
+
+    public function test_a_photo_fills_its_circle_rather_than_letterboxing(): void
+    {
+        // Reported from the live site: Bajiya's photo sat small inside a pale
+        // circle instead of covering it.
+        //
+        // <picture> is an inline wrapper with no size of its own. The CSS
+        // styled `.menu-card-circle-photo img` only, so the img's
+        // width/height:100% resolved against a shrink-to-fit <picture> and
+        // object-fit:cover had no box to cover. Every photo that is not
+        // square rendered letterboxed.
+        //
+        // Asserting on the stylesheet rather than the markup because the
+        // markup was already correct — the rule that makes it work is the
+        // thing that was missing, and CSS layout is not something a feature
+        // test can otherwise observe.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/wide.jpg',
+            'is_primary' => true,
+            'sort_order' => 0,
+            'media_type' => 'image',
+        ]);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<picture>', $this->itemCard($html, $item->id));
+        $this->assertMatchesRegularExpression(
+            '#\.menu-card-circle-photo picture\s*\{[^}]*height:\s*100%#',
+            $html,
+            'the <picture> wrapper must be sized, or object-fit has no box to cover',
+        );
+
+        $detail = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '#\.menu-item-hero picture\s*\{[^}]*height:\s*100%#',
+            $detail,
+            'the detail hero has the same wrapper and the same problem',
+        );
     }
 
     public function test_an_open_shop_with_ordering_on_has_no_notice(): void

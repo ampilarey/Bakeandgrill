@@ -54,8 +54,18 @@ class MenuPageController extends Controller
         'customer_registration' => 'New account signups are temporarily paused.',
     ];
 
-    /** @var list<string> */
-    private const STILL_CAN = ['read the menu', 'order for tomorrow', 'call'];
+    /*
+     * There is deliberately no default list of alternatives.
+     *
+     * An earlier version invented ['read the menu', 'order for tomorrow',
+     * 'call'] whenever the service state carried none, and production renders
+     * every public service with `alternatives: []`, so every visitor got
+     * "(Try: read the menu, order for tomorrow, call)" on the menu page —
+     * where "read the menu" is what they are already doing, and "order for
+     * tomorrow" is not even true while catering_inquiry is paused. Invented
+     * advice is worse than none: only the owner knows what is actually still
+     * possible, and the admin already lets them say so per service.
+     */
 
     public function index(): View
     {
@@ -387,8 +397,8 @@ class MenuPageController extends Controller
                 $message = self::DEFAULT_MESSAGES[$key] ?? 'This service is temporarily unavailable.';
             }
             $alts = $entry['alternatives'] ?? [];
-            if (!is_array($alts) || $alts === []) {
-                $alts = self::STILL_CAN;
+            if (!is_array($alts)) {
+                $alts = [];
             }
 
             return [
@@ -417,7 +427,7 @@ class MenuPageController extends Controller
         return [
             'service_key' => 'opening_hours',
             'message' => $message,
-            'alternatives' => self::STILL_CAN,
+            'alternatives' => [],
             'retry_at' => $reopen?->toIso8601String(),
             'notify_enabled' => false,
         ];

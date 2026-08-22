@@ -221,6 +221,11 @@ html.js .menu-fav { display: inline-flex; }
     display: flex; align-items: center; justify-content: center;
     font-size: 1.9rem;
 }
+/* <picture> is an inline wrapper with no size of its own. Without this the
+   img's width/height:100% resolve against a shrink-to-fit box instead of the
+   circle, object-fit has no box to cover, and a landscape photo renders
+   letterboxed with the circle's background showing above and below it. */
+.menu-card-circle-photo picture { display: block; width: 100%; height: 100%; }
 .menu-card-circle-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .menu-card-body {
