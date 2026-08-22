@@ -21,24 +21,17 @@
     --menu-sticky: 76px; /* matches html { scroll-padding-top } in the layout */
 }
 
-.menu-hero {
-    background: linear-gradient(160deg, var(--amber-light) 0%, var(--bg) 60%);
-    border-bottom: 1px solid var(--border);
-    padding: 2.75rem 2rem 2rem;
-    text-align: center;
+/* Reachable by screen reader and by search engines, drawn nowhere. Not
+   display:none, which would take it out of the accessibility tree too. */
+.visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
-.menu-hero-eyebrow {
-    display: inline-block;
-    font-size: 0.72rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--amber); margin-bottom: 0.6rem;
-}
-.menu-hero h1 {
-    font-size: 2.4rem; font-weight: 800;
-    letter-spacing: -0.04em; color: var(--dark);
-    margin-bottom: 0.6rem;
-}
-.menu-hero p { color: var(--muted); max-width: 34rem; margin: 0 auto; }
 
 /* ── Shell: sticky rail + sections ──────────────────────────────────── */
 .menu-shell {
@@ -47,7 +40,9 @@
     gap: 1rem;
     max-width: 1180px;
     margin: 0 auto;
-    padding: 0 1.25rem 4rem;
+    /* Small top pad: the hero used to provide this gap. Without it the first
+       category band butts straight against the header. */
+    padding: 0.75rem 1.25rem 4rem;
 }
 
 /* Plain anchor links, so the rail works before JS and keeps working without
@@ -317,8 +312,6 @@ html.js .menu-fav { display: inline-flex; }
        under it scrolls away — so the rail clears ~64px, not the layout's
        more generous scroll-padding-top. */
     :root { --menu-rail-w: 76px; --menu-sticky: 64px; }
-    .menu-hero { padding: 2rem 1.25rem 1.5rem; }
-    .menu-hero h1 { font-size: 1.9rem; }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
     .menu-grid { grid-template-columns: repeat(2, 1fr); }
     .menu-rail-thumb { width: 36px; height: 36px; }
@@ -422,11 +415,16 @@ html.js .menu-fav { display: inline-flex; }
     };
 @endphp
 
-<section class="menu-hero">
-    <span class="menu-hero-eyebrow">Our Menu</span>
-    <h1>Everything we make</h1>
-    <p>Freshly made every day in Malé. Tap any item for details, then add it to your order.</p>
-</section>
+{{-- The hero band that stood here — eyebrow, "Everything we make", and a
+     tagline — was removed on the owner's call. It pushed the food most of a
+     screen down on a phone, which is the whole thing this page exists to
+     avoid: someone scanning the QR code at a table wants the menu, not a
+     welcome.
+
+     The <h1> stays, visually hidden. It is the page's only level-one
+     heading, so removing it outright would leave the outline starting at h2
+     and give search results nothing to title the page with. --}}
+<h1 class="visually-hidden">Bake &amp; Grill menu</h1>
 
 @if($menuCategories->isEmpty() && $menuOffers->isEmpty())
     <div class="menu-empty">

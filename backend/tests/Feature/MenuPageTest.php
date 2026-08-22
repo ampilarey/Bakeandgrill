@@ -663,6 +663,36 @@ class MenuPageTest extends TestCase
         $this->assertStringNotContainsString('Online ordering is currently closed.', $html);
     }
 
+    public function test_the_food_starts_at_the_top_but_the_h1_survives(): void
+    {
+        // The hero band — eyebrow, "Everything we make", tagline — was removed
+        // on the owner's call: it pushed the food most of a screen down on a
+        // phone, which is what this page exists to avoid.
+        //
+        // The <h1> stayed, visually hidden. It is the page's only level-one
+        // heading, so dropping it would start the outline at h2 and leave a
+        // search result with nothing to title the page. That distinction is
+        // invisible on screen, which is exactly why it needs a test.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('menu-hero', $html);
+        $this->assertStringNotContainsString('Everything we make', $html);
+
+        $this->assertMatchesRegularExpression(
+            '#<h1 class="visually-hidden">.*?</h1>#s',
+            $html,
+            'the page must keep exactly one h1, even if nothing draws it',
+        );
+        // Hidden, not removed from the accessibility tree.
+        $this->assertMatchesRegularExpression('#\.visually-hidden\s*\{[^}]*clip-path#', $html);
+        $this->assertDoesNotMatchRegularExpression('#\.visually-hidden\s*\{[^}]*display:\s*none#', $html);
+
+        $this->assertSame(1, substr_count($html, '<h1'), 'exactly one h1 on the page');
+    }
+
     public function test_a_photo_fills_its_circle_rather_than_letterboxing(): void
     {
         // Reported from the live site: Bajiya's photo sat small inside a pale
