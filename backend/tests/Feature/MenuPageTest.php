@@ -189,7 +189,9 @@ class MenuPageTest extends TestCase
     private function itemCard(string $html, int $itemId): string
     {
         preg_match(
-            '#<article class="menu-card">(?:(?!</article>).)*href="/menu/' . $itemId . '".*?</article>#s',
+            // The card carries filter data attributes now, so match the open
+            // tag loosely rather than pinning it to `class="menu-card">`.
+            '#<article class="menu-card"[^>]*>(?:(?!</article>).)*href="/menu/' . $itemId . '".*?</article>#s',
             $html,
             $card,
         );
@@ -557,7 +559,7 @@ class MenuPageTest extends TestCase
         $card = $this->itemCard($html, $item->id);
 
         $this->assertMatchesRegularExpression(
-            '#<article class="menu-card">\s*<a class="menu-card-link" href="/menu/' . $item->id . '">\s*<div class="menu-card-circle">#',
+            '#<article class="menu-card"[^>]*>\s*<a class="menu-card-link" href="/menu/' . $item->id . '">\s*<div class="menu-card-circle">#',
             $html,
         );
         $this->assertMatchesRegularExpression(
@@ -691,6 +693,93 @@ class MenuPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('#\.visually-hidden\s*\{[^}]*display:\s*none#', $html);
 
         $this->assertSame(1, substr_count($html, '<h1'), 'exactly one h1 on the page');
+    }
+
+    // ── Filtering ─────────────────────────────────────────────────────────
+
+    public function test_every_card_carries_what_the_search_needs_to_match(): void
+    {
+        // Filtering happens in the browser over cards that are already in the
+        // HTML, so the page has to ship the haystack with them.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5, [
+            'name_dv' => 'ބަޖިޔާ',
+            'short_description' => 'Crispy tuna pastry',
+            'dietary_tags' => ['Gluten Free', 'halal'],
+        ]);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('data-search="', $card);
+        $this->assertStringContainsString('bajiya', $card);
+        $this->assertStringContainsString('crispy tuna pastry', $card);
+        // A Dhivehi visitor on a Latin keyboard must still find the item, so
+        // the English name is in the haystack whatever the page locale.
+        $this->assertStringContainsString('ބަޖިޔާ', $card);
+        // "Gluten Free" and "gluten-free" have to be the same thing.
+        $this->assertMatchesRegularExpression('#data-diet="[^"]*gluten-free#', $card);
+        $this->assertMatchesRegularExpression('#data-diet="[^"]*halal#', $card);
+    }
+
+    public function test_it_only_offers_chips_that_can_match_something(): void
+    {
+        // A chip for a tag nothing carries always returns an empty menu, which
+        // is worse than not offering it. Production has five items and no tags
+        // at all, so this is the live case, not a hypothetical.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        // Search always earns its place; the chips do not.
+        $this->assertStringContainsString('id="menuSearch"', $html);
+        $this->assertStringNotContainsString('data-filter="diet:', $html);
+        $this->assertStringNotContainsString('data-filter="special"', $html);
+
+        $this->item($cat, 'Veg Cutlet', 6, ['dietary_tags' => ['vegetarian']]);
+        $withTag = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-filter="diet:vegetarian"', $withTag);
+        $this->assertStringContainsString('🥬 Vegetarian', $withTag);
+    }
+
+    public function test_a_discounted_item_is_marked_so_the_offers_chip_can_find_it(): void
+    {
+        $cat = $this->category('Shorteats');
+        $plain = $this->item($cat, 'Cutlet', 6);
+        $discounted = $this->item($cat, 'Bajiya', 10);
+        DailySpecial::create([
+            'item_id' => $discounted->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 7,
+            'badge_label' => 'Today',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-filter="special"', $html);
+        $this->assertStringContainsString('data-special="1"', $this->itemCard($html, $discounted->id));
+        $this->assertStringNotContainsString('data-special="1"', $this->itemCard($html, $plain->id));
+    }
+
+    public function test_the_filter_bar_is_hidden_until_javascript_confirms_itself(): void
+    {
+        // The bar can only work with JS. Rendering a search box that does
+        // nothing is worse than rendering none, so it is display:none until
+        // the layout's inline script sets html.js — the same trick the heart
+        // uses. The menu underneath stays fully readable either way.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#\.menu-filters\s*\{\s*display:\s*none#', $html);
+        $this->assertMatchesRegularExpression('#html\.js \.menu-filters\s*\{#', $html);
+        $this->assertStringContainsString("document.documentElement.classList.add('js')", $html);
     }
 
     public function test_a_photo_fills_its_circle_rather_than_letterboxing(): void

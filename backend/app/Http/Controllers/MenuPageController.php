@@ -65,6 +65,7 @@ class MenuPageController extends Controller
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
             'menuPhotos' => $this->displayPhotos($items),
+            'menuDietaryFilters' => $this->dietaryFilters($items),
             'favouriteIds' => $this->favouriteItemIds(),
             // Passed in rather than read from the layout: a child view's
             // sections are evaluated before the layout renders, so anything
@@ -325,6 +326,63 @@ class MenuPageController extends Controller
     private function menuLocale(): string
     {
         return app()->bound('content.locale') ? (string) app('content.locale') : 'en';
+    }
+
+    /**
+     * Dietary chips to offer, derived from what the items are actually tagged
+     * with — never a fixed list.
+     *
+     * A chip for a tag nothing carries is a control that always returns
+     * nothing, which is worse than no control. The order app does the same
+     * thing (`MenuQuickFilters` returns null when no item qualifies), so as
+     * items get tagged in Content Hub the chips appear here on their own with
+     * no code change.
+     *
+     * Admin tags are free text, so "Gluten Free", "gluten_free" and
+     * "gluten-free" must collapse to one chip. Same normalisation as
+     * normalizeDietaryTag() in apps/online-order-web/src/pages/MenuPage.tsx.
+     *
+     * @param Collection<int, Item> $items
+     * @return list<array{slug: string, label: string}>
+     */
+    private function dietaryFilters(Collection $items): array
+    {
+        $known = [
+            'vegetarian' => '🥬 Vegetarian',
+            'vegan' => '🌱 Vegan',
+            'halal' => '☪ Halal',
+            'gluten-free' => '🌾 Gluten-free',
+            'spicy' => '🌶 Spicy',
+        ];
+
+        $seen = [];
+        foreach ($items as $item) {
+            foreach ((array) ($item->dietary_tags ?? []) as $raw) {
+                $slug = self::dietarySlug((string) $raw);
+                if ($slug === '' || isset($seen[$slug])) {
+                    continue;
+                }
+                $seen[$slug] = $known[$slug] ?? ucwords(str_replace('-', ' ', $slug));
+            }
+        }
+
+        ksort($seen);
+        $out = [];
+        foreach ($seen as $slug => $label) {
+            $out[] = ['slug' => $slug, 'label' => $label];
+        }
+
+        return $out;
+    }
+
+    /** Free-text admin tag → a stable slug. */
+    public static function dietarySlug(string $tag): string
+    {
+        $slug = strtolower(trim($tag));
+        $slug = (string) preg_replace('/[_\s]+/', '-', $slug);
+        $slug = (string) preg_replace('/-+/', '-', $slug);
+
+        return trim($slug, '-');
     }
 
     /**

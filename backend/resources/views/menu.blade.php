@@ -101,6 +101,87 @@ span.menu-rail-thumb {
 
 .menu-main { flex: 1; min-width: 0; }
 
+/* ── Filter bar ─────────────────────────────────────────────────────── */
+/* Hidden until JS is confirmed — see html.js in the layout. A search box
+   that cannot search is worse than none. */
+.menu-filters { display: none; }
+html.js .menu-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    position: sticky;
+    top: var(--menu-sticky);
+    z-index: 5;
+    padding: 0.6rem 0;
+    background: var(--bg);
+}
+.menu-search {
+    position: relative;
+    flex: 1 1 12rem;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+.menu-search-icon {
+    position: absolute;
+    inset-inline-start: 0.6rem;
+    font-size: 0.8rem;
+    pointer-events: none;
+    opacity: 0.6;
+}
+.menu-search input {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--dark);
+    font: inherit;
+    font-size: 0.9rem;
+}
+.menu-search input:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+}
+.menu-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.menu-chip {
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.menu-chip:hover { border-color: var(--amber); color: var(--amber); }
+.menu-chip[aria-pressed="true"] {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: #fff;
+}
+.menu-no-match {
+    padding: 2.5rem 0;
+    text-align: center;
+    color: var(--muted);
+}
+.menu-clear {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--amber);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+/* Filtered out. A hidden card must not stay tabbable — `hidden` alone is
+   overridden by the `display:flex` on .menu-card. */
+.menu-card[hidden], .menu-cat-section[hidden], .menu-subcat-block[hidden] { display: none; }
+
 /* ── Category band ──────────────────────────────────────────────────── */
 .menu-cat-band {
     position: relative;
@@ -492,6 +573,43 @@ html.js .menu-fav { display: inline-flex; }
     </nav>
 
     <div class="menu-main">
+        {{-- Filtering needs JavaScript — the whole menu is in the HTML and the
+             bar hides the cards that do not match. So the bar itself is hidden
+             until the layout's inline script has set html.js, rather than
+             offering a search box that cannot search. --}}
+        <div class="menu-filters" data-testid="menu-filters">
+            <label class="menu-search">
+                <span class="visually-hidden">Search the menu</span>
+                <span class="menu-search-icon" aria-hidden="true">🔍</span>
+                <input type="search" id="menuSearch" placeholder="Search the menu"
+                       autocomplete="off" enterkeyhint="search">
+            </label>
+
+            @php
+                $hasSpecial = collect($menuSpecialsByItemId)->isNotEmpty();
+                $hasNew = ! empty($menuNewItemIds);
+            @endphp
+            @if($hasSpecial || $hasNew || $menuDietaryFilters !== [])
+                {{-- Only chips that can actually match something. A filter that
+                     always returns nothing is worse than no filter. --}}
+                <div class="menu-chips" role="group" aria-label="Filter the menu">
+                    @if($hasSpecial)
+                        <button type="button" class="menu-chip" data-filter="special" aria-pressed="false">% Offers</button>
+                    @endif
+                    @if($hasNew)
+                        <button type="button" class="menu-chip" data-filter="new" aria-pressed="false">New</button>
+                    @endif
+                    @foreach($menuDietaryFilters as $chip)
+                        <button type="button" class="menu-chip" data-filter="diet:{{ $chip['slug'] }}" aria-pressed="false">{{ $chip['label'] }}</button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <p class="menu-no-match" data-testid="menu-no-match" hidden>
+            Nothing on the menu matches that. <button type="button" class="menu-clear">Clear filters</button>
+        </p>
+
         @if($menuOffers->isNotEmpty())
             <section class="menu-offers" id="menu-view-offers" data-testid="menu-view-offers">
                 <h2 class="menu-offers-title">Offers</h2>
@@ -545,7 +663,7 @@ html.js .menu-fav { display: inline-flex; }
                 $name  = $categoryName($cat);
                 $band  = $mediaUrl($cat?->image_url);
             @endphp
-            <section>
+            <section class="menu-cat-section">
                 {{-- The band carries the section's only heading, as it does in the
                      order app: a second <h2> under the strip read as a duplicate. --}}
                 <header class="menu-cat-band" id="{{ $anchorFor($group) }}"
@@ -572,6 +690,10 @@ html.js .menu-fav { display: inline-flex; }
                     }
                 @endphp
                 @foreach($blocks as $block)
+                    {{-- Wrapped so filtering can hide a subcategory's title with
+                         its items; a lone heading over an empty grid reads as a
+                         rendering bug. --}}
+                    <div class="menu-subcat-block">
                     @if($block['heading'])
                         @php $subName = $categoryName($block['heading']); @endphp
                         <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
@@ -586,12 +708,30 @@ html.js .menu-fav { display: inline-flex; }
                                 $photo = $chosen['url'] ?? null;
                                 $webp  = $chosen['webp'] ?? null;
                                 $isNew = isset($menuNewItemIds[$item->id]);
+
+                                // Search matches the English name too, always.
+                                // A Dhivehi visitor typing "bajiya" on a Latin
+                                // keyboard must still find ބަޖިޔާ.
+                                $haystack = collect([
+                                    $iname['text'], $idesc['text'],
+                                    $item->card_name, $item->name,
+                                    $item->name_dv, $item->card_name_dv,
+                                ])->filter()->map(fn ($v) => mb_strtolower(trim((string) $v)))
+                                  ->unique()->implode(' ');
+
+                                $tags = collect((array) ($item->dietary_tags ?? []))
+                                    ->map(fn ($t) => \App\Http\Controllers\MenuPageController::dietarySlug((string) $t))
+                                    ->filter()->unique()->values()->implode(' ');
                             @endphp
                             {{-- The whole card is the tap target (stretched <a>), as in
                                  the order app. A small "Order →" caption made a 60px
                                  target next to a 130px photo that did nothing. The heart
                                  is a sibling so it is not a button inside an <a>. --}}
-                            <article class="menu-card">
+                            <article class="menu-card"
+                                     data-search="{{ $haystack }}"
+                                     data-diet="{{ $tags }}"
+                                     @if($price['was'] !== null) data-special="1" @endif
+                                     @if($isNew) data-new="1" @endif>
                                 <a class="menu-card-link" href="/menu/{{ $item->id }}">
                                     <div class="menu-card-circle">
                                         <div class="menu-card-circle-photo">
@@ -636,6 +776,7 @@ html.js .menu-fav { display: inline-flex; }
                             </article>
                         @endforeach
                     </div>
+                    </div>{{-- /.menu-subcat-block --}}
                 @endforeach
             </section>
         @endforeach
@@ -702,6 +843,107 @@ html.js .menu-fav { display: inline-flex; }
 @endphp
 <script type="application/ld+json">@json($menuSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
 @endif
+
+{{-- Filtering. Every card is already in the HTML; this only hides the ones
+     that do not match, so with JS off the whole menu is still readable — the
+     bar itself stays hidden in that case. --}}
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var bar = document.querySelector('.menu-filters');
+    if (!bar) return;
+
+    var input = document.getElementById('menuSearch');
+    var chips = Array.prototype.slice.call(bar.querySelectorAll('.menu-chip'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.menu-card[data-search]'));
+    var sections = Array.prototype.slice.call(document.querySelectorAll('.menu-cat-section'));
+    var blocks = Array.prototype.slice.call(document.querySelectorAll('.menu-subcat-block'));
+    var offers = document.getElementById('menu-view-offers');
+    var noMatch = document.querySelector('.menu-no-match');
+    var clear = document.querySelector('.menu-clear');
+
+    function activeFilters() {
+        return chips.filter(function (c) { return c.getAttribute('aria-pressed') === 'true'; })
+                    .map(function (c) { return c.getAttribute('data-filter'); });
+    }
+
+    function matches(card, query, filters) {
+        if (query && card.getAttribute('data-search').indexOf(query) === -1) return false;
+        // Chips are AND, so "Offers + Vegetarian" means both, not either.
+        for (var i = 0; i < filters.length; i++) {
+            var f = filters[i];
+            if (f === 'special' && card.getAttribute('data-special') !== '1') return false;
+            if (f === 'new' && card.getAttribute('data-new') !== '1') return false;
+            if (f.indexOf('diet:') === 0) {
+                var want = f.slice(5);
+                var have = (card.getAttribute('data-diet') || '').split(' ');
+                if (have.indexOf(want) === -1) return false;
+            }
+        }
+        return true;
+    }
+
+    function apply() {
+        var query = (input && input.value || '').trim().toLowerCase();
+        var filters = activeFilters();
+        var filtering = query !== '' || filters.length > 0;
+        var shown = 0;
+
+        cards.forEach(function (card) {
+            var ok = !filtering || matches(card, query, filters);
+            card.hidden = !ok;
+            if (ok) shown++;
+        });
+
+        // A heading above an empty grid reads as a broken page, so a block and
+        // its section disappear once nothing inside them is left.
+        blocks.forEach(function (b) {
+            b.hidden = !b.querySelector('.menu-card:not([hidden])');
+        });
+        sections.forEach(function (s) {
+            s.hidden = !s.querySelector('.menu-card:not([hidden])');
+        });
+        // Offers are their own cards and are not searchable; hide the strip
+        // while filtering rather than leaving it as an unexplained exception.
+        if (offers) offers.hidden = filtering;
+
+        if (noMatch) noMatch.hidden = !(filtering && shown === 0);
+
+        // The rail counts what is showing, or it contradicts the page.
+        document.querySelectorAll('.menu-rail a[href^="#cat-"]').forEach(function (a) {
+            var el = document.getElementById(a.getAttribute('href').slice(1));
+            var section = el && el.closest('.menu-cat-section');
+            if (!section) return;
+            var n = section.querySelectorAll('.menu-card:not([hidden])').length;
+            var count = a.querySelector('.menu-rail-count');
+            if (count) count.textContent = n;
+            a.hidden = filtering && n === 0;
+        });
+    }
+
+    if (input) {
+        input.addEventListener('input', apply);
+        // Escape clears rather than only blurring — a search box you cannot
+        // easily empty is how people end up thinking the menu is short.
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { input.value = ''; apply(); }
+        });
+    }
+    chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            var on = chip.getAttribute('aria-pressed') === 'true';
+            chip.setAttribute('aria-pressed', on ? 'false' : 'true');
+            apply();
+        });
+    });
+    if (clear) {
+        clear.addEventListener('click', function () {
+            if (input) input.value = '';
+            chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+            apply();
+        });
+    }
+})();
+</script>
 
 {{-- Enhancement only. The rail is anchor links and the menu is already in the
      HTML; this just marks which section you are looking at. --}}
