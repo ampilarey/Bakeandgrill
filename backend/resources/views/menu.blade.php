@@ -430,8 +430,18 @@ span.menu-rail-thumb {
                             $offerHref = str_starts_with((string) $offerLink, '/menu')
                                 ? '/order' . $offerLink
                                 : $offerLink;
+                            $offerPhoto = $mediaUrl($offer['image_url'] ?? null) ?: $defaultItemImage;
                         @endphp
                         <a class="menu-offer-card" href="{{ $offerHref }}">
+                            <div class="menu-card-circle">
+                                <div class="menu-card-circle-photo">
+                                    @if($offerPhoto)
+                                        <img src="{{ $offerPhoto }}" alt="" loading="lazy" width="132" height="132">
+                                    @else
+                                        <span aria-hidden="true">🍽️</span>
+                                    @endif
+                                </div>
+                            </div>
                             @if(!empty($offer['badge']))
                                 <span class="menu-offer-badge">{{ $offer['badge'] }}</span>
                             @endif
@@ -519,9 +529,11 @@ span.menu-rail-thumb {
                                     @endif
                                 </div>
                                 <div class="menu-card-body">
-                                    {{-- Outline is deliberate: h1 page → h2 category →
-                                         h3 subcategory (when present) → h4 item. --}}
-                                    <h4 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h4>
+                                    {{-- Outline is h1 page → h2 category → h3 subcategory
+                                         → h4 item. When there is no subcategory the
+                                         item is the h3 so the level is not skipped. --}}
+                                    @php $itemHeading = $block['heading'] ? 'h4' : 'h3'; @endphp
+                                    <{{ $itemHeading }} class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</{{ $itemHeading }}>
                                     @if($idesc['text'] !== '')
                                         <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
                                     @endif

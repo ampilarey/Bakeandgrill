@@ -226,8 +226,8 @@ class MenuPageTest extends TestCase
 
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
     {
-        // h1 page → h2 category → h4 item (h3 is reserved for a subcategory).
-        // Item names were spans first, which tells a crawler nothing.
+        // A category with no subcategory must not skip a level: h1 → h2 → h3.
+        // h4 is only for items under a subcategory heading (the other test).
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Bajiya', 5);
 
@@ -237,7 +237,7 @@ class MenuPageTest extends TestCase
         $this->assertNotEmpty($main);
 
         $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Shorteats\s*</h2>#', $main[0]);
-        $this->assertMatchesRegularExpression('#<h4 class="menu-card-name"[^>]*>Bajiya</h4>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h3 class="menu-card-name"[^>]*>Bajiya</h3>#', $main[0]);
     }
 
     public function test_a_subcategory_sits_inside_its_parent_not_in_the_rail(): void
@@ -320,6 +320,49 @@ class MenuPageTest extends TestCase
 
         $this->assertStringNotContainsString('id="menu-view-offers"', $html);
         $this->assertStringNotContainsString('data-testid="menu-offers-pill"', $html);
+    }
+
+    public function test_an_offer_card_shows_the_item_photo_or_the_site_default(): void
+    {
+        $cat = $this->category('Shorteats');
+        $withPhoto = $this->item($cat, 'Bajiya', 10, [
+            'image_url' => 'https://cdn.example.com/bajiya.jpg',
+        ]);
+        DailySpecial::create([
+            'item_id' => $withPhoto->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 7,
+            'badge_label' => 'Today',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        preg_match('#<section class="menu-offers".*?</section>#s', $html, $offers);
+        $this->assertNotEmpty($offers, 'the offers section must be in the HTML');
+        $this->assertStringContainsString('class="menu-card-circle"', $offers[0]);
+        $this->assertStringContainsString('https://cdn.example.com/bajiya.jpg', $offers[0]);
+
+        $plain = $this->item($cat, 'Cutlet', 8);
+        DailySpecial::create([
+            'item_id' => $plain->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 6,
+            'badge_label' => 'Today',
+        ]);
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $fallback = $this->get('/menu')->assertOk()->getContent();
+        preg_match('#<section class="menu-offers".*?</section>#s', $fallback, $again);
+        $this->assertNotEmpty($again);
+        $this->assertStringContainsString('storage/site/default_item.jpg', $again[0]);
+        $this->assertStringNotContainsString('src=""', $again[0]);
     }
 
     public function test_a_new_item_is_badged_an_old_one_is_not_and_the_cap_holds(): void
