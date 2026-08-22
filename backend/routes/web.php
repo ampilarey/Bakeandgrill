@@ -50,7 +50,11 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
 Route::get('/admin/preview/website/home', [App\Http\Controllers\ContentWebsitePreviewController::class, 'home'])
     ->name('content.preview.website')
     ->middleware('signed');
-Route::redirect('/menu', '/order/menu', 301)->name('menu');
+// The menu, server-rendered. Was a 301 into /order/menu, which told Google the
+// menu had permanently moved to a page that renders an empty div.
+Route::get('/menu', [App\Http\Controllers\MenuPageController::class, 'index'])
+    ->middleware(['content.locale', 'service.banner'])
+    ->name('menu');
 Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
 
 // Customer Portal (Web Login)

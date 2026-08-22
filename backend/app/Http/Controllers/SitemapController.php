@@ -15,10 +15,9 @@ use Illuminate\Http\Response;
  * to index an empty page. It is linked from the site's navigation, which is
  * the right way for it to be discovered.
  *
- * The menu is the notable absence. It currently exists only inside the SPA
- * (/order/menu, and the dine-in view at /order/view), so there is no menu URL
- * a crawler can read. Once the server-rendered /menu page exists, add it here
- * — it is the page most worth indexing on the whole site.
+ * /menu is server-rendered by MenuPageController and is the page most worth
+ * indexing on the site. /order/menu and /order/view remain excluded: those are
+ * the SPA's own routes and render to an empty div.
  *
  * Deliberately no <lastmod>. We have no honest per-page modification date, and
  * a made-up one is worse than none: Google learns to distrust the whole file.
@@ -36,6 +35,7 @@ class SitemapController extends Controller
      */
     private const PAGES = [
         ['route' => 'home', 'priority' => '1.0', 'changefreq' => 'weekly'],
+        ['route' => 'menu', 'priority' => '0.9', 'changefreq' => 'weekly'],
         ['route' => 'hours', 'priority' => '0.8', 'changefreq' => 'weekly'],
         ['route' => 'contact', 'priority' => '0.8', 'changefreq' => 'monthly'],
         ['route' => 'prayer-times.index', 'priority' => '0.6', 'changefreq' => 'daily'],

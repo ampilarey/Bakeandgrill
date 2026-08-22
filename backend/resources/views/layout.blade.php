@@ -191,7 +191,7 @@
         "addressCountry": "MV"
       },
       "servesCuisine": ["Maldivian", "Grills", "Bakery"],
-      "hasMenu": @json(url('/order')),
+      "hasMenu": @json(url('/menu')),
       "acceptsReservations": true
     }
     </script>
