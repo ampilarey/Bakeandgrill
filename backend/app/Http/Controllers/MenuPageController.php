@@ -251,8 +251,13 @@ class MenuPageController extends Controller
      * The Blade used to read thumb_url / image_url only. A photo uploaded to
      * the gallery never reached /menu, while the order app already showed it.
      *
+     * `url` is the thumbnail — right for a 132px circle. `full` is the same
+     * photo at full size, for JSON-LD: Google wants a large image for rich
+     * results and a 400px thumb is a downgrade on what the schema used to
+     * carry.
+     *
      * @param Collection<int, Item> $items
-     * @return array<int, array{url: ?string, webp: ?string}>
+     * @return array<int, array{url: ?string, webp: ?string, full: ?string}>
      */
     private function displayPhotos(Collection $items): array
     {
@@ -266,7 +271,7 @@ class MenuPageController extends Controller
     }
 
     /**
-     * @return array{url: ?string, webp: ?string}
+     * @return array{url: ?string, webp: ?string, full: ?string}
      */
     private function displayPhotoFor(Item $item, ?string $default): array
     {
@@ -284,7 +289,8 @@ class MenuPageController extends Controller
             if ($photo->isVideo()) {
                 $url = $this->mediaUrl($photo->poster_url ?: $photo->thumb_url);
                 if ($url) {
-                    return ['url' => $url, 'webp' => null];
+                    // A poster is the only still we have — it is both sizes.
+                    return ['url' => $url, 'webp' => null, 'full' => $url];
                 }
 
                 continue;
@@ -298,6 +304,7 @@ class MenuPageController extends Controller
             return [
                 'url' => $url,
                 'webp' => $this->mediaUrl($photo->thumb_webp_url ?: $photo->image_webp_url),
+                'full' => $this->mediaUrl($photo->url) ?: $url,
             ];
         }
 
@@ -306,10 +313,11 @@ class MenuPageController extends Controller
             return [
                 'url' => $url,
                 'webp' => $this->mediaUrl($item->thumb_webp_url ?: $item->image_webp_url),
+                'full' => $this->mediaUrl($item->image_url) ?: $url,
             ];
         }
 
-        return ['url' => $default, 'webp' => null];
+        return ['url' => $default, 'webp' => null, 'full' => $default];
     }
 
     /**

@@ -499,8 +499,26 @@ html.js .menu-fav { display: inline-flex; }
                             $offerHref = str_starts_with((string) $offerLink, '/menu')
                                 ? '/order' . $offerLink
                                 : $offerLink;
+                            // Prefer the gallery photo the item cards already
+                            // resolved. OffersService fills image_url from
+                            // display_image_url — the main image — so an offer
+                            // would otherwise show the stale photo the cards
+                            // were just fixed to stop showing.
+                            $offerItemId = $offer['target']['item_id'] ?? null;
+                            $offerPhoto = ($offerItemId ? ($menuPhotos[$offerItemId]['url'] ?? null) : null)
+                                ?: $mediaUrl($offer['image_url'] ?? null)
+                                ?: $defaultItemImage;
                         @endphp
                         <a class="menu-offer-card" href="{{ $offerHref }}">
+                            <div class="menu-card-circle">
+                                <div class="menu-card-circle-photo">
+                                    @if($offerPhoto)
+                                        <img src="{{ $offerPhoto }}" alt="" loading="lazy" width="132" height="132">
+                                    @else
+                                        <span aria-hidden="true">🍽️</span>
+                                    @endif
+                                </div>
+                            </div>
                             @if(!empty($offer['badge']))
                                 <span class="menu-offer-badge">{{ $offer['badge'] }}</span>
                             @endif
@@ -591,9 +609,12 @@ html.js .menu-fav { display: inline-flex; }
                                         @endif
                                     </div>
                                     <div class="menu-card-body">
-                                        {{-- Outline is deliberate: h1 page → h2 category →
-                                             h3 subcategory (when present) → h4 item. --}}
-                                        <h4 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h4>
+                                        {{-- Outline is h1 page → h2 category → h3 subcategory
+                                             → h4 item. When the category has no subcategory
+                                             the item takes the h3, so the level is not
+                                             skipped — which is the common case here. --}}
+                                        @php $itemHeading = $block['heading'] ? 'h4' : 'h3'; @endphp
+                                        <{{ $itemHeading }} class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</{{ $itemHeading }}>
                                         @if($idesc['text'] !== '')
                                             <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
                                         @endif
@@ -641,7 +662,11 @@ html.js .menu-fav { display: inline-flex; }
                     '@type' => 'MenuItem',
                     'name' => $itemName($item)['text'],
                     'description' => $desc !== '' ? $desc : null,
-                    'image' => ($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null),
+                    // The full size, not the card's thumbnail: Google wants a
+                    // large image for rich results, and the card deliberately
+                    // asks for 400px because it draws a 132px circle.
+                    'image' => ($menuPhotos[$item->id]['full'] ?? null)
+                        ?: (($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null)),
                     'url' => url('/menu/' . $item->id),
                     'offers' => [
                         '@type' => 'Offer',
