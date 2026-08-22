@@ -37,6 +37,33 @@ describe('shared signage renderer parity (order app)', () => {
     expect(document.querySelector('.signage-enter-fade')).toBeTruthy();
     expect(document.querySelector('.signage-menu-list')).toBeTruthy();
   });
+
+  it('encodes /menu on a QR element that has no binding at all', () => {
+    // The writer-side defaults and the stored-JSON migration cannot reach a
+    // QR that omitted binding.url. This is the renderer's last fallback.
+    render(
+      <SlideCanvas
+        slide={{
+          id: 'qr-unbound',
+          name: 'QR',
+          seconds: 8,
+          weight: 1,
+          transition: 'fade',
+          background: { type: 'solid', value: '#1C1408' },
+          elements: [{ id: 'qr1', type: 'qr', x: 30, y: 30, w: 40, h: 40, z: 1 }],
+        }}
+        theme={PARITY_THEME}
+        variables={PARITY_VARIABLES}
+        items={PARITY_ITEMS}
+        config={parityConfig('landscape')}
+      />,
+    );
+
+    const img = document.querySelector('img[alt="QR"]');
+    expect(img).toBeTruthy();
+    const encoded = new URL((img as HTMLImageElement).src).searchParams.get('data') ?? '';
+    expect(decodeURIComponent(encoded)).toMatch(/\/menu$/);
+  });
 });
 
 describe('auto menu expansion parity (order app)', () => {
