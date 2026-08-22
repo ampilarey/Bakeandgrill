@@ -21,7 +21,8 @@ describe('WebsiteSettings Dine-in menu', () => {
 
     expect(await screen.findByTestId('dinein-menu-card')).toBeTruthy();
     expect(screen.getByTestId('dinein-menu-qr')).toBeTruthy();
-    expect(screen.getByTestId('dinein-menu-url').textContent).toContain('/order/view');
+    expect(screen.getByTestId('dinein-menu-url').textContent).toContain('/menu');
+    expect(screen.getByTestId('dinein-menu-url').textContent).not.toContain('/order/view');
     expect(screen.queryByTestId('menu-new-days-input')).toBeNull();
   });
 });

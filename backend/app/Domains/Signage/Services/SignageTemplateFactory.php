@@ -40,7 +40,7 @@ final class SignageTemplateFactory
                 'fields' => [
                     'title' => 'Scan for the full menu',
                     'subtitle' => 'Wi‑Fi: {{wifi_name}} · {{wifi_password}}',
-                    'url' => '/order/view',
+                    'url' => '/menu',
                 ],
             ]),
             self::template('notice', [
@@ -137,7 +137,7 @@ final class SignageTemplateFactory
                     'style' => ['fontSize' => 2.8, 'color' => '#C4B5A5'],
                 ]),
                 self::el('qr', 62, 22, 30, 50, [
-                    'binding' => ['url' => (string) ($fields['url'] ?? '/order/view')],
+                    'binding' => ['url' => (string) ($fields['url'] ?? '/menu')],
                     'style' => ['background' => '#fff', 'padding' => 2],
                 ]),
             ],

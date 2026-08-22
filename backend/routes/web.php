@@ -155,6 +155,8 @@ Route::redirect('/order/refund-policy', '/refund', 301);
 Route::redirect('/order/refund', '/refund', 301);
 Route::redirect('/order/terms-and-conditions', '/terms', 301);
 Route::redirect('/order/terms', '/terms', 301);
+// Printed table QR codes still encode /order/view. Must sit above the SPA catch-all.
+Route::redirect('/order/view', '/menu', 301);
 
 // Short SMS links → order SPA track route (path token survives SMS clients).
 Route::redirect('/t/{token}', '/order/track/{token}', 301)
