@@ -12,7 +12,6 @@ use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Models\SiteSetting;
-use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -641,52 +640,27 @@ class MenuPageTest extends TestCase
             ->assertSee('being updated', false);
     }
 
-    public function test_it_says_so_when_online_ordering_is_off(): void
+    public function test_it_carries_no_service_or_opening_hours_notice(): void
     {
+        // Owner decision, 2026-08-22. This page briefly rendered the shared
+        // service banner: accurate, and removed anyway. The ordering window is
+        // narrower than the opening hours, so "Online ordering is currently
+        // closed" sat above the menu most of the day. Ordering state belongs
+        // where someone tries to order.
+        //
+        // Asserted with the gate actually shut, because a test that only
+        // passes while everything is available proves nothing.
         $this->category('Shorteats');
         app(ServiceAvailabilityService::class)->setState('online_ordering', [
             'status' => 'unavailable',
-            'public_message' => 'Online ordering is paused today.',
+            'public_message' => 'Online ordering is currently closed.',
             'reason_type' => 'operational_pause',
         ]);
 
         $html = $this->get('/menu')->assertOk()->getContent();
 
-        $this->assertStringContainsString('site-service-banner', $html);
-        $this->assertStringContainsString('data-service-key="online_ordering"', $html);
-        $this->assertStringContainsString('Online ordering is paused today.', $html);
-        // The owner set no alternatives, so none are offered. An earlier
-        // version invented "(Try: read the menu, order for tomorrow, call)"
-        // and shipped it to production, where "read the menu" was advice to
-        // do the thing the visitor was already doing.
-        $this->assertStringNotContainsString('read the menu', $html);
-        $this->assertStringNotContainsString('(Try:', $html);
-
-        $home = $this->get('/')->assertOk()->getContent();
-        $this->assertStringNotContainsString('site-service-banner', $home);
-        $this->assertStringNotContainsString('Online ordering is paused today.', $home);
-    }
-
-    public function test_closed_hours_name_the_reopen_time(): void
-    {
-        $this->category('Shorteats');
-        $tz = config('opening_hours.timezone');
-        $today = now($tz)->dayOfWeek;
-        $hours = [];
-        for ($day = 0; $day < 7; $day++) {
-            $hours[$day] = $day === $today
-                ? ['closed' => true]
-                : ['open' => '10:00', 'close' => '22:00'];
-        }
-        SiteSetting::set('business_hours_json', json_encode($hours));
-
-        $html = $this->get('/menu')->assertOk()->getContent();
-        $reopen = app(OpeningHoursService::class)->getNextOpenTime();
-        $this->assertNotNull($reopen, 'a closed day must still have a next open');
-
-        $this->assertStringContainsString('site-service-banner', $html);
-        $this->assertStringContainsString($reopen->timezone($tz)->format('g:i A'), $html);
-        $this->assertStringNotContainsString('(Try:', $html);
+        $this->assertStringNotContainsString('site-service-banner', $html);
+        $this->assertStringNotContainsString('Online ordering is currently closed.', $html);
     }
 
     public function test_a_photo_fills_its_circle_rather_than_letterboxing(): void
@@ -729,15 +703,6 @@ class MenuPageTest extends TestCase
             $detail,
             'the detail hero has the same wrapper and the same problem',
         );
-    }
-
-    public function test_an_open_shop_with_ordering_on_has_no_notice(): void
-    {
-        $this->category('Shorteats');
-
-        $html = $this->get('/menu')->assertOk()->getContent();
-
-        $this->assertStringNotContainsString('site-service-banner', $html);
     }
 
     /** The middleware serves English unless the owner has switched Dhivehi on. */

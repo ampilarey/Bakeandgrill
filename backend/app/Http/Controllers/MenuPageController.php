@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Promotions\Services\OffersService;
-use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
-use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -32,40 +30,21 @@ use Illuminate\Support\Facades\DB;
  * Reading lives here; the cart and checkout stay in the SPA. Cards open
  * /menu/{id} (another server-rendered document — full description, variants,
  * tags). Add to order hands off to /order/menu?item={id}.
+ *
+ * **No service-availability notice here, by the owner's decision (2026-08-22).**
+ * A version of this page resolved ServiceAvailabilityService and rendered the
+ * shared banner partial, so /menu said "Online ordering is currently closed"
+ * whenever the ordering gate was shut. It was accurate and it was removed
+ * anyway: this is a menu, the ordering state belongs where someone tries to
+ * order, and the notice sat on the page all day because the ordering window
+ * is narrower than the opening hours. `ShareServiceAvailability` shares
+ * `serviceBanner` as null for every Blade page, so nothing renders. The
+ * full-page `marketing_site` maintenance view is unaffected — that is the
+ * middleware's own 503 and still applies. Do not re-add this without asking.
  */
 class MenuPageController extends Controller
 {
     private const NEW_ITEMS_CAP = 12;
-
-    /** Same order as apps/online-order-web ServiceBanner.tsx. */
-    private const BANNER_PRIORITY = [
-        'online_ordering',
-        'online_checkout',
-        'online_payment',
-        'online_pickup',
-        'customer_registration',
-    ];
-
-    private const DEFAULT_MESSAGES = [
-        'online_ordering' => 'Online ordering is temporarily unavailable.',
-        'online_checkout' => 'Online ordering is temporarily unavailable — please call us or visit us.',
-        'online_payment' => 'Online payment is temporarily unavailable. Cash on collection is still available.',
-        'online_pickup' => 'Pickup orders are temporarily paused.',
-        'customer_registration' => 'New account signups are temporarily paused.',
-    ];
-
-    /*
-     * There is deliberately no default list of alternatives.
-     *
-     * An earlier version invented ['read the menu', 'order for tomorrow',
-     * 'call'] whenever the service state carried none, and production renders
-     * every public service with `alternatives: []`, so every visitor got
-     * "(Try: read the menu, order for tomorrow, call)" on the menu page —
-     * where "read the menu" is what they are already doing, and "order for
-     * tomorrow" is not even true while catering_inquiry is paused. Invented
-     * advice is worse than none: only the owner knows what is actually still
-     * possible, and the admin already lets them say so per service.
-     */
 
     public function index(): View
     {
@@ -87,9 +66,6 @@ class MenuPageController extends Controller
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
             'menuPhotos' => $this->displayPhotos($items),
             'favouriteIds' => $this->favouriteItemIds(),
-            // Menu only — the layout partial is shared, but middleware still
-            // shares null on every other page. Controller data wins here.
-            'serviceBanner' => $this->menuServiceBanner(),
             // Passed in rather than read from the layout: a child view's
             // sections are evaluated before the layout renders, so anything
             // the layout defines in its own @php block is not in scope here.
@@ -119,7 +95,6 @@ class MenuPageController extends Controller
             'menuPhotos' => $this->displayPhotos(collect([$row])),
             'menuSpecialsByItemId' => $specialsByItemId,
             'favouriteIds' => $this->favouriteItemIds(),
-            'serviceBanner' => $this->menuServiceBanner(),
             'menuLocale' => $this->menuLocale(),
         ]);
     }
@@ -371,65 +346,5 @@ class MenuPageController extends Controller
             ->all();
 
         return array_fill_keys(array_map('intval', $ids), true);
-    }
-
-    /**
-     * Soft states only — marketing_site still uses the full-page 503.
-     * Never call this from the shared middleware; home must stay quiet.
-     *
-     * @return array{service_key: string, message: string, alternatives: list<string>, retry_at: ?string, notify_enabled: bool}|null
-     */
-    private function menuServiceBanner(): ?array
-    {
-        try {
-            $snapshot = app(ServiceAvailabilityService::class)->resolve();
-        } catch (\Throwable) {
-            $snapshot = [];
-        }
-
-        foreach (self::BANNER_PRIORITY as $key) {
-            $entry = $snapshot[$key] ?? null;
-            if (!is_array($entry) || ($entry['available'] ?? true)) {
-                continue;
-            }
-            $message = trim((string) ($entry['public_message'] ?? ''));
-            if ($message === '') {
-                $message = self::DEFAULT_MESSAGES[$key] ?? 'This service is temporarily unavailable.';
-            }
-            $alts = $entry['alternatives'] ?? [];
-            if (!is_array($alts)) {
-                $alts = [];
-            }
-
-            return [
-                'service_key' => $key,
-                'message' => $message,
-                'alternatives' => array_values(array_map('strval', $alts)),
-                'retry_at' => isset($entry['ends_at']) ? (string) $entry['ends_at'] : null,
-                'notify_enabled' => (bool) ($entry['notify_enabled'] ?? false),
-            ];
-        }
-
-        $hours = app(OpeningHoursService::class);
-        if ($hours->isOpenNow()) {
-            return null;
-        }
-
-        $tz = (string) config('opening_hours.timezone');
-        $reopen = $hours->getNextOpenTime();
-        $when = $reopen?->timezone($tz);
-        $message = $when
-            ? ($when->isToday()
-                ? "We're closed right now. We reopen at " . $when->format('g:i A') . '.'
-                : "We're closed right now. We reopen " . $when->format('l') . ' at ' . $when->format('g:i A') . '.')
-            : "We're closed right now.";
-
-        return [
-            'service_key' => 'opening_hours',
-            'message' => $message,
-            'alternatives' => [],
-            'retry_at' => $reopen?->toIso8601String(),
-            'notify_enabled' => false,
-        ];
     }
 }
