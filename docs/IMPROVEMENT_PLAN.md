@@ -245,8 +245,19 @@ initial HTML; the tap-for-details sheet, category scroll-spy and language
 toggle can still be layered on with JS, the way `prayer-times.blade.php`
 already works.
 
+**`/menu` is already taken — replace, do not add.** `backend/routes/web.php`
+line 53 has `Route::redirect('/menu', '/order/menu', 301)->name('menu')`,
+pre-existing. Adding `Route::get('/menu', …)` below it does nothing: the
+redirect matches first and the new page is dead code. Delete the redirect as
+part of this work.
+
+That redirect is also worse than nothing today — a 301 tells Google the menu
+has *permanently* moved to a URL that renders `<div id="root"></div>`. The
+line below it does the same for `/privacy`; worth fixing in the same pass,
+and adding both to `SitemapController::PAGES` once they are real pages.
+
 **Files**
-- `backend/routes/web.php` — new `GET /menu`
+- `backend/routes/web.php` — replace the line 53 redirect with `GET /menu`
 - `backend/resources/views/menu.blade.php` — new, extending `layout.blade.php`
 - Shape to copy: `prayer-times.blade.php` (server-rendered, interactive,
   handles Dhivehi)
