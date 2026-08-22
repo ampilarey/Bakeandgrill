@@ -15,6 +15,25 @@ use Carbon\Carbon;
  *   {"mon": {"enabled":true,"windows":[{"open":...,"close":...}]}, ...}
  *
  * null / invalid / empty schedule = no schedule = always open.
+ *
+ * **Windows may cross midnight** — a café closing at 01:00 is ordinary here.
+ * That took two fixes, and the first was not a near miss:
+ *
+ *   1. `within()` stamped both times onto today, so 17:00 → 01:00 produced
+ *      `between(today 17:00, today 01:00)`. Carbon's between() silently swaps
+ *      reversed bounds, which **inverted** the window: closed all evening,
+ *      open all morning. Measured before the fix — open at 13:00, closed at
+ *      23:00.
+ *   2. Only today's row was consulted. At 00:30 on Tuesday a Monday
+ *      17:00 → 01:00 window is still running, so an overnight window has to
+ *      be looked for on the day it *opened*, not the day it ends.
+ *
+ * `windowsForDate()` had a third form of it: `if ($close->gt($open))` dropped
+ * overnight windows outright, so PickupSlotService generated no pickup slots
+ * at all on a late-closing day.
+ *
+ * Windows are half-open, `open <= now < close`, so two adjacent windows never
+ * both claim the same instant.
  */
 final class ScheduleWindows
 {
@@ -91,27 +110,64 @@ final class ScheduleWindows
      */
     public static function within(array $schedule, Carbon $at): bool
     {
+        return self::activeClose($schedule, $at) !== null;
+    }
+
+    /**
+     * The close time of whichever window is running at $at, or null.
+     *
+     * Looks at yesterday as well as today: an overnight window belongs to the
+     * day it opened on.
+     *
+     * @param array<string, list<array{open: string, close: string}>> $schedule
+     */
+    public static function activeClose(array $schedule, Carbon $at): ?Carbon
+    {
         $tz = config('app.timezone', 'UTC');
         $now = $at->clone()->setTimezone($tz);
-        $windows = $schedule[strtolower($now->format('D'))] ?? null;
-        if (!$windows) {
-            return false; // day not listed = closed
-        }
 
-        foreach ($windows as $window) {
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            if ($now->between($open, $close)) {
-                return true;
+        foreach ([-1, 0] as $dayOffset) {
+            foreach (self::windowsForDate($schedule, $now->clone()->addDays($dayOffset)) as [$open, $close]) {
+                if ($now->greaterThanOrEqualTo($open) && $now->lessThan($close)) {
+                    return $close;
+                }
             }
         }
 
-        return false;
+        return null;
+    }
+
+    /**
+     * The next opening after $at, looking a week ahead.
+     *
+     * Starts a day back so an overnight window that opened yesterday is
+     * considered, and keeps the earliest match rather than the first listed —
+     * a day's windows are not guaranteed to be in chronological order.
+     *
+     * @param array<string, list<array{open: string, close: string}>> $schedule
+     */
+    public static function nextOpen(array $schedule, Carbon $at): ?Carbon
+    {
+        $tz = config('app.timezone', 'UTC');
+        $now = $at->clone()->setTimezone($tz);
+        $best = null;
+
+        for ($i = -1; $i <= 7; $i++) {
+            foreach (self::windowsForDate($schedule, $now->clone()->addDays($i)) as [$open, $close]) {
+                if ($open->lessThanOrEqualTo($now)) {
+                    continue;
+                }
+                if ($best === null || $open->lessThan($best)) {
+                    $best = $open;
+                }
+            }
+            // No later day can beat an opening already found on an earlier one.
+            if ($best !== null && $i >= 0) {
+                break;
+            }
+        }
+
+        return $best;
     }
 
     /**
@@ -137,9 +193,13 @@ final class ScheduleWindows
             } catch (\Throwable) {
                 continue;
             }
-            if ($close->gt($open)) {
-                $result[] = [$open, $close];
+            // 17:00 → 01:00 closes tomorrow. This used to be
+            // `if ($close->gt($open))`, which discarded the window entirely
+            // and left an overnight day with no pickup slots at all.
+            if ($close->lessThanOrEqualTo($open)) {
+                $close = $close->addDay();
             }
+            $result[] = [$open, $close];
         }
 
         return $result;

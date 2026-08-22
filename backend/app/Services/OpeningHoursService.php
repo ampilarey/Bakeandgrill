@@ -73,6 +73,19 @@ class OpeningHoursService
             return false;
         }
 
+        // Yesterday first: an overnight window belongs to the day it opened
+        // on. Sunday 22:00 → 02:00 is still running at 01:00 on Monday, and
+        // reading only Monday's row reported the café shut. Only the tail of
+        // yesterday counts here — its daytime hours ended before midnight.
+        $yesterday = $this->getHours()[$now->copy()->subDay()->dayOfWeek] ?? null;
+        if (is_array($yesterday) && !($yesterday['closed'] ?? false)) {
+            $yOpen = (string) ($yesterday['open'] ?? '');
+            $yClose = (string) ($yesterday['close'] ?? '');
+            if ($yOpen !== '' && $yClose !== '' && $yClose < $yOpen && $currentTime < $yClose) {
+                return true;
+            }
+        }
+
         $hours = $this->getHours()[$today] ?? null;
 
         if (!$hours || ($hours['closed'] ?? false)) {
@@ -82,9 +95,12 @@ class OpeningHoursService
         $openTime = $hours['open'];
         $closeTime = $hours['close'];
 
-        // Handle overnight hours (e.g. open 22:00, close 02:00 next day).
+        // Today's own overnight window: open from $openTime to midnight. The
+        // hours after midnight belong to yesterday's row, handled above — the
+        // old `|| $currentTime < $closeTime` here claimed them for today too,
+        // which is only right when every day has identical hours.
         if ($closeTime < $openTime) {
-            return $currentTime >= $openTime || $currentTime < $closeTime;
+            return $currentTime >= $openTime;
         }
 
         return $currentTime >= $openTime && $currentTime < $closeTime;

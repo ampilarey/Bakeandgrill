@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Domains\Delivery\Services\DeliverySettingsService;
 use App\Models\Order;
 use App\Models\SiteSetting;
+use App\Support\ScheduleWindows;
 use Carbon\Carbon;
 
 /**
@@ -328,26 +329,8 @@ class DeliveryGateService
     {
         $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
-        $dayKey = strtolower($now->format('D'));
-        $windows = $schedule[$dayKey] ?? null;
 
-        if (!$windows) {
-            return false;
-        }
-
-        foreach ($windows as $window) {
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-            } catch (\Throwable) {
-                continue;
-            }
-            if ($now->between($open, $close)) {
-                return true;
-            }
-        }
-
-        return false;
+        return ScheduleWindows::within($schedule, $now);
     }
 
     private function nextWindow(array $schedule, ?Carbon $at): ?string
@@ -355,28 +338,7 @@ class DeliveryGateService
         $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
 
-        for ($i = 0; $i <= 7; $i++) {
-            $candidate = $now->clone()->addDays($i);
-            $dayKey = strtolower($candidate->format('D'));
-            $windows = $schedule[$dayKey] ?? null;
-            if (!$windows) {
-                continue;
-            }
-            foreach ($windows as $window) {
-                try {
-                    $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($candidate);
-                } catch (\Throwable) {
-                    continue;
-                }
-                if ($i === 0 && $open->lte($now)) {
-                    continue;
-                }
-
-                return $open->toIso8601String();
-            }
-        }
-
-        return null;
+        return ScheduleWindows::nextOpen($schedule, $now)?->toIso8601String();
     }
 }
 

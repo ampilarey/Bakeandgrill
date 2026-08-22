@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\SiteSetting;
+use App\Support\ScheduleWindows;
 use Carbon\Carbon;
 
 /**
@@ -240,29 +241,8 @@ class OnlineOrderingGateService
     private function withinSchedule(array $schedule, Carbon $at): bool
     {
         $tz = config('app.timezone', 'UTC');
-        $now = $at->clone()->setTimezone($tz);
 
-        $dayKey = strtolower($now->format('D')); // mon, tue, …, sun
-
-        $windows = $schedule[$dayKey] ?? null;
-        if (!$windows) {
-            return false; // day not listed = closed
-        }
-
-        foreach ($windows as $window) {
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            if ($now->between($open, $close)) {
-                return true;
-            }
-        }
-
-        return false;
+        return ScheduleWindows::within($schedule, $at);
     }
 
     /**
@@ -279,27 +259,8 @@ class OnlineOrderingGateService
 
         $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
-        $dayKey = strtolower($now->format('D'));
-        $windows = $schedule[$dayKey] ?? null;
 
-        if (!$windows) {
-            return null;
-        }
-
-        foreach ($windows as $window) {
-            try {
-                $open = Carbon::createFromFormat('H:i', $window['open'], $tz)->setDateFrom($now);
-                $close = Carbon::createFromFormat('H:i', $window['close'], $tz)->setDateFrom($now);
-            } catch (\Throwable) {
-                continue;
-            }
-
-            if ($now->between($open, $close)) {
-                return $close->toIso8601String();
-            }
-        }
-
-        return null;
+        return ScheduleWindows::activeClose($schedule, $now)?->toIso8601String();
     }
 
     /**
@@ -313,32 +274,7 @@ class OnlineOrderingGateService
         $tz = config('app.timezone', 'UTC');
         $now = ($at ?? now())->clone()->setTimezone($tz);
 
-        for ($i = 0; $i <= 7; $i++) {
-            $candidate = $now->clone()->addDays($i);
-            $dayKey = strtolower($candidate->format('D'));
-            $windows = $schedule[$dayKey] ?? null;
-
-            if (!$windows) {
-                continue;
-            }
-
-            foreach ($windows as $window) {
-                try {
-                    $open = Carbon::createFromFormat('H:i', $window['open'], $tz)
-                        ->setDateFrom($candidate);
-                } catch (\Throwable) {
-                    continue;
-                }
-
-                if ($i === 0 && $open->lte($now)) {
-                    continue;
-                }
-
-                return $open->toIso8601String();
-            }
-        }
-
-        return null;
+        return ScheduleWindows::nextOpen($schedule, $now)?->toIso8601String();
     }
 }
 
