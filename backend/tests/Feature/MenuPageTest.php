@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
+use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\SiteSetting;
+use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -223,8 +226,8 @@ class MenuPageTest extends TestCase
 
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
     {
-        // h1 page → h2 category → h3 item. Item names were spans first, which
-        // renders the same and tells a crawler nothing about the structure.
+        // h1 page → h2 category → h4 item (h3 is reserved for a subcategory).
+        // Item names were spans first, which tells a crawler nothing.
         $cat = $this->category('Shorteats');
         $this->item($cat, 'Bajiya', 5);
 
@@ -234,7 +237,111 @@ class MenuPageTest extends TestCase
         $this->assertNotEmpty($main);
 
         $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Shorteats\s*</h2>#', $main[0]);
-        $this->assertMatchesRegularExpression('#<h3 class="menu-card-name"[^>]*>Bajiya</h3>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h4 class="menu-card-name"[^>]*>Bajiya</h4>#', $main[0]);
+    }
+
+    public function test_a_subcategory_sits_inside_its_parent_not_in_the_rail(): void
+    {
+        $parent = $this->category('Grill', 1);
+        $child = Category::create([
+            'parent_id' => $parent->id,
+            'name' => 'Wraps',
+            'slug' => 'wraps',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        $this->item($parent, 'Chicken Plate', 40);
+        $this->item($child, 'Chicken Wrap', 25);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertNotEmpty($rail);
+        $this->assertStringContainsString('aria-label="Grill, 2 items"', $rail[0]);
+        $this->assertStringNotContainsString('href="#cat-' . $child->id . '"', $rail[0]);
+
+        preg_match('#<div class="menu-main">.*#s', $html, $main);
+        $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Grill\s*</h2>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h3 class="menu-subcat-title"[^>]*>Wraps</h3>#', $main[0]);
+        $this->assertMatchesRegularExpression('#<h4 class="menu-card-name"[^>]*>Chicken Wrap</h4>#', $main[0]);
+    }
+
+    public function test_an_active_special_shows_the_discounted_price_and_the_original(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 10);
+        DailySpecial::create([
+            'item_id' => $item->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 7,
+            'badge_label' => 'Today',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        preg_match('#<a class="menu-card" href="/order/menu\?item=' . $item->id . '">.*?</a>#s', $html, $card);
+        $this->assertNotEmpty($card, 'the item card must be in the HTML');
+        $this->assertStringContainsString('MVR 7.00', $card[0]);
+        $this->assertMatchesRegularExpression('#<s class="menu-card-price-was">MVR 10.00</s>#', $card[0]);
+    }
+
+    public function test_an_active_offer_renders_with_a_rail_pill(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 10);
+        DailySpecial::create([
+            'item_id' => $item->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'discount_pct' => 20,
+            'badge_label' => '20% OFF',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="menu-view-offers"', $html);
+        $this->assertStringContainsString('data-testid="menu-offers-pill"', $html);
+        $this->assertStringContainsString('20% OFF', $html);
+    }
+
+    public function test_without_offers_the_section_and_pill_are_absent(): void
+    {
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="menu-view-offers"', $html);
+        $this->assertStringNotContainsString('data-testid="menu-offers-pill"', $html);
+    }
+
+    public function test_a_new_item_is_badged_an_old_one_is_not_and_the_cap_holds(): void
+    {
+        $cat = $this->category('Shorteats');
+        $fresh = $this->item($cat, 'Fresh Cutlet', 6);
+        $fresh->forceFill(['created_at' => now()->subDay()])->save();
+        $stale = $this->item($cat, 'Old Cutlet', 6);
+        $stale->forceFill(['created_at' => now()->subDays(60)])->save();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $this->assertStringContainsString('class="menu-badge-new"', $html);
+        $this->assertEquals(1, substr_count($html, 'class="menu-badge-new"'));
+
+        $many = $this->category('Grill', 2);
+        for ($i = 1; $i <= 20; $i++) {
+            $item = $this->item($many, 'New Plate ' . $i, 12);
+            $item->forceFill(['created_at' => now()->subDay()->addSeconds($i)])->save();
+        }
+
+        $capped = $this->get('/menu')->assertOk()->getContent();
+        $this->assertSame(12, substr_count($capped, 'class="menu-badge-new"'));
     }
 
     public function test_the_whole_card_is_the_link_not_a_caption_beside_it(): void

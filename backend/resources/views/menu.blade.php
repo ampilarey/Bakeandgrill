@@ -161,18 +161,22 @@ span.menu-rail-thumb {
 .menu-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .menu-card-circle {
+    position: relative;
     width: var(--menu-circle);
     aspect-ratio: 1 / 1;
+    margin-bottom: 0.55rem;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+.menu-card-circle-photo {
+    width: 100%; height: 100%;
     border-radius: 50%;
     overflow: hidden;
     background: var(--amber-light);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.9rem;
-    margin-bottom: 0.55rem;
-    flex-shrink: 0;
-    transition: transform 0.15s ease;
 }
-.menu-card-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.menu-card-circle-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .menu-card-body {
     display: flex; flex-direction: column; align-items: center;
@@ -201,6 +205,55 @@ span.menu-rail-thumb {
     white-space: nowrap;
 }
 .menu-card-from { font-size: 0.75rem; }
+.menu-card-price-was {
+    display: inline; margin-left: 0.35rem;
+    font-weight: 400; text-decoration: line-through;
+    color: var(--muted); opacity: 0.75;
+}
+.menu-card-image-badges {
+    position: absolute;
+    top: 0.25rem;
+    left: 50%;
+    transform: translateX(calc(-50% - 2.2rem));
+    z-index: 2;
+    pointer-events: none;
+}
+.menu-card-image-badges--circle { width: max-content; max-width: 46%; }
+.menu-badge-new {
+    display: inline-block;
+    background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+    color: #fff; border: none;
+    font-size: 0.68rem; font-weight: 800;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 0.24rem 0.5rem; line-height: 1.2;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.35);
+}
+
+.menu-subcat-title {
+    margin: 1rem 0 0.5rem;
+    font-size: 1rem; font-weight: 700;
+    color: var(--dark);
+}
+
+.menu-offers { margin: 1.25rem 0 0.5rem; }
+.menu-offers-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem; font-weight: 700;
+}
+.menu-offer-card {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0.55rem 0.35rem 0.85rem;
+    text-align: center; text-decoration: none; color: inherit;
+    border-radius: 12px;
+}
+.menu-offer-badge {
+    display: inline-block; margin-bottom: 0.35rem;
+    font-size: 0.68rem; font-weight: 800;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    color: #fff; background: var(--amber);
+    padding: 0.2rem 0.45rem; border-radius: 999px;
+}
 
 .menu-cta { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem 4rem; text-align: center; }
 .menu-empty { max-width: 34rem; margin: 4rem auto; text-align: center; color: var(--muted); padding: 0 1.25rem; }
@@ -278,9 +331,43 @@ span.menu-rail-thumb {
         return 'hsl(' . $hues[$id % count($hues)] . ' 55% 88%)';
     };
 
+    $defaultItemImage = $mediaUrl(content('default_item_image'));
+    $menuOffers = $menuOffers ?? collect();
+    $menuNewItemIds = $menuNewItemIds ?? [];
+    $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
+
     $anchorFor = fn ($group) => $group['category'] ? 'cat-' . $group['category']->id : 'cat-other';
 
-    $defaultItemImage = $mediaUrl(content('default_item_image'));
+    $sectionCount = function ($group) {
+        $n = count($group['items']);
+        foreach ($group['subcategories'] ?? [] as $sub) {
+            $n += count($sub['items']);
+        }
+
+        return $n;
+    };
+
+    $priceFor = function ($item) use ($menuSpecialsByItemId) {
+        $info = $item->displayPriceInfo();
+        $rows = $menuSpecialsByItemId[$item->id] ?? [];
+        $best = null;
+        foreach ($rows as $row) {
+            $effective = isset($row['effective_price']) ? (float) $row['effective_price'] : null;
+            if ($effective === null) {
+                continue;
+            }
+            if ($best === null || $effective < $best) {
+                $best = $effective;
+            }
+        }
+        $info['was'] = null;
+        if ($best !== null && $best < (float) $info['price']) {
+            $info['was'] = (float) $info['price'];
+            $info['price'] = $best;
+        }
+
+        return $info;
+    };
 @endphp
 
 <section class="menu-hero">
@@ -289,7 +376,7 @@ span.menu-rail-thumb {
     <p>Freshly made every day in Malé. Tap any item to order online.</p>
 </section>
 
-@if($menuCategories->isEmpty())
+@if($menuCategories->isEmpty() && $menuOffers->isEmpty())
     <div class="menu-empty">
         <p>The menu is being updated. Please check back shortly, or call us to order.</p>
         <p style="margin-top:1rem"><a href="/contact" class="btn-primary">Contact us →</a></p>
@@ -298,16 +385,25 @@ span.menu-rail-thumb {
 <div class="menu-shell">
     <nav class="menu-rail" aria-label="Menu categories">
         <div class="menu-rail-list">
+            @if($menuOffers->isNotEmpty())
+                <a href="#menu-view-offers" data-testid="menu-offers-pill"
+                   aria-label="Offers">
+                    <span class="menu-rail-thumb" aria-hidden="true"
+                          style="background: hsl(18 55% 88%)">%</span>
+                    <span class="menu-rail-label">Offers</span>
+                </a>
+            @endif
             @foreach($menuCategories as $group)
                 @php
                     $cat  = $group['category'];
                     $name = $categoryName($cat);
                     $thumb = $mediaUrl($cat?->thumb_url ?: $cat?->image_url);
+                    $count = $sectionCount($group);
                 @endphp
                 {{-- The count is a bare numeral beside a name; spoken aloud it
                      reads "Shorteats 3", so the link carries it as words instead. --}}
                 <a href="#{{ $anchorFor($group) }}"
-                   aria-label="{{ $name['text'] }}, {{ count($group['items']) }} {{ Str::plural('item', count($group['items'])) }}">
+                   aria-label="{{ $name['text'] }}, {{ $count }} {{ Str::plural('item', $count) }}">
                     @if($thumb)
                         <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="40" height="40">
                     @else
@@ -317,13 +413,42 @@ span.menu-rail-thumb {
                         </span>
                     @endif
                     <span class="menu-rail-label" @if($name['dv']) lang="dv" @endif>{{ $name['text'] }}</span>
-                    <span class="menu-rail-count" aria-hidden="true">{{ count($group['items']) }}</span>
+                    <span class="menu-rail-count" aria-hidden="true">{{ $count }}</span>
                 </a>
             @endforeach
         </div>
     </nav>
 
     <div class="menu-main">
+        @if($menuOffers->isNotEmpty())
+            <section class="menu-offers" id="menu-view-offers" data-testid="menu-view-offers">
+                <h2 class="menu-offers-title">Offers</h2>
+                <div class="menu-grid">
+                    @foreach($menuOffers as $offer)
+                        @php
+                            $offerLink = $offer['link'] ?? '/menu';
+                            $offerHref = str_starts_with((string) $offerLink, '/menu')
+                                ? '/order' . $offerLink
+                                : $offerLink;
+                        @endphp
+                        <a class="menu-offer-card" href="{{ $offerHref }}">
+                            @if(!empty($offer['badge']))
+                                <span class="menu-offer-badge">{{ $offer['badge'] }}</span>
+                            @endif
+                            <span class="menu-card-name">{{ $offer['title'] ?? '' }}</span>
+                            @if(isset($offer['effective_price']) && $offer['effective_price'] !== null)
+                                <div class="menu-card-price">
+                                    MVR {{ number_format((float) $offer['effective_price'], 2) }}
+                                    @if(!empty($offer['original_price']) && (float) $offer['original_price'] > (float) $offer['effective_price'])
+                                        <s class="menu-card-price-was">MVR {{ number_format((float) $offer['original_price'], 2) }}</s>
+                                    @endif
+                                </div>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+            </section>
+        @endif
         @foreach($menuCategories as $group)
             @php
                 $cat   = $group['category'];
@@ -347,48 +472,73 @@ span.menu-rail-thumb {
                     </div>
                 </header>
 
-                <div class="menu-grid">
-                    @foreach($group['items'] as $item)
-                        @php
-                            $iname = $itemName($item);
-                            $idesc = $itemDesc($item);
-                            $price = $item->displayPriceInfo();
-                            $photo = $mediaUrl($item->thumb_url ?: $item->image_url) ?: $defaultItemImage;
-                            $webp  = $mediaUrl($item->thumb_webp_url ?: $item->image_webp_url);
-                        @endphp
-                        {{-- The whole card is the link, as in the order app. A small
-                             "Order →" caption made a 60px tap target next to a 130px
-                             photo that did nothing. --}}
-                        <a class="menu-card" href="/order/menu?item={{ $item->id }}">
-                            <div class="menu-card-circle">
-                                @if($photo)
-                                    <picture>
-                                        @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
-                                        <img src="{{ $photo }}" alt="{{ $iname['text'] }}"
-                                             loading="lazy" width="132" height="132">
-                                    </picture>
-                                @else
-                                    <span aria-hidden="true">🍽️</span>
-                                @endif
-                            </div>
-                            <div class="menu-card-body">
-                                {{-- A real heading, not a styled span: the page's outline is
-                                     h1 page → h2 category → h3 item, which is what a crawler
-                                     reads the menu's structure from. --}}
-                                <h3 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h3>
-                                @if($idesc['text'] !== '')
-                                    <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
-                                @endif
-                                <div class="menu-card-price">
-                                    {{-- An item with sizes keeps its money on the variants, so
-                                         base_price is 0 and printing it would read "MVR 0.00". --}}
-                                    @if($price['from'])<span class="menu-card-from">From</span> @endif
-                                    MVR {{ number_format($price['price'], 2) }}
+                @php
+                    $blocks = [];
+                    if ($group['items']->isNotEmpty()) {
+                        $blocks[] = ['heading' => null, 'items' => $group['items']];
+                    }
+                    foreach ($group['subcategories'] ?? [] as $sub) {
+                        $blocks[] = ['heading' => $sub['category'], 'items' => $sub['items']];
+                    }
+                @endphp
+                @foreach($blocks as $block)
+                    @if($block['heading'])
+                        @php $subName = $categoryName($block['heading']); @endphp
+                        <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
+                    @endif
+                    <div class="menu-grid">
+                        @foreach($block['items'] as $item)
+                            @php
+                                $iname = $itemName($item);
+                                $idesc = $itemDesc($item);
+                                $price = $priceFor($item);
+                                $photo = $mediaUrl($item->thumb_url ?: $item->image_url) ?: $defaultItemImage;
+                                $webp  = $mediaUrl($item->thumb_webp_url ?: $item->image_webp_url);
+                                $isNew = isset($menuNewItemIds[$item->id]);
+                            @endphp
+                            {{-- The whole card is the link, as in the order app. A small
+                                 "Order →" caption made a 60px tap target next to a 130px
+                                 photo that did nothing. --}}
+                            <a class="menu-card" href="/order/menu?item={{ $item->id }}">
+                                <div class="menu-card-circle">
+                                    <div class="menu-card-circle-photo">
+                                        @if($photo)
+                                            <picture>
+                                                @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
+                                                <img src="{{ $photo }}" alt="{{ $iname['text'] }}"
+                                                     loading="lazy" width="132" height="132">
+                                            </picture>
+                                        @else
+                                            <span aria-hidden="true">🍽️</span>
+                                        @endif
+                                    </div>
+                                    @if($isNew)
+                                        <div class="menu-card-image-badges menu-card-image-badges--circle">
+                                            <span class="menu-badge-new">New</span>
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
-                        </a>
-                    @endforeach
-                </div>
+                                <div class="menu-card-body">
+                                    {{-- Outline is deliberate: h1 page → h2 category →
+                                         h3 subcategory (when present) → h4 item. --}}
+                                    <h4 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h4>
+                                    @if($idesc['text'] !== '')
+                                        <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
+                                    @endif
+                                    <div class="menu-card-price">
+                                        {{-- An item with sizes keeps its money on the variants, so
+                                             base_price is 0 and printing it would read "MVR 0.00". --}}
+                                        @if($price['from'])<span class="menu-card-from">From</span> @endif
+                                        MVR {{ number_format($price['price'], 2) }}
+                                        @if($price['was'] !== null)
+                                            <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
+                                        @endif
+                                    </div>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @endforeach
             </section>
         @endforeach
     </div>
@@ -408,27 +558,42 @@ span.menu-rail-thumb {
         'name' => 'Bake & Grill menu',
         'url' => url('/menu'),
         'inLanguage' => $menuLocale === 'dv' ? 'dv' : 'en',
-        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName) {
-            return [
+        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor) {
+            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor) {
+                $price = $priceFor($item);
+                $desc = $itemDesc($item)['text'];
+
+                return array_filter([
+                    '@type' => 'MenuItem',
+                    'name' => $itemName($item)['text'],
+                    'description' => $desc !== '' ? $desc : null,
+                    'image' => $item->display_image_url ?: null,
+                    'offers' => [
+                        '@type' => 'Offer',
+                        'price' => number_format($price['price'], 2, '.', ''),
+                        'priceCurrency' => 'MVR',
+                    ],
+                ], fn ($v) => $v !== null);
+            };
+
+            $section = [
                 '@type' => 'MenuSection',
                 'name' => $categoryName($group['category'])['text'],
-                'hasMenuItem' => $group['items']->map(function ($item) use ($itemName, $itemDesc) {
-                    $price = $item->displayPriceInfo();
-                    $desc = $itemDesc($item)['text'];
-
-                    return array_filter([
-                        '@type' => 'MenuItem',
-                        'name' => $itemName($item)['text'],
-                        'description' => $desc !== '' ? $desc : null,
-                        'image' => $item->display_image_url ?: null,
-                        'offers' => [
-                            '@type' => 'Offer',
-                            'price' => number_format($price['price'], 2, '.', ''),
-                            'priceCurrency' => 'MVR',
-                        ],
-                    ], fn ($v) => $v !== null);
-                })->values()->all(),
+                'hasMenuItem' => $group['items']->map($toMenuItem)->values()->all(),
             ];
+            $nested = [];
+            foreach ($group['subcategories'] ?? [] as $sub) {
+                $nested[] = [
+                    '@type' => 'MenuSection',
+                    'name' => $categoryName($sub['category'])['text'],
+                    'hasMenuItem' => $sub['items']->map($toMenuItem)->values()->all(),
+                ];
+            }
+            if ($nested !== []) {
+                $section['hasMenuSection'] = $nested;
+            }
+
+            return $section;
         })->values()->all(),
     ];
 @endphp
