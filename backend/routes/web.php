@@ -55,6 +55,12 @@ Route::get('/admin/preview/website/home', [App\Http\Controllers\ContentWebsitePr
 Route::get('/menu', [App\Http\Controllers\MenuPageController::class, 'index'])
     ->middleware(['content.locale', 'service.banner'])
     ->name('menu');
+// Own Blade document — not 58 hidden dialogs, and not in the sitemap
+// (per-item URLs are deferred; see docs/IMPROVEMENT_PLAN.md).
+Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'show'])
+    ->whereNumber('item')
+    ->middleware(['content.locale', 'service.banner'])
+    ->name('menu.item');
 Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
 
 // Customer Portal (Web Login)

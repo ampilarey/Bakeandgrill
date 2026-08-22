@@ -145,6 +145,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    @if (request()->hasSession())
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+    @endif
+    {{-- Marks that JS ran before first paint, so .menu-fav can show without
+         flashing a dead control at people who have JavaScript off. --}}
+    <script nonce="{{ csp_nonce() }}">document.documentElement.classList.add('js');</script>
     <title>@yield('title', $metaTitle)</title>
     <meta name="description" content="@yield('description', $metaDesc)">
     {{-- Blade {{ }} already HTML-escapes — do not wrap with e() or & becomes &amp;amp; --}}

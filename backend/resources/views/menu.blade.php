@@ -149,16 +149,56 @@ span.menu-rail-thumb {
     align-items: stretch;
 }
 .menu-card {
+    position: relative;
     display: flex; flex-direction: column; align-items: center;
     height: 100%;
     padding: 0.55rem 0.35rem 0.85rem;
     text-align: center;
-    text-decoration: none;
     color: inherit;
     border-radius: 12px;
 }
+.menu-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+/* Stretched link: the article is the positioned box; the <a> covers it.
+   A heart inside that <a> would be invalid HTML, so the heart is a sibling
+   with a higher z-index and the tap on the rest of the card still opens
+   the item. */
+.menu-card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
 .menu-card:hover .menu-card-circle { transform: translateY(-2px); }
-.menu-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.menu-card-link:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.menu-fav {
+    display: none;
+    position: absolute;
+    top: -0.15rem;
+    right: max(0px, calc(50% - (var(--menu-circle) / 2) - 0.35rem));
+    z-index: 1;
+    min-width: 44px; min-height: 44px; width: 44px; height: 44px;
+    padding: 0; border: none; border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    align-items: center; justify-content: center;
+    font-size: 0.9rem; line-height: 1;
+    text-decoration: none;
+}
+html.js .menu-fav { display: inline-flex; }
+.menu-fav::before {
+    content: '';
+    position: absolute;
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #FFFDF9 88%, transparent);
+    box-shadow: 0 1px 5px rgba(28, 20, 8, 0.1);
+    z-index: -1;
+    pointer-events: none;
+}
 
 .menu-card-circle {
     position: relative;
@@ -336,6 +376,7 @@ span.menu-rail-thumb {
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
     $menuPhotos = $menuPhotos ?? [];
+    $favouriteIds = $favouriteIds ?? [];
 
     $anchorFor = fn ($group) => $group['category'] ? 'cat-' . $group['category']->id : 'cat-other';
 
@@ -374,7 +415,7 @@ span.menu-rail-thumb {
 <section class="menu-hero">
     <span class="menu-hero-eyebrow">Our Menu</span>
     <h1>Everything we make</h1>
-    <p>Freshly made every day in Malé. Tap any item to order online.</p>
+    <p>Freshly made every day in Malé. Tap any item for details, then add it to your order.</p>
 </section>
 
 @if($menuCategories->isEmpty() && $menuOffers->isEmpty())
@@ -498,46 +539,50 @@ span.menu-rail-thumb {
                                 $webp  = $chosen['webp'] ?? null;
                                 $isNew = isset($menuNewItemIds[$item->id]);
                             @endphp
-                            {{-- The whole card is the link, as in the order app. A small
-                                 "Order →" caption made a 60px tap target next to a 130px
-                                 photo that did nothing. --}}
-                            <a class="menu-card" href="/order/menu?item={{ $item->id }}">
-                                <div class="menu-card-circle">
-                                    <div class="menu-card-circle-photo">
-                                        @if($photo)
-                                            <picture>
-                                                @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
-                                                <img src="{{ $photo }}" alt="{{ $iname['text'] }}"
-                                                     loading="lazy" width="132" height="132">
-                                            </picture>
-                                        @else
-                                            <span aria-hidden="true">🍽️</span>
-                                        @endif
-                                    </div>
-                                    @if($isNew)
-                                        <div class="menu-card-image-badges menu-card-image-badges--circle">
-                                            <span class="menu-badge-new">New</span>
+                            {{-- The whole card is the tap target (stretched <a>), as in
+                                 the order app. A small "Order →" caption made a 60px
+                                 target next to a 130px photo that did nothing. The heart
+                                 is a sibling so it is not a button inside an <a>. --}}
+                            <article class="menu-card">
+                                <a class="menu-card-link" href="/menu/{{ $item->id }}">
+                                    <div class="menu-card-circle">
+                                        <div class="menu-card-circle-photo">
+                                            @if($photo)
+                                                <picture>
+                                                    @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
+                                                    <img src="{{ $photo }}" alt="{{ $iname['text'] }}"
+                                                         loading="lazy" width="132" height="132">
+                                                </picture>
+                                            @else
+                                                <span aria-hidden="true">🍽️</span>
+                                            @endif
                                         </div>
-                                    @endif
-                                </div>
-                                <div class="menu-card-body">
-                                    {{-- Outline is deliberate: h1 page → h2 category →
-                                         h3 subcategory (when present) → h4 item. --}}
-                                    <h4 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h4>
-                                    @if($idesc['text'] !== '')
-                                        <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
-                                    @endif
-                                    <div class="menu-card-price">
-                                        {{-- An item with sizes keeps its money on the variants, so
-                                             base_price is 0 and printing it would read "MVR 0.00". --}}
-                                        @if($price['from'])<span class="menu-card-from">From</span> @endif
-                                        MVR {{ number_format($price['price'], 2) }}
-                                        @if($price['was'] !== null)
-                                            <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
+                                        @if($isNew)
+                                            <div class="menu-card-image-badges menu-card-image-badges--circle">
+                                                <span class="menu-badge-new">New</span>
+                                            </div>
                                         @endif
                                     </div>
-                                </div>
-                            </a>
+                                    <div class="menu-card-body">
+                                        {{-- Outline is deliberate: h1 page → h2 category →
+                                             h3 subcategory (when present) → h4 item. --}}
+                                        <h4 class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h4>
+                                        @if($idesc['text'] !== '')
+                                            <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
+                                        @endif
+                                        <div class="menu-card-price">
+                                            {{-- An item with sizes keeps its money on the variants, so
+                                                 base_price is 0 and printing it would read "MVR 0.00". --}}
+                                            @if($price['from'])<span class="menu-card-from">From</span> @endif
+                                            MVR {{ number_format($price['price'], 2) }}
+                                            @if($price['was'] !== null)
+                                                <s class="menu-card-price-was">MVR {{ number_format($price['was'], 2) }}</s>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </a>
+                                @include('partials.menu-favourite', ['item' => $item, 'favouriteIds' => $favouriteIds])
+                            </article>
                         @endforeach
                     </div>
                 @endforeach
@@ -570,6 +615,7 @@ span.menu-rail-thumb {
                     'name' => $itemName($item)['text'],
                     'description' => $desc !== '' ? $desc : null,
                     'image' => ($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null),
+                    'url' => url('/menu/' . $item->id),
                     'offers' => [
                         '@type' => 'Offer',
                         'price' => number_format($price['price'], 2, '.', ''),
@@ -632,4 +678,5 @@ span.menu-rail-thumb {
     });
 })();
 </script>
+@include('partials.menu-favourite-script')
 @endsection

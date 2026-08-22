@@ -13,6 +13,8 @@ use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The menu, rendered on the server.
@@ -27,8 +29,9 @@ use Illuminate\Support\Collection;
  * before a single item appeared, indoors, often on weak mobile data. Plain
  * HTML shows immediately.
  *
- * Reading lives here; the cart and checkout stay in the SPA. Each item links
- * to /order/menu?item={id}, which is the handoff.
+ * Reading lives here; the cart and checkout stay in the SPA. Cards open
+ * /menu/{id} (another server-rendered document — full description, variants,
+ * tags). Add to order hands off to /order/menu?item={id}.
  */
 class MenuPageController extends Controller
 {
@@ -73,13 +76,41 @@ class MenuPageController extends Controller
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
             'menuPhotos' => $this->displayPhotos($items),
+            'favouriteIds' => $this->favouriteItemIds(),
             // Menu only — the layout partial is shared, but middleware still
             // shares null on every other page. Controller data wins here.
             'serviceBanner' => $this->menuServiceBanner(),
             // Passed in rather than read from the layout: a child view's
             // sections are evaluated before the layout renders, so anything
             // the layout defines in its own @php block is not in scope here.
-            'menuLocale' => app()->bound('content.locale') ? (string) app('content.locale') : 'en',
+            'menuLocale' => $this->menuLocale(),
+        ]);
+    }
+
+    /**
+     * One item, as its own document. A crawler (and a phone on weak data)
+     * gets the description and every size without waiting for a JS sheet.
+     * Inactive or unavailable items 404 — they are not on the listing either.
+     */
+    public function show(int $item): View
+    {
+        $row = Item::query()
+            ->with(['variants', 'category', 'photos'])
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->findOrFail($item);
+
+        $specialsByItemId = $this->indexSpecialsByItem(
+            app(SpecialPricingService::class)->activeSpecialsForDisplay(),
+        );
+
+        return view('menu-item', [
+            'item' => $row,
+            'menuPhotos' => $this->displayPhotos(collect([$row])),
+            'menuSpecialsByItemId' => $specialsByItemId,
+            'favouriteIds' => $this->favouriteItemIds(),
+            'serviceBanner' => $this->menuServiceBanner(),
+            'menuLocale' => $this->menuLocale(),
         ]);
     }
 
@@ -296,6 +327,32 @@ class MenuPageController extends Controller
         $path = trim(preg_replace('#^https?://[^/]+#', '', $raw), '/');
 
         return str_starts_with($path, 'images/cafe/') ? url($path) : $raw;
+    }
+
+    private function menuLocale(): string
+    {
+        return app()->bound('content.locale') ? (string) app('content.locale') : 'en';
+    }
+
+    /**
+     * Favourite item ids for the signed-in customer, keyed for O(1) lookup.
+     * Empty when nobody is signed in — the heart still renders, as a login link.
+     *
+     * @return array<int, true>
+     */
+    private function favouriteItemIds(): array
+    {
+        $customerId = Auth::guard('customer')->id();
+        if (!$customerId) {
+            return [];
+        }
+
+        $ids = DB::table('customer_favorites')
+            ->where('customer_id', $customerId)
+            ->pluck('item_id')
+            ->all();
+
+        return array_fill_keys(array_map('intval', $ids), true);
     }
 
     /**
