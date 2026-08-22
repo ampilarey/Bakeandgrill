@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Promotions\Services\OffersService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -32,6 +34,26 @@ class MenuPageController extends Controller
 {
     private const NEW_ITEMS_CAP = 12;
 
+    /** Same order as apps/online-order-web ServiceBanner.tsx. */
+    private const BANNER_PRIORITY = [
+        'online_ordering',
+        'online_checkout',
+        'online_payment',
+        'online_pickup',
+        'customer_registration',
+    ];
+
+    private const DEFAULT_MESSAGES = [
+        'online_ordering' => 'Online ordering is temporarily unavailable.',
+        'online_checkout' => 'Online ordering is temporarily unavailable — please call us or visit us.',
+        'online_payment' => 'Online payment is temporarily unavailable. Cash on collection is still available.',
+        'online_pickup' => 'Pickup orders are temporarily paused.',
+        'customer_registration' => 'New account signups are temporarily paused.',
+    ];
+
+    /** @var list<string> */
+    private const STILL_CAN = ['read the menu', 'order for tomorrow', 'call'];
+
     public function index(): View
     {
         $items = $this->sellableItems();
@@ -51,6 +73,9 @@ class MenuPageController extends Controller
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
             'menuPhotos' => $this->displayPhotos($items),
+            // Menu only — the layout partial is shared, but middleware still
+            // shares null on every other page. Controller data wins here.
+            'serviceBanner' => $this->menuServiceBanner(),
             // Passed in rather than read from the layout: a child view's
             // sections are evaluated before the layout renders, so anything
             // the layout defines in its own @php block is not in scope here.
@@ -271,5 +296,65 @@ class MenuPageController extends Controller
         $path = trim(preg_replace('#^https?://[^/]+#', '', $raw), '/');
 
         return str_starts_with($path, 'images/cafe/') ? url($path) : $raw;
+    }
+
+    /**
+     * Soft states only — marketing_site still uses the full-page 503.
+     * Never call this from the shared middleware; home must stay quiet.
+     *
+     * @return array{service_key: string, message: string, alternatives: list<string>, retry_at: ?string, notify_enabled: bool}|null
+     */
+    private function menuServiceBanner(): ?array
+    {
+        try {
+            $snapshot = app(ServiceAvailabilityService::class)->resolve();
+        } catch (\Throwable) {
+            $snapshot = [];
+        }
+
+        foreach (self::BANNER_PRIORITY as $key) {
+            $entry = $snapshot[$key] ?? null;
+            if (!is_array($entry) || ($entry['available'] ?? true)) {
+                continue;
+            }
+            $message = trim((string) ($entry['public_message'] ?? ''));
+            if ($message === '') {
+                $message = self::DEFAULT_MESSAGES[$key] ?? 'This service is temporarily unavailable.';
+            }
+            $alts = $entry['alternatives'] ?? [];
+            if (!is_array($alts) || $alts === []) {
+                $alts = self::STILL_CAN;
+            }
+
+            return [
+                'service_key' => $key,
+                'message' => $message,
+                'alternatives' => array_values(array_map('strval', $alts)),
+                'retry_at' => isset($entry['ends_at']) ? (string) $entry['ends_at'] : null,
+                'notify_enabled' => (bool) ($entry['notify_enabled'] ?? false),
+            ];
+        }
+
+        $hours = app(OpeningHoursService::class);
+        if ($hours->isOpenNow()) {
+            return null;
+        }
+
+        $tz = (string) config('opening_hours.timezone');
+        $reopen = $hours->getNextOpenTime();
+        $when = $reopen?->timezone($tz);
+        $message = $when
+            ? ($when->isToday()
+                ? "We're closed right now. We reopen at " . $when->format('g:i A') . '.'
+                : "We're closed right now. We reopen " . $when->format('l') . ' at ' . $when->format('g:i A') . '.')
+            : "We're closed right now.";
+
+        return [
+            'service_key' => 'opening_hours',
+            'message' => $message,
+            'alternatives' => self::STILL_CAN,
+            'retry_at' => $reopen?->toIso8601String(),
+            'notify_enabled' => false,
+        ];
     }
 }

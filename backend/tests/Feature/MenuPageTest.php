@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Domains\Promotions\Services\OffersService;
+use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Models\Category;
 use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Models\SiteSetting;
+use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -514,6 +516,58 @@ class MenuPageTest extends TestCase
         $this->get('/menu')
             ->assertOk()
             ->assertSee('being updated', false);
+    }
+
+    public function test_it_says_so_when_online_ordering_is_off(): void
+    {
+        $this->category('Shorteats');
+        app(ServiceAvailabilityService::class)->setState('online_ordering', [
+            'status' => 'unavailable',
+            'public_message' => 'Online ordering is paused today.',
+            'reason_type' => 'operational_pause',
+        ]);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('site-service-banner', $html);
+        $this->assertStringContainsString('data-service-key="online_ordering"', $html);
+        $this->assertStringContainsString('Online ordering is paused today.', $html);
+        $this->assertStringContainsString('read the menu', $html);
+
+        $home = $this->get('/')->assertOk()->getContent();
+        $this->assertStringNotContainsString('site-service-banner', $home);
+        $this->assertStringNotContainsString('Online ordering is paused today.', $home);
+    }
+
+    public function test_closed_hours_name_the_reopen_time(): void
+    {
+        $this->category('Shorteats');
+        $tz = config('opening_hours.timezone');
+        $today = now($tz)->dayOfWeek;
+        $hours = [];
+        for ($day = 0; $day < 7; $day++) {
+            $hours[$day] = $day === $today
+                ? ['closed' => true]
+                : ['open' => '10:00', 'close' => '22:00'];
+        }
+        SiteSetting::set('business_hours_json', json_encode($hours));
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $reopen = app(OpeningHoursService::class)->getNextOpenTime();
+        $this->assertNotNull($reopen, 'a closed day must still have a next open');
+
+        $this->assertStringContainsString('site-service-banner', $html);
+        $this->assertStringContainsString($reopen->timezone($tz)->format('g:i A'), $html);
+        $this->assertStringContainsString('read the menu', $html);
+    }
+
+    public function test_an_open_shop_with_ordering_on_has_no_notice(): void
+    {
+        $this->category('Shorteats');
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('site-service-banner', $html);
     }
 
     /** The middleware serves English unless the owner has switched Dhivehi on. */
