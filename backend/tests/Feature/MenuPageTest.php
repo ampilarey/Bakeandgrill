@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domains\Promotions\Services\OffersService;
 use App\Domains\System\Services\ServiceAvailabilityService;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\ItemPhoto;
@@ -14,6 +15,7 @@ use App\Models\SiteSetting;
 use App\Services\OpeningHoursService;
 use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -108,16 +110,17 @@ class MenuPageTest extends TestCase
         $response->assertDontSee('MVR 0.00', false);
     }
 
-    public function test_each_item_links_into_the_ordering_app(): void
+    public function test_each_item_links_to_its_own_detail_page(): void
     {
-        // Browsing is a reading task and belongs here; the cart stays in the
-        // SPA. This link is the handoff.
+        // Cards used to jump straight into the SPA sheet. The details now
+        // live in the initial HTML at /menu/{id}; Add to order is the handoff.
         $cat = $this->category('Shorteats');
         $item = $this->item($cat, 'Bajiya', 5);
 
         $this->get('/menu')
             ->assertOk()
-            ->assertSee('/order/menu?item=' . $item->id, false);
+            ->assertSee('/menu/' . $item->id, false)
+            ->assertDontSee('/order/menu?item=' . $item->id, false);
     }
 
     public function test_it_hides_what_a_customer_cannot_order(): void
@@ -186,7 +189,11 @@ class MenuPageTest extends TestCase
 
     private function itemCard(string $html, int $itemId): string
     {
-        preg_match('#<a class="menu-card" href="/order/menu\?item=' . $itemId . '">.*?</a>#s', $html, $card);
+        preg_match(
+            '#<article class="menu-card">(?:(?!</article>).)*href="/menu/' . $itemId . '".*?</article>#s',
+            $html,
+            $card,
+        );
         $this->assertNotEmpty($card, 'the item card must be in the HTML');
 
         return $card[0];
@@ -372,10 +379,9 @@ class MenuPageTest extends TestCase
 
         $html = $this->get('/menu')->assertOk()->getContent();
 
-        preg_match('#<a class="menu-card" href="/order/menu\?item=' . $item->id . '">.*?</a>#s', $html, $card);
-        $this->assertNotEmpty($card, 'the item card must be in the HTML');
-        $this->assertStringContainsString('MVR 7.00', $card[0]);
-        $this->assertMatchesRegularExpression('#<s class="menu-card-price-was">MVR 10.00</s>#', $card[0]);
+        $card = $this->itemCard($html, $item->id);
+        $this->assertStringContainsString('MVR 7.00', $card);
+        $this->assertMatchesRegularExpression('#<s class="menu-card-price-was">MVR 10.00</s>#', $card);
     }
 
     public function test_an_active_offer_renders_with_a_rail_pill(): void
@@ -436,15 +442,26 @@ class MenuPageTest extends TestCase
     public function test_the_whole_card_is_the_link_not_a_caption_beside_it(): void
     {
         // The photo is the biggest thing on the card; a separate "Order →"
-        // caption made the small text the only tap target.
+        // caption made the small text the only tap target. The heart is a
+        // sibling (a button inside an <a> is invalid), so the card itself
+        // is the positioned box and the <a> covers it via ::after.
         $cat = $this->category('Shorteats');
         $item = $this->item($cat, 'Bajiya', 5);
 
         $html = $this->get('/menu')->assertOk()->getContent();
+        $card = $this->itemCard($html, $item->id);
 
         $this->assertMatchesRegularExpression(
-            '#<a class="menu-card" href="/order/menu\?item=' . $item->id . '">\s*<div class="menu-card-circle">#',
+            '#<article class="menu-card">\s*<a class="menu-card-link" href="/menu/' . $item->id . '">\s*<div class="menu-card-circle">#',
             $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '#\.menu-card-link::after\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0#s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '#<a class="menu-card-link" href="/menu/' . $item->id . '">.*?</a>\s*<a class="menu-fav"#s',
+            $card,
         );
     }
 
@@ -616,5 +633,126 @@ class MenuPageTest extends TestCase
         $this->get('/menu?lang=dv')
             ->assertOk()
             ->assertSee('Cutlet', false);
+    }
+
+    // ── Item detail ───────────────────────────────────────────────────────
+
+    public function test_item_details_are_in_the_html_without_javascript(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5, [
+            'description' => 'Crispy pastry filled with tuna, onion and chilli — the full text, not a 60-character clamp.',
+            'dietary_tags' => ['halal'],
+            'allergens' => ['gluten', 'fish'],
+            'spice_level' => 'medium',
+            'prep_time_minutes' => 12,
+            'has_variants' => true,
+        ]);
+        $item->variants()->create(['name' => 'Single', 'price' => 5, 'is_active' => true, 'sort_order' => 1]);
+        $item->variants()->create(['name' => 'Box of 6', 'price' => 28, 'is_active' => true, 'sort_order' => 2]);
+        $item->variants()->create(['name' => 'Retired size', 'price' => 99, 'is_active' => false, 'sort_order' => 3]);
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        $this->assertStringContainsString('Crispy pastry filled with tuna, onion and chilli — the full text, not a 60-character clamp.', $html);
+        $this->assertStringContainsString('Single', $html);
+        $this->assertStringContainsString('MVR 5.00', $html);
+        $this->assertStringContainsString('Box of 6', $html);
+        $this->assertStringContainsString('MVR 28.00', $html);
+        $this->assertStringNotContainsString('Retired size', $html);
+        $this->assertStringContainsString('halal', $html);
+        $this->assertStringContainsString('gluten', $html);
+        $this->assertStringContainsString('fish', $html);
+        $this->assertStringContainsString('Medium', $html);
+        $this->assertStringContainsString('12 min', $html);
+        $this->assertStringContainsString('/order/menu?item=' . $item->id, $html);
+        $this->assertStringContainsString('Add to order', $html);
+        $this->assertStringContainsString('href="/order/menu"', $html);
+        $this->assertStringContainsString('View cart', $html);
+    }
+
+    public function test_an_item_you_cannot_order_has_no_detail_page(): void
+    {
+        $cat = $this->category('Shorteats');
+        $gone = $this->item($cat, 'Sold Out Item', 5, ['is_available' => false]);
+        $retired = $this->item($cat, 'Retired Item', 5, ['is_active' => false]);
+
+        $this->get('/menu/' . $gone->id)->assertNotFound();
+        $this->get('/menu/' . $retired->id)->assertNotFound();
+        $this->get('/menu/999999')->assertNotFound();
+    }
+
+    public function test_the_sitemap_does_not_list_per_item_urls(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+
+        $this->get('/sitemap.xml')
+            ->assertOk()
+            ->assertSee('<loc>' . url('/menu') . '</loc>', false)
+            ->assertDontSee('/menu/' . $item->id, false);
+    }
+
+    public function test_signed_in_favourites_are_filled_on_the_first_paint(): void
+    {
+        $cat = $this->category('Shorteats');
+        $liked = $this->item($cat, 'Bajiya', 5);
+        $plain = $this->item($cat, 'Cutlet', 6);
+        $customer = Customer::factory()->create();
+        DB::table('customer_favorites')->insert([
+            'customer_id' => $customer->id,
+            'item_id' => $liked->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $html = $this->actingAs($customer, 'customer')->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString("document.documentElement.classList.add('js')", $html);
+        $this->assertStringContainsString('name="csrf-token"', $html);
+        $this->assertStringContainsString("'X-CSRF-TOKEN'", $html);
+
+        $likedCard = $this->itemCard($html, $liked->id);
+        $this->assertStringContainsString('aria-pressed="true"', $likedCard);
+        $this->assertStringContainsString('❤️', $likedCard);
+        $this->assertStringContainsString('Remove from favourites', $likedCard);
+
+        $plainCard = $this->itemCard($html, $plain->id);
+        $this->assertStringContainsString('aria-pressed="false"', $plainCard);
+        $this->assertStringContainsString('🤍', $plainCard);
+    }
+
+    public function test_a_toggled_favourite_survives_reload(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+        $customer = Customer::factory()->create();
+
+        $this->actingAs($customer, 'customer');
+        $this->get('/menu')->assertOk();
+        $this->postJson('/api/customer/favorites/' . $item->id . '/toggle', [], [
+            'X-CSRF-TOKEN' => csrf_token(),
+        ])->assertOk()->assertJson(['favorited' => true]);
+
+        $this->assertDatabaseHas('customer_favorites', [
+            'customer_id' => $customer->id,
+            'item_id' => $item->id,
+        ]);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $this->assertStringContainsString('aria-pressed="true"', $this->itemCard($html, $item->id));
+    }
+
+    public function test_signed_out_heart_sends_you_to_sign_in(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('href="/customer/login"', $card);
+        $this->assertStringContainsString('Sign in to save favourites', $card);
+        $this->assertStringNotContainsString('aria-pressed="true"', $card);
+        $this->assertStringNotContainsString('/api/customer/favorites', $card);
     }
 }
