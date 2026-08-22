@@ -694,6 +694,10 @@ class CmsContentTest extends TestCase
     public function test_terms_last_updated_label_uses_cms_setting(): void
     {
         $this->seedSetting('terms_last_updated_label', 'Revised on:', 'Pages');
+        // The whole line is hidden until a date exists — see LegalPagesTest.
+        // The label was previously rendered on its own, so this test passed
+        // while the live page showed a dangling "Last updated:".
+        $this->seedSetting('legal_last_updated_date', 'August 2026', 'Legal');
 
         $response = $this->get('/terms');
         $response->assertOk();
@@ -738,6 +742,8 @@ class CmsContentTest extends TestCase
     public function test_refund_last_updated_label_uses_cms_setting(): void
     {
         $this->seedSetting('refund_last_updated_label', 'Policy date:', 'Pages');
+        // See the terms twin above: the line needs a date to render at all.
+        $this->seedSetting('legal_last_updated_date', 'August 2026', 'Legal');
 
         $response = $this->get('/refund');
         $response->assertOk();

@@ -142,6 +142,21 @@
         <p>These terms are governed by the laws of the Republic of Maldives. Any disputes will be resolved through the relevant Maldivian courts or authority.</p>
     @endif
 
-    <p class="updated">{{ $termsLastUpdated }} {{ content('legal_last_updated_date', 'April 2026') }}</p>
+@php $legalUpdatedDate = trim((string) content('legal_last_updated_date')); @endphp
+    {{-- Only when the owner has actually set a date.
+
+         This used to read content('legal_last_updated_date', 'April 2026'),
+         which looks like it falls back but never does: the key is registered
+         with a '' default and ContentResolver returns any non-null registry
+         default ahead of the caller's. So all three legal pages shipped a
+         bare "Last updated:" with nothing after it. Verified live on
+         2026-08-22.
+
+         Hiding the line is the honest fix. Printing today's date would claim
+         the policy changed today, every day; a hardcoded one goes stale the
+         first time the text is edited. Set it in Content Hub → Legal. --}}
+    @if($legalUpdatedDate !== '')
+    <p class="updated">{{ $termsLastUpdated }} {{ $legalUpdatedDate }}</p>
+    @endif
 </div>
 @endsection
