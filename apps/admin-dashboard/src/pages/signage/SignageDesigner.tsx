@@ -176,7 +176,7 @@ export function SignageDesigner({ slide, onChange, onClose }: Props) {
       rotation: 0,
       style: { fontSize: 3.5, color: '#FFF8F0', fontWeight: 700 },
       animation: { entrance: 'fade', duration: 700, delay: 0 },
-      binding: type === 'qr' ? { url: '/order/view' } : type === 'menu_list' ? { type: 'smart', smart_type: 'bestsellers', limit: 8 } : {},
+      binding: type === 'qr' ? { url: '/menu' } : type === 'menu_list' ? { type: 'smart', smart_type: 'bestsellers', limit: 8 } : {},
       text: type === 'text' || type === 'variable' ? 'New text {{branch_name}}' : undefined,
     };
     updateElements((els) => [...els, el]);

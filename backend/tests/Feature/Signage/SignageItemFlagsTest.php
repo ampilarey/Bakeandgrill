@@ -20,7 +20,7 @@ class SignageItemFlagsTest extends TestCase
     {
         MenuGroup::firstOrCreate(
             ['id' => 1],
-            ['name' => 'Default', 'slug' => 'default', 'sort_order' => 0, 'is_active' => true]
+            ['name' => 'Default', 'slug' => 'default', 'sort_order' => 0, 'is_active' => true],
         );
         $cat = Category::firstOrCreate(['name' => 'Grill'], ['is_active' => true]);
 
@@ -97,6 +97,19 @@ class SignageItemFlagsTest extends TestCase
         $this->assertContains('auto_menu', $origins);
     }
 
+    public function test_qr_template_binds_to_the_server_rendered_menu(): void
+    {
+        $slide = \App\Domains\Signage\Services\SignageTemplateFactory::template('qr');
+        $qr = collect($slide['elements'])->firstWhere('type', 'qr');
+        $this->assertSame('/menu', $qr['binding']['url'] ?? null);
+
+        $playlist = \App\Domains\Signage\Services\SignageTemplateFactory::defaultPlaylistSlides();
+        $qrSlide = collect($playlist)->firstWhere('template_origin', 'qr');
+        $this->assertNotNull($qrSlide);
+        $qrEl = collect($qrSlide['elements'])->firstWhere('type', 'qr');
+        $this->assertSame('/menu', $qrEl['binding']['url'] ?? null);
+    }
+
     public function test_auto_menu_template_carries_its_tuning_binding(): void
     {
         $slide = \App\Domains\Signage\Services\SignageTemplateFactory::template('auto_menu');
@@ -112,7 +125,7 @@ class SignageItemFlagsTest extends TestCase
     {
         $keys = array_column(
             \App\Domains\Signage\Services\SignageTemplateFactory::templateCatalog(),
-            'key'
+            'key',
         );
 
         $this->assertContains('auto_menu', $keys);
@@ -128,7 +141,7 @@ class SignageItemFlagsTest extends TestCase
         $this->assertContains('logo', $types);
         $texts = array_values(array_filter(
             $slide['elements'],
-            fn ($el) => ($el['type'] ?? '') === 'text'
+            fn ($el) => ($el['type'] ?? '') === 'text',
         ));
         $joined = implode(' ', array_map(fn ($el) => (string) ($el['text'] ?? ''), $texts));
         $this->assertStringContainsString('{{branch_name}}', $joined);
@@ -137,7 +150,7 @@ class SignageItemFlagsTest extends TestCase
 
         $keys = array_column(
             \App\Domains\Signage\Services\SignageTemplateFactory::templateCatalog(),
-            'key'
+            'key',
         );
         $this->assertContains('brand_card', $keys);
     }

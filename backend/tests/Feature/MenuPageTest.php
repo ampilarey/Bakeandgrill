@@ -76,6 +76,16 @@ class MenuPageTest extends TestCase
         $this->get('/menu')->assertOk();
     }
 
+    public function test_printed_dine_in_qr_codes_still_reach_the_menu(): void
+    {
+        // Table QR codes were printed against /order/view. That path must keep
+        // working after the dine-in menu moved to Blade — a missing redirect
+        // is a dead sticker on every table.
+        $this->get('/order/view')
+            ->assertStatus(301)
+            ->assertRedirect('/menu');
+    }
+
     public function test_an_item_priced_by_size_never_advertises_zero(): void
     {
         // base_price stays 0 on a sized item; printing it read "MVR 0.00" on

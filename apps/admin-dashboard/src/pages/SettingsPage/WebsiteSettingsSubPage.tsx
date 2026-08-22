@@ -13,8 +13,8 @@ export function WebsiteSettings() {
   const toast = useToast();
 
   const dineInUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '/order/view';
-    return `${window.location.origin}/order/view`;
+    if (typeof window === 'undefined') return '/menu';
+    return `${window.location.origin}/menu`;
   }, []);
 
   const onCopyLink = async () => {
