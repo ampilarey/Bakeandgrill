@@ -196,7 +196,7 @@ function SignageEl({
       break;
     }
     case 'qr': {
-      const url = String(el.binding?.url ?? '/order/view');
+      const url = String(el.binding?.url ?? '/menu');
       const abs = url.startsWith('http') ? url : `${typeof window !== 'undefined' ? window.location.origin : ''}${url.startsWith('/') ? '' : '/'}${url}`;
       const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(abs)}`;
       body = <img src={qrSrc} alt="QR" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }} />;

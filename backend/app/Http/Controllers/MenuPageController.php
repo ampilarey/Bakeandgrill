@@ -15,9 +15,9 @@ use Illuminate\Support\Collection;
  * The menu, rendered on the server.
  *
  * Replaces two things that both failed the same way. `/menu` was a 301 into
- * `/order/menu`, and the dine-in QR code pointed at `/order/view` — both React
- * routes, so a crawler asking for either received `<div id="root"></div>` and
- * the site's own `Restaurant` schema pointed at that empty page.
+ * `/order/menu`, and the dine-in QR used to land on a React view-only route
+ * — both SPAs, so a crawler asking for either received `<div id="root"></div>`
+ * and the site's own `Restaurant` schema pointed at that empty page.
  *
  * SEO is the smaller half of the reason. The bigger one is the person at a
  * table: scanning a QR code used to mean downloading a large JavaScript bundle

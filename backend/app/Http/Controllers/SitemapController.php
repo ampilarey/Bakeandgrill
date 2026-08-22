@@ -16,8 +16,8 @@ use Illuminate\Http\Response;
  * the right way for it to be discovered.
  *
  * /menu is server-rendered by MenuPageController and is the page most worth
- * indexing on the site. /order/menu and /order/view remain excluded: those are
- * the SPA's own routes and render to an empty div.
+ * indexing on the site. The SPA's own /order/menu route remains excluded:
+ * it renders to an empty div.
  *
  * Deliberately no <lastmod>. We have no honest per-page modification date, and
  * a made-up one is worse than none: Google learns to distrust the whole file.
