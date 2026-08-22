@@ -8,6 +8,7 @@ use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\DailySpecial;
 use App\Models\Item;
+use App\Models\ItemPhoto;
 use App\Models\SiteSetting;
 use App\Services\SpecialPricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -181,6 +182,14 @@ class MenuPageTest extends TestCase
         return substr($html, $start, $end - $start);
     }
 
+    private function itemCard(string $html, int $itemId): string
+    {
+        preg_match('#<a class="menu-card" href="/order/menu\?item=' . $itemId . '">.*?</a>#s', $html, $card);
+        $this->assertNotEmpty($card, 'the item card must be in the HTML');
+
+        return $card[0];
+    }
+
     public function test_the_rail_lists_every_section_with_its_count(): void
     {
         // Mirrors the order app's left category rail. The count is what tells
@@ -222,6 +231,84 @@ class MenuPageTest extends TestCase
             '#<header class="menu-cat-band" id="cat-' . $cat->id . '"\s+style="background: linear-gradient#',
             $shell,
         );
+    }
+
+    public function test_a_gallery_photo_wins_over_the_stale_main_image(): void
+    {
+        // The order app reads item.photos. /menu used to read image_url only,
+        // so a gallery upload left the old main image (or the placeholder) on
+        // the dine-in page.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5, [
+            'image_url' => 'https://cdn.example.com/old-main.jpg',
+        ]);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/gallery-other.jpg',
+            'sort_order' => 1,
+            'is_primary' => false,
+        ]);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/gallery-primary.jpg',
+            'thumb_url' => 'https://cdn.example.com/gallery-primary-thumb.jpg',
+            'sort_order' => 2,
+            'is_primary' => true,
+        ]);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('gallery-primary-thumb.jpg', $card);
+        $this->assertStringNotContainsString('old-main.jpg', $card);
+        $this->assertStringNotContainsString('gallery-other.jpg', $card);
+    }
+
+    public function test_a_video_first_gallery_renders_the_poster_not_the_file(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/clip.mp4',
+            'media_type' => 'video',
+            'poster_url' => 'https://cdn.example.com/poster.jpg',
+            'sort_order' => 1,
+            'is_primary' => true,
+        ]);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('poster.jpg', $card);
+        $this->assertStringNotContainsString('clip.mp4', $card);
+    }
+
+    public function test_an_empty_gallery_falls_back_to_the_item_image(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5, [
+            'image_url' => 'https://cdn.example.com/main.jpg',
+            'thumb_url' => 'https://cdn.example.com/main-thumb.jpg',
+        ]);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('main-thumb.jpg', $card);
+    }
+
+    public function test_no_item_image_falls_back_to_the_site_default_then_the_emoji(): void
+    {
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5);
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
+
+        $withDefault = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+        $this->assertStringContainsString('storage/site/default_item.jpg', $withDefault);
+
+        SiteSetting::set('default_item_image', '', 'shared');
+        $plain = $this->item($cat, 'Cutlet', 6);
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $plain->id);
+        $this->assertStringContainsString('🍽️', $card);
+        $this->assertStringNotContainsString('src=""', $card);
     }
 
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void

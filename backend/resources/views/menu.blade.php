@@ -335,6 +335,7 @@ span.menu-rail-thumb {
     $menuOffers = $menuOffers ?? collect();
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
+    $menuPhotos = $menuPhotos ?? [];
 
     $anchorFor = fn ($group) => $group['category'] ? 'cat-' . $group['category']->id : 'cat-other';
 
@@ -492,8 +493,9 @@ span.menu-rail-thumb {
                                 $iname = $itemName($item);
                                 $idesc = $itemDesc($item);
                                 $price = $priceFor($item);
-                                $photo = $mediaUrl($item->thumb_url ?: $item->image_url) ?: $defaultItemImage;
-                                $webp  = $mediaUrl($item->thumb_webp_url ?: $item->image_webp_url);
+                                $chosen = $menuPhotos[$item->id] ?? ['url' => null, 'webp' => null];
+                                $photo = $chosen['url'] ?? null;
+                                $webp  = $chosen['webp'] ?? null;
                                 $isNew = isset($menuNewItemIds[$item->id]);
                             @endphp
                             {{-- The whole card is the link, as in the order app. A small
@@ -558,8 +560,8 @@ span.menu-rail-thumb {
         'name' => 'Bake & Grill menu',
         'url' => url('/menu'),
         'inLanguage' => $menuLocale === 'dv' ? 'dv' : 'en',
-        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor) {
-            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor) {
+        'hasMenuSection' => $menuCategories->map(function ($group) use ($itemName, $itemDesc, $categoryName, $priceFor, $menuPhotos) {
+            $toMenuItem = function ($item) use ($itemName, $itemDesc, $priceFor, $menuPhotos) {
                 $price = $priceFor($item);
                 $desc = $itemDesc($item)['text'];
 
@@ -567,7 +569,7 @@ span.menu-rail-thumb {
                     '@type' => 'MenuItem',
                     'name' => $itemName($item)['text'],
                     'description' => $desc !== '' ? $desc : null,
-                    'image' => $item->display_image_url ?: null,
+                    'image' => ($menuPhotos[$item->id]['url'] ?? null) ?: ($item->display_image_url ?: null),
                     'offers' => [
                         '@type' => 'Offer',
                         'price' => number_format($price['price'], 2, '.', ''),
