@@ -9,6 +9,12 @@ both have **zero orders** (7 items, 1 user, 2 customers). This is a pre-launch
 system. Items 1–5 are cheap now and expensive later; items 6–8 only start
 paying once there is a real menu and real traffic.
 
+**Status, 2026-08-22.** 3 skipped (already solved), 4 is an owner task, 5 done,
+7 done. 6 is **half done** — `/menu` exists and is server-rendered, but the QR
+codes still point at the React page it was meant to replace, so the dine-in
+half of the item has not landed yet. 1, 2 and 8 are untouched; 1 and 8 are
+parked until the mobile app starts.
+
 ---
 
 ## 1. Customer auth must issue bearer tokens
@@ -216,7 +222,63 @@ muted within a week and then it may as well not exist.
 
 ---
 
-## 6. Move the dine-in menu to the Blade site, server-rendered
+## 6. Move the dine-in menu to the Blade site — **half done**
+
+### What shipped (2026-08-21 → 22)
+
+- **`backend/app/Http/Controllers/MenuPageController.php`** and
+  **`resources/views/menu.blade.php`** — every active, available item in the
+  initial HTML, grouped by category in menu order. The `301 /menu → /order/menu`
+  redirect is gone.
+- Items whose category was deactivated fall into a trailing **"More"** group
+  rather than disappearing.
+- **`Menu` / `MenuSection` / `MenuItem` JSON-LD**, and `hasMenu` in
+  `layout.blade.php` now points at `url('/menu')` instead of the empty SPA div.
+  `/menu` is in `SitemapController::PAGES`.
+- Dhivehi names for items *and* categories, gated by the existing
+  `content.locale` middleware.
+- Each item links to `/order/menu?item={id}` — browsing here, cart in the SPA.
+- **Layout ported from the order app** (`cat-rail`, `menu-cat-promo`,
+  `menu-card-article--zus`): sticky rail of category thumbnails with item
+  counts, an image band per section, round-photo cards, two columns on a phone,
+  whole card is the link. The rail is plain anchor links, so it works with JS
+  off; the scroll-spy only paints the active mark.
+- `backend/tests/Feature/MenuPageTest.php` — 18 tests, 62 assertions.
+
+### What is left
+
+**The dine-in half.** This is the part that was the bigger win, and none of it
+has landed: the QR codes still point at `/order/view`.
+
+1. **Repoint the QR sources.** Four places, not two — the backend one is easy
+   to miss:
+   - `apps/admin-dashboard/src/pages/SettingsPage/WebsiteSettingsSubPage.tsx:16-17`
+   - `apps/admin-dashboard/src/pages/signage/SignageDesigner.tsx:179`
+   - `backend/app/Domains/Signage/Services/SignageTemplateFactory.php:43` and `:140`
+   - and the test that pins it:
+     `apps/admin-dashboard/src/__tests__/WebsiteSettingsDineInMenu.test.tsx:24`
+2. **`/order/view` → `/menu`, 301** — insurance for QR codes already printed.
+3. **Retire `MenuViewPage.tsx` / `.css` / `.test.tsx`** — only after 1 and 2 are
+   live, and in a separate PR.
+4. **Behaviour still not ported** from `MenuViewPage.tsx`:
+   - **Offers** (`OffersService::activeOffers()`) — `HomeController` already
+     calls it, so this is a controller line and a partial.
+   - **Specials pricing** — `SpecialPricingService::activeSpecialsForDisplay()`.
+     `displayPriceInfo()` does not know about specials, so a discounted item
+     shows its full price on `/menu` and its discounted price in the app.
+   - **"New" badges** — `isItemNew`, capped at `NEW_ITEMS_CAP = 12`, window from
+     `content('menu_new_days', '30')` (already scoped to `website`).
+   - **Subcategories** — `MenuViewPage` groups by `parent_id`; the Blade
+     controller groups by `category_id` only, so a subcategory currently
+     renders as its own top-level section.
+   - **Sold-out items** — `MenuViewPage` sinks them to the bottom of their
+     section; the Blade page hides them. That was deliberate (a customer
+     browsing the public menu cannot act on a sold-out item), but it is a
+     genuine difference and should be a decision, not a surprise.
+5. **`/privacy`** is still `Route::redirect('/privacy', '/order/privacy', 301)`
+   — the same "permanently moved to an empty div" problem `/menu` had.
+
+### Original brief
 
 **Read this first — it replaces an earlier version of this item that said
 "build a new `/menu` page". A dine-in menu already exists.**
@@ -300,20 +362,24 @@ and adding both to `SitemapController::PAGES` once they are real pages.
 
 ---
 
-## 7. Fix `hasMenu` — **the sitemap half is done**
+## 7. Fix `hasMenu` — **done**
 
 `sitemap.xml` is built and live: `SitemapController`, routed at
 `/sitemap.xml`, referenced from `robots.txt`, covered by
-`backend/tests/Feature/SitemapTest.php`. It lists the six server-rendered
+`backend/tests/Feature/SitemapTest.php`. It lists the seven server-rendered
 pages with `hreflang` alternates for English and Dhivehi, and deliberately
 omits the SPA routes. Tests guard that every advertised URL returns 200 and
 that no `/order/*` or staff path is ever listed.
 
-**What is left** is the `hasMenu` fix, which depends on item 6 — and adding
-`/menu` to `SitemapController::PAGES` once that page exists. It is the page
-most worth indexing on the site, and its absence is noted in the controller.
+`hasMenu` in `layout.blade.php` points at `url('/menu')` as of 2026-08-21,
+and `/menu` is in `SitemapController::PAGES` at priority 0.9 — the highest on
+the site after the home page. `MenuPageTest` decodes the rendered JSON-LD and
+asserts both, so neither can quietly regress.
 
-**Why.** Small, and closes the loop on item 6.
+Nothing left to build here.
+
+<details>
+<summary>Original text</summary>
 
 **Files**
 - `backend/resources/views/layout.blade.php` — the JSON-LD block, ~line 180
@@ -331,6 +397,8 @@ most worth indexing on the site, and its absence is noted in the controller.
 
 **Done when** the sitemap validates and every URL in it returns 200 with real
 server-rendered content.
+
+</details>
 
 ---
 
