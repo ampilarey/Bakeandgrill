@@ -44,6 +44,12 @@ Route::middleware(['content.locale', 'service.banner'])->group(function () {
     Route::get('/hours', [HomeController::class, 'hours'])->name('hours');
     Route::get('/terms', [HomeController::class, 'terms'])->name('terms');
     Route::get('/refund', [HomeController::class, 'refund'])->name('refund');
+    // Was a 301 into /order/privacy — the SPA, which serves a crawler an empty
+    // div. Same problem /menu had, and the same fix: a real Blade page. The
+    // order app keeps its own /order/privacy for in-app links (checkout's
+    // consent link opens it in a new tab); both read legal_privacy_body, so
+    // the CMS body stays the single source of truth for the text.
+    Route::get('/privacy', [HomeController::class, 'privacy'])->name('privacy');
 });
 
 // Staff-signed Content Studio website preview (draft overlay; never listed publicly).
@@ -61,7 +67,6 @@ Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'sho
     ->whereNumber('item')
     ->middleware(['content.locale', 'service.banner'])
     ->name('menu.item');
-Route::redirect('/privacy', '/order/privacy', 301)->name('privacy');
 
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;

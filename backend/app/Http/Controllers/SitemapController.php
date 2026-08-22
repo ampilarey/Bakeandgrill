@@ -19,6 +19,12 @@ use Illuminate\Http\Response;
  * indexing on the site. The SPA's own /order/menu route remains excluded:
  * it renders to an empty div.
  *
+ * /privacy joined the list once it stopped being a 301 into /order/privacy.
+ * Listing it while it redirected would have advertised a URL whose content a
+ * crawler could not read. Per-item /menu/{id} URLs stay out — see item 6 in
+ * docs/IMPROVEMENT_PLAN.md, which defers them until Search Console says
+ * whether they would move anything.
+ *
  * Deliberately no <lastmod>. We have no honest per-page modification date, and
  * a made-up one is worse than none: Google learns to distrust the whole file.
  */
@@ -41,6 +47,7 @@ class SitemapController extends Controller
         ['route' => 'prayer-times.index', 'priority' => '0.6', 'changefreq' => 'daily'],
         ['route' => 'terms', 'priority' => '0.3', 'changefreq' => 'yearly'],
         ['route' => 'refund', 'priority' => '0.3', 'changefreq' => 'yearly'],
+        ['route' => 'privacy', 'priority' => '0.3', 'changefreq' => 'yearly'],
     ];
 
     public function index(): Response
