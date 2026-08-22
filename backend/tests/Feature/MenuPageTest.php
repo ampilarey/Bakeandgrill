@@ -221,6 +221,36 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('aria-label="Drinks, 1 item"', $rail[0]);
     }
 
+    public function test_the_rail_ends_with_an_events_pill(): void
+    {
+        // Same last-on-rail shortcut as the order app. The wizard is an SPA
+        // page, so this is a real path, not an in-page hash.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
+        $this->assertNotEmpty($rail, 'the category rail must be in the HTML');
+
+        preg_match_all('#<a\s[^>]*href="([^"]+)"#', $rail[0], $hrefs);
+        $this->assertNotEmpty($hrefs[1]);
+        $this->assertSame('/order/events', end($hrefs[1]));
+        $this->assertStringContainsString('data-testid="cat-rail-events"', $rail[0]);
+        $this->assertStringContainsString('aria-label="Events"', $rail[0]);
+        $this->assertMatchesRegularExpression('#<span class="menu-rail-label">Events</span>#', $rail[0]);
+        $this->assertMatchesRegularExpression('#<span class="menu-rail-thumb"#', $rail[0]);
+    }
+
+    public function test_the_rail_spy_skips_hrefs_that_are_not_page_anchors(): void
+    {
+        // Without this, IntersectionObserver looks up id="/order/events".
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+        $this->assertStringContainsString("if (href.charAt(0) !== '#') return;", $html);
+    }
+
     public function test_a_category_without_art_never_renders_an_empty_image(): void
     {
         // src="" re-requests the page itself in some browsers, and shows a
