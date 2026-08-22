@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
+use App\Models\ItemPhoto;
 use App\Services\SpecialPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -49,6 +50,7 @@ class MenuPageController extends Controller
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
+            'menuPhotos' => $this->displayPhotos($items),
             // Passed in rather than read from the layout: a child view's
             // sections are evaluated before the layout renders, so anything
             // the layout defines in its own @php block is not in scope here.
@@ -62,7 +64,7 @@ class MenuPageController extends Controller
     private function sellableItems(): Collection
     {
         return Item::query()
-            ->with(['variants', 'category'])
+            ->with(['variants', 'category', 'photos'])
             ->where('is_active', true)
             ->where('is_available', true)
             ->orderBy('sort_order')
@@ -185,5 +187,89 @@ class MenuPageController extends Controller
             ->all();
 
         return array_fill_keys($ids, true);
+    }
+
+    /**
+     * One photo per item, same selection as buildItemSlides(source: 'gallery').
+     *
+     * The Blade used to read thumb_url / image_url only. A photo uploaded to
+     * the gallery never reached /menu, while the order app already showed it.
+     *
+     * @param Collection<int, Item> $items
+     * @return array<int, array{url: ?string, webp: ?string}>
+     */
+    private function displayPhotos(Collection $items): array
+    {
+        $default = $this->mediaUrl(content('default_item_image'));
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item->id] = $this->displayPhotoFor($item, $default);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{url: ?string, webp: ?string}
+     */
+    private function displayPhotoFor(Item $item, ?string $default): array
+    {
+        $photos = $item->photos
+            ->sort(function (ItemPhoto $a, ItemPhoto $b) {
+                if ((bool) $a->is_primary !== (bool) $b->is_primary) {
+                    return $a->is_primary ? -1 : 1;
+                }
+
+                return $a->sort_order <=> $b->sort_order;
+            })
+            ->values();
+
+        foreach ($photos as $photo) {
+            if ($photo->isVideo()) {
+                $url = $this->mediaUrl($photo->poster_url ?: $photo->thumb_url);
+                if ($url) {
+                    return ['url' => $url, 'webp' => null];
+                }
+
+                continue;
+            }
+
+            $url = $this->mediaUrl($photo->thumb_url ?: $photo->url);
+            if (!$url) {
+                continue;
+            }
+
+            return [
+                'url' => $url,
+                'webp' => $this->mediaUrl($photo->thumb_webp_url ?: $photo->image_webp_url),
+            ];
+        }
+
+        $url = $this->mediaUrl($item->thumb_url ?: $item->image_url);
+        if ($url) {
+            return [
+                'url' => $url,
+                'webp' => $this->mediaUrl($item->thumb_webp_url ?: $item->image_webp_url),
+            ];
+        }
+
+        return ['url' => $default, 'webp' => null];
+    }
+
+    /**
+     * Same origin rewrite as Item::display_image_url, for thumbs and posters too.
+     */
+    private function mediaUrl(mixed $raw): ?string
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return null;
+        }
+        if (!str_starts_with($raw, 'http')) {
+            return url(ltrim($raw, '/'));
+        }
+        $path = trim(preg_replace('#^https?://[^/]+#', '', $raw), '/');
+
+        return str_starts_with($path, 'images/cafe/') ? url($path) : $raw;
     }
 }
