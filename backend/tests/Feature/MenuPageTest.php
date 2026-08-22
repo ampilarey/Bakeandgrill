@@ -766,6 +766,59 @@ class MenuPageTest extends TestCase
         $this->assertStringNotContainsString('data-special="1"', $this->itemCard($html, $plain->id));
     }
 
+    public function test_the_toolbar_offers_the_same_controls_as_the_order_app(): void
+    {
+        // Search button, A–Z / price sorts, Grid / List — the order app's
+        // FilterChipsRow and view toggle, ported.
+        $cat = $this->category('Shorteats');
+        $this->item($cat, 'Bajiya', 5);
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="menuSearchToggle"', $html);
+        $this->assertStringContainsString('data-sort="name"', $html);
+        $this->assertStringContainsString('data-sort="price-low"', $html);
+        $this->assertStringContainsString('data-sort="price-high"', $html);
+        $this->assertStringContainsString('data-view="grid"', $html);
+        $this->assertStringContainsString('data-view="list"', $html);
+        // Same key as apps/online-order-web, so a choice made on one surface
+        // is honoured on the other instead of each forgetting the other.
+        $this->assertStringContainsString("'bg-menu-view'", $html);
+
+        // The field starts collapsed behind the button, as in the order app.
+        $this->assertMatchesRegularExpression('#id="menuSearchWrap"[^>]*hidden#', $html);
+    }
+
+    public function test_cards_sort_by_the_price_they_actually_advertise(): void
+    {
+        // Sorting reads data-price, and that has to be the displayed price or
+        // "cheapest first" contradicts the card. Two traps: a sized item
+        // carries base_price 0, and a discounted item shows its special.
+        $cat = $this->category('Shorteats');
+
+        $sized = $this->item($cat, 'Coke', 0, ['has_variants' => true]);
+        $sized->variants()->create(['name' => 'Small', 'price' => 15, 'is_active' => true]);
+
+        $discounted = $this->item($cat, 'Bajiya', 10);
+        DailySpecial::create([
+            'item_id' => $discounted->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 7,
+            'badge_label' => 'Today',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+        app(OffersService::class)->bustCache();
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        // Not 0.00, which would sort every sized item to the top of "cheapest".
+        $this->assertStringContainsString('data-price="15.00"', $this->itemCard($html, $sized->id));
+        // The special, not the 10.00 list price.
+        $this->assertStringContainsString('data-price="7.00"', $this->itemCard($html, $discounted->id));
+    }
+
     public function test_the_filter_bar_is_hidden_until_javascript_confirms_itself(): void
     {
         // The bar can only work with JS. Rendering a search box that does

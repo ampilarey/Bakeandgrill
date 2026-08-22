@@ -116,12 +116,60 @@ html.js .menu-filters {
     padding: 0.6rem 0;
     background: var(--bg);
 }
-.menu-search {
-    position: relative;
-    flex: 1 1 12rem;
-    min-width: 0;
+/* Toolbar row: search button + Grid/List, as in the order app. */
+.menu-tools {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+.menu-tool {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    min-height: 36px;
+    padding: 0 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--dark);
+    font: inherit; font-size: 0.8rem; font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.menu-tool:hover { border-color: var(--amber); color: var(--amber); }
+.menu-tool.is-on { background: var(--amber-light); border-color: var(--amber); color: var(--amber); }
+
+.menu-view-toggle {
+    margin-inline-start: auto;
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.menu-view-btn {
+    min-height: 36px;
+    padding: 0 0.8rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit; font-size: 0.78rem; font-weight: 700;
+    cursor: pointer;
+}
+.menu-view-btn.is-active { background: var(--amber); color: #fff; }
+
+.menu-search {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+.menu-search[hidden] { display: none; }
+.menu-search-close {
+    position: absolute;
+    inset-inline-end: 0.35rem;
+    min-width: 32px; min-height: 32px;
+    border: none; background: none;
+    color: var(--muted);
+    font: inherit; cursor: pointer;
 }
 .menu-search-icon {
     position: absolute;
@@ -181,6 +229,23 @@ html.js .menu-filters {
 /* Filtered out. A hidden card must not stay tabbable — `hidden` alone is
    overridden by the `display:flex` on .menu-card. */
 .menu-card[hidden], .menu-cat-section[hidden], .menu-subcat-block[hidden] { display: none; }
+
+/* ── List view ──────────────────────────────────────────────────────── */
+/* Same circle size as the grid — only the text moves beside it, which is
+   what the order app does (.menu-card-article--list). */
+.menu-main.is-list .menu-grid { grid-template-columns: 1fr; gap: 0.25rem; }
+.menu-main.is-list .menu-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.9rem;
+    text-align: start;
+    padding: 0.5rem 0.25rem;
+}
+.menu-main.is-list .menu-card-circle { margin-bottom: 0; }
+.menu-main.is-list .menu-card-body { align-items: flex-start; }
+.menu-main.is-list .menu-card-desc { -webkit-line-clamp: 2; }
+.menu-main.is-list .menu-card-price { margin-top: 0.2rem; }
+.menu-main.is-list .menu-fav { top: 50%; transform: translateY(-50%); right: 0; }
 
 /* ── Category band ──────────────────────────────────────────────────── */
 .menu-cat-band {
@@ -578,12 +643,36 @@ html.js .menu-fav { display: inline-flex; }
              until the layout's inline script has set html.js, rather than
              offering a search box that cannot search. --}}
         <div class="menu-filters" data-testid="menu-filters">
-            <label class="menu-search">
-                <span class="visually-hidden">Search the menu</span>
+            <div class="menu-tools">
+                {{-- The search field starts collapsed behind a button, as in the
+                     order app, so the toolbar does not eat a phone row before
+                     anyone has asked to search. --}}
+                <button type="button" class="menu-tool" id="menuSearchToggle"
+                        aria-expanded="false" aria-controls="menuSearchWrap">
+                    <span aria-hidden="true">🔍</span> Search
+                </button>
+
+                <div class="menu-view-toggle" role="group" aria-label="Menu layout">
+                    <button type="button" class="menu-view-btn is-active" data-view="grid" aria-pressed="true">Grid</button>
+                    <button type="button" class="menu-view-btn" data-view="list" aria-pressed="false">List</button>
+                </div>
+            </div>
+
+            <div class="menu-search" id="menuSearchWrap" hidden>
+                <label class="visually-hidden" for="menuSearch">Search the menu</label>
                 <span class="menu-search-icon" aria-hidden="true">🔍</span>
                 <input type="search" id="menuSearch" placeholder="Search the menu"
                        autocomplete="off" enterkeyhint="search">
-            </label>
+                <button type="button" class="menu-search-close" aria-label="Close search">✕</button>
+            </div>
+
+            {{-- Sort is one choice, so these are radio-ish: exactly one on at a
+                 time. Filters below are independent and combine. --}}
+            <div class="menu-chips" role="group" aria-label="Sort the menu">
+                <button type="button" class="menu-chip menu-sort is-active" data-sort="name" aria-pressed="true">A–Z</button>
+                <button type="button" class="menu-chip menu-sort" data-sort="price-low" aria-pressed="false">Price ↑</button>
+                <button type="button" class="menu-chip menu-sort" data-sort="price-high" aria-pressed="false">Price ↓</button>
+            </div>
 
             @php
                 $hasSpecial = collect($menuSpecialsByItemId)->isNotEmpty();
@@ -602,6 +691,11 @@ html.js .menu-fav { display: inline-flex; }
                     @foreach($menuDietaryFilters as $chip)
                         <button type="button" class="menu-chip" data-filter="diet:{{ $chip['slug'] }}" aria-pressed="false">{{ $chip['label'] }}</button>
                     @endforeach
+                    <button type="button" class="menu-chip menu-clear-chip" hidden>Clear</button>
+                </div>
+            @else
+                <div class="menu-chips">
+                    <button type="button" class="menu-chip menu-clear-chip" hidden>Clear</button>
                 </div>
             @endif
         </div>
@@ -730,6 +824,12 @@ html.js .menu-fav { display: inline-flex; }
                             <article class="menu-card"
                                      data-search="{{ $haystack }}"
                                      data-diet="{{ $tags }}"
+                                     data-name="{{ mb_strtolower($iname['text']) }}"
+                                     {{-- The displayed price, so "cheapest first"
+                                          agrees with what the card says. A sized
+                                          item carries base_price 0, which would
+                                          otherwise sort every platter to the top. --}}
+                                     data-price="{{ number_format($price['price'], 2, '.', '') }}"
                                      @if($price['was'] !== null) data-special="1" @endif
                                      @if($isNew) data-new="1" @endif>
                                 <a class="menu-card-link" href="/menu/{{ $item->id }}">
@@ -853,7 +953,15 @@ html.js .menu-fav { display: inline-flex; }
     if (!bar) return;
 
     var input = document.getElementById('menuSearch');
-    var chips = Array.prototype.slice.call(bar.querySelectorAll('.menu-chip'));
+    var searchWrap = document.getElementById('menuSearchWrap');
+    var searchToggle = document.getElementById('menuSearchToggle');
+    var searchClose = bar.querySelector('.menu-search-close');
+    var chips = Array.prototype.slice.call(bar.querySelectorAll('.menu-chip:not(.menu-sort):not(.menu-clear-chip)'));
+    var sorts = Array.prototype.slice.call(bar.querySelectorAll('.menu-sort'));
+    var viewBtns = Array.prototype.slice.call(bar.querySelectorAll('.menu-view-btn'));
+    var clearChip = bar.querySelector('.menu-clear-chip');
+    var main = document.querySelector('.menu-main');
+    var grids = Array.prototype.slice.call(document.querySelectorAll('.menu-subcat-block .menu-grid'));
     var cards = Array.prototype.slice.call(document.querySelectorAll('.menu-card[data-search]'));
     var sections = Array.prototype.slice.call(document.querySelectorAll('.menu-cat-section'));
     var blocks = Array.prototype.slice.call(document.querySelectorAll('.menu-subcat-block'));
@@ -907,6 +1015,8 @@ html.js .menu-fav { display: inline-flex; }
         if (offers) offers.hidden = filtering;
 
         if (noMatch) noMatch.hidden = !(filtering && shown === 0);
+        if (clearChip) clearChip.hidden = !filtering;
+        if (searchToggle) searchToggle.classList.toggle('is-on', query !== '');
 
         // The rail counts what is showing, or it contradicts the page.
         document.querySelectorAll('.menu-rail a[href^="#cat-"]').forEach(function (a) {
@@ -920,12 +1030,79 @@ html.js .menu-fav { display: inline-flex; }
         });
     }
 
+    // ── Sort ──────────────────────────────────────────────────────────
+    // Reorders within each grid, never across the whole menu: the category
+    // grouping is the page's structure and "cheapest first" must not flatten
+    // it into one list.
+    function applySort(mode) {
+        grids.forEach(function (grid) {
+            var cards = Array.prototype.slice.call(grid.children);
+            cards.sort(function (a, b) {
+                if (mode === 'price-low' || mode === 'price-high') {
+                    var pa = parseFloat(a.getAttribute('data-price')) || 0;
+                    var pb = parseFloat(b.getAttribute('data-price')) || 0;
+                    if (pa !== pb) return mode === 'price-low' ? pa - pb : pb - pa;
+                }
+                return (a.getAttribute('data-name') || '')
+                    .localeCompare(b.getAttribute('data-name') || '');
+            });
+            cards.forEach(function (c) { grid.appendChild(c); });
+        });
+    }
+    sorts.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            sorts.forEach(function (b) {
+                var on = b === btn;
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                b.classList.toggle('is-active', on);
+            });
+            applySort(btn.getAttribute('data-sort'));
+        });
+    });
+
+    // ── Grid / list ───────────────────────────────────────────────────
+    // Same localStorage key as the order app, so the choice carries across
+    // the two surfaces instead of each one forgetting the other.
+    var VIEW_KEY = 'bg-menu-view';
+    function setView(mode) {
+        if (main) main.classList.toggle('is-list', mode === 'list');
+        viewBtns.forEach(function (b) {
+            var on = b.getAttribute('data-view') === mode;
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            b.classList.toggle('is-active', on);
+        });
+        try { localStorage.setItem(VIEW_KEY, mode); } catch (e) { /* private mode */ }
+    }
+    viewBtns.forEach(function (b) {
+        b.addEventListener('click', function () { setView(b.getAttribute('data-view')); });
+    });
+    try {
+        if (localStorage.getItem(VIEW_KEY) === 'list') setView('list');
+    } catch (e) { /* private mode */ }
+
+    // ── Search box ────────────────────────────────────────────────────
+    function openSearch(open) {
+        if (!searchWrap || !searchToggle) return;
+        searchWrap.hidden = !open;
+        searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && input) input.focus();
+        if (!open && input && input.value) { input.value = ''; apply(); }
+    }
+    if (searchToggle) {
+        searchToggle.addEventListener('click', function () {
+            openSearch(searchWrap.hidden);
+        });
+    }
+    if (searchClose) searchClose.addEventListener('click', function () { openSearch(false); });
+
     if (input) {
         input.addEventListener('input', apply);
         // Escape clears rather than only blurring — a search box you cannot
         // easily empty is how people end up thinking the menu is short.
         input.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { input.value = ''; apply(); }
+            if (e.key === 'Escape') {
+                if (input.value) { input.value = ''; apply(); } else { openSearch(false); }
+            }
         });
     }
     chips.forEach(function (chip) {
@@ -935,13 +1112,13 @@ html.js .menu-fav { display: inline-flex; }
             apply();
         });
     });
-    if (clear) {
-        clear.addEventListener('click', function () {
-            if (input) input.value = '';
-            chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
-            apply();
-        });
+    function clearAll() {
+        if (input) input.value = '';
+        chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+        apply();
     }
+    if (clear) clear.addEventListener('click', clearAll);
+    if (clearChip) clearChip.addEventListener('click', clearAll);
 })();
 </script>
 
