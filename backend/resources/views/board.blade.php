@@ -310,9 +310,36 @@
             border-radius: 18px;
             padding: 1.5rem;
         }
-        .pair-card h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.4rem; }
+        .pair-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
         .pair-card p { color: var(--muted); line-height: 1.55; margin-bottom: 1rem; }
-        .pair-card ol { color: var(--muted); line-height: 1.6; margin: 0 0 1rem 1.1rem; }
+        .pair-card ol { color: var(--muted); line-height: 1.7; margin: 0 0 1rem 1.15rem; }
+        .pair-card ol strong { color: var(--text); }
+
+        /* The six characters. This is the only thing anybody has to read from
+           across the room, so it is the largest thing on the screen — and
+           spaced out, because it gets read aloud as often as it gets typed. */
+        .pair-code {
+            display: block;
+            margin: 0.25rem 0 1rem;
+            padding: 1rem 0.75rem;
+            border-radius: 14px;
+            background: var(--panel-2);
+            border: 2px dashed var(--amber);
+            color: var(--amber);
+            font-size: clamp(2.6rem, 9vw, 4.2rem);
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-indent: 0.16em;
+            text-align: center;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        .pair-code[data-state="loading"] { color: var(--muted); border-color: var(--line); }
+
+        .pair-expiry { font-size: 0.85rem; color: var(--muted); text-align: center; margin: -0.5rem 0 1rem; }
+
         .pair-card input {
             width: 100%;
             min-height: 52px;
@@ -341,6 +368,22 @@
         }
         .pair-error { color: var(--late); font-weight: 700; margin-top: 0.75rem; }
         .pair-error:empty { display: none; }
+
+        /* The manual key box stays, folded away. It is the right tool on a
+           laptop or a monitor with a keyboard, and useless on a television —
+           so it must not be the first thing either one sees. */
+        .pair-manual { margin-top: 1.25rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+        .pair-manual summary {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 0.9rem;
+            list-style: none;
+        }
+        .pair-manual summary::-webkit-details-marker { display: none; }
+        .pair-manual summary::before { content: "▸ "; }
+        .pair-manual[open] summary::before { content: "▾ "; }
+        .pair-manual form { margin-top: 0.85rem; }
+        .pair-manual button { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
 
         /* ── Wide screens: a TV is further away than a monitor ───────── */
         @media (min-width: 1600px) {
@@ -378,19 +421,36 @@
     </div>
 
     <div class="pair">
-        <form class="pair-card" id="pair-form">
+        <div class="pair-card">
             <h1>Pair this screen</h1>
-            <p>This screen shows live orders. It needs its own board key — a cashier's login will not do.</p>
+            <p>You only do this once. Afterwards this screen starts on its own every time it is switched on.</p>
+
+            <strong class="pair-code" id="pair-code" data-state="loading" aria-live="polite">······</strong>
+            <p class="pair-expiry" id="pair-expiry"></p>
+
             <ol>
-                <li>On the admin dashboard, open <strong>Devices</strong>.</li>
-                <li>Under <strong>Order boards</strong>, add a board and copy the key.</li>
-                <li>Paste it below. It is stored on this screen only.</li>
+                <li>On your phone, open the admin and go to <strong>Devices</strong>.</li>
+                <li>Under <strong>Order boards</strong>, tap <strong>Pair a screen</strong>.</li>
+                <li>Type the code above and give this screen a name.</li>
             </ol>
-            <input type="password" id="pair-key" placeholder="Paste the board key" autocomplete="off"
-                   autocapitalize="off" autocorrect="off" spellcheck="false" required>
-            <button type="submit">Start the board</button>
+
             <p class="pair-error" id="pair-error" role="alert"></p>
-        </form>
+
+            <details class="pair-manual">
+                <summary>Enter a board key instead</summary>
+                <form id="pair-form">
+                    <!-- Deliberately type="text": on a television and on plenty
+                         of mobile browsers a password field blocks pasting or
+                         forces a restricted on-screen keyboard, which is how a
+                         perfectly good key gets rejected. Nothing is protected
+                         by hiding it here — the key is on screen for seconds,
+                         in a back room, during setup. -->
+                    <input type="text" id="pair-key" placeholder="Paste the board key" autocomplete="off"
+                           autocapitalize="off" autocorrect="off" spellcheck="false" required>
+                    <button type="submit">Start the board</button>
+                </form>
+            </details>
+        </div>
     </div>
 </div>
 
@@ -399,8 +459,14 @@
     'use strict';
 
     var FEED = '{{ url('/api/board/orders') }}';
+    var PAIR_START = '{{ url('/api/board/pair/start') }}';
+    var PAIR_STATUS = '{{ url('/api/board/pair/status') }}';
     var KEY = 'bg-board-key';
     var POLL_MS = 8000;
+    // How often an unpaired screen asks whether somebody has typed its code.
+    // Fast enough that approving on a phone feels immediate to whoever is
+    // standing at the television.
+    var PAIR_POLL_MS = 3000;
     // A board is stale well before staff would notice on their own. Three
     // missed polls is about half a minute — short enough to catch a dropped
     // wifi link, long enough not to flap on one slow response.
@@ -415,6 +481,8 @@
     var pairForm = document.getElementById('pair-form');
     var pairKey = document.getElementById('pair-key');
     var pairError = document.getElementById('pair-error');
+    var pairCode = document.getElementById('pair-code');
+    var pairExpiry = document.getElementById('pair-expiry');
     var soundBtn = document.getElementById('sound-btn');
 
     var counts = {
@@ -432,6 +500,8 @@
     var seen = Object.create(null);
     var primed = false;
     var timer = null;
+    var pairTimer = null;
+    var pollToken = null;
 
     function store(get, set) {
         try { return set === undefined ? localStorage.getItem(get) : localStorage.setItem(get, set); }
@@ -689,6 +759,85 @@
         board.classList.add('needs-pairing');
         pairKey.value = '';
         pairError.textContent = message || '';
+        beginPairing();
+    }
+
+    /* ── Pairing a screen with no keyboard ───────────────────────────
+       The television shows six characters; somebody types them into the
+       admin on their phone; this poll picks up the key. Nothing long is
+       ever typed on the TV. Once per screen — after this the key lives
+       in localStorage and the board starts on its own. */
+
+    function stopPairing() {
+        if (pairTimer) { clearInterval(pairTimer); pairTimer = null; }
+    }
+
+    function showCode(code, expiresAt) {
+        pairCode.textContent = code;
+        pairCode.setAttribute('data-state', 'ready');
+        var mins = expiresAt ? Math.round((Date.parse(expiresAt) - Date.now()) / 60000) : 0;
+        pairExpiry.textContent = mins > 0
+            ? 'This code works for the next ' + mins + ' minutes.'
+            : '';
+    }
+
+    function beginPairing() {
+        stopPairing();
+        pollToken = null;
+        pairCode.textContent = '······';
+        pairCode.setAttribute('data-state', 'loading');
+        pairExpiry.textContent = '';
+
+        fetch(PAIR_START, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            cache: 'no-store'
+        }).then(function (res) {
+            if (!res.ok) { throw new Error('HTTP ' + res.status); }
+            return res.json();
+        }).then(function (data) {
+            pollToken = data.poll_token;
+            showCode(data.code, data.expires_at);
+            pairTimer = setInterval(checkPairing, PAIR_POLL_MS);
+        }).catch(function () {
+            pairCode.textContent = '——';
+            pairError.textContent = 'Could not reach the till. Check this screen is online, then reload.';
+        });
+    }
+
+    function checkPairing() {
+        if (!pollToken) { return; }
+
+        fetch(PAIR_STATUS, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ poll_token: pollToken }),
+            cache: 'no-store'
+        }).then(function (res) {
+            if (res.status === 404) {
+                // The code timed out. Get another rather than leaving a dead
+                // one on the wall for somebody to try typing.
+                beginPairing();
+                return null;
+            }
+            if (!res.ok) { throw new Error('HTTP ' + res.status); }
+            return res.json();
+        }).then(function (data) {
+            if (!data || data.status !== 'approved') { return; }
+            stopPairing();
+            adopt(data.token);
+        }).catch(function () {
+            /* Network blip — the next tick tries again. */
+        });
+    }
+
+    /** Take a key, keep it, and start showing orders. */
+    function adopt(value) {
+        token = value;
+        store(KEY, value);
+        pairError.textContent = '';
+        stopPairing();
+        start();
     }
 
     pairForm.addEventListener('submit', function (event) {
@@ -707,13 +856,10 @@
                     : 'Could not reach the till (HTTP ' + res.status + '). Check the network.';
                 return;
             }
-            token = value;
-            store(KEY, value);
-            pairError.textContent = '';
             // The submit tap is the gesture browsers require, so this is the
             // one moment sound can be unlocked without asking again.
             unlockSound();
-            start();
+            adopt(value);
         }).catch(function () {
             pairError.textContent = 'Could not reach the till. Check the network.';
         });
@@ -730,8 +876,50 @@
         }
     });
 
-    token = store(KEY);
-    if (token) { start(); }
+    /* ── Starting up ─────────────────────────────────────────────────
+       Three ways this screen can already know its key, in order of how
+       much we trust them to still be there tomorrow morning. */
+
+    /**
+     * A key carried in the URL, for televisions that wipe browser storage
+     * when they power off. Saved as the TV browser's homepage, it re-pairs
+     * itself every time the set is switched on, with nobody present.
+     *
+     * The trade is real and worth stating: the key ends up in the browser
+     * history and in whatever bookmark holds it. It buys nothing but a
+     * read-only view of the order list, and it is the only arrangement that
+     * survives a set which forgets everything overnight — but prefer the
+     * pairing code where storage sticks.
+     */
+    function keyFromUrl() {
+        var match = /[?&]key=([^&#]+)/.exec(window.location.search);
+        if (!match) { return null; }
+
+        var value = decodeURIComponent(match[1]);
+        // Strip it back out of the address bar straight away, so the key is
+        // not sitting on screen in a room full of customers.
+        try {
+            var clean = window.location.pathname + window.location.hash;
+            window.history.replaceState(null, '', clean);
+        } catch (e) { /* older browsers keep the query; nothing else breaks */ }
+
+        return value;
+    }
+
+    var urlKey = keyFromUrl();
+    if (urlKey) {
+        // Store it before proving it: if the set forgets storage anyway, the
+        // URL brings it back next time regardless.
+        adopt(urlKey);
+    } else {
+        token = store(KEY);
+        if (token) {
+            start();
+        } else {
+            // No key at all — show a code and wait for somebody to approve it.
+            beginPairing();
+        }
+    }
 })();
 </script>
 </body>

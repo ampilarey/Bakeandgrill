@@ -369,6 +369,19 @@ export async function revokeOrderBoard(id: number): Promise<{ message: string }>
   return req(`/admin/boards/${id}`, { method: 'DELETE' });
 }
 
+/**
+ * Approve the six characters a screen is showing.
+ *
+ * The normal way to set up a television: nothing is typed on the TV, and no
+ * key is ever displayed here — the screen collects its own within seconds.
+ */
+export async function claimOrderBoard(
+  code: string,
+  name: string,
+): Promise<{ message: string; id: number; name: string }> {
+  return req('/admin/boards/claim', { method: 'POST', body: JSON.stringify({ code, name }) });
+}
+
 // ── Waste Logs ────────────────────────────────────────────────────────────────
 
 export interface WasteLog {

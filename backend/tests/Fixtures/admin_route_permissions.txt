@@ -152,7 +152,7 @@ backend/routes/domains/orders.php:159:orders.manage
 backend/routes/domains/orders.php:160:orders.manage
 backend/routes/domains/orders.php:173:orders.manage
 backend/routes/domains/orders.php:191:pos.ring_sales
-backend/routes/domains/orders.php:205:devices.approve
+backend/routes/domains/orders.php:218:devices.approve
 backend/routes/domains/orders.php:25:pos.ring_sales
 backend/routes/domains/orders.php:27:pos.ring_sales
 backend/routes/domains/orders.php:30:pos.hold_resume

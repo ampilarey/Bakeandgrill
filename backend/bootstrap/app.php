@@ -68,6 +68,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/receipts/*/complaint-photos',
             'api/invoices/*/complaints',
             'api/invoices/*/complaint-photos',
+            // Wall-screen pairing. Same shape as the complaint routes above:
+            // statefulApi() would 419 a same-origin fetch from /board, which
+            // has no session and does no CSRF cookie dance. Safe to except
+            // because neither route reads a cookie or an identity — CSRF
+            // guards against a request riding somebody's session, and there is
+            // no session here to ride. Both are rate limited instead.
+            'api/board/pair/start',
+            'api/board/pair/status',
         ]);
 
         $middleware->alias([

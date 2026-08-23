@@ -28,6 +28,35 @@ class BoardScreenTest extends TestCase
             ->assertSee('Pair this screen');
     }
 
+    public function test_the_key_box_is_not_a_password_field(): void
+    {
+        // A television and plenty of mobile browsers either block pasting into
+        // a password field or force a restricted on-screen keyboard, which is
+        // how a perfectly good key gets rejected. Nothing is protected by
+        // hiding it: it is on screen for seconds, in a back room, at setup.
+        $html = $this->get('/board')->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="pair-key"', $html);
+        $this->assertMatchesRegularExpression('/<input type="text" id="pair-key"/', $html);
+        $this->assertStringNotContainsString('type="password"', $html);
+    }
+
+    public function test_the_pairing_code_leads_and_the_key_box_is_folded_away(): void
+    {
+        // The code is the path a television can actually use. If the key box
+        // were still the first thing on screen, every setup would start by
+        // trying to type 50 characters on a remote.
+        $html = $this->get('/board')->assertOk()->getContent();
+
+        $codeAt = strpos($html, 'id="pair-code"');
+        $keyAt = strpos($html, 'id="pair-key"');
+
+        $this->assertNotFalse($codeAt);
+        $this->assertNotFalse($keyAt);
+        $this->assertLessThan($keyAt, $codeAt, 'the code must come before the key box');
+        $this->assertStringContainsString('Enter a board key instead', $html);
+    }
+
     public function test_the_shell_carries_no_order_data(): void
     {
         // The whole security argument for a public shell is that it holds

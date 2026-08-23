@@ -199,6 +199,19 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
     Route::get('/board/orders', [App\Http\Controllers\Api\BoardController::class, 'orders'])
         ->middleware(['auth:sanctum', 'board.token', 'throttle:240,1']);
 
+    // Pairing a screen that has no keyboard. Unauthenticated on purpose — an
+    // unpaired television has no credential, which is the problem being
+    // solved. Neither route hands out anything: starting a handshake returns a
+    // code that is worthless until an owner approves it, and the status poll
+    // needs the poll token, which never appears on the screen.
+    //
+    // Throttled tightly all the same, since these are the only public writes
+    // in the board feature and each start writes a row.
+    Route::post('/board/pair/start', [App\Http\Controllers\Api\BoardController::class, 'startPairing'])
+        ->middleware('throttle:10,1');
+    Route::post('/board/pair/status', [App\Http\Controllers\Api\BoardController::class, 'pairingStatus'])
+        ->middleware('throttle:120,1');
+
     // Issuing and revoking those credentials is an owner action, on the
     // ordinary staff token — never on a board token, which is why these sit
     // behind staff.token and a permission rather than board.token.
@@ -206,6 +219,9 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
         ->group(function () {
             Route::get('/admin/boards', [App\Http\Controllers\Api\BoardController::class, 'listTokens']);
             Route::post('/admin/boards', [App\Http\Controllers\Api\BoardController::class, 'issueToken']);
+            // Approving the six characters shown on a screen. This is where a
+            // board key is actually created for the pairing flow.
+            Route::post('/admin/boards/claim', [App\Http\Controllers\Api\BoardController::class, 'claimPairing']);
             Route::delete('/admin/boards/{id}', [App\Http\Controllers\Api\BoardController::class, 'revokeToken'])
                 ->whereNumber('id');
         });
