@@ -86,9 +86,24 @@ class OrderCreationController extends Controller
             $query->where('user_id', $cashierId);
         }
 
-        // POS Active Orders — online ordering app (pickup + delivery).
+        // POS Active Orders — the "Online" scope.
+        //
+        // Was `whereIn('type', ['online_pickup', 'delivery'])`, which is not
+        // the same question. A cashier picking "Pickup" on the till creates
+        // type `online_pickup`, so every staff pickup and phoned-in delivery
+        // appeared under a tab labelled "Online orders — pickup and delivery
+        // from the ordering app". It also excluded dine-in orders placed in
+        // the app, which the prepaid-dine-in clause further down already
+        // treats as customer orders.
+        //
+        // user_id is the actual signal; see Order::scopeCustomerPlaced().
         if ($request->filled('online_only') && $request->boolean('online_only')) {
-            $query->whereIn('type', ['online_pickup', 'delivery']);
+            $query->customerPlaced();
+        }
+
+        // The counterpart, for a staff-only view.
+        if ($request->filled('staff_only') && $request->boolean('staff_only')) {
+            $query->staffPlaced();
         }
 
         if ($canViewAllStations && $request->filled('device_id')) {
@@ -239,6 +254,10 @@ class OrderCreationController extends Controller
 
         $orders->through(function (Order $order) use ($slim) {
             $data = $order->toArray();
+            // Decided here rather than re-derived per screen. The POS used to
+            // work it out from `type` plus a nullable relation, which is how
+            // the list filter and the row label ended up disagreeing.
+            $data['is_customer_placed'] = $order->isCustomerPlaced();
             if (!$slim) {
                 $data['payment_settlement'] = OrderSettlement::forOrder($order);
             }

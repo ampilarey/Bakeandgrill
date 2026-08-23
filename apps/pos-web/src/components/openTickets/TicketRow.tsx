@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { palette, radius, space, btnPrimary, btnSecondary, type, z } from "../../theme";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
+import { orderOriginBadge, posOrderTypeEmoji, posOrderTypeLabel } from "../../orderTypeLabels";
 import {
   formatTicketAge,
   ticketAgeAnchor,
@@ -194,8 +194,13 @@ export function TicketRow({
     return null;
   })();
 
-  const typeLabel = posOrderTypeLabel(t.type, t.user?.id);
-  const typeEmoji = posOrderTypeEmoji(t.type, t.user?.id);
+  const isCustomerPlaced = (t as { is_customer_placed?: boolean | null }).is_customer_placed;
+  const typeLabel = posOrderTypeLabel(t.type, t.user?.id, isCustomerPlaced);
+  const typeEmoji = posOrderTypeEmoji(t.type, t.user?.id, isCustomerPlaced);
+  // Origin is its own badge now. Folded into the type label it only ever
+  // distinguished online_pickup — a customer delivery and a phoned-in one
+  // both read "🛵 Delivery", with nothing to tell them apart at a glance.
+  const originBadge = orderOriginBadge(t.user?.id, isCustomerPlaced, t.user?.name);
 
   const cardClickHandler = mergeTargetId === null
     ? () => onResume(t)
@@ -290,6 +295,19 @@ export function TicketRow({
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+            <span
+              data-testid="ticket-origin-badge"
+              data-origin={originBadge.tone}
+              title={originBadge.title}
+              style={{
+                ...badgeBase,
+                color: originBadge.tone === "online" ? palette.info : palette.panelInk,
+                background: originBadge.tone === "online" ? palette.infoBg : palette.bgAlt,
+                borderColor: originBadge.tone === "online" ? palette.info : palette.border,
+              }}
+            >
+              {originBadge.label}
+            </span>
             <span
               title={stageBadge.title}
               style={{

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -175,7 +176,7 @@ class Order extends Model
     }
 
     /** Prepaid dine-in: the table booking created with this order. */
-    public function reservation(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function reservation(): HasOne
     {
         return $this->hasOne(Reservation::class, 'order_id');
     }
@@ -228,5 +229,38 @@ class Order extends Model
     public function manualDiscountApprover(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manual_discount_approved_by');
+    }
+
+    // ── Where the order came from ─────────────────────────────────────────
+    //
+    // There is no `source` column, and `type` is not one: a cashier choosing
+    // "Pickup" on the till produces type `online_pickup` (see
+    // mapPosOrderType in apps/pos-web), so type alone counts staff tickets as
+    // online orders. `user_id` is the honest signal — OrderCreationService
+    // stamps the cashier on anything rung on a till, and the customer-app
+    // path (OrderCreationController::storeCustomer) never sets it.
+    //
+    // Two definitions of this used to exist and disagreed. The POS filter
+    // matched on type and swept in staff pickups and deliveries; the POS
+    // label helper checked user_id but only for those two types, so a dine-in
+    // order placed in the app was never recognised as one. Both now come
+    // through here.
+
+    /** True when a customer placed this themselves, not a cashier. */
+    public function isCustomerPlaced(): bool
+    {
+        return $this->user_id === null;
+    }
+
+    /** Orders placed by a customer in the ordering app. */
+    public function scopeCustomerPlaced(Builder $query): Builder
+    {
+        return $query->whereNull('user_id');
+    }
+
+    /** Orders a member of staff rang up on a till. */
+    public function scopeStaffPlaced(Builder $query): Builder
+    {
+        return $query->whereNotNull('user_id');
     }
 }
