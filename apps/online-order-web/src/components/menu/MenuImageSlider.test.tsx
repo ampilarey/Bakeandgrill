@@ -113,6 +113,45 @@ describe('MenuImageSlider', () => {
     expect(container.querySelector('picture')).toBeNull();
   });
 
+  it('shows the stand-in logo whole rather than cropping it', () => {
+    // A real photo fills the frame — cropping a plate of food is fine. The
+    // stand-in is the site logo, and at 16/10 cover slices the flame off the
+    // top and the wordmark off the bottom, which is what an item with no
+    // photo used to show on its detail page.
+    const { container } = render(
+      <MenuImageSlider
+        slides={[{ type: 'image', url: '/storage/site/logo.png', isPlaceholder: true }]}
+        alt="Coke"
+        placeholderFit="contain"
+      />,
+    );
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img.style.objectFit).toBe('contain');
+    // Padding would otherwise grow the inset:0 box rather than inset the image.
+    expect(img.style.boxSizing).toBe('border-box');
+  });
+
+  it('leaves the stand-in cropped on surfaces that want it to fill', () => {
+    // The round cards are the reason this is a prop and not a rule. There the
+    // logo filling the circle is correct, and containing it would leave a
+    // shrunken logo with pale corners around it.
+    const { container } = render(
+      <MenuImageSlider
+        slides={[{ type: 'image', url: '/storage/site/logo.png', isPlaceholder: true }]}
+        alt="Coke"
+      />,
+    );
+    expect((container.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover');
+  });
+
+  it('never contains a real photo, even on a hero', () => {
+    // Cropping a plate of food to fill the frame is the intended look.
+    const { container } = render(
+      <MenuImageSlider slides={imageSlides} alt="Food" placeholderFit="contain" />,
+    );
+    expect((container.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover');
+  });
+
   it('emits picture/source when webpUrl is present and still keeps JPEG img', () => {
     const { container } = render(
       <MenuImageSlider slides={imageSlidesWithWebp} alt="Food" sizes="100vw" />,

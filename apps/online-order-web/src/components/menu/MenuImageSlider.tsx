@@ -26,6 +26,14 @@ type Props = {
   posterOnly?: boolean;
   /** CSS sizes hint for srcset selection (e.g. card vs sheet). */
   sizes?: string;
+  /**
+   * How to frame the site stand-in when an item has no photo of its own.
+   *
+   * 'cover' (default) suits a round card — the logo fills the circle. 'contain'
+   * suits a wide hero, where cropping a square logo to 16/10 cuts the flame off
+   * the top and the wordmark off the bottom. Real photos always cover.
+   */
+  placeholderFit?: 'cover' | 'contain';
 };
 
 function normalizeSlides(slides: MediaSlide[] | string[], fallbackAlt: string): MediaSlide[] {
@@ -51,6 +59,7 @@ export function MenuImageSlider({
   monogram,
   posterOnly = false,
   sizes = '(max-width: 640px) 92vw, 480px',
+  placeholderFit = 'cover',
 }: Props) {
   const slides = normalizeSlides(rawSlides, alt);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -132,12 +141,20 @@ export function MenuImageSlider({
   const renderSlide = (slide: MediaSlide, i: number) => {
     if (failed[i]) return null;
     const isActive = i === index;
+    // Framing is the surface's call, not this component's. A round card wants
+    // the stand-in logo cropped to fill the circle; a wide hero does not,
+    // because cover at 16/10 slices the flame off the top and the wordmark off
+    // the bottom — which is what an item with no photo used to show.
+    const containThis = slide.isPlaceholder === true && placeholderFit === 'contain';
     const commonStyle: CSSProperties = {
       position: 'absolute',
       inset: 0,
       width: '100%',
       height: '100%',
-      objectFit: 'cover',
+      objectFit: containThis ? 'contain' : 'cover',
+      // border-box so the inset:0 box is not grown by the padding.
+      padding: containThis ? '4%' : undefined,
+      boxSizing: 'border-box',
       display: 'block',
       opacity: isActive ? 1 : 0,
       transition: reduceMotion ? 'none' : 'opacity 0.55s ease',

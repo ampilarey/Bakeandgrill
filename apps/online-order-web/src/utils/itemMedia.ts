@@ -28,6 +28,15 @@ export type MediaSlide = {
   webpUrl?: string | null;
   /** Optional WebP for the thumbnail candidate used in srcset. */
   thumbWebpUrl?: string | null;
+  /**
+   * True when this is the site-wide stand-in, not a photo of the item.
+   *
+   * It matters because the two are framed differently. A real photo should
+   * fill its box — cropping a plate of food is fine. The stand-in is usually
+   * a logo, and cropping a logo to a wide hero slices the top and bottom off
+   * it. Renderers use this to switch to `contain`.
+   */
+  isPlaceholder?: boolean;
 };
 
 /** Build a JPEG srcset from thumb (400w) + crop (1200w). Never includes the master. */
@@ -75,7 +84,8 @@ export type BuildItemSlidesOptions = {
   strict?: boolean;
   /**
    * Site default item photo — used when the item has no gallery/main image.
-   * Rendered as a normal cover slide (fills the circle). Logo/monogram is last resort only.
+   * Slides built from it carry `isPlaceholder`, so a wide hero can show the
+   * whole thing instead of cropping a logo. Monogram is last resort only.
    */
   defaultImageUrl?: string | null;
 };
@@ -140,7 +150,7 @@ export function buildItemSlides(
     if (out.length === 0 && !strict) {
       const fallback = resolveMediaUrl(options?.defaultImageUrl);
       if (fallback) {
-        push({ type: 'image', url: fallback, alt: fallbackAlt });
+        push({ type: 'image', url: fallback, alt: fallbackAlt, isPlaceholder: true });
       }
     }
     return out;
@@ -179,7 +189,7 @@ export function buildItemSlides(
   if (out.length === 0 && !strict) {
     const fallback = resolveMediaUrl(options?.defaultImageUrl);
     if (fallback) {
-      push({ type: 'image', url: fallback, alt: fallbackAlt });
+      push({ type: 'image', url: fallback, alt: fallbackAlt, isPlaceholder: true });
     }
   }
 

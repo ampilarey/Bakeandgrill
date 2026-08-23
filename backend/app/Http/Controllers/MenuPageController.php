@@ -243,7 +243,7 @@ class MenuPageController extends Controller
      * carry.
      *
      * @param Collection<int, Item> $items
-     * @return array<int, array{url: ?string, webp: ?string, full: ?string}>
+     * @return array<int, array{url: ?string, webp: ?string, full: ?string, placeholder: bool}>
      */
     private function displayPhotos(Collection $items): array
     {
@@ -257,7 +257,12 @@ class MenuPageController extends Controller
     }
 
     /**
-     * @return array{url: ?string, webp: ?string, full: ?string}
+     * `placeholder` marks the site-wide stand-in rather than a photo of this
+     * item. The two want different framing: a real photo should fill its box,
+     * but the stand-in is the logo, and cropping a logo into a wide hero
+     * slices the flame off the top and the wordmark off the bottom.
+     *
+     * @return array{url: ?string, webp: ?string, full: ?string, placeholder: bool}
      */
     private function displayPhotoFor(Item $item, ?string $default): array
     {
@@ -276,7 +281,7 @@ class MenuPageController extends Controller
                 $url = $this->mediaUrl($photo->poster_url ?: $photo->thumb_url);
                 if ($url) {
                     // A poster is the only still we have — it is both sizes.
-                    return ['url' => $url, 'webp' => null, 'full' => $url];
+                    return ['url' => $url, 'webp' => null, 'full' => $url, 'placeholder' => false];
                 }
 
                 continue;
@@ -291,6 +296,7 @@ class MenuPageController extends Controller
                 'url' => $url,
                 'webp' => $this->mediaUrl($photo->thumb_webp_url ?: $photo->image_webp_url),
                 'full' => $this->mediaUrl($photo->url) ?: $url,
+                'placeholder' => false,
             ];
         }
 
@@ -300,10 +306,11 @@ class MenuPageController extends Controller
                 'url' => $url,
                 'webp' => $this->mediaUrl($item->thumb_webp_url ?: $item->image_webp_url),
                 'full' => $this->mediaUrl($item->image_url) ?: $url,
+                'placeholder' => false,
             ];
         }
 
-        return ['url' => $default, 'webp' => null, 'full' => $default];
+        return ['url' => $default, 'webp' => null, 'full' => $default, 'placeholder' => $default !== null];
     }
 
     /**

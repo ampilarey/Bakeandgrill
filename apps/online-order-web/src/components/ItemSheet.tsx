@@ -330,6 +330,10 @@ export function ItemSheet({
                 alt={item.name}
                 aspectRatio="16 / 10"
                 sizes="(max-width: 640px) 100vw, 640px"
+                // An item with no photo falls back to the site logo. Cropping
+                // that to 16/10 cut the flame off the top and the wordmark off
+                // the bottom; the round cards keep cover, where it fills.
+                placeholderFit="contain"
               />
             ) : (
               <div style={{

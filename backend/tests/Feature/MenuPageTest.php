@@ -351,6 +351,52 @@ class MenuPageTest extends TestCase
         $this->assertStringNotContainsString('src=""', $card);
     }
 
+    public function test_the_stand_in_logo_is_shown_whole_on_the_item_page(): void
+    {
+        // The hero crops to fill, which is right for a plate of food and wrong
+        // for the logo: at that aspect it slices the flame off the top and the
+        // wordmark off the bottom. An item with no photo showed exactly that.
+        $cat = $this->category('Drinks');
+        $item = $this->item($cat, 'Coke', 15);
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        // Matched on the element, not anywhere in the page: the modifier also
+        // appears in the stylesheet, so a bare string search passes with or
+        // without the fix.
+        $this->assertMatchesRegularExpression(
+            '#<div class="menu-item-hero [^"]*menu-item-hero--placeholder#',
+            $html,
+            'the hero element must carry the modifier',
+        );
+        $this->assertMatchesRegularExpression(
+            '#\.menu-item-hero--placeholder img\s*\{[^}]*object-fit:\s*contain#',
+            $html,
+            'the stand-in must be contained, not cropped',
+        );
+    }
+
+    public function test_a_real_photo_still_fills_the_item_hero(): void
+    {
+        // The complement, so the fix cannot quietly letterbox every photo.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 5, [
+            'image_url' => 'https://cdn.example.com/bajiya.jpg',
+            'thumb_url' => 'https://cdn.example.com/bajiya-thumb.jpg',
+        ]);
+        SiteSetting::set('default_item_image', '/storage/site/default_item.jpg', 'shared');
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        $this->assertStringContainsString('bajiya-thumb.jpg', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '#<div class="menu-item-hero [^"]*menu-item-hero--placeholder#',
+            $html,
+            'a real photo must not be letterboxed',
+        );
+    }
+
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
     {
         // A category with no subcategory must not skip a level: h1 → h2 → h3.

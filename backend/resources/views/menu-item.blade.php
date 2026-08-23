@@ -45,9 +45,11 @@
         return $info;
     };
     $price = $priceFor($item);
-    $chosen = $menuPhotos[$item->id] ?? ['url' => null, 'webp' => null];
+    $chosen = $menuPhotos[$item->id] ?? ['url' => null, 'webp' => null, 'placeholder' => false];
     $photo = $chosen['url'] ?? null;
     $webp = $chosen['webp'] ?? null;
+    // The stand-in logo must not be cropped into the hero — see the CSS below.
+    $photoIsPlaceholder = (bool) ($chosen['placeholder'] ?? false);
     $variants = $item->variants->where('is_active', true)->sortBy('sort_order')->values();
     $dietary = array_values(array_filter((array) ($item->dietary_tags ?? [])));
     $allergens = array_values(array_filter((array) ($item->allergens ?? [])));
@@ -87,6 +89,14 @@
    img sizes against a shrink-to-fit box and object-fit has nothing to cover. */
 .menu-item-hero picture { display: block; width: 100%; height: 100%; }
 .menu-item-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* A real photo fills the hero — cropping a plate of food is fine. The site
+   stand-in is the logo, and cropping that slices the flame off the top and the
+   wordmark off the bottom, which is what an item with no photo used to show. */
+.menu-item-hero--placeholder img {
+    object-fit: contain;
+    padding: 4%;
+    box-sizing: border-box;
+}
 .menu-item-page .menu-fav {
     display: none;
     position: absolute; top: 0.65rem; right: 0.65rem;
@@ -176,7 +186,7 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 <article class="menu-item-page">
     <a class="menu-item-back" href="/menu">← Full menu</a>
 
-    <div class="menu-item-hero">
+    <div class="menu-item-hero @if($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif">
         @if($photo)
             <picture>
                 @if($webp)<source srcset="{{ $webp }}" type="image/webp">@endif
