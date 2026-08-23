@@ -91,7 +91,14 @@
 .menu-item-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* A real photo fills the hero — cropping a plate of food is fine. The site
    stand-in is the logo, and cropping that slices the flame off the top and the
-   wordmark off the bottom, which is what an item with no photo used to show. */
+   wordmark off the bottom, which is what an item with no photo used to show.
+   The backdrop matches the stand-in's own background so the contained image
+   reads as one panel instead of a black square floating on cream. Sampled from
+   the current stand-in, which is solid #000 to every edge; if that image is
+   ever replaced with one on a different ground, this is the value to change. */
+.menu-item-hero--placeholder {
+    background: var(--menu-placeholder-bg, #000);
+}
 .menu-item-hero--placeholder img {
     object-fit: contain;
     padding: 4%;

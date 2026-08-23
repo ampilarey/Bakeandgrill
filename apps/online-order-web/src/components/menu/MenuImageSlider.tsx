@@ -138,6 +138,10 @@ export function MenuImageSlider({
     });
   }, [index, inView, paused, reduceMotion, posterOnly, slides]);
 
+  /** True when the slide on screen is the stand-in and this surface contains it. */
+  const containingPlaceholder = placeholderFit === 'contain'
+    && slides[index]?.isPlaceholder === true;
+
   const renderSlide = (slide: MediaSlide, i: number) => {
     if (failed[i]) return null;
     const isActive = i === index;
@@ -218,9 +222,12 @@ export function MenuImageSlider({
         width: '100%',
         height: '100%',
         aspectRatio,
-        background: active
-          ? 'var(--color-surface-alt)'
-          : undefined,
+        background: containingPlaceholder
+          // Matches the stand-in's own ground, so the contained logo reads as
+          // one panel rather than a black square floating on cream. Sampled
+          // from the current stand-in, which is solid #000 to every edge.
+          ? 'var(--menu-placeholder-bg, #000)'
+          : (active ? 'var(--color-surface-alt)' : undefined),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

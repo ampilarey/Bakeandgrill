@@ -129,6 +129,10 @@ describe('MenuImageSlider', () => {
     expect(img.style.objectFit).toBe('contain');
     // Padding would otherwise grow the inset:0 box rather than inset the image.
     expect(img.style.boxSizing).toBe('border-box');
+    // And the panel behind it matches the logo's own ground, so the contained
+    // image does not read as a black square floating on cream.
+    const root = container.querySelector('.menu-image-slider') as HTMLElement;
+    expect(root.style.background).toContain('--menu-placeholder-bg');
   });
 
   it('leaves the stand-in cropped on surfaces that want it to fill', () => {
@@ -142,6 +146,9 @@ describe('MenuImageSlider', () => {
       />,
     );
     expect((container.querySelector('img') as HTMLImageElement).style.objectFit).toBe('cover');
+    // No dark panel either — the circle is filled, so there is nothing to match.
+    const root = container.querySelector('.menu-image-slider') as HTMLElement;
+    expect(root.style.background).not.toContain('--menu-placeholder-bg');
   });
 
   it('never contains a real photo, even on a hero', () => {

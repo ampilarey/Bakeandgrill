@@ -375,6 +375,13 @@ class MenuPageTest extends TestCase
             $html,
             'the stand-in must be contained, not cropped',
         );
+        // Contained on the default cream hero, the logo's own black square
+        // reads as a box floating in the panel. The backdrop matches it.
+        $this->assertMatchesRegularExpression(
+            '#\.menu-item-hero--placeholder\s*\{[^}]*background:[^}]*#',
+            $html,
+            'the placeholder hero needs a backdrop matching the stand-in',
+        );
     }
 
     public function test_a_real_photo_still_fills_the_item_hero(): void
