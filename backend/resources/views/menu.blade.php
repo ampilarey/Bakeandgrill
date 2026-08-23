@@ -524,6 +524,7 @@ html.js .menu-fav { display: inline-flex; }
     $menuOffers = $menuOffers ?? collect();
     $menuNewItemIds = $menuNewItemIds ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
+    $menuPriceByItemId = $menuPriceByItemId ?? [];
     $menuPhotos = $menuPhotos ?? [];
     $favouriteIds = $favouriteIds ?? [];
 
@@ -538,24 +539,21 @@ html.js .menu-fav { display: inline-flex; }
         return $n;
     };
 
-    $priceFor = function ($item) use ($menuSpecialsByItemId) {
+    // What the customer is actually charged, resolved in the controller via
+    // EffectivePriceService — the same resolver the order pipeline uses. It
+    // covers daily specials AND item-level auto-promotions; reading the
+    // specials rows alone (as this did) advertised an auto-promoted item at
+    // full price here while the app and the till both charged less.
+    $priceFor = function ($item) use ($menuPriceByItemId) {
+        $row = $menuPriceByItemId[$item->id] ?? null;
+        if (is_array($row)) {
+            return $row;
+        }
+
+        // Only reached if an item rendered without passing through the
+        // controller's map. Show the catalog price rather than nothing.
         $info = $item->displayPriceInfo();
-        $rows = $menuSpecialsByItemId[$item->id] ?? [];
-        $best = null;
-        foreach ($rows as $row) {
-            $effective = isset($row['effective_price']) ? (float) $row['effective_price'] : null;
-            if ($effective === null) {
-                continue;
-            }
-            if ($best === null || $effective < $best) {
-                $best = $effective;
-            }
-        }
         $info['was'] = null;
-        if ($best !== null && $best < (float) $info['price']) {
-            $info['was'] = (float) $info['price'];
-            $info['price'] = $best;
-        }
 
         return $info;
     };

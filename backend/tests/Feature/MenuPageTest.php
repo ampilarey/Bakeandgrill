@@ -443,6 +443,70 @@ class MenuPageTest extends TestCase
         );
     }
 
+    public function test_an_auto_promoted_item_shows_its_discount_on_the_web_menu(): void
+    {
+        // The web menu used to read only the daily-special rows, so an item
+        // discounted by an item-level auto-promotion was advertised here at
+        // full price while the ordering app and the till both charged less.
+        // Two prices for one item is an argument at the counter.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 10);
+
+        $promo = \App\Models\Promotion::create([
+            'name' => 'Half price bajiya',
+            'type' => 'percentage',
+            'discount_value' => 50,
+            'is_active' => true,
+            'auto_apply' => true,
+        ]);
+        \App\Models\PromotionTarget::create([
+            'promotion_id' => $promo->id,
+            'target_type' => 'item',
+            'target_id' => $item->id,
+        ]);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('MVR 5.00', $card, 'the discounted price must be shown');
+        $this->assertStringContainsString('MVR 10.00', $card, 'and the original struck through beside it');
+    }
+
+    public function test_the_item_page_agrees_with_the_menu_on_an_auto_promotion(): void
+    {
+        // Same resolver on both pages, so a customer who taps through from the
+        // listing does not watch the price change under them.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Bajiya', 10);
+
+        $promo = \App\Models\Promotion::create([
+            'name' => 'Half price bajiya',
+            'type' => 'percentage',
+            'discount_value' => 50,
+            'is_active' => true,
+            'auto_apply' => true,
+        ]);
+        \App\Models\PromotionTarget::create([
+            'promotion_id' => $promo->id,
+            'target_type' => 'item',
+            'target_id' => $item->id,
+        ]);
+
+        $this->get('/menu/' . $item->id)->assertOk()->assertSee('MVR 5.00', false);
+    }
+
+    public function test_an_undiscounted_item_shows_no_struck_through_price(): void
+    {
+        // The complement: the map must not invent a "was" where nothing is
+        // discounted, or every item would look like it were on offer.
+        $cat = $this->category('Shorteats');
+        $item = $this->item($cat, 'Cutlet', 7);
+
+        $card = $this->itemCard($this->get('/menu')->assertOk()->getContent(), $item->id);
+
+        $this->assertStringContainsString('MVR 7.00', $card);
+        $this->assertStringNotContainsString('menu-card-was', $card);
+    }
+
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
     {
         // A category with no subcategory must not skip a level: h1 → h2 → h3.

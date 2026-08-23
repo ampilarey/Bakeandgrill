@@ -23,24 +23,17 @@
         }
     }
 
-    $priceFor = function ($item) use ($menuSpecialsByItemId) {
+    // See menu.blade.php — the charged price comes from the controller's
+    // EffectivePriceService map, not the daily-special rows alone.
+    $menuPriceByItemId = $menuPriceByItemId ?? [];
+    $priceFor = function ($item) use ($menuPriceByItemId) {
+        $row = $menuPriceByItemId[$item->id] ?? null;
+        if (is_array($row)) {
+            return $row;
+        }
+
         $info = $item->displayPriceInfo();
-        $rows = $menuSpecialsByItemId[$item->id] ?? [];
-        $best = null;
-        foreach ($rows as $row) {
-            $effective = isset($row['effective_price']) ? (float) $row['effective_price'] : null;
-            if ($effective === null) {
-                continue;
-            }
-            if ($best === null || $effective < $best) {
-                $best = $effective;
-            }
-        }
         $info['was'] = null;
-        if ($best !== null && $best < (float) $info['price']) {
-            $info['was'] = (float) $info['price'];
-            $info['price'] = $best;
-        }
 
         return $info;
     };

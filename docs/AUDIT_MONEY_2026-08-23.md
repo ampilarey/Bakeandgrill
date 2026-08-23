@@ -6,6 +6,12 @@ by what they could actually cost, not by how many there are.
 
 Audited against `main` at `c38c91155`.
 
+> **Status (2026-08-23, same day): all findings closed.** M1, M2, L2 and L3 were
+> fixed. **L1 was withdrawn — it was wrong**, and the correction is recorded
+> under that heading rather than deleted, because a retracted finding is worth
+> more than a quietly removed one. **L2's stated remedy was also wrong** and had
+> to be reworked during implementation; see the note under it.
+
 ## Bottom line
 
 The core money engine is in good shape. Prices are resolved server-side and
@@ -85,19 +91,29 @@ flows into GST, shift cash reconciliation, and reporting.
 
 ---
 
-### L1 — Refund cap mixes integer laari and rounded-decimal, can drift by 1 laari
-**Severity: Low** · `backend/app/Domains/Finance/Services/RefundWorkflowService.php:618`
+### L1 — ~~Refund cap mixes integer laari and rounded-decimal~~ — **WITHDRAWN, not a defect**
+**Severity: none** · `backend/app/Domains/Finance/Services/RefundWorkflowService.php:618`
 
-`computeCaps` sums prior refunds with `COALESCE(SUM(ROUND(amount * 100)), 0)`
-(from the decimal `amount` column) but compares against `paid_laar`, which comes
-from the integer `amount_laar` column. Across many partial refunds the two
-representations can drift by a laari.
+**This finding was wrong.** I asserted that summing prior refunds with
+`COALESCE(SUM(ROUND(amount * 100)), 0)` could drift against `paid_laar`. It
+cannot, for two reasons I did not check before writing it down:
 
-- Fails **safe**: the cap check is `>` (`assertWithinCap:634`), so any drift
-  blocks the last laari rather than allowing an over-refund. Worst case a
-  legitimate final partial refund is short by MVR 0.01 and must be adjusted.
-- Consistent with the rest of the codebase moving to `amount_laar`; the refund
-  sum is one of the last decimal-derived comparisons.
+1. `refunds.amount` is `decimal(10, 2)`
+   (`database/migrations/2026_01_27_193012_create_refunds_table.php:22`), not a
+   float. MySQL DECIMAL is exact, so `amount * 100` is exact and `ROUND` of an
+   already-integral value changes nothing. There is no drift to accumulate.
+2. The other side of the comparison uses the *same* expression —
+   `sumAmountLaarForOrder` is `COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0)`
+   (`EloquentPaymentRepository:84`), over a `payments.amount` that is likewise
+   `decimal(10, 2)`. The two representations are consistent by construction.
+
+The suggested remedy was also unbuildable as written: there is **no
+`amount_laar` column on `refunds`** at all. Acting on the recommendation would
+have meant adding and backfilling a column to fix a problem that does not
+exist.
+
+Nothing was changed. Left in place, struck through, as a record of a false
+positive.
 
 ---
 
@@ -116,6 +132,22 @@ For symmetry and defence-in-depth, the webhook path could also assert
 (correctly signed) confirmation for an unexpected amount would be accepted on
 the webhook path because the amount is simply not consulted there. No known way
 to produce that without the signing secret; hence Low.
+
+> **Correction found while fixing this.** The remedy as written above —
+> comparing the payload amount to `amount_laar` directly — would have rejected
+> **every legitimate webhook**. We send laari and the status API answers in
+> laari, but the webhook body carries a decimal MVR string: the codebase's own
+> fixtures use `'amount' => '100.00'` against a reservation of `10000`
+> (`tests/Feature/Payment/BmlFailedWebhookRetryTest.php:54,77`). Shipping the
+> literal recommendation would have stopped BML settlement outright.
+>
+> **What was actually built:** tolerant of unit, strict on value. A payload is
+> accepted when it matches the reservation read *either* as laari *or* as MVR,
+> and refused only when it matches neither — which is what a genuinely wrong
+> amount looks like under both conventions. An absent or non-numeric amount is
+> not treated as a mismatch, since some event shapes omit it and inventing a
+> failure there would strand a real payment. On a true mismatch it fails closed
+> and leaves the delivery retryable.
 
 ---
 
@@ -175,15 +207,28 @@ than re-deriving it.
 
 ---
 
-## Suggested order of work (when you want fixes)
+## What was done
 
-1. **M1** — make the Blade menu price go through `EffectivePriceService` so the
-   web menu, app, and charge all agree. Highest customer-visible value.
-2. **M2** — add modifier/child/quantity bounds to the offline-sync requests to
-   match the online path.
-3. **L1** — sum prior refunds from `amount_laar` instead of `ROUND(amount*100)`.
-4. **L2 / L3** — defence-in-depth; do alongside the next payments/totals change.
+| # | Outcome |
+|---|---|
+| M1 | **Fixed.** `MenuPageController` resolves each item's price through `EffectivePriceService` — the resolver the order pipeline itself uses — and passes a `menuPriceByItemId` map to both Blade views. Sized items resolve every active variant and keep the lowest effective price with its own original beside it, so a promotion targeting only the large size no longer shows the wrong "was". |
+| M2 | **Fixed.** Both offline-sync entrances now carry the same bounds as `StoreOrderRequest`: item quantity `max:999`, modifier quantity `min:1 max:10`, child quantity `min:1 max:99`, plus `exists` checks on modifier and child ids. |
+| L1 | **Withdrawn — the finding was wrong.** See above. No change made. |
+| L2 | **Fixed, with a corrected remedy.** See the correction note above. |
+| L3 | **Fixed.** `Money::subtract` still clamps to zero, but reports when the clamp engages. No call site legitimately overdraws, so a clamp is an invariant violation rather than routine — the diagnostic is guarded so a missing container can never break arithmetic. |
+
+Every fix was break-tested: the change was reverted and the matching test
+confirmed to fail.
 
 Not yet audited (candidates for a second pass): GST period reporting and ledger
 direction, loyalty accrual/redemption math, customer-credit balances, packaging
 & delivery-fee edge cases, and the wholesale/trade invoicing totals.
+
+## A note on this audit's own accuracy
+
+Two of the five findings were wrong in some respect — L1 entirely, L2 in its
+prescribed remedy — and both only came to light because the fix was attempted
+and the assumptions checked against the schema and the existing fixtures. A
+reading audit is a hypothesis; it is worth about as much as the verification
+behind it. The "found sound" list above carries the same caveat: it was traced
+by reading, not by attacking a running system.

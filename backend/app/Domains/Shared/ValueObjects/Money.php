@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Shared\ValueObjects;
 
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -63,7 +64,36 @@ final readonly class Money
         $this->assertSameCurrency($other);
         $result = $this->amountLaar - $other->amountLaar;
 
+        if ($result < 0) {
+            // Clamping to zero is right for money — a negative total is never
+            // something to show anyone — but nothing here legitimately
+            // subtracts more than it holds. Every call site either caps the
+            // subtrahend first (EffectiveDiscount::allocate bounds discounts to
+            // the subtotal) or subtracts a value derived from the minuend
+            // (addTax(x) - x). So a clamp is an invariant violation, and
+            // flooring it in silence turns a wrong total into a plausible zero
+            // that nobody goes looking for.
+            self::reportClamp($this->amountLaar, $other->amountLaar);
+        }
+
         return new self(max(0, $result), $this->currency);
+    }
+
+    /**
+     * Diagnostics must never break arithmetic: Money is a plain value object
+     * and is constructed in contexts with no container bound.
+     */
+    private static function reportClamp(int $minuendLaar, int $subtrahendLaar): void
+    {
+        try {
+            Log::warning('Money::subtract clamped a negative result to zero', [
+                'minuend_laar' => $minuendLaar,
+                'subtrahend_laar' => $subtrahendLaar,
+                'overdraw_laar' => $subtrahendLaar - $minuendLaar,
+            ]);
+        } catch (\Throwable) {
+            // No logger available — the clamp itself still stands.
+        }
     }
 
     public function multiply(float|int $factor): self

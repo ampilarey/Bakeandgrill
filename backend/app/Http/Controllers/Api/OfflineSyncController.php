@@ -50,7 +50,15 @@ class OfflineSyncController extends Controller
             'orders.*.type' => ['required', 'string'],
             'orders.*.items' => ['required', 'array', 'min:1'],
             'orders.*.items.*.item_id' => ['required', 'integer', 'exists:items,id'],
-            'orders.*.items.*.quantity' => ['required', 'integer', 'min:1'],
+            // Bounds match StoreOrderRequest — see PosOfflineSyncRequest for
+            // why an unbounded modifier quantity matters downstream.
+            'orders.*.items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
+            'orders.*.items.*.modifiers' => ['nullable', 'array'],
+            'orders.*.items.*.modifiers.*.modifier_id' => ['required', 'integer', 'exists:modifiers,id'],
+            'orders.*.items.*.modifiers.*.quantity' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'orders.*.items.*.children' => ['nullable', 'array'],
+            'orders.*.items.*.children.*.item_id' => ['required_with:orders.*.items.*.children', 'integer', 'exists:items,id'],
+            'orders.*.items.*.children.*.quantity' => ['required_with:orders.*.items.*.children', 'integer', 'min:1', 'max:99'],
         ]);
 
         $results = [];

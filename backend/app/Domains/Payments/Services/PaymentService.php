@@ -691,6 +691,7 @@ class PaymentService
         }
 
         if ($state === 'CONFIRMED') {
+            $this->assertWebhookAmountMatchesReservation($payment, $payload, (string) $transactionId);
             $this->confirmPayment($payment, $payload);
         } elseif (in_array($state, ['FAILED', 'CANCELLED', 'EXPIRED'], true)) {
             $target = strtolower($state);
@@ -710,6 +711,61 @@ class PaymentService
         } else {
             Log::info('BML: Unknown state', ['state' => $state]);
         }
+    }
+
+    /**
+     * Refuse to settle a webhook whose amount is not the one we reserved.
+     *
+     * The amount is never *taken* from the payload — confirmPaymentOnce settles
+     * the server-side amount_laar — so this is detection, not arithmetic. But a
+     * correctly signed webhook confirming a different figure than we reserved
+     * means either a gateway fault or a compromised signing secret, and settling
+     * silently would hide both. The return-url path already refuses on the same
+     * mismatch; this gives the webhook path the same spine.
+     *
+     * Tolerant of unit, strict on value. Outbound we send laari
+     * (BmlConnectService::createTransaction) and the status API answers in
+     * laari, but the webhook body carries a decimal MVR string ("100.00").
+     * Rather than guess, a payload is accepted when it matches the reservation
+     * read *either* way, and flagged only when it matches neither — which is
+     * what a genuinely wrong amount looks like under both conventions.
+     *
+     * A non-numeric or absent amount is not a mismatch: some BML event shapes
+     * omit it, and inventing a failure there would strand real payments.
+     */
+    private function assertWebhookAmountMatchesReservation(
+        Payment $payment,
+        array $payload,
+        string $transactionId,
+    ): void {
+        $raw = $payload['amount'] ?? null;
+        if ($raw === null || !is_numeric($raw) || $payment->amount_laar === null) {
+            return;
+        }
+
+        $reservedLaar = (int) $payment->amount_laar;
+        $asLaar = (int) $raw;
+        $asMvr = (int) round(((float) $raw) * 100);
+
+        if ($asLaar === $reservedLaar || $asMvr === $reservedLaar) {
+            return;
+        }
+
+        Log::error('BML: webhook amount does not match the reserved amount — refusing to settle', [
+            'payment_id' => $payment->id,
+            'order_id' => $payment->order_id,
+            'reserved_laar' => $reservedLaar,
+            'payload_amount' => (string) $raw,
+            'read_as_laari' => $asLaar,
+            'read_as_mvr_laari' => $asMvr,
+            'transaction_id' => $transactionId,
+        ]);
+
+        // Fail closed. A payment left pending is recoverable by a human and
+        // BML will retry; an order marked paid for the wrong amount is not.
+        throw new \RuntimeException(
+            'BML webhook amount does not match the reserved payment amount.',
+        );
     }
 
     private function confirmPayment(Payment $payment, array $payload): void
@@ -1062,8 +1118,8 @@ class PaymentService
             throw new \InvalidArgumentException('Invalid payment amount for this invoice.');
         }
 
-        $idempotencyKey = $idempotencyKey ?? ('bml:inv:'.$invoice->id.':'.$amountLaar);
-        $localId = $this->bml->normalizeLocalId('BG-INV-'.$invoice->invoice_number.'-'.now()->format('His'));
+        $idempotencyKey = $idempotencyKey ?? ('bml:inv:' . $invoice->id . ':' . $amountLaar);
+        $localId = $this->bml->normalizeLocalId('BG-INV-' . $invoice->invoice_number . '-' . now()->format('His'));
 
         $payment = DB::transaction(function () use ($invoice, $idempotencyKey, $localId, $amountLaar) {
             \App\Models\Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
@@ -1093,7 +1149,7 @@ class PaymentService
             ];
         }
 
-        $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/').'?invoiceId='.$invoice->id);
+        $bmlReturnUrl = $returnUrl ?? (rtrim((string) config('bml.return_url'), '/') . '?invoiceId=' . $invoice->id);
 
         try {
             $result = $this->bml->createPayment(
@@ -1122,7 +1178,7 @@ class PaymentService
     public function confirmFromInvoiceReturnUrl(int $invoiceId, string $transactionId): void
     {
         $payment = $this->payments->findByProviderTransactionId($transactionId);
-        if (! $payment || (int) $payment->invoice_id !== $invoiceId || $payment->order_id !== null) {
+        if (!$payment || (int) $payment->invoice_id !== $invoiceId || $payment->order_id !== null) {
             Log::info('BML return: no matching invoice payment', [
                 'invoice_id' => $invoiceId,
                 'transaction_id' => $transactionId,
@@ -1161,7 +1217,7 @@ class PaymentService
     {
         DB::transaction(function () use ($payment, $payload): void {
             $invoice = \App\Models\Invoice::whereKey($payment->invoice_id)->lockForUpdate()->first();
-            if (! $invoice) {
+            if (!$invoice) {
                 Log::error('BML: Invoice not found during payment confirmation', [
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
@@ -1177,7 +1233,7 @@ class PaymentService
                 ->lockForUpdate()
                 ->first();
 
-            if (! $locked) {
+            if (!$locked) {
                 return;
             }
 
@@ -1185,7 +1241,7 @@ class PaymentService
             if ($sm->can('confirmed')) {
                 $sm->transition('confirmed', ['gateway_response' => $payload]);
                 $locked->refresh();
-            } elseif (! in_array((string) $locked->status, ['confirmed', 'paid', 'completed'], true)) {
+            } elseif (!in_array((string) $locked->status, ['confirmed', 'paid', 'completed'], true)) {
                 return;
             }
 

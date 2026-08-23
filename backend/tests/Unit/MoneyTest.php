@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use App\Domains\Shared\ValueObjects\Money;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -34,6 +35,35 @@ class MoneyTest extends TestCase
         $a = new Money(500);
         $b = new Money(1000);
         $this->assertEquals(0, $a->subtract($b)->amountLaar);
+    }
+
+    public function test_subtracting_more_than_you_hold_is_reported_not_swallowed(): void
+    {
+        // The clamp is correct — a negative total is never shown to anyone —
+        // but no call site legitimately overdraws: discounts are capped to the
+        // subtotal before they get here, and the tax paths subtract a value
+        // derived from the minuend. So a clamp means an invariant broke, and
+        // flooring it silently turns a wrong total into a plausible zero.
+        Log::shouldReceive('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context): bool {
+                return str_contains($message, 'clamped')
+                    && $context['minuend_laar'] === 500
+                    && $context['subtrahend_laar'] === 1000
+                    && $context['overdraw_laar'] === 500;
+            });
+
+        $this->assertEquals(0, (new Money(500))->subtract(new Money(1000))->amountLaar);
+    }
+
+    public function test_an_ordinary_subtraction_reports_nothing(): void
+    {
+        // The complement: a warning on every legitimate subtraction would be
+        // noise, and noise is how a real one gets ignored.
+        Log::shouldReceive('warning')->never();
+
+        $this->assertEquals(500, (new Money(1000))->subtract(new Money(500))->amountLaar);
+        $this->assertEquals(0, (new Money(1000))->subtract(new Money(1000))->amountLaar);
     }
 
     public function test_percentage_discount_uses_floor(): void

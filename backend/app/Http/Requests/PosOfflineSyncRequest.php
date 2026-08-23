@@ -27,11 +27,21 @@ class PosOfflineSyncRequest extends FormRequest
             'orders.*.type' => ['required', 'string', Rule::in(['dine_in', 'takeaway', 'online_pickup', 'delivery'])],
             'orders.*.items' => ['required', 'array', 'min:1'],
             'orders.*.items.*.item_id' => ['required', 'integer', 'exists:items,id'],
-            'orders.*.items.*.quantity' => ['required', 'integer', 'min:1'],
+            // Bounds match StoreOrderRequest. An order must not be creatable
+            // two ways under two different rule sets: OrderCreationService
+            // multiplies modifier_price by modifier quantity with no clamp of
+            // its own, so an unbounded value here becomes a distorted total
+            // that flows on into GST and shift cash reconciliation.
+            'orders.*.items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
             'orders.*.items.*.variant_id' => ['nullable', 'integer'],
             'orders.*.items.*.packaging_option_id' => ['nullable', 'integer', 'exists:item_packaging_options,id'],
             'orders.*.items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'orders.*.items.*.modifiers' => ['nullable', 'array'],
+            'orders.*.items.*.modifiers.*.modifier_id' => ['required', 'integer', 'exists:modifiers,id'],
+            'orders.*.items.*.modifiers.*.quantity' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'orders.*.items.*.children' => ['nullable', 'array'],
+            'orders.*.items.*.children.*.item_id' => ['required_with:orders.*.items.*.children', 'integer', 'exists:items,id'],
+            'orders.*.items.*.children.*.quantity' => ['required_with:orders.*.items.*.children', 'integer', 'min:1', 'max:99'],
             'orders.*.items.*.notes' => ['nullable', 'string', 'max:255'],
             'orders.*.totals' => ['required', 'array'],
             'orders.*.totals.subtotal' => ['required', 'numeric', 'min:0'],

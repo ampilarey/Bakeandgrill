@@ -8,6 +8,7 @@ use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use App\Services\EffectivePriceService;
 use App\Services\SpecialPricingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -63,6 +64,7 @@ class MenuPageController extends Controller
             'menuItemCount' => $items->count(),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,
+            'menuPriceByItemId' => $this->effectivePrices($items),
             'menuNewItemIds' => $this->newItemIds($items, $newDays),
             'menuPhotos' => $this->displayPhotos($items),
             'menuDietaryFilters' => $this->dietaryFilters($items),
@@ -95,6 +97,7 @@ class MenuPageController extends Controller
             'item' => $row,
             'menuPhotos' => $this->displayPhotos(collect([$row])),
             'menuSpecialsByItemId' => $specialsByItemId,
+            'menuPriceByItemId' => $this->effectivePrices(collect([$row])),
             'favouriteIds' => $this->favouriteItemIds(),
             'menuLocale' => $this->menuLocale(),
         ]);
@@ -194,6 +197,85 @@ class MenuPageController extends Controller
         }
 
         return $ordered;
+    }
+
+    /**
+     * The price each item would actually be charged at, keyed by item id.
+     *
+     * Routed through EffectivePriceService because that is the resolver the
+     * order pipeline itself uses (OrderCreationService calls it to set
+     * unit_price), and it considers item-level auto-promotions as well as
+     * daily specials, taking whichever is lower.
+     *
+     * Reading the daily-special rows alone — as this page used to — left an
+     * item discounted by an auto-promotion advertised at full price on the one
+     * menu Google indexes, while the ordering app and the till both charged
+     * less. Under-stating a live discount is not a loss, but two prices for
+     * one item is an argument at the counter.
+     *
+     * No N+1: both underlying resolvers read memoised/cached maps rather than
+     * querying per item, and variants are eager-loaded by sellableItems().
+     *
+     * @param Collection<int, Item> $items
+     * @return array<int, array{price: float, was: float|null, from: bool}>
+     */
+    private function effectivePrices(Collection $items): array
+    {
+        $pricing = app(EffectivePriceService::class);
+
+        $out = [];
+        foreach ($items as $item) {
+            $out[$item->id] = $this->effectivePriceFor($item, $pricing);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Mirrors Item::displayPriceInfo()'s shape and its variant rules, then adds
+     * `was` — the pre-discount price, or null when nothing is discounted.
+     *
+     * A sized item advertises "From" the cheapest variant, so the discount that
+     * matters is the one on that variant: resolve every active variant and keep
+     * the lowest effective price with its own original beside it. Taking the
+     * cheapest variant first and discounting afterwards would show the wrong
+     * "was" whenever a promotion targets only the large size.
+     *
+     * @return array{price: float, was: float|null, from: bool}
+     */
+    private function effectivePriceFor(Item $item, EffectivePriceService $pricing): array
+    {
+        $variants = $item->relationLoaded('variants')
+            ? $item->variants->where('is_active', true)
+            : collect();
+
+        if ($item->has_variants && $variants->isNotEmpty()) {
+            $bestPrice = null;
+            $bestWas = null;
+
+            foreach ($variants as $variant) {
+                $resolved = $pricing->resolveUnitPrice(
+                    $item->id,
+                    (float) $variant->price,
+                    $item,
+                    $variant->id,
+                );
+                if ($bestPrice === null || $resolved->unitPrice < $bestPrice) {
+                    $bestPrice = (float) $resolved->unitPrice;
+                    $bestWas = $resolved->hasDiscount() ? (float) $resolved->originalPrice : null;
+                }
+            }
+
+            return ['price' => (float) $bestPrice, 'was' => $bestWas, 'from' => true];
+        }
+
+        $resolved = $pricing->resolveUnitPrice($item->id, (float) $item->base_price, $item);
+
+        return [
+            'price' => (float) $resolved->unitPrice,
+            'was' => $resolved->hasDiscount() ? (float) $resolved->originalPrice : null,
+            'from' => false,
+        ];
     }
 
     /**

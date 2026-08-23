@@ -377,6 +377,61 @@ class OfflinePosSyncTest extends TestCase
     /**
      * @param array<int, array<string, mixed>> $orders
      */
+    // ── Input bounds: the offline path must not be laxer than the online one ──
+
+    public function test_offline_sync_rejects_an_unbounded_modifier_quantity(): void
+    {
+        // StoreOrderRequest caps modifier quantity at 10. This path did not
+        // check it at all, and OrderCreationService multiplies modifier_price
+        // by that quantity with no clamp of its own — so a malformed device
+        // could ring a line whose total then flows into GST and the shift's
+        // cash reconciliation.
+        $payload = $this->buildOrderPayload('cash', 0.0);
+        $payload['items'][0]['modifiers'] = [
+            ['modifier_id' => 1, 'quantity' => 100000],
+        ];
+
+        $this->syncPayload([$payload])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('orders.0.items.0.modifiers.0.quantity');
+    }
+
+    public function test_offline_sync_rejects_an_unbounded_item_quantity(): void
+    {
+        // Same ceiling as the online path (999).
+        $payload = $this->buildOrderPayload('cash', 0.0);
+        $payload['items'][0]['quantity'] = 100000;
+
+        $this->syncPayload([$payload])
+            ->assertStatus(422)
+            ->assertJsonValidationErrorFor('orders.0.items.0.quantity');
+    }
+
+    public function test_offline_sync_still_accepts_a_modifier_within_bounds(): void
+    {
+        // The complement — the bound must not reject ordinary tickets. A
+        // quantity of 2 on a real modifier is validated, not rejected.
+        $modifier = \App\Models\Modifier::create([
+            'name' => 'Extra chilli',
+            'price' => 2.0,
+            'is_active' => true,
+        ]);
+        $this->item->modifiers()->attach($modifier->id);
+
+        $payload = $this->buildOrderPayload('cash', 0.0);
+        $payload['items'][0]['modifiers'] = [
+            ['modifier_id' => $modifier->id, 'quantity' => 2],
+        ];
+
+        $response = $this->syncPayload([$payload]);
+
+        $response->assertStatus(200);
+        $this->assertSame(
+            [],
+            $response->json('errors.orders.0.items.0.modifiers.0.quantity') ?? [],
+        );
+    }
+
     private function syncPayload(array $orders): \Illuminate\Testing\TestResponse
     {
         return $this->withHeader('X-Device-Identifier', $this->device->identifier)
