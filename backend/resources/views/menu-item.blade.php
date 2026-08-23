@@ -174,13 +174,21 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     font-size: 0.95rem;
 }
 .menu-item-variants li:first-child { border-top: 1px solid var(--border); }
-.menu-item-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.menu-item-actions .btn-primary { flex: 1 1 12rem; text-align: center; }
-.menu-item-cart {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-height: 44px; padding: 0.65rem 1.1rem;
-    border-radius: 999px; border: 1px solid var(--border);
-    color: var(--dark); text-decoration: none; font-weight: 600;
+/* One row, two buttons of equal weight and height. Before this the primary
+   action was unstyled text (.btn-primary was defined only on the home page)
+   sitting next to a pill-shaped secondary, so the page read as though "View
+   cart" were the thing to press. */
+.menu-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+.menu-item-actions .btn-primary,
+.menu-item-actions .btn-outline {
+    /* Both grow, so on a phone they stack full width and on a wider screen
+       they split the row evenly rather than the secondary shrink-wrapping. */
+    flex: 1 1 11rem;
 }
 [lang="dv"] { font-family: var(--font-dhivehi); direction: rtl; }
 @media (max-width: 768px) {
@@ -264,7 +272,7 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 
     <div class="menu-item-actions">
         <a href="/order/menu?item={{ $item->id }}" class="btn-primary">Add to order</a>
-        <a href="/order/menu" class="menu-item-cart">View cart</a>
+        <a href="/order/menu" class="btn-outline">View cart</a>
     </div>
 </article>
 

@@ -1597,6 +1597,54 @@
                 margin-bottom: 1.25rem;
             }
         }
+
+        /* ─── Buttons ───────────────────────────────────────────────────────
+           These lived only inside home.blade.php's own <style>, so every other
+           page that used .btn-primary rendered it as plain body text — the
+           "Add to order" call to action on /menu/{item} and "Start your order"
+           on /menu among them. The primary action looked like a sentence while
+           the secondary next to it looked like a button. Shared here so a page
+           cannot use the class and silently get nothing. */
+        .btn-primary,
+        .btn-outline {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 0.5rem;
+            min-height: 48px;
+            padding: 0.85rem 1.75rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+        .btn-primary {
+            background: var(--amber);
+            color: #fff;
+            border: 2px solid var(--amber);
+            font-weight: 700;
+            box-shadow: 0 4px 18px var(--amber-glow);
+        }
+        .btn-primary:hover {
+            background: var(--amber-hover);
+            border-color: var(--amber-hover);
+            box-shadow: 0 6px 24px var(--amber-glow);
+            transform: translateY(-2px);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+            font-weight: 600;
+        }
+        .btn-outline:hover {
+            border-color: var(--amber);
+            color: var(--amber);
+            background: var(--amber-light);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .btn-primary:hover, .btn-outline:hover { transform: none; }
+        }
     </style>
     @endverbatim
 

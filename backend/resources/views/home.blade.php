@@ -1394,23 +1394,9 @@
     display: flex; gap: 0.875rem;
     justify-content: center; flex-wrap: wrap;
 }
-.btn-primary {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.95rem 2.25rem;
-    background: var(--amber); color: white;
-    border-radius: 12px; font-weight: 700; font-size: 1rem;
-    transition: all 0.2s;
-    box-shadow: 0 4px 18px var(--amber-glow);
-}
-.btn-primary:hover { background: var(--amber-hover); transform: translateY(-2px); box-shadow: 0 6px 24px var(--amber-glow); }
-.btn-outline {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    padding: 0.95rem 2.25rem;
-    border: 2px solid var(--border); color: var(--text);
-    border-radius: 12px; font-weight: 600; font-size: 1rem;
-    transition: all 0.2s; background: transparent;
-}
-.btn-outline:hover { border-color: var(--amber); color: var(--amber); background: var(--amber-light); }
+/* .btn-primary / .btn-outline now live in layout.blade.php, so every page
+   that uses them gets them. The wider padding this page wants is kept here. */
+.btn-primary, .btn-outline { padding: 0.95rem 2.25rem; }
 @media (max-width: 600px) {
     .cta-band h2 { font-size: 1.875rem; }
     .btn-primary, .btn-outline { width: 100%; justify-content: center; }

@@ -404,6 +404,45 @@ class MenuPageTest extends TestCase
         );
     }
 
+    public function test_the_primary_action_is_actually_styled_as_a_button(): void
+    {
+        // .btn-primary was defined only inside home.blade.php's own <style>,
+        // so every other page using the class rendered it as plain body text.
+        // On the item page that meant "Add to order" looked like a sentence
+        // beside a pill-shaped "View cart" — the secondary read as the action.
+        // Asserting the class is present is not enough; it always was.
+        $cat = $this->category('Drinks');
+        $item = $this->item($cat, 'Coke', 15);
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="btn-primary"', $html);
+        $this->assertMatchesRegularExpression(
+            '#\.btn-primary\s*\{[^}]*background:\s*var\(--amber\)#',
+            $html,
+            'the primary button must carry its own styling on this page',
+        );
+        $this->assertMatchesRegularExpression(
+            '#\.btn-outline\s*\{[^}]*border:#',
+            $html,
+            'the secondary button must be styled here too',
+        );
+    }
+
+    public function test_the_menu_page_primary_action_is_styled_too(): void
+    {
+        // Same root cause, same page family: "Start your order" at the foot of
+        // /menu was bare text for exactly the same reason.
+        $this->category('Shorteats');
+
+        $html = $this->get('/menu')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '#\.btn-primary\s*\{[^}]*background:\s*var\(--amber\)#',
+            $html,
+        );
+    }
+
     public function test_the_page_has_a_heading_outline_a_crawler_can_follow(): void
     {
         // A category with no subcategory must not skip a level: h1 → h2 → h3.
