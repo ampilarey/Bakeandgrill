@@ -64,7 +64,34 @@ architectural crisis discovered mid-project later.
 
 ---
 
-## 2. Consolidate auth into `@shared`
+## 2. Consolidate auth into `@shared` — **done (2026-08-23)**
+
+**What shipped.** `packages/shared/src/auth/` now holds the token store and the
+device-id helper, and all three staff apps use it: delivery, KDS and POS each
+have zero direct `localStorage` token access in production code. Storage keys
+are unchanged (`kds_token`, `kds_username`, `kds_device_id`, `driver_token`,
+`pos_token`), so no device was signed out by the move.
+
+The abstraction is keyed rather than principal-typed — the key is the only
+thing that genuinely differs, and the principals are different token types
+rather than variants. POS keeps its own `src/auth/token.ts` module so the
+offline layer can read the token without importing the network client; its
+offline behaviour was not touched.
+
+Two real defects surfaced on the way, both invisible to the old code:
+
+- Every direct `localStorage` call throws in a private window or a browser set
+  to block site data. On a kitchen screen or a driver's phone that is a blank
+  page, not a login form. All access is now guarded.
+- KDS generated its device id with `crypto.randomUUID()`, which is
+  secure-context only. A screen reached over plain HTTP threw while the
+  component was initialising and rendered nothing at all.
+
+`packages/shared` also gained its own vitest config and 14 tests — it had none
+before, despite five apps depending on it. POS's 269 tests and KDS's suite pass
+unchanged, which was the stated done-when.
+
+**Original brief follows.**
 
 **Why.** There are three hand-rolled implementations of the same thing.
 `apps/kds-web/src/App.tsx` does `localStorage.getItem("kds_token")`, generates
@@ -258,8 +285,16 @@ has landed: the QR codes still point at `/order/view`.
    - and the test that pins it:
      `apps/admin-dashboard/src/__tests__/WebsiteSettingsDineInMenu.test.tsx:24`
 2. **`/order/view` → `/menu`, 301** — insurance for QR codes already printed.
-3. **Retire `MenuViewPage.tsx` / `.css` / `.test.tsx`** — only after 1 and 2 are
-   live, and in a separate PR.
+3. ~~**Retire `MenuViewPage.tsx` / `.css` / `.test.tsx`**~~ — **done
+   (2026-08-23).** Its preconditions were met: the QR sources were repointed
+   and `Route::redirect('/order/view', '/menu', 301)` sits above the SPA
+   catch-all, so the SPA route was unreachable. All three files and the lazy
+   route in `main.tsx` are gone.
+
+   The unported behaviour in item 4 below still needs porting, and the file
+   that implemented it is now only in git history:
+   `git log --all --diff-filter=D -- apps/online-order-web/src/pages/MenuViewPage.tsx`
+   finds the deleting commit; its parent has the last working copy.
 4. **Behaviour still not ported** from `MenuViewPage.tsx`:
    - **Offers** (`OffersService::activeOffers()`) — `HomeController` already
      calls it, so this is a controller line and a partial.

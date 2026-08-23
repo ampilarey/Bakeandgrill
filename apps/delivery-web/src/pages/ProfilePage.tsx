@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Driver } from '../types';
-import { api } from '../api';
+import { api, driverToken } from '../api';
 
 interface Props {
   driver: Driver;
@@ -30,7 +30,7 @@ export default function ProfilePage({ driver, onLogout }: Props) {
     if (!confirm('Are you sure you want to log out?')) return;
     setLogging(true);
     try { await api.logout(); } finally {
-      localStorage.removeItem('driver_token');
+      driverToken.clear();
       onLogout();
     }
   };

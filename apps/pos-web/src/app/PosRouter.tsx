@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import { lazy, Suspense } from 'react';
 import { LoginPage } from '../pages/LoginPage';
 import { TimeClockPanel } from '../components/TimeClockPanel';
@@ -172,7 +173,7 @@ export function PosRouter() {
 
   if (!isReachable && offlineGate && !offlineGate.allowed && !menu.isLoading && !shift.loading) {
     const activeSessionFallback =
-      !!localStorage.getItem("pos_token")
+      !!posToken.get()
       && (shift.current != null || !canRingSales)
       && (shift.current != null ? menu.items.length > 0 : true);
 

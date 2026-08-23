@@ -1,17 +1,21 @@
+import { createTokenStore } from '@shared/auth';
+
+/**
+ * The driver's bearer token. Key unchanged from when this was inline
+ * localStorage — renaming it would sign every driver out on deploy.
+ */
+export const driverToken = createTokenStore('driver_token');
+
 const BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
-
-function getToken(): string | null {
-  return localStorage.getItem('driver_token');
-}
 
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const token = getToken();
+  const token = driverToken.get();
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -23,7 +27,7 @@ async function request<T>(
   });
 
   if (res.status === 401) {
-    localStorage.removeItem('driver_token');
+    driverToken.clear();
     // Dispatch a custom event instead of a full-page redirect so the React
     // SPA can handle the transition via state (preserving LocationTracker buffer).
     window.dispatchEvent(new Event('auth_expired'));
@@ -77,7 +81,7 @@ export const api = {
     request<{ message: string }>('POST', '/driver/location', { locations }),
 
   uploadProof: async (orderId: number, file: File) => {
-    const token = getToken();
+    const token = driverToken.get();
     const form = new FormData();
     form.append('photo', file);
     const res = await fetch(`${BASE}/driver/deliveries/${orderId}/proof`, {

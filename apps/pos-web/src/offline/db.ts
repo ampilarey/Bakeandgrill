@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
 export type OfflineOrderStatus = "pending_sync" | "syncing" | "synced" | "failed" | "conflict";
@@ -266,7 +267,7 @@ export async function ensureCachedStaffSession(): Promise<CachedStaffSession | n
   const existing = await loadCachedStaffSession();
   if (existing) return existing;
 
-  const token = localStorage.getItem("pos_token");
+  const token = posToken.get();
   const userIdRaw = localStorage.getItem("pos_staff_user_id");
   const name = localStorage.getItem("pos_cashier_name");
   if (!token || !userIdRaw || !name) return null;

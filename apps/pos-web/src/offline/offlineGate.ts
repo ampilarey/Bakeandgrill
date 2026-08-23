@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import {
   ensureCachedStaffSession,
   loadCachedMenu,
@@ -24,7 +25,7 @@ export async function evaluateOfflineGate(
   options: OfflineGateOptions = {},
 ): Promise<OfflineGateResult> {
   const requireShift = options.requireShift ?? true;
-  const token = localStorage.getItem("pos_token");
+  const token = posToken.get();
   const [session, shift, menu] = await Promise.all([
     ensureCachedStaffSession(),
     loadCachedShift(),

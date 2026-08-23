@@ -2,7 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-vi.mock("./api", () => ({
+vi.mock("./api", async () => {
+  // Real stores, not stubs: they are thin wrappers over the same localStorage
+  // keys the tests below already drive, so the assertions stay exactly as they
+  // were before token access moved into @shared.
+  const { createTokenStore } = await import("@shared/auth");
+  return ({
+  kdsToken: createTokenStore("kds_token"),
+  kdsUsername: createTokenStore("kds_username"),
+  KDS_DEVICE_ID_KEY: "kds_device_id",
   staffLogin: vi.fn(),
   fetchMe: vi.fn(),
   fetchKdsOrders: vi.fn().mockResolvedValue([]),
@@ -20,7 +28,8 @@ vi.mock("./api", () => ({
   markPurchaseRequestItemPartial: vi.fn(),
   markPurchaseRequestItemNotAvailable: vi.fn(),
   hasKdsPermission: (perms: string[], slug: string) => perms.includes(slug),
-}));
+  });
+});
 
 describe("KDS App", () => {
   beforeEach(() => {

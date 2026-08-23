@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { itemsForCategory } from "../utils/categoryTree";
 import { ApiRequestError } from "@shared/api";
@@ -40,7 +41,7 @@ import type { Pane } from "./types";
 
 export function usePosApp() {
   // ── Auth ────────────────────────────────────────────────────────────────────
-  const [isLoggedIn, setIsLoggedIn]   = useState(() => !!localStorage.getItem('pos_token'));
+  const [isLoggedIn, setIsLoggedIn]   = useState(() => !!posToken.get());
   // Username is the LOGIN IDENTIFIER (email/mobile) — kept in state for
   // the LoginPage form AND persisted to localStorage so PIN-unlock
   // continues to work after a page refresh (without it, `username`
@@ -890,7 +891,7 @@ export function usePosApp() {
   }, [isLoggedIn, deviceId, persistDeviceDbId, checkDeviceStatus]);
 
   const completeStaffLogin = useCallback((response: StaffLoginResponse) => {
-    localStorage.setItem("pos_token", response.token);
+    posToken.set(response.token);
     localStorage.setItem("pos_username", username.trim());
     const name = response.user?.name ?? username.trim();
     localStorage.setItem("pos_cashier_name", name);
@@ -940,7 +941,7 @@ export function usePosApp() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("pos_token");
+    posToken.clear();
     localStorage.removeItem("pos_cashier_name");
     localStorage.removeItem("pos_username");
     localStorage.removeItem("pos_staff_role");
@@ -967,7 +968,7 @@ export function usePosApp() {
       // Don't blow away the cashier name / username — we re-show them
       // pre-filled on the login screen so the cashier just types the
       // PIN. Less friction than a totally blank form mid-shift.
-      localStorage.removeItem("pos_token");
+      posToken.clear();
       setIsLoggedIn(false);
       setIsLocked(false);
       setAuthError("Your session expired. Please log back in.");
@@ -1089,7 +1090,7 @@ export function usePosApp() {
     }
     try {
       const res = await staffLogin(identifier, testPin, deviceId);
-      localStorage.setItem("pos_token", res.token);
+      posToken.set(res.token);
       localStorage.setItem("pos_staff_role", res.user?.role ?? "");
       const unlockPerms = res.user?.permissions ?? [];
       localStorage.setItem("pos_staff_permissions", JSON.stringify(unlockPerms));

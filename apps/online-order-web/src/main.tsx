@@ -63,7 +63,6 @@ const GiftCardsPage = lazy(() => import('./pages/GiftCardsPage').then((m) => ({ 
 const BuyGiftCardPage = lazy(() => import('./pages/BuyGiftCardPage').then((m) => ({ default: m.BuyGiftCardPage })));
 const GiftCardPurchaseSuccessPage = lazy(() => import('./pages/GiftCardPurchaseSuccessPage').then((m) => ({ default: m.GiftCardPurchaseSuccessPage })));
 const GiftCardViewPage = lazy(() => import('./pages/GiftCardViewPage').then((m) => ({ default: m.GiftCardViewPage })));
-const MenuViewPage     = lazy(() => import('./pages/MenuViewPage').then((m) => ({ default: m.MenuViewPage })));
 const SignagePage      = lazy(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
 
 // Minimal fallback shown while a page chunk loads
@@ -103,7 +102,6 @@ ReactDOM.createRoot(rootEl).render(
                   <Route path="checkout" element={<ErrorBoundary inline><CheckoutPage /></ErrorBoundary>} />
                   <Route path="track/:trackingToken" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
                   <Route path="orders/:orderId" element={<ErrorBoundary inline><OrderStatusPage /></ErrorBoundary>} />
-                  <Route path="view" element={<ErrorBoundary inline><MenuViewPage /></ErrorBoundary>} />
                   <Route path="tv" element={<ErrorBoundary inline><SignagePage /></ErrorBoundary>} />
                   <Route path="tv/:screen" element={<ErrorBoundary inline><SignagePage /></ErrorBoundary>} />
 

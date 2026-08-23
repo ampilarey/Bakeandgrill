@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getOrCreateDeviceId, writeStored } from "@shared/auth";
 import {
   bumpOrder,
+  kdsToken,
+  kdsUsername,
+  KDS_DEVICE_ID_KEY,
   fetchKdsActivity,
   fetchKdsOrders,
   fetchKdsMenuGroups,
@@ -47,17 +51,15 @@ const formatTime = (iso: string) =>
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState(() => localStorage.getItem("kds_username") ?? "");
+  const [username, setUsername] = useState(() => kdsUsername.get() ?? "");
   const [pin, setPin] = useState("");
   const [staffUser, setStaffUser] = useState<KdsStaffUser | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [deviceId, setDeviceId] = useState(() => {
-    const stored = localStorage.getItem("kds_device_id");
-    if (stored) return stored;
-    const id = `KDS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-    localStorage.setItem("kds_device_id", id);
-    return id;
-  });
+  // getOrCreateDeviceId falls back when crypto.randomUUID is unavailable.
+  // That call is secure-context only, so a kitchen screen reached over plain
+  // HTTP used to throw here while the component was initialising and render
+  // nothing at all.
+  const [deviceId, setDeviceId] = useState(() => getOrCreateDeviceId(KDS_DEVICE_ID_KEY, 'KDS'));
   const [token, setToken] = useState<string | null>(null);
   const [orders, setOrders] = useState<KdsOrder[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
@@ -77,7 +79,7 @@ function App() {
   const lateAlertedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    const saved = localStorage.getItem("kds_token");
+    const saved = kdsToken.get();
     if (saved) {
       setToken(saved);
       fetchMe(saved)
@@ -87,13 +89,13 @@ function App() {
           if (hasKdsPermission(me.permissions ?? [], "kds.view")) {
             setIsLoggedIn(true);
           } else {
-            localStorage.removeItem("kds_token");
+            kdsToken.clear();
             setToken(null);
             setErrorMessage("No KDS access for this account.");
           }
         })
         .catch(() => {
-          localStorage.removeItem("kds_token");
+          kdsToken.clear();
           setToken(null);
         });
     }
@@ -136,7 +138,7 @@ function App() {
     } catch (error: unknown) {
       const status = (error as { status?: number })?.status;
       if (status === 401) {
-        localStorage.removeItem("kds_token");
+        kdsToken.clear();
         setToken(null);
         setIsLoggedIn(false);
         setOrders([]);
@@ -248,9 +250,9 @@ function App() {
         setErrorMessage("No KDS access for this account.");
         return;
       }
-      localStorage.setItem("kds_token", tokenValue);
-      localStorage.setItem("kds_username", username.trim());
-      localStorage.setItem("kds_device_id", deviceId.trim());
+      kdsToken.set(tokenValue);
+      kdsUsername.set(username.trim());
+      writeStored(KDS_DEVICE_ID_KEY, deviceId.trim());
       setStaffUser(me);
       setPermissions(me.permissions ?? []);
       isFirstLoadRef.current = true;
@@ -300,7 +302,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("kds_token");
+    kdsToken.clear();
     setToken(null);
     setStaffUser(null);
     setPermissions([]);

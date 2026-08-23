@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import { useEffect, useState } from "react";
 import { ApiRequestError } from "@shared/api";
 import { clockIn, clockOut, getTimeClockStatus, setAuthToken, staffLogin } from "../api";
@@ -72,7 +73,7 @@ export function TimeClockPanel({ deviceId, onBack }: Props) {
   // the POS would 401 on the next request. Now we restore the prior
   // pos_token from localStorage so the original session keeps working.
   const cleanup = () => {
-    const prior = localStorage.getItem("pos_token");
+    const prior = posToken.get();
     setAuthToken(prior);
     setPin("");
   };

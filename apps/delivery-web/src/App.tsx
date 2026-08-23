@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import type { Driver } from './types';
-import { api } from './api';
+import { api, driverToken } from './api';
 import LoginPage from './pages/LoginPage';
 import ActivePage from './pages/ActivePage';
 import DetailPage from './pages/DetailPage';
@@ -15,12 +15,12 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('driver_token');
+    const token = driverToken.get();
     if (!token) { setLoading(false); return; }
 
     api.me()
       .then(({ driver: d }) => setDriver(d))
-      .catch(() => localStorage.removeItem('driver_token'))
+      .catch(() => driverToken.clear())
       .finally(() => setLoading(false));
   }, []);
 

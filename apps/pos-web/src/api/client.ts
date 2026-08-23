@@ -1,3 +1,4 @@
+import { posToken } from '../auth/token';
 import {
   ApiRequestError,
   createApiClient,
@@ -24,7 +25,7 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
   console.warn('[CONFIG] VITE_API_BASE_URL is not set — falling back to same-origin /api');
 }
 
-let _token: string | null = localStorage.getItem('pos_token');
+let _token: string | null = posToken.get();
 
 export function setAuthToken(t: string | null): void {
   _token = t;
@@ -78,7 +79,7 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
 
     if (status === 401) {
       _token = null;
-      localStorage.removeItem('pos_token');
+      posToken.clear();
       window.dispatchEvent(new Event('auth_expired'));
     }
     throw e;

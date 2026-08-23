@@ -1,6 +1,8 @@
 # Database Backup & Restore Runbook
 
-Bake & Grill uses [spatie/laravel-backup](https://github.com/spatie/laravel-backup) for nightly PostgreSQL dumps plus uploaded files under `storage/app/public`.
+Bake & Grill uses [spatie/laravel-backup](https://github.com/spatie/laravel-backup) for nightly database dumps plus uploaded files under `storage/app/public`.
+
+Production runs **MySQL/MariaDB** (see CLAUDE.md). This runbook said PostgreSQL and gave `pg_restore` commands until 2026-08-23 — worth knowing if you followed an older copy.
 
 ## Schedule (production)
 
@@ -25,6 +27,46 @@ BACKUP_MAX_AGE_DAYS=2
 
 Local disk path: `backend/storage/app/backups/{APP_NAME}/`.
 
+## Off-server retention is NOT configured — deferred, on purpose
+
+`BACKUP_DISKS` is `backups` only, so **every backup sits on the same server as
+the data it protects**. `app:verify-production-config` reports this as a
+warning on every deploy; it is a warning rather than a failure because
+local-only backups are better than none.
+
+What it does and does not cover:
+
+| Failure | Covered today? |
+|---|---|
+| Someone drops a table, a bad migration, a bad deploy | Yes — restore from `storage/app/backups/` |
+| Ransomware or a compromised account with write access | No — the archives are reachable from the same account |
+| The server or its disk is lost, or the hosting account is suspended | No — the backups go with it |
+
+Deliberately deferred (2026-08-23, owner's call). To enable it later, no code
+change is needed — create a private bucket, then in `backend/.env`:
+
+```env
+BACKUP_DISKS=backups,s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=...
+AWS_BUCKET=...
+```
+
+Then `php artisan backup:run` and confirm the archive appears in both places.
+Give the key write-but-not-delete permission if the bucket supports it, so a
+compromised server cannot erase its own off-site copies — that is most of the
+point.
+
+Two things to keep in mind when you do:
+
+- The bucket is a full copy of the customer database. It needs to be private,
+  encrypted at rest, and covered by whatever retention promise the privacy
+  policy makes.
+- TEST and production share this account. Point TEST at a different bucket or
+  prefix, or its dumps will land beside the real ones — the same trap the
+  Redis prefixes had (see CLAUDE.md).
+
 ## Manual backup
 
 ```bash
@@ -40,10 +82,13 @@ php artisan backup:list
 3. Create a fresh database and restore:
 
 ```bash
-createdb bakegrill_restore_test
-pg_restore --dbname=bakegrill_restore_test --clean --if-exists dump.sql
-# or: psql bakegrill_restore_test < dump.sql
+mysql -e "CREATE DATABASE bakegrill_restore_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql bakegrill_restore_test < dump.sql
 ```
+
+CI additionally runs a PostgreSQL compatibility suite, which is why some
+migrations carry PostgreSQL-specific workarounds — but the thing you restore
+from a production backup is MySQL.
 
 4. Point a throwaway `.env` at the restore DB and run smoke checks:
 

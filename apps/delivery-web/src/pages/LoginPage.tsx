@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { Driver } from '../types';
-import { api } from '../api';
+import { api, driverToken } from '../api';
 
 interface Props {
   onLogin: (driver: Driver) => void;
@@ -42,7 +42,7 @@ export default function LoginPage({ onLogin }: Props) {
     setLoading(true);
     try {
       const { token, driver } = await api.pinLogin(phone.trim(), pinStr);
-      localStorage.setItem('driver_token', token);
+      driverToken.set(token);
       onLogin(driver);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your phone and PIN.');

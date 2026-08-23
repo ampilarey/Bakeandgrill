@@ -1,4 +1,5 @@
 import { createApiClient } from '@shared/api';
+import { createTokenStore } from '@shared/auth';
 import { ENDPOINTS } from '@shared/api';
 
 export type KdsOrderItem = {
@@ -63,6 +64,15 @@ export type KdsStaffUser = {
   permissions: string[];
 };
 
+/**
+ * Where this screen keeps its credentials. Keys unchanged from when they were
+ * inline localStorage calls — renaming one signs every kitchen screen out on
+ * the next deploy.
+ */
+export const kdsToken = createTokenStore('kds_token');
+export const kdsUsername = createTokenStore('kds_username');
+export const KDS_DEVICE_ID_KEY = 'kds_device_id';
+
 const apiBaseUrl =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   (import.meta.env.PROD ? '/api' : 'http://localhost:8000/api');
@@ -74,7 +84,7 @@ if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
 
 const { request } = createApiClient({
   baseUrl: apiBaseUrl,
-  getToken: () => localStorage.getItem('kds_token'),
+  getToken: () => kdsToken.get(),
 });
 
 function authHeaders(token: string) {
