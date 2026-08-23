@@ -11,6 +11,11 @@ Audited against `main` at `c38c91155`.
 > under that heading rather than deleted, because a retracted finding is worth
 > more than a quietly removed one. **L2's stated remedy was also wrong** and had
 > to be reworked during implementation; see the note under it.
+>
+> **Second pass (same day) is also complete** — GST, loyalty, customer credit,
+> fee edges and trade invoicing. It found one **High**: GST output tax was
+> under-declared because credit notes and refunds were subtracted twice. Fixed.
+> See "Second pass" below.
 
 ## Bottom line
 
@@ -220,9 +225,120 @@ than re-deriving it.
 Every fix was break-tested: the change was reverted and the matching test
 confirmed to fail.
 
-Not yet audited (candidates for a second pass): GST period reporting and ledger
-direction, loyalty accrual/redemption math, customer-credit balances, packaging
-& delivery-fee edge cases, and the wholesale/trade invoicing totals.
+---
+
+# Second pass — GST, loyalty, credit, fees, trade
+
+Covering everything the first pass deferred.
+
+## H1 — Credit notes and refunds were subtracted from output tax twice
+**Severity: High — under-declared GST** · `backend/app/Domains/Gst/Services/GstReportService.php:22`
+· **Fixed**
+
+`sumOutput()` deliberately spans `direction IN (output, adjustment)` so the
+sales lines read net of credit notes. That means adjustments were **already
+inside** `$outputStandard['tax_laar']`. The summary then did:
+
+```php
+$outputTaxBeforeAdj = $outputStandard['tax_laar'];      // already net of adjustments
+$creditNoteTax = $adjustments->where('tax_laar', '<', 0)->sum('tax_laar');
+$netOutputTax = $outputTaxBeforeAdj + $creditNoteTax;   // subtracts them a second time
+```
+
+Every credit note and every refund reduced declared output tax by twice its
+value. Measured, not inferred — the two failing assertions before the fix:
+
+| Scenario | Reported | Correct |
+|---|---|---|
+| MVR 100 sale, fully credited | `net_output_tax_laar` = **−800** | 0 |
+| MVR 100 sale, MVR 25 refunded | `net_output_tax_laar` = **400** | 600 |
+
+The direction of the error is **under-payment**: the return declares less GST
+than is owed. `net_gst_payable_laar` clamps a negative to zero, so a fully
+credited period looks merely harmless; a partially refunded one silently
+under-declares by the tax on the refunded amount.
+
+Two smaller faults in the same three lines:
+
+- Filtering to `tax_laar < 0` dropped **positive** adjustments entirely. Both
+  the reclassify-into-an-open-period path (`GstLedgerPoster`, the locked-period
+  branch) and `postManualAdjustment` can post one, and a manual adjustment
+  correcting an under-declaration is exactly the thing that must not vanish.
+- `output_tax_before_adjustments_laar` was read off a figure that already had
+  adjustments in it, so the field's name was untrue and the three published
+  numbers did not reconcile.
+
+**Fix.** Adjustments are summed once, both signs. "Before adjustments" is now
+genuinely output-direction only. Net is stated as `before + adjustments` rather
+than read back off `sumOutput()`, so the three published figures reconcile by
+construction even if a manual adjustment carries a non-standard tax code. The
+sales lines are untouched — they stay net of credit notes as before.
+
+## M3 — Delivery and small-order fees are never GST-taxed; packaging is
+**Severity: Medium — needs a decision, not a patch** · `backend/app/Domains/Orders/Services/OrderTotalsCalculator.php:288-310`
+
+`recalculateAndPersist` applies GST to the packaging fee when
+`packaging_fee_taxable` is on (default on). The **delivery fee** and the
+**small-order fee** get no tax treatment at all, and no
+`delivery_fee_taxable` / `small_order_fee_taxable` setting exists anywhere.
+
+This looks deliberate rather than forgotten — someone added packaging
+taxability explicitly, with a migration and a setting, and did not add the
+others. But if Maldivian GST does apply to a delivery charge, every delivery
+order under-collects GST on that line, which is the same class of liability as
+H1 above.
+
+**Not changed on purpose.** Whether a delivery charge is a taxable supply is a
+tax question, not a code question, and quietly altering tax treatment on my own
+reading could create a different liability than the one it fixes. This needs an
+answer from whoever files the returns. If the answer is "yes, taxable", the fix
+is small: mirror the packaging block, with its own setting so it can be turned
+on from a known date rather than retroactively.
+
+## Checked and found sound (no action)
+
+- **GST tax math** (`GstTaxCalculator`). Integer laari throughout; inclusive
+  extraction uses `amount * rate / (10000 + rate)` matching `Money`; a missing
+  or empty `tax_code` resolves to standard-rated, so lines are never silently
+  under-taxed.
+- **Ledger direction.** Credit notes and refunds post `Adjustment` with
+  negative taxable/tax/total; refund GST is allocated against the
+  taxable-plus-tax portion so delivery, packaging and tips do not dilute the
+  tax share. Posting into a locked period redirects to the next open one.
+- **Loyalty** (`PointsCalculator`, `LoyaltyLedgerService`). Earn base is
+  discounted merchandise; `floor()` everywhere, so rounding favours the
+  merchant. Earn is idempotent per order+customer under a row lock, so a
+  webhook and a return-URL arriving together cannot both credit. Redemption
+  holds lock the account. Both reversals are capped — redemption restore at
+  *consumed minus already restored*, earn reversal at
+  `min(pointsToReverse, balance)` with lifetime points capped separately — so
+  a refund cannot drive a balance negative or claw back more than was given.
+- **Customer credit** (`CreditLedgerService`, `CreditEligibilityService`).
+  Every mutation runs `Customer::lockForUpdate()`, and `assertCanCharge` runs
+  **inside** that lock, so two concurrent charges cannot both fit under one
+  headroom. Limit raises above the configured maximum require an owner
+  override plus a reason. The one path that deliberately skips the eligibility
+  check (invoicing consigned stock) documents why: the exposure was already
+  gated at dispatch and re-checking would double-count.
+- **Packaging and small-order fees.** Per-line fee capped at `MAX_FIXED_MVR`,
+  quantities coerced to non-negative integers, non-positive fees skipped,
+  per-line vs per-unit modes explicit. Small-order fee only applies to pickup
+  and delivery and only below the threshold.
+- **Delivery fee.** Free-delivery threshold measured against *discounted*
+  merchandise; zone match is case-insensitive and exact, with an unknown island
+  falling back to the default fee rather than to zero.
+- **Trade invoicing.** Totals are integer laari with decimal columns derived by
+  `round($laar / 100, 2)`. Receivable payments lock payment, invoice and
+  customer, and are idempotent against `CustomerCreditLedger.payment_id`
+  checked both before and after the lock.
+
+## One loose thread (informational)
+
+`GstLedgerPoster::postRefund` reads `$refund->amount_laar ?? round(amount * 100)`.
+There is no `amount_laar` column on `refunds`, so the left side is always null
+and the fallback always runs. Harmless — Eloquent returns null for an unknown
+attribute — but it is dead code anticipating a column that was never added, and
+it is the same wrong assumption that produced the withdrawn L1.
 
 ## A note on this audit's own accuracy
 

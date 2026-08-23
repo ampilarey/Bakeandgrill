@@ -29,8 +29,17 @@ class GstReportService
         $outputExempt = $this->sumOutput($entries, GstTaxCode::Exempt->value);
         $outputOut = $this->sumOutput($entries, GstTaxCode::OutOfScope->value);
 
+        // Every adjustment, both signs, and only counted here.
+        //
+        // sumOutput() deliberately spans output+adjustment so the sales lines
+        // stay net of credit notes. That means adjustments are ALREADY inside
+        // $outputStandard, and the old code then added the negative ones to it
+        // a second time — subtracting every credit note and refund twice and
+        // under-declaring output tax. Restricting the sum to `tax_laar < 0`
+        // also silently dropped positive adjustments, which the reclassify
+        // path and manual corrections both post.
         $adjustments = $entries->where('direction', LedgerDirection::Adjustment->value);
-        $creditNoteTax = $adjustments->where('tax_laar', '<', 0)->sum('tax_laar');
+        $adjustmentTax = (int) $adjustments->sum('tax_laar');
 
         $inputClaimableRevenue = $entries
             ->where('direction', LedgerDirection::Input->value)
@@ -50,8 +59,20 @@ class GstReportService
             ->sum('tax_laar');
 
         $carryForward = $this->periods->carryForwardInputLaar($period);
-        $outputTaxBeforeAdj = $outputStandard['tax_laar'];
-        $netOutputTax = $outputTaxBeforeAdj + $creditNoteTax;
+
+        // Genuinely before adjustments — output direction only. Taking it from
+        // sumOutput() made the field's own name untrue, since that figure is
+        // already net of them.
+        $outputTaxBeforeAdj = (int) $entries
+            ->where('direction', LedgerDirection::Output->value)
+            ->where('tax_code', GstTaxCode::Standard8->value)
+            ->sum('tax_laar');
+
+        // Stated explicitly rather than read back off sumOutput(), so the three
+        // published figures reconcile by construction: before + adjustments =
+        // net. A manual adjustment carrying a non-standard tax code would
+        // otherwise fall outside the standard-rated bucket and break that.
+        $netOutputTax = $outputTaxBeforeAdj + $adjustmentTax;
         $claimableInput = $inputClaimableRevenue + $inputClaimableCapital;
         $netPayable = $netOutputTax - $claimableInput - $carryForward;
         $excessCarryForward = $netPayable < 0 ? abs($netPayable) : 0;
@@ -72,7 +93,7 @@ class GstReportService
             'exempt_sales_laar' => $outputExempt['taxable_laar'],
             'out_of_scope_sales_laar' => $outputOut['taxable_laar'],
             'output_tax_before_adjustments_laar' => $outputTaxBeforeAdj,
-            'credit_note_refund_adjustments_laar' => $creditNoteTax,
+            'credit_note_refund_adjustments_laar' => $adjustmentTax,
             'net_output_tax_laar' => $netOutputTax,
             'claimable_input_revenue_laar' => $inputClaimableRevenue,
             'claimable_input_capital_laar' => $inputClaimableCapital,
