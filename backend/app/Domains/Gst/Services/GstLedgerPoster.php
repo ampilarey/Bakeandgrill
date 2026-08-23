@@ -234,7 +234,10 @@ class GstLedgerPoster
             return null;
         }
 
-        $refundLaar = (int) ($refund->amount_laar ?? round((float) $refund->amount * 100));
+        // refunds.amount is decimal(10,2) and there is no amount_laar column —
+        // do not "restore" a `$refund->amount_laar ??` read here; it is always
+        // null and reading it implies a precision that the table does not have.
+        $refundLaar = (int) round((float) $refund->amount * 100);
         // Allocate GST against the taxable+tax portion of the order so
         // delivery/packaging/tip fees do not dilute the refund tax share.
         $subtotalLaar = EffectiveDiscount::subtotalLaarFromOrder($order);
