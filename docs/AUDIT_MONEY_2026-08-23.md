@@ -362,13 +362,15 @@ with whoever files the returns.
   customer, and are idempotent against `CustomerCreditLedger.payment_id`
   checked both before and after the lock.
 
-## One loose thread (informational)
+## One loose thread (informational) — **closed 2026-08-23**
 
-`GstLedgerPoster::postRefund` reads `$refund->amount_laar ?? round(amount * 100)`.
-There is no `amount_laar` column on `refunds`, so the left side is always null
-and the fallback always runs. Harmless — Eloquent returns null for an unknown
-attribute — but it is dead code anticipating a column that was never added, and
-it is the same wrong assumption that produced the withdrawn L1.
+`GstLedgerPoster::postRefund` read `$refund->amount_laar ?? round(amount * 100)`.
+There is no `amount_laar` column on `refunds`, so the left side was always null
+and the fallback always ran. Harmless — Eloquent returns null for an unknown
+attribute — but it was dead code anticipating a column that was never added, and
+it was the same wrong assumption that produced the withdrawn L1. The dead read
+has been removed; the decimal-to-laari conversion is now the stated, only path,
+with a comment warning against reintroducing it.
 
 ## A note on this audit's own accuracy
 
