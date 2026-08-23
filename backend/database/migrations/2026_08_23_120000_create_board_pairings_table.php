@@ -47,7 +47,19 @@ return new class extends Migration
             $table->unsignedBigInteger('personal_access_token_id')->nullable();
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
-            $table->timestamp('expires_at')->index();
+            // useCurrent() is load-bearing on MySQL, not decoration. Only the
+            // *first* TIMESTAMP column in a table gets an implicit
+            // CURRENT_TIMESTAMP default; a later NOT NULL one with no default
+            // falls back to '0000-00-00 00:00:00', which strict mode rejects
+            // outright ("Invalid default value for 'expires_at'"). approved_at
+            // above takes the first slot, so this column has to say it.
+            // SQLite accepts the bare form happily, which is why the test suite
+            // cannot see this — see BoardPairingTest::test_the_schema_is_valid…
+            //
+            // The value is fail-closed either way: a row written without an
+            // expiry defaults to now, and the live() scope treats now-or-older
+            // as expired.
+            $table->timestamp('expires_at')->useCurrent()->index();
             $table->timestamps();
         });
     }

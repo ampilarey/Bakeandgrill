@@ -322,6 +322,41 @@ class BoardPairingTest extends TestCase
         $this->assertCount(200, array_unique($codes));
     }
 
+    public function test_the_schema_is_valid_on_mysql_not_only_sqlite(): void
+    {
+        // This table failed to create on production while every test here
+        // passed, because the suite runs on SQLite and production is MySQL.
+        //
+        // Only the *first* TIMESTAMP column in a MySQL table gets an implicit
+        // CURRENT_TIMESTAMP default. A later NOT NULL one with no default
+        // falls back to '0000-00-00 00:00:00', which strict mode rejects:
+        //   SQLSTATE[42000] 1067 Invalid default value for 'expires_at'
+        //
+        // Checked against the migration source rather than by running it:
+        // there is no MySQL server in the test environment, and the SQLite one
+        // the suite does have is exactly what failed to notice.
+        $source = file_get_contents(
+            database_path('migrations/2026_08_23_120000_create_board_pairings_table.php'),
+        );
+
+        preg_match_all('/->timestamp\(\'(\w+)\'\)((?:->\w+\([^)]*\))*)/', $source, $matches, PREG_SET_ORDER);
+        $this->assertNotEmpty($matches, 'expected timestamp columns to check');
+
+        $offenders = [];
+        foreach ($matches as [, $column, $modifiers]) {
+            $safe = str_contains($modifiers, 'nullable()')
+                || str_contains($modifiers, 'useCurrent()')
+                || str_contains($modifiers, 'default(');
+            if (!$safe) {
+                $offenders[] = $column;
+            }
+        }
+
+        $this->assertSame([], $offenders, implode(', ', $offenders)
+            . ': a NOT NULL timestamp needs nullable(), useCurrent() or default() '
+            . 'unless it is the first timestamp column in the table.');
+    }
+
     public function test_starting_a_handshake_is_rate_limited(): void
     {
         // The only public write in the whole board feature, and each call
