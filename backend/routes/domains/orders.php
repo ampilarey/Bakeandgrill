@@ -191,4 +191,22 @@ if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('ord
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:pos.ring_sales', 'device.active', 'throttle:20,1'])->group(function () {
         Route::post('/offline/sync', [App\Http\Controllers\Api\OfflineSyncController::class, 'sync']);
     });
+
+    // ── Wall-mounted order boards ─────────────────────────────────────────
+    // The screens in the kitchen and behind the till. Read-only, and on
+    // their own credential: a 72-hour staff token means an unattended board
+    // goes blank on a Sunday with nobody watching. See BoardController.
+    Route::get('/board/orders', [App\Http\Controllers\Api\BoardController::class, 'orders'])
+        ->middleware(['auth:sanctum', 'board.token', 'throttle:240,1']);
+
+    // Issuing and revoking those credentials is an owner action, on the
+    // ordinary staff token — never on a board token, which is why these sit
+    // behind staff.token and a permission rather than board.token.
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:devices.approve'])
+        ->group(function () {
+            Route::get('/admin/boards', [App\Http\Controllers\Api\BoardController::class, 'listTokens']);
+            Route::post('/admin/boards', [App\Http\Controllers\Api\BoardController::class, 'issueToken']);
+            Route::delete('/admin/boards/{id}', [App\Http\Controllers\Api\BoardController::class, 'revokeToken'])
+                ->whereNumber('id');
+        });
 }

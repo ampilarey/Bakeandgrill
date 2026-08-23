@@ -73,6 +73,17 @@ return [
     'driver_token_ttl_hours' => max(1, (int) (env('DRIVER_TOKEN_TTL_HOURS') ?: 12)),
 
     /*
+     * Wall-mounted order boards. Deliberately much longer than the others:
+     * these are unattended screens, and a 72-hour token means the kitchen
+     * board goes blank on a Sunday morning with nobody watching it. The
+     * length is safe because the ability is read-only ('board'), the token is
+     * issued by an owner rather than obtained with a PIN, and revoking it is
+     * one click. Shorten it with BOARD_TOKEN_TTL_DAYS if a screen is somewhere
+     * the public can reach the keyboard.
+     */
+    'board_token_ttl_days' => max(1, (int) (env('BOARD_TOKEN_TTL_DAYS') ?: 365)),
+
+    /*
     |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------

@@ -78,6 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => App\Http\Middleware\RequirePermission::class,
             'permission.any' => App\Http\Middleware\RequireAnyPermission::class,
             'customer.token' => App\Http\Middleware\EnsureCustomerToken::class,
+            'board.token' => App\Http\Middleware\EnsureBoardToken::class,
             'staff.token' => App\Http\Middleware\EnsureStaffToken::class,
             'driver.token' => App\Http\Middleware\EnsureDriverToken::class,
             'staff_or_customer.token' => App\Http\Middleware\EnsureStaffOrCustomerToken::class,
