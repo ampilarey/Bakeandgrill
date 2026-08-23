@@ -1236,6 +1236,8 @@ export function MenuPage() {
           onToggleModifier={toggleModifier}
           onAddToCart={handleModalAdd}
           onClose={() => setSelectedItem(null)}
+          isFavourite={favouriteIds.has(selectedItem.id)}
+          onToggleFavourite={handleToggleFavourite}
         />
       )}
 

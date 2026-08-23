@@ -517,6 +517,9 @@ export function CartDrawer({
           initialPackagingOptionId={editLine.entry.packagingOptionId ?? null}
           initialPlatterSelections={editLine.entry.platterSelections ?? []}
           onUpdateEntry={handleUpdateEntry}
+          // Opened from the cart, so closing goes back to the cart. Labelling
+          // it "Full menu" here would be a lie about where it lands.
+          backTo="cart"
         />
       )}
     </div>

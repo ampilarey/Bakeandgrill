@@ -54,6 +54,17 @@ export type ItemSheetProps = {
    * allow_pre_order is the only gate (items are made fresh for tomorrow).
    */
   orderDay?: 'today' | 'tomorrow';
+  /**
+   * Where dismissing this sheet puts the customer back.
+   *
+   * The sheet opens from the menu and from the cart, and the control that
+   * closes it now says where it goes rather than showing a bare ×. That is
+   * only an improvement while the label is true, so it follows the origin.
+   */
+  backTo?: 'menu' | 'cart';
+  /** Favourite state, same pair ProductCard takes. Omit to hide the heart. */
+  isFavourite?: boolean;
+  onToggleFavourite?: (itemId: number) => void;
 };
 
 export function ItemSheet({
@@ -71,6 +82,9 @@ export function ItemSheet({
   onUpdateEntry,
   viewOnly = false,
   orderDay = 'today',
+  backTo = 'menu',
+  isFavourite = false,
+  onToggleFavourite,
 }: ItemSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const addRef = useRef<HTMLButtonElement>(null);
@@ -322,8 +336,41 @@ export function ItemSheet({
         }}
       >
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {/*
+            Laid out like the server-rendered item page at /menu/{id}: the way
+            back sits above the photo on the sheet's own background rather than
+            floating on the image, and the hero is an inset rounded panel.
+            A bare × told a customer nothing about where it went, and a label
+            over a photo needs a scrim to stay readable on a bright one.
+          */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, padding: '0.9rem 1.25rem 0.35rem',
+          }}>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                minHeight: 44, padding: '0 0.15rem',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--color-primary)', font: 'inherit',
+                fontSize: '0.95rem', fontWeight: 700,
+              }}
+            >
+              <span aria-hidden="true">←</span>
+              {backTo === 'cart' ? 'Back to cart' : 'Full menu'}
+            </button>
+          </div>
+
           {/* Hero photo */}
-          <div style={{ position: 'relative' }}>
+          <div style={{
+            position: 'relative',
+            margin: '0 1.25rem',
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}>
             {slides.length > 0 ? (
               <MenuImageSlider
                 slides={slides}
@@ -345,20 +392,24 @@ export function ItemSheet({
                 🍽️
               </div>
             )}
-            <button
-              ref={closeRef}
-              onClick={onClose}
-              style={{
-                position: 'absolute', top: 12, right: 12, zIndex: 4,
-                background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%',
-                width: 40, height: 40, cursor: 'pointer', fontSize: '1.15rem',
-                color: 'var(--color-text)', boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              aria-label="Close"
-            >
-              ×
-            </button>
+            {onToggleFavourite && (
+              <button
+                type="button"
+                onClick={() => onToggleFavourite(item.id)}
+                style={{
+                  position: 'absolute', top: 12, right: 12, zIndex: 4,
+                  background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: '50%',
+                  width: 40, height: 40, cursor: 'pointer', fontSize: '1.15rem',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+                aria-label={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+                aria-pressed={isFavourite}
+                data-testid="item-sheet-favourite"
+              >
+                {isFavourite ? '❤️' : '🤍'}
+              </button>
+            )}
           </div>
 
           <div style={{ padding: '1.15rem 1.25rem 1.5rem' }}>
