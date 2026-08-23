@@ -76,6 +76,33 @@ That pair is a deploy dependency (CI, TEST, production). The CSS override route
 `GET /css/dhivehi-font.css` is registered outside the `web` group so it stays
 cookie-less.
 
+## TEST and production share one Redis
+
+The Redis socket is per cPanel *account* (`REDIS_PATH=/home/bakeandgrill/.redis/redis.sock`),
+so both sites talk to the same server. Nothing separates them by default —
+`REDIS_PREFIX` and `CACHE_PREFIX` both fall back to a slug of `APP_NAME`, which is
+the same `"Bake & Grill"` on both, and `REDIS_DB`/`REDIS_CACHE_DB` default to 0 and 1.
+
+Left at the defaults the two environments share a **queue**, and whichever worker
+pops a job runs it against its *own* database and credentials — so a TEST
+campaign-SMS job can be executed by the production worker and delivered to real
+customers. They also share a **cache**, and `cache:clear` on either site wipes both:
+`RedisStore::flush()` is a `FLUSHDB`, which ignores prefixes.
+
+Production keeps the defaults. TEST sets all four explicitly (fixed 2026-08-23):
+
+```
+REDIS_DB=2
+REDIS_CACHE_DB=3
+REDIS_PREFIX=bg-test-database-
+CACHE_PREFIX=bg-test-cache-
+```
+
+Any third environment on this account needs its own set. Separate prefixes isolate
+the keys; separate databases are what make a `cache:clear` on one site harmless to
+the other. `app:verify-production-config` cannot catch this — it only sees one
+environment — so it is a convention, not an enforced check.
+
 ## Queue worker vs synchronous SMS
 
 The queue worker (`php artisan queue:work redis`) is only needed for async listeners
