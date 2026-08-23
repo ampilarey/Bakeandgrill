@@ -71,6 +71,17 @@ class SecurityHeaders
             return "default-src 'self'; script-src 'self' {$nonce} https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com https://www.google-analytics.com https://www.googletagmanager.com https://*.ingest.sentry.io;";
         }
 
+        // Wall order board. Tighter than the public site on purpose: an
+        // unattended kiosk holding a year-long token has no business talking
+        // to analytics hosts, and it needs nothing beyond its own origin.
+        // form-action 'none' matters more than it looks — the pairing form
+        // holds the board key, and a scripting failure must not turn a
+        // submit into a navigation that puts that key in a URL.
+        // frame-ancestors is appended for every response in handle().
+        if ($request->is('board')) {
+            return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none';";
+        }
+
         if ($request->is('kds', 'kds/*')) {
             return "default-src 'self'; script-src 'self' {$nonce}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; connect-src 'self';";
         }

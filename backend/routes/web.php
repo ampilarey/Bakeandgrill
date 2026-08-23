@@ -198,6 +198,22 @@ Route::get('/order/{any}', function () {
     ]);
 })->where('any', '.*')->name('order.spa');
 
+// Wall order board — the kitchen and cash-register screens.
+//
+// A plain Blade page rather than a sixth React app: no build step, so a fix
+// reaches the screens through the ordinary deploy. It renders no order data
+// server-side; everything comes from /api/board/orders, which needs a board
+// token the screen holds in its own localStorage. Serving the shell to
+// anyone is therefore safe, and it means a screen that has been unpaired
+// can still show its own pairing instructions.
+Route::get('/board', function () {
+    return response()->view('board', [
+        'siteName' => App\Models\SiteSetting::get('site_name', 'Bake & Grill'),
+        'favicon' => App\Models\SiteSetting::get('favicon', App\Models\SiteSetting::get('logo', asset('logo.png'))),
+    ])->header('Cache-Control', 'no-store, no-cache, must-revalidate')
+        ->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('board');
+
 // Admin Dashboard SPA — catch-all for /admin/* sub-paths
 Route::get('/admin/{any}', function () {
     $path = public_path('admin/index.html');

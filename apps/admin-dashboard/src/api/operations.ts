@@ -339,6 +339,36 @@ export async function deleteDevice(id: number): Promise<void> {
   return req(`/devices/${id}`, { method: 'DELETE' });
 }
 
+// ── Order boards ──────────────────────────────────────────────────────────────
+//
+// The wall screens at /board. These are not Devices: a Device is a till or a
+// KDS that a person signs in to, while a board is an unattended screen with
+// its own read-only credential. Same page, separate concept — see
+// App\Http\Controllers\Api\BoardController.
+
+export interface OrderBoard {
+  id: number;
+  name: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+export async function fetchOrderBoards(): Promise<{ boards: OrderBoard[] }> {
+  return req('/admin/boards');
+}
+
+/** The plaintext key comes back once, here, and is never retrievable again. */
+export async function createOrderBoard(
+  name: string,
+): Promise<{ id: number; name: string; expires_at: string | null; token: string }> {
+  return req('/admin/boards', { method: 'POST', body: JSON.stringify({ name }) });
+}
+
+export async function revokeOrderBoard(id: number): Promise<{ message: string }> {
+  return req(`/admin/boards/${id}`, { method: 'DELETE' });
+}
+
 // ── Waste Logs ────────────────────────────────────────────────────────────────
 
 export interface WasteLog {

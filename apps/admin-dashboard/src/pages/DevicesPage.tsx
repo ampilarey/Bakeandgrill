@@ -9,6 +9,7 @@ import {
   fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice, deleteDevice,
   type Device,
 } from '../api';
+import OrderBoardsCard from './OrderBoardsCard';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -277,6 +278,9 @@ export default function DevicesPage() {
           </tbody>
         </table>
       </TableCard>
+
+      {/* ── Order boards (the wall screens at /board) ── */}
+      <OrderBoardsCard canManage={canApprove} />
 
       {/* ── Pre-provision Modal ── */}
       {modal && (
