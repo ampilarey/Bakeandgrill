@@ -19,6 +19,8 @@ class UpdatePackagingFeeSettingsRequest extends FormRequest
     {
         return [
             'packaging_label' => 'nullable|string|max:50',
+            'packaging_fee_taxable' => 'sometimes|boolean',
+            'small_order_fee_taxable' => 'sometimes|boolean',
             'small_order_enabled' => 'sometimes|boolean',
             'small_order_threshold_mvr' => 'sometimes|numeric|min:0',
             'small_order_amount_mvr' => 'sometimes|numeric|min:0',

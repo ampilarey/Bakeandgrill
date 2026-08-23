@@ -8,6 +8,7 @@ use App\Domains\Gst\Enums\GstAccountingBasis;
 use App\Domains\Gst\Enums\GstTaxCode;
 use App\Domains\Gst\Enums\LedgerDirection;
 use App\Domains\Gst\Enums\LedgerSourceType;
+use App\Domains\Orders\Services\OrderFeeTaxCalculator;
 use App\Domains\Orders\Support\EffectiveDiscount;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -24,7 +25,7 @@ class GstLedgerPoster
     public function __construct(
         private readonly GstSettingsService $settings = new GstSettingsService,
         private readonly GstPeriodService $periods = new GstPeriodService,
-        private readonly GstTaxCalculator $tax = new GstTaxCalculator,
+        private readonly OrderFeeTaxCalculator $feeTax = new OrderFeeTaxCalculator,
     ) {}
 
     public function shouldPostOrderOnPayment(): bool
@@ -412,23 +413,19 @@ class GstLedgerPoster
         $parts = EffectiveDiscount::merchandisePartsFromOrder($order);
         $taxableLaar = max(0, $subtotalLaar - EffectiveDiscount::effectiveTotalLaar($subtotalLaar, $parts));
 
-        // Taxable packaging principal (when setting on) is part of GST supply.
-        $packagingLaar = max(0, (int) ($order->packaging_fee_laar ?? 0));
-        if ($packagingLaar > 0 && app(\App\Domains\Orders\Services\PackagingFeeCalculator::class)->packagingFeeTaxable()) {
-            $taxInclusive = $this->settings->taxInclusive();
-            $packagingTaxLaar = $this->tax->calculateLineTaxLaar(
-                $packagingLaar,
-                GstTaxCode::Standard8->value,
-                $taxInclusive,
-            );
-            if ($taxInclusive) {
-                $taxableLaar += max(0, $packagingLaar - $packagingTaxLaar);
-            } else {
-                $taxableLaar += $packagingLaar;
-            }
-        }
+        // Taxable fees (packaging, small-order, delivery — each per its setting)
+        // are part of the GST supply. Same calculator the totals pipeline used
+        // when the order was priced, so the declared base matches the tax that
+        // was actually charged on it.
+        $taxableLaar += $this->feeTax->calculate(
+            max(0, (int) ($order->packaging_fee_laar ?? 0)),
+            max(0, (int) ($order->small_order_fee_laar ?? 0)),
+            max(0, (int) ($order->delivery_fee_laar ?? 0)),
+            $this->settings->taxInclusive(),
+        )['taxable_laar'];
 
-        // GST supply total = taxable base + tax (excludes delivery/tip; packaging included when taxable).
+        // GST supply total = taxable base + tax (excludes the tip, which is not
+        // consideration for a supply; fees included when taxable).
         $totalLaar = $taxableLaar + $taxLaar;
 
         if ($totalLaar <= 0) {

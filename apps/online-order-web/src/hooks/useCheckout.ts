@@ -48,6 +48,7 @@ import {
 } from '@shared/utils/serviceCharge';
 import { discountedSubtotalLaar as calcDiscountedSubtotalLaar } from '@shared/utils/effectiveDiscount';
 import { estimateDeliveryFeeLaar } from '@shared/utils/deliveryFeeEstimate';
+import { orderFeeTaxLaar } from '@shared/utils/feeTax';
 import type { CollectOn } from '../utils/collectOn';
 import { cartAllowsTomorrow } from '../utils/collectOn';
 import {
@@ -305,6 +306,11 @@ export function useCheckout() {
   const [defaultTaxRatePercent, setDefaultTaxRatePercent] = useState(8);
   const [taxInclusive, setTaxInclusive] = useState(false);
   const [packagingFeeTaxable, setPackagingFeeTaxable] = useState(true);
+  // Delivery is a taxable supply in the Maldives and the small-order fee is
+  // extra consideration for the same food, so both default to taxed — matching
+  // the server, which charges GST on them unless the owner switches it off.
+  const [smallOrderFeeTaxable, setSmallOrderFeeTaxable] = useState(true);
+  const [deliveryFeeTaxable, setDeliveryFeeTaxable] = useState(true);
 
   useEffect(() => {
     fetchGstBootstrap()
@@ -312,11 +318,15 @@ export function useCheckout() {
         setDefaultTaxRatePercent(b.tax_rate_percent);
         setTaxInclusive(!!b.tax_inclusive);
         setPackagingFeeTaxable(b.packaging_fee_taxable !== false);
+        setSmallOrderFeeTaxable(b.small_order_fee_taxable !== false);
+        setDeliveryFeeTaxable(b.delivery_fee_taxable !== false);
       })
       .catch(() => {
         setDefaultTaxRatePercent(8);
         setTaxInclusive(false);
         setPackagingFeeTaxable(true);
+        setSmallOrderFeeTaxable(true);
+        setDeliveryFeeTaxable(true);
       });
   }, []);
 
@@ -644,13 +654,24 @@ export function useCheckout() {
     taxBuckets,
     taxInclusive,
   );
-  let packagingTaxLaar = 0;
-  if (packagingFeeTaxable && packagingFeeLaar > 0 && defaultTaxRatePercent > 0) {
-    packagingTaxLaar = taxInclusive
-      ? Math.round((packagingFeeLaar * defaultTaxRatePercent) / (100 + defaultTaxRatePercent))
-      : Math.round((packagingFeeLaar * defaultTaxRatePercent) / 100);
-  }
-  const taxLaar = itemTaxLaar + scTaxLaar + packagingTaxLaar;
+  // GST on the order-level fees. Mirrors OrderFeeTaxCalculator on the server —
+  // if the two drift, the total shown at checkout stops matching the total the
+  // card is charged. The tip is absent from both, deliberately.
+  const feeTaxTotalLaar = orderFeeTaxLaar(
+    {
+      packagingLaar: packagingFeeLaar,
+      smallOrderLaar: smallOrderFeeLaar,
+      deliveryLaar: deliveryFeeLaar,
+    },
+    {
+      packaging: packagingFeeTaxable,
+      smallOrder: smallOrderFeeTaxable,
+      delivery: deliveryFeeTaxable,
+    },
+    defaultTaxRatePercent,
+    taxInclusive,
+  );
+  const taxLaar = itemTaxLaar + scTaxLaar + feeTaxTotalLaar;
 
   useEffect(() => {
     // Dine-in never carries packaging/small-order fees — the server preview
@@ -694,6 +715,12 @@ export function useCheckout() {
         if (res.packaging_fee_taxable != null) {
           setPackagingFeeTaxable(!!res.packaging_fee_taxable);
         }
+        if (res.small_order_fee_taxable != null) {
+          setSmallOrderFeeTaxable(!!res.small_order_fee_taxable);
+        }
+        if (res.delivery_fee_taxable != null) {
+          setDeliveryFeeTaxable(!!res.delivery_fee_taxable);
+        }
       })
       .catch(() => {
         setPackagingFeeLaar(localPackLaar);
@@ -701,8 +728,8 @@ export function useCheckout() {
       });
   }, [orderType, discountedSubtotalLaar, cart]);
 
-  // Inclusive: tax is already inside discountedSubtotalLaar / packaging fee —
-  // show taxLaar as info only. Exclusive: add tax (incl. packaging GST).
+  // Inclusive: tax is already inside discountedSubtotalLaar and the fees —
+  // show taxLaar as info only. Exclusive: add tax (incl. GST on the fees).
   const taxForTotalLaar = taxInclusive ? 0 : taxLaar;
   /** Order grand total before gift-card tender (matches server order.total). */
   const totalLaar = discountedSubtotalLaar + serviceChargeLaar + taxForTotalLaar + deliveryFeeLaar + packagingFeeLaar + smallOrderFeeLaar;

@@ -883,7 +883,7 @@ export default function OnlineOrderingPage() {
         <div className="oc-card" style={S.card}>
           <p style={S.sectionTitle}>Order fees & limits</p>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Packaging is set per menu item. This page only controls the receipt label, small-order fee, and order caps.
+            Packaging is set per menu item. This page controls the receipt label, the small-order fee, whether GST applies to each fee, and order caps.
           </p>
           <MasterSwitchRow
             on={feeSettings.small_order_enabled}
@@ -893,6 +893,24 @@ export default function OnlineOrderingPage() {
             helpOn="Fee applies below the threshold."
             helpOff="No small-order fee at checkout."
             onToggle={() => setFeeSettings({ ...feeSettings, small_order_enabled: !feeSettings.small_order_enabled })}
+          />
+          <MasterSwitchRow
+            on={feeSettings.packaging_fee_taxable}
+            toggling={false}
+            titleOn="Packaging fee is taxable"
+            titleOff="Packaging fee is not taxable"
+            helpOn="GST is charged on the packaging fee."
+            helpOff="No GST on the packaging fee."
+            onToggle={() => setFeeSettings({ ...feeSettings, packaging_fee_taxable: !feeSettings.packaging_fee_taxable })}
+          />
+          <MasterSwitchRow
+            on={feeSettings.small_order_fee_taxable}
+            toggling={false}
+            titleOn="Small-order fee is taxable"
+            titleOff="Small-order fee is not taxable"
+            helpOn="GST is charged on the small-order fee."
+            helpOff="No GST on the small-order fee."
+            onToggle={() => setFeeSettings({ ...feeSettings, small_order_fee_taxable: !feeSettings.small_order_fee_taxable })}
           />
           <div className="oc-form-grid" style={{ marginTop: 16 }}>
             <div>

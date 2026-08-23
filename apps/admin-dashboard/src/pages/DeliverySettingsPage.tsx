@@ -39,6 +39,7 @@ export default function DeliverySettingsPage() {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [zoneRows, setZoneRows] = useState<ZoneFeeRow[]>([]);
   const [restrictZones, setRestrictZones] = useState(false);
+  const [feeTaxable, setFeeTaxable] = useState(true);
   const [feeSaving, setFeeSaving] = useState(false);
   const [opsAlerts, setOpsAlerts] = useState<OpsAlertsSettings | null>(null);
   const [opsSaving, setOpsSaving] = useState(false);
@@ -59,6 +60,7 @@ export default function DeliverySettingsPage() {
         setFreeThreshold(String(feeRes.settings.free_threshold));
         setDeliveryTime(String(feeRes.settings.delivery_time ?? ''));
         setRestrictZones(feeRes.settings.zones_enforced);
+        setFeeTaxable(feeRes.settings.fee_taxable !== false);
         setZoneRows(
           Object.entries(feeRes.settings.zone_fees).map(([name, fee]) => ({
             name,
@@ -108,6 +110,7 @@ export default function DeliverySettingsPage() {
         delivery_time: deliveryTime.trim(),
         zone_fees: zoneFees,
         restrict_to_zone_fees: restrictZones,
+        fee_taxable: feeTaxable,
       });
       setFeeSettings(res.settings);
       setStatus(res.delivery_status);
@@ -286,6 +289,22 @@ export default function DeliverySettingsPage() {
             />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
               Authoritative free-delivery threshold for checkout, invoices, receipts, Website and Order App messaging. Content & Branding cannot edit a separate copy.
+            </p>
+          </div>
+
+          <div>
+            <label style={S.label}>GST on delivery</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer', minHeight: 44 }}>
+              <input
+                type="checkbox"
+                checked={feeTaxable}
+                onChange={(e) => setFeeTaxable(e.target.checked)}
+                data-testid="delivery-fee-taxable"
+              />
+              Charge GST on the delivery fee
+            </label>
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+              A delivery charge is a taxable supply in the Maldives, so this is normally on. Turning it off stops GST being charged on delivery and takes the fee out of the GST return — check with whoever files your returns before changing it.
             </p>
           </div>
         </div>

@@ -30,6 +30,14 @@ class PackagingFeeSettingsController extends Controller
         if (array_key_exists('packaging_label', $data)) {
             SiteSetting::set('packaging_fee_label', trim((string) ($data['packaging_label'] ?? 'Packaging fee')));
         }
+        // GST on the fees. Seeded on by migration; kept writable because
+        // taxability is an accounting decision that can change without a deploy.
+        if (array_key_exists('packaging_fee_taxable', $data)) {
+            SiteSetting::set('packaging_fee_taxable', $data['packaging_fee_taxable'] ? '1' : '0');
+        }
+        if (array_key_exists('small_order_fee_taxable', $data)) {
+            SiteSetting::set('small_order_fee_taxable', $data['small_order_fee_taxable'] ? '1' : '0');
+        }
         if (array_key_exists('small_order_enabled', $data)) {
             SiteSetting::set('small_order_fee_enabled', $data['small_order_enabled'] ? '1' : '0');
         }

@@ -207,6 +207,8 @@ export type CheckoutFeesPreview = {
   small_order_fee_laar: number;
   small_order_fee_label: string;
   packaging_fee_taxable?: boolean;
+  small_order_fee_taxable?: boolean;
+  delivery_fee_taxable?: boolean;
 };
 
 export async function fetchCheckoutFeesPreview(
@@ -439,6 +441,8 @@ export type GstBootstrap = {
   gst_registered: boolean;
   currency: string;
   packaging_fee_taxable?: boolean;
+  small_order_fee_taxable?: boolean;
+  delivery_fee_taxable?: boolean;
 };
 
 let gstBootstrapCache: GstBootstrap | null = null;
@@ -458,6 +462,8 @@ export async function fetchGstBootstrap(): Promise<GstBootstrap> {
       gst_registered: false,
       currency: 'MVR',
       packaging_fee_taxable: true,
+      small_order_fee_taxable: true,
+      delivery_fee_taxable: true,
     };
   }
 }

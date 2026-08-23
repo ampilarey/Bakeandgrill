@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Services;
 
 use App\Domains\Delivery\Services\DeliveryFeeCalculator;
-use App\Domains\Gst\Enums\GstTaxCode;
 use App\Domains\Gst\Services\GstSettingsService;
 use App\Domains\Gst\Services\GstTaxCalculator;
 use App\Domains\Orders\DTOs\DiscountsInput;
@@ -30,7 +29,8 @@ use Illuminate\Support\Facades\Schema;
  *   4. Service charge (from settings snapshot, or frozen on locked orders)
  *   5. Per-item tax (+ optional service charge tax)
  *   6. Grand total (items + service charge + tax)
- *   7. Delivery fee added in recalculateAndPersist
+ *   7. Packaging, small-order and delivery fees added in recalculateAndPersist,
+ *      each taxed when its site setting says so (tips never are)
  */
 class OrderTotalsCalculator
 {
@@ -39,6 +39,7 @@ class OrderTotalsCalculator
         private readonly PackagingFeeCalculator $packagingFeeCalculator = new PackagingFeeCalculator,
         private readonly GstTaxCalculator $gstTax = new GstTaxCalculator,
         private readonly GstSettingsService $gstSettings = new GstSettingsService,
+        private readonly OrderFeeTaxCalculator $feeTax = new OrderFeeTaxCalculator,
     ) {}
 
     /**
@@ -285,18 +286,21 @@ class OrderTotalsCalculator
         // Preserve soft-held gift-card tender; breakdown intentionally zeros it.
         $attrs['gift_card_discount_laar'] = $giftCardTenderLaar;
 
-        // Packaging tax (optional site setting). Exclusive: add GST on packaging
-        // principal into tax_laar + grand total. Inclusive: fee embeds GST —
-        // extract into tax_laar only (do not add again to total).
+        // GST on the fees (packaging, small-order, delivery — each with its own
+        // site setting). Exclusive: add the fee GST into tax_laar and the grand
+        // total. Inclusive: the fees already embed GST, so extract it into
+        // tax_laar only and leave the total alone. The tip is never taxed —
+        // it is not consideration for a supply.
         $taxInclusive = $this->gstSettings->taxInclusive();
-        $packagingTaxLaar = 0;
-        if ($packagingLaar > 0 && $this->packagingFeeCalculator->packagingFeeTaxable()) {
-            $packagingTaxLaar = $this->gstTax->calculateLineTaxLaar(
-                $packagingLaar,
-                GstTaxCode::Standard8->value,
-                $taxInclusive,
-            );
-            $attrs['tax_laar'] = (int) ($attrs['tax_laar'] ?? 0) + $packagingTaxLaar;
+        $feeTax = $this->feeTax->calculate(
+            $packagingLaar,
+            $smallOrderLaar,
+            $deliveryFeeLaar,
+            $taxInclusive,
+        );
+        $feeTaxLaar = $feeTax['tax_laar'];
+        if ($feeTaxLaar > 0) {
+            $attrs['tax_laar'] = (int) ($attrs['tax_laar'] ?? 0) + $feeTaxLaar;
             $attrs['tax_amount'] = round(((int) $attrs['tax_laar']) / 100, 2);
         }
 
@@ -305,8 +309,8 @@ class OrderTotalsCalculator
             + $smallOrderLaar
             + $deliveryFeeLaar
             + $tipLaar;
-        if (!$taxInclusive && $packagingTaxLaar > 0) {
-            $totalWithExtrasLaar += $packagingTaxLaar;
+        if (!$taxInclusive && $feeTaxLaar > 0) {
+            $totalWithExtrasLaar += $feeTaxLaar;
         }
 
         $order->update(array_merge($attrs, [

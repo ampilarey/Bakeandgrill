@@ -7,6 +7,7 @@ namespace App\Domains\Gst\Services;
 use App\Domains\Gst\Enums\GstAccountingBasis;
 use App\Domains\Gst\Enums\GstSector;
 use App\Domains\Gst\Enums\GstTaxablePeriod;
+use App\Domains\Orders\Services\OrderFeeTaxCalculator;
 use App\Models\GstSetting;
 use App\Support\ResilientCache;
 use Illuminate\Support\Facades\Cache;
@@ -80,6 +81,10 @@ class GstSettingsService
     public function bootstrapPayload(): array
     {
         $s = $this->get();
+        // Built here rather than injected: the fee calculator holds a
+        // GstTaxCalculator, which default-constructs a GstSettingsService — as
+        // a constructor dependency that would recurse without end.
+        $feeTax = new OrderFeeTaxCalculator;
 
         return [
             'gst_registered' => (bool) $s->gst_registered,
@@ -89,10 +94,9 @@ class GstSettingsService
             'currency' => $s->currency,
             'sector' => $s->sector,
             'accounting_basis' => $s->accounting_basis,
-            'packaging_fee_taxable' => filter_var(
-                \App\Models\SiteSetting::get('packaging_fee_taxable', '1'),
-                FILTER_VALIDATE_BOOLEAN,
-            ),
+            'packaging_fee_taxable' => $feeTax->packagingTaxable(),
+            'small_order_fee_taxable' => $feeTax->smallOrderTaxable(),
+            'delivery_fee_taxable' => $feeTax->deliveryTaxable(),
         ];
     }
 

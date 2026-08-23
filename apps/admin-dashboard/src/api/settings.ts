@@ -211,6 +211,8 @@ export interface DeliveryFeeSettings {
   zone_fees: Record<string, number>;
   zone_whitelist: string[] | null;
   zones_enforced: boolean;
+  /** Whether GST is charged on the delivery fee. */
+  fee_taxable: boolean;
   source: 'database' | 'config';
 }
 
@@ -225,6 +227,7 @@ export async function updateDeliveryFeeSettings(payload: {
   zone_fees: Record<string, number>;
   restrict_to_zone_fees?: boolean;
   zone_whitelist?: string[] | null;
+  fee_taxable?: boolean;
 }): Promise<{ message: string; settings: DeliveryFeeSettings; delivery_status: DeliveryGateStatus }> {
   return req('/admin/delivery/settings', { method: 'PATCH', body: JSON.stringify(payload) });
 }
@@ -280,6 +283,10 @@ export async function updatePaymentCommissionSettings(payload: {
 
 export type PackagingFeeSettings = {
   packaging_label: string;
+  /** Whether GST is charged on the packaging fee. */
+  packaging_fee_taxable: boolean;
+  /** Whether GST is charged on the small-order fee. */
+  small_order_fee_taxable: boolean;
   small_order_enabled: boolean;
   small_order_threshold_mvr: number;
   small_order_amount_mvr: number;

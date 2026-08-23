@@ -16,6 +16,14 @@ Audited against `main` at `c38c91155`.
 > fee edges and trade invoicing. It found one **High**: GST output tax was
 > under-declared because credit notes and refunds were subtracted twice. Fixed.
 > See "Second pass" below.
+>
+> **M3 was held open** for a tax answer rather than guessed at. The owner gave
+> it the same day — delivery charges are taxable in the Maldives — and it is now
+> fixed too. Nothing in this report is outstanding in code. What remains is an
+> accounting question, not an engineering one: **past GST returns filed from the
+> H1 bug under-declared tax for any period containing a refund, and past
+> delivery orders under-collected it.** Both belong with whoever files the
+> returns.
 
 ## Bottom line
 
@@ -275,7 +283,7 @@ construction even if a manual adjustment carries a non-standard tax code. The
 sales lines are untouched — they stay net of credit notes as before.
 
 ## M3 — Delivery and small-order fees are never GST-taxed; packaging is
-**Severity: Medium — needs a decision, not a patch** · `backend/app/Domains/Orders/Services/OrderTotalsCalculator.php:288-310`
+**Severity: Medium** · **Fixed 2026-08-23** · `backend/app/Domains/Orders/Services/OrderTotalsCalculator.php:288-310`
 
 `recalculateAndPersist` applies GST to the packaging fee when
 `packaging_fee_taxable` is on (default on). The **delivery fee** and the
@@ -288,12 +296,34 @@ others. But if Maldivian GST does apply to a delivery charge, every delivery
 order under-collects GST on that line, which is the same class of liability as
 H1 above.
 
-**Not changed on purpose.** Whether a delivery charge is a taxable supply is a
-tax question, not a code question, and quietly altering tax treatment on my own
-reading could create a different liability than the one it fixes. This needs an
-answer from whoever files the returns. If the answer is "yes, taxable", the fix
-is small: mirror the packaging block, with its own setting so it can be turned
-on from a known date rather than retroactively.
+**Not changed on purpose** *(when this was written)*. Whether a delivery charge
+is a taxable supply is a tax question, not a code question, and quietly altering
+tax treatment on my own reading could create a different liability than the one
+it fixes. This needs an answer from whoever files the returns. If the answer is
+"yes, taxable", the fix is small: mirror the packaging block, with its own
+setting so it can be turned on from a known date rather than retroactively.
+
+**Answered and fixed — 2026-08-23.** The owner confirmed delivery charges are
+taxable in the Maldives. Both fees are now taxed, each behind its own switch:
+
+- `App\Domains\Orders\Services\OrderFeeTaxCalculator` — one class that answers
+  "GST on the fees" for packaging, small-order and delivery. Both the totals
+  pipeline and `GstLedgerPoster` call it, so the tax charged on an order and
+  the taxable base declared for it come from the same arithmetic. They did not
+  before: the poster carried its own copy of the packaging rule.
+- New settings `delivery_fee_taxable` and `small_order_fee_taxable`, seeded on
+  by `2026_08_23_140000_seed_delivery_and_small_order_fee_taxable`. The seed
+  will not overwrite a value the owner has already set.
+- Admin switches: delivery under Ordering Control Center → Zones & Fees;
+  packaging and small-order under Online Ordering → Order fees & limits.
+  `packaging_fee_taxable` had been readable but not writable since it was
+  introduced — that is now fixed too.
+- The tip stays untaxed. It is not consideration for a supply.
+
+Historic orders are untouched. This changes what is collected from here on; it
+does not restate what was already invoiced. Whether the shortfall on past
+delivery orders needs declaring is the same question as H1 below and belongs
+with whoever files the returns.
 
 ## Checked and found sound (no action)
 

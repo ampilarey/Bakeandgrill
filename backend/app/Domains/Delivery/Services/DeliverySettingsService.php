@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Delivery\Services;
 
 use App\Domains\Content\ContentResolver;
+use App\Domains\Orders\Services\OrderFeeTaxCalculator;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
 
@@ -24,6 +25,7 @@ class DeliverySettingsService
      *     zone_fees: array<string, float>,
      *     zone_whitelist: list<string>|null,
      *     zones_enforced: bool,
+     *     fee_taxable: bool,
      *     source: string
      * }
      */
@@ -36,6 +38,7 @@ class DeliverySettingsService
             'default_fee' => $this->defaultFee(),
             'free_threshold' => $this->freeThreshold(),
             'delivery_time' => $this->deliveryTime(),
+            'fee_taxable' => $this->feeTaxable(),
             'zone_fees' => $zoneFees,
             'zone_whitelist' => $whitelist,
             'zones_enforced' => $whitelist !== null,
@@ -53,6 +56,18 @@ class DeliverySettingsService
         $raw = SiteSetting::get('delivery_time');
 
         return is_string($raw) ? trim($raw) : '';
+    }
+
+    /**
+     * Whether GST is charged on the delivery fee. A delivery charge is a
+     * taxable supply in the Maldives (owner decision, 2026-08-23), so this is
+     * on by default; the switch exists because it is a tax position, not a
+     * property of the code. The value itself is owned by OrderFeeTaxCalculator,
+     * which is what actually prices it.
+     */
+    public function feeTaxable(): bool
+    {
+        return (new OrderFeeTaxCalculator)->deliveryTaxable();
     }
 
     public function defaultFee(): float
@@ -155,7 +170,8 @@ class DeliverySettingsService
      *     free_threshold: float|int,
      *     zone_fees: array<string, float|int>,
      *     restrict_to_zone_fees?: bool,
-     *     zone_whitelist?: list<string>|null
+     *     zone_whitelist?: list<string>|null,
+     *     fee_taxable?: bool
      * } $data
      * @return array<string, mixed>
      */
@@ -167,6 +183,9 @@ class DeliverySettingsService
         SiteSetting::set('delivery_free_threshold', (string) max(0, (float) $data['free_threshold']));
         if (array_key_exists('delivery_time', $data)) {
             SiteSetting::set('delivery_time', trim((string) ($data['delivery_time'] ?? '')));
+        }
+        if (array_key_exists('fee_taxable', $data)) {
+            SiteSetting::set('delivery_fee_taxable', $data['fee_taxable'] ? '1' : '0');
         }
 
         $zoneFees = [];
@@ -210,10 +229,12 @@ class DeliverySettingsService
             [
                 'default_fee' => $before['default_fee'],
                 'free_threshold' => $before['free_threshold'],
+                'fee_taxable' => $before['fee_taxable'],
             ],
             [
                 'default_fee' => $after['default_fee'],
                 'free_threshold' => $after['free_threshold'],
+                'fee_taxable' => $after['fee_taxable'],
             ],
         );
 
