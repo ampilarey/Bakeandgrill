@@ -5,6 +5,29 @@ Project notes for agents and developers working in this repo.
 Cursor Cloud VM setup, ports, and local service commands live in `AGENTS.md` (environment
 only). Project rules and conventions live here and under `.cursor/rules/`.
 
+## After every merge to `main`: give the owner the live deploy command
+
+TEST deploys itself — GitHub Actions calls `POST /api/deploy/test-pull` once CI is
+green, with a cron fallback. **Production never does.** `TestDeployWebhookController`
+refuses any host that is not TEST, so nothing reaches the live site until somebody
+runs the deploy by hand on the server.
+
+So a merge is not a release. Whenever you fast-forward `main`, end the reply with the
+command to run on the production box:
+
+```bash
+cd /home/bakeandgrill/public_html && ./scripts/full-deploy.sh production
+```
+
+That one script is the whole deploy: `git pull`, `composer install --no-dev`,
+`app:verify-production-config`, `migrate --force`, `storage:link`, `config:cache`,
+`route:cache`, `view:clear`, `queue:restart`, queue-worker keepalive, deploy stamp,
+and `post-deploy-smoke.sh production`. There is nothing to run before or after it.
+
+Call out anything in the merge that changes what the deploy has to do — a migration,
+a new `.env` key, a rebuilt SPA bundle, a new system dependency — since those are the
+cases where a half-done deploy leaves the site broken rather than merely stale.
+
 ## Admin colour tokens
 
 When writing or editing admin dashboard page styles (`apps/admin-dashboard/src/pages/**`),
