@@ -61,7 +61,30 @@ class DeviceController extends Controller
 
     /**
      * Self-registration from a POS device after staff login.
-     * Audit-only — auto-approved; does not block sales.
+     *
+     * Auto-approves unconditionally, on purpose: tills are set up in the shop
+     * with nobody around to approve them (owner, 2026-08-24), and a terminal
+     * that cannot sell until someone logs into admin is a terminal that cannot
+     * sell.
+     *
+     * This is deliberately NOT gated on `POS_STRICT_DEVICE_APPROVAL`, which
+     * defaults to **true** in config/pos.php. That default is why the owner
+     * saw "device is not registered, but a refresh opens it": EnsureActiveDevice
+     * creates the row pending and rejects the first request, and the POS's
+     * fire-and-forget call here approves it a few seconds later. Gating this
+     * endpoint on the same flag would make strict mode genuinely strict — and
+     * would leave a new till dead until somebody logged into admin, which is
+     * not how this shop works.
+     *
+     * So the honest position: device approval is not an access control here,
+     * it is an inventory of terminals. The real gate is the staff token
+     * required to reach this endpoint at all. What this adds is visibility —
+     * a device promoting itself out of `pending` is now audited, because "a
+     * terminal an admin parked became approved by itself" is exactly the event
+     * worth being able to find later.
+     *
+     * One thing it will not do: resurrect a `rejected` device. Once an owner
+     * rejects a terminal, no amount of self-registration brings it back.
      */
     public function selfRegister(Request $request)
     {
@@ -80,11 +103,27 @@ class DeviceController extends Controller
                 'ip_address' => $request->ip(),
                 'last_user_id' => $staffId ?? $existing->last_user_id,
             ];
-            if ($existing->status === 'pending') {
+
+            $promoting = $existing->status === 'pending';
+            if ($promoting) {
                 $patch['status'] = 'approved';
                 $patch['is_active'] = true;
             }
+
+            $before = $existing->toArray();
             $existing->update($patch);
+
+            if ($promoting) {
+                app(AuditLogService::class)->log(
+                    'device.self_approved',
+                    'Device',
+                    $existing->id,
+                    $before,
+                    $existing->fresh()->toArray(),
+                    ['approved_by_staff_id' => $staffId],
+                    $request,
+                );
+            }
 
             return response()->json([
                 'device' => $existing->fresh(),
@@ -105,7 +144,7 @@ class DeviceController extends Controller
 
         app(AuditLogService::class)->log('device.self_registered', 'Device', $device->id, [], $device->toArray(), [], $request);
 
-        return response()->json(['device' => $device, 'status' => 'approved']);
+        return response()->json(['device' => $device, 'status' => $device->status]);
     }
 
     /**
