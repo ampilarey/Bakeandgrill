@@ -526,6 +526,23 @@ final class MediaLibraryService
         return '/storage/' . $relative;
     }
 
+    /**
+     * The extension a detected MIME type is allowed to be written as.
+     *
+     * Falls back to the type's canonical extension rather than to whatever the
+     * uploader called the file — an unrecognised audio codec becomes `.mp3`,
+     * not `.php`.
+     */
+    private function safeExtensionForMime(string $mime, string $type): string
+    {
+        return match (strtolower(trim($mime))) {
+            'application/pdf' => 'pdf',
+            'audio/mpeg', 'audio/mp3' => 'mp3',
+            'audio/wav', 'audio/x-wav', 'audio/wave' => 'wav',
+            default => $type === 'document' ? 'pdf' : 'mp3',
+        };
+    }
+
     private function storeBinary(
         UploadedFile $file,
         string $type,
@@ -539,23 +556,35 @@ final class MediaLibraryService
         if ($file->getSize() > $maxKb * 1024) {
             abort(422, strtoupper($type) . ' must be ' . (int) ($maxKb / 1024) . ' MB or smaller.');
         }
-        $ext = strtolower($file->getClientOriginalExtension() ?: ($type === 'document' ? 'pdf' : 'mp3'));
+        // Extension from the SNIFFED type, never from the uploaded filename.
+        // A file named `invoice.php` whose bytes begin `%PDF-` passes the MIME
+        // gate above and used to be stored as `<uuid>.php` under the public
+        // disk — which the web server executes.
+        $ext = $this->safeExtensionForMime((string) ($file->getMimeType() ?: ''), $type);
         $path = $this->images->storeRaw($file, $dir, $ext);
         $absolute = Storage::disk('public')->path($path);
 
-        return Media::create([
-            'disk' => 'public',
-            'path' => $path,
-            'media_type' => $type,
-            'mime_type' => (string) ($file->getMimeType() ?: 'application/octet-stream'),
-            'file_size' => (int) (@filesize($absolute) ?: 0),
-            'thumb_url' => null,
-            'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
-            'alt_text' => $altText,
-            'source' => 'library',
-            'checksum' => $checksum,
-            'uploaded_by' => $uploader?->id,
-        ]);
+        // updateOrCreate, not create: storeRaw() registers the path in the
+        // catalog itself (MenuImageProcessor::registerInLibrary), and
+        // media_assets.path is unique — so a plain insert here threw a
+        // constraint violation and every PDF and audio upload failed with a
+        // 500. The catalog row exists by now; this fills in the real type,
+        // title and checksum that best-effort registration could not know.
+        return Media::updateOrCreate(
+            ['path' => $path],
+            [
+                'disk' => 'public',
+                'media_type' => $type,
+                'mime_type' => (string) ($file->getMimeType() ?: 'application/octet-stream'),
+                'file_size' => (int) (@filesize($absolute) ?: 0),
+                'thumb_url' => null,
+                'title' => $title ?: pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                'alt_text' => $altText,
+                'source' => 'library',
+                'checksum' => $checksum,
+                'uploaded_by' => $uploader?->id,
+            ],
+        );
     }
 
     /**

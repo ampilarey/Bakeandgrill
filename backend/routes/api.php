@@ -111,7 +111,10 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     require __DIR__ . '/domains/catalog.php';
 });
 
-Route::get('/receipts/{token}', [ReceiptController::class, 'show']);
+// Token-guarded like the tracking route above, and limited like it — this was
+// the one public token endpoint with no limiter at all.
+Route::get('/receipts/{token}', [ReceiptController::class, 'show'])
+    ->middleware('throttle:public-order-track');
 Route::post('/receipts/{token}/feedback', [ReceiptController::class, 'feedback'])
     ->middleware('throttle:10,10');
 Route::post('/receipts/{token}/complaints', [App\Http\Controllers\Api\PublicComplaintController::class, 'storeForReceipt'])

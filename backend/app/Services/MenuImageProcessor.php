@@ -112,6 +112,28 @@ class MenuImageProcessor
     }
 
     /**
+     * Extensions this may write. Everything here lands under
+     * `storage/app/public`, which `storage:link` exposes inside the docroot —
+     * and the web server executes PHP there (verified on the live host,
+     * 2026-08-24). So the stored extension decides whether an upload is a file
+     * or a program, and it must never come from whoever uploaded it.
+     *
+     * A content sniff is not sufficient on its own: `finfo` calls anything
+     * starting `%PDF-` a PDF, and a PDF happily carries `<?php … ?>` further
+     * down. Saved as `.php`, that polyglot is a shell.
+     *
+     * @var list<string>
+     */
+    public const SAFE_EXTENSIONS = [
+        'jpg', 'jpeg', 'png', 'webp', 'gif', 'avif',
+        'mp4', 'webm', 'mov',
+        'mp3', 'wav', 'm4a', 'ogg',
+        'pdf',
+        'ttf', 'otf', 'woff', 'woff2',
+        'bin',
+    ];
+
+    /**
      * Store a raw uploaded file (e.g. video) without GD processing.
      *
      * @return string Relative storage path
@@ -119,9 +141,18 @@ class MenuImageProcessor
     public function storeRaw(UploadedFile $file, string $directory, ?string $extension = null): string
     {
         $ext = $extension ?: strtolower((string) $file->getClientOriginalExtension());
+        $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?? '';
         if ($ext === '') {
             $ext = 'bin';
         }
+
+        // Last line of defence, deliberately here rather than only at the call
+        // sites: this is the single place that names a file on the public disk,
+        // so a future caller cannot reintroduce the hole by trusting its input.
+        if (!in_array($ext, self::SAFE_EXTENSIONS, true)) {
+            throw new RuntimeException('Refusing to store an upload with extension ".' . $ext . '".');
+        }
+
         $filename = Str::uuid()->toString() . '.' . $ext;
         $relative = trim($directory, '/') . '/' . $filename;
         $disk = \Illuminate\Support\Facades\Storage::disk('public');

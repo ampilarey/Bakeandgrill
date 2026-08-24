@@ -36,6 +36,27 @@ class Receipt extends Model
         });
     }
 
+    /**
+     * The receipt as its public page may show it.
+     *
+     * Whitelisted rather than serialising the row: the public endpoint is
+     * reachable by anyone holding the token, and `customer_id` is an internal
+     * identifier that page has no use for.
+     *
+     * @return array<string, mixed>
+     */
+    public function toPublicArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'order_id' => $this->order_id,
+            'channel' => $this->channel,
+            'sent_at' => $this->sent_at,
+            'resend_count' => $this->resend_count,
+            'last_sent_at' => $this->last_sent_at,
+        ];
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

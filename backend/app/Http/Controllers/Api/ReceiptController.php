@@ -114,11 +114,71 @@ class ReceiptController extends Controller
             ->where('token', $token)
             ->firstOrFail();
 
+        // Whitelisted, like OrderTrackingController. This used to return
+        // `$receipt->order` whole — and Order sets `protected $hidden = []`,
+        // so the customer's receipt page was also handed internal staff
+        // `notes`, the `user_id`/`shift_id`/`device_id` of whoever rang it up,
+        // and the order's `tracking_token`.
         return response()->json([
-            'receipt' => $receipt,
-            'order' => $receipt->order,
+            'receipt' => $receipt->toPublicArray(),
+            'order' => $this->publicOrderPayload($receipt->order),
             'feedback_count' => $receipt->feedback->count(),
         ]);
+    }
+
+    /**
+     * The order as the person holding the receipt token may see it: what they
+     * bought, what they paid, and how it was settled. Nothing operational.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function publicOrderPayload(?Order $order): ?array
+    {
+        if ($order === null) {
+            return null;
+        }
+
+        return [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'type' => $order->type,
+            'subtotal' => $order->subtotal,
+            'tax_amount' => $order->tax_amount,
+            'service_charge_amount' => $order->service_charge_amount,
+            'service_charge_label' => $order->service_charge_label,
+            'packaging_fee_laar' => $order->packaging_fee_laar,
+            'small_order_fee_laar' => $order->small_order_fee_laar,
+            'delivery_fee' => $order->delivery_fee,
+            'tip_amount' => $order->tip_amount,
+            'discount_amount' => $order->discount_amount,
+            'total' => $order->total,
+            'paid_at' => $order->paid_at,
+            'created_at' => $order->created_at,
+            'customer_notes' => $order->customer_notes,
+            'items' => $order->items->map(fn ($item) => [
+                'id' => $item->id,
+                'item_name' => $item->item_name,
+                'variant_name' => $item->variant_name,
+                'packaging_option_name' => $item->packaging_option_name,
+                'quantity' => $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'total_price' => (float) $item->total_price,
+                'notes' => $item->notes,
+                'modifiers' => $item->modifiers->map(fn ($m) => [
+                    'name' => $m->modifier_name,
+                    'modifier_name' => $m->modifier_name,
+                    'modifier_price' => (float) $m->modifier_price,
+                ])->values(),
+            ])->values(),
+            'payments' => $order->payments->map(fn ($p) => [
+                'method' => $p->method,
+                'amount' => (float) $p->amount,
+                'status' => $p->status,
+                'processed_at' => $p->processed_at,
+            ])->values(),
+        ];
     }
 
     public function feedback(ReceiptFeedbackRequest $request, $token)

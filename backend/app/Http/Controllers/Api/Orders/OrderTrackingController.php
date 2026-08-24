@@ -14,7 +14,16 @@ class OrderTrackingController extends Controller
      * GET /api/orders/track/{token}
      *
      * Public order tracking — no authentication required.
-     * Only exposes status and items, not customer PII.
+     *
+     * The 32-character token is the credential, so this is a capability URL:
+     * whoever holds the link sees the order. That includes the delivery name,
+     * phone and address, which the recipient needs to check we have them
+     * right — but it means the link is as sensitive as those details. It gets
+     * forwarded, screenshotted and left in browser history, so do not widen
+     * this payload casually.
+     *
+     * (This docblock used to claim it exposed no customer PII while returning
+     * four fields of it. Whatever you add here, keep the two in agreement.)
      */
     public function trackByToken(string $token): JsonResponse
     {
