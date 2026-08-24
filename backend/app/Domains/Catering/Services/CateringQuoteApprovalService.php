@@ -60,6 +60,11 @@ class CateringQuoteApprovalService
                         ]);
                     }
 
+                    // Same guard on the resume path — the order total here was
+                    // stamped at first approval, so a quote that already
+                    // disagreed with it must not be paid on a retry either.
+                    $this->assertQuotedAmountStillMatchesOrder($request, $existing, $amountLaar);
+
                     $payment = Payment::query()
                         ->where('order_id', $existing->id)
                         ->where('status', 'initiated')
@@ -101,6 +106,8 @@ class CateringQuoteApprovalService
                 ]);
             }
 
+            $this->assertQuotedAmountStillMatchesOrder($request, $order, $amountLaar);
+
             $idempotency = 'bml:event:' . $request->id . ':v' . $request->quote_version;
             $result = $this->payments->initiateBmlPayment($order, $amountLaar, $idempotency);
 
@@ -117,6 +124,54 @@ class CateringQuoteApprovalService
                 'payment_id' => (int) $result['payment_id'],
             ];
         });
+    }
+
+    /**
+     * The quote was priced when it was sent; the order is built when the
+     * customer approves, which can be days later and uses *live* GST settings.
+     * Line prices are frozen on the quote, so the drift is settings — the GST
+     * rate, tax-inclusive mode, or whether a fee is taxable.
+     *
+     * If they moved, the customer is about to be charged a figure that no
+     * longer matches the order, and `ConfirmCateringEventOnPaymentListener`
+     * confirms on coverage of the quoted amount rather than the order total —
+     * so the event would go ahead with a residual balance or an overpayment
+     * that nobody chose. Fail closed and make somebody re-quote.
+     *
+     * A deposit is only checked for not exceeding the total: taking part of a
+     * larger bill is the whole point, and the rest is collected later.
+     */
+    private function assertQuotedAmountStillMatchesOrder(
+        CateringRequest $request,
+        Order $order,
+        int $amountLaar,
+    ): void {
+        $orderTotalLaar = (int) ($order->total_laar ?? round((float) $order->total * 100));
+        if ($orderTotalLaar <= 0) {
+            return;
+        }
+
+        $isDeposit = (bool) $request->quote_is_deposit;
+
+        if ($isDeposit) {
+            if ($amountLaar > $orderTotalLaar) {
+                throw ValidationException::withMessages([
+                    'quote_payment_laar' => [
+                        'This quote is out of date — the deposit is now more than the order total. Please ask us to re-send it.',
+                    ],
+                ]);
+            }
+
+            return;
+        }
+
+        if ($amountLaar !== $orderTotalLaar) {
+            throw ValidationException::withMessages([
+                'quote_payment_laar' => [
+                    'This quote is out of date — prices or tax changed since it was sent. Please ask us to re-send it.',
+                ],
+            ]);
+        }
     }
 
     /**

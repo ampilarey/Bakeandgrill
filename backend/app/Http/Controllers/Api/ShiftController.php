@@ -69,9 +69,14 @@ class ShiftController extends Controller
             ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
 
+        // Settled only. Nothing in the codebase writes negative Payment rows
+        // today, so this term is normally zero and exists to absorb legacy
+        // data — but without the status filter a pending or failed negative
+        // payment would empty the till on paper.
         $cashRefundsRawLaar = (int) Payment::where('method', 'cash')
             ->where('amount', '<', 0)
             ->where('shift_id', $shift->id)
+            ->whereIn('status', ['paid', 'completed', 'confirmed'])
             ->selectRaw('COALESCE(SUM(COALESCE(amount_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
 
@@ -80,7 +85,13 @@ class ShiftController extends Controller
         // subtract from the till twice. Legacy rows with NULL fall back to
         // ROUND(amount * 100) — same behaviour as before this fix.
         // Pending requests must not empty the till — only approved/processed refunds.
-        $refundCashOutLaar = (int) Refund::where('shift_id', $shift->id)
+        //
+        // Matched on the drawer the cash actually left (stamped at approval),
+        // falling back to the requesting shift for refunds approved before
+        // drawer_shift_id existed. Approving a Monday refund on Tuesday used
+        // to take the money out of Tuesday's till while reducing Monday's
+        // expected cash — Tuesday's cashier counted short for it.
+        $refundCashOutLaar = (int) Refund::whereRaw('COALESCE(drawer_shift_id, shift_id) = ?', [$shift->id])
             ->whereIn('status', ['approved', 'processed'])
             ->selectRaw('COALESCE(SUM(COALESCE(drawer_cash_out_laar, ROUND(amount * 100))), 0) as total_laar')
             ->value('total_laar');
@@ -306,7 +317,15 @@ class ShiftController extends Controller
         $cashOut = $cash['cash_out'];
         $cashSales = $cash['cash_sales'];
         $cashRefunds = $cash['cash_refunds'];
-        $expectedCash = $cash['expected'];
+
+        // A closed shift reports the figure it was closed on. Recomputing it
+        // live meant anything that landed afterwards — a refund approved the
+        // next morning — silently moved the expected cash of a drawer that had
+        // already been counted and signed off, so the summary and the stored
+        // variance disagreed about a shift nobody could still change.
+        $expectedCash = ($shift->closed_at !== null && $shift->expected_cash !== null)
+            ? (float) $shift->expected_cash
+            : $cash['expected'];
 
         $paymentsInShift = $this->paymentsForShiftSummary($shift);
 

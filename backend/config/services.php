@@ -71,6 +71,13 @@ return [
         'revenue_account' => env('XERO_REVENUE_ACCOUNT', '200'),
         'expense_account' => env('XERO_EXPENSE_ACCOUNT', '400'),
         'bank_account' => env('XERO_BANK_ACCOUNT', '090'),
+        // Xero tax rate codes. Without these Xero derives the GST portion from
+        // whatever default is configured on the account in Xero, which need
+        // not match the tax we actually charged and declared to MIRA. Set them
+        // to the codes in your own Xero org (e.g. the 8% output/input rates)
+        // to make the pushed tax authoritative.
+        'sales_tax_type' => env('XERO_SALES_TAX_TYPE'),
+        'expense_tax_type' => env('XERO_EXPENSE_TAX_TYPE'),
     ],
 
 ];

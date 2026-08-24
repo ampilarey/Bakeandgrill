@@ -232,6 +232,9 @@ class RefundWorkflowService
                 allowSelf: true,
                 otpCode: null,
                 ownerOverrideWithoutOtp: true,
+                // Owner request+approve in one action: the cash leaves the
+                // shift that requested it, which is this one.
+                drawerShiftId: $shiftId,
             );
             $autoApproved = true;
         } else {
@@ -269,6 +272,12 @@ class RefundWorkflowService
         return $refund->fresh(['order', 'user', 'approver']);
     }
 
+    /**
+     * @param int|null $drawerShiftId The shift whose till the cash actually
+     *        leaves — the approver's open shift, not the requester's. Null
+     *        keeps the requesting shift (owner one-shot approve at request
+     *        time, and any caller with no shift context).
+     */
     public function approve(
         Refund $refund,
         User $approver,
@@ -276,6 +285,7 @@ class RefundWorkflowService
         bool $allowSelf = false,
         ?string $otpCode = null,
         bool $ownerOverrideWithoutOtp = false,
+        ?int $drawerShiftId = null,
     ): Refund {
         if ($refund->status !== 'pending') {
             abort(422, 'Only pending refunds can be approved.');
@@ -332,7 +342,7 @@ class RefundWorkflowService
             ])->save();
         }
 
-        [$refund, $order, $refundRatio, $breakdown] = DB::transaction(function () use ($refund, $approver) {
+        [$refund, $order, $refundRatio, $breakdown] = DB::transaction(function () use ($refund, $approver, $drawerShiftId) {
             $lockedRefund = Refund::where('id', $refund->id)->lockForUpdate()->firstOrFail();
             if ($lockedRefund->status !== 'pending') {
                 abort(422, 'Only pending refunds can be approved.');
@@ -385,6 +395,10 @@ class RefundWorkflowService
                 'status' => 'approved',
                 'approved_by' => $approver->id,
                 'approved_at' => now(),
+                // Approval is when the cash actually leaves a till, so this is
+                // the moment to record which one. Falls back to the requesting
+                // shift when the approver has no shift context.
+                'drawer_shift_id' => $drawerShiftId ?? $lockedRefund->shift_id,
             ]);
 
             return [$lockedRefund->fresh(), $order->fresh(), $thisRefundRatio, $breakdown];

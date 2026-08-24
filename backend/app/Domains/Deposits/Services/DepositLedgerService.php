@@ -12,6 +12,7 @@ use App\Models\CustomerDepositLedger;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
+use App\Models\Shift;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
@@ -295,6 +296,18 @@ final class DepositLedgerService
     }
 
     /**
+     * The one open drawer, when there is exactly one. Null when none or
+     * several are open — in which case guessing would be worse than recording
+     * nothing.
+     */
+    private function soleOpenShift(): ?Shift
+    {
+        $open = Shift::query()->whereNull('closed_at')->limit(2)->get();
+
+        return $open->count() === 1 ? $open->first() : null;
+    }
+
+    /**
      * Payout unused deposit balance back to the customer (cash/card/bank).
      */
     public function payoutDeposit(
@@ -338,6 +351,17 @@ final class DepositLedgerService
                 $shift = $this->shifts->findOpenShift($actor);
                 if ($shift === null && !$isOwner) {
                     abort(422, 'Open a shift before recording a cash deposit payout.');
+                }
+                if ($shift === null) {
+                    // Owners are not drawer-bound, but the money is still
+                    // physical: without a movement the drawer it came out of
+                    // just counts short with nothing to explain it. When
+                    // exactly one drawer is open there is no ambiguity about
+                    // which one that was, so charge it. (Same
+                    // single-open-shift reasoning the POS header uses to
+                    // attribute gateway payments.) With none or several open,
+                    // there is nothing to safely attribute to.
+                    $shift = $this->soleOpenShift();
                 }
             }
 
@@ -418,6 +442,16 @@ final class DepositLedgerService
             if ($account === null) {
                 $account = $this->getOrCreateAccount(Customer::findOrFail((int) $order->customer_id), $actor);
                 $account = CustomerDepositAccount::lockForUpdate()->findOrFail($account->id);
+            }
+
+            // Re-check under the account lock. The early return above spares
+            // the work in the ordinary case; this is what actually makes the
+            // guard hold, together with unique(refund_id, type).
+            $alreadyReversed = CustomerDepositLedger::where('refund_id', $refund->id)
+                ->where('type', 'reversal')
+                ->exists();
+            if ($alreadyReversed) {
+                return;
             }
 
             $balanceBefore = (int) $account->balance_laar;

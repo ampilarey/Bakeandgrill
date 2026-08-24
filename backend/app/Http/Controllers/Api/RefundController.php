@@ -123,7 +123,11 @@ class RefundController extends Controller
     {
         Gate::authorize('refund.process');
 
-        app(ShiftAccessService::class)->requireOpenShift(
+        // The approver's shift is the drawer the cash actually leaves — this
+        // used to be required at the door and then thrown away, so an
+        // overnight approval reduced the *requesting* shift's expected cash
+        // and left today's cashier counting short.
+        $approverShift = app(ShiftAccessService::class)->requireOpenShift(
             $request->user(),
             'Open a shift before approving a refund.',
         );
@@ -137,6 +141,7 @@ class RefundController extends Controller
             allowSelf: false,
             otpCode: isset($validated['otp']) ? (string) $validated['otp'] : null,
             ownerOverrideWithoutOtp: (bool) ($validated['owner_override_without_otp'] ?? false),
+            drawerShiftId: (int) $approverShift->id,
         );
 
         return response()->json([

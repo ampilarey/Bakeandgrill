@@ -135,8 +135,13 @@ class EventQuotePhase4Test extends TestCase
         ]);
 
         $subtotalLaar = (int) round($linePrice * 100);
-        // Approximate tax-exclusive total for payment; tests often set payment explicitly.
-        $totalLaar = $paymentLaar ?? $subtotalLaar;
+        // Stamp what CateringQuoteService::send() would stamp: the tax-INCLUSIVE
+        // preview total. This used to be the bare subtotal ("approximate"),
+        // which send() would have rejected — and approval now refuses a quote
+        // whose amount does not match the order it builds, so an approximate
+        // fixture no longer stands in for a real one.
+        $totalLaar = $paymentLaar ?? (int) app(\App\Domains\Catering\Services\CateringQuoteService::class)
+            ->taxPreview($row->fresh('lines'))['total_laar'];
         $row->update([
             'quote_subtotal_laar' => $subtotalLaar,
             'quote_payment_laar' => $deposit ? (int) round($totalLaar / 2) : $totalLaar,
@@ -185,7 +190,11 @@ class EventQuotePhase4Test extends TestCase
         $this->assertSame(450.0, (float) $line->unit_price);
 
         $payment = Payment::query()->where('order_id', $order->id)->firstOrFail();
-        $this->assertSame(45000, (int) $payment->amount_laar);
+        // MVR 450 of food + 8% GST. The snapshot price is what is locked; the
+        // customer still pays the tax on it, and the charged amount has to
+        // equal the order total or approval refuses the quote as stale.
+        $this->assertSame(48600, (int) $payment->amount_laar);
+        $this->assertSame(48600, (int) $order->total_laar);
     }
 
     public function test_deactivated_and_86d_items_still_approve(): void
@@ -388,7 +397,9 @@ class EventQuotePhase4Test extends TestCase
         ]);
         $this->postJson('/api/event-quotes/' . $expired->quote_token . '/approve')->assertStatus(410);
 
-        $row = $this->makeQuotedEvent(['quote_token' => str_repeat('i', 48)], 100.0, false, 10000);
+        // Payment amount left to the fixture so it matches the order the
+        // approval builds — this test is about double-approve, not pricing.
+        $row = $this->makeQuotedEvent(['quote_token' => str_repeat('i', 48)], 100.0);
         $first = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $second = $this->postJson('/api/event-quotes/' . $row->quote_token . '/approve')->assertOk();
         $this->assertSame($first->json('order_number'), $second->json('order_number'));

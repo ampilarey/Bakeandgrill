@@ -20,11 +20,42 @@ class PaymentCommissionService
     /** @var list<string> */
     private const POS_CARD_METHODS = ['card', 'card_pos', 'qr'];
 
-    /** @var list<string> */
-    private const GATEWAY_METHODS = ['bml_connect', 'bml_pay', 'bml', 'online'];
+    /**
+     * Stripe belongs here even while BML is the live gateway: StripeController
+     * writes method 'stripe', and without it a Stripe payment resolves to no
+     * channel at all — no commission, no expense, its cost invisible to profit
+     * reporting the day Stripe is switched on.
+     *
+     * @var list<string>
+     */
+    private const GATEWAY_METHODS = ['bml_connect', 'bml_pay', 'bml', 'online', 'stripe'];
 
     /** @var list<string> */
     public const SETTLED_STATUSES = ['paid', 'completed', 'confirmed'];
+
+    /**
+     * Order statuses whose payments carry a commission we actually paid.
+     *
+     * Deliberately wider than ReportMoneySql::SALE_STATUSES, which is about
+     * *sales* and so drops refunded orders. The bank took its cut when the
+     * card cleared and does not hand it back because we later refunded the
+     * customer — the cost is real and PaymentCommissionExpenseService has
+     * already booked it as an expense. Filtering refunded orders out of this
+     * summary made the two disagree by every refunded order, with the summary
+     * understating what card processing costs.
+     *
+     * If BML turns out to reverse its fee on refund, the fix is to reverse the
+     * booked expense too — not to hide the row here.
+     *
+     * @var list<string>
+     */
+    public const COMMISSIONED_ORDER_STATUSES = [
+        'paid',
+        'completed',
+        'delivered',
+        'partially_refunded',
+        'refunded',
+    ];
 
     public function currentSettings(): array
     {
@@ -133,7 +164,7 @@ class PaymentCommissionService
             ->whereIn('payments.status', self::SETTLED_STATUSES)
             ->whereNotNull('payments.commission_channel')
             ->whereHas('order', function ($oq) use ($filters) {
-                $oq->whereIn('status', \App\Domains\Reporting\Support\ReportMoneySql::SALE_STATUSES)
+                $oq->whereIn('status', self::COMMISSIONED_ORDER_STATUSES)
                     ->when(isset($filters['user_id']), fn ($q) => $q->where('user_id', $filters['user_id']))
                     ->when(isset($filters['shift_id']), fn ($q) => $q->where('shift_id', $filters['shift_id']))
                     ->when(isset($filters['device_id']), fn ($q) => $q->where('device_id', $filters['device_id']));
