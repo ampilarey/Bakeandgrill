@@ -14,6 +14,10 @@ $GLOBALS['routes_sections'] = [];
 
 // Health check endpoint
 Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
+// Readiness: 503 when a dependency is down. Point uptime monitoring here —
+// /health stays 200 while the app can serve, so it cannot catch a dead queue.
+Route::get('/health/ready', [App\Http\Controllers\Api\SystemHealthController::class, 'ready'])
+    ->middleware('throttle:60,1');
 
 // TEST-only immediate deploy trigger (GitHub Actions → cPanel). Disabled when
 // TEST_DEPLOY_WEBHOOK_SECRET is unset; always 404 on non-test hosts.

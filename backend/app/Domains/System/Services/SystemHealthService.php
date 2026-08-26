@@ -217,6 +217,58 @@ class SystemHealthService
      *
      * @return array{status: string, ok: bool, latency_ms: float|null, error: string|null}
      */
+    /**
+     * The dependencies that are unhappy, by name, for the public probes.
+     *
+     * Names only — no messages. The underlying checks return exception text
+     * that can contain socket paths and connection strings, and the probes
+     * that call this are unauthenticated.
+     *
+     * Only counts things that stop the app doing work: Redis when it backs
+     * the cache or the queue, and a queue worker that has stopped drinking
+     * from it. A slow-but-alive Redis is `degraded` to the admin page and
+     * fine here — the point is catching dead, not sluggish.
+     *
+     * @return list<string>
+     */
+    public function degradedDependencies(): array
+    {
+        $degraded = [];
+
+        $usesRedis = in_array(config('cache.default'), ['redis'], true)
+            || in_array(config('queue.default'), ['redis'], true)
+            || config('session.driver') === 'redis';
+
+        if ($usesRedis) {
+            try {
+                if ($this->checkRedis()['status'] === 'down') {
+                    $degraded[] = 'redis';
+                }
+            } catch (\Throwable) {
+                $degraded[] = 'redis';
+            }
+        }
+
+        try {
+            $queue = $this->checkQueueWorker();
+            if (in_array($queue['status'] ?? '', ['stale', 'no_heartbeat', 'error'], true)) {
+                $degraded[] = 'queue';
+            }
+        } catch (\Throwable) {
+            $degraded[] = 'queue';
+        }
+
+        try {
+            if (!($this->checkDatabase()['ok'] ?? false)) {
+                $degraded[] = 'database';
+            }
+        } catch (\Throwable) {
+            $degraded[] = 'database';
+        }
+
+        return $degraded;
+    }
+
     public function checkRedis(): array
     {
         $started = microtime(true);
