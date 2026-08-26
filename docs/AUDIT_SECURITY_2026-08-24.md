@@ -97,6 +97,27 @@ The image path is **not** affected — `storeImage` re-encodes through a
 jpeg/png/webp allowlist and rejects SVG, which also closes the stored-XSS
 route.
 
+**Fixed 2026-08-24, application-side only.** `storeRaw()` refuses any extension
+outside `SAFE_EXTENSIONS`; `storeBinary()` derives the extension from the
+sniffed MIME type rather than the filename. Both are tested
+(`UploadExtensionHardeningTest`).
+
+A web-server layer was tried and withdrawn. A rewrite block denying executable
+extensions under `/storage` was added to `backend/public/.htaccess`, then
+removed after the site went down — and the removal turned out to be the wrong
+inference: the site later served 200 with the block present, so it was never
+the cause. It stays out anyway, deliberately. It is a second layer on a
+control that already holds, it cannot be verified from a development machine
+against this host (cPanel/LiteSpeed, not Apache), and the cost of getting
+production web-server config wrong is a full outage. If it is ever wanted, the
+sequence is: add it, write a probe `.php` under `storage/app/public`, confirm
+the request returns 403 instead of executing, then remove the probe.
+
+Found while testing this: `storeRaw()` already registers the path in the media
+catalog and `media_assets.path` is unique, so `storeBinary()`'s plain insert
+threw a constraint violation — every PDF and audio upload to the media library
+had been failing with a 500. Now an `updateOrCreate` on the path.
+
 ### S2 — Any staff token can approve a device, bypassing `devices.approve`
 **Severity: Medium** · `app/Http/Controllers/Api/Auth/DeviceController.php:66-108`,
 `routes/domains/devices.php:29,35`
