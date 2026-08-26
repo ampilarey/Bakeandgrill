@@ -21,6 +21,54 @@ class SchedulerRunTracker
     }
 
     /**
+     * Signal a FAILURE to the external dead-man's switch.
+     *
+     * Healthchecks.io treats a request to `<url>/fail` as an explicit failure
+     * and alerts immediately, rather than waiting for pings to stop.
+     *
+     * This exists because the plain heartbeat answers the wrong question. On
+     * 2026-08-26 Redis died at 03:51 and stayed dead for nineteen hours; the
+     * scheduler was fine throughout, so it pinged happily every minute and the
+     * monitor stayed green while the queue did nothing at all. "Cron is
+     * running" is not "the system can work".
+     *
+     * Deliberately does NOT record a successful-ping timestamp: the admin
+     * probe reads that to say when the monitor last heard good news, and a
+     * failure ping is not good news.
+     */
+    public function pingExternalHeartbeatFailure(string $reason = ''): bool
+    {
+        $url = trim((string) config('system.healthcheck_url', ''));
+
+        if ($url === '') {
+            return false;
+        }
+
+        try {
+            $response = Http::timeout(5)
+                ->withBody($reason, 'text/plain')
+                ->post(rtrim($url, '/') . '/fail');
+
+            if (!$response->successful()) {
+                Log::warning('Scheduler heartbeat failure ping returned non-success status', [
+                    'status' => $response->status(),
+                ]);
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            // Never let the monitor's own unreachability break the scheduler.
+            Log::warning('Scheduler heartbeat failure ping failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Ping an optional external dead-man's switch (Healthchecks.io, etc.).
      * No-op when HEALTHCHECK_URL is unset.
      */
