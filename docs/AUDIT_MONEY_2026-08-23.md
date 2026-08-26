@@ -24,6 +24,12 @@ Audited against `main` at `c38c91155`.
 > H1 bug under-declared tax for any period containing a refund, and past
 > delivery orders under-collected it.** Both belong with whoever files the
 > returns.
+>
+> **Closed by the owner, 2026-08-26: past periods are being left as filed.** No
+> amendment, no back-collection. Recorded here so it is not raised again as an
+> open item — the decision was made with the facts above in front of it. Both
+> defects are fixed going forward, and this report and the commits it references
+> are the record of what happened and when, if a period is ever queried.
 
 ## Bottom line
 
