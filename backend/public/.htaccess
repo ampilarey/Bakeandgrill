@@ -23,15 +23,3 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
-
-# Uploads are data, never programs.
-#
-# storage:link exposes storage/app/public at /storage, inside the docroot, and
-# this host executes PHP there — verified 2026-08-24 by writing a probe file
-# and fetching it. Application code now refuses to store an executable
-# extension (MenuImageProcessor::SAFE_EXTENSIONS), but that is one layer; if a
-# future upload path ever gets it wrong, this stops the file from running.
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^storage/.*\.(php|php[0-9]|phtml|phps|phar|cgi|pl|py|sh|htaccess)$ - [F,L,NC]
-</IfModule>
