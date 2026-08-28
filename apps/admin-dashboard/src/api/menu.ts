@@ -543,20 +543,55 @@ export async function deleteSpecial(id: number): Promise<void> {
   await req(`/admin/specials/${id}`, { method: 'DELETE' });
 }
 
-// ── Item Recipe ───────────────────────────────────────────────────────────────
+// ── Item Recipe & costing ───────────────────────────────────────────────────
+// Owner-only (recipes.manage): the recipe roll-up exposes cost price, margin
+// and profit. Shape mirrors RecipeController::payload on the backend.
 
-export interface RecipeItem {
+export interface RecipeIngredient {
   id: number;
-  inventory_item: { id: number; name: string; unit: string } | null;
+  inventory_item_id: number;
+  inventory_item: { id: number; name: string; unit: string; unit_cost: number } | null;
   quantity: number;
   unit: string | null;
-  notes: string | null;
+  line_cost: number;
 }
 
-export interface ItemWithRecipe extends MenuItem {
-  recipe: { id: number; recipe_items: RecipeItem[] } | null;
+export interface ItemRecipe {
+  id: number;
+  yield_quantity: number;
+  instructions: string | null;
+  ingredients: RecipeIngredient[];
+}
+
+export interface ItemWithRecipe {
+  id: number;
+  name: string;
+  base_price: number;
+  recipe_cost: number | null;
+  effective_cost: number | null;
+  profit: number | null;
+  margin_pct: number | null;
+  recipe: ItemRecipe | null;
+}
+
+/** One ingredient line as sent when saving a recipe. */
+export interface RecipeIngredientInput {
+  inventory_item_id: number;
+  quantity: number;
+  unit?: string | null;
 }
 
 export async function getItemWithRecipe(id: number): Promise<{ item: ItemWithRecipe }> {
   return req(`/items/${id}/recipe`);
+}
+
+/** Replace an item's ingredient list; the backend recomputes cost from live prices. */
+export async function saveItemRecipe(
+  id: number,
+  ingredients: RecipeIngredientInput[],
+): Promise<{ item: ItemWithRecipe }> {
+  return req(`/items/${id}/recipe`, {
+    method: 'PUT',
+    body: JSON.stringify({ ingredients }),
+  });
 }

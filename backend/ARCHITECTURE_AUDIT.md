@@ -117,7 +117,8 @@
 | PATCH | `/api/categories/{id}` | `CategoryController@update` |
 | DELETE | `/api/categories/{id}` | `CategoryController@destroy` |
 | POST | `/api/items` | `ItemController@store` |
-| GET | `/api/items/{id}/recipe` | `ItemController@showWithRecipe` |
+| GET | `/api/items/{id}/recipe` | `RecipeController@show` |
+| PUT | `/api/items/{id}/recipe` | `RecipeController@update` |
 | PATCH | `/api/items/{id}` | `ItemController@update` |
 | DELETE | `/api/items/{id}` | `ItemController@destroy` |
 | PATCH | `/api/items/{id}/toggle-availability` | `ItemController@toggleAvailability` |

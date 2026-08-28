@@ -53,6 +53,12 @@ class ItemController extends Controller
     {
         $isAdmin = $request->user() instanceof \App\Models\User
                    && $request->user()->tokenCan('staff');
+        // Cost price, margin and profit are owner-only (recipes.manage). A menu
+        // manager sees the item and its selling price but not what it costs to
+        // make — that stays with whoever holds the costing permission.
+        $canSeeCost = $request->user() instanceof \App\Models\User
+                   && app(\App\Domains\Permissions\Services\PermissionService::class)
+                       ->hasPermission($request->user(), 'recipes.manage');
         // Public /items route — POS passes view=pos without staff middleware.
         $isPosView = $request->query('view') === 'pos';
 
@@ -149,10 +155,11 @@ class ItemController extends Controller
         }
 
         // Admin gets full data; public / POS get stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap) {
+        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
-            $recipeCosts = $includeAdminExtras ? app(RecipeCostCalculator::class) : null;
+            $includeCost = $canSeeCost && !$isPosView;
+            $recipeCosts = $includeCost ? app(RecipeCostCalculator::class) : null;
             $activeSpecial = $includeAvailability
                 ? $specialPricing->activeSpecialsByItemId()->get($item->id)
                 : null;
@@ -224,13 +231,13 @@ class ItemController extends Controller
                 'availability_type' => $includeAdminExtras ? $item->availability_type : null,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
-                    ->map(function ($v) use ($includeAdminExtras, $includeAvailability, $item, $effectivePricing) {
+                    ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing) {
                         $variantRow = $includeAdminExtras ? [
                             'id' => $v->id,
                             'name' => $v->name,
                             'name_dv' => $v->name_dv,
                             'price' => $v->price,
-                            'cost' => $v->cost,
+                            'cost' => $includeCost ? $v->cost : null,
                             'sku' => $v->sku,
                             'track_stock' => $v->track_stock,
                             'stock_qty' => $v->stock_qty,
@@ -365,7 +372,7 @@ class ItemController extends Controller
                 $data['image_original_url'] = $item->image_original_url;
                 $data['is_combo'] = (bool) ($item->is_combo ?? false);
                 $data['combo_discount_pct'] = $item->combo_discount_pct;
-                $data['cost'] = $item->cost !== null ? (float) $item->cost : null;
+                $data['cost'] = $includeCost && $item->cost !== null ? (float) $item->cost : null;
                 $data['recipe_cost'] = $recipeCosts?->forItem($item);
                 $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
                 $data['dietary_tags'] = $item->dietary_tags ?? [];
@@ -505,7 +512,7 @@ class ItemController extends Controller
 
     /**
      * Display a specific item (PUBLIC - no recipe data)
-     * For staff access with recipe data, use showWithRecipe
+     * For staff access with recipe/cost data, use RecipeController@show.
      */
     public function show(
         Request $request,
@@ -633,23 +640,6 @@ class ItemController extends Controller
         }
 
         return response()->json(['item' => $payload]);
-    }
-
-    /**
-     * Display item with recipe data (STAFF ONLY)
-     */
-    public function showWithRecipe($id, RecipeCostCalculator $recipeCosts)
-    {
-        $item = Item::with(['category', 'variants', 'modifiers', 'recipe.recipeItems.inventoryItem'])
-            ->findOrFail($id);
-
-        $computedCost = $recipeCosts->forItem($item);
-
-        return response()->json([
-            'item' => $item,
-            'recipe_cost' => $computedCost,
-            'effective_cost' => $recipeCosts->effectiveCost($item),
-        ]);
     }
 
     /**
@@ -941,7 +931,7 @@ class ItemController extends Controller
             $message = match ($validated['until']) {
                 '2_hours' => 'Item marked unavailable for 2 hours.',
                 'tomorrow' => 'Item marked unavailable until end of tomorrow.',
-                'date' => 'Item marked unavailable until '.$snoozedUntil->toDateString().'.',
+                'date' => 'Item marked unavailable until ' . $snoozedUntil->toDateString() . '.',
                 default => 'Item marked unavailable today.',
             };
         }

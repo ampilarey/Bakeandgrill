@@ -227,6 +227,7 @@ final class PermissionCatalog
             ['group' => 'System', 'slug' => 'integrations.xero', 'name' => 'Xero (legacy)'],
             ['group' => 'Menu', 'slug' => 'menu.view', 'name' => 'View menu'],
             ['group' => 'Menu', 'slug' => 'menu.manage', 'name' => 'Manage menu'],
+            ['group' => 'Menu', 'slug' => 'recipes.manage', 'name' => 'Recipes & item costing', 'description' => 'Record item recipes and see cost price, margin and profit. Owner-only by default — it exposes what each dish costs to make.'],
             ['group' => 'Menu', 'slug' => 'menu.prepared_stock', 'name' => 'Adjust prepared menu stock at POS', 'description' => 'Add or remove ready-made menu item counts from the POS Operations panel'],
             ['group' => 'Media', 'slug' => 'media.view', 'name' => 'View media library', 'description' => 'Browse the Media Library and pick assets'],
             ['group' => 'Media', 'slug' => 'media.manage', 'name' => 'Manage media library', 'description' => 'Upload, edit, delete, and reconcile media'],

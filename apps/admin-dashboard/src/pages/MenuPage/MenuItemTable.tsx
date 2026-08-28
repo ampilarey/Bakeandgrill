@@ -8,6 +8,8 @@ type MenuItemTableProps = {
   items: MenuItem[];
   loading: boolean;
   canManage: boolean;
+  /** recipes.manage — owner-only. Gates the recipe editor and margin badge. */
+  canSeeCost: boolean;
   menuGroups: MenuGroupRow[];
   activeMenuGroupIds: number[];
   kitchenSaving: boolean;
@@ -41,6 +43,7 @@ export function MenuItemTable({
   items,
   loading,
   canManage,
+  canSeeCost,
   menuGroups,
   activeMenuGroupIds,
   kitchenSaving,
@@ -183,7 +186,7 @@ export function MenuItemTable({
                         )}
                       </div>
                       {item.sku && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sku}</div>}
-                      {(() => {
+                      {canSeeCost && (() => {
                         const price = parseFloat(String(item.base_price));
                         const level = menuItemMarginLevel(price, item.effective_cost ?? item.cost);
                         const label = menuItemMarginLabel(price, item.effective_cost ?? item.cost);
@@ -257,7 +260,9 @@ export function MenuItemTable({
                         <Btn small variant="danger" onClick={() => onDeleteItem(item.id)}>Delete</Btn>
                           </>
                         )}
-                        <Btn small variant="secondary" onClick={() => onViewRecipe(item.id)} title="View recipe">📋</Btn>
+                        {canSeeCost && (
+                          <Btn small variant="secondary" onClick={() => onViewRecipe(item.id)} title="Recipe & cost">📋</Btn>
+                        )}
                       </div>
                     </td>
                   </tr>

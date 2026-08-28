@@ -50,7 +50,6 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 
         Route::post('/items', [ItemController::class, 'store']);
-        Route::get('/items/{id}/recipe', [ItemController::class, 'showWithRecipe']);
         Route::patch('/items/{id}', [ItemController::class, 'update']);
         Route::delete('/items/{id}', [ItemController::class, 'destroy']);
         Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);
@@ -64,6 +63,13 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
     });
 
     Route::get('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'index']);
+
+    // Recipes & item costing — owner-only (recipes.manage exposes cost price,
+    // margin and profit, which not every menu manager should see).
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission:recipes.manage'])->group(function () {
+        Route::get('/items/{id}/recipe', [App\Http\Controllers\Api\RecipeController::class, 'show']);
+        Route::put('/items/{id}/recipe', [App\Http\Controllers\Api\RecipeController::class, 'update']);
+    });
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
         Route::post('/items/{itemId}/photos', [App\Http\Controllers\Api\ItemPhotoController::class, 'store']);

@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';
 import { MenuItemEditorModal } from './MenuPage/MenuItemEditorModal';
 import { MenuItemTable } from './MenuPage/MenuItemTable';
+import { RecipeEditorModal } from './MenuPage/RecipeEditorModal';
 import { EMPTY_CAT, type CatForm, useMenuPage, type View } from './MenuPage/useMenuPage';
 
 function BannerLivePreview({
@@ -344,6 +345,7 @@ export function MenuPage() {
           items={m.items}
           loading={m.loading}
           canManage={m.canManage}
+          canSeeCost={m.canSeeCost}
           menuGroups={m.menuGroups}
           activeMenuGroupIds={m.activeMenuGroupIds}
           kitchenSaving={m.kitchenSaving}
@@ -426,38 +428,11 @@ export function MenuPage() {
       )}
 
       {m.recipeItem && (
-        <Modal
-          title={`Recipe — ${m.recipeItem.name}`}
+        <RecipeEditorModal
+          item={m.recipeItem}
           onClose={() => m.setRecipeItem(null)}
-          maxWidth={480}
-        >
-            {!m.recipeItem.recipe ? (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No recipe defined for this item.</p>
-            ) : (m.recipeItem.recipe.recipe_items ?? []).length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Recipe exists but has no ingredients.</p>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead><tr>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Ingredient</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Qty</th>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 12, color: 'var(--color-text-muted)', borderBottom: '1px solid #F0EAE3' }}>Unit</th>
-                </tr></thead>
-                <tbody>
-                  {(m.recipeItem.recipe.recipe_items ?? []).map((ri) => (
-                    <tr key={ri.id}>
-                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', fontWeight: 600 }}>
-                        {ri.inventory_item?.name ?? '—'}
-                      </td>
-                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0' }}>{ri.quantity}</td>
-                      <td style={{ padding: '10px', fontSize: 13, borderBottom: '1px solid #F8F4F0', color: 'var(--color-text-muted)' }}>
-                        {ri.unit ?? ri.inventory_item?.unit ?? '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-        </Modal>
+          onSaved={m.handleRecipeSaved}
+        />
       )}
 
       {m.barcodeLabel && (

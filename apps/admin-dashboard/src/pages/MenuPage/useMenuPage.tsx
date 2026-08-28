@@ -32,6 +32,8 @@ export type View = 'categories' | 'items';
 export function useMenuPage() {
   const { can } = useCurrentUserPermissions();
   const canManage = can('menu.manage');
+  // Recipe recording and item cost / margin / profit are owner-only.
+  const canSeeCost = can('recipes.manage');
   const [view, setView] = useState<View>('categories');
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -252,10 +254,18 @@ export function useMenuPage() {
       .catch((e: Error) => setError(e.message));
   };
 
+  // After a recipe is saved the roll-up cost changes, so refresh the row's
+  // margin badge by reloading the list; keep the modal on the fresh figures.
+  const handleRecipeSaved = (updated: ItemWithRecipe) => {
+    setRecipeItem(updated);
+    void loadItems();
+  };
+
   const defaultMenuGroups = menuGroups.length ? menuGroups : [{ id: 1, name: 'Default', slug: 'default', sort_order: 0, is_active: true }];
 
   return {
     canManage,
+    canSeeCost,
     view,
     setView,
     categories,
@@ -305,6 +315,7 @@ export function useMenuPage() {
     handlePageChange,
     handleBarcodeLabel,
     handleViewRecipe,
+    handleRecipeSaved,
     itemToForm,
   };
 }
