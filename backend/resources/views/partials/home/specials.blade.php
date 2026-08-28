@@ -16,7 +16,7 @@
         </div>
         <div class="specials-scroll">
             @foreach($homeOffers as $offer)
-            <a href="{{ url('/order' . ($offer['link'] ?? '/menu')) }}" class="special-card">
+            <a href="{{ url(\App\Support\PublicOfferUrl::fromFeedRow($offer)) }}" class="special-card">
                 <div class="product-img product-img--circle">
                     @if(!empty($offer['image_url']))
                         <img src="{{ $offer['image_url'] }}" alt="{{ $offer['title'] ?? '' }}">
@@ -76,7 +76,7 @@
         </div>
         <div class="specials-scroll">
             @foreach($todaysSpecials as $sp)
-            <a href="/order/menu" class="special-card">
+            <a href="/offers/special/{{ $sp['id'] }}" class="special-card">
                 <div class="product-img product-img--circle">
                     @if(!empty($sp['item_image']))
                         <img src="{{ $sp['item_image'] }}" alt="{{ $sp['item_name'] ?? '' }}">

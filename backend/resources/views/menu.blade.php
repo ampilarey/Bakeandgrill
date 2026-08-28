@@ -708,10 +708,7 @@ html.js .menu-fav { display: inline-flex; }
                 <div class="menu-grid">
                     @foreach($menuOffers as $offer)
                         @php
-                            $offerLink = $offer['link'] ?? '/menu';
-                            $offerHref = str_starts_with((string) $offerLink, '/menu')
-                                ? '/order' . $offerLink
-                                : $offerLink;
+                            $offerHref = \App\Support\PublicOfferUrl::fromFeedRow($offer);
                             // Prefer the gallery photo the item cards already
                             // resolved. OffersService fills image_url from
                             // display_image_url — the main image — so an offer

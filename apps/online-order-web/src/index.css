@@ -5064,6 +5064,40 @@ textarea.field-input {
   animation: hero-photo-pan calc(22s / var(--hero-speed, 1)) ease-in-out infinite alternate;
 }
 
+/* Share popover (item sheet). Compact; native share fires only on click. */
+.share-control { position: relative; display: inline-flex; }
+.share-control-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; min-width: 44px; padding: 0 0.85rem;
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.share-popover {
+  position: absolute; z-index: var(--z-toast);
+  top: calc(100% + 0.4rem); right: 0; left: auto;
+  min-width: 16rem; padding: 0.85rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(28, 20, 8, 0.14);
+}
+.share-copy, .share-close {
+  display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center;
+  margin: 0; border: 1px solid var(--color-border); border-radius: 10px;
+  background: var(--color-bg); color: var(--color-text);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.share-close { margin-top: 0.5rem; font-weight: 600; }
+.share-intents { list-style: none; margin: 0.65rem 0 0; padding: 0; display: grid; gap: 0.35rem; }
+.share-intents a {
+  display: flex; min-height: 44px; align-items: center; padding: 0 0.75rem;
+  color: var(--color-text); text-decoration: none; border-radius: 8px;
+}
+.share-intents a:hover, .share-intents a:focus-visible { background: var(--color-primary-light); }
+.share-fallback-label { display: block; margin-top: 0.5rem; font-size: 0.8rem; color: var(--color-text-muted); }
+.share-fallback-input { width: 100%; min-height: 44px; margin-top: 0.25rem; padding: 0 0.6rem; }
+.share-copy-status { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+
 @media (prefers-reduced-motion: reduce) {
   .home-promo-hero__eyebrow[data-anim],
   .home-promo-hero__title[data-anim],

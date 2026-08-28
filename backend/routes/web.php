@@ -67,6 +67,14 @@ Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'sho
     ->whereNumber('item')
     ->middleware(['content.locale', 'service.banner'])
     ->name('menu.item');
+Route::get('/offers/special/{special}', [App\Http\Controllers\OfferPageController::class, 'special'])
+    ->whereNumber('special')
+    ->middleware(['content.locale', 'service.banner'])
+    ->name('offers.special');
+Route::get('/offers/promo/{promotion}', [App\Http\Controllers\OfferPageController::class, 'promo'])
+    ->whereNumber('promotion')
+    ->middleware(['content.locale', 'service.banner'])
+    ->name('offers.promo');
 
 // Customer Portal (Web Login)
 use App\Http\Controllers\CustomerPortalController;

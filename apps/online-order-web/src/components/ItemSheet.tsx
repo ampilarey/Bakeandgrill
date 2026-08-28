@@ -24,6 +24,8 @@ import {
 } from '../utils/platterRules';
 import { MenuImageSlider } from './menu/MenuImageSlider';
 import { PlatterPicker } from './PlatterPicker';
+import { ShareControl } from './ShareControl';
+import { publicMenuItemUrl } from '../utils/publicMenuItemUrl';
 
 export type ItemSheetProps = {
   open: boolean;
@@ -362,6 +364,11 @@ export function ItemSheet({
               <span aria-hidden="true">←</span>
               {backTo === 'cart' ? 'Back to cart' : 'Full menu'}
             </button>
+            <ShareControl
+              url={publicMenuItemUrl(item.id)}
+              title={item.name}
+              text={`${item.name} at Bake & Grill`}
+            />
           </div>
 
           {/* Hero photo */}

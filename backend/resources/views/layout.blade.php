@@ -163,8 +163,19 @@
     {{-- @yield outputs raw: escape defaults with e(); section titles should be plain text. --}}
     <meta property="og:title" content="@yield('title', e($metaTitle))">
     <meta property="og:description" content="@yield('description', e($metaDesc))">
-    <meta property="og:image" content="{{ $ogImage }}">
-    <meta property="og:url" content="{{ url()->current() }}">
+    @php
+        $pageOgImage = trim($__env->yieldContent('og_image'));
+        $pageOgImage = $pageOgImage !== '' ? $pageOgImage : $ogImage;
+        $pageOgAlt = trim($__env->yieldContent('og_image_alt'));
+        $pageOgAlt = $pageOgAlt !== '' ? $pageOgAlt : $siteName;
+        $pageOgUrl = trim($__env->yieldContent('og_url'));
+        $pageOgUrl = $pageOgUrl !== '' ? $pageOgUrl : url()->current();
+        $pageTwitterImage = trim($__env->yieldContent('twitter_image'));
+        $pageTwitterImage = $pageTwitterImage !== '' ? $pageTwitterImage : $pageOgImage;
+    @endphp
+    <meta property="og:image" content="{{ $pageOgImage }}">
+    <meta property="og:image:alt" content="{{ $pageOgAlt }}">
+    <meta property="og:url" content="{{ $pageOgUrl }}">
 
     {{-- BLD-003: Twitter card upgrade. `summary` shows a tiny thumb;
          `summary_large_image` actually shows the OG image when shared
@@ -173,13 +184,14 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('title', e($metaTitle))">
     <meta name="twitter:description" content="@yield('description', e($metaDesc))">
-    <meta name="twitter:image" content="{{ $ogImage }}">
+    <meta name="twitter:image" content="{{ $pageTwitterImage }}">
+    <meta name="twitter:image:alt" content="{{ $pageOgAlt }}">
 
     {{-- BLD-004: Canonical URL. Without it, the same page reachable
          via /home, /index.php?lang=en, or /?utm_source=fb was getting
          indexed multiple times by Google, splitting page-rank. Use
          the current URL stripped of query string. --}}
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="{{ $pageOgUrl }}">
 
     <!-- Structured Data (JSON-LD) -->
     {{-- @json() emits a quoted JSON string; do not HTML-escape inside JSON-LD. --}}

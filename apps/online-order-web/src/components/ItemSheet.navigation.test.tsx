@@ -132,3 +132,26 @@ describe('ItemSheet — favourites', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe('ItemSheet — share', () => {
+  it('shares the public /menu/{id} URL, never an /order path', () => {
+    render(sheet());
+
+    const open = screen.getByTestId('share-open');
+    expect(open).toBeInTheDocument();
+    fireEvent.click(open);
+
+    const popover = document.querySelector('[data-share-popover]');
+    expect(popover?.getAttribute('data-share-url')).toMatch(/\/menu\/11$/);
+    expect(popover?.getAttribute('data-share-url')).not.toContain('/order/');
+  });
+
+  it('does not dismiss the sheet when Share is pressed', () => {
+    const onClose = vi.fn();
+    render(sheet({ onClose }));
+
+    fireEvent.click(screen.getByTestId('share-open'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

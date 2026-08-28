@@ -55,6 +55,7 @@ class OffersService
 
             $offers[] = [
                 'id' => 'special-' . ($sp['id'] ?? 0) . ($variantId ? '-v' . $variantId : ''),
+                'special_id' => (int) ($sp['id'] ?? 0),
                 'kind' => 'special',
                 'title' => $sp['item_name'] ?? 'Special',
                 'subtitle' => $sp['variant_name'] ?? null,

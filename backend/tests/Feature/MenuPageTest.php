@@ -1117,14 +1117,30 @@ class MenuPageTest extends TestCase
         $this->assertStringContainsString('View cart', $html);
     }
 
-    public function test_an_item_you_cannot_order_has_no_detail_page(): void
+    public function test_an_unavailable_item_still_has_a_detail_page(): void
     {
+        // Old social posts must not 404 when an item is snoozed. The page
+        // stays up with an honest unavailable state; a true 404 is only for
+        // an id that never existed.
         $cat = $this->category('Shorteats');
+        $alt = $this->item($cat, 'Cutlet', 6);
         $gone = $this->item($cat, 'Sold Out Item', 5, ['is_available' => false]);
         $retired = $this->item($cat, 'Retired Item', 5, ['is_active' => false]);
 
-        $this->get('/menu/' . $gone->id)->assertNotFound();
-        $this->get('/menu/' . $retired->id)->assertNotFound();
+        $soldOut = $this->get('/menu/' . $gone->id)->assertOk()->getContent();
+        $this->assertStringContainsString('Sold Out Item', $soldOut);
+        $this->assertStringContainsString('Currently unavailable', $soldOut);
+        $this->assertStringContainsString('data-testid="item-unavailable"', $soldOut);
+        $this->assertStringContainsString('Cutlet', $soldOut);
+        $this->assertStringContainsString('/menu/' . $alt->id, $soldOut);
+        $this->assertDoesNotMatchRegularExpression('#<a[^>]*>Add to order</a>#', $soldOut);
+        $this->assertStringContainsString('Today', $soldOut);
+
+        $this->get('/menu/' . $retired->id)
+            ->assertOk()
+            ->assertSee('Retired Item', false)
+            ->assertSee('Currently unavailable', false);
+
         $this->get('/menu/999999')->assertNotFound();
     }
 

@@ -55,10 +55,19 @@
     ][$spice] ?? ($spice ? ucwords(str_replace('_', ' ', $spice)) : null);
     $pageTitle = $iname['text'] . ' – Menu – Bake & Grill';
     $pageDesc = $desc !== '' ? \Illuminate\Support\Str::limit($desc, 160) : $iname['text'] . ' at Bake & Grill. Prices in MVR.';
+    $itemAvailable = $itemAvailable ?? true;
+    $alternatives = $alternatives ?? collect();
+    $menuVariantPrices = $menuVariantPrices ?? [];
+    $socialImage = $socialImage ?? ['url' => '', 'alt' => $iname['text']];
+    $shareUrl = url('/menu/' . $item->id);
 @endphp
 
 @section('title', $pageTitle)
 @section('description', $pageDesc)
+@section('og_image', $socialImage['url'])
+@section('og_image_alt', $socialImage['alt'])
+@section('og_url', $shareUrl)
+@section('twitter_image', $socialImage['url'])
 
 @section('styles')
 <style>
@@ -178,12 +187,23 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     margin-top: 1.5rem;
 }
 .menu-item-actions .btn-primary,
-.menu-item-actions .btn-outline {
+.menu-item-actions .btn-outline,
+.menu-item-actions .share-control {
     /* Both grow, so on a phone they stack full width and on a wider screen
        they split the row evenly rather than the secondary shrink-wrapping. */
     flex: 1 1 11rem;
 }
-[lang="dv"] { font-family: var(--font-dhivehi); direction: rtl; }
+.menu-item-actions .share-control-btn { width: 100%; }
+.menu-item-unavailable {
+    margin: 0 0 1rem; padding: 0.75rem 0.9rem;
+    background: var(--amber-light); border: 1px solid var(--border); border-radius: 12px;
+}
+.menu-item-unavailable p { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--dark); }
+.menu-item-unavailable-note { margin-top: 0.3rem !important; font-weight: 500 !important; color: var(--muted) !important; }
+.menu-item-alts { margin: 1.25rem 0 0; }
+.menu-item-alts h2 { margin: 0 0 0.6rem; font-size: 1rem; }
+.menu-item-alts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.menu-item-alts a { color: var(--amber); font-weight: 600; text-decoration: none; }
 @media (max-width: 768px) {
     .menu-item-page { padding: 1rem 1rem 5rem; }
 }
@@ -205,6 +225,13 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
         @endif
         @include('partials.menu-favourite', ['item' => $item, 'favouriteIds' => $favouriteIds ?? []])
     </div>
+
+    @if(! $itemAvailable)
+        <div class="menu-item-unavailable" data-testid="item-unavailable">
+            <p>Currently unavailable</p>
+            <p class="menu-item-unavailable-note">This item is not on the menu right now. You can still share the page, or browse something else.</p>
+        </div>
+    @endif
 
     <h1 class="menu-item-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</h1>
     @if($dvName !== '' && $menuLocale !== 'dv')
@@ -255,18 +282,48 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     @if($variants->isNotEmpty())
         <ul class="menu-item-variants">
             @foreach($variants as $variant)
+                @php $vPrice = $menuVariantPrices[$variant->id] ?? ['price' => (float) $variant->price, 'was' => null]; @endphp
                 <li>
                     <span>{{ $variant->name }}</span>
-                    <span>MVR {{ number_format((float) $variant->price, 2) }}</span>
+                    <span>
+                        MVR {{ number_format((float) $vPrice['price'], 2) }}
+                        @if(!empty($vPrice['was']))
+                            <s class="menu-item-was">MVR {{ number_format((float) $vPrice['was'], 2) }}</s>
+                        @endif
+                    </span>
                 </li>
             @endforeach
         </ul>
     @endif
 
     <div class="menu-item-actions">
-        <a href="/order/menu?item={{ $item->id }}" class="btn-primary">Add to order</a>
-        <a href="/order/menu" class="btn-outline">View cart</a>
+        @if($itemAvailable)
+            <a href="/order/menu?item={{ $item->id }}" class="btn-primary">Add to order</a>
+            <a href="/order/menu" class="btn-outline">View cart</a>
+        @else
+            <a href="/menu" class="btn-primary">Today’s menu</a>
+            @if($item->category_id)
+                <a href="/menu#cat-{{ $item->category_id }}" class="btn-outline">More in this category</a>
+            @endif
+        @endif
+        @include('partials.share-control', [
+            'shareUrl' => $shareUrl,
+            'shareTitle' => $iname['text'],
+            'shareText' => $iname['text'] . ' at Bake & Grill',
+            'shareButtonClass' => 'btn-outline',
+        ])
     </div>
+
+    @if(! $itemAvailable && $alternatives->isNotEmpty())
+        <div class="menu-item-alts">
+            <h2>You might like</h2>
+            <ul>
+                @foreach($alternatives as $alt)
+                    <li><a href="/menu/{{ $alt->id }}">{{ $alt->card_name ?: $alt->name }}</a></li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 </article>
 
 @php

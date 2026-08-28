@@ -10,6 +10,8 @@ use App\Models\Item;
 use App\Models\ItemPhoto;
 use App\Services\EffectivePriceService;
 use App\Services\SpecialPricingService;
+use App\Support\PublicMediaUrl;
+use App\Support\SocialPreviewImage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -79,25 +81,39 @@ class MenuPageController extends Controller
     /**
      * One item, as its own document. A crawler (and a phone on weak data)
      * gets the description and every size without waiting for a JS sheet.
-     * Inactive or unavailable items 404 — they are not on the listing either.
+     *
+     * Known items that are inactive, unavailable, or soft-deleted still
+     * resolve: old social posts must not 404. A true 404 is only for an
+     * id that never existed.
      */
     public function show(int $item): View
     {
         $row = Item::query()
             ->with(['variants', 'category', 'photos'])
-            ->where('is_active', true)
-            ->where('is_available', true)
-            ->findOrFail($item);
+            ->withTrashed()
+            ->find($item);
 
+        if ($row === null) {
+            abort(404);
+        }
+
+        $available = !$row->trashed() && $row->is_active && $row->is_available;
+        $alternatives = $available ? collect() : $this->categoryAlternatives($row);
+
+        $priced = collect([$row])->concat($alternatives);
         $specialsByItemId = $this->indexSpecialsByItem(
             app(SpecialPricingService::class)->activeSpecialsForDisplay(),
         );
 
         return view('menu-item', [
             'item' => $row,
-            'menuPhotos' => $this->displayPhotos(collect([$row])),
+            'itemAvailable' => $available,
+            'alternatives' => $alternatives,
+            'menuPhotos' => $this->displayPhotos($priced),
             'menuSpecialsByItemId' => $specialsByItemId,
-            'menuPriceByItemId' => $this->effectivePrices(collect([$row])),
+            'menuPriceByItemId' => $this->effectivePrices($priced),
+            'menuVariantPrices' => $this->effectiveVariantPrices($row),
+            'socialImage' => app(SocialPreviewImage::class)->forItem($row),
             'favouriteIds' => $this->favouriteItemIds(),
             'menuLocale' => $this->menuLocale(),
         ]);
@@ -329,7 +345,7 @@ class MenuPageController extends Controller
      */
     private function displayPhotos(Collection $items): array
     {
-        $default = $this->mediaUrl(content('default_item_image'));
+        $default = PublicMediaUrl::absolute(content('default_item_image'));
         $out = [];
         foreach ($items as $item) {
             $out[$item->id] = $this->displayPhotoFor($item, $default);
@@ -360,7 +376,7 @@ class MenuPageController extends Controller
 
         foreach ($photos as $photo) {
             if ($photo->isVideo()) {
-                $url = $this->mediaUrl($photo->poster_url ?: $photo->thumb_url);
+                $url = PublicMediaUrl::absolute($photo->poster_url ?: $photo->thumb_url);
                 if ($url) {
                     // A poster is the only still we have — it is both sizes.
                     return ['url' => $url, 'webp' => null, 'full' => $url, 'placeholder' => false];
@@ -369,25 +385,25 @@ class MenuPageController extends Controller
                 continue;
             }
 
-            $url = $this->mediaUrl($photo->thumb_url ?: $photo->url);
+            $url = PublicMediaUrl::absolute($photo->thumb_url ?: $photo->url);
             if (!$url) {
                 continue;
             }
 
             return [
                 'url' => $url,
-                'webp' => $this->mediaUrl($photo->thumb_webp_url ?: $photo->image_webp_url),
-                'full' => $this->mediaUrl($photo->url) ?: $url,
+                'webp' => PublicMediaUrl::absolute($photo->thumb_webp_url ?: $photo->image_webp_url),
+                'full' => PublicMediaUrl::absolute($photo->url) ?: $url,
                 'placeholder' => false,
             ];
         }
 
-        $url = $this->mediaUrl($item->thumb_url ?: $item->image_url);
+        $url = PublicMediaUrl::absolute($item->thumb_url ?: $item->image_url);
         if ($url) {
             return [
                 'url' => $url,
-                'webp' => $this->mediaUrl($item->thumb_webp_url ?: $item->image_webp_url),
-                'full' => $this->mediaUrl($item->image_url) ?: $url,
+                'webp' => PublicMediaUrl::absolute($item->thumb_webp_url ?: $item->image_webp_url),
+                'full' => PublicMediaUrl::absolute($item->image_url) ?: $url,
                 'placeholder' => false,
             ];
         }
@@ -396,20 +412,54 @@ class MenuPageController extends Controller
     }
 
     /**
-     * Same origin rewrite as Item::display_image_url, for thumbs and posters too.
+     * @return array<int, array{price: float, was: float|null}>
      */
-    private function mediaUrl(mixed $raw): ?string
+    private function effectiveVariantPrices(Item $item): array
     {
-        $raw = trim((string) $raw);
-        if ($raw === '') {
-            return null;
-        }
-        if (!str_starts_with($raw, 'http')) {
-            return url(ltrim($raw, '/'));
-        }
-        $path = trim(preg_replace('#^https?://[^/]+#', '', $raw), '/');
+        $pricing = app(EffectivePriceService::class);
+        $out = [];
+        $variants = $item->relationLoaded('variants')
+            ? $item->variants->where('is_active', true)
+            : collect();
 
-        return str_starts_with($path, 'images/cafe/') ? url($path) : $raw;
+        foreach ($variants as $variant) {
+            $resolved = $pricing->resolveUnitPrice(
+                $item->id,
+                (float) $variant->price,
+                $item,
+                $variant->id,
+            );
+            $out[$variant->id] = [
+                'price' => (float) $resolved->unitPrice,
+                'was' => $resolved->hasDiscount() ? (float) $resolved->originalPrice : null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Sellable neighbours in the same category — the "still hungry?" strip
+     * on an unavailable item's durable page.
+     *
+     * @return Collection<int, Item>
+     */
+    private function categoryAlternatives(Item $item): Collection
+    {
+        if (!$item->category_id) {
+            return collect();
+        }
+
+        return Item::query()
+            ->with(['variants', 'photos'])
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->where('category_id', $item->category_id)
+            ->where('id', '!=', $item->id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->limit(4)
+            ->get();
     }
 
     private function menuLocale(): string
