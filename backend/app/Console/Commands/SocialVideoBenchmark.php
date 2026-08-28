@@ -37,7 +37,38 @@ class SocialVideoBenchmark extends Command
 
             return self::FAILURE;
         }
-        $this->info('ffmpeg: ' . $video->ffmpegBinary());
+        $bin = $video->ffmpegBinary();
+        $version = trim((string) explode("\n", Process::timeout(10)->run([$bin, '-version'])->output())[0]);
+        $this->info('ffmpeg: ' . $bin . ' (' . $version . ')');
+
+        // Capability preflight — distro builds (e.g. RHEL/cPanel ffmpeg-free)
+        // often ship WITHOUT libx264, and old builds lack xfade. Fail with
+        // the actual reason instead of a silent "no output".
+        $missing = [];
+        $encoders = (string) Process::timeout(15)->run([$bin, '-hide_banner', '-encoders'])->output();
+        if (!str_contains($encoders, 'libx264')) {
+            $missing[] = 'libx264 encoder (H.264 — required by every platform)';
+        }
+        $filters = (string) Process::timeout(15)->run([$bin, '-hide_banner', '-filters'])->output();
+        foreach (['zoompan', 'xfade'] as $filter) {
+            if (!str_contains($filters, ' ' . $filter . ' ')) {
+                $missing[] = "{$filter} filter";
+            }
+        }
+        if ($missing !== []) {
+            $this->error('FAIL — this ffmpeg build is missing: ' . implode('; ', $missing) . '.');
+            $this->line('Fix: install a full static ffmpeg build (includes libx264) into the account, e.g.:');
+            $this->line('  mkdir -p ~/bin && cd ~/bin');
+            $this->line('  curl -LO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz');
+            $this->line('  tar xf ffmpeg-release-amd64-static.tar.xz --strip-components=1 --wildcards "*/ffmpeg" "*/ffprobe"');
+            $this->line('Then set in backend/.env and re-cache config:');
+            $this->line('  FFMPEG_PATH=/home/bakeandgrill/bin/ffmpeg');
+            $this->line('  FFPROBE_PATH=/home/bakeandgrill/bin/ffprobe');
+            $this->line('  php artisan config:cache && php artisan social:video-benchmark');
+
+            return self::FAILURE;
+        }
+        $this->info('capabilities: libx264 + zoompan + xfade present');
 
         $dir = storage_path('app/social-video-benchmark');
         @mkdir($dir, 0775, true);
@@ -48,11 +79,14 @@ class SocialVideoBenchmark extends Command
         foreach (self::FORMATS as $name => [$w, $h]) {
             $out = "{$dir}/bench-{$name}.mp4";
             $started = microtime(true);
-            $result = $this->render($video, $photos, $w, $h, $out);
+            $renderError = $this->render($video, $photos, $w, $h, $out);
             $elapsed = microtime(true) - $started;
 
-            if (!$result || !is_file($out)) {
+            if ($renderError !== null || !is_file($out)) {
                 $this->error(sprintf('%-10s FAIL — render did not produce output', $name));
+                if ($renderError !== null) {
+                    $this->line('  ffmpeg said: ' . $renderError);
+                }
                 $allPass = false;
 
                 continue;
@@ -120,8 +154,12 @@ class SocialVideoBenchmark extends Command
         return $paths;
     }
 
-    /** @param list<string> $photos */
-    private function render(VideoProcessor $video, array $photos, int $w, int $h, string $out): bool
+    /**
+     * Null on success; otherwise the tail of ffmpeg's stderr.
+     *
+     * @param list<string> $photos
+     */
+    private function render(VideoProcessor $video, array $photos, int $w, int $h, string $out): ?string
     {
         $cmd = [$video->ffmpegBinary(), '-y'];
         foreach ($photos as $photo) {
@@ -163,7 +201,14 @@ class SocialVideoBenchmark extends Command
             $out,
         );
 
-        return Process::timeout(600)->run($cmd)->successful();
+        $result = Process::timeout(600)->run($cmd);
+        if ($result->successful()) {
+            return null;
+        }
+
+        $lines = array_values(array_filter(explode("\n", trim($result->errorOutput()))));
+
+        return implode(' | ', array_slice($lines, -3)) ?: ('exit code ' . $result->exitCode());
     }
 
     private function humanBytes(int $bytes): string
