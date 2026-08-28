@@ -59,7 +59,7 @@ final class VideoProcessor
         $relativePath = $this->relativeFromAbsolute($absolutePath);
         $ext = strtolower((string) pathinfo($absolutePath, PATHINFO_EXTENSION));
 
-        if (! $this->available()) {
+        if (!$this->available()) {
             // Without FFmpeg we cannot verify codec or convert — only trust .mp4.
             if ($ext === 'mp4') {
                 return [
@@ -101,9 +101,9 @@ final class VideoProcessor
         if ($stem === '') {
             $stem = Str::uuid()->toString();
         }
-        $newAbs = $dir.DIRECTORY_SEPARATOR.$stem.'.mp4';
+        $newAbs = $dir . DIRECTORY_SEPARATOR . $stem . '.mp4';
         // Avoid clobbering the source when it is already named .mp4 (e.g. HEVC-in-mp4).
-        $tmpAbs = $dir.DIRECTORY_SEPARATOR.$stem.'.websafe-'.Str::lower(Str::random(8)).'.mp4';
+        $tmpAbs = $dir . DIRECTORY_SEPARATOR . $stem . '.websafe-' . Str::lower(Str::random(8)) . '.mp4';
 
         $ff = $this->bin('ffmpeg');
         // Do NOT pass -noautorotate — bake display rotation into the pixels.
@@ -119,11 +119,11 @@ final class VideoProcessor
             $tmpAbs,
         ]);
 
-        if (! $export->successful() || ! is_file($tmpAbs) || filesize($tmpAbs) < 32) {
+        if (!$export->successful() || !is_file($tmpAbs) || filesize($tmpAbs) < 32) {
             @unlink($tmpAbs);
             $this->discardStoredVideo($absolutePath, $relativePath);
             throw new RuntimeException(
-                'Video conversion failed: '.$this->shortError($export->errorOutput().$export->output())
+                'Video conversion failed: ' . $this->shortError($export->errorOutput() . $export->output()),
             );
         }
 
@@ -134,8 +134,8 @@ final class VideoProcessor
             if (is_file($newAbs) && realpath($newAbs) !== realpath($tmpAbs)) {
                 @unlink($newAbs);
             }
-            if (! @rename($tmpAbs, $newAbs)) {
-                if (! @copy($tmpAbs, $newAbs)) {
+            if (!@rename($tmpAbs, $newAbs)) {
+                if (!@copy($tmpAbs, $newAbs)) {
                     @unlink($tmpAbs);
                     throw new RuntimeException('Could not finalise converted video file.');
                 }
@@ -166,6 +166,18 @@ final class VideoProcessor
         ];
     }
 
+    /** Resolved ffmpeg binary — shared with the social video renderer. */
+    public function ffmpegBinary(): string
+    {
+        return $this->bin('ffmpeg');
+    }
+
+    /** Resolved ffprobe binary — shared with the social video renderer. */
+    public function ffprobeBinary(): string
+    {
+        return $this->bin('ffprobe');
+    }
+
     /** Prefer configured ffmpeg/ffprobe paths when cPanel PATH is thin for php-fpm. */
     private function bin(string $name): string
     {
@@ -184,7 +196,7 @@ final class VideoProcessor
             }
         }
 
-        foreach (['/usr/bin/'.$name, '/usr/local/bin/'.$name, $name] as $candidate) {
+        foreach (['/usr/bin/' . $name, '/usr/local/bin/' . $name, $name] as $candidate) {
             if ($candidate === $name) {
                 return $name;
             }
@@ -208,8 +220,8 @@ final class VideoProcessor
             '-show_format', '-show_streams', $absolutePath,
         ]);
 
-        if (! $result->successful()) {
-            throw new RuntimeException('Could not probe video: '.$this->shortError($result->errorOutput()));
+        if (!$result->successful()) {
+            throw new RuntimeException('Could not probe video: ' . $this->shortError($result->errorOutput()));
         }
 
         /** @var array<string, mixed> $data */
@@ -223,7 +235,7 @@ final class VideoProcessor
             }
         }
 
-        if (! is_array($video)) {
+        if (!is_array($video)) {
             throw new RuntimeException('No video stream found in file.');
         }
 
@@ -263,8 +275,8 @@ final class VideoProcessor
             $parsed = parse_url($path, PHP_URL_PATH) ?: '';
             $path = (string) $parsed;
         }
-        $path = '/'.ltrim($path, '/');
-        if (! str_starts_with($path, '/storage/')) {
+        $path = '/' . ltrim($path, '/');
+        if (!str_starts_with($path, '/storage/')) {
             throw new RuntimeException('Video path must be under /storage/.');
         }
         $rel = ltrim(substr($path, strlen('/storage/')), '/');
@@ -287,7 +299,7 @@ final class VideoProcessor
      */
     public function process(string $sourceAbsolute, array $options = [], string $outputDir = 'library/video/studio'): array
     {
-        if (! $this->available()) {
+        if (!$this->available()) {
             throw new RuntimeException('FFmpeg is not available on this server.');
         }
 
@@ -326,14 +338,14 @@ final class VideoProcessor
         $sourceCodec = strtolower($coded['codec']);
         $sourceIsH264Mp4 = $sourceExt === 'mp4' && in_array($sourceCodec, ['h264', 'avc1'], true);
         $hasTrim = $trimStart > 0.0005 || abs($trimEnd - $duration) > 0.05;
-        $allowStreamCopy = $aspect === 'original' && $sourceIsH264Mp4 && ! $hasTrim;
+        $allowStreamCopy = $aspect === 'original' && $sourceIsH264Mp4 && !$hasTrim;
 
         Storage::disk('public')->makeDirectory($outputDir);
-        Storage::disk('public')->makeDirectory($outputDir.'/posters');
+        Storage::disk('public')->makeDirectory($outputDir . '/posters');
 
         $uuid = Str::uuid()->toString();
-        $outRel = $outputDir.'/'.$uuid.'.mp4';
-        $posterRel = $outputDir.'/posters/'.$uuid.'.jpg';
+        $outRel = $outputDir . '/' . $uuid . '.mp4';
+        $posterRel = $outputDir . '/posters/' . $uuid . '.jpg';
         $outAbs = Storage::disk('public')->path($outRel);
         $posterAbs = Storage::disk('public')->path($posterRel);
 
@@ -369,12 +381,12 @@ final class VideoProcessor
                 $exported = true;
                 break;
             }
-            $lastError = $this->shortError($export->errorOutput().$export->output());
+            $lastError = $this->shortError($export->errorOutput() . $export->output());
             @unlink($outAbs);
         }
 
-        if (! $exported) {
-            throw new RuntimeException('Video export failed: '.$lastError);
+        if (!$exported) {
+            throw new RuntimeException('Video export failed: ' . $lastError);
         }
 
         try {
@@ -394,7 +406,7 @@ final class VideoProcessor
                 $posterAbs,
             ]);
 
-            if (! $poster->successful() || ! is_file($posterAbs)) {
+            if (!$poster->successful() || !is_file($posterAbs)) {
                 // Fallback poster: same rotation handling as primary (-noautorotate).
                 $poster = Process::timeout(90)->run([
                     $ff, '-y', '-hide_banner', '-loglevel', 'error',
@@ -407,15 +419,15 @@ final class VideoProcessor
                 ]);
             }
 
-            if (! $poster->successful() || ! is_file($posterAbs)) {
-                throw new RuntimeException('Poster export failed: '.$this->shortError($poster->errorOutput().$poster->output()));
+            if (!$poster->successful() || !is_file($posterAbs)) {
+                throw new RuntimeException('Poster export failed: ' . $this->shortError($poster->errorOutput() . $poster->output()));
             }
 
             $outMeta = $this->probeCodedSize($outAbs);
 
             return [
-                'url' => '/storage/'.ltrim($outRel, '/'),
-                'poster_url' => '/storage/'.ltrim($posterRel, '/'),
+                'url' => '/storage/' . ltrim($outRel, '/'),
+                'poster_url' => '/storage/' . ltrim($posterRel, '/'),
                 'duration' => $outMeta['duration'],
                 'width' => $outMeta['width'],
                 'height' => $outMeta['height'],
@@ -443,8 +455,8 @@ final class VideoProcessor
             '-show_format', '-show_streams', $absolutePath,
         ]);
 
-        if (! $result->successful()) {
-            throw new RuntimeException('Could not probe video: '.$this->shortError($result->errorOutput()));
+        if (!$result->successful()) {
+            throw new RuntimeException('Could not probe video: ' . $this->shortError($result->errorOutput()));
         }
 
         /** @var array<string, mixed> $data */
@@ -572,11 +584,18 @@ final class VideoProcessor
         } else {
             $cropVf = sprintf(
                 'crop=%d:%d:%d:%d,scale=%d:%d:flags=bicubic,format=yuv420p,setsar=1',
-                $ew, $eh, $ex, $ey, $ew, $eh,
+                $ew,
+                $eh,
+                $ex,
+                $ey,
+                $ew,
+                $eh,
             );
             $trimCropVf = sprintf(
                 'trim=start=%s:duration=%s,setpts=PTS-STARTPTS,%s',
-                $ss, $td, sprintf('crop=%d:%d:%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey),
+                $ss,
+                $td,
+                sprintf('crop=%d:%d:%d:%d,format=yuv420p,setsar=1', $ew, $eh, $ex, $ey),
             );
 
             $attempts[] = array_merge($head, [
@@ -604,7 +623,7 @@ final class VideoProcessor
     }
 
     /**
-     * @param  array{x?: int|float, y?: int|float, w?: int|float, h?: int|float}|null  $manual
+     * @param array{x?: int|float, y?: int|float, w?: int|float, h?: int|float}|null $manual
      * @return array{x: int, y: int, w: int, h: int}
      */
     private function resolveCrop(int $srcW, int $srcH, string $aspect, ?array $manual): array
@@ -674,7 +693,7 @@ final class VideoProcessor
             return (int) $tags['rotate'];
         }
         foreach ($video['side_data_list'] ?? [] as $side) {
-            if (! is_array($side)) {
+            if (!is_array($side)) {
                 continue;
             }
             if (($side['side_data_type'] ?? '') === 'Display Matrix' && isset($side['rotation'])) {
@@ -723,7 +742,7 @@ final class VideoProcessor
 
     private function assertReadable(string $absolutePath): void
     {
-        if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
+        if (!is_file($absolutePath) || !is_readable($absolutePath)) {
             throw new RuntimeException('Video file not found or not readable.');
         }
     }
@@ -732,7 +751,7 @@ final class VideoProcessor
     {
         $root = realpath(Storage::disk('public')->path('')) ?: Storage::disk('public')->path('');
         $real = realpath($absolutePath) ?: $absolutePath;
-        if (! str_starts_with($real, rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR) && $real !== $root) {
+        if (!str_starts_with($real, rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) && $real !== $root) {
             throw new RuntimeException('Video path escapes public storage.');
         }
     }
@@ -740,7 +759,7 @@ final class VideoProcessor
     private function relativeFromAbsolute(string $absolutePath): string
     {
         $root = Storage::disk('public')->path('');
-        $root = rtrim(str_replace('\\', '/', $root), '/').'/';
+        $root = rtrim(str_replace('\\', '/', $root), '/') . '/';
         $normalized = str_replace('\\', '/', $absolutePath);
         if (str_starts_with($normalized, $root)) {
             return ltrim(substr($normalized, strlen($root)), '/');
@@ -748,7 +767,7 @@ final class VideoProcessor
 
         $realRoot = realpath(Storage::disk('public')->path('')) ?: '';
         $realFile = realpath($absolutePath) ?: '';
-        if ($realRoot !== '' && $realFile !== '' && str_starts_with($realFile, rtrim($realRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)) {
+        if ($realRoot !== '' && $realFile !== '' && str_starts_with($realFile, rtrim($realRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR)) {
             return ltrim(str_replace('\\', '/', substr($realFile, strlen(rtrim($realRoot, DIRECTORY_SEPARATOR)))), '/');
         }
 
@@ -768,7 +787,7 @@ final class VideoProcessor
             return;
         }
         try {
-            if (! Schema::hasTable('media_assets')) {
+            if (!Schema::hasTable('media_assets')) {
                 return;
             }
             Media::query()->where('path', $relativePath)->delete();
@@ -785,7 +804,7 @@ final class VideoProcessor
             return;
         }
         try {
-            if (! Schema::hasTable('media_assets')) {
+            if (!Schema::hasTable('media_assets')) {
                 return;
             }
             Media::query()->where('path', $oldRel)->update([

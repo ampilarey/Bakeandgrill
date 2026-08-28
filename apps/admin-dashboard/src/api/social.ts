@@ -154,3 +154,43 @@ export async function updateSocialAutomation(
 ): Promise<{ automation: SocialAutomationConfig }> {
   return req('/admin/social/automation', { method: 'PUT', body: JSON.stringify(data) });
 }
+
+// ── Video renditions ─────────────────────────────────────────────────────────
+
+export interface SocialVideoRenditionRow {
+  id: number;
+  item_id: number;
+  format: string;
+  status: string;
+  width: number | null;
+  height: number | null;
+  bytes: number | null;
+  url: string | null;
+  poster_url: string | null;
+  error_message: string | null;
+  stale: boolean;
+  updated_at: string | null;
+}
+
+export async function fetchSocialVideos(itemId: number): Promise<{
+  renderer_available: boolean;
+  has_photos: boolean;
+  formats: string[];
+  renditions: SocialVideoRenditionRow[];
+}> {
+  return req(`/admin/social/items/${itemId}/videos`);
+}
+
+export async function generateSocialVideo(
+  itemId: number,
+  format: string,
+): Promise<{ rendition: SocialVideoRenditionRow }> {
+  return req(`/admin/social/items/${itemId}/videos`, {
+    method: 'POST',
+    body: JSON.stringify({ format }),
+  });
+}
+
+export async function deleteSocialVideo(renditionId: number): Promise<void> {
+  await req(`/admin/social/videos/${renditionId}`, { method: 'DELETE' });
+}

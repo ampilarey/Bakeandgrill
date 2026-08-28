@@ -46,6 +46,15 @@ if ! pgrep -f "$WORKER_FILTER" >/dev/null; then
   nohup php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 >> storage/logs/queue-worker.log 2>&1 &
 fi
 
+# Dedicated single-concurrency worker for the low-priority `social` queue
+# (video renders). Separate on purpose: a long ffmpeg render must never sit
+# in front of payments, orders or SMS on the main worker. Cheap when idle.
+SOCIAL_WORKER_FILTER="queue:work.*--queue=social"
+if ! pgrep -f "$SOCIAL_WORKER_FILTER" >/dev/null; then
+  echo "Starting social queue worker..."
+  nohup php artisan queue:work redis --queue=social --sleep=10 --tries=1 --max-time=3600 >> storage/logs/social-worker.log 2>&1 &
+fi
+
 pgrep -af "artisan queue:work" | grep -E "$(basename "$ROOT")|${WORKER_FILTER%%.*}" || echo "WARN: queue worker may not be running"
 
 cd "$ROOT"

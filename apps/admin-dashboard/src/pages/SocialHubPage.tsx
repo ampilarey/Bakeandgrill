@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   cancelSocialPost, createSocialChannel, createSocialPost, deleteSocialChannel,
-  fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels, fetchSocialPosts,
+  deleteSocialVideo, fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels,
+  fetchSocialPosts, fetchSocialVideos, generateSocialVideo,
   publishSocialPostNow, retrySocialDelivery, testSocialChannel,
   updateSocialAutomation, updateSocialChannel,
   type SocialAutomationConfig, type SocialChannelOption, type SocialChannelRow,
-  type SocialPlatformCaps, type SocialPostRow,
+  type SocialPlatformCaps, type SocialPostRow, type SocialVideoRenditionRow,
 } from '../api';
 import {
   Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
@@ -44,7 +45,7 @@ export function SocialHubPage() {
   const canCompose = can('social.compose');
   const canChannels = can('social.channels.manage');
 
-  const [tab, setTab] = useState<'posts' | 'automation' | 'channels'>('posts');
+  const [tab, setTab] = useState<'posts' | 'automation' | 'videos' | 'channels'>('posts');
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
@@ -86,6 +87,9 @@ export function SocialHubPage() {
         <Btn small variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
           Automation
         </Btn>
+        <Btn small variant={tab === 'videos' ? 'primary' : 'secondary'} onClick={() => setTab('videos')}>
+          Videos
+        </Btn>
         {canChannels && (
           <Btn small variant={tab === 'channels' ? 'primary' : 'secondary'} onClick={() => setTab('channels')}>
             Channels
@@ -98,6 +102,8 @@ export function SocialHubPage() {
         <PostList posts={posts} onChanged={load} />
       ) : tab === 'automation' ? (
         <AutomationSettings canEdit={can('social.publish')} />
+      ) : tab === 'videos' ? (
+        <VideoStudio canGenerate={can('social.compose')} />
       ) : (
         <ChannelList
           channels={channels}
@@ -374,6 +380,162 @@ function AutomationSettings({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
     </Card>
+  );
+}
+
+const FORMAT_LABELS: Record<string, string> = {
+  vertical: 'Vertical 9:16 (Reels · Stories · TikTok)',
+  square: 'Square 1:1 (feed)',
+  landscape: 'Landscape 16:9 (FB · Telegram)',
+};
+
+function VideoStudio({ canGenerate }: { canGenerate: boolean }) {
+  const [itemId, setItemId] = useState('');
+  const [loadedItemId, setLoadedItemId] = useState<number | null>(null);
+  const [rendererAvailable, setRendererAvailable] = useState(true);
+  const [hasPhotos, setHasPhotos] = useState(true);
+  const [formats, setFormats] = useState<string[]>([]);
+  const [renditions, setRenditions] = useState<SocialVideoRenditionRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async (id: number) => {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await fetchSocialVideos(id);
+      setLoadedItemId(id);
+      setRendererAvailable(res.renderer_available);
+      setHasPhotos(res.has_photos);
+      setFormats(res.formats);
+      setRenditions(res.renditions);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const generate = async (format: string) => {
+    if (loadedItemId === null) return;
+    setBusy(true);
+    setError('');
+    try {
+      await generateSocialVideo(loadedItemId, format);
+      await load(loadedItemId);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 12, maxWidth: 680 }}>
+      <Card style={{ padding: '16px 18px' }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Item videos</div>
+        <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Builds a short silent clip from an item's real photos (slow zoom, crossfades,
+          closing card with name and price). Renders run on their own background queue.
+          Download the vertical format to upload to TikTok manually.
+        </p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <Input
+            label="Menu item id"
+            value={itemId}
+            onChange={(v: string) => setItemId(v.replace(/[^0-9]/g, ''))}
+            placeholder="e.g. 12"
+            style={{ maxWidth: 140 }}
+          />
+          <Btn disabled={busy || itemId === ''} onClick={() => { void load(Number(itemId)); }}>Load</Btn>
+        </div>
+      </Card>
+
+      {error && <ErrorMsg message={error} />}
+
+      {loadedItemId !== null && (
+        <Card style={{ padding: '16px 18px' }}>
+          {!rendererAvailable && (
+            <p style={{ fontSize: 13, color: 'var(--color-warning)', margin: '0 0 10px' }}>
+              Video rendering is not enabled on this server — run{' '}
+              <code>php artisan social:video-benchmark</code> on the host first.
+            </p>
+          )}
+          {!hasPhotos && (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
+              This item has no usable photos. Videos are only built from real item photos.
+            </p>
+          )}
+
+          <div style={{ display: 'grid', gap: 10 }}>
+            {formats.map((format) => {
+              const rendition = renditions.find((r) => r.format === format) ?? null;
+              return (
+                <div
+                  key={format}
+                  style={{
+                    display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
+                    padding: '10px 12px', border: '1px solid var(--color-border)', borderRadius: 10,
+                  }}
+                >
+                  {rendition?.poster_url && (
+                    <img src={rendition.poster_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8 }} />
+                  )}
+                  <div style={{ flex: '1 1 200px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{FORMAT_LABELS[format] ?? format}</div>
+                    {rendition && (
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                        {rendition.status}
+                        {rendition.stale && ' · outdated (photos/price changed)'}
+                        {rendition.bytes != null && ` · ${(rendition.bytes / 1048576).toFixed(1)} MB`}
+                        {rendition.error_message && ` — ${rendition.error_message}`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {rendition?.status === 'ready' && rendition.url && (
+                      <a
+                        href={rendition.url}
+                        download
+                        style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', alignSelf: 'center' }}
+                      >
+                        Download
+                      </a>
+                    )}
+                    {canGenerate && (
+                      <Btn
+                        small
+                        variant="secondary"
+                        disabled={busy || !rendererAvailable || !hasPhotos || rendition?.status === 'processing' || rendition?.status === 'queued'}
+                        onClick={() => { void generate(format); }}
+                      >
+                        {rendition?.status === 'processing' || rendition?.status === 'queued'
+                          ? 'Rendering…'
+                          : rendition?.status === 'ready'
+                            ? (rendition.stale ? 'Re-generate' : 'Up to date')
+                            : 'Generate'}
+                      </Btn>
+                    )}
+                    {canGenerate && rendition?.status === 'ready' && (
+                      <Btn
+                        small
+                        variant="danger"
+                        disabled={busy}
+                        onClick={() => { void (async () => { await deleteSocialVideo(rendition.id); await load(loadedItemId); })(); }}
+                      >
+                        Delete
+                      </Btn>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Btn small variant="secondary" disabled={busy} onClick={() => { void load(loadedItemId); }}>Refresh status</Btn>
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 

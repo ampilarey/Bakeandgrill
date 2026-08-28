@@ -34,6 +34,11 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         // social.publish in-controller (they decide what auto-publishes).
         Route::get('/automation', [SocialPostController::class, 'automationSettings']);
         Route::put('/automation', [SocialPostController::class, 'updateAutomationSettings']);
+        // Video renditions: list with social.view; generate/delete check
+        // social.compose in-controller.
+        Route::get('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'index']);
+        Route::post('/items/{id}/videos', [App\Http\Controllers\Api\SocialVideoController::class, 'store']);
+        Route::delete('/videos/{renditionId}', [App\Http\Controllers\Api\SocialVideoController::class, 'destroy']);
     });
 
     Route::middleware('permission:social.channels.manage')->prefix('admin/social')->group(function () {
