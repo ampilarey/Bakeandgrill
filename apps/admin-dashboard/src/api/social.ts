@@ -133,3 +133,24 @@ export async function retrySocialDelivery(postId: number, deliveryId: number): P
     body: JSON.stringify({}),
   });
 }
+
+// ── Daily-special automation ─────────────────────────────────────────────────
+
+export interface SocialAutomationConfig {
+  enabled: boolean;
+  time: string;
+  channel_ids: number[];
+  template: string;
+  /** Pilot gate: false = drafts await human approval before posting. */
+  unattended: boolean;
+}
+
+export async function fetchSocialAutomation(): Promise<{ automation: SocialAutomationConfig }> {
+  return req('/admin/social/automation');
+}
+
+export async function updateSocialAutomation(
+  data: Partial<SocialAutomationConfig>,
+): Promise<{ automation: SocialAutomationConfig }> {
+  return req('/admin/social/automation', { method: 'PUT', body: JSON.stringify(data) });
+}

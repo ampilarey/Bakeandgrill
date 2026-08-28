@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   cancelSocialPost, createSocialChannel, createSocialPost, deleteSocialChannel,
-  fetchSocialChannelOptions, fetchSocialChannels, fetchSocialPosts,
-  publishSocialPostNow, retrySocialDelivery, testSocialChannel, updateSocialChannel,
-  type SocialChannelOption, type SocialChannelRow, type SocialPlatformCaps, type SocialPostRow,
+  fetchSocialAutomation, fetchSocialChannelOptions, fetchSocialChannels, fetchSocialPosts,
+  publishSocialPostNow, retrySocialDelivery, testSocialChannel,
+  updateSocialAutomation, updateSocialChannel,
+  type SocialAutomationConfig, type SocialChannelOption, type SocialChannelRow,
+  type SocialPlatformCaps, type SocialPostRow,
 } from '../api';
 import {
   Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
@@ -42,7 +44,7 @@ export function SocialHubPage() {
   const canCompose = can('social.compose');
   const canChannels = can('social.channels.manage');
 
-  const [tab, setTab] = useState<'posts' | 'channels'>('posts');
+  const [tab, setTab] = useState<'posts' | 'automation' | 'channels'>('posts');
   const [channels, setChannels] = useState<SocialChannelRow[]>([]);
   const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
   const [posts, setPosts] = useState<SocialPostRow[]>([]);
@@ -81,6 +83,9 @@ export function SocialHubPage() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <Btn small variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
+        <Btn small variant={tab === 'automation' ? 'primary' : 'secondary'} onClick={() => setTab('automation')}>
+          Automation
+        </Btn>
         {canChannels && (
           <Btn small variant={tab === 'channels' ? 'primary' : 'secondary'} onClick={() => setTab('channels')}>
             Channels
@@ -91,6 +96,8 @@ export function SocialHubPage() {
       {error && <ErrorMsg message={error} />}
       {loading ? <Spinner /> : tab === 'posts' ? (
         <PostList posts={posts} onChanged={load} />
+      ) : tab === 'automation' ? (
+        <AutomationSettings canEdit={can('social.publish')} />
       ) : (
         <ChannelList
           channels={channels}
@@ -211,13 +218,13 @@ function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () 
             </div>
             {can('social.publish') && (
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                {['draft', 'scheduled'].includes(post.status) && (
+                {['draft', 'scheduled', 'awaiting_approval'].includes(post.status) && (
                   <>
                     <Btn small disabled={busy} onClick={() => { void act(() => publishSocialPostNow(post.id)); }}>
-                      Post now
+                      {post.status === 'awaiting_approval' ? 'Approve & post' : 'Post now'}
                     </Btn>
                     <Btn small variant="secondary" disabled={busy} onClick={() => { void act(() => cancelSocialPost(post.id)); }}>
-                      Cancel
+                      {post.status === 'awaiting_approval' ? 'Reject' : 'Cancel'}
                     </Btn>
                   </>
                 )}
@@ -227,6 +234,146 @@ function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () 
         </Card>
       ))}
     </div>
+  );
+}
+
+function AutomationSettings({ canEdit }: { canEdit: boolean }) {
+  const [config, setConfig] = useState<SocialAutomationConfig | null>(null);
+  const [options, setOptions] = useState<SocialChannelOption[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    Promise.all([fetchSocialAutomation(), fetchSocialChannelOptions()])
+      .then(([auto, ch]) => {
+        setConfig(auto.automation);
+        setOptions(ch.channels);
+      })
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  if (error) return <ErrorMsg message={error} />;
+  if (config === null) return <Spinner />;
+
+  const save = async () => {
+    setSaving(true);
+    setNotice('');
+    setError('');
+    try {
+      const res = await updateSocialAutomation(config);
+      setConfig(res.automation);
+      setNotice('Saved.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const set = (patch: Partial<SocialAutomationConfig>) =>
+    setConfig((c) => (c ? { ...c, ...patch } : c));
+
+  return (
+    <Card style={{ padding: '16px 18px', maxWidth: 620 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Daily-special auto post</div>
+      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
+        Each day at the chosen time, one post advertising an active special is drafted
+        for the selected channels. Nothing is posted when no special is active. Items
+        without a real photo skip Instagram and post caption-only elsewhere.
+      </p>
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: canEdit ? 'pointer' : 'default' }}>
+          <input
+            type="checkbox"
+            checked={config.enabled}
+            disabled={!canEdit}
+            onChange={(e) => set({ enabled: e.target.checked })}
+          />
+          Enabled
+        </label>
+
+        <Input
+          label="Post time (Maldives local)"
+          type="time"
+          value={config.time}
+          disabled={!canEdit}
+          onChange={(v: string) => set({ time: v })}
+          style={{ maxWidth: 160 }}
+        />
+
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Channels</div>
+          {options.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>No enabled channels to choose from.</p>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {options.map((c) => (
+                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: canEdit ? 'pointer' : 'default' }}>
+                  <input
+                    type="checkbox"
+                    checked={config.channel_ids.includes(c.id)}
+                    disabled={!canEdit}
+                    onChange={(e) => set({
+                      channel_ids: e.target.checked
+                        ? [...config.channel_ids, c.id]
+                        : config.channel_ids.filter((x) => x !== c.id),
+                    })}
+                  />
+                  {PLATFORM_LABELS[c.platform] ?? c.platform} — {c.name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+            Caption template
+            <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
+              {' '}— variables: {'{item} {name_dv} {price} {badge} {description} {link}'}
+            </span>
+          </div>
+          <textarea
+            value={config.template}
+            disabled={!canEdit}
+            onChange={(e) => set({ template: e.target.value })}
+            rows={4}
+            maxLength={2200}
+            style={{
+              width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
+              border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
+              color: 'var(--color-text)', resize: 'vertical',
+            }}
+          />
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: canEdit ? 'pointer' : 'default' }}>
+          <input
+            type="checkbox"
+            checked={config.unattended}
+            disabled={!canEdit}
+            onChange={(e) => set({ unattended: e.target.checked })}
+            style={{ marginTop: 2 }}
+          />
+          <span>
+            Post without approval (unattended)
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Off = each day's post waits in the Posts tab for someone to approve. Turn on
+              only after approved posts have run cleanly for a while.
+            </span>
+          </span>
+        </label>
+
+        {canEdit && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Btn onClick={() => { void save(); }} disabled={saving}>{saving ? 'Saving…' : 'Save settings'}</Btn>
+            {notice && <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{notice}</span>}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

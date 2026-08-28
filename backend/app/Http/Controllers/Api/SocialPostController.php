@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Permissions\Services\PermissionService;
 use App\Domains\Social\Jobs\PublishSocialDeliveryJob;
+use App\Domains\Social\Services\SocialAutomationSettings;
 use App\Domains\Social\Services\SocialDriverRegistry;
 use App\Domains\Social\Services\SocialPublisher;
 use App\Models\Item;
@@ -139,13 +140,44 @@ class SocialPostController extends Controller
         return response()->json(['post' => $this->payload($post)]);
     }
 
-    /** Publish a draft/scheduled post immediately. */
+    /** GET  /admin/social/automation — daily-special automation settings. */
+    public function automationSettings(SocialAutomationSettings $settings): JsonResponse
+    {
+        return response()->json(['automation' => $settings->all()]);
+    }
+
+    /**
+     * PUT /admin/social/automation. social.publish holders configure it —
+     * these settings decide what gets posted publicly. `unattended` is the
+     * pilot gate: leave it off until approved posts have run cleanly.
+     */
+    public function updateAutomationSettings(Request $request, SocialAutomationSettings $settings): JsonResponse
+    {
+        $this->requirePermission($request, 'social.publish');
+
+        $data = $request->validate([
+            'enabled' => ['sometimes', 'boolean'],
+            'time' => ['sometimes', 'date_format:H:i'],
+            'channel_ids' => ['sometimes', 'array'],
+            'channel_ids.*' => ['integer', 'exists:social_channels,id'],
+            'template' => ['sometimes', 'string', 'max:2200'],
+            'unattended' => ['sometimes', 'boolean'],
+        ]);
+
+        return response()->json(['automation' => $settings->update($data)]);
+    }
+
+    /** Publish (or approve) a draft/scheduled/awaiting-approval post now. */
     public function publishNow(Request $request, SocialPublisher $publisher, int $id): JsonResponse
     {
         $this->requirePermission($request, 'social.publish');
         $post = SocialPost::with('deliveries')->findOrFail($id);
-        if (!in_array($post->status, [SocialPost::STATUS_DRAFT, SocialPost::STATUS_SCHEDULED], true)) {
-            return response()->json(['message' => 'Only draft or scheduled posts can be published.'], 422);
+        if (!in_array($post->status, [
+            SocialPost::STATUS_DRAFT,
+            SocialPost::STATUS_SCHEDULED,
+            SocialPost::STATUS_AWAITING_APPROVAL,
+        ], true)) {
+            return response()->json(['message' => 'Only draft, scheduled or awaiting-approval posts can be published.'], 422);
         }
 
         $post->forceFill(['status' => SocialPost::STATUS_QUEUED, 'scheduled_at' => null])->save();

@@ -122,6 +122,23 @@ class SocialPublisher
             return;
         }
 
+        // Automated posts revalidate immediately before publishing (plan
+        // §2c): the special may have ended, the item gone off sale, or the
+        // price moved since the post was drafted/approved. Skip honestly
+        // rather than publish something wrong.
+        $staleReason = $this->staleReasonForAutomatedPost($post);
+        if ($staleReason !== null) {
+            $delivery->recordAttempt('skipped', $staleReason);
+            $delivery->forceFill([
+                'status' => SocialPostDelivery::STATUS_SKIPPED,
+                'error_class' => SocialPostDelivery::ERROR_VALIDATION,
+                'error_message' => $staleReason,
+            ])->save();
+            $post->refreshStatusFromDeliveries();
+
+            return;
+        }
+
         $driver = $this->drivers->for($channel->platform);
 
         // An unknown outcome reconciles before any new attempt — the
@@ -150,6 +167,44 @@ class SocialPublisher
         }
 
         $this->markPublished($delivery, $post, $channel, $result->providerPostId, $result->permalink);
+    }
+
+    /**
+     * Null when fine; otherwise why this automated post must not publish.
+     * Manual posts are a human's judgment call and are not second-guessed.
+     */
+    private function staleReasonForAutomatedPost(SocialPost $post): ?string
+    {
+        if ($post->source !== 'auto_special') {
+            return null;
+        }
+
+        $snapshot = $post->snapshot ?? [];
+        $item = !empty($snapshot['item_id']) ? \App\Models\Item::find((int) $snapshot['item_id']) : null;
+        if ($item === null || !$item->is_active || !$item->is_available) {
+            return 'Item is no longer sellable.';
+        }
+
+        if (!empty($snapshot['special_id'])) {
+            $special = \App\Models\DailySpecial::find((int) $snapshot['special_id']);
+            if ($special === null || !$special->isCurrentlyActive()) {
+                return 'The special has ended.';
+            }
+        }
+
+        if (isset($snapshot['price'])) {
+            $resolved = app(\App\Services\EffectivePriceService::class)
+                ->resolveUnitPrice($item->id, (float) $item->base_price, $item);
+            if (round((float) $resolved->unitPrice, 2) !== round((float) $snapshot['price'], 2)) {
+                return sprintf(
+                    'Price changed since drafting (MVR %.2f now vs MVR %.2f in the post).',
+                    (float) $resolved->unitPrice,
+                    (float) $snapshot['price'],
+                );
+            }
+        }
+
+        return null;
     }
 
     private function markPublished(

@@ -159,6 +159,13 @@ Schedule::command('social:publish-due')
     ->onFailure($alertOnFailure('social:publish-due'))
     ->after($trackSuccess('social:publish-due'));
 
+// Social Hub: daily-special automation (fires at its configured local time)
+Schedule::command('social:run-automations')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:run-automations'))
+    ->after($trackSuccess('social:run-automations'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

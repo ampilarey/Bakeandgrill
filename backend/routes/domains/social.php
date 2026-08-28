@@ -30,6 +30,10 @@ if (routes_domain_section_is('social', 'admin') && !routes_domain_loaded('social
         Route::post('/posts/{id}/publish', [SocialPostController::class, 'publishNow']);
         Route::post('/posts/{id}/cancel', [SocialPostController::class, 'cancel']);
         Route::post('/posts/{id}/deliveries/{deliveryId}/retry', [SocialPostController::class, 'retryDelivery']);
+        // Automation settings: read with social.view; writes check
+        // social.publish in-controller (they decide what auto-publishes).
+        Route::get('/automation', [SocialPostController::class, 'automationSettings']);
+        Route::put('/automation', [SocialPostController::class, 'updateAutomationSettings']);
     });
 
     Route::middleware('permission:social.channels.manage')->prefix('admin/social')->group(function () {

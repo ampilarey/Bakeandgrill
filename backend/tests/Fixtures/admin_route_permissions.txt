@@ -190,7 +190,7 @@ backend/routes/domains/reporting.php:62:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage
 backend/routes/domains/signage.php:17:signage.manage
 backend/routes/domains/social.php:23:social.view
-backend/routes/domains/social.php:35:social.channels.manage
+backend/routes/domains/social.php:39:social.channels.manage
 backend/routes/domains/staff.php:104:customers.manage
 backend/routes/domains/staff.php:109:staff.update
 backend/routes/domains/staff.php:115:menu.manage
