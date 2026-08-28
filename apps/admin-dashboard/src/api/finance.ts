@@ -304,6 +304,7 @@ export type BreakEvenSeed = {
   fixed_cost: number;
   contribution_margin_ratio: number;
   fixed_cost_monthly: number;
+  fixed_cost_lines: { key: string; label: string; monthly: number }[];
   avg_daily_revenue_ex_gst: number;
   break_even_revenue_monthly: number | null;
   break_even_revenue_daily: number | null;

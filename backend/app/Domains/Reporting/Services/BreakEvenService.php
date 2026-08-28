@@ -44,6 +44,7 @@ class BreakEvenService
      *   fixed_cost: float,
      *   contribution_margin_ratio: float,
      *   fixed_cost_monthly: float,
+     *   fixed_cost_lines: list<array{key: string, label: string, monthly: float}>,
      *   avg_daily_revenue_ex_gst: float,
      *   break_even_revenue_monthly: float|null,
      *   break_even_revenue_daily: float|null,
@@ -88,18 +89,43 @@ class BreakEvenService
 
         $variableCost = round($purchaseCogsExGst + (float) $wholesale['cogs'], 2);
 
-        // Fixed cost = approved operating expenses + waste over the window.
-        // Waste is not strictly fixed, but it is a standing loss the business
-        // carries rather than a per-sale cost, so it sits on the fixed side of
-        // an estimate. The owner can move it.
-        $opex = (float) Expense::whereDate('expense_date', '>=', $from->toDateString())
+        // Fixed cost = approved operating expenses + waste over the window,
+        // itemised by expense category so the owner sees and tunes each line
+        // (rent, salaries, utilities…) rather than one lump. Waste is not
+        // strictly fixed, but it is a standing loss the business carries rather
+        // than a per-sale cost, so it sits on the fixed side as its own line
+        // the owner can move or remove.
+        $opexByCategory = Expense::whereDate('expense_date', '>=', $from->toDateString())
             ->whereDate('expense_date', '<=', $to->toDateString())
             ->where('status', 'approved')
-            ->sum('amount');
+            ->selectRaw('SUM(amount) as total, expense_category_id')
+            ->with('category:id,name,icon')
+            ->groupBy('expense_category_id')
+            ->get();
 
+        $opex = (float) $opexByCategory->sum('total');
         $waste = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
-
         $fixedCost = round($opex + $waste, 2);
+
+        // One monthly-normalised row per category, biggest first, plus waste.
+        $fixedLines = $opexByCategory
+            ->map(fn ($row) => [
+                'key' => 'category:' . ($row->expense_category_id ?? 'none'),
+                'label' => $row->category?->name ?? 'Uncategorised',
+                'monthly' => round(((float) $row->total) / $days * 30, 2),
+            ])
+            ->filter(fn (array $line) => $line['monthly'] > 0)
+            ->sortByDesc('monthly')
+            ->values()
+            ->all();
+
+        if ($waste > 0) {
+            $fixedLines[] = [
+                'key' => 'waste',
+                'label' => 'Waste',
+                'monthly' => round($waste / $days * 30, 2),
+            ];
+        }
 
         $marginRatio = BreakEvenCalculator::contributionMarginRatio($revenueExGst, $variableCost);
 
@@ -120,6 +146,7 @@ class BreakEvenService
             'fixed_cost' => $fixedCost,
             'contribution_margin_ratio' => $marginRatio,
             'fixed_cost_monthly' => $fixedCostMonthly,
+            'fixed_cost_lines' => $fixedLines,
             'avg_daily_revenue_ex_gst' => $avgDailyRevenue,
             'break_even_revenue_monthly' => $breakEvenMonthly,
             'break_even_revenue_daily' => $breakEvenDaily,

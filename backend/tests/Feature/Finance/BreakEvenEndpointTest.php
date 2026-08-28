@@ -140,6 +140,35 @@ class BreakEvenEndpointTest extends TestCase
         $this->assertSame(750.0, $estimate['break_even_revenue_monthly']);
     }
 
+    public function test_fixed_costs_are_itemised_by_expense_category(): void
+    {
+        // "More advanced" ask: the owner should see Rent and Salaries as
+        // separate, editable lines rather than one lump, biggest first.
+        $this->configureGst();
+        $rent = ExpenseCategory::create(['slug' => 'rent', 'name' => 'Rent', 'is_active' => true]);
+        $wages = ExpenseCategory::create(['slug' => 'wages', 'name' => 'Salaries', 'is_active' => true]);
+        $user = User::factory()->create()->id;
+
+        Expense::create(['expense_number' => 'E1', 'expense_category_id' => $rent->id, 'user_id' => $user, 'description' => 'Rent', 'amount_laar' => 30000, 'amount' => 300, 'expense_date' => '2026-08-01', 'status' => 'approved']);
+        Expense::create(['expense_number' => 'E2', 'expense_category_id' => $wages->id, 'user_id' => $user, 'description' => 'Wages', 'amount_laar' => 90000, 'amount' => 900, 'expense_date' => '2026-08-02', 'status' => 'approved']);
+
+        $estimate = app(BreakEvenService::class)->estimate(
+            Carbon::parse('2026-08-01')->startOfDay(),
+            Carbon::parse('2026-08-30')->endOfDay(),
+        );
+
+        $lines = $estimate['fixed_cost_lines'];
+        $this->assertSame('Salaries', $lines[0]['label'], 'biggest line first');
+        $this->assertSame(900.0, $lines[0]['monthly']);
+        $this->assertSame('Rent', $lines[1]['label']);
+        $this->assertSame(300.0, $lines[1]['monthly']);
+        // The lines sum to the single fixed_cost_monthly headline.
+        $this->assertSame(
+            $estimate['fixed_cost_monthly'],
+            round(array_sum(array_column($lines, 'monthly')), 2),
+        );
+    }
+
     public function test_selling_below_cost_reports_no_break_even(): void
     {
         // MVR 100 revenue against MVR 150 of stock — a negative margin. The
