@@ -327,6 +327,7 @@ final class PermissionCatalog
             'integrations.webhooks',
             'integrations.xero',
             'promotions.discount_cards',
+            'recipes.manage',
             'roles_permissions.manage',
             'service_availability.emergency',
             'service_availability.manage_internal',
