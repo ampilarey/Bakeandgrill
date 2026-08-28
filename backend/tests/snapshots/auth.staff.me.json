@@ -126,6 +126,7 @@
             "purchase_requests.verify",
             "purchase_requests.view_all",
             "purchase_requests.view_own",
+            "recipes.manage",
             "reports.basic",
             "reports.financial",
             "reports.gst",
