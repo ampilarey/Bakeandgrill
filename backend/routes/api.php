@@ -149,6 +149,9 @@ require __DIR__ . '/domains/payments.php';
 $GLOBALS['routes_sections']['marketing'] = 'public';
 require __DIR__ . '/domains/marketing.php';
 
+$GLOBALS['routes_sections']['social'] = 'public';
+require __DIR__ . '/domains/social.php';
+
 require __DIR__ . '/domains/loyalty.php';
 
 $GLOBALS['routes_sections']['orders'] = 'delivery';

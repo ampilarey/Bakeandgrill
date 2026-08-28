@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class SocialChannel extends Model
 {
-    public const PLATFORMS = ['facebook', 'instagram', 'telegram'];
+    public const PLATFORMS = ['facebook', 'instagram', 'telegram', 'viber'];
 
     protected $fillable = [
         'platform',

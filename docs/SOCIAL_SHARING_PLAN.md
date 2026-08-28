@@ -4,7 +4,7 @@ Status: **Phase 1 shipped 2026-08-28** (durable item/offer pages, per-item OG
 metadata, share controls). **Phase 2 built 2026-08-28** (Social Hub core:
 channels with encrypted write-only credentials, manual composer with frozen
 snapshots, FB/IG/Telegram drivers, delivery state machine, fail-closed
-environment guard, clone-script sanitization). **Phase 3 built 2026-08-28** (approval queue + guarded daily-special automation). **Phase 4 built 2026-08-28** (video renderer + benchmark gate + social queue; enable per host only after social:video-benchmark passes on TEST). Phase 5 (Viber, X) not started.
+environment guard, clone-script sanitization). **Phase 3 built 2026-08-28** (approval queue + guarded daily-special automation). **Phase 4 built 2026-08-28** (video renderer + benchmark gate + social queue; enable per host only after social:video-benchmark passes on TEST). **Phase 5 Viber driver built 2026-08-28** (Channel post API + signed webhook; lazy guarded webhook registration). X deliberately unbuilt — gated on the owner accepting current X API pricing with a spend cap.
 Rev 2, 2026-08-28 — incorporates external review findings (durable links,
 delivery reliability, TEST safety, reuse of existing video infrastructure,
 corrected platform facts).

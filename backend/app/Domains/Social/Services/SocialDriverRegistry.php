@@ -8,6 +8,7 @@ use App\Domains\Social\Drivers\FacebookPageDriver;
 use App\Domains\Social\Drivers\InstagramDriver;
 use App\Domains\Social\Drivers\SocialDriverInterface;
 use App\Domains\Social\Drivers\TelegramDriver;
+use App\Domains\Social\Drivers\ViberChannelDriver;
 use InvalidArgumentException;
 
 /**
@@ -23,6 +24,7 @@ class SocialDriverRegistry
             'facebook' => FacebookPageDriver::class,
             'instagram' => InstagramDriver::class,
             'telegram' => TelegramDriver::class,
+            'viber' => ViberChannelDriver::class,
         ];
     }
 

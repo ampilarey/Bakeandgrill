@@ -18,6 +18,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   facebook: 'Facebook Page',
   instagram: 'Instagram',
   telegram: 'Telegram',
+  viber: 'Viber Channel',
 };
 
 const STATUS_COLORS: Record<string, 'green' | 'gray' | 'red' | 'orange' | 'blue'> = {
