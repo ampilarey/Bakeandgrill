@@ -125,6 +125,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
       { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
       { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'reports.financial', description: 'P&L statement' },
+      { to: '/break-even',  icon: Target,     label: 'Break-even',    permission: 'reports.financial', description: 'Estimated sales to cover costs' },
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
       { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },

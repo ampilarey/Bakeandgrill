@@ -295,6 +295,34 @@ export async function getProfitAndLoss(from: string, to: string): Promise<PnLRep
   return req(`/reports/finance/profit-and-loss?from=${from}&to=${to}`);
 }
 
+export type BreakEvenSeed = {
+  from: string;
+  to: string;
+  days_in_window: number;
+  revenue_ex_gst: number;
+  variable_cost: number;
+  fixed_cost: number;
+  contribution_margin_ratio: number;
+  fixed_cost_monthly: number;
+  avg_daily_revenue_ex_gst: number;
+  break_even_revenue_monthly: number | null;
+  break_even_revenue_daily: number | null;
+  currently_covers: boolean | null;
+  components: {
+    retail_revenue_ex_gst: number;
+    wholesale_revenue_ex_gst: number;
+    purchase_cogs_ex_gst: number;
+    wholesale_cogs: number;
+    operating_expenses: number;
+    waste: number;
+    refunds: number;
+  };
+};
+
+export async function getBreakEvenSeed(from: string, to: string): Promise<BreakEvenSeed> {
+  return req(`/reports/finance/break-even?from=${from}&to=${to}`);
+}
+
 export async function getCashFlow(from: string, to: string): Promise<{
   total_inflow: number;
   total_wholesale_inflow?: number;

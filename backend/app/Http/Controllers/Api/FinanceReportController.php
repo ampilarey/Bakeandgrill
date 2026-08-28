@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Gst\Services\GstReportService;
 use App\Domains\Payments\Services\PaymentCommissionService;
+use App\Domains\Reporting\Services\BreakEvenService;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\Expense;
@@ -123,6 +124,23 @@ class FinanceReportController extends Controller
             'operating_profit' => $operatingProfit,
             'net_profit_margin_pct' => $combinedNet > 0 ? round($operatingProfit / $combinedNet * 100, 2) : 0,
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Break-even estimate
+    // ──────────────────────────────────────────────────────────
+
+    /**
+     * Seed data for the admin break-even calculator: the trailing window's
+     * GST-exclusive revenue, variable cost, fixed cost and the break-even
+     * those imply. Everything is a starting point the owner overrides in the
+     * UI — see BreakEvenService and AUDIT_FINANCE_2026-08-26.md.
+     */
+    public function breakEven(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        return response()->json(app(BreakEvenService::class)->estimate($from, $to));
     }
 
     // ──────────────────────────────────────────────────────────

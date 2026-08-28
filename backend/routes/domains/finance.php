@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expe
 // ─── Finance Reports ───────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('reports/finance')->group(function () {
     Route::get('/profit-and-loss', [App\Http\Controllers\Api\FinanceReportController::class, 'profitAndLoss']);
+    Route::get('/break-even', [App\Http\Controllers\Api\FinanceReportController::class, 'breakEven']);
     Route::get('/cash-flow', [App\Http\Controllers\Api\FinanceReportController::class, 'cashFlow']);
     Route::get('/tax', [App\Http\Controllers\Api\FinanceReportController::class, 'taxReport']);
     Route::prefix('gst')->group(function () {
