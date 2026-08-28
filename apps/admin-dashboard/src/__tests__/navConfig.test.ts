@@ -59,6 +59,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/procurement-report', permission: 'reports.financial' },
   { to: '/gst', permission: 'reports.financial' },
   { to: '/profit-loss', permission: 'reports.financial' },
+  { to: '/break-even', permission: 'reports.financial' },
   { to: '/invoices', permission: 'finance.invoices' },
   { to: '/expenses', permission: 'finance.expenses' },
   { to: '/refunds', permission: 'orders.refund' },
