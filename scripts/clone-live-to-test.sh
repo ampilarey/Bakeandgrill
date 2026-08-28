@@ -154,6 +154,25 @@ if [[ "$DO_DB" -eq 1 ]]; then
   mysql -u"$TEST_USER" -h"$TEST_HOST" -P"$TEST_PORT" -e \
     "DROP DATABASE IF EXISTS \`${TEST_DB}\`; CREATE DATABASE \`${TEST_DB}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
   mysql -u"$TEST_USER" -h"$TEST_HOST" -P"$TEST_PORT" "$TEST_DB" < "$LIVE_DUMP"
+
+  # Social Hub safety (docs/SOCIAL_SHARING_PLAN.md §2f): the dump carries the
+  # LIVE social credentials, and the TEST scheduler/queue would happily post
+  # to the real accounts with them. Strip credentials + remote ids, disable
+  # every channel and automation, and cancel anything scheduled/queued —
+  # on EVERY clone, unconditionally. Tables may not exist on an older dump.
+  log "sanitizing social channels on TEST (strip credentials, disable, cancel queue)"
+  mysql -u"$TEST_USER" -h"$TEST_HOST" -P"$TEST_PORT" "$TEST_DB" <<'SQL' 2>/dev/null || true
+UPDATE social_channels
+   SET credentials = NULL,
+       remote_account_id = NULL,
+       is_enabled = 0;
+UPDATE social_posts
+   SET status = 'cancelled'
+ WHERE status IN ('scheduled', 'queued', 'processing', 'awaiting_approval');
+UPDATE social_post_deliveries
+   SET status = 'cancelled'
+ WHERE status IN ('scheduled', 'queued', 'processing');
+SQL
   unset MYSQL_PWD
   log "database clone complete"
 fi

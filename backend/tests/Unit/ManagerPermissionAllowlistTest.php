@@ -150,6 +150,12 @@ class ManagerPermissionAllowlistTest extends TestCase
         'shifts.view_all_history',
         'shifts.view_own_history',
         'signage.manage',
+        // Social Hub (2026-08-28, intentional): posting workflow is
+        // manager-grantable; social.channels.manage (tokens) stays owner-only.
+        'social.compose',
+        'social.publish',
+        'social.schedule',
+        'social.view',
         'sms.campaigns.send',
         'sms.contacts.manage',
         'sms.logs.view',
@@ -182,7 +188,7 @@ class ManagerPermissionAllowlistTest extends TestCase
             $expected,
             $actual,
             'managerSlugs() no longer matches the pre-hardening effective set. '
-            .'Do not edit the fixture to silence this — investigate which slug was added or removed.'
+            . 'Do not edit the fixture to silence this — investigate which slug was added or removed.',
         );
     }
 
@@ -207,8 +213,8 @@ class ManagerPermissionAllowlistTest extends TestCase
             [],
             $undecided,
             'Decide whether managers get these permissions — add each slug to managerSlugs() '
-            .'or to the owner-only list (PermissionCatalog::ownerOnlySlugs()). Undecided: '
-            .implode(', ', $undecided)
+            . 'or to the owner-only list (PermissionCatalog::ownerOnlySlugs()). Undecided: '
+            . implode(', ', $undecided),
         );
     }
 
@@ -220,6 +226,6 @@ class ManagerPermissionAllowlistTest extends TestCase
             PermissionCatalog::ownerOnlySlugs(),
         ));
 
-        $this->assertSame([], $overlap, 'Slug listed as both manager and owner-only: '.implode(', ', $overlap));
+        $this->assertSame([], $overlap, 'Slug listed as both manager and owner-only: ' . implode(', ', $overlap));
     }
 }

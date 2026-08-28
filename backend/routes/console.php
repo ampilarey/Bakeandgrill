@@ -152,6 +152,13 @@ Schedule::command('service-availability:activate-scheduled')
     ->onFailure($alertOnFailure('service-availability:activate-scheduled'))
     ->after($trackSuccess('service-availability:activate-scheduled'));
 
+// Social Hub: queue scheduled social posts whose time has come
+Schedule::command('social:publish-due')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('social:publish-due'))
+    ->after($trackSuccess('social:publish-due'));
+
 // Content Studio: apply due scheduled publishes
 Schedule::command('content:publish-scheduled')
     ->everyMinute()

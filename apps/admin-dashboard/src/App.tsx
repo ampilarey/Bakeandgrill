@@ -69,6 +69,7 @@ const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealth
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
+const SocialHubPage           = lazyWithRetry(() => import('./pages/SocialHubPage').then((m) => ({ default: m.SocialHubPage })));
 const WholesalePage           = lazyWithRetry(() => import('./pages/WholesalePage'));
 const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAccountPage'));
 const WholesaleDeliveriesPage = lazyWithRetry(() => import('./pages/WholesaleDeliveriesPage'));
@@ -577,6 +578,11 @@ export default function App() {
                 <Route path="signage" element={
                   <PermissionGuard user={user} permission="signage.manage">
                     <SignagePage />
+                  </PermissionGuard>
+                } />
+                <Route path="social" element={
+                  <PermissionGuard user={user} permission="social.view">
+                    <SocialHubPage />
                   </PermissionGuard>
                 } />
                 <Route path="*" element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />

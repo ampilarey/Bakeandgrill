@@ -109,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage'], description: 'Campaigns, templates & sends' },
       { to: '/sms/control-center', icon: MessageSquare, label: 'SMS Control Center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage'], description: 'Toggles, wording & kill switch' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
+      { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram & Telegram' },
     ],
   },
   {

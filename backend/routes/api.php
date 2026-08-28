@@ -111,6 +111,9 @@ Route::middleware(['auth:sanctum', 'staff.token'])->group(function () {
     $GLOBALS['routes_sections']['marketing'] = 'sms_promotions';
     require __DIR__ . '/domains/marketing.php';
 
+    $GLOBALS['routes_sections']['social'] = 'admin';
+    require __DIR__ . '/domains/social.php';
+
     $GLOBALS['routes_sections']['catalog'] = 'barcode';
     require __DIR__ . '/domains/catalog.php';
 });

@@ -11,6 +11,7 @@ export * from './staff';
 export * from './customers';
 export * from './customer-growth';
 export * from './catering';
+export * from './social';
 export * from './marketing';
 export * from './discount-cards';
 export * from './discounts';

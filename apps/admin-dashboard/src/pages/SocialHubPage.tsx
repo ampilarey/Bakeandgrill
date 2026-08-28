@@ -1,0 +1,564 @@
+import { useCallback, useEffect, useState } from 'react';
+import {
+  cancelSocialPost, createSocialChannel, createSocialPost, deleteSocialChannel,
+  fetchSocialChannelOptions, fetchSocialChannels, fetchSocialPosts,
+  publishSocialPostNow, retrySocialDelivery, testSocialChannel, updateSocialChannel,
+  type SocialChannelOption, type SocialChannelRow, type SocialPlatformCaps, type SocialPostRow,
+} from '../api';
+import {
+  Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
+} from '../components/Layout';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { usePageTitle } from '../hooks/usePageTitle';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  facebook: 'Facebook Page',
+  instagram: 'Instagram',
+  telegram: 'Telegram',
+};
+
+const STATUS_COLORS: Record<string, 'green' | 'gray' | 'red' | 'orange' | 'blue'> = {
+  published: 'green',
+  draft: 'gray',
+  scheduled: 'blue',
+  queued: 'blue',
+  processing: 'blue',
+  partial_failure: 'orange',
+  unknown: 'orange',
+  skipped: 'orange',
+  failed: 'red',
+  cancelled: 'gray',
+};
+
+/**
+ * Social Hub (docs/SOCIAL_SHARING_PLAN.md, phase 2): compose posts to the
+ * business's own accounts, watch the queue/history, and (owner-only) manage
+ * channel connections. Credentials are write-only — the UI only ever sees
+ * masked summaries.
+ */
+export function SocialHubPage() {
+  usePageTitle('Social Hub');
+  const { can } = useCurrentUserPermissions();
+  const canCompose = can('social.compose');
+  const canChannels = can('social.channels.manage');
+
+  const [tab, setTab] = useState<'posts' | 'channels'>('posts');
+  const [channels, setChannels] = useState<SocialChannelRow[]>([]);
+  const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
+  const [posts, setPosts] = useState<SocialPostRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [composing, setComposing] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<SocialChannelRow | 'new' | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const postsRes = await fetchSocialPosts();
+      setPosts(postsRes.posts);
+      if (canChannels) {
+        const chRes = await fetchSocialChannels();
+        setChannels(chRes.channels);
+        setPlatforms(chRes.platforms);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [canChannels]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="Social Hub"
+        subtitle="Post to the business's Facebook, Instagram and Telegram"
+        action={canCompose ? <Btn onClick={() => setComposing(true)}>+ New post</Btn> : undefined}
+      />
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <Btn small variant={tab === 'posts' ? 'primary' : 'secondary'} onClick={() => setTab('posts')}>Posts</Btn>
+        {canChannels && (
+          <Btn small variant={tab === 'channels' ? 'primary' : 'secondary'} onClick={() => setTab('channels')}>
+            Channels
+          </Btn>
+        )}
+      </div>
+
+      {error && <ErrorMsg message={error} />}
+      {loading ? <Spinner /> : tab === 'posts' ? (
+        <PostList posts={posts} onChanged={load} />
+      ) : (
+        <ChannelList
+          channels={channels}
+          onEdit={setEditingChannel}
+          onChanged={load}
+        />
+      )}
+
+      {composing && (
+        <ComposeModal
+          onClose={() => setComposing(false)}
+          onSaved={() => { setComposing(false); void load(); }}
+          canPublish={can('social.publish')}
+          canSchedule={can('social.schedule')}
+        />
+      )}
+      {editingChannel && (
+        <ChannelModal
+          channel={editingChannel === 'new' ? null : editingChannel}
+          platforms={platforms}
+          onClose={() => setEditingChannel(null)}
+          onSaved={() => { setEditingChannel(null); void load(); }}
+        />
+      )}
+      {tab === 'channels' && canChannels && !loading && (
+        <div style={{ marginTop: 12 }}>
+          <Btn variant="secondary" onClick={() => setEditingChannel('new')}>+ Connect channel</Btn>
+        </div>
+      )}
+    </PageShell>
+  );
+}
+
+function PostList({ posts, onChanged }: { posts: SocialPostRow[]; onChanged: () => void }) {
+  const { can } = useCurrentUserPermissions();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError('');
+    try { await fn(); onChanged(); } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  if (posts.length === 0) {
+    return (
+      <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+        No posts yet. Compose one to get started.
+      </Card>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      {error && <ErrorMsg message={error} />}
+      {posts.map((post) => (
+        <Card key={post.id} style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {post.snapshot.image_url && (
+              <img
+                src={post.snapshot.image_url}
+                alt=""
+                style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, flexShrink: 0 }}
+              />
+            )}
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Badge label={post.status.replace('_', ' ')} color={STATUS_COLORS[post.status] ?? 'gray'} />
+                {post.scheduled_at && post.status === 'scheduled' && (
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    for {new Date(post.scheduled_at).toLocaleString()}
+                  </span>
+                )}
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  {post.created_at ? new Date(post.created_at).toLocaleString() : ''}
+                </span>
+              </div>
+              <p style={{
+                margin: '6px 0 0', fontSize: 13, whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere', color: 'var(--color-text)',
+              }}>
+                {post.snapshot.caption}
+              </p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {post.deliveries.map((d) => (
+                  <span
+                    key={d.id}
+                    title={d.error_message ?? undefined}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 999,
+                      border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)',
+                    }}
+                  >
+                    {PLATFORM_LABELS[d.channel?.platform ?? ''] ?? d.channel?.platform} · {d.status}
+                    {d.permalink && (
+                      <a href={d.permalink} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)' }}>
+                        view
+                      </a>
+                    )}
+                    {can('social.publish')
+                      && ['failed', 'unknown', 'skipped'].includes(d.status) && (
+                      <button
+                        onClick={() => { void act(() => retrySocialDelivery(post.id, d.id)); }}
+                        disabled={busy}
+                        style={{
+                          border: 'none', background: 'transparent', cursor: 'pointer',
+                          color: 'var(--color-primary)', font: 'inherit', padding: 0,
+                        }}
+                      >
+                        retry
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {can('social.publish') && (
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {['draft', 'scheduled'].includes(post.status) && (
+                  <>
+                    <Btn small disabled={busy} onClick={() => { void act(() => publishSocialPostNow(post.id)); }}>
+                      Post now
+                    </Btn>
+                    <Btn small variant="secondary" disabled={busy} onClick={() => { void act(() => cancelSocialPost(post.id)); }}>
+                      Cancel
+                    </Btn>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ChannelList({ channels, onEdit, onChanged }: {
+  channels: SocialChannelRow[];
+  onEdit: (c: SocialChannelRow) => void;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const act = async (fn: () => Promise<unknown>, doneMsg: string) => {
+    setBusy(true);
+    setNotice('');
+    try { await fn(); setNotice(doneMsg); onChanged(); } catch (e) { setNotice((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  if (channels.length === 0) {
+    return (
+      <Card style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
+        No channels connected yet.
+      </Card>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      {notice && <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0 }}>{notice}</p>}
+      {channels.map((c) => (
+        <Card key={c.id} style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px' }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                {PLATFORM_LABELS[c.platform] ?? c.platform} — {c.name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                {Object.entries(c.credential_summary).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'no credentials'}
+                {c.last_published_at && ` · last post ${new Date(c.last_published_at).toLocaleString()}`}
+              </div>
+            </div>
+            <Badge label={c.is_enabled ? 'Enabled' : 'Disabled'} color={c.is_enabled ? 'green' : 'gray'} />
+            {c.is_test_channel && <Badge label="Test channel" color="orange" />}
+            {c.recent_failures > 0 && <Badge label={`${c.recent_failures} recent failures`} color="red" />}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn small variant="secondary" disabled={busy} onClick={() => onEdit(c)}>Edit</Btn>
+              <Btn
+                small
+                variant="secondary"
+                disabled={busy || !c.is_enabled}
+                onClick={() => { void act(() => testSocialChannel(c.id), 'Test post queued — check the Posts tab.'); }}
+              >
+                Test post
+              </Btn>
+              <Btn
+                small
+                variant="danger"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm(`Disconnect ${c.name}? Its credentials are removed immediately.`)) {
+                    void act(() => deleteSocialChannel(c.id), 'Channel disconnected.');
+                  }
+                }}
+              >
+                Disconnect
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ComposeModal({ onClose, onSaved, canPublish, canSchedule }: {
+  onClose: () => void;
+  onSaved: () => void;
+  canPublish: boolean;
+  canSchedule: boolean;
+}) {
+  const [channels, setChannels] = useState<SocialChannelOption[] | null>(null);
+  const [platforms, setPlatforms] = useState<Record<string, SocialPlatformCaps>>({});
+  const [selected, setSelected] = useState<number[]>([]);
+  const [caption, setCaption] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [itemId, setItemId] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const { can } = useCurrentUserPermissions();
+
+  useEffect(() => {
+    // The picker endpoint needs only social.view (no credential data), so
+    // managers can compose without channel-management rights.
+    fetchSocialChannelOptions()
+      .then((res) => {
+        setChannels(res.channels);
+        setPlatforms(res.platforms);
+      })
+      .catch(() => setChannels([]));
+  }, []);
+
+  const needsImage = selected.some((id) => {
+    const ch = (channels ?? []).find((c) => c.id === id);
+    return ch ? platforms[ch.platform]?.requires_photo : false;
+  });
+
+  const submit = async (action: 'draft' | 'schedule' | 'now') => {
+    setSaving(true);
+    setError('');
+    try {
+      await createSocialPost({
+        caption,
+        image_url: imageUrl || null,
+        item_id: itemId ? Number(itemId) : null,
+        channel_ids: selected,
+        action,
+        scheduled_at: action === 'schedule' ? scheduledAt : null,
+      });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const disabled = saving || caption.trim() === '' || selected.length === 0
+    || (needsImage && imageUrl.trim() === '');
+
+  return (
+    <Modal
+      title="New social post"
+      onClose={onClose}
+      maxWidth={560}
+      footer={(
+        <ModalActions>
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Close</Btn>
+          {can('social.compose') && (
+            <Btn variant="secondary" disabled={disabled} onClick={() => { void submit('draft'); }}>Save draft</Btn>
+          )}
+          {canSchedule && (
+            <Btn variant="secondary" disabled={disabled || !scheduledAt} onClick={() => { void submit('schedule'); }}>
+              Schedule
+            </Btn>
+          )}
+          {canPublish && (
+            <Btn disabled={disabled} onClick={() => { void submit('now'); }}>Post now</Btn>
+          )}
+        </ModalActions>
+      )}
+    >
+      {channels === null ? <Spinner /> : (
+        <div style={{ display: 'grid', gap: 12 }}>
+          {error && <ErrorMsg message={error} />}
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Channels</div>
+            {channels.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+                No enabled channels. An owner can connect one under the Channels tab.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {channels.map((c) => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(c.id)}
+                      onChange={(e) => setSelected((s) => (
+                        e.target.checked ? [...s, c.id] : s.filter((x) => x !== c.id)
+                      ))}
+                    />
+                    {PLATFORM_LABELS[c.platform] ?? c.platform} — {c.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Caption</div>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={4}
+              maxLength={2200}
+              style={{
+                width: '100%', padding: 10, borderRadius: 10, fontFamily: 'inherit', fontSize: 13,
+                border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text)', resize: 'vertical',
+              }}
+            />
+          </div>
+
+          <Input
+            label={needsImage ? 'Image URL (required for Instagram)' : 'Image URL (optional)'}
+            value={imageUrl}
+            onChange={(v: string) => setImageUrl(v)}
+            placeholder="https://bakeandgrill.mv/storage/…"
+          />
+          <Input
+            label="Link to menu item id (optional — freezes price + adds the item photo)"
+            value={itemId}
+            onChange={(v: string) => setItemId(v.replace(/[^0-9]/g, ''))}
+            placeholder="e.g. 12"
+          />
+          {canSchedule && (
+            <Input
+              label="Schedule for (local time)"
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(v: string) => setScheduledAt(v)}
+            />
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function ChannelModal({ channel, platforms, onClose, onSaved }: {
+  channel: SocialChannelRow | null;
+  platforms: Record<string, SocialPlatformCaps>;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const platformKeys = Object.keys(platforms);
+  const [platform, setPlatform] = useState(channel?.platform ?? platformKeys[0] ?? 'facebook');
+  const [name, setName] = useState(channel?.name ?? '');
+  const [creds, setCreds] = useState<Record<string, string>>({});
+  const [isEnabled, setIsEnabled] = useState(channel?.is_enabled ?? false);
+  const [isTest, setIsTest] = useState(channel?.is_test_channel ?? false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const credKeys = platforms[platform]?.credentials ?? [];
+  const credsFilled = credKeys.every((k) => (creds[k] ?? '').trim() !== '');
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      if (channel) {
+        await updateSocialChannel(channel.id, {
+          name,
+          is_enabled: isEnabled,
+          is_test_channel: isTest,
+          // Rotation is all-or-nothing: only send credentials when every
+          // key is (re-)entered, otherwise keep the stored ones.
+          ...(credsFilled ? { credentials: creds } : {}),
+        });
+      } else {
+        await createSocialChannel({
+          platform, name, credentials: creds, is_enabled: isEnabled, is_test_channel: isTest,
+        });
+      }
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={channel ? `Edit ${channel.name}` : 'Connect channel'}
+      onClose={onClose}
+      maxWidth={480}
+      footer={(
+        <ModalActions>
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Cancel</Btn>
+          <Btn
+            onClick={() => { void save(); }}
+            disabled={saving || name.trim() === '' || (!channel && !credsFilled)}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </Btn>
+        </ModalActions>
+      )}
+    >
+      <div style={{ display: 'grid', gap: 12 }}>
+        {error && <ErrorMsg message={error} />}
+        {!channel && (
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Platform</div>
+            <select
+              value={platform}
+              onChange={(e) => { setPlatform(e.target.value); setCreds({}); }}
+              style={{
+                width: '100%', minHeight: 44, padding: '0 10px', borderRadius: 10, fontSize: 13,
+                border: '1.5px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text)', cursor: 'pointer',
+              }}
+            >
+              {platformKeys.map((p) => (
+                <option key={p} value={p}>{PLATFORM_LABELS[p] ?? p}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <Input label="Display name" value={name} onChange={(v: string) => setName(v)} placeholder="e.g. Main Facebook Page" />
+
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+            Credentials {channel && <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(leave blank to keep current — stored values are never shown)</span>}
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {credKeys.map((key) => (
+              <Input
+                key={key}
+                label={key}
+                type="password"
+                value={creds[key] ?? ''}
+                onChange={(v: string) => setCreds((c) => ({ ...c, [key]: v }))}
+                placeholder={channel?.credential_summary[key] ?? ''}
+                autoComplete="off"
+              />
+            ))}
+          </div>
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} />
+          Enabled (posts can be sent to this channel)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+          <input type="checkbox" checked={isTest} onChange={(e) => setIsTest(e.target.checked)} />
+          Test channel (a non-production server may only post to test channels)
+        </label>
+      </div>
+    </Modal>
+  );
+}

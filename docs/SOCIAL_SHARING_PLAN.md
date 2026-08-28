@@ -1,6 +1,10 @@
 # Social Sharing & Auto-Posting Plan
 
-Status: **approved, not yet built** (owner: "later we will build").
+Status: **Phase 1 shipped 2026-08-28** (durable item/offer pages, per-item OG
+metadata, share controls). **Phase 2 built 2026-08-28** (Social Hub core:
+channels with encrypted write-only credentials, manual composer with frozen
+snapshots, FB/IG/Telegram drivers, delivery state machine, fail-closed
+environment guard, clone-script sanitization). Phases 3–5 not started.
 Rev 2, 2026-08-28 — incorporates external review findings (durable links,
 delivery reliability, TEST safety, reuse of existing video infrastructure,
 corrected platform facts).
