@@ -36,7 +36,11 @@ class SiteStatsController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** GET /public-stats?surface=web|order — public, cached, per surface. */
+    /**
+     * GET /public-stats?surface=web|order — public, cached, per surface.
+     * Which counters (if any) each surface serves comes from that surface's
+     * "Public counters" block in the Customer Surface Builder.
+     */
     public function publicStats(Request $request, PublicSiteStats $public): JsonResponse
     {
         $surface = (string) $request->query('surface', 'web');
@@ -44,42 +48,6 @@ class SiteStatsController extends Controller
         return response()->json($public->payload(
             in_array($surface, PublicSiteStats::SURFACES, true) ? $surface : 'web',
         ));
-    }
-
-    /** GET /admin/public-stats-settings — settings.update|website.manage. */
-    public function publicSettings(PublicSiteStats $public): JsonResponse
-    {
-        return response()->json([
-            'settings' => $public->allSettings(),
-            'counters' => PublicSiteStats::COUNTERS,
-        ]);
-    }
-
-    /** PUT /admin/public-stats-settings — both surfaces in one save. */
-    public function updatePublicSettings(Request $request, PublicSiteStats $public): JsonResponse
-    {
-        $counterRules = [];
-        foreach (array_keys(PublicSiteStats::COUNTERS) as $key) {
-            $counterRules["%s.counters.{$key}"] = ['sometimes', 'boolean'];
-        }
-        $rules = [];
-        foreach (PublicSiteStats::SURFACES as $surface) {
-            $rules[$surface] = ['sometimes', 'array'];
-            $rules["{$surface}.enabled"] = ['sometimes', 'boolean'];
-            $rules["{$surface}.counters"] = ['sometimes', 'array'];
-            foreach ($counterRules as $pattern => $rule) {
-                $rules[sprintf($pattern, $surface)] = $rule;
-            }
-        }
-        $data = $request->validate($rules);
-
-        foreach (PublicSiteStats::SURFACES as $surface) {
-            if (array_key_exists($surface, $data)) {
-                $public->updateSettings($surface, $data[$surface]);
-            }
-        }
-
-        return response()->json(['settings' => $public->allSettings()]);
     }
 
     /** GET /admin/site-stats — reports.view. */

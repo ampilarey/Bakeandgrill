@@ -4,7 +4,6 @@ import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
-import { PublicStatsSettings } from './SettingsPage/PublicStatsSettings';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
@@ -33,7 +32,6 @@ const SETTINGS_TABS = [
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
   { id: 'currency',      label: 'Currency Photos',       desc: 'Note & coin photos shown on the POS cash count' },
-  { id: 'public-stats',  label: 'Public Stats',          desc: 'Counters shown on the website & order app home' },
 ] as const;
 
 type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
@@ -405,7 +403,6 @@ export function SettingsPage() {
       {active === 'notifications' && <NotificationsSettings />}
       {active === 'charges' && <ChargesSettings />}
       {active === 'currency' && <CurrencyPhotosSettings />}
-      {active === 'public-stats' && <PublicStatsSettings />}
     </PageShell>
   );
 }

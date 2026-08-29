@@ -4,33 +4,62 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Reporting;
 
+use App\Domains\Content\Blocks\PageBlockRepository;
 use App\Domains\Reporting\Services\PublicSiteStats;
 use App\Models\CateringRequest;
 use App\Models\Customer;
-use App\Models\SiteSetting;
+use App\Models\PageBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Public "social proof" counters: per-surface control (website vs order
- * app), separate counters per type, off by default, rounded-down display,
- * zero-hiding, cache busting, the admin gate, and the rendered strip.
+ * Public "social proof" counters, configured as a "Public counters" block
+ * in the Customer Surface Builder: nothing shows until the block is placed
+ * on a surface's home layout, each surface (website / order app) is managed
+ * independently through its own block, counters are separate per type,
+ * displays are rounded down, zero counters hide, revenue is never offered.
  */
 class PublicStatsTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @param list<string> $counters */
-    private function enable(string $surface, array $counters): void
-    {
-        app(PublicSiteStats::class)->updateSettings($surface, [
-            'enabled' => true,
-            'counters' => array_fill_keys($counters, true),
+    /**
+     * Add a public_stats block to a surface's home layout. $show lists the
+     * counters to keep ON — every other counter is explicitly turned off.
+     * Null means "no show_* keys at all" (the block's defaults: everything on).
+     *
+     * @param list<string>|null $show
+     * @param array<string, mixed> $extraSettings
+     */
+    private function addBlock(
+        string $app,
+        ?array $show = null,
+        bool $enabled = true,
+        array $extraSettings = [],
+    ): PageBlock {
+        $settings = $extraSettings;
+        if ($show !== null) {
+            foreach (array_keys(PublicSiteStats::COUNTERS) as $key) {
+                $settings["show_{$key}"] = in_array($key, $show, true);
+            }
+        }
+
+        $block = PageBlock::create([
+            'app' => $app,
+            'page' => 'home',
+            'block_type' => 'public_stats',
+            'position' => 90,
+            'is_enabled' => $enabled,
+            'content_mode' => 'own',
+            'settings' => $settings,
         ]);
+        PageBlockRepository::bust($app);
+        PublicSiteStats::bustCache();
+
+        return $block;
     }
 
-    public function test_disabled_by_default_on_both_surfaces(): void
+    public function test_no_counters_until_the_block_is_placed(): void
     {
         $this->makePaidOrder();
 
@@ -46,9 +75,9 @@ class PublicStatsTest extends TestCase
         $this->makePaidOrder();
         Customer::factory()->create();
 
-        // Website shows orders only; order app shows customers only.
-        $this->enable('web', ['orders']);
-        $this->enable('order', ['customers']);
+        // Website block shows orders only; order-app block customers only.
+        $this->addBlock(PageBlock::APP_WEBSITE, ['orders']);
+        $this->addBlock(PageBlock::APP_ORDER, ['customers']);
 
         $webKeys = collect($this->getJson('/api/public-stats?surface=web')->json('stats'))->pluck('key');
         $orderKeys = collect($this->getJson('/api/public-stats?surface=order')->json('stats'))->pluck('key');
@@ -68,7 +97,7 @@ class PublicStatsTest extends TestCase
             'occasion' => 'event',
             'status' => 'completed',
         ]);
-        $this->enable('web', ['orders', 'wholesale', 'catering']);
+        $this->addBlock(PageBlock::APP_WEBSITE, ['orders', 'wholesale', 'catering']);
 
         $stats = collect($this->getJson('/api/public-stats?surface=web')->json('stats'));
 
@@ -82,6 +111,36 @@ class PublicStatsTest extends TestCase
         $this->assertNull($stats->firstWhere('key', 'wholesale'));
     }
 
+    public function test_missing_counter_settings_default_to_on(): void
+    {
+        $this->makePaidOrder();
+        Customer::factory()->create();
+
+        // A freshly-added block with no show_* keys shows every non-zero counter.
+        $this->addBlock(PageBlock::APP_WEBSITE);
+
+        $keys = collect($this->getJson('/api/public-stats?surface=web')->json('stats'))->pluck('key');
+        $this->assertSame(['orders', 'customers'], $keys->all());
+    }
+
+    public function test_hidden_or_removed_blocks_serve_nothing(): void
+    {
+        $this->makePaidOrder();
+
+        // Block present but turned off in the builder.
+        $block = $this->addBlock(PageBlock::APP_WEBSITE, ['orders'], enabled: false);
+        $this->getJson('/api/public-stats?surface=web')->assertOk()->assertJson(['enabled' => false]);
+
+        // Turned on → serves; hidden on both devices → nothing again.
+        $block->update(['is_enabled' => true]);
+        PageBlockRepository::bust(PageBlock::APP_WEBSITE);
+        $this->assertTrue($this->getJson('/api/public-stats?surface=web')->json('enabled'));
+
+        $block->update(['settings' => ['show_desktop' => false, 'show_mobile' => false]]);
+        PageBlockRepository::bust(PageBlock::APP_WEBSITE);
+        $this->getJson('/api/public-stats?surface=web')->assertOk()->assertJson(['enabled' => false]);
+    }
+
     public function test_displays_are_rounded_down_with_a_plus(): void
     {
         $service = app(PublicSiteStats::class);
@@ -92,45 +151,15 @@ class PublicStatsTest extends TestCase
         $this->assertSame('1,000', $method->invoke($service, 1000));
     }
 
-    public function test_settings_change_busts_the_surface_cache(): void
-    {
-        $this->makePaidOrder();
-        $this->getJson('/api/public-stats?surface=web')->assertOk()->assertJson(['enabled' => false]);
-
-        $this->enable('web', ['orders']);
-
-        $this->assertTrue($this->getJson('/api/public-stats?surface=web')->json('enabled'));
-    }
-
-    public function test_settings_endpoint_is_gated_and_round_trips_both_surfaces(): void
-    {
-        Sanctum::actingAs($this->makeStaff('kitchen_staff'), ['staff']);
-        $this->getJson('/api/admin/public-stats-settings')->assertStatus(403);
-
-        Sanctum::actingAs($this->makeOwner(), ['staff']);
-        $this->putJson('/api/admin/public-stats-settings', [
-            'web' => ['enabled' => true, 'counters' => ['orders' => true, 'catering' => true]],
-            'order' => ['enabled' => false],
-        ])->assertOk()
-            ->assertJsonPath('settings.web.enabled', true)
-            ->assertJsonPath('settings.web.counters.catering', true)
-            ->assertJsonPath('settings.order.enabled', false);
-
-        $res = $this->getJson('/api/admin/public-stats-settings')->assertOk();
-        $this->assertTrue($res->json('settings.web.counters.orders'));
-        $this->assertFalse($res->json('settings.order.enabled'));
-        $this->assertSame('Events catered', $res->json('counters.catering'));
-    }
-
-    public function test_home_page_uses_the_web_surface(): void
+    public function test_home_page_renders_the_websites_block_only(): void
     {
         $this->makePaidOrder();
 
-        // Only the ORDER surface enabled → website still shows nothing.
-        $this->enable('order', ['orders']);
+        // Only the ORDER APP has the block → website still shows nothing.
+        $this->addBlock(PageBlock::APP_ORDER, ['orders']);
         $this->get('/')->assertOk()->assertDontSee('data-testid="public-stats"', false);
 
-        $this->enable('web', ['orders']);
+        $this->addBlock(PageBlock::APP_WEBSITE, ['orders']);
         $this->get('/')->assertOk()
             ->assertSee('data-testid="public-stats"', false)
             ->assertSee('Orders served');
@@ -139,9 +168,8 @@ class PublicStatsTest extends TestCase
     public function test_revenue_is_never_offered_publicly(): void
     {
         $this->makePaidOrder(null, ['total_laar' => 123456]);
-        $this->enable('web', array_keys(PublicSiteStats::COUNTERS));
-        SiteSetting::set('public_stats_web_show_revenue', '1'); // hostile/mistaken key
-        SiteSetting::bust();
+        // Hostile/mistaken block setting must not conjure a revenue counter.
+        $this->addBlock(PageBlock::APP_WEBSITE, null, extraSettings: ['show_revenue' => true]);
 
         $content = $this->getJson('/api/public-stats?surface=web')->getContent();
         $this->assertStringNotContainsString('revenue', strtolower($content));

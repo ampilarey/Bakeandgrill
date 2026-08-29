@@ -12,7 +12,17 @@ export const GENERIC_BLOCK_TYPES = [
   'divider',
   'video',
   'faq_list',
+  'public_stats',
 ] as const;
+
+/** Public-counter checkboxes for the public_stats block (missing key = on). */
+const PUBLIC_STATS_COUNTERS: Array<{ key: string; label: string; desc: string }> = [
+  { key: 'orders', label: 'Orders served', desc: 'Retail orders: POS, pickup, delivery, dine-in (cancelled excluded)' },
+  { key: 'wholesale', label: 'Wholesale orders', desc: 'Trade deliveries that went out (drafts excluded)' },
+  { key: 'catering', label: 'Events catered', desc: 'Confirmed or completed catering events' },
+  { key: 'customers', label: 'Happy customers', desc: 'Registered customer accounts' },
+  { key: 'visitors', label: 'Visitors this month', desc: 'Unique visitors, last 30 days' },
+];
 
 export type GenericBlockType = (typeof GENERIC_BLOCK_TYPES)[number];
 
@@ -250,6 +260,35 @@ export function GenericBlockSettingsForm({
           disabled={disabled}
           onChange={(items) => set('items', items)}
         />
+      )}
+
+      {type === 'public_stats' && (
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Counters to show</label>
+          {PUBLIC_STATS_COUNTERS.map(({ key, label, desc }) => (
+            <label
+              key={key}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}
+            >
+              <input
+                type="checkbox"
+                data-testid={`home-layout-public-stats-${key}`}
+                checked={draft[`show_${key}`] !== false}
+                disabled={disabled}
+                onChange={(e) => set(`show_${key}`, e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                <span style={{ fontWeight: 600 }}>{label}</span>
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{desc}</span>
+              </span>
+            </label>
+          ))}
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Numbers display rounded down (“12,500+”), counters at zero hide
+            themselves, and revenue is never available publicly.
+          </div>
+        </div>
       )}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>

@@ -97,6 +97,13 @@ export const HOME_COMPONENT_LIBRARY: LibraryComponent[] = [
   },
   { type: 'proof', name: 'Social proof', summary: 'Stats and trust numbers.', supportsSharedContent: false },
   {
+    type: 'public_stats',
+    name: 'Public counters',
+    summary: 'Real order / event / customer / visitor counters — pick which ones show.',
+    supportsSharedContent: false,
+    dynamicSource: 'Order / customer / visitor tallies',
+  },
+  {
     type: 'reviews',
     name: 'Customer reviews',
     summary: 'Recent star ratings and comments.',

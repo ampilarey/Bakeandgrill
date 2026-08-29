@@ -468,6 +468,10 @@ export function HomePage() {
         return <FeaturedBlock key={key} blockKey={key} />;
       case 'proof':
         return <ProofBlock key={key} blockKey={key} />;
+      case 'public_stats':
+        // Which counters show is decided server-side from this same block's
+        // settings, so the strip just renders what /public-stats returns.
+        return <PublicStatsStrip key={key} />;
       case 'cta':
         return <CtaBlock key={key} blockKey={key} />;
       case 'location':
@@ -517,9 +521,6 @@ export function HomePage() {
     const node = renderBlock(block);
     if (node) nodes.push(node);
   }
-  // Public counters (owner-enabled in admin Settings → Public stats),
-  // just above the footer chrome.
-  nodes.push(<PublicStatsStrip key="public-stats" />);
   if (footerChrome) {
     const node = renderBlock(footerChrome);
     if (node) nodes.push(node);

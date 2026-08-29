@@ -1531,8 +1531,9 @@
     $namedHomePartials = [
         'greeting', 'prayer_bar', 'hero', 'announcement', 'service_availability',
         'opening_status', 'stat_chips', 'mode_cards', 'specials', 'featured',
-        'categories', 'trust_strip', 'proof', 'reviews', 'reorder_strip', 'cta',
-        'location', 'events_band', 'office_orders', 'brand_footer',
+        'categories', 'trust_strip', 'proof', 'public_stats', 'reviews',
+        'reorder_strip', 'cta', 'location', 'events_band', 'office_orders',
+        'brand_footer',
     ];
 @endphp
 
@@ -1640,8 +1641,5 @@
         </div>
     @endforeach
 @endif
-
-{{-- Public counters (owner-enabled, Settings → Public stats) --}}
-@include('partials.home.stats-strip')
 
 @endsection

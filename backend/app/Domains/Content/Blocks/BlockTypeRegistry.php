@@ -32,10 +32,10 @@ final class BlockTypeRegistry
         return array_values(array_filter(
             self::all(),
             function (BlockTypeDefinition $d) use ($app, $includeDeprecated) {
-                if (! $d->allowsApp($app)) {
+                if (!$d->allowsApp($app)) {
                     return false;
                 }
-                if ($d->deprecated && ! $includeDeprecated) {
+                if ($d->deprecated && !$includeDeprecated) {
                     return false;
                 }
 
@@ -66,7 +66,7 @@ final class BlockTypeRegistry
     {
         return array_values(array_map(
             fn (BlockTypeDefinition $d) => $d->type,
-            array_filter(self::all(), fn (BlockTypeDefinition $d) => ! $d->deprecated),
+            array_filter(self::all(), fn (BlockTypeDefinition $d) => !$d->deprecated),
         ));
     }
 
@@ -75,7 +75,7 @@ final class BlockTypeRegistry
     {
         $unknown = [];
         foreach ($types as $type) {
-            if (! is_string($type) || self::isKnown($type)) {
+            if (!is_string($type) || self::isKnown($type)) {
                 continue;
             }
             $unknown[] = $type;
@@ -248,6 +248,29 @@ final class BlockTypeRegistry
                 supportsSharedContent: false,
                 settingsSchema: $deviceSchema,
                 settingsDefaults: $deviceDefaults,
+            ),
+            new BlockTypeDefinition(
+                type: 'public_stats',
+                label: 'Public counters',
+                description: 'Real order / event / customer / visitor counters. Pick which ones show; numbers display rounded down ("12,500+") and counters at zero hide themselves.',
+                apps: self::BOTH,
+                removable: true,
+                supportsSharedContent: false,
+                settingsSchema: array_merge($deviceSchema, [
+                    'show_orders' => 'nullable|boolean',
+                    'show_wholesale' => 'nullable|boolean',
+                    'show_catering' => 'nullable|boolean',
+                    'show_customers' => 'nullable|boolean',
+                    'show_visitors' => 'nullable|boolean',
+                ]),
+                settingsDefaults: array_merge($deviceDefaults, [
+                    'show_orders' => true,
+                    'show_wholesale' => true,
+                    'show_catering' => true,
+                    'show_customers' => true,
+                    'show_visitors' => true,
+                ]),
+                dynamicSource: 'Order / customer / visitor tallies',
             ),
             new BlockTypeDefinition(
                 type: 'reviews',

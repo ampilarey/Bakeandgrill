@@ -385,30 +385,3 @@ export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] 
 export async function getWebhook(id: number): Promise<{ subscription: WebhookSubscription }> {
   return req(`/webhooks/${id}`);
 }
-
-// ── Public stats (counters shown on the website / order app) ────────────────
-// Per-surface: the website ("web") and order app ("order") each have their
-// own master switch and per-counter toggles.
-
-export interface PublicStatsSurfaceConfig {
-  enabled: boolean;
-  counters: Record<string, boolean>;
-}
-
-export interface PublicStatsSettings {
-  web: PublicStatsSurfaceConfig;
-  order: PublicStatsSurfaceConfig;
-}
-
-export async function getPublicStatsSettings(): Promise<{
-  settings: PublicStatsSettings;
-  counters: Record<string, string>;
-}> {
-  return req('/admin/public-stats-settings');
-}
-
-export async function updatePublicStatsSettings(
-  data: Partial<PublicStatsSettings>,
-): Promise<{ settings: PublicStatsSettings }> {
-  return req('/admin/public-stats-settings', { method: 'PUT', body: JSON.stringify(data) });
-}

@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { fetchPublicStats, type PublicStat } from '../../api';
 
 /**
- * "Social proof" counters on the order-app home — owner-enabled in admin
- * Settings → Public stats. Renders nothing while loading, on error, or
- * when the feature is off; never blocks the page.
+ * "Public counters" home block — the owner places and configures it in the
+ * Customer Surface Builder; /public-stats serves only the counters that
+ * block enables. Renders nothing while loading, on error, or when the
+ * block is absent; never blocks the page.
  */
 export function PublicStatsStrip() {
   const [stats, setStats] = useState<PublicStat[] | null>(null);
