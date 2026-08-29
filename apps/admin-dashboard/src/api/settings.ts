@@ -387,15 +387,23 @@ export async function getWebhook(id: number): Promise<{ subscription: WebhookSub
 }
 
 // ── Public stats (counters shown on the website / order app) ────────────────
+// Per-surface: the website ("web") and order app ("order") each have their
+// own master switch and per-counter toggles.
 
-export interface PublicStatsSettings {
+export interface PublicStatsSurfaceConfig {
   enabled: boolean;
-  show_orders: boolean;
-  show_customers: boolean;
-  show_visitors: boolean;
+  counters: Record<string, boolean>;
 }
 
-export async function getPublicStatsSettings(): Promise<{ settings: PublicStatsSettings }> {
+export interface PublicStatsSettings {
+  web: PublicStatsSurfaceConfig;
+  order: PublicStatsSurfaceConfig;
+}
+
+export async function getPublicStatsSettings(): Promise<{
+  settings: PublicStatsSettings;
+  counters: Record<string, string>;
+}> {
   return req('/admin/public-stats-settings');
 }
 

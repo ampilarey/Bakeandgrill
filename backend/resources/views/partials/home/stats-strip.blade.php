@@ -4,7 +4,7 @@
     when disabled or when every counter is zero.
 --}}
 @php
-    $publicStats = app(\App\Domains\Reporting\Services\PublicSiteStats::class)->payload();
+    $publicStats = app(\App\Domains\Reporting\Services\PublicSiteStats::class)->payload('web');
 @endphp
 @if($publicStats['enabled'] && count($publicStats['stats']) > 0)
 <section class="stats-strip" data-testid="public-stats">

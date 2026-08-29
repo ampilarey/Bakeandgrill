@@ -16,5 +16,6 @@ export interface PublicStatsResponse {
 }
 
 export async function fetchPublicStats(): Promise<PublicStatsResponse> {
-  return request<PublicStatsResponse>('/public-stats');
+  // The order app has its own per-surface toggles in admin Settings.
+  return request<PublicStatsResponse>('/public-stats?surface=order');
 }
