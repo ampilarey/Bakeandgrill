@@ -20,6 +20,8 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
 
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {
+        // Dashboard "big numbers": lifetime orders/customers/revenue + visits.
+        Route::get('/admin/site-stats', [App\Http\Controllers\Api\SiteStatsController::class, 'stats']);
         Route::get('/reports/sales-summary', [ReportsController::class, 'salesSummary']);
         Route::get('/reports/sales-breakdown', [ReportsController::class, 'salesBreakdown']);
         Route::get('/reports/x-report', [ReportsController::class, 'xReport']);

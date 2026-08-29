@@ -2555,5 +2555,19 @@
     else attachToggles();
 })();
 </script>
+{{-- Self-hosted visit counter: one anonymous beacon per page view.
+     Aggregates only — no cookies, no identifiers (see SiteVisitCounter). --}}
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    try {
+        var payload = JSON.stringify({ surface: 'web' });
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/visits/beacon', new Blob([payload], { type: 'application/json' }));
+        } else {
+            fetch('/api/visits/beacon', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(function () {});
+        }
+    } catch (e) { /* counting must never break the page */ }
+})();
+</script>
 </body>
 </html>

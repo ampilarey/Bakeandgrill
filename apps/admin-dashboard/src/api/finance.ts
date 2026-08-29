@@ -1669,3 +1669,20 @@ export interface BarcodeLabel {
 export async function getBarcodeLabel(itemId: number): Promise<{ label: BarcodeLabel }> {
   return req(`/items/${itemId}/barcode-label`);
 }
+
+// ── Site stats (dashboard "big numbers") ─────────────────────────────────────
+
+export interface SiteStats {
+  orders: { total: number; this_month: number; today: number };
+  customers: { total: number; new_this_month: number };
+  revenue: { lifetime: number; this_month: number };
+  visits: {
+    today: { views: number; uniques: number };
+    last_7: { views: number; uniques: number };
+    last_30: { views: number; uniques: number };
+  };
+}
+
+export async function fetchSiteStats(): Promise<SiteStats> {
+  return req('/admin/site-stats');
+}

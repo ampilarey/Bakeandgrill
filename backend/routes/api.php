@@ -14,6 +14,10 @@ $GLOBALS['routes_sections'] = [];
 
 // Health check endpoint
 Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, 'public']);
+
+// Privacy-friendly visit counter beacon (no cookies, aggregates only).
+Route::post('/visits/beacon', [App\Http\Controllers\Api\SiteStatsController::class, 'beacon'])
+    ->middleware('throttle:60,1');
 // Readiness: 503 when a dependency is down. Point uptime monitoring here —
 // /health stays 200 while the app can serve, so it cannot catch a dead queue.
 Route::get('/health/ready', [App\Http\Controllers\Api\SystemHealthController::class, 'ready'])

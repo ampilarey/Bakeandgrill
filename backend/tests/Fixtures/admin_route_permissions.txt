@@ -186,7 +186,7 @@ backend/routes/domains/orders.php:96:customers.lookup
 backend/routes/domains/orders.php:98:customers.lookup
 backend/routes/domains/payments.php:24:customers.credit.repay
 backend/routes/domains/reporting.php:22:reports.view
-backend/routes/domains/reporting.php:62:customers.analytics
+backend/routes/domains/reporting.php:64:customers.analytics
 backend/routes/domains/reservations.php:31:reservations.manage
 backend/routes/domains/signage.php:17:signage.manage
 backend/routes/domains/social.php:33:social.view

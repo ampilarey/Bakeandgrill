@@ -29,6 +29,7 @@ import {
   type Shift,
 } from '../api';
 import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
+import { SiteStatsSection } from '../components/SiteStatsSection';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { monthStart, today } from '../utils/dateHelpers';
@@ -642,6 +643,8 @@ export function DashboardPage() {
           </div>
         }
       />
+
+      <SiteStatsSection />
 
       {opsCards.length > 0 && (
         <>

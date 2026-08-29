@@ -1,8 +1,30 @@
 import { useEffect } from 'react';
+import { API_BASE_URL } from '../api';
 import type { SiteSettings } from '../context/SiteSettingsContext';
 
 /** Inject GA4 or GTM once public site settings include tracking IDs. */
 export function AnalyticsTracker({ settings }: { settings: SiteSettings }) {
+  // Self-hosted visit counter: one anonymous beacon per app load.
+  // Aggregates only — no cookies, no identifiers.
+  useEffect(() => {
+    try {
+      const url = `${API_BASE_URL.replace(/\/$/, '')}/visits/beacon`;
+      const payload = JSON.stringify({ surface: 'order' });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+      } else {
+        void fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // counting must never break the app
+    }
+  }, []);
+
   useEffect(() => {
     const gtmId = settings.google_tag_manager_id?.trim();
     const gaId = settings.google_analytics_id?.trim();
