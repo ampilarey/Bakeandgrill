@@ -1673,7 +1673,12 @@ export async function getBarcodeLabel(itemId: number): Promise<{ label: BarcodeL
 // ── Site stats (dashboard "big numbers") ─────────────────────────────────────
 
 export interface SiteStats {
-  orders: { total: number; this_month: number; today: number };
+  orders: {
+    total: number;
+    this_month: number;
+    today: number;
+    breakdown: { retail: number; wholesale: number; catering: number };
+  };
   customers: { total: number; new_this_month: number };
   revenue: { lifetime: number; this_month: number };
   visits: {

@@ -80,7 +80,9 @@ class PublicSiteStats
 
             $stats = [];
             if ($settings['show_orders']) {
-                $stats[] = $this->stat('orders', 'Orders served', Order::where('status', '!=', 'cancelled')->count());
+                // Retail + wholesale + catering — the same definition the
+                // admin dashboard uses (OrderTallies).
+                $stats[] = $this->stat('orders', 'Orders served', \App\Domains\Reporting\Support\OrderTallies::combined());
             }
             if ($settings['show_customers']) {
                 $stats[] = $this->stat('customers', 'Happy customers', Customer::count());

@@ -68,14 +68,20 @@ class SiteStatsController extends Controller
         $monthStart = now($tz)->startOfMonth();
         $todayStart = now($tz)->startOfDay();
 
-        $orders = Order::query()->where('status', '!=', 'cancelled');
         $paid = Order::query()->whereNotNull('paid_at');
 
         return response()->json([
+            // Combined across retail + wholesale + catering (OrderTallies is
+            // the single definition, shared with the public counters).
             'orders' => [
-                'total' => (clone $orders)->count(),
-                'this_month' => (clone $orders)->where('created_at', '>=', $monthStart)->count(),
-                'today' => (clone $orders)->where('created_at', '>=', $todayStart)->count(),
+                'total' => \App\Domains\Reporting\Support\OrderTallies::combined(),
+                'this_month' => \App\Domains\Reporting\Support\OrderTallies::combined($monthStart),
+                'today' => \App\Domains\Reporting\Support\OrderTallies::combined($todayStart),
+                'breakdown' => [
+                    'retail' => \App\Domains\Reporting\Support\OrderTallies::retail(),
+                    'wholesale' => \App\Domains\Reporting\Support\OrderTallies::wholesale(),
+                    'catering' => \App\Domains\Reporting\Support\OrderTallies::catering(),
+                ],
             ],
             'customers' => [
                 'total' => Customer::count(),

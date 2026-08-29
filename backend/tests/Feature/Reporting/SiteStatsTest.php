@@ -99,11 +99,52 @@ class SiteStatsTest extends TestCase
 
         $this->assertSame(3, $res->json('orders.total'), 'cancelled orders never count');
         $this->assertSame(2, $res->json('orders.this_month'));
+        $this->assertSame(3, $res->json('orders.breakdown.retail'));
         // makeOrder created 4 customers via factory + 1 explicit old one.
         $this->assertGreaterThanOrEqual(5, $res->json('customers.total'));
         $this->assertSame(150.0, (float) $res->json('revenue.lifetime'));
         $this->assertSame(100.0, (float) $res->json('revenue.this_month'));
         $this->assertSame(1, $res->json('visits.today.views'));
         $this->assertSame(1, $res->json('visits.last_30.uniques'));
+    }
+
+    public function test_orders_count_includes_wholesale_and_catering(): void
+    {
+        $this->makePaidOrder();
+
+        $account = \App\Models\TradeAccount::create([
+            'customer_id' => $this->makeCustomer()->id,
+            'shop_name' => 'Shop X',
+            'contact_phone' => '+9607700001',
+            'is_active' => true,
+            'payment_terms_days' => 14,
+        ]);
+        // Counts: dispatched. Doesn't: draft, cancelled.
+        foreach (['dispatched' => 'TD-1', 'draft' => 'TD-2', 'cancelled' => 'TD-3'] as $status => $number) {
+            \App\Models\TradeDelivery::create([
+                'trade_account_id' => $account->id,
+                'delivery_number' => $number,
+                'status' => $status,
+                'idempotency_key' => 'k-' . $number,
+            ]);
+        }
+
+        // Counts: confirmed + completed. Doesn't: new inquiry.
+        foreach (['confirmed', 'completed', 'new'] as $i => $status) {
+            \App\Models\CateringRequest::create([
+                'contact_name' => 'C' . $i,
+                'phone' => '79000' . $i,
+                'occasion' => 'event',
+                'status' => $status,
+            ]);
+        }
+
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $res = $this->getJson('/api/admin/site-stats')->assertOk();
+
+        $this->assertSame(4, $res->json('orders.total'), '1 retail + 1 wholesale + 2 catering');
+        $this->assertSame(1, $res->json('orders.breakdown.retail'));
+        $this->assertSame(1, $res->json('orders.breakdown.wholesale'));
+        $this->assertSame(2, $res->json('orders.breakdown.catering'));
     }
 }

@@ -68,6 +68,21 @@ class PublicStatsTest extends TestCase
         $this->assertSame('1,000', $method->invoke($service, 1000));
     }
 
+    public function test_public_orders_counter_includes_wholesale_and_catering(): void
+    {
+        $this->makePaidOrder();
+        \App\Models\CateringRequest::create([
+            'contact_name' => 'Big Office',
+            'phone' => '7900011',
+            'occasion' => 'event',
+            'status' => 'completed',
+        ]);
+        $this->enableAll();
+
+        $orders = collect($this->getJson('/api/public-stats')->json('stats'))->firstWhere('key', 'orders');
+        $this->assertSame(2, $orders['value'], 'retail + catering both count publicly');
+    }
+
     public function test_zero_counters_hide_themselves(): void
     {
         // Orders enabled but none exist; customers exist.

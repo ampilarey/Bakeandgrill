@@ -31,7 +31,12 @@ export function SiteStatsSection() {
         <StatCard
           label="Total orders"
           value={fmt(stats.orders.total)}
-          sub={`${fmt(stats.orders.this_month)} this month · ${fmt(stats.orders.today)} today`}
+          sub={
+            `${fmt(stats.orders.this_month)} this month · ${fmt(stats.orders.today)} today`
+            + (stats.orders.breakdown.wholesale + stats.orders.breakdown.catering > 0
+              ? ` · incl. ${fmt(stats.orders.breakdown.wholesale)} wholesale, ${fmt(stats.orders.breakdown.catering)} catering`
+              : '')
+          }
           icon={ShoppingBag}
         />
         <StatCard
