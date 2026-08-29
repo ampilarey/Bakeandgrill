@@ -196,6 +196,10 @@ class SocialVideoBenchmark extends Command
             '27',
             '-pix_fmt',
             'yuv420p',
+            // Same thread cap as the real renderer — x264's default per-core
+            // thread pool trips CloudLinux LVE limits at encoder init.
+            '-threads',
+            '2',
             '-movflags',
             '+faststart',
             $out,

@@ -250,6 +250,11 @@ class SocialVideoRenderer
             '27',
             '-pix_fmt',
             'yuv420p',
+            // Cap encoder threads: x264 otherwise spawns per-core pools that
+            // CloudLinux LVE process limits kill mid-init ("Error while
+            // opening encoder"), and shared hosts want low CPU spikes anyway.
+            '-threads',
+            '2',
             '-movflags',
             '+faststart',
             $outAbs,
