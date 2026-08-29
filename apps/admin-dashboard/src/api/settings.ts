@@ -385,3 +385,22 @@ export async function fetchSupportedWebhookEvents(): Promise<{ events: string[] 
 export async function getWebhook(id: number): Promise<{ subscription: WebhookSubscription }> {
   return req(`/webhooks/${id}`);
 }
+
+// ── Public stats (counters shown on the website / order app) ────────────────
+
+export interface PublicStatsSettings {
+  enabled: boolean;
+  show_orders: boolean;
+  show_customers: boolean;
+  show_visitors: boolean;
+}
+
+export async function getPublicStatsSettings(): Promise<{ settings: PublicStatsSettings }> {
+  return req('/admin/public-stats-settings');
+}
+
+export async function updatePublicStatsSettings(
+  data: Partial<PublicStatsSettings>,
+): Promise<{ settings: PublicStatsSettings }> {
+  return req('/admin/public-stats-settings', { method: 'PUT', body: JSON.stringify(data) });
+}

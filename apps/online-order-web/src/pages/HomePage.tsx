@@ -42,6 +42,7 @@ import {
   LocationBlock,
   ProofBlock,
 } from '../components/home/SurfaceMarketingBlocks';
+import { PublicStatsStrip } from '../components/home/PublicStatsStrip';
 import { renderGenericBlock } from '../components/home/blocks';
 import { applyReorderPayloadToCart } from '../utils/applyReorderToCart';
 import { blocksForSurface } from '../utils/surfaceBlocks';
@@ -516,6 +517,9 @@ export function HomePage() {
     const node = renderBlock(block);
     if (node) nodes.push(node);
   }
+  // Public counters (owner-enabled in admin Settings → Public stats),
+  // just above the footer chrome.
+  nodes.push(<PublicStatsStrip key="public-stats" />);
   if (footerChrome) {
     const node = renderBlock(footerChrome);
     if (node) nodes.push(node);

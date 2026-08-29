@@ -12,6 +12,7 @@ export * from './addresses';
 export * from './eventOrders';
 export * from './trade';
 export * from './serviceStatus';
+export * from './publicStats';
 export * from './serviceUnavailable';
 export * from './pageBlocks';
 

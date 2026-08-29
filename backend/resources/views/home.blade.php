@@ -1641,4 +1641,7 @@
     @endforeach
 @endif
 
+{{-- Public counters (owner-enabled, Settings → Public stats) --}}
+@include('partials.home.stats-strip')
+
 @endsection

@@ -5,8 +5,10 @@ import type { SiteSettings } from '../context/SiteSettingsContext';
 /** Inject GA4 or GTM once public site settings include tracking IDs. */
 export function AnalyticsTracker({ settings }: { settings: SiteSettings }) {
   // Self-hosted visit counter: one anonymous beacon per app load.
-  // Aggregates only — no cookies, no identifiers.
+  // Aggregates only — no cookies, no identifiers. Silent in tests so
+  // fetch-counting specs never see analytics noise.
   useEffect(() => {
+    if (import.meta.env.MODE === 'test') return;
     try {
       const url = `${API_BASE_URL.replace(/\/$/, '')}/visits/beacon`;
       const payload = JSON.stringify({ surface: 'order' });

@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\Route;
 if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !routes_domain_loaded('reporting.reports')) {
     routes_domain_mark_loaded('reporting.reports');
 
+    // Public-stats display settings (which counters the website/order app show).
+    Route::middleware('permission.any:settings.update,website.manage')->group(function () {
+        Route::get('/admin/public-stats-settings', [App\Http\Controllers\Api\SiteStatsController::class, 'publicSettings']);
+        Route::put('/admin/public-stats-settings', [App\Http\Controllers\Api\SiteStatsController::class, 'updatePublicSettings']);
+    });
+
     // Reports — restricted to users with reports.view permission
     Route::middleware('permission:reports.view')->group(function () {
         // Dashboard "big numbers": lifetime orders/customers/revenue + visits.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Reporting\Services\PublicSiteStats;
 use App\Domains\Reporting\Services\SiteVisitCounter;
 use App\Models\Customer;
 use App\Models\Order;
@@ -33,6 +34,31 @@ class SiteStatsController extends Controller
         );
 
         return response()->json(['ok' => true]);
+    }
+
+    /** GET /public-stats — public, cached; only owner-enabled counters. */
+    public function publicStats(PublicSiteStats $public): JsonResponse
+    {
+        return response()->json($public->payload());
+    }
+
+    /** GET /admin/public-stats-settings — settings.update|website.manage. */
+    public function publicSettings(PublicSiteStats $public): JsonResponse
+    {
+        return response()->json(['settings' => $public->settings()]);
+    }
+
+    /** PUT /admin/public-stats-settings. */
+    public function updatePublicSettings(Request $request, PublicSiteStats $public): JsonResponse
+    {
+        $data = $request->validate([
+            'enabled' => ['sometimes', 'boolean'],
+            'show_orders' => ['sometimes', 'boolean'],
+            'show_customers' => ['sometimes', 'boolean'],
+            'show_visitors' => ['sometimes', 'boolean'],
+        ]);
+
+        return response()->json(['settings' => $public->updateSettings($data)]);
     }
 
     /** GET /admin/site-stats — reports.view. */

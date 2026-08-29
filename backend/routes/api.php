@@ -18,6 +18,10 @@ Route::get('/health', [App\Http\Controllers\Api\SystemHealthController::class, '
 // Privacy-friendly visit counter beacon (no cookies, aggregates only).
 Route::post('/visits/beacon', [App\Http\Controllers\Api\SiteStatsController::class, 'beacon'])
     ->middleware('throttle:60,1');
+
+// Public "social proof" counters (owner-enabled, rounded, cached).
+Route::get('/public-stats', [App\Http\Controllers\Api\SiteStatsController::class, 'publicStats'])
+    ->middleware('throttle:60,1');
 // Readiness: 503 when a dependency is down. Point uptime monitoring here —
 // /health stays 200 while the app can serve, so it cannot catch a dead queue.
 Route::get('/health/ready', [App\Http\Controllers\Api\SystemHealthController::class, 'ready'])
