@@ -163,6 +163,11 @@ class PosMenuBuilder
                 'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),
                 'packaging_options' => app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->serializeActive($item),
                 'tax_rate' => $item->tax_rate,
+                // Without this the POS treated every line as standard-rated
+                // and previewed GST on exempt/zero-rated items (the server
+                // always billed correctly from the DB — display-only, but the
+                // cashier quoted the wrong total until charge).
+                'tax_code' => $item->tax_code,
                 'is_available' => $item->is_available,
                 'snoozed_until' => $item->snoozed_until?->toIso8601String(),
                 'is_active' => $item->is_active,
