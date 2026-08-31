@@ -99,6 +99,15 @@ class EnsureActiveDevice
             ], 403);
         }
 
+        // Rejected is stronger than disabled: the device can never bring
+        // itself back, only the owner can re-approve it in Settings → Devices.
+        if (!$device->is_active && $device->status === 'rejected') {
+            return response()->json([
+                'message' => 'This POS device was rejected by the owner. Only the owner can re-approve it in Settings → Devices.',
+                'code' => 'device_rejected',
+            ], 403);
+        }
+
         if (!$device->is_active) {
             return response()->json([
                 'message' => 'This POS device has been disabled. Contact your manager.',

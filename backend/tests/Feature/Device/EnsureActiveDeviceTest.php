@@ -357,6 +357,35 @@ class EnsureActiveDeviceTest extends TestCase
             ->assertJsonPath('code', 'device_not_approved');
     }
 
+    public function test_a_rejected_device_gets_its_own_message_and_owner_reapproval_unblocks_it(): void
+    {
+        // "Rejected" must not read as "disabled" — the cashier would hunt for
+        // a switch that doesn't exist. And the owner (only the owner) can
+        // bring a mis-rejected till back via the normal approve endpoint.
+        $device = Device::create([
+            'name' => 'Rejected POS',
+            'identifier' => 'REJECTED-POS',
+            'type' => 'pos',
+            'is_active' => false,
+            'status' => 'rejected',
+        ]);
+
+        $order = ['type' => 'takeaway', 'items' => [['item_id' => $this->item->id, 'quantity' => 1]]];
+
+        $this->withHeader('X-Device-Identifier', 'REJECTED-POS')
+            ->postJson('/api/orders', $order)
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_rejected');
+
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->patchJson("/api/devices/{$device->id}/approve")->assertOk();
+
+        Sanctum::actingAs($this->staff, ['staff']);
+        $this->withHeader('X-Device-Identifier', 'REJECTED-POS')
+            ->postJson('/api/orders', $order)
+            ->assertCreated();
+    }
+
     public function test_first_blocked_request_on_a_new_device_alerts_the_owner(): void
     {
         // The middleware is usually the first to see a brand-new till in

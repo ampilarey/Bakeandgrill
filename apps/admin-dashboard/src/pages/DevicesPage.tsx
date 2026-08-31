@@ -152,6 +152,9 @@ export default function DevicesPage() {
 
   // Exclude pending/rejected from the main table — show approved + legacy null-status (including disabled)
   const approved = devices.filter(d => d.status !== 'pending' && d.status !== 'rejected');
+  // Rejected devices stay blocked and can never re-approve themselves, but
+  // the OWNER can bring one back from here (mis-taps happen).
+  const rejected = devices.filter(d => d.status === 'rejected');
   const active   = devices.filter(d => d.is_active).length;
   const disabled = devices.filter(d => !d.is_active && d.status !== 'pending').length;
 
@@ -179,7 +182,9 @@ export default function DevicesPage() {
       </div>
 
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748B', maxWidth: 720 }}>
-        Device labels are for audit and station tracking only. POS sales no longer require device approval — staff access is controlled by login, permissions, and shift.
+        New POS devices must be approved here before they can sell or run a cash drawer —
+        you get an SMS when one is waiting. <strong>Disable</strong> is a temporary off switch;
+        <strong> Reject</strong> blocks a device until you re-approve it below.
       </p>
 
       {/* ── Pending Approval Section ── */}
@@ -210,6 +215,45 @@ export default function DevicesPage() {
                         {actionLoading === d.id ? '…' : '✕ Reject'}
                       </Btn>
                     </>
+                  )}
+                  {canManage && (
+                    <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>
+                      🗑
+                    </Btn>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Rejected Devices Section ── */}
+      {rejected.length > 0 && (
+        <div style={{ background: 'var(--color-danger-bg)', border: '1.5px solid var(--color-danger)', borderRadius: 14, padding: '16px 20px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 20 }}>⛔</span>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--color-danger-strong)' }}>
+              {rejected.length} rejected device{rejected.length > 1 ? 's' : ''}
+            </p>
+          </div>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--color-danger-strong)' }}>
+            A rejected device stays blocked and can never approve itself. Re-approve it here if it was rejected by mistake.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {rejected.map(d => (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', borderRadius: 10, padding: '12px 16px', border: '1px solid var(--color-border)', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{d.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    {d.type?.toUpperCase()} · {d.identifier ?? '—'} · last seen {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '—'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {canApprove && (
+                    <Btn small onClick={() => openApproveModal(d)} disabled={actionLoading === d.id}>
+                      {actionLoading === d.id ? '…' : '↩ Re-approve'}
+                    </Btn>
                   )}
                   {canManage && (
                     <Btn small variant="secondary" onClick={() => handleDelete(d)} disabled={actionLoading === d.id}>

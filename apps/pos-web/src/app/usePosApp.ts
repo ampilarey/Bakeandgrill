@@ -873,6 +873,10 @@ export function usePosApp() {
         setDeviceBlockedMessage(
           "This POS device is waiting for owner approval — the owner has been notified. Sales unlock as soon as it's approved in Admin → Settings → Devices.",
         );
+      } else if (status.status === "rejected") {
+        setDeviceBlockedMessage(
+          "This POS device was rejected by the owner. Only the owner can re-approve it, from Admin → Settings → Devices.",
+        );
       } else if (status.is_active === false) {
         setDeviceBlockedMessage("This POS device is disabled. Contact the owner to re-enable it.");
       } else {
