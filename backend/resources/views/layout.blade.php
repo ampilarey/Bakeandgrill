@@ -179,6 +179,17 @@
     @endphp
     <meta property="og:image" content="{{ $pageOgImage }}">
     <meta property="og:image:alt" content="{{ $pageOgAlt }}">
+    {{-- Declared size tells a crawler it may lay out the big card without
+         downloading the file first; without it WhatsApp / Viber often
+         settle for the postage-stamp thumbnail. --}}
+    @php
+        $pageOgW = trim($__env->yieldContent('og_image_width'));
+        $pageOgH = trim($__env->yieldContent('og_image_height'));
+    @endphp
+    @if($pageOgW !== '' && $pageOgH !== '')
+    <meta property="og:image:width" content="{{ $pageOgW }}">
+    <meta property="og:image:height" content="{{ $pageOgH }}">
+    @endif
     <meta property="og:url" content="{{ $pageOgUrl }}">
 
     {{-- BLD-003: Twitter card upgrade. `summary` shows a tiny thumb;

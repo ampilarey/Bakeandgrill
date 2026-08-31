@@ -15,6 +15,10 @@
 @section('description', $pageDesc)
 @section('og_image', $socialImage['url'])
 @section('og_image_alt', $socialImage['alt'])
+@if(!empty($socialImage['width']) && !empty($socialImage['height']))
+@section('og_image_width', $socialImage['width'])
+@section('og_image_height', $socialImage['height'])
+@endif
 @section('og_url', $canonical)
 @section('twitter_image', $socialImage['url'])
 

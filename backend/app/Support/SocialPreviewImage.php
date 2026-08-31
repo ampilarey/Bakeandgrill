@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Item;
 use App\Models\ItemPhoto;
+use App\Services\SocialCardImage;
 
 /**
  * The JPEG (or PNG) a crawler should use as og:image for an item.
@@ -14,7 +15,12 @@ use App\Models\ItemPhoto;
  * thumbnail is too small for a preview. Prefer the full-size gallery
  * rendition; fall back to the site OG image, never a broken URL.
  *
- * @phpstan-type Preview array{url: string, alt: string}
+ * An item photo is served through SocialCardImage, which sizes it to the
+ * 1200x630 the crawlers want for a big card — a legacy small photo
+ * otherwise previewed as a postage stamp. The site fallback (the logo) is
+ * left alone: it is already square and large, and it renders well.
+ *
+ * @phpstan-type Preview array{url: string, alt: string, width: ?int, height: ?int}
  */
 final class SocialPreviewImage
 {
@@ -31,17 +37,34 @@ final class SocialPreviewImage
             }
 
             $photoAlt = trim((string) ($candidate['alt'] ?? ''));
+            $card = $this->card($url);
 
             return [
-                'url' => $url,
+                'url' => $card ?? $url,
                 'alt' => $photoAlt !== '' ? $photoAlt : $alt,
+                'width' => $card !== null ? SocialCardImage::WIDTH : null,
+                'height' => $card !== null ? SocialCardImage::HEIGHT : null,
             ];
         }
 
         return [
             'url' => $this->siteFallback(),
             'alt' => $alt,
+            'width' => null,
+            'height' => null,
         ];
+    }
+
+    /**
+     * Render (or reuse) the 1200x630 card for a locally-hosted photo.
+     * Off-site images and any rendering failure return null, leaving the
+     * original URL in place — a preview must never depend on this working.
+     */
+    private function card(string $absoluteUrl): ?string
+    {
+        $file = $this->localFile($absoluteUrl);
+
+        return $file === null ? null : app(SocialCardImage::class)->url($file);
     }
 
     public function siteFallback(): string
@@ -80,14 +103,38 @@ final class SocialPreviewImage
             return false;
         }
 
-        $host = parse_url($url, PHP_URL_HOST);
-        $ownHost = parse_url(url('/'), PHP_URL_HOST);
-        if (is_string($host) && is_string($ownHost) && strcasecmp($host, $ownHost) !== 0) {
+        // Off-site: trusted, see localFile().
+        if ($this->isOffsite($url)) {
             return true;
         }
 
+        return $this->localFile($url) !== null;
+    }
+
+    /** Absolute path on disk for one of our own URLs, or null. */
+    private function localFile(string $url): ?string
+    {
+        if ($this->isOffsite($url)) {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return null;
+        }
+
         // public_path() resolves /storage through the storage:link symlink.
-        return is_file(public_path(ltrim(rawurldecode($path), '/')));
+        $file = public_path(ltrim(rawurldecode($path), '/'));
+
+        return is_file($file) ? $file : null;
+    }
+
+    private function isOffsite(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $ownHost = parse_url(url('/'), PHP_URL_HOST);
+
+        return is_string($host) && is_string($ownHost) && strcasecmp($host, $ownHost) !== 0;
     }
 
     /**
