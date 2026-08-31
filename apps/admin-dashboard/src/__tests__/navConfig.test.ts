@@ -247,8 +247,10 @@ describe('navConfig', () => {
       permissions: ['reports.view', 'finance.cash_manage'],
     };
     expect(can(user, 'shifts.view_all_history')).toBe(false);
-    // BE: shifts.view_own_history ← finance.cash_manage
-    expect(can(user, 'shifts.view_own_history')).toBe(true);
+    // Owner, 2026-09-01: cash_manage no longer implies shift history either —
+    // only an explicit grant opens it.
+    expect(can(user, 'shifts.view_own_history')).toBe(false);
+    expect(can({ ...user, permissions: [...user.permissions ?? [], 'shifts.view_own_history'] }, 'shifts.view_own_history')).toBe(true);
   });
 
   it('orders.view is not granted by holding only pos.active_orders on the FE check direction', () => {

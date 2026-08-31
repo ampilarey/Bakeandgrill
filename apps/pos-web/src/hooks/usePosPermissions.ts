@@ -15,7 +15,8 @@ const POS_PERM_ALIASES: Record<string, string[]> = {
   'payments.cash_in_out': ['finance.cash_manage', 'payments.cash_manage'],
   'payments.cash_manage': ['finance.cash_manage'],
   'finance.cash_manage': ['payments.cash_manage'],
-  'shifts.view_own_history': ['finance.cash_manage', 'payments.cash_manage'],
+  // shifts.view_own_history deliberately has no alias — cash_manage no longer
+  // implies shift history (mirrors PermissionCatalog, owner 2026-09-01).
   'customers.lookup': ['customers.view'],
   'customers.create': ['customers.manage'],
   'promotions.apply_promo_code': ['promotions.discounts'],

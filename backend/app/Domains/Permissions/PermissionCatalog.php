@@ -66,7 +66,10 @@ final class PermissionCatalog
         'customers.create' => ['customers.manage'],
         'loyalty.manage' => ['loyalty.manage'],
         'promotions.apply_promo_code' => ['promotions.discounts'],
-        'shifts.view_own_history' => ['finance.cash_manage'],
+        // shifts.view_own_history deliberately has NO satisfier: cash_manage
+        // used to imply it, which quietly handed every cashier the shift
+        // history (daily sales / discounts / refunds). Owner, 2026-09-01:
+        // history is manager territory; grant per-user when trusted.
         // Manage implies view so inventory.manage-only roles can list stock.
         'inventory.view' => ['inventory.manage'],
         'suppliers.view' => ['suppliers.view'],
@@ -563,7 +566,9 @@ final class PermissionCatalog
             'customers.view', 'customers.lookup', 'customers.create',
             'loyalty.view', 'loyalty.redeem',
             'promotions.view', 'promotions.discounts', 'promotions.apply_promo_code',
-            'shifts.view_own_history',
+            // shifts.view_own_history intentionally omitted (owner, 2026-09-01):
+            // shift history exposes daily sales / discounts / refunds, which is
+            // manager territory. Grant per-user for a trusted senior cashier.
             // reports.view / reports.basic intentionally omitted — owner/manager
             // defaults only; grant per-user when a cashier needs POS/Admin reports.
             'dashboard.view',

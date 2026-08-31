@@ -128,8 +128,11 @@ if (routes_domain_section_is('orders', 'pos_ops') && !routes_domain_loaded('orde
         ->middleware('permission:shifts.view_own_history');
     Route::get('/shifts/live', [App\Http\Controllers\Api\ShiftController::class, 'live'])
         ->middleware('permission:shifts.view_all_history');
+    // permission.any: cashiers without the history permission still need the
+    // CURRENT shift's summary for the shift panel and close flow — the
+    // controller blanks the financial figures for them while the shift is open.
     Route::get('/shifts/{id}/summary', [App\Http\Controllers\Api\ShiftController::class, 'summary'])
-        ->middleware('permission:shifts.view_own_history');
+        ->middleware('permission.any:shifts.view_own_history,pos.close_shift');
     // device.active on open/close/count: a disabled or unapproved terminal
     // must not run a cash drawer. A shift stuck open on a disabled device is
     // closed by a manager via force-close (below), which stays ungated.

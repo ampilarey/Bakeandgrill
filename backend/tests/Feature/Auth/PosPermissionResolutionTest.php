@@ -102,10 +102,18 @@ class PosPermissionResolutionTest extends TestCase
         $this->assertTrue($this->permissions()->hasPermission($this->manager, 'shifts.view_all_history'));
     }
 
-    public function test_staff_can_view_own_shift_history_only_via_permission(): void
+    public function test_staff_has_no_shift_history_by_default_but_can_be_granted_it(): void
     {
-        $this->assertTrue($this->permissions()->hasPermission($this->staff, 'shifts.view_own_history'));
+        // Owner, 2026-09-01: shift history (daily sales / discounts / refunds)
+        // is manager territory. Note cash_manage must NOT imply it either.
+        $this->assertFalse($this->permissions()->hasPermission($this->staff, 'shifts.view_own_history'));
         $this->assertFalse($this->permissions()->hasPermission($this->staff, 'shifts.view_all_history'));
+
+        $this->staff->grantPermission('shifts.view_own_history');
+        $this->assertTrue(
+            $this->permissions()->hasPermission($this->staff->fresh(), 'shifts.view_own_history'),
+            'a trusted senior cashier can still be granted history per-user',
+        );
     }
 
     public function test_staff_can_be_individually_allowed_to_void(): void

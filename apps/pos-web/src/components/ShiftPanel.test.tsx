@@ -60,8 +60,12 @@ describe("ShiftPanel open-shift blind drawer", () => {
     expect(screen.getByText("Opening cash")).toBeTruthy();
     expect(screen.getByText("MVR 100.00")).toBeTruthy();
     expect(screen.getByText("Orders")).toBeTruthy();
-    expect(screen.getByText("Net sales")).toBeTruthy();
-    expect(screen.getByText("Card")).toBeTruthy(); // non-cash tender still visible
+    // Owner, 2026-09-01: money figures are manager territory — sales and
+    // tender amounts are gone for cashiers, not just the drawer math.
+    expect(screen.queryByText("Net sales")).toBeNull();
+    expect(screen.queryByText("Gross sales")).toBeNull();
+    expect(screen.queryByText("Tenders")).toBeNull();
+    expect(screen.queryByText("Card")).toBeNull();
     expect(screen.getByTestId("blind-drawer-note")).toBeTruthy();
   });
 

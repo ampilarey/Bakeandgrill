@@ -163,9 +163,6 @@
         "promotions.apply_promo_code": [
             "promotions.discounts"
         ],
-        "shifts.view_own_history": [
-            "finance.cash_manage"
-        ],
         "inventory.view": [
             "inventory.manage"
         ],

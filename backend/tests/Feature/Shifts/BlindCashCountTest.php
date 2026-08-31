@@ -68,6 +68,45 @@ class BlindCashCountTest extends TestCase
         $this->assertStringNotContainsString('expected_cash', json_encode($json));
     }
 
+    public function test_staff_role_loses_shift_history_but_keeps_its_current_shift_summary(): void
+    {
+        // Owner, 2026-09-01: the Shift History pane (daily sales, discounts,
+        // refunds) is gone from the staff role default — but the CURRENT
+        // shift's sanitized summary must keep working via pos.close_shift or
+        // the shift panel and close flow would break.
+        $staff = $this->makeStaff();
+        Sanctum::actingAs($staff, ['staff']);
+        $ownShift = Shift::create([
+            'user_id' => $staff->id,
+            'opened_at' => now()->subHour(),
+            'opening_cash' => 50,
+        ]);
+
+        $this->getJson('/api/shifts/history')->assertStatus(403);
+        $this->getJson("/api/shifts/{$ownShift->id}/summary")->assertOk()
+            ->assertJsonMissingPath('sales_summary.gross_sales');
+    }
+
+    public function test_cashier_open_shift_summary_carries_no_money_figures_at_all(): void
+    {
+        // Owner, 2026-09-01: not just the expected drawer — sales, refunds,
+        // cash breakdown, tenders and commissions are manager territory while
+        // the shift is open. The cashier keeps operational counts only.
+        $json = $this->getJson("/api/shifts/{$this->shift->id}/summary")
+            ->assertOk()
+            ->json();
+
+        $this->assertArrayHasKey('order_count', $json['sales_summary']);
+        foreach (['gross_sales', 'refunds', 'net_sales', 'discounts'] as $key) {
+            $this->assertArrayNotHasKey($key, $json['sales_summary'], $key);
+        }
+        foreach (['cash_sales', 'cash_refunds'] as $key) {
+            $this->assertArrayNotHasKey($key, $json['cash_drawer'], $key);
+        }
+        $this->assertArrayNotHasKey('tenders', $json);
+        $this->assertArrayNotHasKey('payment_commission', $json);
+    }
+
     public function test_owner_open_shift_summary_includes_expected_cash(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
@@ -372,7 +411,7 @@ class BlindCashCountTest extends TestCase
         $owner->grantPermission('reports.financial');
         Sanctum::actingAs($owner, ['staff']);
 
-        $rows = $this->getJson('/api/reports/shift-variances?from='.now()->toDateString().'&to='.now()->toDateString())
+        $rows = $this->getJson('/api/reports/shift-variances?from=' . now()->toDateString() . '&to=' . now()->toDateString())
             ->assertOk()
             ->json('rows');
 

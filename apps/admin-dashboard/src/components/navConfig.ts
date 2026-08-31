@@ -335,7 +335,8 @@ export const PERM_ALIASES: Record<string, string[]> = {
   'customers.create': ['customers.manage'],
   'loyalty.manage': ['loyalty.manage'],
   'promotions.apply_promo_code': ['promotions.discounts'],
-  'shifts.view_own_history': ['finance.cash_manage'],
+  // shifts.view_own_history: no alias — cash_manage no longer implies shift
+  // history (owner, 2026-09-01; mirrors PermissionCatalog::SATISFIED_BY).
   'inventory.view': ['inventory.manage'],
   'suppliers.view': ['suppliers.view'],
   'kds.view': ['orders.view'],

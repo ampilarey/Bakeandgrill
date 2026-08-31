@@ -224,7 +224,7 @@ class ShiftController extends Controller
         // The cashier must not learn the target, the size of the difference,
         // or the direction — only whether it matches. Owner/manager keep the
         // full reconciliation (the attempt row stores it for everyone).
-        if (! $this->canSeeOpenShiftExpectedCash($request->user())) {
+        if (!$this->canSeeOpenShiftExpectedCash($request->user())) {
             $result = [
                 'matches' => $result['matches'],
                 'attempt_number' => $result['attempt_number'],
@@ -242,13 +242,13 @@ class ShiftController extends Controller
      */
     private function normalizeForeignCurrencyHeld(mixed $rows): ?array
     {
-        if (! is_array($rows) || $rows === []) {
+        if (!is_array($rows) || $rows === []) {
             return null;
         }
 
         $out = [];
         foreach ($rows as $row) {
-            if (! is_array($row)) {
+            if (!is_array($row)) {
                 continue;
             }
             $currency = strtoupper(trim((string) ($row['currency'] ?? '')));
@@ -360,26 +360,49 @@ class ShiftController extends Controller
             ->whereNotIn('status', ['cancelled', 'refunded', 'completed'])
             ->count();
 
-        // Blind count: while the shift is OPEN only owner/manager may see the
-        // expected drawer total (same role rule as canSeeOpenShiftExpectedCash
-        // in the POS). Omit the field — do not send 0 — so the client can tell
-        // "not allowed" from "genuinely zero". Closed shifts are unchanged.
+        // Blind count, extended (owner, 2026-09-01): while the shift is OPEN,
+        // only owner/manager see MONEY — not just the expected drawer total,
+        // but sales/discount/refund figures, cash tender, and commissions too.
+        // A cashier's open-shift summary carries operational counts only.
+        // Fields are omitted — never sent as 0 — so the client can tell
+        // "not allowed" from "genuinely zero". Closed shifts are unchanged
+        // (reaching one requires the history permission).
+        $seesMoney = $shift->closed_at !== null || $this->canSeeOpenShiftExpectedCash($user);
+
         $cashDrawer = [
             'opening_cash' => $openingCash,
-            'cash_sales' => $cashSales,
-            'cash_refunds' => $cashRefunds,
             'paid_in' => $cashIn,
             'paid_out' => $cashOut,
-            'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
-            'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
-            'credit_repayments_cash_laar' => $cash['credit_repayments_cash_laar'] ?? 0,
-            'credit_repayments_cash' => $cash['credit_repayments_cash'] ?? 0,
         ];
-        if ($shift->closed_at !== null || $this->canSeeOpenShiftExpectedCash($user)) {
-            $cashDrawer['expected_cash'] = $expectedCash;
+        if ($seesMoney) {
+            $cashDrawer += [
+                'cash_sales' => $cashSales,
+                'cash_refunds' => $cashRefunds,
+                'deposit_cash_received' => $cash['deposit_cash_received'] ?? 0,
+                'deposit_cash_refunded' => $cash['deposit_cash_refunded'] ?? 0,
+                'credit_repayments_cash_laar' => $cash['credit_repayments_cash_laar'] ?? 0,
+                'credit_repayments_cash' => $cash['credit_repayments_cash'] ?? 0,
+                'expected_cash' => $expectedCash,
+            ];
         }
 
-        return response()->json([
+        $salesSummary = [
+            'order_count' => $orderCount,
+            'orders_created_count' => $ordersCreatedCount,
+        ];
+        if ($seesMoney) {
+            $salesSummary += [
+                'gross_sales' => $gross,
+                'discounts' => 0,
+                'refunds' => $refundsTotal,
+                'net_sales' => $gross - $refundsTotal,
+                'card_gross' => (float) ($commissionSummary['totals']['gross_commissionable'] ?? 0),
+                'card_commission' => (float) ($commissionSummary['totals']['commission_total'] ?? 0),
+                'card_net' => (float) ($commissionSummary['totals']['net_settlement'] ?? 0),
+            ];
+        }
+
+        $response = [
             'shift' => [
                 'id' => $shift->id,
                 'opened_at' => $shift->opened_at,
@@ -388,21 +411,15 @@ class ShiftController extends Controller
                 'device_id' => $shift->device_id,
             ],
             'cash_drawer' => $cashDrawer,
-            'sales_summary' => [
-                'order_count' => $orderCount,
-                'orders_created_count' => $ordersCreatedCount,
-                'gross_sales' => $gross,
-                'discounts' => 0,
-                'refunds' => $refundsTotal,
-                'net_sales' => $gross - $refundsTotal,
-                'card_gross' => (float) ($commissionSummary['totals']['gross_commissionable'] ?? 0),
-                'card_commission' => (float) ($commissionSummary['totals']['commission_total'] ?? 0),
-                'card_net' => (float) ($commissionSummary['totals']['net_settlement'] ?? 0),
-            ],
-            'payment_commission' => $commissionSummary,
-            'tenders' => $tenders,
+            'sales_summary' => $salesSummary,
             'open_unpaid_orders' => $openUnpaidOrders,
-        ]);
+        ];
+        if ($seesMoney) {
+            $response['payment_commission'] = $commissionSummary;
+            $response['tenders'] = $tenders;
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -464,7 +481,7 @@ class ShiftController extends Controller
         // Cashiers reviewing their own past shifts must not see the expected
         // totals or variances (their own counted totals are fine). This also
         // covers the embedded count attempts. Owner/manager unchanged.
-        if (! $this->canSeeOpenShiftExpectedCash($user)) {
+        if (!$this->canSeeOpenShiftExpectedCash($user)) {
             $rows = $shifts->map(function (Shift $s) {
                 $row = $s->toArray();
                 unset($row['expected_cash'], $row['variance']);
@@ -774,7 +791,7 @@ class ShiftController extends Controller
         // would reveal the exact shortage one second after closing. Strip
         // the reconciliation fields unless the closer is owner/manager.
         $shiftBody = $shift->toArray();
-        if (! $this->canSeeOpenShiftExpectedCash($request->user())) {
+        if (!$this->canSeeOpenShiftExpectedCash($request->user())) {
             unset($shiftBody['expected_cash'], $shiftBody['variance']);
         }
 

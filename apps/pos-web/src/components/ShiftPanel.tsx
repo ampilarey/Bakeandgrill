@@ -110,29 +110,38 @@ export function ShiftPanel({
           )}
         </Card>
 
-        {/* Sales card — all-tender trade; cannot reconstruct cash drawer alone. */}
+        {/* Sales card — money figures are manager/owner territory during an
+            open shift; the server omits them for cashiers, we don't render
+            them. Cashiers keep the operational order count. */}
         <Card title="Sales">
           <Row label="Orders" value={summary.sales_summary.order_count} count />
-          <Row label="Gross sales" value={summary.sales_summary.gross_sales} />
-          {summary.sales_summary.discounts > 0 && (
-            <Row label="Discounts" value={-summary.sales_summary.discounts} />
+          {showExpected && (
+            <>
+              <Row label="Gross sales" value={summary.sales_summary.gross_sales} />
+              {summary.sales_summary.discounts > 0 && (
+                <Row label="Discounts" value={-summary.sales_summary.discounts} />
+              )}
+              {summary.sales_summary.refunds > 0 && (
+                <Row label="Refunds" value={-summary.sales_summary.refunds} />
+              )}
+              <Row label="Net sales" value={summary.sales_summary.net_sales} bold />
+            </>
           )}
-          {summary.sales_summary.refunds > 0 && (
-            <Row label="Refunds" value={-summary.sales_summary.refunds} />
-          )}
-          <Row label="Net sales" value={summary.sales_summary.net_sales} bold />
         </Card>
 
-        {/* Tender card */}
+        {/* Tender card — manager/owner only; the server omits tenders for
+            cashiers on an open shift. */}
+        {showExpected && (
         <Card title="Tenders" full>
           {tenderEntries.length === 0 ? (
             <div style={{ fontSize: 12, color: "#94A3B8", padding: 8 }}>
-              {showExpected ? "No payments yet this shift." : "No non-cash payments yet this shift."}
+              No payments yet this shift.
             </div>
           ) : tenderEntries.map(([method, amount]) => (
             <Row key={method} label={methodLabel(method)} value={Number(amount)} />
           ))}
         </Card>
+        )}
 
         {/* Cash movement card */}
         {canCashInOut && (
