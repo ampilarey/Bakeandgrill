@@ -75,12 +75,38 @@
 
 @section('styles')
 <style>
-.menu-item-page { max-width: 560px; margin: 0 auto; padding: 1.25rem 1.25rem 4rem; }
+/* Sized and spaced to match the order app's item sheet (ItemSheet.tsx), so a
+   customer arriving from a shared link sees the same dish presented the same
+   way they would inside the app. Owner, 2026-09-01: "the way item details
+   shows on blade menu and order app menu is different". The sheet is a 480px
+   panel, so this page is too. */
+.menu-item-page { max-width: 480px; margin: 0 auto; padding: 1.25rem 1.25rem 4rem; }
+/* Back on the left, Share on the right — the sheet's top row. */
+.menu-item-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 0.35rem;
+}
 .menu-item-back {
-    display: inline-block; margin-bottom: 1rem;
-    font-size: 0.875rem; font-weight: 600; color: var(--amber); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 44px;
+    font-size: 0.95rem; font-weight: 700; color: var(--amber); text-decoration: none;
 }
 .menu-item-back:hover { text-decoration: underline; }
+/* The sheet's share control is a compact pill in the top row, not a
+   full-width button in the action stack. */
+.menu-item-topbar .share-control-btn {
+    min-height: 44px; padding: 0.5rem 1rem;
+    font-size: 0.95rem; font-weight: 700;
+}
+/* The shared partial opens its popover upward and left-aligned, which suits a
+   control at the foot of a page. From the top-right corner that would run off
+   the top of the viewport and off the right edge, so flip it: drop down, align
+   to the button's right. */
+.menu-item-topbar .share-popover {
+    top: calc(100% + 0.4rem); bottom: auto;
+    left: auto; right: 0;
+    max-width: min(20rem, calc(100vw - 2.5rem));
+}
 .menu-item-hero {
     position: relative;
     aspect-ratio: 16 / 10;
@@ -112,9 +138,10 @@
 }
 .menu-item-page .menu-fav {
     display: none;
-    position: absolute; top: 0.65rem; right: 0.65rem;
+    /* 40px at 12px inset — the sheet's heart button. */
+    position: absolute; top: 12px; right: 12px;
     z-index: 1;
-    min-width: 44px; min-height: 44px; width: 44px; height: 44px;
+    min-width: 40px; min-height: 40px; width: 40px; height: 40px;
     padding: 0; border: none; border-radius: 999px;
     background: rgba(255,253,249,0.92);
     box-shadow: 0 1px 5px rgba(28,20,8,0.12);
@@ -124,9 +151,10 @@
     text-decoration: none;
 }
 html.js .menu-item-page .menu-fav { display: inline-flex; }
+/* 1.35rem/800, no tracking — the sheet's title. */
 .menu-item-name {
     margin: 0 0 0.2rem;
-    font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em;
+    font-size: 1.35rem; font-weight: 800;
     color: var(--dark); line-height: 1.25;
 }
 .menu-item-name-alt {
@@ -184,20 +212,20 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
    action was unstyled text (.btn-primary was defined only on the home page)
    sitting next to a pill-shaped secondary, so the page read as though "View
    cart" were the thing to press. */
+/* The sheet ends in one full-width primary action with the secondary beneath,
+   rather than two buttons splitting a row. */
 .menu-item-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.6rem;
     margin-top: 1.5rem;
 }
 .menu-item-actions .btn-primary,
-.menu-item-actions .btn-outline,
-.menu-item-actions .share-control {
-    /* Both grow, so on a phone they stack full width and on a wider screen
-       they split the row evenly rather than the secondary shrink-wrapping. */
-    flex: 1 1 11rem;
+.menu-item-actions .btn-outline {
+    width: 100%;
+    border-radius: 14px;
+    font-weight: 800;
 }
-.menu-item-actions .share-control-btn { width: 100%; }
 .menu-item-unavailable {
     margin: 0 0 1rem; padding: 0.75rem 0.9rem;
     background: var(--amber-light); border: 1px solid var(--border); border-radius: 12px;
@@ -216,7 +244,15 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
 
 @section('content')
 <article class="menu-item-page">
-    <a class="menu-item-back" href="/menu">← Full menu</a>
+    <div class="menu-item-topbar">
+        <a class="menu-item-back" href="/menu"><span aria-hidden="true">←</span> Full menu</a>
+        @include('partials.share-control', [
+            'shareUrl' => $shareUrl,
+            'shareTitle' => $iname['text'],
+            'shareText' => $iname['text'] . ' at Bake & Grill',
+            'shareButtonClass' => 'btn-outline',
+        ])
+    </div>
 
     <div class="menu-item-hero @if($photo && $photoIsPlaceholder)menu-item-hero--placeholder @endif">
         @if($photo)
@@ -310,12 +346,6 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
                 <a href="/menu#cat-{{ $item->category_id }}" class="btn-outline">More in this category</a>
             @endif
         @endif
-        @include('partials.share-control', [
-            'shareUrl' => $shareUrl,
-            'shareTitle' => $iname['text'],
-            'shareText' => $iname['text'] . ' at Bake & Grill',
-            'shareButtonClass' => 'btn-outline',
-        ])
     </div>
 
     @if(! $itemAvailable && $alternatives->isNotEmpty())

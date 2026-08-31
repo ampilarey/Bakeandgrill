@@ -260,4 +260,40 @@ class SocialSharingPhase1Test extends TestCase
 
         $this->assertStringNotContainsString('data-testid="share-open"', $html);
     }
+
+    public function test_the_item_page_is_laid_out_like_the_order_app_sheet(): void
+    {
+        // Owner, 2026-09-01: a customer arriving from a shared link should see
+        // the dish presented the way the app presents it — Back and Share in
+        // one top row, then hero, name, price, and the action stack.
+        $item = $this->item($this->category(), 'Tuna Bajiya');
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        // Match markup only — the same names appear earlier in the <style>
+        // block, so bare class names would compare CSS against HTML.
+        $order = [
+            'class="menu-item-topbar"',
+            'data-testid="share-open"',
+            'class="menu-item-hero',
+            'class="menu-item-name"',
+            'class="menu-item-price"',
+            'class="menu-item-actions"',
+        ];
+        $last = -1;
+        foreach ($order as $needle) {
+            $at = strpos($html, $needle);
+            $this->assertNotFalse($at, $needle . ' must be on the item page');
+            $this->assertGreaterThan($last, $at, $needle . ' is out of order');
+            $last = $at;
+        }
+
+        // Share belongs in the top row now, not in the bottom action stack.
+        $actionsAt = strpos($html, 'class="menu-item-actions"');
+        $this->assertLessThan(
+            $actionsAt,
+            strpos($html, 'data-testid="share-open"'),
+            'share moved to the top bar beside Back',
+        );
+    }
 }
