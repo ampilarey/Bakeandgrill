@@ -132,8 +132,7 @@ html, body, #root {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.pos-offline-banner,
-.pos-device-blocked-banner {
+.pos-offline-banner {
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
@@ -143,11 +142,6 @@ html, body, #root {
   background: #FEF3C7;
   color: #92400E;
   border-bottom: 1px solid #FDE68A;
-}
-.pos-device-blocked-banner {
-  background: #FEF2F2;
-  color: #991B1B;
-  border-bottom: 1px solid #FECACA;
 }
 .pos-menu-toolbar {
   background: #FFFFFF;

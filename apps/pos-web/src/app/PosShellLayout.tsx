@@ -165,6 +165,50 @@ export function PosShellLayout() {
     discountControls,
   ]);
 
+  // A pending or disabled device gets NOTHING — not shift history, not
+  // requests, not events. The whole shell is replaced by this gate until
+  // the owner approves/re-enables the device; usePosApp re-checks every
+  // 20s so approval unlocks the till without a refresh.
+  if (deviceBlockedMessage) {
+    return (
+      <div
+        data-testid="pos-device-gate"
+        style={{
+          minHeight: "100vh", display: "flex", alignItems: "center",
+          justifyContent: "center", background: "#F8FAFC", padding: 24,
+        }}
+      >
+        <div style={{
+          maxWidth: 460, width: "100%", background: "#fff", borderRadius: 16,
+          border: "1px solid #E2E8F0", padding: "32px 28px", textAlign: "center",
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+        }}>
+          <div style={{ fontSize: 44, marginBottom: 12 }}>🔒</div>
+          <h2 style={{ margin: "0 0 10px", fontSize: 20, color: "#0F172A" }}>
+            This till is not available
+          </h2>
+          <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.6, color: "#475569" }}>
+            {deviceBlockedMessage}
+          </p>
+          <p style={{ margin: "0 0 20px", fontSize: 12, color: "#94A3B8" }}>
+            Device {deviceId} · signed in as {cashierName || "staff"} · checking automatically…
+          </p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{
+              padding: "12px 22px", borderRadius: 10, border: "1px solid #CBD5E1",
+              background: "#fff", color: "#0F172A", fontWeight: 700, cursor: "pointer",
+              fontSize: 14, fontFamily: "inherit",
+            }}
+          >
+            Log out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pos-shell" style={{
       minHeight: '100dvh',
@@ -326,12 +370,6 @@ export function PosShellLayout() {
           });
         }}
       />
-
-      {deviceBlockedMessage && (
-        <div className="pos-device-blocked-banner">
-          {deviceBlockedMessage}
-        </div>
-      )}
 
       {receiptBanner && (
         <div style={{ padding: "8px 16px 0" }}>
