@@ -108,6 +108,36 @@ class SocialSharingPhase1Test extends TestCase
         $this->assertSame(url('/menu/' . $item->id), $this->meta($html, 'og:url'));
     }
 
+    public function test_item_without_photo_shares_the_logo_when_the_site_image_was_deleted(): void
+    {
+        // The production symptom (owner, 2026-09-01): og_image still named a
+        // media file that had been deleted, so a photo-less item shared as a
+        // bare link with no picture at all. A dead fallback must be skipped.
+        SiteSetting::set('og_image', '/storage/menu/deleted-by-owner.png', 'shared');
+        SiteSetting::bust();
+        $item = $this->item($this->category(), 'Plain Rice');
+
+        $html = $this->get('/menu/' . $item->id)->assertOk()->getContent();
+
+        $this->assertSame(asset('logo.png'), $this->meta($html, 'og:image'));
+        $this->assertStringNotContainsString('deleted-by-owner', $html);
+    }
+
+    public function test_every_page_emits_an_absolute_og_image_that_resolves(): void
+    {
+        // A stored relative path used to be emitted verbatim site-wide;
+        // crawlers require an absolute URL, so home/menu/specials shared
+        // with no picture even when the file existed.
+        SiteSetting::set('og_image', '/storage/menu/deleted-by-owner.png', 'shared');
+        SiteSetting::bust();
+
+        foreach (['/', '/menu'] as $path) {
+            $image = $this->meta($this->get($path)->assertOk()->getContent(), 'og:image');
+            $this->assertStringStartsWith('http', $image, $path . ' og:image must be absolute');
+            $this->assertSame(asset('logo.png'), $image, $path);
+        }
+    }
+
     public function test_webp_only_item_photo_falls_back_to_the_site_image(): void
     {
         SiteSetting::set('og_image', 'https://cdn.example.com/site-og.jpg', 'shared');

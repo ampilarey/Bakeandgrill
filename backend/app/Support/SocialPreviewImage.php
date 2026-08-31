@@ -26,7 +26,7 @@ final class SocialPreviewImage
         $alt = $this->itemAlt($item);
         foreach ($this->candidates($item) as $candidate) {
             $url = PublicMediaUrl::absolute($candidate['url']);
-            if ($url === null || !$this->isShareableRaster($url)) {
+            if ($url === null || !$this->isShareableRaster($url) || !$this->resolves($url)) {
                 continue;
             }
 
@@ -52,12 +52,42 @@ final class SocialPreviewImage
             asset('logo.png'),
         ] as $raw) {
             $url = PublicMediaUrl::absolute($raw);
-            if ($url !== null && $this->isShareableRaster($url)) {
+            if ($url !== null && $this->isShareableRaster($url) && $this->resolves($url)) {
                 return $url;
             }
         }
 
         return asset('logo.png');
+    }
+
+    /**
+     * Does this URL actually serve a file?
+     *
+     * A crawler that fetches a 404 shows NO preview image at all, so a
+     * setting left pointing at deleted media is worse than having no
+     * setting. Owner, 2026-09-01: items without a photo shared as a bare
+     * link because `og_image` still named a media file that had been
+     * removed — every page on the site was emitting that dead URL.
+     *
+     * Only locally-hosted files are checked (a stat, no network). An
+     * off-site CDN URL is trusted: verifying it would mean an HTTP call
+     * on every page render.
+     */
+    private function resolves(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return false;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        $ownHost = parse_url(url('/'), PHP_URL_HOST);
+        if (is_string($host) && is_string($ownHost) && strcasecmp($host, $ownHost) !== 0) {
+            return true;
+        }
+
+        // public_path() resolves /storage through the storage:link symlink.
+        return is_file(public_path(ltrim(rawurldecode($path), '/')));
     }
 
     /**

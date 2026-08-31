@@ -42,7 +42,11 @@
     $metaTitle   = content('meta_title',       $siteName . ' – Café & Online Orders');
     $metaDesc    = content('meta_description',  'Fresh Dhivehi food, artisan baking, and premium grills in Malé.');
     $metaKeywords = content('meta_keywords', 'Bake and Grill, food delivery Maldives, Male restaurant, cafe, grills, online order');
-    $ogImage     = content('og_image',          asset('logo.png'));
+    // Validated + absolute. The raw setting was emitted as-is, so a stored
+    // relative path ("/storage/menu/x.png") became an og:image crawlers
+    // reject, and a setting naming deleted media 404'd — either way the
+    // share showed no picture. siteFallback() degrades to the logo.
+    $ogImage     = app(\App\Support\SocialPreviewImage::class)->siteFallback();
     $logoUrl     = content('logo',              asset('logo.png'));
     $logoDarkRaw = trim((string) content('logo_dark', ''));
     $logoDarkUrl = $logoDarkRaw !== '' ? $logoDarkRaw : $logoUrl;
