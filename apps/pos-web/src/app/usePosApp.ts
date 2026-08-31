@@ -865,7 +865,15 @@ export function usePosApp() {
   const checkDeviceStatus = useCallback(async () => {
     try {
       const status = await selfDeviceStatus(deviceId);
-      if (status.is_active === false) {
+      // Pending and disabled are different situations: pending is waiting on
+      // the owner (who has been SMS-alerted), disabled was switched off on
+      // purpose. "unregistered"/"unknown" get no banner — the row appears on
+      // the first gated request or self-register.
+      if (status.status === "pending") {
+        setDeviceBlockedMessage(
+          "This POS device is waiting for owner approval — the owner has been notified. Sales unlock as soon as it's approved in Admin → Settings → Devices.",
+        );
+      } else if (status.is_active === false) {
         setDeviceBlockedMessage("This POS device is disabled. Contact the owner to re-enable it.");
       } else {
         setDeviceBlockedMessage(null);
@@ -875,6 +883,14 @@ export function usePosApp() {
       /* best-effort — sales may still work if device was previously registered */
     }
   }, [deviceId, persistDeviceDbId]);
+
+  // While blocked, re-check every 20s so the till comes alive the moment the
+  // owner approves or re-enables it — no manual refresh needed.
+  useEffect(() => {
+    if (!isLoggedIn || !deviceBlockedMessage) return;
+    const timer = window.setInterval(() => { void checkDeviceStatus(); }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [isLoggedIn, deviceBlockedMessage, checkDeviceStatus]);
 
   // Fire-and-forget device audit registration — never blocks sales.
   useEffect(() => {

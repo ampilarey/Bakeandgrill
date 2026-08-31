@@ -7,25 +7,23 @@ namespace Tests\Feature\Security;
 use App\Models\AuditLog;
 use App\Models\Device;
 use App\Models\Role;
+use App\Models\SiteSetting;
+use App\Models\SmsLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Device self-registration.
+ * Device self-registration under MANUAL approval.
  *
- * Tills are set up in the shop with nobody around to approve them (owner,
- * 2026-08-24), so auto-approval is deliberate and most of these tests exist to
- * keep it working — including under `POS_STRICT_DEVICE_APPROVAL`, which
- * defaults to TRUE and gates EnsureActiveDevice. That asymmetry is what makes
- * a new till usable at all: the middleware parks it pending, this endpoint
- * approves it moments later.
- *
- * Device approval is therefore an inventory of terminals, not an access
- * control. The real gate is the staff token needed to reach this endpoint. So
- * what is pinned here is the part that can be tightened without breaking the
- * shop: a rejected device stays rejected, and a self-promotion is auditable.
+ * From 2026-08-24 this endpoint auto-approved unconditionally ("a terminal
+ * that cannot sell until someone logs into admin is a terminal that cannot
+ * sell"). That made strict approval decorative: on 2026-08-31 a brand-new
+ * cashier's own login approved a brand-new iPad seven seconds after sign-in.
+ * The owner reversed the decision: under POS_STRICT_DEVICE_APPROVAL a device
+ * registers PENDING, the owner is SMS-alerted, and only Admin → Settings →
+ * Devices approves it. With strict mode off, setup-time auto-approval stays.
  */
 class DeviceSelfRegistrationTest extends TestCase
 {
@@ -33,7 +31,7 @@ class DeviceSelfRegistrationTest extends TestCase
 
     private function staff(): User
     {
-        $role = Role::firstOrCreate(['slug' => 'cashier'], ['name' => 'Cashier', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'is_active' => true]);
 
         return User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
     }
@@ -47,37 +45,82 @@ class DeviceSelfRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_a_new_till_onboards_itself(): void
+    public function test_strict_mode_registers_a_new_till_as_pending_and_alerts_the_owner(): void
     {
-        // The shop's actual workflow. If this breaks, a new terminal cannot
-        // sell until someone logs into admin — which is the whole reason
-        // auto-approval exists.
+        config(['pos.strict_device_approval' => true]);
+        SiteSetting::set('business_phone', '7820288');
+        SiteSetting::bust();
         Sanctum::actingAs($this->staff(), ['staff']);
 
-        $this->register()->assertOk()->assertJsonPath('status', 'approved');
+        $this->register('TILL-NEW')->assertOk()->assertJsonPath('status', 'pending');
 
-        $this->assertSame('approved', Device::where('identifier', 'TILL-1')->value('status'));
+        $device = Device::where('identifier', 'TILL-NEW')->firstOrFail();
+        $this->assertSame('pending', $device->status);
+        $this->assertFalse((bool) $device->is_active);
+
+        // The owner hears about it by SMS — once, even if the till retries.
+        $this->register('TILL-NEW')->assertOk()->assertJsonPath('status', 'pending');
+        $alerts = SmsLog::where('reference_type', 'device')
+            ->where('reference_id', (string) $device->id)
+            ->count();
+        $this->assertSame(1, $alerts, 'exactly one approval alert per device per interval');
     }
 
-    public function test_it_onboards_even_with_strict_approval_on(): void
+    public function test_nothing_self_promotes_out_of_pending_in_strict_mode(): void
     {
-        // Deliberate, and the reason the owner sees "not registered, refresh
-        // and it opens": strict mode gates EnsureActiveDevice, which parks the
-        // device pending, and this endpoint approves it moments later. Gating
-        // this on the same flag would leave a new till dead until someone
-        // logged into admin.
+        // THE 2026-08-31 regression: a parked/pending device must never be
+        // approved by a staff login. Only the admin Devices screen approves.
         config(['pos.strict_device_approval' => true]);
+        Device::create([
+            'name' => 'Parked till',
+            'identifier' => 'TILL-PARKED',
+            'type' => 'pos',
+            'status' => 'pending',
+            'is_active' => false,
+        ]);
         Sanctum::actingAs($this->staff(), ['staff']);
 
-        $this->register('TILL-STRICT')->assertOk()->assertJsonPath('status', 'approved');
+        $this->register('TILL-PARKED')->assertOk()->assertJsonPath('status', 'pending');
 
-        $this->assertSame('approved', Device::where('identifier', 'TILL-STRICT')->value('status'));
+        $this->assertSame('pending', Device::where('identifier', 'TILL-PARKED')->value('status'));
+        $this->assertFalse(
+            AuditLog::where('action', 'device.self_approved')->exists(),
+            'self-approval no longer exists as an action',
+        );
+    }
+
+    public function test_owner_approval_in_admin_is_what_unblocks_the_till(): void
+    {
+        config(['pos.strict_device_approval' => true]);
+        Sanctum::actingAs($this->staff(), ['staff']);
+        $this->register('TILL-WAIT')->assertOk()->assertJsonPath('status', 'pending');
+        $device = Device::where('identifier', 'TILL-WAIT')->firstOrFail();
+
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $this->patchJson("/api/devices/{$device->id}/approve")->assertOk();
+
+        $device->refresh();
+        $this->assertSame('approved', $device->status);
+        $this->assertTrue((bool) $device->is_active);
+    }
+
+    public function test_setup_mode_still_onboards_a_till_without_approval(): void
+    {
+        // Strict OFF is the deliberate setup-time convenience — pinned so
+        // turning the flag off still lets a shop bootstrap its first tills.
+        config(['pos.strict_device_approval' => false]);
+        Sanctum::actingAs($this->staff(), ['staff']);
+
+        $this->register('TILL-SETUP')->assertOk()->assertJsonPath('status', 'approved');
+
+        $this->assertSame('approved', Device::where('identifier', 'TILL-SETUP')->value('status'));
+        $this->assertSame(0, SmsLog::where('reference_type', 'device')->count(), 'no alert when nothing is pending');
     }
 
     public function test_a_rejected_device_is_never_resurrected(): void
     {
         // Rejecting a terminal has to be final in both modes, or "revoke this
-        // till" means nothing. This is the one real control the endpoint has.
+        // till" means nothing.
         foreach ([false, true] as $strict) {
             config(['pos.strict_device_approval' => $strict]);
             $identifier = 'TILL-REJECTED-' . ($strict ? 'S' : 'L');
@@ -98,29 +141,6 @@ class DeviceSelfRegistrationTest extends TestCase
                 'a rejected device must stay rejected (strict=' . var_export($strict, true) . ')',
             );
         }
-    }
-
-    public function test_a_self_promotion_is_written_to_the_audit_log(): void
-    {
-        // "A device an admin parked became approved by itself" is exactly the
-        // event you want to be able to find afterwards. It was silent before,
-        // and visibility is what this endpoint can offer instead of a gate.
-        Device::create([
-            'name' => 'Parked till',
-            'identifier' => 'TILL-PROMOTE',
-            'type' => 'pos',
-            'status' => 'pending',
-            'is_active' => false,
-        ]);
-        $staff = $this->staff();
-        Sanctum::actingAs($staff, ['staff']);
-
-        $this->register('TILL-PROMOTE')->assertOk()->assertJsonPath('status', 'approved');
-
-        $this->assertTrue(
-            AuditLog::where('action', 'device.self_approved')->exists(),
-            'the promotion must be auditable',
-        );
     }
 
     public function test_registration_still_requires_a_staff_token(): void

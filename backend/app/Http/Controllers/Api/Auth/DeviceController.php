@@ -62,29 +62,24 @@ class DeviceController extends Controller
     /**
      * Self-registration from a POS device after staff login.
      *
-     * Auto-approves unconditionally, on purpose: tills are set up in the shop
-     * with nobody around to approve them (owner, 2026-08-24), and a terminal
-     * that cannot sell until someone logs into admin is a terminal that cannot
-     * sell.
+     * NEVER promotes a device out of `pending`. It records the terminal
+     * (identity, last user, last seen) and, under strict approval, leaves it
+     * for the OWNER to approve in Admin -> Settings -> Devices; a pending
+     * device also triggers a rate-limited SMS to the business phone so the
+     * owner hears about it without having the admin open.
      *
-     * This is deliberately NOT gated on `POS_STRICT_DEVICE_APPROVAL`, which
-     * defaults to **true** in config/pos.php. That default is why the owner
-     * saw "device is not registered, but a refresh opens it": EnsureActiveDevice
-     * creates the row pending and rejects the first request, and the POS's
-     * fire-and-forget call here approves it a few seconds later. Gating this
-     * endpoint on the same flag would make strict mode genuinely strict — and
-     * would leave a new till dead until somebody logged into admin, which is
-     * not how this shop works.
+     * History, because this reverses an earlier deliberate choice: from
+     * 2026-08-24 this endpoint auto-approved unconditionally so a new till
+     * could sell without anyone at the admin ("device is not registered, but
+     * a refresh opens it"). That made `POS_STRICT_DEVICE_APPROVAL` decorative:
+     * on 2026-08-31 a brand-new cashier's own login approved a brand-new iPad
+     * seven seconds after sign-in (audit action `device.self_approved`,
+     * device #8). The owner chose manual approval + SMS alert over that, so
+     * approval is a real access control again. With strict mode OFF the old
+     * setup-time convenience remains: unknown devices register approved.
      *
-     * So the honest position: device approval is not an access control here,
-     * it is an inventory of terminals. The real gate is the staff token
-     * required to reach this endpoint at all. What this adds is visibility —
-     * a device promoting itself out of `pending` is now audited, because "a
-     * terminal an admin parked became approved by itself" is exactly the event
-     * worth being able to find later.
-     *
-     * One thing it will not do: resurrect a `rejected` device. Once an owner
-     * rejects a terminal, no amount of self-registration brings it back.
+     * Unchanged either way: a `rejected` device is never resurrected. Once an
+     * owner rejects a terminal, no amount of self-registration brings it back.
      */
     public function selfRegister(Request $request)
     {
@@ -95,39 +90,24 @@ class DeviceController extends Controller
         ]);
 
         $existing = Device::where('identifier', $data['identifier'])->first();
-        $staffId = $request->user()?->id;
+        $staff = $request->user();
+        $staffId = $staff?->id;
+        $strict = (bool) config('pos.strict_device_approval', false);
 
         if ($existing) {
-            $patch = [
+            $existing->update([
                 'last_seen_at' => now(),
                 'ip_address' => $request->ip(),
                 'last_user_id' => $staffId ?? $existing->last_user_id,
-            ];
+            ]);
 
-            $promoting = $existing->status === 'pending';
-            if ($promoting) {
-                $patch['status'] = 'approved';
-                $patch['is_active'] = true;
-            }
-
-            $before = $existing->toArray();
-            $existing->update($patch);
-
-            if ($promoting) {
-                app(AuditLogService::class)->log(
-                    'device.self_approved',
-                    'Device',
-                    $existing->id,
-                    $before,
-                    $existing->fresh()->toArray(),
-                    ['approved_by_staff_id' => $staffId],
-                    $request,
-                );
+            if ($existing->status === 'pending' && $strict) {
+                \App\Services\DeviceApprovalAlert::send($existing, $staff);
             }
 
             return response()->json([
                 'device' => $existing->fresh(),
-                'status' => $existing->fresh()->status ?? 'approved',
+                'status' => $existing->fresh()->status ?? 'pending',
             ]);
         }
 
@@ -137,12 +117,16 @@ class DeviceController extends Controller
             'type' => $data['type'] ?? 'pos',
             'last_user_id' => $staffId,
             'ip_address' => $request->ip(),
-            'is_active' => true,
-            'status' => 'approved',
+            'is_active' => !$strict,
+            'status' => $strict ? 'pending' : 'approved',
             'last_seen_at' => now(),
         ]);
 
         app(AuditLogService::class)->log('device.self_registered', 'Device', $device->id, [], $device->toArray(), [], $request);
+
+        if ($device->status === 'pending') {
+            \App\Services\DeviceApprovalAlert::send($device, $staff);
+        }
 
         return response()->json(['device' => $device, 'status' => $device->status]);
     }

@@ -80,8 +80,10 @@ class OpenOrderContinuationTest extends TestCase
         return (int) $response->json('order.id');
     }
 
-    public function test_self_register_auto_approves_without_blocking(): void
+    public function test_self_register_parks_a_new_till_pending_without_blocking(): void
     {
+        // Manual approval (owner, 2026-08-31): registration itself must never
+        // error or block the login flow, but the till waits for the owner.
         Sanctum::actingAs($this->ahmed, ['staff']);
 
         $this->postJson('/api/devices/self-register', [
@@ -90,12 +92,12 @@ class OpenOrderContinuationTest extends TestCase
             'type' => 'pos',
         ])
             ->assertOk()
-            ->assertJsonPath('status', 'approved');
+            ->assertJsonPath('status', 'pending');
 
         $this->assertDatabaseHas('devices', [
             'identifier' => 'POS-AUTO-1',
-            'status' => 'approved',
-            'is_active' => true,
+            'status' => 'pending',
+            'is_active' => false,
         ]);
     }
 

@@ -310,4 +310,77 @@ class EnsureActiveDeviceTest extends TestCase
             ->assertJsonPath('code', 'device_not_approved')
             ->assertJsonPath('message', 'This POS device is waiting for approval. Ask the owner to approve it in Settings → Devices.');
     }
+
+    public function test_a_disabled_device_cannot_run_the_cash_drawer(): void
+    {
+        // Shift open/close were ungated (2026-08-31): a till whose banner said
+        // "disabled" could still open a shift. Now the drawer is gated too.
+        Device::create([
+            'name' => 'Disabled POS',
+            'identifier' => 'DISABLED-DRAWER',
+            'type' => 'pos',
+            'is_active' => false,
+            'status' => 'approved',
+        ]);
+
+        // setUp opened a shift; close it so open would otherwise succeed.
+        $shiftId = \App\Models\Shift::whereNull('closed_at')->value('id');
+        $this->postJson("/api/shifts/{$shiftId}/close", ['closing_cash' => 100])->assertOk();
+
+        $this->withHeader('X-Device-Identifier', 'DISABLED-DRAWER')
+            ->postJson('/api/shifts/open', ['opening_cash' => 50])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_disabled');
+    }
+
+    public function test_a_pending_device_cannot_open_or_close_a_shift_in_strict_mode(): void
+    {
+        config(['pos.strict_device_approval' => true]);
+        Device::create([
+            'name' => 'Pending POS',
+            'identifier' => 'PENDING-DRAWER',
+            'type' => 'pos',
+            'is_active' => false,
+            'status' => 'pending',
+        ]);
+
+        $shiftId = \App\Models\Shift::whereNull('closed_at')->value('id');
+
+        $this->withHeader('X-Device-Identifier', 'PENDING-DRAWER')
+            ->postJson("/api/shifts/{$shiftId}/close", ['closing_cash' => 100])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_not_approved');
+
+        $this->withHeader('X-Device-Identifier', 'PENDING-DRAWER')
+            ->postJson('/api/shifts/open', ['opening_cash' => 50])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_not_approved');
+    }
+
+    public function test_first_blocked_request_on_a_new_device_alerts_the_owner(): void
+    {
+        // The middleware is usually the first to see a brand-new till in
+        // strict mode; the SMS must not wait for self-register.
+        config(['pos.strict_device_approval' => true]);
+        \App\Models\SiteSetting::set('business_phone', '7820288');
+        \App\Models\SiteSetting::bust();
+
+        $this->withHeader('X-Device-Identifier', 'BRAND-NEW-TILL')
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->item->id, 'quantity' => 1]],
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'device_not_approved');
+
+        $device = Device::where('identifier', 'BRAND-NEW-TILL')->firstOrFail();
+        $this->assertSame('pending', $device->status);
+        $this->assertSame(
+            1,
+            \App\Models\SmsLog::where('reference_type', 'device')
+                ->where('reference_id', (string) $device->id)
+                ->count(),
+            'owner gets an approval alert the moment the pending row exists',
+        );
+    }
 }
