@@ -237,15 +237,11 @@ export function PosShellLayout() {
         </div>
 
         <div className="pos-topbar-right">
-          {/* Sales chip — quick at-a-glance shift KPI */}
-          {shift.summary && (
-            <span className="pos-topbar-chip" style={{
-              padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-              background: '#0F172A', color: '#fff',
-            }}>
-              {shift.summary.sales_summary.order_count} orders · MVR {Number(shift.summary.sales_summary.net_sales ?? 0).toFixed(0)}
-            </span>
-          )}
+          {/* A black pill here used to show "N orders · MVR X" — the shift's
+              order count and takings — on every screen of the till, in front
+              of whoever was standing at the counter. Removed at the owner's
+              request, 2026-09-01. The same figure is still a tap away in the
+              side drawer, which only staff open. */}
 
           {!shiftOpen && canEnterPosShell && (
             <span className="pos-topbar-chip" style={{
