@@ -394,6 +394,48 @@ function TaxCodeField({
   );
 }
 
+/**
+ * One nudge of a size up or down the list.
+ *
+ * Named after the size rather than the row number so a screen reader says
+ * "Move Large up" — a nameless row is one somebody has just added and not
+ * filled in yet, so it falls back to its position.
+ */
+function MoveButton({
+  direction, disabled, name, onClick,
+}: {
+  direction: 'up' | 'down';
+  disabled: boolean;
+  name: string;
+  onClick: () => void;
+}) {
+  const label = `Move ${name.trim() || 'this size'} ${direction}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={disabled ? undefined : label}
+      style={{
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
+        borderRadius: 4,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.3 : 1,
+        color: 'var(--color-text-secondary)',
+        fontSize: 9,
+        lineHeight: 1,
+        padding: '2px 4px',
+        width: 24,
+      }}
+    >
+      {direction === 'up' ? '▲' : '▼'}
+    </button>
+  );
+}
+
 function VariantsEditor({
   rows, onChange,
 }: { rows: VariantRow[]; onChange: (rows: VariantRow[]) => void }) {
@@ -403,6 +445,25 @@ function VariantsEditor({
   const remove = (key: string) => onChange(rows.filter((r) => r._key !== key));
 
   const addRow = () => onChange([...rows, emptyVariantRow()]);
+
+  /**
+   * Move a size up or down the list.
+   *
+   * The order here is the order the POS size popup, the website and the app
+   * all show — the payload stamps sort_order from each row's position — but
+   * until now the only way to change it was to type numbers into the Sort
+   * column of the quick-edit sheet, which is not where anybody looks when
+   * they are already staring at the list of sizes. Owner, 2026-09-01.
+   */
+  const move = (key: string, delta: -1 | 1) => {
+    const from = rows.findIndex((r) => r._key === key);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= rows.length) return;
+
+    const next = [...rows];
+    [next[from], next[to]] = [next[to], next[from]];
+    onChange(next);
+  };
 
   const headerStyle: React.CSSProperties = {
     fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em',
@@ -424,6 +485,7 @@ function VariantsEditor({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, width: 34 }} title="The order sizes appear on the till, the website and the app">Order</th>
                 <th style={{ ...headerStyle, textAlign: 'left', paddingBottom: 6, minWidth: 100 }}>Name *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Price *</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 72 }}>Cost</th>
@@ -437,8 +499,24 @@ function VariantsEditor({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row, index) => (
                 <tr key={row._key} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                  <td style={{ ...cellStyle, textAlign: 'center', verticalAlign: 'middle' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center' }}>
+                      <MoveButton
+                        direction="up"
+                        disabled={index === 0}
+                        name={row.name}
+                        onClick={() => move(row._key, -1)}
+                      />
+                      <MoveButton
+                        direction="down"
+                        disabled={index === rows.length - 1}
+                        name={row.name}
+                        onClick={() => move(row._key, 1)}
+                      />
+                    </div>
+                  </td>
                   <td style={cellStyle}>
                     <input
                       value={row.name}
@@ -529,6 +607,10 @@ function VariantsEditor({
             </tbody>
           </table>
           <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            The <strong>▲▼</strong> arrows set the order sizes appear in — on the till&rsquo;s size
+            popup, on the website and in the app. Saved when you save the dish.
+          </p>
+          <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
             <strong>Uses</strong> is how much of the item&rsquo;s recipe one of this size takes —
             full <code>1</code>, half <code>0.5</code>. Sizes then share one pool of ingredients:
             50 leaves serve 50 fulls, 100 halves, or any mix. Set the recipe to
