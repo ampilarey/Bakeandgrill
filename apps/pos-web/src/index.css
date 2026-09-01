@@ -274,7 +274,16 @@ html, body, #root {
   overflow: hidden;
 }
 
-.pos-cart,
+/* The home-indicator inset is added once, by whichever box actually reaches
+ * the bottom edge of the screen.
+ *
+ * .pos-charge is a fixed overlay, so it escapes the shell's padding and has to
+ * pad itself. .pos-cart does not: it sits in normal flow inside .pos-shell,
+ * which already pads. It used to carry the inset too, and so did the dock bar
+ * inside it — three of them stacked. That was invisible while the page could
+ * scroll, because the surplus hung below the fold. Now that the shell is
+ * exactly one screen tall the whole stack shows as a white band under the
+ * Charge row. Owner, 2026-09-01: "now there is lot of space". */
 .pos-charge {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
@@ -511,8 +520,9 @@ html, body, #root {
     gap: 10px;
     width: 100%;
     min-height: 56px;
+    /* No safe-area inset here — the shell above it already pads the screen
+     * edge, and adding it again is what put a white band under the row. */
     padding: 10px 12px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     background: #FFFFFF;
   }

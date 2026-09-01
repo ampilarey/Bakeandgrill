@@ -57,6 +57,32 @@ describe('POS layout contract', () => {
     expect(block('.pos-cart-footer')).toMatch(/flex-shrink:\s*0/);
   });
 
+  it('adds the home-indicator inset once, not once per nested box', () => {
+    // The shell pads the screen edge. The cart sits in normal flow inside it,
+    // and the dock bar inside that — when all three padded, the insets stacked
+    // into a white band under the Charge row that only showed once the shell
+    // stopped scrolling. Owner, 2026-09-01: "now there is lot of space".
+    expect(block('.pos-shell')).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/);
+
+    const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
+    const dockBar = phone.slice(
+      phone.indexOf('.pos-cart.pos-cart--dock .pos-cart-dock-bar'),
+    );
+    expect(dockBar.slice(0, dockBar.indexOf('}'))).not.toMatch(/safe-area-inset-bottom/);
+  });
+
+  it('still pads the surfaces that escape the shell', () => {
+    // Both are position: fixed, so the shell's padding does not reach them
+    // and they have to carry the inset themselves.
+    expect(block('.pos-charge')).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/);
+
+    const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
+    const sheet = phone.slice(phone.indexOf('.pos-cart.pos-cart--sheet {'));
+    const sheetBlock = sheet.slice(0, sheet.indexOf('}'));
+    expect(sheetBlock).toMatch(/position:\s*fixed/);
+    expect(sheetBlock).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom/);
+  });
+
   it('keeps the Charge button a comfortable target on a phone', () => {
     // Trimmed to win back vertical space, but never below the 44px that
     // makes a touch target reliable.
