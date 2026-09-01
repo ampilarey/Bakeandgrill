@@ -137,6 +137,33 @@ class MenuItemSheetTest extends TestCase
         $this->assertSame($article($page), $article($fragment));
     }
 
+    // ── The sheet has to arrive styled ─────────────────────────────────────
+
+    public function test_the_menu_page_carries_the_item_stylesheet(): void
+    {
+        // The item's CSS used to live in menu-item's @section('styles'), which
+        // the fragment layout never renders — so the first sheet opened with
+        // no styling at all: an uncontained logo filling the screen, the share
+        // button off the edge, no padding. Owner: "its a mess now".
+        //
+        // The menu page now carries those rules, whether or not a sheet is
+        // ever opened.
+        $this->item();
+
+        $this->get('/menu')
+            ->assertSee('.menu-item-hero', false)
+            ->assertSee('.menu-item-page', false);
+    }
+
+    public function test_the_menu_page_carries_the_sheet_itself(): void
+    {
+        $this->item();
+
+        $this->get('/menu')
+            ->assertSee('data-sheet-body', false)
+            ->assertSee('X-Menu-Sheet', false);
+    }
+
     // ── Nothing regressed for the odd cases ────────────────────────────────
 
     public function test_an_unavailable_item_still_opens_both_ways(): void

@@ -492,27 +492,35 @@ html.js .menu-fav { display: inline-flex; }
     .menu-sheet-backdrop { animation: none; }
 }
 
+/* Sticky so the way out stays reachable however far down the item runs. */
+.menu-sheet-head {
+    position: sticky; top: 0; z-index: 3;
+    display: flex; align-items: center;
+    padding: 8px 10px 6px;
+    background: var(--card, #fff);
+    border-radius: 20px 20px 0 0;
+}
 .menu-sheet-grab {
     width: 40px; height: 4px; border-radius: 999px;
     background: var(--border, #e8e0d8);
-    margin: 10px auto 0;
+    margin: 0 auto;
 }
 .menu-sheet-close {
-    position: absolute; top: 8px; right: 10px; z-index: 2;
+    position: absolute; right: 10px;
     width: 40px; height: 40px; min-height: 40px;
-    border: none; border-radius: 999px;
-    background: rgba(255,255,255,0.92);
-    box-shadow: 0 1px 6px rgba(28,20,8,0.16);
+    border: 1px solid var(--border, #e8e0d8); border-radius: 999px;
+    background: var(--card, #fff);
     font-size: 22px; line-height: 1; color: var(--dark, #1c1408);
     cursor: pointer;
 }
+/* The sheet's own close replaces "← Full menu", so Share keeps the right. */
+.menu-sheet .menu-item-topbar { justify-content: flex-end; }
 .menu-sheet-loading {
     margin: 0; padding: 3rem 1rem; text-align: center;
     color: var(--muted, #6b5d4f); font-weight: 600;
 }
-/* The item body carries its own page padding; inside the sheet the top of
-   it is the grab handle's job. */
-.menu-sheet .menu-item-page { padding-top: 0.5rem; }
+/* The head bar already spaces the top. */
+.menu-sheet .menu-item-page { padding-top: 0.25rem; }
 /* "Full menu" is the sheet's own close button here. */
 .menu-sheet .menu-item-back { display: none; }
 
@@ -530,8 +538,10 @@ body.menu-sheet-open { overflow: hidden; }
     }
     .menu-sheet.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     .menu-sheet-grab { display: none; }
+    .menu-sheet-head { border-radius: 18px 18px 0 0; }
 }
 </style>
+@include('partials.menu-item-styles')
 @endsection
 
 @section('content')
@@ -1241,8 +1251,14 @@ body.menu-sheet-open { overflow: hidden; }
      on the site. --}}
 <div class="menu-sheet-backdrop" data-sheet-backdrop hidden></div>
 <div class="menu-sheet" data-sheet role="dialog" aria-modal="true" aria-label="Menu item" hidden>
-    <button type="button" class="menu-sheet-close" data-sheet-close aria-label="Close">&times;</button>
-    <div class="menu-sheet-grab" aria-hidden="true"></div>
+    {{-- A bar of its own, so the sheet's controls stop competing with the
+         item's. Floating the close button over the hero put it on top of the
+         favourite heart, and hiding the "Full menu" link left Share stranded
+         against the left edge. --}}
+    <div class="menu-sheet-head">
+        <div class="menu-sheet-grab" aria-hidden="true"></div>
+        <button type="button" class="menu-sheet-close" data-sheet-close aria-label="Close">&times;</button>
+    </div>
     <div class="menu-sheet-body" data-sheet-body></div>
 </div>
 
