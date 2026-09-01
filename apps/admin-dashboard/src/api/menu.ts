@@ -368,17 +368,33 @@ export type BulkUpdateResult = {
  * whole batch in one transaction — on a validation failure nothing is saved
  * and the thrown error carries `row_errors` keyed by position in `changes`.
  */
-export async function bulkUpdateItems(changes: BulkItemChange[]): Promise<BulkUpdateResult> {
-  return req('/items/bulk-update', { method: 'POST', body: JSON.stringify({ changes }) });
+export async function bulkUpdateItems(
+  changes: BulkItemChange[],
+  variantChanges: BulkItemChange[] = [],
+): Promise<BulkUpdateResult> {
+  return req('/items/bulk-update', {
+    method: 'POST',
+    body: JSON.stringify({ changes, variant_changes: variantChanges }),
+  });
 }
 
-/** Pull `row_errors` out of a failed bulkUpdateItems call, if it carried any. */
-export function bulkRowErrors(error: unknown): BulkRowErrors | null {
+/**
+ * Pull the per-row errors out of a failed bulkUpdateItems call.
+ *
+ * Items and sizes are reported separately because they are separate lists in
+ * the request — an index means nothing without knowing which one it counts.
+ */
+export function bulkRowErrors(
+  error: unknown,
+): { items: BulkRowErrors | null; variants: BulkRowErrors | null } | null {
   const body = (error as { body?: unknown } | null)?.body;
   if (!body || typeof body !== 'object') return null;
-  const rows = (body as { row_errors?: unknown }).row_errors;
+  const asRows = (v: unknown) => (v && typeof v === 'object' ? (v as BulkRowErrors) : null);
+  const items = asRows((body as { row_errors?: unknown }).row_errors);
+  const variants = asRows((body as { variant_row_errors?: unknown }).variant_row_errors);
+  if (!items && !variants) return null;
 
-  return rows && typeof rows === 'object' ? (rows as BulkRowErrors) : null;
+  return { items, variants };
 }
 
 export async function deleteItem(id: number): Promise<void> {

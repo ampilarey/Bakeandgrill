@@ -826,23 +826,35 @@ class ItemController extends Controller
      */
     public function bulkUpdate(BulkUpdateItemsRequest $request, MenuBulkUpdateService $bulk): JsonResponse
     {
+        $validated = $request->validated();
         /** @var list<array{id: int, fields: array<string, mixed>}> $changes */
-        $changes = $request->validated()['changes'];
+        $changes = array_values($validated['changes'] ?? []);
+        /** @var list<array{id: int, fields: array<string, mixed>}> $variantChanges */
+        $variantChanges = array_values($validated['variant_changes'] ?? []);
+
+        if ($changes === [] && $variantChanges === []) {
+            return response()->json(['message' => 'Nothing to save.'], 422);
+        }
 
         $canSeeCost = $request->user() instanceof \App\Models\User
             && app(\App\Domains\Permissions\Services\PermissionService::class)
                 ->hasPermission($request->user(), 'recipes.manage');
 
         $errors = $bulk->validate($changes, $canSeeCost);
-        if ($errors !== []) {
+        $variantErrors = $bulk->validateVariants($variantChanges, $canSeeCost);
+        if ($errors !== [] || $variantErrors !== []) {
+            $bad = count($errors) + count($variantErrors);
+            $total = count($changes) + count($variantChanges);
+
             return response()->json([
-                'message' => 'No changes were saved — ' . count($errors)
-                    . ' of ' . count($changes) . ' rows need fixing.',
+                'message' => 'No changes were saved — ' . $bad
+                    . ' of ' . $total . ' rows need fixing.',
                 'row_errors' => $errors,
+                'variant_row_errors' => $variantErrors,
             ], 422);
         }
 
-        $result = $bulk->apply($changes, $request);
+        $result = $bulk->apply($changes, $variantChanges, $request);
 
         return response()->json([
             'message' => $result['updated'] === 0

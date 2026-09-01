@@ -142,8 +142,11 @@ export function previewAction(items: MenuItem[], action: BulkAction): Array<{
   });
 }
 
-/** Does this draft cell actually differ from what the item already holds? */
-export function fieldChanged(item: MenuItem, field: keyof BulkItemFields, value: unknown): boolean {
+/** Anything the grid can edit a row of — an item or one of its sizes. */
+export type EditableRecord = { id?: number } & Record<string, unknown>;
+
+/** Does this draft cell actually differ from what the record already holds? */
+export function fieldChanged(item: EditableRecord, field: string, value: unknown): boolean {
   const current = (item as unknown as Record<string, unknown>)[field];
 
   if (typeof value === 'boolean' || typeof current === 'boolean') {
@@ -168,8 +171,8 @@ export function fieldChanged(item: MenuItem, field: keyof BulkItemFields, value:
  * a 10 does not count as a pending change and the Save button honestly
  * reflects what would be written.
  */
-export function draftsToChanges(items: MenuItem[], drafts: Drafts): BulkItemChange[] {
-  const byId = new Map(items.map((i) => [i.id, i]));
+export function draftsToChanges(items: EditableRecord[], drafts: Drafts): BulkItemChange[] {
+  const byId = new Map(items.filter((i) => i.id != null).map((i) => [i.id as number, i]));
   const changes: BulkItemChange[] = [];
 
   for (const [rawId, fields] of Object.entries(drafts)) {
@@ -179,7 +182,7 @@ export function draftsToChanges(items: MenuItem[], drafts: Drafts): BulkItemChan
 
     const dirty: BulkItemFields = {};
     for (const [field, value] of Object.entries(fields)) {
-      if (fieldChanged(item, field as keyof BulkItemFields, value)) {
+      if (fieldChanged(item, field, value)) {
         (dirty as Record<string, unknown>)[field] = value;
       }
     }
@@ -190,6 +193,12 @@ export function draftsToChanges(items: MenuItem[], drafts: Drafts): BulkItemChan
 }
 
 /** How many cells across the grid are pending. Drives the Save button. */
-export function countDirtyCells(items: MenuItem[], drafts: Drafts): number {
+export function countDirtyCells(items: EditableRecord[], drafts: Drafts): number {
   return draftsToChanges(items, drafts).reduce((n, c) => n + Object.keys(c.fields).length, 0);
+}
+
+/** Every size on the page, flattened — the grid edits them as their own rows. */
+export function allVariants(items: MenuItem[]): EditableRecord[] {
+  return items.flatMap((i) => (i.variants ?? []) as unknown as EditableRecord[])
+    .filter((v) => v.id != null);
 }

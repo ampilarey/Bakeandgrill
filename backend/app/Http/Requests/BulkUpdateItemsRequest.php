@@ -23,12 +23,17 @@ class BulkUpdateItemsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'changes' => ['required', 'array', 'min:1', 'max:' . MenuBulkUpdateService::MAX_ROWS],
+            // Either list may be empty — a save can touch only sizes — but the
+            // controller refuses a call that carries neither.
+            'changes' => ['present', 'array', 'max:' . MenuBulkUpdateService::MAX_ROWS],
             // `distinct` matters: the same item twice in one batch would have
             // the second row silently win, which is not what anyone drew on
             // screen.
             'changes.*.id' => ['required', 'integer', 'distinct', 'exists:items,id'],
             'changes.*.fields' => ['required', 'array', 'min:1'],
+            'variant_changes' => ['sometimes', 'array', 'max:' . MenuBulkUpdateService::MAX_ROWS],
+            'variant_changes.*.id' => ['required', 'integer', 'distinct', 'exists:variants,id'],
+            'variant_changes.*.fields' => ['required', 'array', 'min:1'],
         ];
     }
 
@@ -37,6 +42,8 @@ class BulkUpdateItemsRequest extends FormRequest
         return [
             'changes.max' => 'Too many items in one save (limit ' . MenuBulkUpdateService::MAX_ROWS . '). Narrow the filter and try again.',
             'changes.*.id.distinct' => 'The same item appears twice in this save.',
+            'variant_changes.max' => 'Too many sizes in one save (limit ' . MenuBulkUpdateService::MAX_ROWS . '). Narrow the filter and try again.',
+            'variant_changes.*.id.distinct' => 'The same size appears twice in this save.',
         ];
     }
 }

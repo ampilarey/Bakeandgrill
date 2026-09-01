@@ -6,6 +6,7 @@ namespace App\Domains\Catalog\Services;
 
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Models\Item;
+use App\Models\Variant;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +75,35 @@ class MenuBulkUpdateService
     }
 
     /**
+     * Columns a bulk edit may write on an existing variant.
+     *
+     * Sizes are where the repetitive work actually is — a price rise means
+     * touching Full and Half, not one base price — so they are editable here
+     * too. What is NOT reachable is the variant *list*: adding, removing or
+     * reordering sizes stays in the item editor, because those are decisions
+     * about an item's shape rather than a value on a row, and expressing them
+     * sparsely would mean guessing at what a missing row meant.
+     *
+     * @return array<string, string>
+     */
+    public static function variantFieldRules(): array
+    {
+        return [
+            'name' => 'string|max:100',
+            'name_dv' => 'nullable|string|max:100',
+            'price' => 'numeric|min:0|max:1000000',
+            'cost' => 'nullable|numeric|min:0|max:1000000',
+            'sku' => 'nullable|string|max:100|unique:variants,sku,:id',
+            'track_stock' => 'boolean',
+            'stock_qty' => 'nullable|integer|min:0',
+            'low_stock_threshold' => 'nullable|integer|min:0',
+            'consumption_factor' => 'numeric|min:0|max:1000',
+            'is_active' => 'boolean',
+            'sort_order' => 'nullable|integer|min:0|max:100000',
+        ];
+    }
+
+    /**
      * Cost price is owner-only everywhere else (recipes.manage gates the
      * margin badge and the recipe editor); the bulk path must not be a way
      * around that.
@@ -96,7 +126,26 @@ class MenuBulkUpdateService
      */
     public function validate(array $changes, bool $canSeeCost): array
     {
-        $allowed = self::fieldRules();
+        return $this->validateRows($changes, self::fieldRules(), $canSeeCost, ['sku', 'barcode']);
+    }
+
+    /**
+     * @param list<array{id: int, fields: array<string, mixed>}> $changes
+     * @return array<int, array<string, list<string>>> row index → field → messages
+     */
+    public function validateVariants(array $changes, bool $canSeeCost): array
+    {
+        return $this->validateRows($changes, self::variantFieldRules(), $canSeeCost, ['sku']);
+    }
+
+    /**
+     * @param list<array{id: int, fields: array<string, mixed>}> $changes
+     * @param array<string, string> $allowed
+     * @param list<string> $uniqueFields
+     * @return array<int, array<string, list<string>>>
+     */
+    private function validateRows(array $changes, array $allowed, bool $canSeeCost, array $uniqueFields): array
+    {
         $errors = [];
 
         foreach ($changes as $index => $change) {
@@ -130,7 +179,7 @@ class MenuBulkUpdateService
             }
         }
 
-        return $errors + $this->duplicateErrors($changes);
+        return $errors + $this->duplicateErrors($changes, $uniqueFields);
     }
 
     /**
@@ -140,13 +189,14 @@ class MenuBulkUpdateService
      * with an opaque error, so catch it here and name both rows.
      *
      * @param list<array{id: int, fields: array<string, mixed>}> $changes
+     * @param list<string> $fields
      * @return array<int, array<string, list<string>>>
      */
-    private function duplicateErrors(array $changes): array
+    private function duplicateErrors(array $changes, array $fields): array
     {
         $errors = [];
 
-        foreach (['sku', 'barcode'] as $field) {
+        foreach ($fields as $field) {
             $seen = [];
             foreach ($changes as $index => $change) {
                 $value = $change['fields'][$field] ?? null;
@@ -171,12 +221,17 @@ class MenuBulkUpdateService
     /**
      * Write every change in one transaction and report what actually moved.
      *
+     * Items and their sizes go together: raising a dish's price usually means
+     * moving Full and Half too, and splitting that across two requests would
+     * let one half land while the other failed.
+     *
      * @param list<array{id: int, fields: array<string, mixed>}> $changes
+     * @param list<array{id: int, fields: array<string, mixed>}> $variantChanges
      * @return array{updated: int, unchanged: int, items: list<Item>}
      */
-    public function apply(array $changes, ?Request $request = null): array
+    public function apply(array $changes, array $variantChanges = [], ?Request $request = null): array
     {
-        return DB::transaction(function () use ($changes, $request) {
+        return DB::transaction(function () use ($changes, $variantChanges, $request) {
             $ids = array_map(static fn (array $c) => $c['id'], $changes);
             // Locked up-front so a concurrent single-item save cannot land
             // between our read of the old values and our write of the new.
@@ -218,7 +273,51 @@ class MenuBulkUpdateService
                 $touched[] = ['id' => $item->id, 'name' => $item->name, 'old' => $before, 'new' => $after];
             }
 
-            if ($touched !== []) {
+            $variantIds = array_map(static fn (array $c) => $c['id'], $variantChanges);
+            $variants = $variantIds === []
+                ? collect()
+                : Variant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
+            $touchedVariants = [];
+
+            foreach ($variantChanges as $change) {
+                $variant = $variants->get($change['id']);
+                if (!$variant) {
+                    continue;
+                }
+
+                $before = [];
+                $after = [];
+                foreach ($change['fields'] as $field => $value) {
+                    $current = $variant->getAttribute($field);
+                    if ($this->same($current, $value)) {
+                        continue;
+                    }
+                    $before[$field] = $current;
+                    $after[$field] = $value;
+                    $variant->setAttribute($field, $value);
+                }
+
+                if ($after === []) {
+                    $unchanged++;
+
+                    continue;
+                }
+
+                $variant->save();
+                $touchedVariants[] = [
+                    'id' => $variant->id,
+                    'item_id' => $variant->item_id,
+                    'name' => $variant->name,
+                    'old' => $before,
+                    'new' => $after,
+                ];
+                if (!in_array((int) $variant->item_id, $ids, true)) {
+                    // So the response still carries the item whose size moved.
+                    $ids[] = (int) $variant->item_id;
+                }
+            }
+
+            if ($touched !== [] || $touchedVariants !== []) {
                 // Item edits are not otherwise audited. A bulk change is the
                 // one that is hard to reconstruct afterwards ("who put every
                 // burger up 10%?"), so record the before and after per row.
@@ -226,13 +325,28 @@ class MenuBulkUpdateService
                     action: 'menu.bulk_update',
                     modelType: Item::class,
                     modelId: null,
-                    oldValues: array_column($touched, 'old', 'id'),
-                    newValues: array_column($touched, 'new', 'id'),
+                    oldValues: [
+                        'items' => array_column($touched, 'old', 'id'),
+                        'variants' => array_column($touchedVariants, 'old', 'id'),
+                    ],
+                    newValues: [
+                        'items' => array_column($touched, 'new', 'id'),
+                        'variants' => array_column($touchedVariants, 'new', 'id'),
+                    ],
                     meta: [
                         'item_count' => count($touched),
+                        'variant_count' => count($touchedVariants),
                         'items' => array_map(
                             static fn (array $r) => ['id' => $r['id'], 'name' => $r['name']],
                             $touched,
+                        ),
+                        'variants' => array_map(
+                            static fn (array $r) => [
+                                'id' => $r['id'],
+                                'item_id' => $r['item_id'],
+                                'name' => $r['name'],
+                            ],
+                            $touchedVariants,
                         ),
                     ],
                     request: $request,
@@ -240,7 +354,7 @@ class MenuBulkUpdateService
             }
 
             return [
-                'updated' => count($touched),
+                'updated' => count($touched) + count($touchedVariants),
                 'unchanged' => $unchanged,
                 'items' => Item::query()
                     ->with(['category', 'variants', 'menuGroup', 'channelAvailabilities'])

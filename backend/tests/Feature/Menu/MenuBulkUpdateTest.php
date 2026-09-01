@@ -39,9 +39,17 @@ class MenuBulkUpdateTest extends TestCase
         ], $attrs));
     }
 
-    private function bulk(array $changes)
+    private function bulk(array $changes, array $variantChanges = [])
     {
-        return $this->postJson('/api/items/bulk-update', ['changes' => $changes]);
+        return $this->postJson('/api/items/bulk-update', [
+            'changes' => $changes,
+            'variant_changes' => $variantChanges,
+        ]);
+    }
+
+    private function variantItem(): Item
+    {
+        return $this->item(['has_variants' => true, 'base_price' => 20]);
     }
 
     public function test_it_updates_a_different_field_on_each_row_in_one_call(): void
@@ -228,8 +236,8 @@ class MenuBulkUpdateTest extends TestCase
         $log = AuditLog::where('action', 'menu.bulk_update')->firstOrFail();
         $this->assertSame($owner->id, $log->user_id);
         $this->assertSame(1, $log->meta['item_count']);
-        $this->assertEqualsWithDelta(10.0, (float) $log->old_values[$item->id]['base_price'], 0.001);
-        $this->assertEqualsWithDelta(11.0, (float) $log->new_values[$item->id]['base_price'], 0.001);
+        $this->assertEqualsWithDelta(10.0, (float) $log->old_values['items'][$item->id]['base_price'], 0.001);
+        $this->assertEqualsWithDelta(11.0, (float) $log->new_values['items'][$item->id]['base_price'], 0.001);
     }
 
     public function test_it_moves_a_selection_to_another_category_and_menu_group(): void
@@ -265,5 +273,105 @@ class MenuBulkUpdateTest extends TestCase
         $item = $this->item(['base_price' => 10]);
 
         $this->bulk([['id' => $item->id, 'fields' => ['base_price' => 99]]])->assertUnauthorized();
+    }
+
+    // ── Sizes ────────────────────────────────────────────────────────────────
+
+    public function test_it_edits_the_price_of_each_size(): void
+    {
+        // Owner, 2026-09-01: "cant see variants in bulk edit". A price rise
+        // means touching Full and Half, not one base price.
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $full = $item->variants()->create(['name' => 'Full', 'price' => 20, 'is_active' => true, 'sort_order' => 0]);
+        $half = $item->variants()->create(['name' => 'Half', 'price' => 12, 'is_active' => true, 'sort_order' => 1]);
+
+        $this->bulk([], [
+            ['id' => $full->id, 'fields' => ['price' => 22]],
+            ['id' => $half->id, 'fields' => ['price' => 13.5]],
+        ])->assertOk()->assertJsonPath('updated', 2);
+
+        $this->assertEqualsWithDelta(22.0, (float) $full->fresh()->price, 0.001);
+        $this->assertEqualsWithDelta(13.5, (float) $half->fresh()->price, 0.001);
+    }
+
+    public function test_an_item_and_its_sizes_move_in_one_transaction(): void
+    {
+        // Splitting them across two requests would let one half land while
+        // the other failed.
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $full = $item->variants()->create(['name' => 'Full', 'price' => 20, 'is_active' => true]);
+
+        $this->bulk(
+            [['id' => $item->id, 'fields' => ['base_price' => 25]]],
+            [['id' => $full->id, 'fields' => ['price' => -1]]],
+        )->assertStatus(422)->assertJsonPath('variant_row_errors.0.price.0', 'The price field must be at least 0.');
+
+        $this->assertEqualsWithDelta(20.0, (float) $item->fresh()->base_price, 0.001);
+        $this->assertEqualsWithDelta(20.0, (float) $full->fresh()->price, 0.001);
+    }
+
+    public function test_the_consumption_factor_is_editable_per_size(): void
+    {
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $half = $item->variants()->create(['name' => 'Half', 'price' => 12, 'is_active' => true]);
+
+        $this->bulk([], [['id' => $half->id, 'fields' => ['consumption_factor' => 0.5]]])->assertOk();
+
+        $this->assertEqualsWithDelta(0.5, $half->fresh()->consumptionFactor(), 0.001);
+    }
+
+    public function test_the_size_list_itself_cannot_be_reshaped_here(): void
+    {
+        // Adding, removing or reordering sizes is a decision about the item's
+        // shape; a sparse row cannot say what a missing size meant.
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $full = $item->variants()->create(['name' => 'Full', 'price' => 20, 'is_active' => true]);
+
+        $this->bulk([], [['id' => $full->id, 'fields' => ['item_id' => 999]]])
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'variant_row_errors.0.item_id.0',
+                'This field cannot be changed from the bulk editor.',
+            );
+    }
+
+    public function test_a_manager_cannot_reach_size_cost_either(): void
+    {
+        Sanctum::actingAs($this->makeManager(), ['staff']);
+        $item = $this->variantItem();
+        $full = $item->variants()->create(['name' => 'Full', 'price' => 20, 'cost' => 5, 'is_active' => true]);
+
+        $this->bulk([], [['id' => $full->id, 'fields' => ['cost' => 99]]])
+            ->assertStatus(422)
+            ->assertJsonPath('variant_row_errors.0.cost.0', 'Only an owner may change cost price.');
+
+        $this->assertEqualsWithDelta(5.0, (float) $full->fresh()->cost, 0.001);
+    }
+
+    public function test_two_sizes_claiming_one_sku_are_both_refused(): void
+    {
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $a = $item->variants()->create(['name' => 'Full', 'price' => 20, 'sku' => 'V-A', 'is_active' => true]);
+        $b = $item->variants()->create(['name' => 'Half', 'price' => 12, 'sku' => 'V-B', 'is_active' => true]);
+
+        $this->bulk([], [
+            ['id' => $a->id, 'fields' => ['sku' => 'DUP']],
+            ['id' => $b->id, 'fields' => ['sku' => 'DUP']],
+        ])->assertStatus(422);
+
+        $this->assertSame('V-A', $a->fresh()->sku);
+        $this->assertSame('V-B', $b->fresh()->sku);
+    }
+
+    public function test_a_save_carrying_neither_list_is_refused(): void
+    {
+        $this->actAsOwner();
+
+        $this->bulk([], [])->assertStatus(422);
     }
 }

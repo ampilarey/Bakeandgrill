@@ -362,10 +362,10 @@ export function MenuPage() {
 
       {m.view === 'items' && quickEdit && m.canManage && (
         <QuickEditGrid
-          items={m.items}
           categories={m.categories}
           menuGroups={m.menuGroups}
-          loading={m.loading}
+          categoryId={m.selectedCat}
+          search={m.search}
           canSeeCost={m.canSeeCost}
           onSaved={(message) => { setQuickEditNotice(message); void m.reloadItems(); }}
           onExit={() => setQuickEdit(false)}

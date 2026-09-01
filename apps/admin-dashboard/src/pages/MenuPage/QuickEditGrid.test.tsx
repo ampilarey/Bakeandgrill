@@ -36,10 +36,11 @@ function renderGrid(over: Partial<Parameters<typeof QuickEditGrid>[0]> = {}) {
   const onSaved = vi.fn();
   render(
     <QuickEditGrid
-      items={items}
+      initialItems={items}
       categories={[{ id: 1, name: 'Snacks', is_active: true }, { id: 2, name: 'Grill', is_active: true }]}
       menuGroups={[{ id: 1, name: 'Evening', slug: 'evening', sort_order: 0, is_active: true }]}
-      loading={false}
+      categoryId={null}
+      search=""
       canSeeCost
       onSaved={onSaved}
       onExit={() => {}}
@@ -64,7 +65,7 @@ describe('QuickEditGrid editing', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     await waitFor(() => expect(bulkUpdateItems).toHaveBeenCalledTimes(1));
-    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { base_price: 12 } }]);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { base_price: 12 } }], []);
   });
 
   it('does not count a cell typed back to its original value', async () => {
@@ -153,7 +154,7 @@ describe('QuickEditGrid bulk apply', () => {
     expect(bulkUpdateItems).toHaveBeenCalledWith([
       { id: 1, fields: { is_available: false } },
       { id: 2, fields: { is_available: false } },
-    ]);
+    ], []);
   });
 
   it('says nothing would change when the action is already true of every row', async () => {
@@ -173,7 +174,10 @@ describe('QuickEditGrid failures', () => {
     // The server saves all or nothing, so a failure must leave the grid
     // exactly as the user left it rather than half-clearing.
     const failure = Object.assign(new Error('No changes were saved — 1 of 1 rows need fixing.'), {
-      body: { row_errors: { 0: { base_price: ['The base price field must be at least 0.'] } } },
+      body: {
+        row_errors: { 0: { base_price: ['The base price field must be at least 0.'] } },
+        variant_row_errors: {},
+      },
     });
     bulkUpdateItems.mockRejectedValue(failure);
     const { onSaved } = renderGrid();
@@ -196,6 +200,125 @@ describe('QuickEditGrid failures', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith('1 item updated.'));
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
+  });
+});
+
+describe('QuickEditGrid sizes', () => {
+  const sized = item({
+    id: 3,
+    name: 'Beetle leaf',
+    base_price: 20,
+    variants: [
+      { id: 30, name: 'Full', price: 20, is_active: true, sort_order: 0, consumption_factor: 1 },
+      { id: 31, name: 'Half', price: 12, is_active: true, sort_order: 1, consumption_factor: 0.5 },
+    ],
+  });
+
+  it('folds sizes away until the row is expanded', () => {
+    renderGrid({ initialItems: [sized] });
+
+    expect(screen.queryByLabelText('Price for Beetle leaf — Full')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
+
+    expect(screen.getByLabelText('Price for Beetle leaf — Full')).toHaveValue(20);
+    expect(screen.getByLabelText('Price for Beetle leaf — Half')).toHaveValue(12);
+  });
+
+  it('sends a size price in its own list, not the item list', () => {
+    renderGrid({ initialItems: [sized] });
+    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
+
+    fireEvent.change(screen.getByLabelText('Price for Beetle leaf — Half'), { target: { value: '14' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { price: 14 } }]);
+  });
+
+  it('edits the consumption factor per size', () => {
+    renderGrid({ initialItems: [sized] });
+    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
+
+    fireEvent.change(screen.getByLabelText('Uses for Beetle leaf — Half'), { target: { value: '0.25' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { consumption_factor: 0.25 } }]);
+  });
+
+  it('carries a bulk price rise down to the sizes', () => {
+    // The base price is not what a customer pays for a Full or a Half, so a
+    // repricing that stopped at the item row would miss the real number.
+    renderGrid({ initialItems: [sized] });
+    fireEvent.click(screen.getByLabelText('Select Beetle leaf'));
+    fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 1 change/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith(
+      [{ id: 3, fields: { base_price: 22 } }],
+      [
+        { id: 30, fields: { price: 22 } },
+        { id: 31, fields: { price: 13.2 } },
+      ],
+    );
+  });
+
+  it('highlights a rejected size and keeps it pending', async () => {
+    bulkUpdateItems.mockRejectedValue(Object.assign(new Error('No changes were saved — 1 of 1 rows need fixing.'), {
+      body: { row_errors: {}, variant_row_errors: { 0: { price: ['The price field must be at least 0.'] } } },
+    }));
+    renderGrid({ initialItems: [sized] });
+    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
+
+    fireEvent.change(screen.getByLabelText('Price for Beetle leaf — Half'), { target: { value: '14' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText('The price field must be at least 0.')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('1 unsaved change');
+  });
+});
+
+describe('QuickEditGrid CSV', () => {
+  it('offers an export of everything loaded', () => {
+    renderGrid();
+
+    expect(screen.getByTestId('csv-export')).toHaveTextContent('Export CSV (2 items)');
+  });
+
+  it('stages an imported file as pending cells rather than saving it', async () => {
+    renderGrid();
+    const csv = [
+      'id,type,item_id,name,name_dv,category,category_id,price,cost,sku,gst,track_stock,stock,consumption_factor,available,active,sort',
+      '1,item,,Bajiya,,Snacks,1,13.50,,,standard_8,no,,,yes,yes,0',
+    ].join('\r\n');
+    const file = new File([csv], 'menu.csv', { type: 'text/csv' });
+
+    fireEvent.change(screen.getByTestId('csv-file'), { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('csv-notice')).toHaveTextContent('1 row from the file differ'),
+    );
+    expect(screen.getByLabelText('Price for Bajiya')).toHaveValue(13.5);
+    expect(bulkUpdateItems).not.toHaveBeenCalled();
+  });
+
+  it('says so when the file names rows that are not on screen', async () => {
+    renderGrid();
+    const csv = [
+      'id,type,name,price',
+      '9999,item,Ghost dish,50.00',
+    ].join('\r\n');
+
+    fireEvent.change(screen.getByTestId('csv-file'), {
+      target: { files: [new File([csv], 'menu.csv', { type: 'text/csv' })] },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('csv-notice')).toHaveTextContent('importing never creates items'),
+    );
     expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
   });
 });
