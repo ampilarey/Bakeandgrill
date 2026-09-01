@@ -52,6 +52,7 @@ function renderGrid(over: Partial<Parameters<typeof QuickEditGrid>[0]> = {}) {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   bulkUpdateItems.mockReset();
   bulkUpdateItems.mockResolvedValue({ message: '1 item updated.', updated: 1, unchanged: 0, items: [] });
 });
@@ -146,6 +147,7 @@ describe('QuickEditGrid bulk apply', () => {
     renderGrid();
     selectBoth();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Availability' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark sold out' }));
     fireEvent.click(screen.getByRole('button', { name: /^Stage 2 changes/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
@@ -161,6 +163,7 @@ describe('QuickEditGrid bulk apply', () => {
     renderGrid();
     selectBoth();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Availability' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark available' }));
 
     const preview = within(screen.getByTestId('bulk-preview'));
@@ -237,6 +240,8 @@ describe('QuickEditGrid sizes', () => {
   });
 
   it('edits the consumption factor per size', () => {
+    // "Uses" is an optional column, so turn it on the way a user would.
+    localStorage.setItem('menu-quick-edit-columns', JSON.stringify(['name', 'price', 'consumption_factor']));
     renderGrid({ initialItems: [sized] });
     fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
 
@@ -282,10 +287,11 @@ describe('QuickEditGrid sizes', () => {
 });
 
 describe('QuickEditGrid CSV', () => {
-  it('offers an export of everything loaded', () => {
+  it('offers an export and reports how many rows are on screen', () => {
     renderGrid();
 
-    expect(screen.getByTestId('csv-export')).toHaveTextContent('Export CSV (2 items)');
+    expect(screen.getByTestId('csv-export')).toHaveTextContent('Export CSV');
+    expect(screen.getByTestId('grid-count')).toHaveTextContent('2 items');
   });
 
   it('stages an imported file as pending cells rather than saving it', async () => {
@@ -320,5 +326,220 @@ describe('QuickEditGrid CSV', () => {
       expect(screen.getByTestId('csv-notice')).toHaveTextContent('importing never creates items'),
     );
     expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
+  });
+});
+
+describe('QuickEditGrid columns, sorting and filtering', () => {
+  const menu = [
+    item({ id: 1, name: 'Bajiya', base_price: 10, sku: 'BAJ', cost: 4 }),
+    item({ id: 2, name: 'Gulha', base_price: 30, sku: 'GUL', cost: 9, is_available: false }),
+  ];
+
+  it('hides a column when it is unticked and remembers the choice', () => {
+    renderGrid({ initialItems: menu });
+    expect(screen.getByLabelText('SKU for Bajiya')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('grid-columns-toggle'));
+    fireEvent.click(screen.getByLabelText('Show SKU column'));
+
+    expect(screen.queryByLabelText('SKU for Bajiya')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('menu-quick-edit-columns') ?? '[]')).not.toContain('sku');
+  });
+
+  it('shows an optional column once it is ticked', () => {
+    renderGrid({ initialItems: menu });
+    expect(screen.queryByLabelText('Prep min for Bajiya')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('grid-columns-toggle'));
+    fireEvent.click(screen.getByLabelText('Show Prep min column'));
+
+    expect(screen.getByLabelText('Prep min for Bajiya')).toBeInTheDocument();
+  });
+
+  it('never lets the table be emptied of every column', () => {
+    localStorage.setItem('menu-quick-edit-columns', JSON.stringify(['name']));
+    renderGrid({ initialItems: menu });
+
+    fireEvent.click(screen.getByTestId('grid-columns-toggle'));
+    fireEvent.click(screen.getByLabelText('Show Name column'));
+
+    expect(screen.getByLabelText('Name for Bajiya')).toBeInTheDocument();
+  });
+
+  it('sorts by a header through ascending, descending and back', () => {
+    renderGrid({ initialItems: menu });
+    const order = () => screen.getAllByTestId(/^quick-edit-row-/).map((r) => r.getAttribute('data-testid'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Price' }));
+    expect(order()).toEqual(['quick-edit-row-1', 'quick-edit-row-2']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Price' }));
+    expect(order()).toEqual(['quick-edit-row-2', 'quick-edit-row-1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Price' }));
+    expect(order()).toEqual(['quick-edit-row-1', 'quick-edit-row-2']);
+  });
+
+  it('narrows the table as you search and says how many are shown', () => {
+    renderGrid({ initialItems: menu });
+
+    fireEvent.change(screen.getByTestId('grid-search'), { target: { value: 'gulha' } });
+
+    expect(screen.queryByTestId('quick-edit-row-1')).toBeNull();
+    expect(screen.getByTestId('quick-edit-row-2')).toBeInTheDocument();
+    expect(screen.getByTestId('grid-count')).toHaveTextContent('1 of 2 items');
+  });
+
+  it('filters by availability and clears back again', () => {
+    renderGrid({ initialItems: menu });
+
+    fireEvent.click(screen.getByTestId('grid-filter-toggle'));
+    fireEvent.change(screen.getByLabelText('Filter by availability'), { target: { value: 'sold_out' } });
+
+    expect(screen.queryByTestId('quick-edit-row-1')).toBeNull();
+    expect(screen.getByTestId('grid-filter-toggle')).toHaveTextContent('Filters (1)');
+
+    fireEvent.click(screen.getByTestId('grid-clear-filters'));
+    expect(screen.getByTestId('quick-edit-row-1')).toBeInTheDocument();
+  });
+
+  it('select-all only takes the rows the filter left on screen', () => {
+    // A selection that quietly includes hidden rows is how a bulk change
+    // reaches items nobody looked at.
+    renderGrid({ initialItems: menu });
+    fireEvent.change(screen.getByTestId('grid-search'), { target: { value: 'gulha' } });
+
+    fireEvent.click(screen.getByLabelText('Select all rows'));
+
+    expect(screen.getByTestId('quick-edit-selection')).toHaveTextContent('1 selected');
+  });
+});
+
+describe('QuickEditGrid expand all', () => {
+  const sizedMenu = [
+    item({
+      id: 5, name: 'Beetle leaf', base_price: 20,
+      variants: [{ id: 50, name: 'Full', price: 20, is_active: true, sort_order: 0 }],
+    }),
+    item({
+      id: 6, name: 'Tea', base_price: 8,
+      variants: [{ id: 60, name: 'Large', price: 10, is_active: true, sort_order: 0 }],
+    }),
+  ];
+
+  it('opens and closes every dish at once', () => {
+    // Owner, 2026-09-01: "variant is minimized by default, i have to maximize
+    // each variant".
+    renderGrid({ initialItems: sizedMenu });
+    expect(screen.queryByTestId('quick-edit-size-50')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('grid-expand-all'));
+    expect(screen.getByTestId('quick-edit-size-50')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-edit-size-60')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('grid-expand-all'));
+    expect(screen.queryByTestId('quick-edit-size-50')).toBeNull();
+  });
+
+  it('marks a sized dish price as the from price, not the real one', () => {
+    renderGrid({ initialItems: sizedMenu });
+
+    expect(screen.getByTestId('quick-edit-row-5')).toHaveTextContent('from');
+  });
+
+  it('offers no expander at all on a dish without sizes', () => {
+    renderGrid();
+
+    expect(screen.queryByTestId('grid-expand-all')).toBeNull();
+    expect(screen.queryByLabelText(/Show sizes for/)).toBeNull();
+  });
+});
+
+describe('QuickEditGrid extra bulk commands', () => {
+  const priced = [
+    item({ id: 1, name: 'Bajiya', base_price: 10, cost: 4, effective_cost: 4, sort_order: 7 }),
+    item({ id: 2, name: 'Gulha', base_price: 30, cost: 9, effective_cost: 9, sort_order: 9 }),
+  ];
+
+  function selectAll() {
+    fireEvent.click(screen.getByLabelText('Select all rows'));
+  }
+
+  it('prices a selection to a target margin from its cost', () => {
+    renderGrid({ initialItems: priced });
+    selectAll();
+
+    fireEvent.change(screen.getByLabelText('Target margin'), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: /Preview margin pricing/ }));
+
+    const preview = within(screen.getByTestId('bulk-preview'));
+    // cost 4 at 50% margin is 8.00; cost 9 is 18.00.
+    expect(preview.getByText('8.00')).toBeInTheDocument();
+    expect(preview.getByText('18.00')).toBeInTheDocument();
+  });
+
+  it('leaves an item with no cost out of margin pricing', () => {
+    renderGrid({ initialItems: [item({ id: 1, name: 'Bajiya', base_price: 10 })] });
+    selectAll();
+
+    fireEvent.click(screen.getByRole('button', { name: /Preview margin pricing/ }));
+
+    expect(within(screen.getByTestId('bulk-preview')).getByText('Nothing would change')).toBeInTheDocument();
+  });
+
+  it('renumbers a selection in the order shown', () => {
+    renderGrid({ initialItems: priced });
+    selectAll();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organise' }));
+    fireEvent.click(screen.getByRole('button', { name: /Preview renumber/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 2 changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([
+      { id: 1, fields: { sort_order: 10 } },
+      { id: 2, fields: { sort_order: 20 } },
+    ], []);
+  });
+
+  it('sets a kitchen field across the selection', () => {
+    renderGrid({ initialItems: priced });
+    selectAll();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kitchen' }));
+    fireEvent.change(screen.getByLabelText('Prep time'), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Set prep time' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 2 changes/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([
+      { id: 1, fields: { prep_time_minutes: 25 } },
+      { id: 2, fields: { prep_time_minutes: 25 } },
+    ], []);
+  });
+
+  it('hides cost and margin controls from anyone without recipes.manage', () => {
+    renderGrid({ initialItems: priced, canSeeCost: false });
+    selectAll();
+
+    expect(screen.queryByLabelText('Target margin')).toBeNull();
+    expect(screen.queryByLabelText('Cost amount')).toBeNull();
+    expect(screen.getByLabelText('Price amount')).toBeInTheDocument();
+  });
+
+  it('can leave the sizes out of a price change when asked', () => {
+    const sized = item({
+      id: 7, name: 'Beetle leaf', base_price: 20,
+      variants: [{ id: 70, name: 'Full', price: 20, is_active: true, sort_order: 0 }],
+    });
+    renderGrid({ initialItems: [sized] });
+    selectAll();
+
+    fireEvent.click(screen.getByLabelText('Apply price changes to sizes too'));
+    fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 1 change/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 7, fields: { base_price: 22 } }], []);
   });
 });

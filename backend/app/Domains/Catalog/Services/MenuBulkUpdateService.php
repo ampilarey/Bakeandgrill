@@ -69,8 +69,18 @@ class MenuBulkUpdateService
             'low_stock_threshold' => 'nullable|integer|min:0',
             'prep_time_minutes' => 'nullable|integer|min:0|max:480',
             'packaging_fee' => 'numeric|min:0|max:500',
+            'packaging_fee_mode' => 'string|in:per_unit,per_line',
             'allow_pre_order' => 'boolean',
+            'tomorrow_daily_capacity' => 'nullable|integer|min:1|max:100000',
             'show_on_signage' => 'boolean',
+            'is_signage_promoted' => 'boolean',
+            'card_name' => 'nullable|string|max:120',
+            'card_name_dv' => 'nullable|string|max:120',
+            'short_description' => 'nullable|string|max:140',
+            'short_description_dv' => 'nullable|string|max:140',
+            'price_note' => 'nullable|string|max:40',
+            'spice_level' => 'nullable|string|in:none,mild,medium,hot,extra_hot',
+            'calories' => 'nullable|integer|min:0|max:9999',
         ];
     }
 

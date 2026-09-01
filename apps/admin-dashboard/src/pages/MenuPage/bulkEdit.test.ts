@@ -85,10 +85,10 @@ describe('previewAction', () => {
     expect(rows[1].fields).toEqual({ category_id: 3 });
   });
 
-  it('flips availability and active only where they differ', () => {
+  it('flips a plain field only where it differs', () => {
     const rows = previewAction(
       [item({ id: 1, is_available: true }), item({ id: 2, is_available: false })],
-      { kind: 'is_available', value: false },
+      { kind: 'field', field: 'is_available', value: false, label: 'Available' },
     );
 
     expect(rows[0].fields).toEqual({ is_available: false });

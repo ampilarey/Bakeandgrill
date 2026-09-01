@@ -1,10 +1,12 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import type { MenuCategory, MenuGroupRow, MenuItem, MenuVariant } from '../../api';
 import {
   bulkRowErrors, bulkUpdateItems, fetchAdminItems,
   type BulkItemFields, type BulkRowErrors,
 } from '../../api';
 import { Btn, Card, EmptyState, Spinner } from '../../components/Layout';
+import { BulkActionBar } from './BulkActionBar';
+import { GridToolbar } from './GridToolbar';
 import {
   allVariants,
   countDirtyCells,
@@ -14,22 +16,26 @@ import {
   type BulkAction,
   type Drafts,
   type EditableRecord,
-  type PriceMode,
-  type RoundMode,
 } from './bulkEdit';
+import {
+  categoryOptions,
+  loadVisibleColumns,
+  marginPct,
+  menuGroupOptions,
+  saveVisibleColumns,
+  visibleColumns,
+  type GridColumn,
+} from './gridColumns';
+import { EMPTY_FILTERS, nextSort, visibleRows, type GridFilters, type SortState } from './gridFilters';
 import { csvFilename, csvToDrafts, itemsToCsv, parseCsv, type CsvImportResult } from './menuCsv';
 
 /**
  * Spreadsheet-style editing for the menu.
  *
- * Owner, 2026-09-01: "all the items will be in a table like excel sheet and
- * seperatly edit like price ect,, and bulk edit for selected items, keep the
- * curent edit features for each item sepaatly."
- *
- * So this is deliberately NOT a replacement for the item editor — it carries
- * only the columns that are a single value per item. Anything composed
- * (variants, photos, combos, platters, channels) stays behind Edit, because a
- * grid cell cannot express it and the sparse save would have to guess.
+ * Deliberately NOT a replacement for the item editor — it carries only the
+ * columns that are a single value per row. Anything composed (photos, combos,
+ * platters, channels, and the size LIST itself) stays behind Edit, because a
+ * grid cell cannot express it and a sparse save would have to guess.
  *
  * Nothing is written while you type. Edits collect as drafts, the button says
  * how many cells are pending, and one Save sends them together — the server
@@ -37,31 +43,9 @@ import { csvFilename, csvToDrafts, itemsToCsv, parseCsv, type CsvImportResult } 
  * exactly as it was and comes back highlighted.
  */
 
-const TAX_CODES: Array<{ value: string; label: string }> = [
-  { value: 'standard_8', label: 'GST 8%' },
-  { value: 'zero_rated', label: 'Zero-rated' },
-  { value: 'exempt', label: 'Exempt' },
-  { value: 'out_of_scope', label: 'Out of scope' },
-];
-
-const PRICE_MODES: Array<{ value: PriceMode; label: string }> = [
-  { value: 'set', label: 'Set to' },
-  { value: 'increase_pct', label: 'Increase by %' },
-  { value: 'decrease_pct', label: 'Decrease by %' },
-  { value: 'increase_amount', label: 'Increase by MVR' },
-  { value: 'decrease_amount', label: 'Decrease by MVR' },
-];
-
-const ROUND_MODES: Array<{ value: RoundMode; label: string }> = [
-  { value: 'none', label: 'No rounding' },
-  { value: 'whole', label: 'Nearest 1.00' },
-  { value: 'half', label: 'Nearest 0.50' },
-  { value: 'five', label: 'Nearest 5.00' },
-];
-
 const cell: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'middle' };
 const head: React.CSSProperties = {
-  padding: '10px 8px', textAlign: 'left', fontWeight: 700, fontSize: 11,
+  padding: '8px', textAlign: 'left', fontWeight: 700, fontSize: 11,
   textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)',
   whiteSpace: 'nowrap',
 };
@@ -100,7 +84,7 @@ export function QuickEditGrid({
   /** The list filters, mirrored so the grid loads the same set. */
   categoryId: number | null;
   search: string;
-  /** recipes.manage — the cost column is owner-only, as it is everywhere else. */
+  /** recipes.manage — cost and margin are owner-only, as everywhere else. */
   canSeeCost: boolean;
   onSaved: (message: string) => void;
   onExit: () => void;
@@ -108,8 +92,8 @@ export function QuickEditGrid({
   initialItems?: MenuItem[];
 }) {
   // A spreadsheet you have to paginate is not a spreadsheet, so the grid pulls
-  // every item matching the current filter rather than the page behind it.
-  // The API caps a page at 100, hence the walk.
+  // every item matching the page filter rather than the page behind it. The
+  // API caps a page at 100, hence the walk.
   const [items, setItems] = useState<MenuItem[]>(initialItems ?? []);
   const [loading, setLoading] = useState(!initialItems);
   const [loadError, setLoadError] = useState('');
@@ -145,19 +129,21 @@ export function QuickEditGrid({
   const [drafts, setDrafts] = useState<Drafts>({});
   const [variantDrafts, setVariantDrafts] = useState<Drafts>({});
   const [expanded, setExpanded] = useState<number[]>([]);
-  const [csvNotice, setCsvNotice] = useState<CsvImportResult | null>(null);
-  const fileInput = useRef<HTMLInputElement | null>(null);
+  const [expandAll, setExpandAll] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [rowErrors, setRowErrors] = useState<BulkRowErrors | null>(null);
   const [variantErrors, setVariantErrors] = useState<BulkRowErrors | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<BulkAction | null>(null);
+  const [csvNotice, setCsvNotice] = useState<CsvImportResult | null>(null);
+  const [filters, setFilters] = useState<GridFilters>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<SortState>(null);
+  const [applyToSizes, setApplyToSizes] = useState(true);
+  const [columnKeys, setColumnKeys] = useState<string[]>(() => loadVisibleColumns(canSeeCost));
 
-  const [priceMode, setPriceMode] = useState<PriceMode>('increase_pct');
-  const [priceValue, setPriceValue] = useState('10');
-  const [roundMode, setRoundMode] = useState<RoundMode>('none');
-
+  const columns = useMemo(() => visibleColumns(columnKeys, canSeeCost), [columnKeys, canSeeCost]);
+  const rows = useMemo(() => visibleRows(items, filters, sort), [items, filters, sort]);
   const variants = useMemo(() => allVariants(items), [items]);
   const changes = useMemo(() => draftsToChanges(items, drafts), [items, drafts]);
   const variantChanges = useMemo(
@@ -169,22 +155,25 @@ export function QuickEditGrid({
     [items, drafts, variants, variantDrafts],
   );
   const dirtyRows = changes.length + variantChanges.length;
+  const hasSizes = variants.length > 0;
 
-  /** Which row index in the last save each row was — how errors map back. */
+  const setColumns = (keys: string[]) => {
+    setColumnKeys(keys);
+    saveVisibleColumns(keys);
+  };
+
   const errorFor = (itemId: number, field: string): string[] | null => {
     if (!rowErrors) return null;
     const index = changes.findIndex((c) => c.id === itemId);
-    if (index < 0) return null;
 
-    return rowErrors[index]?.[field] ?? null;
+    return index < 0 ? null : (rowErrors[index]?.[field] ?? null);
   };
 
   const variantErrorFor = (variantId: number, field: string): string[] | null => {
     if (!variantErrors) return null;
     const index = variantChanges.findIndex((c) => c.id === variantId);
-    if (index < 0) return null;
 
-    return variantErrors[index]?.[field] ?? null;
+    return index < 0 ? null : (variantErrors[index]?.[field] ?? null);
   };
 
   const draftValue = (record: EditableRecord, field: string, store: Drafts): unknown => {
@@ -201,43 +190,52 @@ export function QuickEditGrid({
     return fieldChanged(record, field, (draft as Record<string, unknown>)[field]);
   };
 
-  const setField = (id: number, field: keyof BulkItemFields, value: unknown) => {
-    setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? {}), [field]: value } }));
-    // The old highlight is about the previous attempt; typing invalidates it.
-    setRowErrors(null);
-    setVariantErrors(null);
+  const clearErrors = () => { setRowErrors(null); setVariantErrors(null); };
+
+  const setField = (id: number, field: string, value: unknown) => {
+    setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? {}), [field]: value } as BulkItemFields }));
+    clearErrors();
   };
 
   const setVariantField = (id: number, field: string, value: unknown) => {
     setVariantDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? {}), [field]: value } as BulkItemFields }));
-    setRowErrors(null);
-    setVariantErrors(null);
+    clearErrors();
   };
 
   const toggleExpanded = (id: number) =>
     setExpanded((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
 
-  const selectedItems = items.filter((i) => selected.includes(i.id));
-  const allSelected = items.length > 0 && selected.length === items.length;
+  const toggleExpandAll = () => {
+    const next = !expandAll;
+    setExpandAll(next);
+    setExpanded(next ? rows.map((i) => i.id) : []);
+  };
 
-  const toggleAll = () => setSelected(allSelected ? [] : items.map((i) => i.id));
+  // Selection is scoped to what is on screen: ticking "all" while a filter is
+  // on must not quietly include the rows the filter hid.
+  const selectedItems = rows.filter((i) => selected.includes(i.id));
+  const allSelected = rows.length > 0 && rows.every((i) => selected.includes(i.id));
+
+  const toggleAll = () =>
+    setSelected(allSelected ? [] : rows.map((i) => i.id));
   const toggleOne = (id: number) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   /** Stage an action as drafts so it lands in the same preview-and-save flow. */
   const applyAction = (action: BulkAction) => {
-    const rows = previewAction(selectedItems, action);
+    const previewed = previewAction(selectedItems, action);
     setDrafts((d) => {
       const next = { ...d };
-      for (const row of rows) {
+      for (const row of previewed) {
         if (Object.keys(row.fields).length === 0) continue;
         next[row.item.id] = { ...(next[row.item.id] ?? {}), ...row.fields };
       }
       return next;
     });
+
     // A price move on a sized dish has to reach the sizes — the base price is
     // not what the customer is charged for a Full or a Half.
-    if (action.kind === 'price') {
+    if (applyToSizes && (action.kind === 'price' || action.kind === 'margin')) {
       const sized = selectedItems.filter((i) => (i.variants ?? []).length > 0);
       if (sized.length > 0) {
         setVariantDrafts((d) => {
@@ -245,10 +243,13 @@ export function QuickEditGrid({
           for (const item of sized) {
             for (const v of item.variants ?? []) {
               if (v.id == null) continue;
-              const [row] = previewAction(
-                [{ id: v.id, base_price: v.price } as unknown as MenuItem],
-                action,
-              );
+              const stand = {
+                id: v.id,
+                base_price: v.price,
+                cost: v.cost,
+                effective_cost: v.cost,
+              } as unknown as MenuItem;
+              const [row] = previewAction([stand], action);
               if (row.fields.base_price === undefined) continue;
               next[v.id] = { ...(next[v.id] ?? {}), price: row.fields.base_price } as BulkItemFields;
             }
@@ -258,8 +259,8 @@ export function QuickEditGrid({
         setExpanded((e) => [...new Set([...e, ...sized.map((i) => i.id)])]);
       }
     }
-    setRowErrors(null);
-    setVariantErrors(null);
+
+    clearErrors();
     setPending(null);
   };
 
@@ -267,8 +268,7 @@ export function QuickEditGrid({
     if (changes.length === 0 && variantChanges.length === 0) return;
     setSaving(true);
     setError('');
-    setRowErrors(null);
-    setVariantErrors(null);
+    clearErrors();
     try {
       const res = await bulkUpdateItems(changes, variantChanges);
       setDrafts({});
@@ -278,10 +278,10 @@ export function QuickEditGrid({
       onSaved(res.message);
       await loadAll();
     } catch (e) {
-      const rows = bulkRowErrors(e);
-      if (rows) {
-        setRowErrors(rows.items);
-        setVariantErrors(rows.variants);
+      const parsed = bulkRowErrors(e);
+      if (parsed) {
+        setRowErrors(parsed.items);
+        setVariantErrors(parsed.variants);
       }
       setError((e as Error).message);
     } finally {
@@ -292,14 +292,14 @@ export function QuickEditGrid({
   const discard = () => {
     setDrafts({});
     setVariantDrafts({});
-    setRowErrors(null);
-    setVariantErrors(null);
+    clearErrors();
     setError('');
     setCsvNotice(null);
   };
 
   const exportCsv = () => {
-    const blob = new Blob([itemsToCsv(items, canSeeCost)], { type: 'text/csv;charset=utf-8' });
+    // Exports what is on screen, so a filter is also a way to scope the file.
+    const blob = new Blob([itemsToCsv(rows, canSeeCost)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -311,8 +311,8 @@ export function QuickEditGrid({
   const importCsv = async (file: File) => {
     setError('');
     try {
-      const { header, rows } = parseCsv(await file.text());
-      const result = csvToDrafts(rows, header, items, canSeeCost);
+      const { header, rows: parsed } = parseCsv(await file.text());
+      const result = csvToDrafts(parsed, header, items, canSeeCost);
       setDrafts((d) => ({ ...d, ...result.drafts }));
       setVariantDrafts((d) => ({ ...d, ...result.variantDrafts }));
       setExpanded((e) => [
@@ -320,8 +320,7 @@ export function QuickEditGrid({
           .some((v) => v.id != null && result.variantDrafts[v.id])).map((i) => i.id)]),
       ]);
       setCsvNotice(result);
-      setRowErrors(null);
-      setVariantErrors(null);
+      clearErrors();
     } catch (e) {
       setError(`Could not read that file: ${(e as Error).message}`);
     }
@@ -340,96 +339,38 @@ export function QuickEditGrid({
 
   return (
     <>
-      {/* Bulk-apply bar — one change to every ticked row. */}
+      <GridToolbar
+        filters={filters}
+        onFiltersChange={setFilters}
+        categories={categories}
+        menuGroups={menuGroups}
+        visibleKeys={columnKeys}
+        onVisibleKeysChange={setColumns}
+        canSeeCost={canSeeCost}
+        shown={rows.length}
+        total={items.length}
+        allExpanded={expandAll}
+        onToggleExpandAll={toggleExpandAll}
+        hasSizes={hasSizes}
+        onExport={exportCsv}
+        onImport={(file) => void importCsv(file)}
+      />
+
       <Card style={{ padding: '14px 16px', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 13, color: 'var(--color-text)' }} data-testid="quick-edit-selection">
-            {selected.length === 0
-              ? 'Tick rows to change them together'
-              : `${selected.length} selected`}
-          </strong>
-          {selected.length > 0 && (
-            <Btn small variant="secondary" onClick={() => setSelected([])}>Clear</Btn>
-          )}
-        </div>
-
-        {selected.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-            <select
-              value={priceMode}
-              onChange={(e) => setPriceMode(e.target.value as PriceMode)}
-              aria-label="Price change"
-              style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              {PRICE_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            <input
-              type="number" min="0" step="0.01"
-              value={priceValue}
-              onChange={(e) => setPriceValue(e.target.value)}
-              aria-label="Price amount"
-              style={{ width: 90, padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
-            />
-            <select
-              value={roundMode}
-              onChange={(e) => setRoundMode(e.target.value as RoundMode)}
-              aria-label="Rounding"
-              style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              {ROUND_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-            <Btn
-              small
-              onClick={() => setPending({
-                kind: 'price',
-                mode: priceMode,
-                value: parseFloat(priceValue) || 0,
-                round: roundMode,
-              })}
-            >
-              Preview price change
-            </Btn>
-
-            <span style={{ width: 1, height: 26, background: 'var(--color-border)' }} />
-
-            <select
-              value=""
-              aria-label="Move to category"
-              onChange={(e) => e.target.value && setPending({ kind: 'category', categoryId: Number(e.target.value) })}
-              style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              <option value="">Move to category…</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select
-              value=""
-              aria-label="Move to menu group"
-              onChange={(e) => e.target.value && setPending({ kind: 'menu_group', menuGroupId: Number(e.target.value) })}
-              style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              <option value="">Move to menu group…</option>
-              {menuGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
-            <select
-              value=""
-              aria-label="Set GST treatment"
-              onChange={(e) => e.target.value && setPending({ kind: 'tax_code', taxCode: e.target.value })}
-              style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-            >
-              <option value="">Set GST…</option>
-              {TAX_CODES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-
-            <Btn small variant="secondary" onClick={() => setPending({ kind: 'is_available', value: true })}>Mark available</Btn>
-            <Btn small variant="secondary" onClick={() => setPending({ kind: 'is_available', value: false })}>Mark sold out</Btn>
-            <Btn small variant="secondary" onClick={() => setPending({ kind: 'is_active', value: false })}>Hide</Btn>
-            <Btn small variant="secondary" onClick={() => setPending({ kind: 'is_active', value: true })}>Show</Btn>
-          </div>
-        )}
+        <BulkActionBar
+          selectedCount={selected.length}
+          categories={categories}
+          menuGroups={menuGroups}
+          canSeeCost={canSeeCost}
+          applyToSizes={applyToSizes}
+          onApplyToSizesChange={setApplyToSizes}
+          onPropose={setPending}
+          onClear={() => setSelected([])}
+        />
       </Card>
 
-      {/* Preview — a bulk price move is the change nobody can undo by hand,
-          so every affected row is shown before it becomes a pending edit. */}
+      {/* A bulk price move is the change nobody can undo by hand, so every
+          affected row is shown before it even becomes a pending edit. */}
       {pending && (
         <Card style={{ padding: '14px 16px', marginBottom: 14, borderColor: 'var(--color-warning)' }} data-testid="bulk-preview">
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: 'var(--color-text)' }}>
@@ -469,33 +410,6 @@ export function QuickEditGrid({
         </Card>
       )}
 
-      {/* Spreadsheet round-trip. Export carries a byte-order mark so Excel does
-          not mangle Dhivehi names, and import only ever updates rows it can
-          match by id — it never creates or deletes. */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-        <Btn small variant="secondary" onClick={exportCsv} data-testid="csv-export">
-          ⭳ Export CSV ({items.length} item{items.length === 1 ? '' : 's'})
-        </Btn>
-        <Btn small variant="secondary" onClick={() => fileInput.current?.click()} data-testid="csv-import">
-          ⭱ Import CSV
-        </Btn>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".csv,text/csv"
-          data-testid="csv-file"
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void importCsv(file);
-            e.target.value = '';
-          }}
-        />
-        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-          Edit in Excel, then import — changes land as pending cells below for you to check before saving.
-        </span>
-      </div>
-
       {csvNotice && (
         <Card style={{ padding: '12px 16px', marginBottom: 14 }} data-testid="csv-notice">
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
@@ -521,7 +435,6 @@ export function QuickEditGrid({
         </Card>
       )}
 
-      {/* Save bar. */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14,
         padding: '10px 14px', borderRadius: 10,
@@ -554,212 +467,403 @@ export function QuickEditGrid({
         </div>
       )}
 
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ ...head, width: 34 }}>
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    aria-label="Select all rows"
-                  />
-                </th>
-                <th style={{ ...head, minWidth: 180 }}>Name</th>
-                <th style={{ ...head, minWidth: 150 }}>Category</th>
-                <th style={{ ...head, minWidth: 90 }}>Price</th>
-                {canSeeCost && <th style={{ ...head, minWidth: 90 }}>Cost</th>}
-                <th style={{ ...head, minWidth: 110 }}>SKU</th>
-                <th style={{ ...head, minWidth: 120 }}>GST</th>
-                <th style={{ ...head, minWidth: 80 }}>Stock</th>
-                <th style={{ ...head, width: 70 }}>Avail</th>
-                <th style={{ ...head, width: 70 }}>Active</th>
-                <th style={{ ...head, width: 70 }}>Sort</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => {
-                const nameErr = errorFor(item.id, 'name');
-                const priceErr = errorFor(item.id, 'base_price');
-                const costErr = errorFor(item.id, 'cost');
-                const skuErr = errorFor(item.id, 'sku');
-                const sizes = (item.variants ?? []).slice()
-                  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-                // Sizes stay folded away by default so a menu of sized dishes
-                // is still readable; a dirty or rejected size forces them open.
-                const hasPendingSize = sizes.some((v) => v.id != null && variantDrafts[v.id]);
-                const isOpen = expanded.includes(item.id) || hasPendingSize;
-
-                return (
-                  <Fragment key={item.id}>
-                  <tr
-                    data-testid={`quick-edit-row-${item.id}`}
-                    style={{
-                      borderBottom: '1px solid var(--color-border-light)',
-                      background: selected.includes(item.id) ? 'var(--color-bg)' : undefined,
-                    }}
-                  >
-                    <td style={cell}>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(item.id)}
-                        onChange={() => toggleOne(item.id)}
-                        aria-label={`Select ${item.name}`}
-                      />
-                    </td>
-                    <td style={cell}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {sizes.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleExpanded(item.id)}
-                            aria-label={`${isOpen ? 'Hide' : 'Show'} sizes for ${item.name}`}
-                            aria-expanded={isOpen}
-                            style={{
-                              border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-                              borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                              padding: '3px 6px', color: 'var(--color-text-secondary)', flexShrink: 0,
-                              minWidth: 34,
-                            }}
-                          >
-                            {isOpen ? '▾' : '▸'} {sizes.length}
-                          </button>
-                        ) : (
-                          <span style={{ width: 34, flexShrink: 0 }} />
-                        )}
-                        <input
-                          value={String(draftValue(item, 'name', drafts) ?? '')}
-                          onChange={(e) => setField(item.id, 'name', e.target.value)}
-                          aria-label={`Name for ${item.name}`}
-                          style={inputStyle(isDirty(item, 'name', drafts), !!nameErr)}
-                        />
-                      </div>
-                      {nameErr && <FieldError messages={nameErr} />}
-                    </td>
-                    <td style={cell}>
-                      <select
-                        value={String(draftValue(item, 'category_id', drafts) ?? '')}
-                        onChange={(e) => setField(item.id, 'category_id', e.target.value ? Number(e.target.value) : null)}
-                        aria-label={`Category for ${item.name}`}
-                        style={inputStyle(isDirty(item, 'category_id', drafts), false)}
-                      >
-                        <option value="">—</option>
-                        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </td>
-                    <td style={cell}>
-                      <input
-                        type="number" min="0" step="0.01"
-                        value={String(draftValue(item, 'base_price', drafts) ?? '')}
-                        onChange={(e) => setField(item.id, 'base_price', e.target.value === '' ? '' : Number(e.target.value))}
-                        aria-label={`Price for ${item.name}`}
-                        style={{ ...inputStyle(isDirty(item, 'base_price', drafts), !!priceErr, 88), textAlign: 'right' }}
-                      />
-                      {priceErr && <FieldError messages={priceErr} />}
-                    </td>
-                    {canSeeCost && (
-                      <td style={cell}>
-                        <input
-                          type="number" min="0" step="0.01"
-                          value={String(draftValue(item, 'cost', drafts) ?? '')}
-                          onChange={(e) => setField(item.id, 'cost', e.target.value === '' ? null : Number(e.target.value))}
-                          aria-label={`Cost for ${item.name}`}
-                          style={{ ...inputStyle(isDirty(item, 'cost', drafts), !!costErr, 88), textAlign: 'right' }}
-                        />
-                        {costErr && <FieldError messages={costErr} />}
-                      </td>
-                    )}
-                    <td style={cell}>
-                      <input
-                        value={String(draftValue(item, 'sku', drafts) ?? '')}
-                        onChange={(e) => setField(item.id, 'sku', e.target.value || null)}
-                        aria-label={`SKU for ${item.name}`}
-                        style={inputStyle(isDirty(item, 'sku', drafts), !!skuErr)}
-                      />
-                      {skuErr && <FieldError messages={skuErr} />}
-                    </td>
-                    <td style={cell}>
-                      <select
-                        value={String(draftValue(item, 'tax_code', drafts) ?? 'standard_8')}
-                        onChange={(e) => setField(item.id, 'tax_code', e.target.value)}
-                        aria-label={`GST for ${item.name}`}
-                        style={inputStyle(isDirty(item, 'tax_code', drafts), false)}
-                      >
-                        {TAX_CODES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                      </select>
-                    </td>
-                    <td style={cell}>
-                      {/* Stock only means anything while the item tracks it —
-                          the full editor is where tracking gets turned on. */}
-                      {item.track_stock ? (
-                        <input
-                          type="number" min="0" step="1"
-                          value={String(draftValue(item, 'stock_quantity', drafts) ?? 0)}
-                          onChange={(e) => setField(item.id, 'stock_quantity', e.target.value === '' ? null : Number(e.target.value))}
-                          aria-label={`Stock for ${item.name}`}
-                          style={{ ...inputStyle(isDirty(item, 'stock_quantity', drafts), false, 70), textAlign: 'right' }}
-                        />
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ ...cell, textAlign: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!draftValue(item, 'is_available', drafts)}
-                        onChange={(e) => setField(item.id, 'is_available', e.target.checked)}
-                        aria-label={`Available: ${item.name}`}
-                        style={{ outline: isDirty(item, 'is_available', drafts) ? '2px solid var(--color-warning)' : 'none' }}
-                      />
-                    </td>
-                    <td style={{ ...cell, textAlign: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!draftValue(item, 'is_active', drafts)}
-                        onChange={(e) => setField(item.id, 'is_active', e.target.checked)}
-                        aria-label={`Active: ${item.name}`}
-                        style={{ outline: isDirty(item, 'is_active', drafts) ? '2px solid var(--color-warning)' : 'none' }}
-                      />
-                    </td>
-                    <td style={cell}>
-                      <input
-                        type="number" step="1"
-                        value={String(draftValue(item, 'sort_order', drafts) ?? 0)}
-                        onChange={(e) => setField(item.id, 'sort_order', e.target.value === '' ? null : Number(e.target.value))}
-                        aria-label={`Sort order for ${item.name}`}
-                        style={{ ...inputStyle(isDirty(item, 'sort_order', drafts), false, 62), textAlign: 'right' }}
-                      />
-                    </td>
-                  </tr>
-                  {isOpen && sizes.map((v) => (
-                    <VariantRow
-                      key={v.id}
-                      variant={v}
-                      itemName={item.name}
-                      canSeeCost={canSeeCost}
-                      draftValue={(field) => draftValue(v as unknown as EditableRecord, field, variantDrafts)}
-                      isDirty={(field) => isDirty(v as unknown as EditableRecord, field, variantDrafts)}
-                      errorFor={(field) => variantErrorFor(v.id as number, field)}
-                      onChange={(field, value) => setVariantField(v.id as number, field, value)}
+      {rows.length === 0 ? (
+        <Card><EmptyState message="No items match these filters." /></Card>
+      ) : (
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-scroll">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ ...head, width: 34 }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                      aria-label="Select all rows"
+                    />
+                  </th>
+                  {columns.map((c) => (
+                    <SortableHeader
+                      key={c.key}
+                      column={c}
+                      sort={sort}
+                      onSort={() => setSort((s) => nextSort(s, c.key))}
                     />
                   ))}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((item) => {
+                  const sizes = (item.variants ?? []).slice()
+                    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+                  // A dirty or rejected size forces its dish open, so a pending
+                  // edit can never be hidden behind a collapsed row.
+                  const hasPendingSize = sizes.some((v) => v.id != null && variantDrafts[v.id]);
+                  const isOpen = expanded.includes(item.id) || hasPendingSize;
+
+                  return (
+                    <Fragment key={item.id}>
+                      <tr
+                        data-testid={`quick-edit-row-${item.id}`}
+                        style={{
+                          borderBottom: '1px solid var(--color-border-light)',
+                          background: selected.includes(item.id) ? 'var(--color-bg)' : undefined,
+                        }}
+                      >
+                        <td style={cell}>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(item.id)}
+                            onChange={() => toggleOne(item.id)}
+                            aria-label={`Select ${item.name}`}
+                          />
+                        </td>
+                        {columns.map((c) => (
+                          <ItemCell
+                            key={c.key}
+                            column={c}
+                            item={item}
+                            sizes={sizes}
+                            isOpen={isOpen}
+                            onToggleExpanded={() => toggleExpanded(item.id)}
+                            categories={categories}
+                            menuGroups={menuGroups}
+                            value={c.field ? draftValue(item as unknown as EditableRecord, c.field, drafts) : undefined}
+                            dirty={!!c.field && isDirty(item as unknown as EditableRecord, c.field, drafts)}
+                            errors={c.field ? errorFor(item.id, c.field) : null}
+                            onChange={(v) => c.field && setField(item.id, c.field, v)}
+                          />
+                        ))}
+                      </tr>
+                      {isOpen && sizes.map((v) => (
+                        <tr
+                          key={v.id}
+                          data-testid={`quick-edit-size-${v.id}`}
+                          style={{ borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg)' }}
+                        >
+                          <td style={cell} />
+                          {columns.map((c) => (
+                            <VariantCell
+                              key={c.key}
+                              column={c}
+                              variant={v}
+                              itemName={item.name}
+                              value={c.variantField ? draftValue(v as unknown as EditableRecord, c.variantField, variantDrafts) : undefined}
+                              dirty={!!c.variantField && isDirty(v as unknown as EditableRecord, c.variantField, variantDrafts)}
+                              errors={c.variantField ? variantErrorFor(v.id as number, c.variantField) : null}
+                              onChange={(val) => c.variantField && setVariantField(v.id as number, c.variantField, val)}
+                            />
+                          ))}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0', lineHeight: 1.6 }}>
-        Photos, variants, combos, platters, channels and descriptions are not editable here —
-        use <strong>Edit</strong> on the normal list for those. Only the cells you change are
+        Photos, combos, platters, channels, descriptions and the list of sizes itself are not editable
+        here — use <strong>Edit</strong> on the normal list for those. Only the cells you change are
         saved, so this will not overwrite anything somebody else is editing.
       </p>
     </>
   );
+}
+
+function SortableHeader({
+  column, sort, onSort,
+}: { column: GridColumn; sort: SortState; onSort: () => void }) {
+  const active = sort?.key === column.key;
+  const arrow = !active ? '⇅' : sort?.direction === 'asc' ? '↑' : '↓';
+
+  return (
+    <th style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width }}>
+      <button
+        type="button"
+        onClick={onSort}
+        aria-label={`Sort by ${column.label}`}
+        style={{
+          border: 'none', background: 'none', cursor: 'pointer', padding: 0,
+          font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit',
+          color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}
+      >
+        {column.label}
+        <span style={{ fontSize: 10, opacity: active ? 1 : 0.5 }}>{arrow}</span>
+      </button>
+    </th>
+  );
+}
+
+function ItemCell({
+  column, item, sizes, isOpen, onToggleExpanded, categories, menuGroups,
+  value, dirty, errors, onChange,
+}: {
+  column: GridColumn;
+  item: MenuItem;
+  sizes: MenuVariant[];
+  isOpen: boolean;
+  onToggleExpanded: () => void;
+  categories: MenuCategory[];
+  menuGroups: MenuGroupRow[];
+  value: unknown;
+  dirty: boolean;
+  errors: string[] | null;
+  onChange: (value: unknown) => void;
+}) {
+  // The margin column is read-only — it is arithmetic on price and cost, not
+  // a field, and offering it as an input would imply it could be set.
+  if (column.key === 'margin') {
+    const pct = marginPct(item);
+
+    return (
+      <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }}>
+        {pct === null ? '—' : `${pct.toFixed(1)}%`}
+      </td>
+    );
+  }
+
+  if (column.key === 'consumption_factor') {
+    return <td style={{ ...cell, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>—</td>;
+  }
+
+  const label = `${column.label} for ${item.name}`;
+
+  if (column.key === 'name') {
+    return (
+      <td style={cell}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {sizes.length > 0 ? (
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-label={`${isOpen ? 'Hide' : 'Show'} sizes for ${item.name}`}
+              aria-expanded={isOpen}
+              style={{
+                border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                padding: '3px 6px', color: 'var(--color-text-secondary)', flexShrink: 0, minWidth: 34,
+              }}
+            >
+              {isOpen ? '▾' : '▸'} {sizes.length}
+            </button>
+          ) : (
+            <span style={{ width: 34, flexShrink: 0 }} />
+          )}
+          <input
+            value={String(value ?? '')}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={`Name for ${item.name}`}
+            style={inputStyle(dirty, !!errors)}
+          />
+        </div>
+        {errors && <FieldError messages={errors} />}
+      </td>
+    );
+  }
+
+  if (column.key === 'price' && sizes.length > 0) {
+    // On a sized dish this is only the "from" price the cards show — the
+    // customer pays a size price, which lives on the rows below.
+    return (
+      <td style={cell}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)' }}>from</span>
+          <input
+            type="number" min="0" step="0.01"
+            value={String(value ?? '')}
+            onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+            aria-label={label}
+            title="Base price — sizes below carry what a customer actually pays"
+            style={{ ...inputStyle(dirty, !!errors, column.width ? column.width - 34 : 70), textAlign: 'right' }}
+          />
+        </div>
+        {errors && <FieldError messages={errors} />}
+      </td>
+    );
+  }
+
+  return (
+    <td style={cell}>
+      <Editor
+        column={column}
+        label={label}
+        value={value}
+        dirty={dirty}
+        invalid={!!errors}
+        categories={categories}
+        menuGroups={menuGroups}
+        onChange={onChange}
+      />
+      {errors && <FieldError messages={errors} />}
+    </td>
+  );
+}
+
+function VariantCell({
+  column, variant, itemName, value, dirty, errors, onChange,
+}: {
+  column: GridColumn;
+  variant: MenuVariant;
+  itemName: string;
+  value: unknown;
+  dirty: boolean;
+  errors: string[] | null;
+  onChange: (value: unknown) => void;
+}) {
+  const label = `${column.label} for ${itemName} — ${variant.name}`;
+
+  if (column.key === 'category') {
+    return <td style={{ ...cell, fontSize: 11, color: 'var(--color-text-muted)' }}>size</td>;
+  }
+  if (!column.variantField) {
+    // GST, packaging, prep time and the rest belong to the dish, not to one of
+    // its portions — saying so beats an empty cell nobody can interpret.
+    return <td style={{ ...cell, fontSize: 11, color: 'var(--color-text-muted)' }}>follows item</td>;
+  }
+
+  if (column.key === 'name') {
+    return (
+      <td style={cell}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 34 }}>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: 12, flexShrink: 0 }}>↳</span>
+          <input
+            value={String(value ?? '')}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={`Size name for ${itemName} — ${variant.name}`}
+            style={inputStyle(dirty, !!errors)}
+          />
+        </div>
+        {errors && <FieldError messages={errors} />}
+      </td>
+    );
+  }
+
+  return (
+    <td style={cell}>
+      <Editor
+        column={column}
+        label={label}
+        value={value}
+        dirty={dirty}
+        invalid={!!errors}
+        categories={[]}
+        menuGroups={[]}
+        onChange={onChange}
+      />
+      {errors && <FieldError messages={errors} />}
+    </td>
+  );
+}
+
+function Editor({
+  column, label, value, dirty, invalid, categories, menuGroups, onChange,
+}: {
+  column: GridColumn;
+  label: string;
+  value: unknown;
+  dirty: boolean;
+  invalid: boolean;
+  categories: MenuCategory[];
+  menuGroups: MenuGroupRow[];
+  onChange: (value: unknown) => void;
+}) {
+  const style = inputStyle(dirty, invalid, column.width);
+
+  switch (column.kind) {
+    case 'bool':
+      return (
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-label={label}
+          style={{ outline: dirty ? '2px solid var(--color-warning)' : 'none', display: 'block', margin: '0 auto' }}
+        />
+      );
+    case 'money':
+      return (
+        <input
+          type="number" min="0" step="0.01"
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+          aria-label={label}
+          style={{ ...style, textAlign: 'right' }}
+        />
+      );
+    case 'decimal':
+      return (
+        <input
+          type="number" min="0" step="0.05"
+          value={String(value ?? 1)}
+          onChange={(e) => onChange(e.target.value === '' ? 1 : Math.max(0, Number(e.target.value)))}
+          aria-label={label}
+          title="How much of the recipe one of this size uses — full 1, half 0.5"
+          style={{ ...style, textAlign: 'right' }}
+        />
+      );
+    case 'int':
+      return (
+        <input
+          type="number" step="1"
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value === '' ? null : Math.round(Number(e.target.value)))}
+          aria-label={label}
+          style={{ ...style, textAlign: 'right' }}
+        />
+      );
+    case 'select':
+      return (
+        <select
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+          aria-label={label}
+          style={style}
+        >
+          <option value="">—</option>
+          {(column.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    case 'category':
+      return (
+        <select
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          aria-label={label}
+          style={style}
+        >
+          <option value="">—</option>
+          {categoryOptions(categories).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    case 'menu_group':
+      return (
+        <select
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+          aria-label={label}
+          style={style}
+        >
+          <option value="">—</option>
+          {menuGroupOptions(menuGroups).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    default:
+      return (
+        <input
+          value={String(value ?? '')}
+          onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
+          aria-label={label}
+          style={style}
+        />
+      );
+  }
 }
 
 function FieldError({ messages }: { messages: string[] }) {
@@ -767,129 +871,5 @@ function FieldError({ messages }: { messages: string[] }) {
     <div style={{ fontSize: 11, color: 'var(--color-danger)', marginTop: 3, lineHeight: 1.4 }}>
       {messages[0]}
     </div>
-  );
-}
-
-/**
- * One size, shown indented under its dish.
- *
- * Sizes carry the price the customer actually pays on a variant item, so a
- * repricing that stopped at the item row would miss the real number. The
- * consumption factor is here too because it belongs to the same mental task:
- * "Half is 0.5 of a portion and costs 12."
- */
-function VariantRow({
-  variant,
-  itemName,
-  canSeeCost,
-  draftValue,
-  isDirty,
-  errorFor,
-  onChange,
-}: {
-  variant: MenuVariant;
-  itemName: string;
-  canSeeCost: boolean;
-  draftValue: (field: string) => unknown;
-  isDirty: (field: string) => boolean;
-  errorFor: (field: string) => string[] | null;
-  onChange: (field: string, value: unknown) => void;
-}) {
-  const label = `${itemName} — ${variant.name}`;
-  const priceErr = errorFor('price');
-  const skuErr = errorFor('sku');
-
-  return (
-    <tr
-      data-testid={`quick-edit-size-${variant.id}`}
-      style={{ borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg)' }}
-    >
-      <td style={cell} />
-      <td style={cell}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 34 }}>
-          <span style={{ color: 'var(--color-text-muted)', fontSize: 12, flexShrink: 0 }}>↳</span>
-          <input
-            value={String(draftValue('name') ?? '')}
-            onChange={(e) => onChange('name', e.target.value)}
-            aria-label={`Size name for ${label}`}
-            style={inputStyle(isDirty('name'), false)}
-          />
-        </div>
-      </td>
-      <td style={{ ...cell, fontSize: 11, color: 'var(--color-text-muted)' }}>size</td>
-      <td style={cell}>
-        <input
-          type="number" min="0" step="0.01"
-          value={String(draftValue('price') ?? '')}
-          onChange={(e) => onChange('price', e.target.value === '' ? '' : Number(e.target.value))}
-          aria-label={`Price for ${label}`}
-          style={{ ...inputStyle(isDirty('price'), !!priceErr, 88), textAlign: 'right' }}
-        />
-        {priceErr && <FieldError messages={priceErr} />}
-      </td>
-      {canSeeCost && (
-        <td style={cell}>
-          <input
-            type="number" min="0" step="0.01"
-            value={String(draftValue('cost') ?? '')}
-            onChange={(e) => onChange('cost', e.target.value === '' ? null : Number(e.target.value))}
-            aria-label={`Cost for ${label}`}
-            style={{ ...inputStyle(isDirty('cost'), !!errorFor('cost'), 88), textAlign: 'right' }}
-          />
-        </td>
-      )}
-      <td style={cell}>
-        <input
-          value={String(draftValue('sku') ?? '')}
-          onChange={(e) => onChange('sku', e.target.value || null)}
-          aria-label={`SKU for ${label}`}
-          style={inputStyle(isDirty('sku'), !!skuErr)}
-        />
-        {skuErr && <FieldError messages={skuErr} />}
-      </td>
-      <td style={{ ...cell, fontSize: 11, color: 'var(--color-text-muted)' }}>
-        {/* GST is a property of the dish, not of one of its sizes. */}
-        follows item
-      </td>
-      <td style={cell}>
-        {variant.track_stock ? (
-          <input
-            type="number" min="0" step="1"
-            value={String(draftValue('stock_qty') ?? 0)}
-            onChange={(e) => onChange('stock_qty', e.target.value === '' ? null : Number(e.target.value))}
-            aria-label={`Stock for ${label}`}
-            style={{ ...inputStyle(isDirty('stock_qty'), false, 70), textAlign: 'right' }}
-          />
-        ) : (
-          <input
-            type="number" min="0" step="0.05"
-            value={String(draftValue('consumption_factor') ?? 1)}
-            onChange={(e) => onChange('consumption_factor', e.target.value === '' ? 1 : Math.max(0, Number(e.target.value)))}
-            aria-label={`Uses for ${label}`}
-            title="How much of the recipe one of this size uses — full 1, half 0.5"
-            style={{ ...inputStyle(isDirty('consumption_factor'), false, 70), textAlign: 'right' }}
-          />
-        )}
-      </td>
-      <td style={{ ...cell, textAlign: 'center', fontSize: 11, color: 'var(--color-text-muted)' }}>—</td>
-      <td style={{ ...cell, textAlign: 'center' }}>
-        <input
-          type="checkbox"
-          checked={!!draftValue('is_active')}
-          onChange={(e) => onChange('is_active', e.target.checked)}
-          aria-label={`Active: ${label}`}
-          style={{ outline: isDirty('is_active') ? '2px solid var(--color-warning)' : 'none' }}
-        />
-      </td>
-      <td style={cell}>
-        <input
-          type="number" step="1"
-          value={String(draftValue('sort_order') ?? 0)}
-          onChange={(e) => onChange('sort_order', e.target.value === '' ? null : Number(e.target.value))}
-          aria-label={`Sort order for ${label}`}
-          style={{ ...inputStyle(isDirty('sort_order'), false, 62), textAlign: 'right' }}
-        />
-      </td>
-    </tr>
   );
 }

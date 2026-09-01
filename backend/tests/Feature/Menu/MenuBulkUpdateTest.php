@@ -374,4 +374,63 @@ class MenuBulkUpdateTest extends TestCase
 
         $this->bulk([], [])->assertStatus(422);
     }
+
+    // ── Wider column set ─────────────────────────────────────────────────────
+
+    public function test_it_writes_the_extra_columns_the_grid_now_offers(): void
+    {
+        // Owner, 2026-09-01: "cant u add more options" — the grid lets you show
+        // these columns, so the endpoint has to accept them.
+        $this->actAsOwner();
+        $item = $this->item();
+
+        $this->bulk([['id' => $item->id, 'fields' => [
+            'card_name' => 'Bajiya (3pc)',
+            'short_description' => 'Crisp tuna parcels',
+            'price_note' => 'per plate',
+            'prep_time_minutes' => 12,
+            'packaging_fee' => 2.5,
+            'packaging_fee_mode' => 'per_line',
+            'spice_level' => 'medium',
+            'calories' => 320,
+            'is_signage_promoted' => true,
+            'tomorrow_daily_capacity' => 40,
+        ]]])->assertOk()->assertJsonPath('updated', 1);
+
+        $fresh = $item->fresh();
+        $this->assertSame('Bajiya (3pc)', $fresh->card_name);
+        $this->assertSame('Crisp tuna parcels', $fresh->short_description);
+        $this->assertSame('per plate', $fresh->price_note);
+        $this->assertSame(12, (int) $fresh->prep_time_minutes);
+        $this->assertEqualsWithDelta(2.5, (float) $fresh->packaging_fee, 0.001);
+        $this->assertSame('per_line', $fresh->packaging_fee_mode);
+        $this->assertSame('medium', $fresh->spice_level);
+        $this->assertSame(320, (int) $fresh->calories);
+        $this->assertTrue((bool) $fresh->is_signage_promoted);
+        $this->assertSame(40, (int) $fresh->tomorrow_daily_capacity);
+    }
+
+    public function test_the_wider_set_still_refuses_anything_off_the_list(): void
+    {
+        $this->actAsOwner();
+        $item = $this->item();
+
+        $this->bulk([['id' => $item->id, 'fields' => ['description' => 'long text']]])
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'row_errors.0.description.0',
+                'This field cannot be changed from the bulk editor.',
+            );
+    }
+
+    public function test_a_bad_spice_level_is_refused_rather_than_stored(): void
+    {
+        $this->actAsOwner();
+        $item = $this->item(['spice_level' => 'mild']);
+
+        $this->bulk([['id' => $item->id, 'fields' => ['spice_level' => 'nuclear']]])
+            ->assertStatus(422);
+
+        $this->assertSame('mild', $item->fresh()->spice_level);
+    }
 }

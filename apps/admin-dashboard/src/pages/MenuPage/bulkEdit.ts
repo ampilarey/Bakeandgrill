@@ -18,11 +18,15 @@ export type PriceMode = 'set' | 'increase_pct' | 'decrease_pct' | 'increase_amou
 
 export type BulkAction =
   | { kind: 'price'; mode: PriceMode; value: number; round: RoundMode }
+  | { kind: 'cost'; mode: PriceMode; value: number; round: RoundMode }
+  /** Price computed backwards from cost to hit a target margin. */
+  | { kind: 'margin'; marginPct: number; round: RoundMode }
   | { kind: 'category'; categoryId: number | null }
   | { kind: 'menu_group'; menuGroupId: number | null }
   | { kind: 'tax_code'; taxCode: string }
-  | { kind: 'is_available'; value: boolean }
-  | { kind: 'is_active'; value: boolean };
+  | { kind: 'field'; field: string; value: unknown; label: string; format?: (v: unknown) => string }
+  /** Renumber the selection 10, 20, 30… in the order shown. */
+  | { kind: 'renumber'; step: number };
 
 export type RoundMode = 'none' | 'whole' | 'half' | 'five';
 
@@ -75,13 +79,28 @@ export function nextPrice(current: number, action: Extract<BulkAction, { kind: '
  * preview can show "no change" rather than quietly dropping them — a selection
  * that silently shrinks is how people lose track of what they just did.
  */
+/**
+ * Price that yields a target margin on a known cost.
+ *
+ * margin = (price - cost) / price, so price = cost / (1 - margin). A margin of
+ * 100% or more has no finite answer, and an item with no cost recorded has
+ * nothing to compute from — both leave the row alone rather than inventing a
+ * number for something the owner prices by hand.
+ */
+export function priceForMargin(cost: number, marginPct: number): number | null {
+  if (!Number.isFinite(cost) || cost <= 0) return null;
+  if (!Number.isFinite(marginPct) || marginPct >= 100) return null;
+
+  return cost / (1 - marginPct / 100);
+}
+
 export function previewAction(items: MenuItem[], action: BulkAction): Array<{
   item: MenuItem;
   fields: BulkItemFields;
   before: string;
   after: string;
 }> {
-  return items.map((item) => {
+  return items.map((item, index) => {
     switch (action.kind) {
       case 'price': {
         const current = Number(item.base_price) || 0;
@@ -120,22 +139,55 @@ export function previewAction(items: MenuItem[], action: BulkAction): Array<{
           after: action.taxCode,
         };
       }
-      case 'is_available': {
-        const same = !!item.is_available === action.value;
+      case 'cost': {
+        const raw = item.cost;
+        if (raw === null || raw === undefined || (raw as unknown) === '') {
+          return { item, fields: {}, before: '—', after: 'no cost' };
+        }
+        const current = Number(raw) || 0;
+        const next = nextPrice(current, { ...action, kind: 'price' });
         return {
           item,
-          fields: same ? {} : { is_available: action.value },
-          before: item.is_available ? 'Available' : 'Sold out',
-          after: action.value ? 'Available' : 'Sold out',
+          fields: sameMoney(current, next) ? {} : { cost: next },
+          before: current.toFixed(2),
+          after: next.toFixed(2),
         };
       }
-      case 'is_active': {
-        const same = !!item.is_active === action.value;
+      case 'margin': {
+        const cost = Number(item.effective_cost ?? item.cost);
+        const target = priceForMargin(cost, action.marginPct);
+        const current = Number(item.base_price) || 0;
+        if (target === null) {
+          return { item, fields: {}, before: current.toFixed(2), after: 'no cost' };
+        }
+        const next = roundPrice(target, action.round);
         return {
           item,
-          fields: same ? {} : { is_active: action.value },
-          before: item.is_active ? 'Active' : 'Hidden',
-          after: action.value ? 'Active' : 'Hidden',
+          fields: sameMoney(current, next) ? {} : { base_price: next },
+          before: current.toFixed(2),
+          after: next.toFixed(2),
+        };
+      }
+      case 'field': {
+        const current = (item as unknown as Record<string, unknown>)[action.field];
+        const changed = fieldChanged(item as unknown as EditableRecord, action.field, action.value);
+        const show = action.format
+          ?? ((v: unknown) => (typeof v === 'boolean' ? (v ? 'yes' : 'no') : String(v ?? '—')));
+        return {
+          item,
+          fields: changed ? ({ [action.field]: action.value } as BulkItemFields) : {},
+          before: show(current),
+          after: show(action.value),
+        };
+      }
+      case 'renumber': {
+        const next = (index + 1) * action.step;
+        const current = Number(item.sort_order ?? 0);
+        return {
+          item,
+          fields: current === next ? {} : ({ sort_order: next } as BulkItemFields),
+          before: String(current),
+          after: String(next),
         };
       }
     }
