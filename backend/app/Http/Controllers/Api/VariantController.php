@@ -43,6 +43,7 @@ class VariantController extends Controller
             'track_stock' => 'nullable|boolean',
             'stock_qty' => 'nullable|integer|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',
+            'consumption_factor' => 'nullable|numeric|min:0|max:1000',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -57,6 +58,7 @@ class VariantController extends Controller
             'track_stock' => (bool) ($data['track_stock'] ?? false),
             'stock_qty' => (int) ($data['stock_qty'] ?? 0),
             'low_stock_threshold' => (int) ($data['low_stock_threshold'] ?? 5),
+            'consumption_factor' => max(0.0, (float) ($data['consumption_factor'] ?? 1.0)),
             'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
@@ -79,6 +81,7 @@ class VariantController extends Controller
             'track_stock' => 'nullable|boolean',
             'stock_qty' => 'nullable|integer|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',
+            'consumption_factor' => 'nullable|numeric|min:0|max:1000',
             'is_active' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -111,6 +114,7 @@ class VariantController extends Controller
             'track_stock' => $v->track_stock,
             'stock_qty' => $v->stock_qty,
             'low_stock_threshold' => $v->low_stock_threshold,
+            'consumption_factor' => $v->consumptionFactor(),
             'is_active' => $v->is_active,
             'sort_order' => $v->sort_order,
             'created_at' => $v->created_at?->toIso8601String(),

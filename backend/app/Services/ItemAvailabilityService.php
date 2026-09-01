@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
@@ -34,6 +35,7 @@ class ItemAvailabilityService
     public function __construct(
         private readonly KitchenMenuResolver $menuResolver,
         private readonly StockReservationService $reservations,
+        private readonly RecipeStockService $recipeStock,
     ) {}
 
     /**
@@ -70,9 +72,24 @@ class ItemAvailabilityService
             );
         }
 
-        // 3. Stock check (for prepared items only)
+        // 3. Shared ingredient pool (opt-in per recipe). For a dish sold in
+        // sizes this is the best any size can still do: the item stays on the
+        // menu while one size is makeable, and the size picker says which.
+        $portions = $this->recipeStock->portionsForItem($item);
+        if ($portions !== null && $portions <= 0) {
+            return AvailabilityResult::unavailable(
+                'out_of_stock',
+                "{$item->name} is currently sold out.",
+                availableStock: 0,
+            );
+        }
+
+        // 4. Stock check (for prepared items only)
         if ($item->track_stock && $item->availability_type === 'stock_based') {
             $available = $this->reservations->getAvailableStock($item);
+            if ($portions !== null) {
+                $available = min($available, $portions);
+            }
             if ($available <= 0) {
                 return AvailabilityResult::unavailable(
                     'out_of_stock',
@@ -84,7 +101,7 @@ class ItemAvailabilityService
             return AvailabilityResult::available(availableStock: $available);
         }
 
-        return AvailabilityResult::available();
+        return AvailabilityResult::available(availableStock: $portions);
     }
 
     /**

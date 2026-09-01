@@ -41,6 +41,11 @@ export type MenuVariant = {
   track_stock?: boolean;
   stock_qty?: number;
   low_stock_threshold?: number;
+  /**
+   * How much of the item's recipe one of this size uses — full 1, half 0.5.
+   * Lets several sizes share one pool of ingredients.
+   */
+  consumption_factor?: number;
   is_active: boolean;
   sort_order?: number;
 };
@@ -559,6 +564,8 @@ export interface RecipeIngredient {
 export interface ItemRecipe {
   id: number;
   yield_quantity: number;
+  /** When true, the dish leaves the menu once its ingredients run out. */
+  limits_availability: boolean;
   instructions: string | null;
   ingredients: RecipeIngredient[];
 }
@@ -589,9 +596,14 @@ export async function getItemWithRecipe(id: number): Promise<{ item: ItemWithRec
 export async function saveItemRecipe(
   id: number,
   ingredients: RecipeIngredientInput[],
+  limitsAvailability?: boolean,
 ): Promise<{ item: ItemWithRecipe }> {
   return req(`/items/${id}/recipe`, {
     method: 'PUT',
-    body: JSON.stringify({ ingredients }),
+    body: JSON.stringify(
+      limitsAvailability === undefined
+        ? { ingredients }
+        : { ingredients, limits_availability: limitsAvailability },
+    ),
   });
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
+use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Menu\Services\ComboCompositionService;
 use App\Domains\Menu\Services\PlatterCompositionService;
@@ -63,6 +64,11 @@ class ItemController extends Controller
         $isPosView = $request->query('view') === 'pos';
 
         $with = ['category', 'variants', 'modifiers', 'packagingOptions'];
+        // Sizes cut from one ingredient pool need the recipe to say how many
+        // of each are still makeable (see RecipeStockService).
+        if (!$isAdmin || $isPosView) {
+            $with[] = 'recipe.recipeItems.inventoryItem';
+        }
         if ($isAdmin && !$isPosView) {
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
@@ -95,7 +101,7 @@ class ItemController extends Controller
             $query->with([
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
                 // Full child Item models — public platter picker needs availability + tomorrow_remaining.
-                'platterGroups.allowedItems.item',
+                'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem',
                 'photos',
             ]);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
@@ -166,6 +172,12 @@ class ItemController extends Controller
             $baseSpecial = $includeAvailability
                 ? $effectivePricing->resolveUnitPrice($item->id, (float) $item->base_price, $item)
                 : null;
+            // Each size draws on the shared ingredient pool at its own rate, so
+            // "how many are left" is answered per size — a full and a half of
+            // the same dish sell out at different moments.
+            $variantPortions = $includeAvailability
+                ? app(RecipeStockService::class)->portionsByVariant($item)
+                : [];
             $data = [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -231,7 +243,7 @@ class ItemController extends Controller
                 'availability_type' => $includeAdminExtras ? $item->availability_type : null,
                 'variants' => $item->variants
                     ->sortBy('sort_order')
-                    ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing) {
+                    ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing, $variantPortions) {
                         $variantRow = $includeAdminExtras ? [
                             'id' => $v->id,
                             'name' => $v->name,
@@ -242,6 +254,7 @@ class ItemController extends Controller
                             'track_stock' => $v->track_stock,
                             'stock_qty' => $v->stock_qty,
                             'low_stock_threshold' => $v->low_stock_threshold,
+                            'consumption_factor' => $v->consumptionFactor(),
                             'is_active' => $v->is_active,
                             'sort_order' => $v->sort_order,
                         ] : [
@@ -252,6 +265,12 @@ class ItemController extends Controller
                             'is_active' => $v->is_active,
                             'sort_order' => $v->sort_order,
                         ];
+
+                        if (array_key_exists((int) $v->id, $variantPortions)) {
+                            $left = $variantPortions[(int) $v->id];
+                            $variantRow['is_available'] = $left > 0;
+                            $variantRow['available_stock'] = $left;
+                        }
 
                         if ($includeAvailability) {
                             $variantPricing = $effectivePricing->resolveUnitPrice($item->id, (float) $v->price, $item, $v->id);
@@ -526,8 +545,10 @@ class ItemController extends Controller
         $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'];
         if (!$isAdmin) {
             $with[] = 'comboItems.item';
-            $with[] = 'platterGroups.allowedItems.item';
+            $with[] = 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem';
             $with[] = 'photos';
+            // Sizes cut from one ingredient pool (see RecipeStockService).
+            $with[] = 'recipe.recipeItems.inventoryItem';
         }
         $item = Item::with($with)
             ->where('is_active', true)

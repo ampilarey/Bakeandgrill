@@ -8,6 +8,7 @@ use App\Domains\Inventory\DTOs\StockLevelChangedData;
 use App\Domains\Inventory\Events\StockLevelChanged;
 use App\Models\InventoryItem;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\RecipeItem;
 use App\Models\StockMovement;
 use App\Services\UnitConversionService;
@@ -43,7 +44,7 @@ class InventoryDeductionService
         }
 
         DB::transaction(function () use ($order, $userId, $ratio, $refundId): void {
-            $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
+            $order->loadMissing(['items.item.recipe.recipeItems.inventoryItem', 'items.variant']);
 
             foreach ($order->items as $orderItem) {
                 $item = $orderItem->item;
@@ -54,6 +55,11 @@ class InventoryDeductionService
                 }
 
                 $yieldQuantity = max(1.0, (float) $recipe->yield_quantity);
+                $portions = $this->portionsSold($orderItem);
+
+                if ($portions <= 0) {
+                    continue;
+                }
 
                 foreach ($recipe->recipeItems as $recipeItem) {
                     $inventoryItem = $recipeItem->inventoryItem;
@@ -66,7 +72,7 @@ class InventoryDeductionService
                     $restoreQuantity = $this->quantityInInventoryUnit(
                         $recipeItem,
                         $inventoryItem,
-                        (float) $orderItem->quantity,
+                        $portions,
                         $yieldQuantity,
                     ) * $ratio;
                     if ($restoreQuantity <= 0) {
@@ -147,7 +153,7 @@ class InventoryDeductionService
         $hadConflict = false;
 
         DB::transaction(function () use ($order, $userId, &$hadConflict): void {
-            $order->loadMissing('items.item.recipe.recipeItems.inventoryItem');
+            $order->loadMissing(['items.item.recipe.recipeItems.inventoryItem', 'items.variant']);
 
             foreach ($order->items as $orderItem) {
                 $item = $orderItem->item;
@@ -158,6 +164,11 @@ class InventoryDeductionService
                 }
 
                 $yieldQuantity = max(1.0, (float) $recipe->yield_quantity);
+                $portions = $this->portionsSold($orderItem);
+
+                if ($portions <= 0) {
+                    continue;
+                }
 
                 foreach ($recipe->recipeItems as $recipeItem) {
                     $inventoryItem = $recipeItem->inventoryItem;
@@ -170,7 +181,7 @@ class InventoryDeductionService
                     $neededQuantity = $this->quantityInInventoryUnit(
                         $recipeItem,
                         $inventoryItem,
-                        (float) $orderItem->quantity,
+                        $portions,
                         $yieldQuantity,
                     );
                     if ($neededQuantity <= 0) {
@@ -243,16 +254,33 @@ class InventoryDeductionService
     }
 
     /**
+     * How many recipe portions one order line consumes.
+     *
+     * A recipe hangs off the item, so every size used to draw the same
+     * ingredients — selling a half beetle leaf took a whole leaf off the
+     * shelf. The variant's consumption factor is what makes one pool serve
+     * several sizes: full = 1, half = 0.5, so 2 halves cost exactly what 1
+     * full costs. Lines with no variant are whole portions, as before.
+     */
+    private function portionsSold(OrderItem $orderItem): float
+    {
+        $quantity = (float) $orderItem->quantity;
+        $factor = $orderItem->variant?->consumptionFactor() ?? 1.0;
+
+        return $quantity * $factor;
+    }
+
+    /**
      * Recipe line qty → inventory base unit (applies unit_conversions when set).
      */
     private function quantityInInventoryUnit(
         RecipeItem $recipeItem,
         InventoryItem $inventoryItem,
-        float $orderQty,
+        float $portions,
         float $yieldQuantity,
     ): float {
         $perUnit = (float) $recipeItem->quantity;
-        $needed = ($perUnit * $orderQty) / max(1.0, $yieldQuantity);
+        $needed = ($perUnit * $portions) / max(1.0, $yieldQuantity);
         $fromUnit = $recipeItem->unit ?: $inventoryItem->unit;
 
         return $this->unitConversions->convert($needed, $fromUnit, $inventoryItem->unit);

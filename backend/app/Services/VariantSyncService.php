@@ -40,6 +40,11 @@ class VariantSyncService
                 'track_stock' => (bool) ($data['track_stock'] ?? false),
                 'stock_qty' => (int) ($data['stock_qty'] ?? 0),
                 'low_stock_threshold' => (int) ($data['low_stock_threshold'] ?? 5),
+                // How much of the item's recipe one of this size uses — full 1,
+                // half 0.5. Absent means a whole portion.
+                'consumption_factor' => isset($data['consumption_factor'])
+                    ? max(0.0, (float) $data['consumption_factor'])
+                    : 1.0,
                 'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
                 'sort_order' => $data['sort_order'] ?? $i,
             ];

@@ -46,6 +46,9 @@ export function RecipeEditorModal({
   const [options, setOptions] = useState<InventoryItem[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [limitsAvailability, setLimitsAvailability] = useState(
+    () => item.recipe?.limits_availability ?? false,
+  );
 
   useEffect(() => {
     let alive = true;
@@ -107,7 +110,7 @@ export function RecipeEditorModal({
           quantity: parseFloat(r.quantity),
           unit: r.unit || null,
         }));
-      const res = await saveItemRecipe(item.id, ingredients);
+      const res = await saveItemRecipe(item.id, ingredients, limitsAvailability);
       onSaved(res.item);
     } catch (e) {
       setError((e as Error).message);
@@ -250,6 +253,32 @@ export function RecipeEditorModal({
             Cost rolls up live from inventory unit prices — a later price change moves the margin
             without re-saving. Profit is the selling price less this cost.
           </p>
+
+          {/* Off by default: an ingredient count nobody keeps current must not
+              take an item off the menu on its own. */}
+          <label style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 16, padding: 12,
+            borderRadius: 10, border: '1px solid var(--color-border)',
+            background: 'var(--color-bg)', cursor: 'pointer',
+          }}>
+            <input
+              type="checkbox"
+              checked={limitsAvailability}
+              onChange={(e) => setLimitsAvailability(e.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+                Stop selling when these ingredients run out
+              </span>
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3, lineHeight: 1.5 }}>
+                The sizes share this one pool, each taking its own share (see <strong>Uses</strong> on
+                the variants tab). A size stays on the menu while the pool still covers it, so a full
+                portion is offered down to the last whole piece. Leave off if the ingredient counts
+                are not kept current.
+              </span>
+            </span>
+          </label>
         </>
       )}
     </Modal>

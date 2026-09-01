@@ -787,7 +787,8 @@ function ConfigurePanel({
   const [chosenVariantId, setChosenVariantId] = useState<number | null>(() => {
     if (!item.has_variants) return null;
     if (oneTapVariant) return null;
-    const def = variants[0];
+    // Never land on a size the ingredient pool can no longer cover.
+    const def = variants.find((v) => v.is_available !== false) ?? variants[0];
     return def?.id ?? null;
   });
   const [chosenPackagingId, setChosenPackagingId] = useState<number | null>(() => {
@@ -806,7 +807,12 @@ function ConfigurePanel({
   const headlinePrice = chosenVariant
     ? Number(chosenVariant.effective_price ?? chosenVariant.price)
     : oneTapVariant && variants.length > 0
-      ? Math.min(...variants.map((v) => Number(v.effective_price ?? v.price)))
+      ? Math.min(
+        ...(variants.filter((v) => v.is_available !== false).length > 0
+          ? variants.filter((v) => v.is_available !== false)
+          : variants
+        ).map((v) => Number(v.effective_price ?? v.price)),
+      )
       : effectiveItemPrice(item);
   const headlineOriginal = chosenVariant
     ? (chosenVariant.effective_price != null && chosenVariant.original_price != null
@@ -922,10 +928,16 @@ function ConfigurePanel({
                 }}>
                   {variants.map((v) => {
                     const active = chosenVariantId === v.id;
+                    // Sizes share one pool of ingredients and draw on it at
+                    // different rates, so a half portion outlives a full one.
+                    const soldOut = v.is_available === false;
                     return (
                       <button
                         key={v.id}
+                        disabled={soldOut}
+                        title={soldOut ? `${v.name} is sold out` : undefined}
                         onClick={() => {
+                          if (soldOut) return;
                           setChosenVariantId(v.id);
                           if (oneTapVariant) onAdd(v, chosenPackagingId);
                         }}
@@ -935,7 +947,8 @@ function ConfigurePanel({
                           border: `2px solid ${active ? C.text : C.border2}`,
                           background: active ? C.text : '#FFFFFF',
                           color: active ? '#FFFFFF' : C.text,
-                          cursor: 'pointer',
+                          opacity: soldOut ? 0.45 : 1,
+                          cursor: soldOut ? 'not-allowed' : 'pointer',
                           textAlign: 'left',
                           display: 'flex',
                           flexDirection: 'column',
@@ -956,7 +969,7 @@ function ConfigurePanel({
                           opacity: active ? 0.95 : 0.85,
                           fontVariantNumeric: 'tabular-nums',
                         }}>
-                          MVR {Number(v.effective_price ?? v.price).toFixed(2)}
+                          {soldOut ? 'Sold out' : `MVR ${Number(v.effective_price ?? v.price).toFixed(2)}`}
                         </span>
                       </button>
                     );

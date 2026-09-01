@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Marketing\Services\ItemAffinityService;
 use App\Models\Category;
@@ -22,6 +23,7 @@ class PosMenuBuilder
         private readonly SpecialPricingService $specialPricing,
         private readonly EffectivePriceService $effectivePricing,
         private readonly ItemAffinityService $affinity,
+        private readonly RecipeStockService $recipeStock,
     ) {}
 
     /**
@@ -47,7 +49,15 @@ class PosMenuBuilder
             ->get(['id', 'parent_id', 'name', 'name_dv', 'sort_order', 'image_url']);
 
         $query = Item::query()
-            ->with(['category:id,name', 'variants', 'modifiers', 'packagingOptions'])
+            ->with([
+                'category:id,name',
+                'variants',
+                'modifiers',
+                'packagingOptions',
+                // Sizes cut from one ingredient pool need the recipe to say
+                // how many of each are still makeable.
+                'recipe.recipeItems.inventoryItem',
+            ])
             ->where('is_active', true);
         $this->kitchenMenuResolver->scopeItemsForChannel($query, $channel, null, true);
 
@@ -116,9 +126,14 @@ class PosMenuBuilder
                 $at,
             );
 
+            // Each size draws on the shared ingredient pool at its own rate, so
+            // "how many are left" is answered per size — a full and a half of
+            // the same dish sell out at different moments.
+            $variantPortions = $this->recipeStock->portionsByVariant($item);
+
             $variants = $item->variants
                 ->sortBy('sort_order')
-                ->map(function ($v) use ($item) {
+                ->map(function ($v) use ($item, $variantPortions) {
                     $variantRow = [
                         'id' => $v->id,
                         'name' => $v->name,
@@ -127,6 +142,12 @@ class PosMenuBuilder
                         'is_active' => $v->is_active,
                         'sort_order' => $v->sort_order,
                     ];
+
+                    if (array_key_exists((int) $v->id, $variantPortions)) {
+                        $left = $variantPortions[(int) $v->id];
+                        $variantRow['is_available'] = $left > 0;
+                        $variantRow['available_stock'] = $left;
+                    }
 
                     $variantPricing = $this->effectivePricing->resolveUnitPrice(
                         $item->id,
@@ -307,9 +328,25 @@ class PosMenuBuilder
             ];
         }
 
+        // Shared ingredient pool (opt-in per recipe). For a dish sold in sizes
+        // this is the best any size can still do — the dish stays on the menu
+        // while one size is makeable, and the size picker says which.
+        $portions = $this->recipeStock->portionsForItem($item);
+        if ($portions !== null && $portions <= 0) {
+            return [
+                'available' => false,
+                'reason_code' => 'out_of_stock',
+                'reason_message' => "{$item->name} is currently sold out.",
+                'available_stock' => 0,
+            ];
+        }
+
         if ($item->track_stock && $item->availability_type === 'stock_based') {
             $reserved = $reservedByItem[$item->id] ?? 0;
             $availableStock = max(0, (int) $item->stock_quantity - $reserved);
+            if ($portions !== null) {
+                $availableStock = min($availableStock, $portions);
+            }
             if ($availableStock <= 0) {
                 return [
                     'available' => false,
@@ -331,7 +368,7 @@ class PosMenuBuilder
             'available' => true,
             'reason_code' => null,
             'reason_message' => null,
-            'available_stock' => null,
+            'available_stock' => $portions,
         ];
     }
 }

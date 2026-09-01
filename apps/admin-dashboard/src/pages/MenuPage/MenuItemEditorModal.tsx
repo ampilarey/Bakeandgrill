@@ -431,6 +431,7 @@ function VariantsEditor({
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Stock</th>
                 <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Alert at</th>
                 <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Track</th>
+                <th style={{ ...headerStyle, textAlign: 'right', paddingBottom: 6, minWidth: 56 }}>Uses</th>
                 <th style={{ ...headerStyle, textAlign: 'center', paddingBottom: 6, minWidth: 50 }}>Active</th>
                 <th style={{ paddingBottom: 6, minWidth: 30 }} />
               </tr>
@@ -498,6 +499,15 @@ function VariantsEditor({
                       title="Track stock for this variant"
                     />
                   </td>
+                  <td style={{ ...cellStyle, paddingLeft: 4 }}>
+                    <input
+                      type="number" min="0" step="0.05"
+                      value={row.consumption_factor ?? 1}
+                      onChange={(e) => update(row._key, 'consumption_factor', e.target.value !== '' ? Math.max(0, parseFloat(e.target.value)) : 1)}
+                      title="How much of the recipe one of this size uses — full 1, half 0.5. Lets sizes share one pool of ingredients."
+                      style={{ width: 56, border: '1px solid var(--color-border)', borderRadius: 6, padding: '5px 6px', fontSize: 12, textAlign: 'right' }}
+                    />
+                  </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
                     <input
                       type="checkbox"
@@ -518,6 +528,12 @@ function VariantsEditor({
               ))}
             </tbody>
           </table>
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            <strong>Uses</strong> is how much of the item&rsquo;s recipe one of this size takes —
+            full <code>1</code>, half <code>0.5</code>. Sizes then share one pool of ingredients:
+            50 leaves serve 50 fulls, 100 halves, or any mix. Set the recipe to
+            &ldquo;stop selling when ingredients run out&rdquo; for it to affect the menu.
+          </p>
         </div>
       )}
     </div>

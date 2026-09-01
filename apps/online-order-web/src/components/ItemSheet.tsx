@@ -119,7 +119,9 @@ export function ItemSheet({
     if (initialVariantId != null) {
       return activeVariants.find((v) => v.id === initialVariantId) ?? null;
     }
-    return activeVariants.length === 1 ? activeVariants[0] : null;
+    // Never pre-select a size the ingredient pool can no longer cover.
+    const sellable = activeVariants.filter((v) => v.is_available !== false);
+    return sellable.length === 1 ? sellable[0] : null;
   });
   const [selectedPackagingId, setSelectedPackagingId] = useState<number | null>(() => {
     if (initialPackagingOptionId != null) return initialPackagingOptionId;
@@ -623,11 +625,21 @@ export function ItemSheet({
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       {activeVariants.map((v) => {
                         const isSelected = selectedVariant?.id === v.id;
+                        // Sizes share one pool of ingredients and draw on it at
+                        // different rates, so a half portion outlives a full one.
+                        const soldOut = v.is_available === false;
                         return (
-                          <button key={v.id} type="button" onClick={() => setSelectedVariant(v)} style={chip(isSelected)} aria-pressed={isSelected}>
+                          <button
+                            key={v.id}
+                            type="button"
+                            disabled={soldOut}
+                            onClick={() => { if (!soldOut) setSelectedVariant(v); }}
+                            style={{ ...chip(isSelected), opacity: soldOut ? 0.45 : 1, cursor: soldOut ? 'not-allowed' : 'pointer' }}
+                            aria-pressed={isSelected}
+                          >
                             {v.name}
                             <span style={{ marginLeft: '0.35rem', fontSize: '0.8rem', fontWeight: 600, opacity: 0.9 }}>
-                              {formatCardPrice(Number(v.effective_price ?? v.price))}
+                              {soldOut ? t('menu.out_of_stock') : formatCardPrice(Number(v.effective_price ?? v.price))}
                             </span>
                           </button>
                         );

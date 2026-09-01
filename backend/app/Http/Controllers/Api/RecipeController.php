@@ -45,6 +45,7 @@ class RecipeController extends Controller
 
         $data = $request->validate([
             'yield_quantity' => ['sometimes', 'numeric', 'min:0.001', 'max:100000'],
+            'limits_availability' => ['sometimes', 'boolean'],
             'instructions' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'ingredients' => ['present', 'array', 'max:200'],
             'ingredients.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
@@ -60,6 +61,12 @@ class RecipeController extends Controller
 
             if (array_key_exists('yield_quantity', $data)) {
                 $recipe->yield_quantity = $data['yield_quantity'];
+            }
+            // Opt-in: let the ingredient pool take the dish off the menu when
+            // it runs out. Off by default — an ingredient count nobody keeps
+            // current must not 86 an item on its own.
+            if (array_key_exists('limits_availability', $data)) {
+                $recipe->limits_availability = (bool) $data['limits_availability'];
             }
             if (array_key_exists('instructions', $data)) {
                 $recipe->instructions = $data['instructions'];
@@ -118,6 +125,7 @@ class RecipeController extends Controller
             'recipe' => $item->recipe ? [
                 'id' => $item->recipe->id,
                 'yield_quantity' => (float) $item->recipe->yield_quantity,
+                'limits_availability' => (bool) $item->recipe->limits_availability,
                 'instructions' => $item->recipe->instructions,
                 'ingredients' => $item->recipe->recipeItems->map(fn ($ri) => [
                     'id' => $ri->id,

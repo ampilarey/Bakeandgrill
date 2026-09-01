@@ -13,8 +13,15 @@ class Recipe extends Model
     protected $fillable = [
         'item_id',
         'yield_quantity',
+        'limits_availability',
         'instructions',
         'total_cost',
+    ];
+
+    protected $casts = [
+        'yield_quantity' => 'float',
+        'limits_availability' => 'boolean',
+        'total_cost' => 'float',
     ];
 
     public function item(): BelongsTo

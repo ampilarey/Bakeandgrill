@@ -105,7 +105,7 @@ export function emptyPackagingOptionRow(isDefault = false): PackagingOptionRow {
 }
 
 export function emptyVariantRow(): VariantRow {
-  return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, low_stock_threshold: 5, is_active: true, sort_order: 0 };
+  return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, low_stock_threshold: 5, consumption_factor: 1, is_active: true, sort_order: 0 };
 }
 
 function channelsFromItem(item: MenuItem): Record<string, boolean> {

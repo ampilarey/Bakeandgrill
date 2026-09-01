@@ -16,6 +16,14 @@ export type Variant = {
   effective_price?: number;
   is_active: boolean;
   sort_order?: number;
+  /**
+   * Only sent when the item's recipe caps availability. Sizes share one pool of
+   * ingredients and draw on it at different rates, so each sells out at its own
+   * moment — a half portion outlives a full one. Absent means the pool does not
+   * limit this size.
+   */
+  is_available?: boolean;
+  available_stock?: number;
 };
 
 export type ItemSpecialPricing = {
