@@ -205,7 +205,20 @@ export function ChargeOverlay({
     || (giftTender ?? 0) > 0;
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [method, setMethod] = useState<ChargeMethod>("cash");
-  const [received, setReceived] = useState<string>(total > 0 ? total.toFixed(2) : "");
+  /**
+   * What the customer handed over. Starts EMPTY on purpose.
+   *
+   * It used to be pre-filled with the order total, and cash is the
+   * preselected method, so Charge → Confirm went straight through without the
+   * cashier touching a thing. A card sale then landed in the books as cash on
+   * two taps, and the first anyone knew was the drawer coming up over at
+   * close. Owner, 2026-09-01.
+   *
+   * Empty means Confirm stays locked for a cash tender until somebody says how
+   * much came in — Exact, a note chip, or typed. One deliberate act, which is
+   * all that separates "counted the money" from "tapped through".
+   */
+  const [received, setReceived] = useState<string>("");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
   const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
   /** Owner-uploaded note photos (laari face → URL); bundled assets otherwise. */
@@ -248,10 +261,11 @@ export function ChargeOverlay({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  // Reset the received-amount input whenever the total or method changes —
-  // otherwise a stale value from a prior order can linger.
+  // Clear the received amount whenever the total or method changes — a stale
+  // figure from a prior order must never stand in for a fresh count, and
+  // switching to cash from another method has to ask again.
   useEffect(() => {
-    setReceived(total > 0 ? total.toFixed(2) : "");
+    setReceived("");
     setSelectedNotes([]);
     setBreakdownOpen(false);
   }, [total, method]);
@@ -372,6 +386,16 @@ export function ChargeOverlay({
   const walletOverLimit = method === "wallet" && walletEligible && walletAvailableMvr <= 0;
   const canConfirmWallet = (walletFullPay || walletPartialPay) && total > 0;
   const canConfirmAccountTender = canConfirmCredit || canConfirmWallet;
+
+  /**
+   * Cash tender with nothing counted yet — the one reason Confirm is greyed
+   * that the cashier can fix in a tap, so it earns a line of its own.
+   */
+  const needsCashCount = method === "cash"
+    && !fullyCovered
+    && !splitValid
+    && !canConfirmAccountTender
+    && received.trim() === "";
 
   const confirm = async () => {
     // Split tender: send TWO rows — the requested non-cash portion +
@@ -938,6 +962,18 @@ export function ChargeOverlay({
               animation: "pos-fade-in 0.18s ease",
             }}>
               ⛔ {errorMessage}
+            </div>
+          )}
+          {/* Confirm is dead until the cash is counted, so say why. A greyed
+              button with no reason is how a cashier gets stuck mid-queue. */}
+          {needsCashCount && (
+            <div role="status" data-testid="charge-needs-count" style={{
+              padding: "10px 12px", borderRadius: 8,
+              background: "#F8FAFC", border: "1px solid #CBD5E1",
+              color: "#475569", fontSize: 13, fontWeight: 600,
+            }}>
+              Enter how much cash you took — tap <strong>{fmtChip(exactTotal)} EXACT</strong>,
+              a note, or type it.
             </div>
           )}
           <div className="pos-charge-footer-actions" style={{ display: "flex", gap: 10 }}>
