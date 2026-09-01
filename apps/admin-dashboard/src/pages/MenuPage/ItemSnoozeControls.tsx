@@ -143,7 +143,7 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
                   disabled={busy}
                   onClick={() => { void apply('end_of_day').catch(() => undefined); }}
                 >
-                  {busy ? '…' : '86 today'}
+                  {busy ? '…' : 'Sold out today'}
                 </Btn>
               )}
             </div>
@@ -163,7 +163,7 @@ export const ItemSnoozeControls = forwardRef<ItemSnoozeControlsHandle, ItemSnooz
           background: snoozed || indefinitelyOff ? 'var(--color-danger-bg)' : 'var(--color-surface-alt)',
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Snooze / 86</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Mark unavailable</div>
         <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
           Temporarily hide from ordering. Change duration/note, then use <strong>Apply snooze</strong> (or Save item).
           Inactive items stay off the menu entirely — use Active for that.

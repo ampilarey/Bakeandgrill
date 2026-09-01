@@ -41,7 +41,7 @@ describe('KDSPage', () => {
     expect(screen.queryByRole('button', { name: /Start Cooking/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Complete/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Recall/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /86/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sold out/i })).toBeNull();
   });
 
   it('keeps monitor controls', async () => {

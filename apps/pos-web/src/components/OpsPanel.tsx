@@ -66,7 +66,7 @@ export function OpsPanel(props: OpsState & {
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
-    ...(showPrepared ? [{ id: "availability" as Tab, label: "86 today", icon: "🚫" }] : []),
+    ...(showPrepared ? [{ id: "availability" as Tab, label: "Sold out today", icon: "🚫" }] : []),
     ...(showRefunds ? [{ id: "refunds" as Tab, label: "Refunds", icon: "↩️" }] : []),
   ];
 
@@ -195,7 +195,7 @@ function AvailabilityTab({
   return (
     <>
       <Header
-        title="86 today"
+        title="Sold out today"
         subtitle="Mark items unavailable until end of day. They return automatically tomorrow."
       />
       <input
@@ -238,7 +238,7 @@ function AvailabilityTab({
                     fontWeight: 700, fontSize: 12, cursor: "pointer",
                   }}
                 >
-                  {busyId === item.id ? "…" : snoozed ? "Restore" : "86 today"}
+                  {busyId === item.id ? "…" : snoozed ? "Restore" : "Sold out"}
                 </button>
               </div>
             );

@@ -21,7 +21,7 @@ export const ROLE_CHEAT_SHEET: CheatSheetRole[] = [
     ],
     cannot: [
       'Ring sales, open/close shifts, take payments, void/refund',
-      'Mark ready for customer (cashier), bump completed pickup, 86 items by default',
+      'Mark ready for customer (cashier), bump completed pickup, mark items sold out by default',
       'Reports, GST, admin settings, menu/inventory management',
     ],
   },

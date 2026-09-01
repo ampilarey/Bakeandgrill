@@ -101,7 +101,7 @@ describe("OpsPanel", () => {
 
     expect(screen.getByRole("button", { name: /Inventory/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Menu stock/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /86 today/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Sold out today/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Refunds/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Suppliers/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Reports/i })).toBeNull();

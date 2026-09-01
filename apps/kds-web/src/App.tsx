@@ -560,7 +560,7 @@ function App() {
                     cursor: "pointer", flexShrink: 0,
                   }}
                 >
-                  {eightySixing === item.item_id ? "…" : item.is_available === false ? "Restore" : "86"}
+                  {eightySixing === item.item_id ? "…" : item.is_available === false ? "Restore" : "Sold out"}
                 </button>
               ) : null}
               </div>
