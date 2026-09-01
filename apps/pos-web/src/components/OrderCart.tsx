@@ -950,7 +950,9 @@ export function OrderCart(p: Props) {
       )}
 
       {/* ── Totals + payments + actions ──────────────────────────── */}
-      <div className="pos-cart-footer" style={{ borderTop: `1px solid ${C.border}`, padding: 14, background: C.bg }}>
+      {/* Padding lives in index.css so phones can tighten it — see
+          .pos-cart-footer. */}
+      <div className="pos-cart-footer" style={{ borderTop: `1px solid ${C.border}`, background: C.bg }}>
         {/* Subtotal / discount / tax breakdown.
             We render this whenever there's a discount OR tax (the most
             common case is GST/TGST on every item, so 99% of tickets land
@@ -1150,16 +1152,18 @@ export function OrderCart(p: Props) {
         <button
           onClick={p.onCheckout}
           disabled={checkoutDisabled}
+          // Spacing is in index.css (.pos-cart-charge-btn) so phones can trim
+          // it without changing the till on a counter.
+          className="pos-cart-charge-btn"
           style={{
-            marginTop: 12, width: '100%',
-            padding: '18px 18px', borderRadius: 12,
+            width: '100%',
+            borderRadius: 12,
             background: checkoutDisabled ? C.successDisabled : C.success,
             color: '#FFFFFF', border: 'none',
             cursor: checkoutDisabled ? 'not-allowed' : 'pointer',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             transition: 'background 0.12s, transform 60ms ease',
             boxShadow: checkoutDisabled ? 'none' : '0 4px 12px rgba(16,185,129,0.30)',
-            minHeight: 56,
           }}
           onMouseEnter={(e) => {
             if (!checkoutDisabled) (e.currentTarget as HTMLButtonElement).style.background = C.successDark;

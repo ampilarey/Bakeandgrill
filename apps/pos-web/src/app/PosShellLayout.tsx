@@ -210,8 +210,9 @@ export function PosShellLayout() {
   }
 
   return (
+    // Height and overflow live in index.css — one screen tall, page never
+    // scrolls, so the tile grid and the cart body are the only scrollers.
     <div className="pos-shell" style={{
-      minHeight: '100dvh',
       background: palette.bg,
       color: palette.panelInk,
       display: 'flex', flexDirection: 'column',
@@ -407,7 +408,7 @@ export function PosShellLayout() {
       )}
 
       {/* Main body */}
-      <main className="pos-main">
+      <main className={pane === 'sales' ? 'pos-main pos-main--sales' : 'pos-main'}>
         {pane === 'sales' && (
           !shiftOpen ? (
             <div style={{
