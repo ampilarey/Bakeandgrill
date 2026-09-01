@@ -44,8 +44,6 @@ class VariantSyncService
                 'name_dv' => $data['name_dv'] ?? null,
                 'price' => $data['price'],
                 'cost' => $data['cost'] ?? null,
-                'sku' => $data['sku'] ?? null,
-                'barcode' => $data['barcode'] ?? null,
                 'track_stock' => (bool) ($data['track_stock'] ?? false),
                 'stock_qty' => (int) ($data['stock_qty'] ?? 0),
                 'low_stock_threshold' => (int) ($data['low_stock_threshold'] ?? 5),
@@ -58,6 +56,27 @@ class VariantSyncService
                 'is_available' => isset($data['is_available']) ? (bool) $data['is_available'] : true,
                 'sort_order' => $data['sort_order'] ?? $i,
             ];
+
+            // Scan codes are absent-means-leave-alone, not absent-means-clear.
+            //
+            // The item editor has a SKU box per size and no barcode box at all,
+            // so every save sent sku and omitted barcode — and this method wrote
+            // `$data['barcode'] ?? null` straight over the top. A barcode set
+            // through the variants API or an import survived until the next time
+            // anyone opened the dish and pressed Save, then vanished with
+            // nothing said. Owner, 2026-09-01.
+            //
+            // Sending the key explicitly with null still clears it, so a form
+            // that does own the field keeps working.
+            foreach (['sku', 'barcode'] as $code) {
+                if (array_key_exists($code, $data)) {
+                    $value = is_string($data[$code]) ? trim($data[$code]) : $data[$code];
+                    $fields[$code] = ($value === '' || $value === null) ? null : $value;
+                } elseif (!$id) {
+                    // A brand-new row has nothing to preserve.
+                    $fields[$code] = null;
+                }
+            }
 
             if ($id) {
                 $variant = Variant::where('item_id', $item->id)->find($id);

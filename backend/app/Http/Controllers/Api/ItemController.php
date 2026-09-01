@@ -17,6 +17,7 @@ use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
+use App\Models\Variant;
 use App\Services\AvailabilityResult;
 use App\Services\EffectivePriceService;
 use App\Services\ItemAvailabilityService;
@@ -256,6 +257,7 @@ class ItemController extends Controller
                             'price' => $v->price,
                             'cost' => $includeCost ? $v->cost : null,
                             'sku' => $v->sku,
+                            'barcode' => $v->barcode,
                             'track_stock' => $v->track_stock,
                             'stock_qty' => $v->stock_qty,
                             'low_stock_threshold' => $v->low_stock_threshold,
@@ -842,6 +844,14 @@ class ItemController extends Controller
         $errors = $bulk->validate($changes, $canSeeCost);
         $variantErrors = $bulk->validateVariants($variantChanges, $canSeeCost);
         $newErrors = $bulk->validateNew($newRows, $canSeeCost);
+
+        // A scan code repeated across two of those three lists passes every
+        // check above — each list is validated on its own.
+        $crossList = $bulk->crossListScanCodeErrors($changes, $variantChanges, $newRows);
+        $errors = $this->mergeRowErrors($errors, $crossList['items']);
+        $variantErrors = $this->mergeRowErrors($variantErrors, $crossList['variants']);
+        $newErrors = $this->mergeRowErrors($newErrors, $crossList['new']);
+
         if ($errors !== [] || $variantErrors !== [] || $newErrors !== []) {
             $bad = count($errors) + count($variantErrors) + count($newErrors);
             $total = count($changes) + count($variantChanges) + count($newRows);
@@ -864,6 +874,29 @@ class ItemController extends Controller
             'unchanged' => $result['unchanged'],
             'items' => $result['items'],
         ]);
+    }
+
+    /**
+     * Fold one row-error map into another, keeping both rows' messages.
+     *
+     * A plain `+` or array_merge would drop a whole row's existing errors the
+     * moment the other map mentioned the same row index.
+     *
+     * @param array<int, array<string, list<string>>> $base
+     * @param array<int, array<string, list<string>>> $extra
+     * @return array<int, array<string, list<string>>>
+     */
+    private function mergeRowErrors(array $base, array $extra): array
+    {
+        foreach ($extra as $index => $fields) {
+            foreach ($fields as $field => $messages) {
+                $base[$index][$field] = array_values(array_unique(
+                    array_merge($base[$index][$field] ?? [], $messages),
+                ));
+            }
+        }
+
+        return $base;
     }
 
     /**
@@ -894,7 +927,38 @@ class ItemController extends Controller
             })
             ->where('is_active', true)
             ->where('is_available', true)
-            ->firstOrFail();
+            ->first();
+
+        // A size can carry its own code — a large bottle and a small bottle
+        // scan differently — and until 2026-09-01 this only ever searched the
+        // dish, so scanning one 404'd at the till. The size is returned
+        // alongside its dish so the POS can ring up the size that was scanned
+        // rather than falling back to the first one in the list.
+        $variant = null;
+        if (!$item) {
+            $variant = Variant::query()
+                ->with(['item.category', 'item.variants', 'item.modifiers', 'item.packagingOptions'])
+                ->where(function ($q) use ($lookupBarcode) {
+                    $q->where('barcode', $lookupBarcode)
+                        ->orWhere('sku', $lookupBarcode);
+                })
+                ->where('is_active', true)
+                ->whereHas('item', fn ($q) => $q->where('is_active', true)->where('is_available', true))
+                ->first();
+
+            $item = $variant?->item;
+        }
+
+        if (!$item) {
+            abort(404);
+        }
+
+        // The size exists but is off for the day. Saying so beats a bare 404,
+        // which reads as "no such barcode" and sends staff hunting for a
+        // mislabelled bottle.
+        if ($variant && !$variant->isAvailableNow()) {
+            abort(422, "\"{$variant->name}\" for \"{$item->name}\" is sold out.");
+        }
 
         if (!$isStaff) {
             $channel = $this->resolvePublicChannel($request, $kitchenMenuResolver);
@@ -904,6 +968,18 @@ class ItemController extends Controller
         }
 
         $response = ['item' => $item];
+        if ($variant) {
+            $response['variant'] = [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'name_dv' => $variant->name_dv,
+                'price' => $variant->price,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
+                'is_active' => (bool) $variant->is_active,
+                'is_available' => $variant->isAvailableNow(),
+            ];
+        }
         if ($weightGrams !== null) {
             $response['weight_grams'] = $weightGrams;
             // Pre-calculate price for weight items using base_price (per 100g → convert from grams)

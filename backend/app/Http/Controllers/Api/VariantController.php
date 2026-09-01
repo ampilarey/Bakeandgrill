@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Item;
 use App\Models\Variant;
+use App\Rules\UniqueScanCode;
 use App\Services\VariantSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,8 +39,8 @@ class VariantController extends Controller
             'name_dv' => 'nullable|string|max:100',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
-            'sku' => 'nullable|string|max:100|unique:variants,sku',
-            'barcode' => 'nullable|string|max:100',
+            'sku' => ['nullable', 'string', 'max:100', new UniqueScanCode],
+            'barcode' => ['nullable', 'string', 'max:100', new UniqueScanCode],
             'track_stock' => 'nullable|boolean',
             'stock_qty' => 'nullable|integer|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',
@@ -78,8 +79,8 @@ class VariantController extends Controller
             'name_dv' => 'nullable|string|max:100',
             'price' => 'sometimes|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
-            'sku' => 'nullable|string|max:100|unique:variants,sku,' . $id,
-            'barcode' => 'nullable|string|max:100',
+            'sku' => ['nullable', 'string', 'max:100', new UniqueScanCode('variants', $id, $variant->sku)],
+            'barcode' => ['nullable', 'string', 'max:100', new UniqueScanCode('variants', $id, $variant->barcode)],
             'track_stock' => 'nullable|boolean',
             'stock_qty' => 'nullable|integer|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',

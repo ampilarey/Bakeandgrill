@@ -14,6 +14,9 @@ export type Variant = {
   price: number;
   original_price?: number;
   effective_price?: number;
+  /** A size can carry its own scan codes — a large bottle is not a small one. */
+  sku?: string | null;
+  barcode?: string | null;
   is_active: boolean;
   sort_order?: number;
   /**

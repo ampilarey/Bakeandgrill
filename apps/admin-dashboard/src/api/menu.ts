@@ -38,6 +38,8 @@ export type MenuVariant = {
   price: number;
   cost?: number | null;
   sku?: string | null;
+  /** A size can carry its own barcode — a large bottle scans as its own thing. */
+  barcode?: string | null;
   track_stock?: boolean;
   stock_qty?: number;
   low_stock_threshold?: number;

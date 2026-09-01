@@ -1,4 +1,4 @@
-import type { Category, MenuItem as Item, RestaurantTable } from "@shared/types";
+import type { Category, MenuItem as Item, RestaurantTable, Variant } from "@shared/types";
 import { request } from "./client";
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -250,9 +250,22 @@ export async function fetchItems(channel?: PosSalesChannel): Promise<Item[]> {
   return out;
 }
 
-export async function lookupBarcode(barcode: string): Promise<Item | null> {
-  const data = await request<{ item: Item }>(`/items/barcode/${barcode}`);
-  return data.item ?? null;
+/**
+ * A scan resolves to a dish, and sometimes to one size of it.
+ *
+ * A large bottle and a small bottle carry different barcodes, so the endpoint
+ * returns the size that matched when the code belonged to a size rather than
+ * to the dish. Ringing up the dish alone would fall back to its first size —
+ * the wrong one half the time, at the wrong price.
+ */
+export async function lookupBarcode(
+  barcode: string,
+): Promise<{ item: Item; variant: Variant | null } | null> {
+  const data = await request<{ item: Item; variant?: Variant | null }>(
+    `/items/barcode/${barcode}`,
+  );
+  if (!data.item) return null;
+  return { item: data.item, variant: data.variant ?? null };
 }
 export async function fetchTables(): Promise<{ tables: RestaurantTable[] }> {
   return request<{ tables: RestaurantTable[] }>("/tables");

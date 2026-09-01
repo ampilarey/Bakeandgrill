@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesScanCodes;
 use App\Rules\MediaUrl;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateItemRequest extends FormRequest
 {
+    use ValidatesScanCodes;
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $v) => $this->validateScanCodesWithinPayload($v));
     }
 
     protected function prepareForValidation(): void
@@ -45,7 +54,7 @@ class UpdateItemRequest extends FormRequest
     {
         $itemId = $this->route('id');
 
-        return [
+        return $this->scanCodeRules($itemId) + [
             'category_id' => 'nullable|exists:categories,id',
             'name' => 'sometimes|string|max:255',
             'name_dv' => 'nullable|string|max:255',
@@ -54,8 +63,7 @@ class UpdateItemRequest extends FormRequest
             'description' => 'nullable|string',
             'short_description' => 'nullable|string|max:140',
             'short_description_dv' => 'nullable|string|max:140',
-            'sku' => 'nullable|string|max:100|unique:items,sku,' . $itemId,
-            'barcode' => 'nullable|string|max:100|unique:items,barcode,' . $itemId,
+            // sku / barcode — see scanCodeRules().
             'image_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'image_original_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
             'thumb_url' => ['nullable', 'string', 'max:2048', new MediaUrl],
@@ -104,7 +112,7 @@ class UpdateItemRequest extends FormRequest
             'variants.*.name_dv' => 'nullable|string|max:100',
             'variants.*.price' => 'required_with:variants|numeric|min:0',
             'variants.*.cost' => 'nullable|numeric|min:0',
-            'variants.*.sku' => 'nullable|string|max:100',
+            // variants.*.sku / variants.*.barcode — see scanCodeRules().
             'variants.*.track_stock' => 'nullable|boolean',
             'variants.*.stock_qty' => 'nullable|integer|min:0',
             'variants.*.low_stock_threshold' => 'nullable|integer|min:0',

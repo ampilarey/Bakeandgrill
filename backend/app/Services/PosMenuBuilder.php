@@ -139,6 +139,11 @@ class PosMenuBuilder
                         'name' => $v->name,
                         'name_dv' => $v->name_dv,
                         'price' => $v->price,
+                        // The till scans offline against this cached copy, so
+                        // the codes have to travel with it or a scan finds
+                        // nothing the moment the connection drops.
+                        'sku' => $v->sku,
+                        'barcode' => $v->barcode,
                         'is_active' => $v->is_active,
                         'sort_order' => $v->sort_order,
                     ];
@@ -183,6 +188,10 @@ class PosMenuBuilder
                 'name_dv' => $item->name_dv,
                 'description' => $item->description,
                 'sku' => $item->sku,
+                // The POS offline fallback matches a scan against this field.
+                // It was never sent, so that fallback could not fire at all —
+                // scanning while the connection was down did nothing.
+                'barcode' => $item->barcode,
                 'image_url' => $item->display_image_url,
                 'base_price' => $item->base_price,
                 'packaging_fee' => (float) ($item->packaging_fee ?? 0),

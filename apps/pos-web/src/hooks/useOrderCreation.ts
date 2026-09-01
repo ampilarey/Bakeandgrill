@@ -31,7 +31,7 @@ import {
 } from "../offline/db";
 import { allocateOfflineOrderNumber } from "../offline/offlineOrderNumber";
 import { runOfflineSync } from "../offline/syncEngine";
-import type { CartItem, Item } from "../types";
+import type { CartItem, Item, Variant } from "../types";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
@@ -1698,15 +1698,41 @@ export function useOrderCreation(params: Params) {
   const handleBarcodeSubmit = (
     event: React.FormEvent<HTMLFormElement>,
     items: Item[],
-    addToCart: (item: Item) => void,
+    addToCart: (item: Item, opts?: { variant?: Variant | null }) => void,
   ) => {
     event.preventDefault();
     const trimmed = barcode.trim();
     if (!trimmed) return;
 
-    const fallbackMatch = items.find(
+    // Offline, or when the lookup fails, the cached menu is all we have. It
+    // carries sizes too, so a size's own code still resolves here rather than
+    // silently doing nothing.
+    let fallbackVariant: Variant | null = null;
+    let fallbackMatch = items.find(
       (item) => (item as Item & { barcode?: string | null }).barcode === trimmed,
     );
+
+    if (!fallbackMatch) {
+      for (const item of items) {
+        const hit = (item.variants ?? []).find(
+          (v) => (v as Variant & { barcode?: string | null }).barcode === trimmed
+            || (v as Variant & { sku?: string | null }).sku === trimmed,
+        );
+        if (hit) {
+          fallbackMatch = item;
+          fallbackVariant = hit;
+          break;
+        }
+      }
+    }
+
+    const addFallback = () => {
+      if (!fallbackMatch) return false;
+      addToCart(fallbackMatch, fallbackVariant ? { variant: fallbackVariant } : undefined);
+      setBarcode("");
+
+      return true;
+    };
 
     if (params.isOnline) {
       // Race fix: capture the barcode we just scanned. The async
@@ -1724,19 +1750,26 @@ export function useOrderCreation(params: Params) {
       // wrapper updates immediately on every keystroke / scan.
       const scannedFor = trimmed;
       lookupBarcode(trimmed)
-        .then((item) => {
+        .then((found) => {
           if (barcodeRef.current.trim() !== scannedFor) return;
-          if (item) { addToCart(item); setBarcode(""); return; }
-          if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
+          if (found) {
+            // A code on a size rings up that size. Passing the item alone
+            // would let addToCart fall back to the first active variant,
+            // which is a coin toss between Large and Small.
+            addToCart(found.item, found.variant ? { variant: found.variant } : undefined);
+            setBarcode("");
+            return;
+          }
+          addFallback();
         })
         .catch(() => {
           if (barcodeRef.current.trim() !== scannedFor) return;
-          if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
+          addFallback();
         });
       return;
     }
 
-    if (fallbackMatch) { addToCart(fallbackMatch); setBarcode(""); }
+    addFallback();
   };
 
   /**

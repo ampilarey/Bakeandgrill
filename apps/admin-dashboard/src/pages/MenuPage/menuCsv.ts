@@ -32,6 +32,7 @@ export const CSV_COLUMNS = [
   'price',
   'cost',
   'sku',
+  'barcode',
   'gst',
   'track_stock',
   'stock',
@@ -94,6 +95,7 @@ export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
       price: Number(item.base_price ?? 0).toFixed(2),
       cost: item.cost === null || item.cost === undefined ? '' : Number(item.cost).toFixed(2),
       sku: item.sku ?? '',
+      barcode: (item as unknown as Record<string, unknown>).barcode as string ?? '',
       gst: item.tax_code ?? 'standard_8',
       track_stock: boolCell(item.track_stock),
       stock: item.track_stock ? (item.stock_quantity ?? 0) : '',
@@ -115,6 +117,7 @@ export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
         price: Number(v.price ?? 0).toFixed(2),
         cost: v.cost === null || v.cost === undefined ? '' : Number(v.cost).toFixed(2),
         sku: v.sku ?? '',
+        barcode: v.barcode ?? '',
         gst: '',
         track_stock: boolCell(v.track_stock),
         stock: v.track_stock ? (v.stock_qty ?? 0) : '',
@@ -203,6 +206,7 @@ const ITEM_COLUMN_FIELDS: Partial<Record<CsvColumn, keyof BulkItemFields>> = {
   price: 'base_price',
   cost: 'cost',
   sku: 'sku',
+  barcode: 'barcode',
   gst: 'tax_code',
   track_stock: 'track_stock',
   stock: 'stock_quantity',
@@ -217,6 +221,7 @@ const VARIANT_COLUMN_FIELDS: Partial<Record<CsvColumn, string>> = {
   price: 'price',
   cost: 'cost',
   sku: 'sku',
+  barcode: 'barcode',
   track_stock: 'track_stock',
   stock: 'stock_qty',
   consumption_factor: 'consumption_factor',
@@ -233,6 +238,7 @@ function cellToValue(column: string, raw: string, forVariant: boolean): unknown 
     case 'name_dv':
       return text(raw);
     case 'sku':
+    case 'barcode':
       return text(raw) === '' ? null : text(raw);
     case 'gst': {
       const v = text(raw).toLowerCase();

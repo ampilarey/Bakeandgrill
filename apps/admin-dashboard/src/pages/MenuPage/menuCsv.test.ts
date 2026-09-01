@@ -98,6 +98,23 @@ describe('csvToDrafts', () => {
     expect(result.drafts[1]).toEqual({ base_price: 13.5 });
   });
 
+  it('carries a size barcode out and back', () => {
+    // A size scans as its own thing, so the sheet has to be able to set one.
+    const withCode = item({
+      id: 3,
+      name: 'Water',
+      variants: [
+        { id: 20, name: 'Large', price: 20, is_active: true, sort_order: 0, barcode: '5012345' },
+      ],
+    });
+
+    expect(itemsToCsv([withCode], true)).toContain('5012345');
+
+    const result = roundTrip([withCode], (csv) => csv.replace('5012345', '5012999'));
+
+    expect(result.variantDrafts[20]).toEqual({ barcode: '5012999' });
+  });
+
   it('picks up an edited size price separately from its item', () => {
     const result = roundTrip([sized], (csv) => csv.replace('12.00', '14.00'));
 

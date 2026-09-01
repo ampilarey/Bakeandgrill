@@ -86,7 +86,9 @@ export const GRID_COLUMNS: GridColumn[] = [
     return price > 0 && Number.isFinite(cost) ? ((price - cost) / price) * 100 : Number.NEGATIVE_INFINITY;
   } },
   { key: 'sku', label: 'SKU', group: 'Basics', kind: 'text', field: 'sku', variantField: 'sku', minWidth: 110, defaultOn: true, sortValue: (i) => str(i.sku) },
-  { key: 'barcode', label: 'Barcode', group: 'Basics', kind: 'text', field: 'barcode', minWidth: 120, defaultOn: false, sortValue: (i) => str((i as unknown as Record<string, unknown>).barcode) },
+  // A size can carry its own barcode — a large bottle scans differently from a
+  // small one — so the column reaches sizes as well as dishes.
+  { key: 'barcode', label: 'Barcode', group: 'Basics', kind: 'text', field: 'barcode', variantField: 'barcode', minWidth: 120, defaultOn: false, sortValue: (i) => str((i as unknown as Record<string, unknown>).barcode) },
   { key: 'gst', label: 'GST', group: 'Money', kind: 'select', field: 'tax_code', options: TAX_CODES, minWidth: 120, defaultOn: true, sortValue: (i) => str(i.tax_code) },
   { key: 'packaging_fee', label: 'Packaging fee', group: 'Money', kind: 'money', field: 'packaging_fee', width: 100, defaultOn: false, sortValue: (i) => numOf(i.packaging_fee) },
   { key: 'packaging_fee_mode', label: 'Packaging mode', group: 'Money', kind: 'select', field: 'packaging_fee_mode', options: PACKAGING_MODES, minWidth: 130, defaultOn: false, sortValue: (i) => str(i.packaging_fee_mode) },

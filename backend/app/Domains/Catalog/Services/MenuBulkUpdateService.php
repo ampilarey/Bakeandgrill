@@ -7,6 +7,7 @@ namespace App\Domains\Catalog\Services;
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Models\Item;
 use App\Models\Variant;
+use App\Rules\UniqueScanCode;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,8 +55,11 @@ class MenuBulkUpdateService
         return [
             'name' => 'string|max:255',
             'name_dv' => 'nullable|string|max:255',
-            'sku' => 'nullable|string|max:100|unique:items,sku,:id',
-            'barcode' => 'nullable|string|max:100|unique:items,barcode,:id',
+            // Uniqueness is enforced by UniqueScanCode rather than a unique:
+            // rule — see scanCodeFields() for why one column is not the whole
+            // question.
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100',
             'base_price' => 'numeric|min:0|max:1000000',
             'cost' => 'nullable|numeric|min:0|max:1000000',
             'category_id' => 'nullable|integer|exists:categories,id',
@@ -103,7 +107,8 @@ class MenuBulkUpdateService
             'name_dv' => 'nullable|string|max:100',
             'price' => 'numeric|min:0|max:1000000',
             'cost' => 'nullable|numeric|min:0|max:1000000',
-            'sku' => 'nullable|string|max:100|unique:variants,sku,:id',
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100',
             'track_stock' => 'boolean',
             'stock_qty' => 'nullable|integer|min:0',
             'low_stock_threshold' => 'nullable|integer|min:0',
@@ -138,7 +143,19 @@ class MenuBulkUpdateService
      */
     public function validate(array $changes, bool $canSeeCost): array
     {
-        return $this->validateRows($changes, self::fieldRules(), $canSeeCost, ['sku', 'barcode']);
+        return $this->validateRows($changes, self::fieldRules(), $canSeeCost, self::scanCodeFields(), 'items');
+    }
+
+    /**
+     * Columns a scanner can read.
+     *
+     * They share one namespace across both tables — see {@see UniqueScanCode}.
+     *
+     * @return list<string>
+     */
+    public static function scanCodeFields(): array
+    {
+        return ['sku', 'barcode'];
     }
 
     /**
@@ -173,6 +190,10 @@ class MenuBulkUpdateService
                 if (isset($allowed[$field]) && !isset($rowErrors[$field])) {
                     // No row to exclude yet, so unique rules apply in full.
                     $rules[$field] = str_replace(',:id', '', $allowed[$field]);
+
+                    if (in_array($field, self::scanCodeFields(), true)) {
+                        $rules[$field] = array_merge(explode('|', $rules[$field]), [new UniqueScanCode]);
+                    }
                 }
             }
             $rules['name'] = 'required|string|max:255';
@@ -190,8 +211,67 @@ class MenuBulkUpdateService
 
         return $errors + $this->duplicateErrors(
             array_map(static fn (array $f) => ['id' => 0, 'fields' => $f], $rows),
-            ['sku', 'barcode'],
+            self::scanCodeFields(),
         );
+    }
+
+    /**
+     * Scan codes repeated across the three lists in one save.
+     *
+     * Each list validates on its own, and UniqueScanCode only sees what is
+     * already stored — so a dish given barcode 5012345 in `changes` and a size
+     * given the same code in `variant_changes` both pass, and both are written,
+     * because items.barcode and variants.barcode are separate indexes. The
+     * scanner then has two answers. This is the one collision no other check
+     * catches.
+     *
+     * @param list<array{id: int, fields: array<string, mixed>}> $changes
+     * @param list<array{id: int, fields: array<string, mixed>}> $variantChanges
+     * @param list<array<string, mixed>> $newRows
+     * @return array{items: array<int, array<string, list<string>>>, variants: array<int, array<string, list<string>>>, new: array<int, array<string, list<string>>>}
+     */
+    public function crossListScanCodeErrors(array $changes, array $variantChanges, array $newRows): array
+    {
+        $out = ['items' => [], 'variants' => [], 'new' => []];
+        $seen = [];
+
+        $lists = [
+            'items' => array_map(static fn (array $c) => $c['fields'], $changes),
+            'variants' => array_map(static fn (array $c) => $c['fields'], $variantChanges),
+            'new' => $newRows,
+        ];
+
+        foreach ($lists as $list => $rows) {
+            foreach ($rows as $index => $fields) {
+                foreach (self::scanCodeFields() as $field) {
+                    $value = $fields[$field] ?? null;
+                    if (!is_string($value) || trim($value) === '') {
+                        continue;
+                    }
+
+                    $key = mb_strtolower(trim($value));
+                    if (!isset($seen[$key])) {
+                        $seen[$key] = [$list, $index];
+
+                        continue;
+                    }
+
+                    // Two rows in the same list are already named by
+                    // duplicateErrors, and saying it twice helps nobody.
+                    [$firstList, $firstIndex] = $seen[$key];
+                    if ($firstList === $list) {
+                        continue;
+                    }
+
+                    $message = 'This code is used by another row in this save ('
+                        . trim($value) . ').';
+                    $out[$list][$index][$field] = [$message];
+                    $out[$firstList][$firstIndex][$field] ??= [$message];
+                }
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -200,7 +280,7 @@ class MenuBulkUpdateService
      */
     public function validateVariants(array $changes, bool $canSeeCost): array
     {
-        return $this->validateRows($changes, self::variantFieldRules(), $canSeeCost, ['sku']);
+        return $this->validateRows($changes, self::variantFieldRules(), $canSeeCost, self::scanCodeFields(), 'variants');
     }
 
     /**
@@ -209,8 +289,13 @@ class MenuBulkUpdateService
      * @param list<string> $uniqueFields
      * @return array<int, array<string, list<string>>>
      */
-    private function validateRows(array $changes, array $allowed, bool $canSeeCost, array $uniqueFields): array
-    {
+    private function validateRows(
+        array $changes,
+        array $allowed,
+        bool $canSeeCost,
+        array $uniqueFields,
+        string $table,
+    ): array {
         $errors = [];
 
         foreach ($changes as $index => $change) {
@@ -229,6 +314,14 @@ class MenuBulkUpdateService
             foreach ($fields as $field => $_) {
                 if (isset($allowed[$field]) && !isset($rowErrors[$field])) {
                     $rules[$field] = str_replace(':id', (string) $change['id'], $allowed[$field]);
+
+                    if (in_array($field, $uniqueFields, true)) {
+                        // Inside an array each element is one rule, so the
+                        // pipe-delimited string has to be split first.
+                        $rules[$field] = array_merge(explode('|', $rules[$field]), [
+                            new UniqueScanCode($table, $change['id'], $this->storedCode($table, $change['id'], $field)),
+                        ]);
+                    }
                 }
             }
 
@@ -257,6 +350,21 @@ class MenuBulkUpdateService
      * @param list<string> $fields
      * @return array<int, array<string, list<string>>>
      */
+    /**
+     * What this row already has in that column, so a row that is not changing
+     * its code is never blocked by a collision that predates the check.
+     */
+    private function storedCode(string $table, int $id, string $field): ?string
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        $row = $table === 'variants' ? Variant::find($id) : Item::withTrashed()->find($id);
+
+        return $row?->{$field};
+    }
+
     private function duplicateErrors(array $changes, array $fields): array
     {
         $errors = [];
