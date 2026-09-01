@@ -56,6 +56,43 @@ class ListStaleVariantsTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_a_size_on_a_deleted_dish_is_reported_apart(): void
+    {
+        // Its dish is off every menu, so it cannot be sold and cannot be
+        // reached through Menu → Edit — untidy, not urgent.
+        $item = $this->sizedItem('Retired dish');
+        $item->variants()->create(['name' => 'Larger', 'price' => 10, 'is_active' => true]);
+        $item->delete();
+
+        $this->artisan('menu:stale-variants --all')
+            ->expectsOutputToContain('sit on dishes that have been deleted')
+            ->expectsOutputToContain('Retired dish (deleted)')
+            ->assertExitCode(0);
+    }
+
+    public function test_a_deleted_dish_does_not_make_the_actionable_list(): void
+    {
+        $item = $this->sizedItem('Retired dish');
+        $item->variants()->create(['name' => 'Larger', 'price' => 10, 'is_active' => true]);
+        $item->delete();
+
+        $this->artisan('menu:stale-variants --all')
+            ->expectsOutputToContain('No sizes look left over')
+            ->assertExitCode(0);
+    }
+
+    public function test_the_heading_matches_the_flag(): void
+    {
+        // --all deliberately includes dishes that do not sell, so claiming
+        // "on a dish that does sell" would be a lie.
+        $item = $this->sizedItem('Brand new');
+        $item->variants()->create(['name' => 'One', 'price' => 10, 'is_active' => true]);
+
+        $this->artisan('menu:stale-variants --all')
+            ->doesntExpectOutputToContain('on a dish that does sell')
+            ->assertExitCode(0);
+    }
+
     public function test_it_stays_quiet_when_every_size_has_sold(): void
     {
         $item = $this->sizedItem();

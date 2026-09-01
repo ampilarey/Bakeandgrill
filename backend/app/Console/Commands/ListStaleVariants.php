@@ -33,7 +33,9 @@ class ListStaleVariants extends Command
     public function handle(): int
     {
         $variants = Variant::query()
-            ->with('item:id,name,is_active')
+            // withTrashed, because a soft-deleted dish resolves to null on the
+            // relation and the size then prints as "(item 7)" with no name.
+            ->with(['item' => fn ($q) => $q->withTrashed()->select('id', 'name', 'deleted_at')])
             ->where('is_active', true)
             ->orderBy('item_id')
             ->orderBy('sort_order')
@@ -62,13 +64,19 @@ class ListStaleVariants extends Command
 
         $includeUnsoldDishes = (bool) $this->option('all');
 
-        $rows = $variants
+        $unsold = $variants
             ->reject(fn (Variant $v) => $soldVariantIds->has((int) $v->id))
             ->filter(function (Variant $v) use ($itemsWithSales, $includeUnsoldDishes) {
                 // A brand-new dish has no sales on any size yet — that is not a
                 // leftover, it is a dish that has not opened. Hidden unless asked.
                 return $includeUnsoldDishes || $itemsWithSales->has((int) $v->item_id);
-            })
+            });
+
+        // A size on a deleted dish is not selling anywhere and cannot be
+        // reached through Menu → Edit, so it is its own, far less urgent
+        // problem — reported apart rather than mixed into the actionable list.
+        $onDeletedDishes = $unsold->filter(fn (Variant $v) => $v->item?->trashed() ?? true);
+        $rows = $unsold->reject(fn (Variant $v) => $v->item?->trashed() ?? true)
             ->map(fn (Variant $v) => [
                 $v->item?->name ?? '(item ' . $v->item_id . ')',
                 $v->name,
@@ -79,24 +87,41 @@ class ListStaleVariants extends Command
             ->values();
 
         if ($rows->isEmpty()) {
-            $this->info('No sizes look left over — every active size has been ordered at least once.');
+            $this->info('No sizes look left over — every active size on a live dish has been ordered.');
 
             if (!$includeUnsoldDishes) {
                 $this->line('  (Sizes on dishes that have never sold at all are hidden; add --all to see them.)');
             }
+        } else {
+            $scope = $includeUnsoldDishes
+                ? 'have never been ordered'
+                : 'have never been ordered on a dish that does sell';
+            $this->warn($rows->count() . ' size(s) ' . $scope . ':');
+            $this->table(['Dish', 'Size', 'Price', 'Available', 'Added'], $rows->all());
 
-            return self::SUCCESS;
+            $this->newLine();
+            $this->line('Nothing was changed. Each of these is either a size somebody removed in the');
+            $this->line('editor before that actually deleted anything, or a real option no customer has');
+            $this->line('picked yet — only you can tell which. A size added recently is almost');
+            $this->line('certainly the second.');
+            $this->line('To remove one: open the dish in Menu → Edit, delete the row, save. That now');
+            $this->line('deletes it for real.');
         }
 
-        $this->warn($rows->count() . ' size(s) have never been ordered on a dish that does sell:');
-        $this->table(['Dish', 'Size', 'Price', 'Available', 'Added'], $rows->all());
-
-        $this->newLine();
-        $this->line('Nothing was changed. Each of these is either a size somebody removed in the');
-        $this->line('editor before that actually deleted anything, or a real option no customer has');
-        $this->line('picked yet — only you can tell which.');
-        $this->line('To remove one: open the dish in Menu → Edit, delete the row, save. That now');
-        $this->line('deletes it for real.');
+        if ($onDeletedDishes->isNotEmpty()) {
+            $this->newLine();
+            $this->line($onDeletedDishes->count() . ' more sit on dishes that have been deleted:');
+            $this->table(
+                ['Dish', 'Size', 'Added'],
+                $onDeletedDishes->map(fn (Variant $v) => [
+                    ($v->item?->name ?? 'item ' . $v->item_id) . ' (deleted)',
+                    $v->name,
+                    $v->created_at?->toDateString() ?? '—',
+                ])->values()->all(),
+            );
+            $this->line('Those are off every menu already and cannot be sold — untidy, not urgent,');
+            $this->line('and not reachable through the editor since the dish itself is gone.');
+        }
 
         return self::SUCCESS;
     }
