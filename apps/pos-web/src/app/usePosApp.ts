@@ -211,21 +211,6 @@ export function usePosApp() {
   const [openTicketsCritical, setOpenTicketsCritical] = useState(false);
   /** After a paid dine-in/takeaway sale, jump to Receipts with this order selected. */
   const [receiptsFocusOrderId, setReceiptsFocusOrderId] = useState<number | null>(null);
-  /** After a paid sale, show receipt print/SMS actions until dismissed. */
-  const [receiptBanner, setReceiptBanner] = useState<{
-    orderId: number;
-    customerPhone: string | null;
-    paidOnCredit: boolean;
-    creditNote?: string | null;
-    /**
-     * FIX 9e — post-settle credit balance in MVR when the payments
-     * response echoed one. Rendered on the receipt banner as
-     * "balance now MVR X" so the cashier can relay the fresh owed
-     * amount without pulling up the customer panel. Null = the
-     * backend didn't return it (older builds or non-credit orders).
-     */
-    creditBalanceMvr?: number | null;
-  } | null>(null);
   const [deviceBlockedMessage, setDeviceBlockedMessage] = useState<string | null>(null);
 
   const onlineOrderWatcher = useOnlineOrderWatcher(
@@ -621,17 +606,15 @@ export function usePosApp() {
     setAppliedPromo: cart.setAppliedPromo,
     setAppliedLoyalty: cart.setAppliedLoyalty,
     setAppliedGiftCard: cart.setAppliedGiftCard,
-    onOrderSettled: (orderId, _customerId, customerPhone, _orderType, paidOnCredit, creditNote, creditBalanceMvr) => {
+    // A settled sale used to raise a green action bar — Print receipt, Open,
+    // Resend SMS — that sat over the menu for a minute. The owner asked for it
+    // gone, 2026-09-01, so a paid sale now just clears the till for the next
+    // customer. The receipt SMS still goes out on its own, and printing or
+    // resending by hand lives in the Receipts pane.
+    onOrderSettled: () => {
       void refreshOpenTickets();
       void refreshTables();
       void shift.refreshSummary();
-      setReceiptBanner({
-        orderId,
-        customerPhone: customerPhone ?? null,
-        paidOnCredit: !!paidOnCredit,
-        creditNote: creditNote ?? null,
-        creditBalanceMvr: typeof creditBalanceMvr === "number" ? creditBalanceMvr : null,
-      });
       setPane("sales");
     },
   });
@@ -1276,7 +1259,7 @@ export function usePosApp() {
     chargeWalletAvailable, chargeWalletEligible, showSaveTicket,
     setShowSaveTicket, showOpenShift, setShowOpenShift, showCloseShift, setShowCloseShift,
     openShiftBusy, openTicketsCount, openTicketsCritical, receiptsFocusOrderId, setReceiptsFocusOrderId,
-    receiptBanner, setReceiptBanner, deviceBlockedMessage, onlineOrderWatcher,
+    deviceBlockedMessage, onlineOrderWatcher,
     orderType, setOrderType, handleOrderTypeToggle, packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails, customerAddresses,
     selectedDeliveryAddressId, setSelectedDeliveryAddressId, tables, selectedTableId, setSelectedTableId, quickNotes,

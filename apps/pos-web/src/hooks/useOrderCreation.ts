@@ -837,6 +837,10 @@ export function useOrderCreation(params: Params) {
    * cleaner but every existing branch checks the boolean; sticking to
    * an outer ref keeps the diff surgical.
    */
+  // Passed to onOrderSettled, which currently ignores it: the post-charge
+  // banner that displayed "balance now MVR X" was removed on the owner's
+  // request, 2026-09-01. Kept because it is one assignment off the settle
+  // response and the next consumer of a settled order will want it.
   const lastCreditBalanceRef = useRef<number | null>(null);
 
   /**

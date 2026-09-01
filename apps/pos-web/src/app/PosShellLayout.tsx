@@ -17,7 +17,6 @@ import { SideDrawer } from '../components/SideDrawer';
 import { ChargeOverlay } from '../components/ChargeOverlay';
 import { DiscountApprovalModal } from '../components/DiscountApprovalModal';
 import type { OfflineOrderRecord } from '../offline/db';
-import { ReceiptActionsBanner } from '../components/ReceiptActionsBanner';
 import { PosUpdateBanner } from '../components/PosUpdateBanner';
 import { OnlineOrderToasts } from '../components/OnlineOrderToasts';
 import { RequestItemModal } from '../components/RequestItemModal';
@@ -128,7 +127,7 @@ export function PosShellLayout() {
     canOpsInventory, canOpsPreparedStock,
     canCashInOut, isReachable, offlineQueueCount, offlinePendingCount,
     offlinePendingTotals, showOfflineSyncPanel, setShowOfflineSyncPanel, deviceBlockedMessage,
-    receiptBanner, setReceiptBanner, orderType, setOrderType, handleOrderTypeToggle,
+    orderType, setOrderType, handleOrderTypeToggle,
     packagingPickerLines, handlePackagingReconcileConfirm,
     deliveryDetails, setDeliveryDetails,
     customerAddresses, selectedDeliveryAddressId, setSelectedDeliveryAddressId, applyPosDeliveryAddress, tables,
@@ -372,19 +371,12 @@ export function PosShellLayout() {
         }}
       />
 
-      {receiptBanner && (
-        <div style={{ padding: "8px 16px 0" }}>
-          <ReceiptActionsBanner
-            orderId={receiptBanner.orderId}
-            customerPhone={receiptBanner.customerPhone}
-            paidOnCredit={receiptBanner.paidOnCredit}
-            creditNote={receiptBanner.creditNote}
-            creditBalanceMvr={receiptBanner.creditBalanceMvr}
-            receiptResendEnabled={smsNotifications.receipt_resend}
-            onDismiss={() => setReceiptBanner(null)}
-          />
-        </div>
-      )}
+      {/* Nothing is shown after a sale settles. A green action bar used to sit
+          here for a minute offering Print receipt / Open / Resend SMS; the
+          owner asked for it gone, 2026-09-01. The receipt SMS still goes out
+          on its own (SendPaymentConfirmationListener), and anything a cashier
+          needs to do by hand — print, reprint, resend, refund — lives in the
+          Receipts pane, which the till already jumps to after a paid sale. */}
 
       {/* Status banners */}
       {(order.statusMessage || ops.opsMessage) && (
