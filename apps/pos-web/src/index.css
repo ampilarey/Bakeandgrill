@@ -121,6 +121,66 @@ html, body, #root {
   justify-content: flex-end;
   flex-shrink: 0;
 }
+
+/* Pinned destinations between the title and the status pills.
+ *
+ * `min-width: 0` with the left block's `flex: 1 1 auto` is what stops a long
+ * shortcut label shoving the Online pill off the edge — the title truncates
+ * first, then this row scrolls, and the pills never move. */
+.pos-topbar-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 1;
+}
+.pos-topbar-shortcuts::-webkit-scrollbar { display: none; }
+
+.pos-topbar-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  color: #334155;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  /* A press-and-hold on iOS otherwise raises the selection loupe over the
+   * button, which reads as the app hanging. */
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pos-topbar-shortcut.is-active {
+  background: #0F172A;
+  border-color: #0F172A;
+  color: #fff;
+}
+.pos-topbar-shortcut-icon { font-size: 15px; line-height: 1; }
+
+/* Phone only — an iPad in portrait is 834px and has room for the words.
+ * Below this the header cannot carry labels beside the title and the status
+ * pill, so a shortcut is its icon alone. They are the same icons the drawer
+ * shows, so the mapping is already learned by the time anybody pins one. */
+@media (max-width: 640px) {
+  .pos-topbar-shortcut-label { display: none; }
+  .pos-topbar-shortcut {
+    padding: 6px 10px;
+    min-width: 40px;
+    justify-content: center;
+  }
+  .pos-topbar-shortcut-icon { font-size: 17px; }
+}
+
 .pos-header-btn {
   width: 44px;
   height: 44px;

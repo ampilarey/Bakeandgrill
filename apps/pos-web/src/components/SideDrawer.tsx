@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { z } from "../theme";
+import { useLongPress } from "../hooks/useLongPress";
 import { PosVersionLabel } from "./PosUpdateBanner";
 
 export type DrawerItem = {
@@ -18,6 +19,11 @@ type Props = {
   items: DrawerItem[];
   active: string;
   onSelect: (id: string) => void;
+  /**
+   * Press-and-hold on a nav row. Used to pin the destination to the header.
+   * Rows the caller does not want pinnable simply are not reported.
+   */
+  onLongPress?: (item: DrawerItem) => void;
   cashierName?: string;
   shiftLabel?: string;
   /** Mobile replacement for the hidden topbar sales chip (≤840px). */
@@ -39,6 +45,7 @@ export function SideDrawer({
   items,
   active,
   onSelect,
+  onLongPress,
   cashierName,
   shiftLabel,
   shiftSalesSummary,
@@ -110,7 +117,13 @@ export function SideDrawer({
 
         <nav style={{ flex: 1, padding: "12px 0", overflow: "auto" }}>
           {main.map((it) => (
-            <Item key={it.id} item={it} active={active === it.id} onClick={() => onSelect(it.id)} />
+            <Item
+              key={it.id}
+              item={it}
+              active={active === it.id}
+              onClick={() => onSelect(it.id)}
+              onLongPress={onLongPress ? () => onLongPress(it) : undefined}
+            />
           ))}
           {user.length > 0 && (
             <>
@@ -143,10 +156,21 @@ export function SideDrawer({
   );
 }
 
-function Item({ item, active, onClick }: { item: DrawerItem; active: boolean; onClick: () => void }) {
+function Item({ item, active, onClick, onLongPress }: {
+  item: DrawerItem;
+  active: boolean;
+  onClick: () => void;
+  /** Absent for rows that cannot be pinned — the user group, and anything disabled. */
+  onLongPress?: () => void;
+}) {
+  const { handlers, clickGuard } = useLongPress(() => onLongPress?.());
+  const pressable = !!onLongPress && !item.disabled;
+
   return (
     <button
-      onClick={onClick}
+      onClick={pressable ? clickGuard(onClick) : onClick}
+      {...(pressable ? handlers : {})}
+      aria-label={pressable ? `${item.label} — press and hold to add to header` : undefined}
       disabled={item.disabled}
       style={{
         width: "100%", textAlign: "left",

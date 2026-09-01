@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { makeCartKey } from '../hooks/useCart';
 import { MenuGrid } from '../components/MenuGrid';
 import { OrderCart } from '../components/OrderCart';
@@ -27,6 +27,9 @@ import { validateDeliveryDetails, type PosOrderType } from '../orderTypes';
 import type { CartItem } from '../types';
 import { usePosAppContext } from './PosAppProvider';
 import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUiHelpers';
+import { HeaderShortcuts, type ShortcutTarget } from '../components/HeaderShortcuts';
+import { ShortcutPrompt, type ShortcutPromptState } from '../components/ShortcutPrompt';
+import { useHeaderShortcuts, isPane, MAX_HEADER_SHORTCUTS } from '../hooks/useHeaderShortcuts';
 import type { Pane } from './types';
 
 // Secondary panes — not needed on the cashier first screen (sales + cart).
@@ -146,6 +149,29 @@ export function PosShellLayout() {
     onlineOrderWatcher,
   } = app;
 
+  // ── Header shortcuts ────────────────────────────────────────────────────
+  // Pinned by press-and-hold in the drawer, removed the same way in the header.
+  const { shortcuts, add: addShortcut, remove: removeShortcut, isFull } = useHeaderShortcuts();
+  const [shortcutPrompt, setShortcutPrompt] = useState<ShortcutPromptState | null>(null);
+
+  /**
+   * Pinned panes resolved against the live drawer, so a shortcut to something
+   * the cashier can no longer reach — permission changed, shift closed —
+   * simply stops rendering rather than becoming a button that goes nowhere.
+   */
+  const shortcutTargets = useMemo<ShortcutTarget[]>(
+    () => shortcuts.flatMap((id) => {
+      // The user group has no `disabled` field at all, and nothing there is
+      // pinnable anyway — read it defensively rather than narrowing the union.
+      const item = drawerItems.find(
+        (d) => d.id === id && !("disabled" in d && d.disabled),
+      );
+
+      return item ? [{ id, label: item.label, icon: item.icon }] : [];
+    }),
+    [shortcuts, drawerItems],
+  );
+
   const discountFieldError = useMemo(() => {
     const amount = Math.max(0, Number.parseFloat(cart.discountAmount) || 0);
     if (amount <= 0) return "";
@@ -235,6 +261,15 @@ export function PosShellLayout() {
             </div>
           </div>
         </div>
+
+        {/* Pinned destinations. They live between the title and the status
+            pills — the dead space an iPad header had going spare. */}
+        <HeaderShortcuts
+          items={shortcutTargets}
+          active={pane}
+          onSelect={setPane}
+          onRequestRemove={(item) => setShortcutPrompt({ kind: 'remove', ...item })}
+        />
 
         <div className="pos-topbar-right">
           {/* A black pill here used to show "N orders · MVR X" — the shift's
@@ -789,11 +824,43 @@ export function PosShellLayout() {
         )}
       </main>
 
+      {shortcutPrompt && (
+        <ShortcutPrompt
+          state={shortcutPrompt}
+          max={MAX_HEADER_SHORTCUTS}
+          onClose={() => setShortcutPrompt(null)}
+          onConfirm={() => {
+            if (!isPane(shortcutPrompt.id)) return;
+            if (shortcutPrompt.kind === 'add') addShortcut(shortcutPrompt.id);
+            if (shortcutPrompt.kind === 'remove') removeShortcut(shortcutPrompt.id);
+            setShortcutPrompt(null);
+            setDrawerOpen(false);
+          }}
+        />
+      )}
+
       <SideDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         items={drawerItems}
         active={pane}
+        onLongPress={(item) => {
+          // Only destinations can be pinned. Log out, Lock and Refresh are
+          // actions — a header button that logs you out on a mistap is not a
+          // shortcut, it is a hazard.
+          if (!isPane(item.id)) return;
+          if (shortcuts.includes(item.id)) {
+            setShortcutPrompt({ kind: 'remove', id: item.id, label: item.label, icon: item.icon });
+
+            return;
+          }
+          setShortcutPrompt({
+            kind: isFull ? 'full' : 'add',
+            id: item.id,
+            label: item.label,
+            icon: item.icon,
+          });
+        }}
         cashierName={cashierName}
         shiftLabel={shift.current ? formatOpenShiftLabel(shift.current.id, shift.current.opened_at) : 'No open shift'}
         shiftSalesSummary={
