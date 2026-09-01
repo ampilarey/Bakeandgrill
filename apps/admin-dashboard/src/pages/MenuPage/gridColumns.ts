@@ -39,6 +39,12 @@ export type GridColumn = {
   costOnly?: boolean;
   /** Choices for `select` columns. */
   options?: Array<{ value: string; label: string }>;
+  /**
+   * Hover text on the header, for a column whose name cannot carry its whole
+   * meaning in the width available. "Selling today" and "On menu" are the pair
+   * people ask about — the owner asked outright what the old "Avail" meant.
+   */
+  help?: string;
   /** Shown by default on a fresh browser. */
   defaultOn: boolean;
   /** Value used when sorting by this column. */
@@ -97,10 +103,23 @@ export const GRID_COLUMNS: GridColumn[] = [
   { key: 'stock', label: 'Stock', group: 'Stock', kind: 'int', field: 'stock_quantity', variantField: 'stock_qty', width: 80, defaultOn: true, sortValue: (i) => numOf(i.stock_quantity) },
   { key: 'low_stock_threshold', label: 'Alert at', group: 'Stock', kind: 'int', field: 'low_stock_threshold', variantField: 'low_stock_threshold', width: 80, defaultOn: false, sortValue: (i) => numOf(i.low_stock_threshold) },
   { key: 'consumption_factor', label: 'Uses', group: 'Stock', kind: 'decimal', variantField: 'consumption_factor', width: 76, defaultOn: false },
-  // Sizes carry their own sold-out switch — running out of large cups does
-  // not mean the dish is off.
-  { key: 'available', label: 'Avail', group: 'Basics', kind: 'bool', field: 'is_available', variantField: 'is_available', width: 66, defaultOn: true, sortValue: (i) => (i.is_available ? 1 : 0) },
-  { key: 'active', label: 'Active', group: 'Basics', kind: 'bool', field: 'is_active', variantField: 'is_active', width: 66, defaultOn: true, sortValue: (i) => (i.is_active ? 1 : 0) },
+  // These two sat side by side as "Avail" and "Active" — both ticks, both 66px,
+  // and the owner had to ask what the first one meant. They are the daily
+  // switch and the permanent one, so the labels now say which is which.
+  // Sizes carry their own sold-out switch: running out of large cups does not
+  // mean the dish is off.
+  {
+    key: 'available', label: 'Selling today', group: 'Basics', kind: 'bool',
+    field: 'is_available', variantField: 'is_available', width: 116, defaultOn: true,
+    help: 'Untick when you run out for the day. The dish stays on the menu, shown as sold out, and you tick it back tomorrow.',
+    sortValue: (i) => (i.is_available ? 1 : 0),
+  },
+  {
+    key: 'active', label: 'On menu', group: 'Basics', kind: 'bool',
+    field: 'is_active', variantField: 'is_active', width: 90, defaultOn: true,
+    help: 'Untick to take the dish off the menu altogether — nobody sees it anywhere until you put it back. For running out today, use Selling today instead.',
+    sortValue: (i) => (i.is_active ? 1 : 0),
+  },
   { key: 'prep_time_minutes', label: 'Prep min', group: 'Kitchen', kind: 'int', field: 'prep_time_minutes', width: 84, defaultOn: false, sortValue: (i) => numOf(i.prep_time_minutes) },
   { key: 'spice_level', label: 'Spice', group: 'Kitchen', kind: 'select', field: 'spice_level', options: SPICE_LEVELS, minWidth: 110, defaultOn: false, sortValue: (i) => str(i.spice_level) },
   { key: 'calories', label: 'Calories', group: 'Kitchen', kind: 'int', field: 'calories', width: 84, defaultOn: false, sortValue: (i) => numOf(i.calories) },

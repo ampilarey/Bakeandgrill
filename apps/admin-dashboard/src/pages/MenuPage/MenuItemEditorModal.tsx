@@ -658,7 +658,16 @@ export function MenuItemEditorModal({
   });
 
   return (
-    <Modal title={title} onClose={onClose} maxWidth={640}>
+    // 640 was the width of a simple form, and this stopped being one: it now
+    // carries a sizes table of eight input columns, combo and platter builders,
+    // channel toggles and a photo tab, all squeezed into a column narrower than
+    // half a laptop screen while the space beside it sat empty. Owner,
+    // 2026-09-01: "in desktop view, new item box is v small in width".
+    //
+    // Phones are unaffected — the global mobile rule forces the panel to
+    // max-width:100vw as a bottom sheet, so this only lets it grow on a screen
+    // that has the room.
+    <Modal title={title} onClose={onClose} maxWidth={1040}>
 
       {itemId && (
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>

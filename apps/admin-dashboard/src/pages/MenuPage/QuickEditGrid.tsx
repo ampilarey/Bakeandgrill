@@ -736,7 +736,10 @@ function SortableHeader({
   const arrow = !active ? '⇅' : sort?.direction === 'asc' ? '↑' : '↓';
 
   return (
-    <th style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width, position: 'relative' }}>
+    <th
+      style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width, position: 'relative' }}
+      title={column.help}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <button
           type="button"

@@ -164,7 +164,7 @@ describe('QuickEditGrid bulk apply', () => {
     selectBoth();
 
     fireEvent.click(screen.getByRole('button', { name: 'Availability' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mark available' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark selling today' }));
 
     const preview = within(screen.getByTestId('bulk-preview'));
     expect(preview.getByText('Nothing would change')).toBeInTheDocument();
@@ -252,7 +252,7 @@ describe('QuickEditGrid sizes', () => {
     // "it should be independent for each variant".
     renderGrid({ initialItems: [sized] });
 
-    fireEvent.click(screen.getByLabelText('Avail for Beetle leaf — Half'));
+    fireEvent.click(screen.getByLabelText('Selling today for Beetle leaf — Half'));
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { is_available: false } }], []);

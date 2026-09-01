@@ -231,11 +231,13 @@ export function BulkActionBar({
 
       {tab === 'availability' && (
         <div style={row}>
-          <Btn small variant="secondary" onClick={() => onPropose(field('Available', 'is_available', true, yesNo))}>Mark available</Btn>
-          <Btn small variant="secondary" onClick={() => onPropose(field('Available', 'is_available', false, yesNo))}>Mark sold out</Btn>
+          {/* The field names here are what the preview dialog shows, so they
+              match the grid's column headings rather than the API field. */}
+          <Btn small variant="secondary" onClick={() => onPropose(field('Selling today', 'is_available', true, yesNo))}>Mark selling today</Btn>
+          <Btn small variant="secondary" onClick={() => onPropose(field('Selling today', 'is_available', false, yesNo))}>Mark sold out</Btn>
           <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
-          <Btn small variant="secondary" onClick={() => onPropose(field('Active', 'is_active', true, yesNo))}>Show on menu</Btn>
-          <Btn small variant="secondary" onClick={() => onPropose(field('Active', 'is_active', false, yesNo))}>Hide from menu</Btn>
+          <Btn small variant="secondary" onClick={() => onPropose(field('On menu', 'is_active', true, yesNo))}>Show on menu</Btn>
+          <Btn small variant="secondary" onClick={() => onPropose(field('On menu', 'is_active', false, yesNo))}>Hide from menu</Btn>
           <span style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
           <Btn small variant="secondary" onClick={() => onPropose(field('Pre-order', 'allow_pre_order', true, yesNo))}>Allow pre-order</Btn>
           <Btn small variant="secondary" onClick={() => onPropose(field('Pre-order', 'allow_pre_order', false, yesNo))}>No pre-order</Btn>

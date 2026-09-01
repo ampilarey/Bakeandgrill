@@ -185,7 +185,10 @@ export function GridToolbar({
               {TAX_CODES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </Labelled>
-          <Labelled label="Availability">
+          {/* Named to match the grid columns — these filter the same two
+              switches, and calling them something else here is how "Avail"
+              became a question in the first place. */}
+          <Labelled label="Selling today">
             <select
               value={filters.availability}
               onChange={(e) => set('availability', e.target.value as GridFilters['availability'])}
@@ -193,11 +196,11 @@ export function GridToolbar({
               style={{ ...control, width: '100%' }}
             >
               <option value="any">Any</option>
-              <option value="available">Available</option>
-              <option value="sold_out">Sold out</option>
+              <option value="available">Selling today</option>
+              <option value="sold_out">Sold out today</option>
             </select>
           </Labelled>
-          <Labelled label="Status">
+          <Labelled label="On menu">
             <select
               value={filters.status}
               onChange={(e) => set('status', e.target.value as GridFilters['status'])}
@@ -205,8 +208,8 @@ export function GridToolbar({
               style={{ ...control, width: '100%' }}
             >
               <option value="any">Any</option>
-              <option value="active">Active</option>
-              <option value="hidden">Hidden</option>
+              <option value="active">On menu</option>
+              <option value="hidden">Off menu</option>
             </select>
           </Labelled>
           <Labelled label="Sizes">
