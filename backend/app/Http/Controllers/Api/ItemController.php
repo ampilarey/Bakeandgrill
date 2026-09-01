@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Catalog\Services\ItemChannelSeeder;
 use App\Domains\Catalog\Services\MenuBulkUpdateService;
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Domains\Inventory\Services\RecipeStockService;
@@ -465,42 +466,11 @@ class ItemController extends Controller
             app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->sync($item, $packagingOptions);
         }
 
-        // Seed channel availability so the item actually appears on the
-        // public menus that ask for it. The backfill migration only
-        // covered items that existed at that point in time — without
-        // this, every new admin-created item silently fails the
-        // `whereExists(item_channel_availability)` check in
-        // KitchenMenuResolver::scopeItemsForChannel and never shows up
-        // on the POS or the website.
-        //
-        // Honour an explicit `channel_availability` array if the admin
-        // form sent one (mirrors `update()`), otherwise default to
-        // enabled on every channel so the new item is immediately
-        // sellable everywhere. Admin can dial it back from the toggle
-        // grid.
-        if (is_array($channelRows) && $channelRows !== []) {
-            foreach ($channelRows as $row) {
-                if (empty($row['channel'])) {
-                    continue;
-                }
-                ItemChannelAvailability::query()->updateOrCreate(
-                    ['item_id' => $item->id, 'channel' => $row['channel']],
-                    [
-                        'is_enabled' => (bool) ($row['is_enabled'] ?? true),
-                        'valid_from' => $row['valid_from'] ?? null,
-                        'valid_until' => $row['valid_until'] ?? null,
-                    ],
-                );
-            }
-        } else {
-            foreach (KitchenMenuResolver::CHANNELS as $channel) {
-                ItemChannelAvailability::query()->firstOrCreate(
-                    ['item_id' => $item->id, 'channel' => $channel],
-                    // Catering is opt-in; ordering channels default on.
-                    ['is_enabled' => $channel !== 'catering'],
-                );
-            }
-        }
+        // Honour an explicit `channel_availability` array if the admin form
+        // sent one (mirrors `update()`); otherwise the seeder defaults the
+        // item on for every ordering channel. Without these rows the item is
+        // invisible everywhere — see ItemChannelSeeder.
+        app(ItemChannelSeeder::class)->seed($item, is_array($channelRows) ? $channelRows : null);
 
         $item->refresh();
         $item->load('variants');
@@ -529,6 +499,21 @@ class ItemController extends Controller
                 'platterGroups.allowedItems.item',
             ]),
         ], 201);
+    }
+
+    private function bulkMessage(int $updated, int $created): string
+    {
+        $parts = [];
+        if ($created > 0) {
+            $parts[] = $created . ' item' . ($created === 1 ? '' : 's') . ' created';
+        }
+        if ($updated > 0) {
+            $parts[] = $updated . ' item' . ($updated === 1 ? '' : 's') . ' updated';
+        }
+
+        return $parts === []
+            ? 'Nothing to save — those values were already set.'
+            : ucfirst(implode(', ', $parts)) . '.';
     }
 
     /**
@@ -831,8 +816,10 @@ class ItemController extends Controller
         $changes = array_values($validated['changes'] ?? []);
         /** @var list<array{id: int, fields: array<string, mixed>}> $variantChanges */
         $variantChanges = array_values($validated['variant_changes'] ?? []);
+        /** @var list<array<string, mixed>> $newRows */
+        $newRows = array_values($validated['new_items'] ?? []);
 
-        if ($changes === [] && $variantChanges === []) {
+        if ($changes === [] && $variantChanges === [] && $newRows === []) {
             return response()->json(['message' => 'Nothing to save.'], 422);
         }
 
@@ -842,25 +829,26 @@ class ItemController extends Controller
 
         $errors = $bulk->validate($changes, $canSeeCost);
         $variantErrors = $bulk->validateVariants($variantChanges, $canSeeCost);
-        if ($errors !== [] || $variantErrors !== []) {
-            $bad = count($errors) + count($variantErrors);
-            $total = count($changes) + count($variantChanges);
+        $newErrors = $bulk->validateNew($newRows, $canSeeCost);
+        if ($errors !== [] || $variantErrors !== [] || $newErrors !== []) {
+            $bad = count($errors) + count($variantErrors) + count($newErrors);
+            $total = count($changes) + count($variantChanges) + count($newRows);
 
             return response()->json([
                 'message' => 'No changes were saved — ' . $bad
                     . ' of ' . $total . ' rows need fixing.',
                 'row_errors' => $errors,
                 'variant_row_errors' => $variantErrors,
+                'new_row_errors' => $newErrors,
             ], 422);
         }
 
-        $result = $bulk->apply($changes, $variantChanges, $request);
+        $result = $bulk->apply($changes, $variantChanges, $newRows, $request);
 
         return response()->json([
-            'message' => $result['updated'] === 0
-                ? 'Nothing to save — those values were already set.'
-                : $result['updated'] . ' item' . ($result['updated'] === 1 ? '' : 's') . ' updated.',
+            'message' => $this->bulkMessage($result['updated'], $result['created']),
             'updated' => $result['updated'],
+            'created' => $result['created'],
             'unchanged' => $result['unchanged'],
             'items' => $result['items'],
         ]);

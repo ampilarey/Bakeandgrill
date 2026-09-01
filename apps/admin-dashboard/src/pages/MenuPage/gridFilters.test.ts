@@ -5,6 +5,8 @@ import {
   activeFilterCount,
   applyFilters,
   applySort,
+  columnValue,
+  columnValueCounts,
   nextSort,
   visibleRows,
 } from './gridFilters';
@@ -138,5 +140,68 @@ describe('visibleRows', () => {
     const rows = visibleRows(menu, { ...EMPTY_FILTERS, minPrice: '15' }, { key: 'price', direction: 'desc' });
 
     expect(rows.map((i) => i.id)).toEqual([3, 2]);
+  });
+});
+
+describe('per-column value filters', () => {
+  const priced = [
+    item({ id: 1, name: 'A', base_price: 3 }),
+    item({ id: 2, name: 'B', base_price: 3 }),
+    item({ id: 3, name: 'C', base_price: 7, category_id: 2, category: { id: 2, name: 'Grill' } }),
+  ];
+
+  it('lists the distinct values in a column with counts', () => {
+    // Owner, 2026-09-01: "when i click price and select all the items for 3
+    // rufiyaa".
+    expect(columnValueCounts(priced, EMPTY_FILTERS, 'price')).toEqual([
+      { value: '3.00', count: 2 },
+      { value: '7.00', count: 1 },
+    ]);
+  });
+
+  it('keeps only the rows whose value was ticked', () => {
+    const rows = applyFilters(priced, { ...EMPTY_FILTERS, columns: { price: ['3.00'] } });
+
+    expect(rows.map((i) => i.id)).toEqual([1, 2]);
+  });
+
+  it('treats an empty tick list as no filter at all', () => {
+    expect(applyFilters(priced, { ...EMPTY_FILTERS, columns: { price: [] } })).toHaveLength(3);
+  });
+
+  it('counts values against the other filters, not the whole menu', () => {
+    // Picking a category then opening the price menu should offer the prices
+    // in that category — not ones that would empty the table when chosen.
+    const counts = columnValueCounts(priced, { ...EMPTY_FILTERS, categoryId: 2 }, 'price');
+
+    expect(counts).toEqual([{ value: '7.00', count: 1 }]);
+  });
+
+  it('still offers every value of the column being edited', () => {
+    // Its own picks must not narrow its own list, or unticking would be a
+    // one-way door.
+    const filters = { ...EMPTY_FILTERS, columns: { price: ['3.00'] } };
+
+    expect(columnValueCounts(priced, filters, 'price').map((c) => c.value)).toEqual(['3.00', '7.00']);
+  });
+
+  it('combines a column pick with the search box', () => {
+    // "b" hits only the item named B — the others' category ("Snacks") has no b.
+    const rows = applyFilters(priced, { ...EMPTY_FILTERS, search: 'b', columns: { price: ['3.00'] } });
+
+    expect(rows.map((i) => i.id)).toEqual([2]);
+  });
+
+  it('counts each column pick towards the filter badge', () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, columns: { price: ['3.00'], gst: ['Exempt'] } })).toBe(2);
+    expect(activeFilterCount({ ...EMPTY_FILTERS, columns: { price: [] } })).toBe(0);
+  });
+
+  it('shows the same value the cell shows', () => {
+    expect(columnValue(priced[0], 'price')).toBe('3.00');
+    expect(columnValue(priced[2], 'category')).toBe('Grill');
+    expect(columnValue(priced[0], 'gst')).toBe('GST 8%');
+    expect(columnValue(priced[0], 'available')).toBe('Yes');
+    expect(columnValue(item({ sku: null }), 'sku')).toBe('—');
   });
 });

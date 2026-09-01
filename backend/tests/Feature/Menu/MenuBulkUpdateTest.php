@@ -39,11 +39,12 @@ class MenuBulkUpdateTest extends TestCase
         ], $attrs));
     }
 
-    private function bulk(array $changes, array $variantChanges = [])
+    private function bulk(array $changes, array $variantChanges = [], array $newItems = [])
     {
         return $this->postJson('/api/items/bulk-update', [
             'changes' => $changes,
             'variant_changes' => $variantChanges,
+            'new_items' => $newItems,
         ]);
     }
 
@@ -432,5 +433,134 @@ class MenuBulkUpdateTest extends TestCase
             ->assertStatus(422);
 
         $this->assertSame('mild', $item->fresh()->spice_level);
+    }
+
+    // ── New rows typed into the sheet ────────────────────────────────────────
+
+    public function test_it_creates_an_item_from_a_new_row(): void
+    {
+        // Owner, 2026-09-01: "there is no new item add row in the sheet".
+        $this->actAsOwner();
+        $category = $this->makeCategory();
+
+        $this->bulk([], [], [[
+            'name' => 'Masroshi',
+            'base_price' => 5,
+            'category_id' => $category->id,
+        ]])->assertOk()->assertJsonPath('created', 1);
+
+        $item = Item::where('name', 'Masroshi')->firstOrFail();
+        $this->assertEqualsWithDelta(5.0, (float) $item->base_price, 0.001);
+        $this->assertSame($category->id, $item->category_id);
+    }
+
+    public function test_a_new_item_is_actually_sellable(): void
+    {
+        // Without channel availability rows the item fails the
+        // whereExists check in KitchenMenuResolver and appears nowhere.
+        $this->actAsOwner();
+
+        $this->bulk([], [], [['name' => 'Masroshi', 'base_price' => 5]])->assertOk();
+
+        $item = Item::where('name', 'Masroshi')->firstOrFail();
+        $channels = $item->channelAvailabilities()->pluck('is_enabled', 'channel');
+        $this->assertTrue((bool) $channels['dine_in']);
+        $this->assertTrue((bool) $channels['delivery']);
+        // Catering stays opt-in.
+        $this->assertFalse((bool) $channels['catering']);
+    }
+
+    public function test_a_new_row_needs_a_name_and_a_price(): void
+    {
+        $this->actAsOwner();
+
+        $response = $this->bulk([], [], [['name' => '']])->assertStatus(422);
+
+        $response->assertJsonPath('new_row_errors.0.name.0', 'The name field is required.');
+        $response->assertJsonPath('new_row_errors.0.base_price.0', 'The base price field is required.');
+    }
+
+    public function test_a_new_row_and_an_edit_land_or_fail_together(): void
+    {
+        $this->actAsOwner();
+        $existing = $this->item(['base_price' => 10]);
+
+        $this->bulk(
+            [['id' => $existing->id, 'fields' => ['base_price' => 12]]],
+            [],
+            [['name' => 'Masroshi', 'base_price' => -1]],
+        )->assertStatus(422);
+
+        $this->assertEqualsWithDelta(10.0, (float) $existing->fresh()->base_price, 0.001);
+        $this->assertNull(Item::where('name', 'Masroshi')->first());
+    }
+
+    public function test_a_new_row_cannot_take_a_sku_that_is_already_used(): void
+    {
+        $this->actAsOwner();
+        $this->item(['sku' => 'TAKEN']);
+
+        $this->bulk([], [], [['name' => 'Masroshi', 'base_price' => 5, 'sku' => 'TAKEN']])
+            ->assertStatus(422);
+
+        $this->assertNull(Item::where('name', 'Masroshi')->first());
+    }
+
+    public function test_two_new_rows_cannot_claim_the_same_sku(): void
+    {
+        $this->actAsOwner();
+
+        $this->bulk([], [], [
+            ['name' => 'One', 'base_price' => 5, 'sku' => 'DUP'],
+            ['name' => 'Two', 'base_price' => 6, 'sku' => 'DUP'],
+        ])->assertStatus(422);
+
+        $this->assertNull(Item::where('name', 'One')->first());
+        $this->assertNull(Item::where('name', 'Two')->first());
+    }
+
+    public function test_a_new_row_refuses_fields_the_grid_does_not_own(): void
+    {
+        $this->actAsOwner();
+
+        $this->bulk([], [], [['name' => 'X', 'base_price' => 5, 'variants' => []]])
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'new_row_errors.0.variants.0',
+                'This field cannot be set from the bulk editor.',
+            );
+    }
+
+    public function test_a_manager_cannot_set_cost_on_a_new_row(): void
+    {
+        Sanctum::actingAs($this->makeManager(), ['staff']);
+
+        $this->bulk([], [], [['name' => 'X', 'base_price' => 5, 'cost' => 2]])
+            ->assertStatus(422)
+            ->assertJsonPath('new_row_errors.0.cost.0', 'Only an owner may set cost price.');
+    }
+
+    public function test_a_new_row_that_tracks_stock_gets_stock_based_availability(): void
+    {
+        $this->actAsOwner();
+
+        $this->bulk([], [], [[
+            'name' => 'Bajiya', 'base_price' => 5, 'track_stock' => true, 'stock_quantity' => 20,
+        ]])->assertOk();
+
+        $item = Item::where('name', 'Bajiya')->firstOrFail();
+        $this->assertSame('stock_based', $item->availability_type);
+    }
+
+    public function test_the_reply_says_what_was_created_and_what_was_updated(): void
+    {
+        $this->actAsOwner();
+        $existing = $this->item(['base_price' => 10]);
+
+        $this->bulk(
+            [['id' => $existing->id, 'fields' => ['base_price' => 12]]],
+            [],
+            [['name' => 'Masroshi', 'base_price' => 5]],
+        )->assertOk()->assertJsonPath('message', '1 item created, 1 item updated.');
     }
 }

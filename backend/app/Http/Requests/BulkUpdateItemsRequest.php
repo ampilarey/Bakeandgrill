@@ -34,6 +34,11 @@ class BulkUpdateItemsRequest extends FormRequest
             'variant_changes' => ['sometimes', 'array', 'max:' . MenuBulkUpdateService::MAX_ROWS],
             'variant_changes.*.id' => ['required', 'integer', 'distinct', 'exists:variants,id'],
             'variant_changes.*.fields' => ['required', 'array', 'min:1'],
+            // New rows typed into the bottom of the sheet. Capped harder than
+            // edits: creating 500 items by accident is a different kind of
+            // mess from mistyping 500 prices.
+            'new_items' => ['sometimes', 'array', 'max:100'],
+            'new_items.*' => ['required', 'array', 'min:1'],
         ];
     }
 
@@ -44,6 +49,7 @@ class BulkUpdateItemsRequest extends FormRequest
             'changes.*.id.distinct' => 'The same item appears twice in this save.',
             'variant_changes.max' => 'Too many sizes in one save (limit ' . MenuBulkUpdateService::MAX_ROWS . '). Narrow the filter and try again.',
             'variant_changes.*.id.distinct' => 'The same size appears twice in this save.',
+            'new_items.max' => 'Too many new items in one save (limit 100).',
         ];
     }
 }

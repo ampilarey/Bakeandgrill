@@ -1,5 +1,5 @@
 import type { MenuItem } from '../../api';
-import { GRID_COLUMNS, marginPct } from './gridColumns';
+import { GRID_COLUMNS, TAX_CODES, marginPct } from './gridColumns';
 
 /**
  * Search, filter and sort for the quick-edit grid.
@@ -10,6 +10,16 @@ import { GRID_COLUMNS, marginPct } from './gridColumns';
  * (a search that has to see Dhivehi names and size names, a sort that must
  * not orphan a size from its dish) are testable without a rendered table.
  */
+
+/**
+ * Per-column value picks, the way a spreadsheet's autofilter works.
+ *
+ * Owner, 2026-09-01: "when i click price and select all the items for 3
+ * rufiyaa". Keyed by column, holding the exact displayed values to keep — a
+ * column with no entry is not filtering. Values are compared as the strings
+ * the header dropdown showed, so what you ticked is exactly what you get.
+ */
+export type ColumnFilters = Record<string, string[]>;
 
 export type GridFilters = {
   /** Matches name, Dhivehi name, card name, SKU, barcode and size names. */
@@ -23,6 +33,7 @@ export type GridFilters = {
   stock: 'any' | 'tracked' | 'untracked' | 'low' | 'out';
   minPrice: string;
   maxPrice: string;
+  columns: ColumnFilters;
 };
 
 export const EMPTY_FILTERS: GridFilters = {
@@ -36,6 +47,7 @@ export const EMPTY_FILTERS: GridFilters = {
   stock: 'any',
   minPrice: '',
   maxPrice: '',
+  columns: {},
 };
 
 export type SortState = { key: string; direction: 'asc' | 'desc' } | null;
@@ -52,8 +64,74 @@ export function activeFilterCount(filters: GridFilters): number {
   if (filters.stock !== 'any') n += 1;
   if (filters.minPrice.trim() !== '') n += 1;
   if (filters.maxPrice.trim() !== '') n += 1;
+  n += Object.values(filters.columns).filter((v) => v.length > 0).length;
 
   return n;
+}
+
+/**
+ * The value a column shows for a row — what the header dropdown lists and
+ * what a tick compares against, so the two can never disagree.
+ */
+export function columnValue(item: MenuItem, key: string): string {
+  const column = GRID_COLUMNS.find((c) => c.key === key);
+
+  switch (key) {
+    case 'category': return item.category?.name ?? '—';
+    case 'menu_group': return item.menu_group?.name ?? '—';
+    case 'gst': return TAX_CODES.find((t) => t.value === (item.tax_code ?? 'standard_8'))?.label
+      ?? String(item.tax_code ?? '—');
+    case 'margin': {
+      const pct = marginPct(item);
+      return pct === null ? '—' : `${pct.toFixed(1)}%`;
+    }
+    default: break;
+  }
+
+  const raw = (item as unknown as Record<string, unknown>)[column?.field ?? key];
+  if (raw === null || raw === undefined || raw === '') return '—';
+  if (typeof raw === 'boolean') return raw ? 'Yes' : 'No';
+  if (column?.kind === 'money') return Number(raw).toFixed(2);
+  if (column?.kind === 'select') {
+    return column.options?.find((o) => o.value === String(raw))?.label ?? String(raw);
+  }
+
+  return String(raw);
+}
+
+/**
+ * Every distinct value in a column, with how many rows carry it.
+ *
+ * Counted over the rows the OTHER filters already left, so ticking a category
+ * and then opening the price dropdown offers the prices in that category —
+ * not prices that would vanish the moment they were picked.
+ */
+export function columnValueCounts(
+  items: MenuItem[],
+  filters: GridFilters,
+  key: string,
+): Array<{ value: string; count: number }> {
+  const others: GridFilters = { ...filters, columns: { ...filters.columns } };
+  delete others.columns[key];
+
+  const counts = new Map<string, number>();
+  for (const item of applyFilters(items, others)) {
+    const value = columnValue(item, key);
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  const numeric = GRID_COLUMNS.find((c) => c.key === key)?.kind;
+  const rows = [...counts.entries()].map(([value, count]) => ({ value, count }));
+
+  return rows.sort((a, b) => {
+    if (numeric === 'money' || numeric === 'int' || numeric === 'decimal') {
+      const an = Number(a.value);
+      const bn = Number(b.value);
+      if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+    }
+
+    return a.value.localeCompare(b.value, undefined, { numeric: true });
+  });
 }
 
 function haystack(item: MenuItem): string {
@@ -112,6 +190,11 @@ export function applyFilters(items: MenuItem[], filters: GridFilters): MenuItem[
     const price = Number(item.base_price);
     if (min !== null && Number.isFinite(min) && !(price >= min)) return false;
     if (max !== null && Number.isFinite(max) && !(price <= max)) return false;
+
+    for (const [key, allowed] of Object.entries(filters.columns)) {
+      if (allowed.length === 0) continue;
+      if (!allowed.includes(columnValue(item, key))) return false;
+    }
 
     return true;
   });

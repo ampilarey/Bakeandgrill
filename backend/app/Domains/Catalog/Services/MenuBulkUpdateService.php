@@ -128,6 +128,7 @@ class MenuBulkUpdateService
     public function __construct(
         private readonly GstItemTaxNormalizer $taxNormalizer,
         private readonly AuditLogService $audit,
+        private readonly ItemChannelSeeder $channels,
     ) {}
 
     /**
@@ -137,6 +138,59 @@ class MenuBulkUpdateService
     public function validate(array $changes, bool $canSeeCost): array
     {
         return $this->validateRows($changes, self::fieldRules(), $canSeeCost, ['sku', 'barcode']);
+    }
+
+    /**
+     * New rows typed into the bottom of the sheet.
+     *
+     * Creation asks for more than an edit does: a nameless, priceless row is
+     * not a dish, and the grid cannot show the composed parts (photos, sizes,
+     * recipe) that the full editor collects — so a row made here is a
+     * skeleton the owner finishes in Edit.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return array<int, array<string, list<string>>>
+     */
+    public function validateNew(array $rows, bool $canSeeCost): array
+    {
+        $allowed = self::fieldRules();
+        $errors = [];
+
+        foreach ($rows as $index => $fields) {
+            $rowErrors = [];
+
+            foreach (array_keys($fields) as $field) {
+                if (!array_key_exists($field, $allowed)) {
+                    $rowErrors[$field] = ['This field cannot be set from the bulk editor.'];
+                } elseif (!$canSeeCost && in_array($field, self::costFields(), true)) {
+                    $rowErrors[$field] = ['Only an owner may set cost price.'];
+                }
+            }
+
+            $rules = [];
+            foreach ($fields as $field => $_) {
+                if (isset($allowed[$field]) && !isset($rowErrors[$field])) {
+                    // No row to exclude yet, so unique rules apply in full.
+                    $rules[$field] = str_replace(',:id', '', $allowed[$field]);
+                }
+            }
+            $rules['name'] = 'required|string|max:255';
+            $rules['base_price'] = 'required|numeric|min:0|max:1000000';
+
+            $validator = Validator::make($fields, $rules);
+            if ($validator->fails()) {
+                $rowErrors += $validator->errors()->toArray();
+            }
+
+            if ($rowErrors !== []) {
+                $errors[$index] = $rowErrors;
+            }
+        }
+
+        return $errors + $this->duplicateErrors(
+            array_map(static fn (array $f) => ['id' => 0, 'fields' => $f], $rows),
+            ['sku', 'barcode'],
+        );
     }
 
     /**
@@ -239,9 +293,13 @@ class MenuBulkUpdateService
      * @param list<array{id: int, fields: array<string, mixed>}> $variantChanges
      * @return array{updated: int, unchanged: int, items: list<Item>}
      */
-    public function apply(array $changes, array $variantChanges = [], ?Request $request = null): array
-    {
-        return DB::transaction(function () use ($changes, $variantChanges, $request) {
+    public function apply(
+        array $changes,
+        array $variantChanges = [],
+        array $newRows = [],
+        ?Request $request = null,
+    ): array {
+        return DB::transaction(function () use ($changes, $variantChanges, $newRows, $request) {
             $ids = array_map(static fn (array $c) => $c['id'], $changes);
             // Locked up-front so a concurrent single-item save cannot land
             // between our read of the old values and our write of the new.
@@ -327,7 +385,21 @@ class MenuBulkUpdateService
                 }
             }
 
-            if ($touched !== [] || $touchedVariants !== []) {
+            $created = [];
+            foreach ($newRows as $fields) {
+                $fields = $this->taxNormalizer->normalize($fields);
+                if (($fields['track_stock'] ?? false)) {
+                    $fields['availability_type'] = 'stock_based';
+                }
+                $item = Item::create($fields);
+                // Without channel rows the item is invisible everywhere —
+                // see ItemChannelSeeder.
+                $this->channels->seed($item);
+                $created[] = ['id' => $item->id, 'name' => $item->name];
+                $ids[] = (int) $item->id;
+            }
+
+            if ($touched !== [] || $touchedVariants !== [] || $created !== []) {
                 // Item edits are not otherwise audited. A bulk change is the
                 // one that is hard to reconstruct afterwards ("who put every
                 // burger up 10%?"), so record the before and after per row.
@@ -346,6 +418,8 @@ class MenuBulkUpdateService
                     meta: [
                         'item_count' => count($touched),
                         'variant_count' => count($touchedVariants),
+                        'created_count' => count($created),
+                        'created' => $created,
                         'items' => array_map(
                             static fn (array $r) => ['id' => $r['id'], 'name' => $r['name']],
                             $touched,
@@ -365,6 +439,7 @@ class MenuBulkUpdateService
 
             return [
                 'updated' => count($touched) + count($touchedVariants),
+                'created' => count($created),
                 'unchanged' => $unchanged,
                 'items' => Item::query()
                     ->with(['category', 'variants', 'menuGroup', 'channelAvailabilities'])

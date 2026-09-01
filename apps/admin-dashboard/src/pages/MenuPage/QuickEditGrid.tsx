@@ -26,7 +26,11 @@ import {
   visibleColumns,
   type GridColumn,
 } from './gridColumns';
-import { EMPTY_FILTERS, nextSort, visibleRows, type GridFilters, type SortState } from './gridFilters';
+import { ColumnFilterMenu } from './ColumnFilterMenu';
+import {
+  EMPTY_FILTERS, columnValueCounts, nextSort, visibleRows,
+  type GridFilters, type SortState,
+} from './gridFilters';
 import { csvFilename, csvToDrafts, itemsToCsv, parseCsv, type CsvImportResult } from './menuCsv';
 
 /**
@@ -42,6 +46,12 @@ import { csvFilename, csvToDrafts, itemsToCsv, parseCsv, type CsvImportResult } 
  * applies the batch in one transaction, so a rejected row leaves the menu
  * exactly as it was and comes back highlighted.
  */
+
+/** Remembered choice for whether sizes start open. */
+const SIZES_KEY = 'menu-quick-edit-sizes';
+
+/** A row typed into the bottom of the sheet, before it exists. */
+type NewRow = { key: string; fields: Record<string, unknown> };
 
 const cell: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'middle' };
 const head: React.CSSProperties = {
@@ -128,8 +138,20 @@ export function QuickEditGrid({
 
   const [drafts, setDrafts] = useState<Drafts>({});
   const [variantDrafts, setVariantDrafts] = useState<Drafts>({});
+  // Owner, 2026-09-01: "variant is minimized by default, i have to maximize
+  // each variant". Sizes now start open, and the choice is remembered.
+  const [expandAll, setExpandAll] = useState(() => {
+    try {
+      return localStorage.getItem(SIZES_KEY) !== 'collapsed';
+    } catch {
+      return true;
+    }
+  });
+  const [collapsed, setCollapsed] = useState<number[]>([]);
   const [expanded, setExpanded] = useState<number[]>([]);
-  const [expandAll, setExpandAll] = useState(false);
+  const [newRows, setNewRows] = useState<NewRow[]>([]);
+  const [newRowErrors, setNewRowErrors] = useState<BulkRowErrors | null>(null);
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [rowErrors, setRowErrors] = useState<BulkRowErrors | null>(null);
   const [variantErrors, setVariantErrors] = useState<BulkRowErrors | null>(null);
@@ -150,11 +172,24 @@ export function QuickEditGrid({
     () => draftsToChanges(variants, variantDrafts),
     [variants, variantDrafts],
   );
-  const dirtyCells = useMemo(
-    () => countDirtyCells(items, drafts) + countDirtyCells(variants, variantDrafts),
-    [items, drafts, variants, variantDrafts],
+  /** New rows carrying anything at all — a blank row is not a pending item. */
+  const filledNewRows = useMemo(
+    () => newRows.filter((r) => Object.entries(r.fields)
+      .some(([k, v]) => k !== 'category_id' && v !== '' && v !== null && v !== undefined)),
+    [newRows],
   );
-  const dirtyRows = changes.length + variantChanges.length;
+  const dirtyCells = useMemo(
+    () => countDirtyCells(items, drafts)
+      + countDirtyCells(variants, variantDrafts)
+      // Only cells actually filled in count — the row is seeded with the
+      // current category filter, and a seeded blank is not something typed.
+      + filledNewRows.reduce(
+        (n, r) => n + Object.values(r.fields).filter((v) => v !== '' && v !== null && v !== undefined).length,
+        0,
+      ),
+    [items, drafts, variants, variantDrafts, filledNewRows],
+  );
+  const dirtyRows = changes.length + variantChanges.length + filledNewRows.length;
   const hasSizes = variants.length > 0;
 
   const setColumns = (keys: string[]) => {
@@ -190,7 +225,7 @@ export function QuickEditGrid({
     return fieldChanged(record, field, (draft as Record<string, unknown>)[field]);
   };
 
-  const clearErrors = () => { setRowErrors(null); setVariantErrors(null); };
+  const clearErrors = () => { setRowErrors(null); setVariantErrors(null); setNewRowErrors(null); };
 
   const setField = (id: number, field: string, value: unknown) => {
     setDrafts((d) => ({ ...d, [id]: { ...(d[id] ?? {}), [field]: value } as BulkItemFields }));
@@ -202,14 +237,45 @@ export function QuickEditGrid({
     clearErrors();
   };
 
-  const toggleExpanded = (id: number) =>
-    setExpanded((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
+  // With sizes open by default, a per-row click is an exception to that
+  // default in whichever direction the default is not.
+  const isRowOpen = (id: number, pendingSize: boolean) =>
+    pendingSize || (expandAll ? !collapsed.includes(id) : expanded.includes(id));
+
+  const toggleExpanded = (id: number) => {
+    if (expandAll) {
+      setCollapsed((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+    } else {
+      setExpanded((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
+    }
+  };
 
   const toggleExpandAll = () => {
     const next = !expandAll;
     setExpandAll(next);
-    setExpanded(next ? rows.map((i) => i.id) : []);
+    setCollapsed([]);
+    setExpanded([]);
+    try {
+      localStorage.setItem(SIZES_KEY, next ? 'expanded' : 'collapsed');
+    } catch {
+      /* a browser refusing storage is not a reason to fail the edit */
+    }
   };
+
+  const addNewRow = () =>
+    setNewRows((r) => [...r, { key: `new-${Date.now()}-${r.length}`, fields: { category_id: categoryId } }]);
+
+  const setNewRowField = (key: string, field: string, value: unknown) => {
+    setNewRows((r) => r.map((row) => (row.key === key ? { ...row, fields: { ...row.fields, [field]: value } } : row)));
+    setNewRowErrors(null);
+  };
+
+  const removeNewRow = (key: string) => {
+    setNewRows((r) => r.filter((row) => row.key !== key));
+    setNewRowErrors(null);
+  };
+
+
 
   // Selection is scoped to what is on screen: ticking "all" while a filter is
   // on must not quietly include the rows the filter hid.
@@ -265,14 +331,19 @@ export function QuickEditGrid({
   };
 
   const save = async () => {
-    if (changes.length === 0 && variantChanges.length === 0) return;
+    if (changes.length === 0 && variantChanges.length === 0 && filledNewRows.length === 0) return;
     setSaving(true);
     setError('');
     clearErrors();
     try {
-      const res = await bulkUpdateItems(changes, variantChanges);
+      const res = await bulkUpdateItems(
+        changes,
+        variantChanges,
+        filledNewRows.map((r) => r.fields as BulkItemFields),
+      );
       setDrafts({});
       setVariantDrafts({});
+      setNewRows([]);
       setSelected([]);
       setCsvNotice(null);
       onSaved(res.message);
@@ -282,6 +353,7 @@ export function QuickEditGrid({
       if (parsed) {
         setRowErrors(parsed.items);
         setVariantErrors(parsed.variants);
+        setNewRowErrors(parsed.newRows);
       }
       setError((e as Error).message);
     } finally {
@@ -292,6 +364,7 @@ export function QuickEditGrid({
   const discard = () => {
     setDrafts({});
     setVariantDrafts({});
+    setNewRows([]);
     clearErrors();
     setError('');
     setCsvNotice(null);
@@ -338,7 +411,7 @@ export function QuickEditGrid({
   }
 
   return (
-    <>
+    <div onClick={() => setOpenFilter(null)}>
       <GridToolbar
         filters={filters}
         onFiltersChange={setFilters}
@@ -489,6 +562,21 @@ export function QuickEditGrid({
                       column={c}
                       sort={sort}
                       onSort={() => setSort((s) => nextSort(s, c.key))}
+                      filtered={(filters.columns[c.key] ?? []).length > 0}
+                      menuOpen={openFilter === c.key}
+                      onToggleMenu={() => setOpenFilter((k) => (k === c.key ? null : c.key))}
+                      menu={openFilter === c.key ? (
+                        <ColumnFilterMenu
+                          label={c.label}
+                          values={columnValueCounts(items, filters, c.key)}
+                          selected={filters.columns[c.key] ?? []}
+                          onChange={(next) => setFilters((f) => ({
+                            ...f,
+                            columns: { ...f.columns, [c.key]: next },
+                          }))}
+                          onClose={() => setOpenFilter(null)}
+                        />
+                      ) : null}
                     />
                   ))}
                 </tr>
@@ -500,7 +588,7 @@ export function QuickEditGrid({
                   // A dirty or rejected size forces its dish open, so a pending
                   // edit can never be hidden behind a collapsed row.
                   const hasPendingSize = sizes.some((v) => v.id != null && variantDrafts[v.id]);
-                  const isOpen = expanded.includes(item.id) || hasPendingSize;
+                  const isOpen = isRowOpen(item.id, hasPendingSize);
 
                   return (
                     <Fragment key={item.id}>
@@ -560,6 +648,51 @@ export function QuickEditGrid({
                     </Fragment>
                   );
                 })}
+
+                {/* New rows live at the bottom of the sheet and go through the
+                    same all-or-nothing save as every edit above them. */}
+                {newRows.map((row, index) => (
+                  <tr
+                    key={row.key}
+                    data-testid={`quick-edit-new-${index}`}
+                    style={{ borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-warning-bg)' }}
+                  >
+                    <td style={{ ...cell, textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => removeNewRow(row.key)}
+                        aria-label={`Remove new row ${index + 1}`}
+                        style={{
+                          border: 'none', background: 'none', cursor: 'pointer',
+                          color: 'var(--color-danger)', fontSize: 16, lineHeight: 1, padding: 0,
+                        }}
+                      >×</button>
+                    </td>
+                    {columns.map((c) => (
+                      <NewCell
+                        key={c.key}
+                        column={c}
+                        index={index}
+                        categories={categories}
+                        menuGroups={menuGroups}
+                        value={c.field ? row.fields[c.field] : undefined}
+                        errors={c.field ? (newRowErrors?.[index]?.[c.field] ?? null) : null}
+                        onChange={(v) => c.field && setNewRowField(row.key, c.field, v)}
+                      />
+                    ))}
+                  </tr>
+                ))}
+
+                <tr>
+                  <td colSpan={columns.length + 1} style={{ padding: '8px' }}>
+                    <Btn small variant="secondary" onClick={addNewRow} data-testid="grid-add-row">
+                      + Add item row
+                    </Btn>
+                    <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      Name and price are required. Photos, sizes and recipes are added afterwards from Edit.
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -571,33 +704,102 @@ export function QuickEditGrid({
         here — use <strong>Edit</strong> on the normal list for those. Only the cells you change are
         saved, so this will not overwrite anything somebody else is editing.
       </p>
-    </>
+    </div>
   );
 }
 
 function SortableHeader({
-  column, sort, onSort,
-}: { column: GridColumn; sort: SortState; onSort: () => void }) {
+  column, sort, onSort, filtered, menuOpen, onToggleMenu, menu,
+}: {
+  column: GridColumn;
+  sort: SortState;
+  onSort: () => void;
+  filtered: boolean;
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  menu: React.ReactNode;
+}) {
   const active = sort?.key === column.key;
   const arrow = !active ? '⇅' : sort?.direction === 'asc' ? '↑' : '↓';
 
   return (
-    <th style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width }}>
-      <button
-        type="button"
-        onClick={onSort}
-        aria-label={`Sort by ${column.label}`}
-        style={{
-          border: 'none', background: 'none', cursor: 'pointer', padding: 0,
-          font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit',
-          color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-          display: 'flex', alignItems: 'center', gap: 4,
-        }}
-      >
-        {column.label}
-        <span style={{ fontSize: 10, opacity: active ? 1 : 0.5 }}>{arrow}</span>
-      </button>
+    <th style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width, position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <button
+          type="button"
+          onClick={onSort}
+          aria-label={`Sort by ${column.label}`}
+          style={{
+            border: 'none', background: 'none', cursor: 'pointer', padding: 0,
+            font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit',
+            color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          {column.label}
+          <span style={{ fontSize: 10, opacity: active ? 1 : 0.5 }}>{arrow}</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleMenu(); }}
+          aria-label={`Filter by ${column.label}`}
+          aria-expanded={menuOpen}
+          title={`Pick which ${column.label} values to show`}
+          style={{
+            border: 'none', background: 'none', cursor: 'pointer', padding: '0 2px',
+            fontSize: 11, lineHeight: 1,
+            color: filtered ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            opacity: filtered ? 1 : 0.55,
+          }}
+        >
+          ▼
+        </button>
+      </div>
+      {menu}
     </th>
+  );
+}
+
+/**
+ * A cell on a not-yet-created row.
+ *
+ * Booleans start ticked for available and active, because a dish typed into
+ * the sheet is one somebody means to sell — a new row that silently arrives
+ * hidden is the sort of thing found weeks later.
+ */
+function NewCell({
+  column, index, categories, menuGroups, value, errors, onChange,
+}: {
+  column: GridColumn;
+  index: number;
+  categories: MenuCategory[];
+  menuGroups: MenuGroupRow[];
+  value: unknown;
+  errors: string[] | null;
+  onChange: (value: unknown) => void;
+}) {
+  if (!column.field) {
+    return <td style={{ ...cell, fontSize: 11, color: 'var(--color-text-muted)' }}>—</td>;
+  }
+
+  const defaulted = value === undefined && ['is_available', 'is_active'].includes(column.field)
+    ? true
+    : value;
+
+  return (
+    <td style={cell}>
+      <Editor
+        column={column}
+        label={`New row ${index + 1} ${column.label}`}
+        value={defaulted}
+        dirty={false}
+        invalid={!!errors}
+        categories={categories}
+        menuGroups={menuGroups}
+        onChange={onChange}
+      />
+      {errors && <FieldError messages={errors} />}
+    </td>
   );
 }
 

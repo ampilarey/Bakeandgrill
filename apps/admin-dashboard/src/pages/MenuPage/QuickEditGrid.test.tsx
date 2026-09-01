@@ -34,7 +34,7 @@ const items = [
 
 function renderGrid(over: Partial<Parameters<typeof QuickEditGrid>[0]> = {}) {
   const onSaved = vi.fn();
-  render(
+  const view = render(
     <QuickEditGrid
       initialItems={items}
       categories={[{ id: 1, name: 'Snacks', is_active: true }, { id: 2, name: 'Grill', is_active: true }]}
@@ -48,7 +48,7 @@ function renderGrid(over: Partial<Parameters<typeof QuickEditGrid>[0]> = {}) {
     />,
   );
 
-  return { onSaved };
+  return { onSaved, unmount: view.unmount };
 }
 
 beforeEach(() => {
@@ -66,7 +66,7 @@ describe('QuickEditGrid editing', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     await waitFor(() => expect(bulkUpdateItems).toHaveBeenCalledTimes(1));
-    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { base_price: 12 } }], []);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 1, fields: { base_price: 12 } }], [], []);
   });
 
   it('does not count a cell typed back to its original value', async () => {
@@ -156,7 +156,7 @@ describe('QuickEditGrid bulk apply', () => {
     expect(bulkUpdateItems).toHaveBeenCalledWith([
       { id: 1, fields: { is_available: false } },
       { id: 2, fields: { is_available: false } },
-    ], []);
+    ], [], []);
   });
 
   it('says nothing would change when the action is already true of every row', async () => {
@@ -180,6 +180,7 @@ describe('QuickEditGrid failures', () => {
       body: {
         row_errors: { 0: { base_price: ['The base price field must be at least 0.'] } },
         variant_row_errors: {},
+        new_row_errors: {},
       },
     });
     bulkUpdateItems.mockRejectedValue(failure);
@@ -218,37 +219,43 @@ describe('QuickEditGrid sizes', () => {
     ],
   });
 
-  it('folds sizes away until the row is expanded', () => {
+  it('shows sizes straight away rather than making each be opened', () => {
+    // Owner, 2026-09-01: "variant is minimized by default, i have to maximize
+    // each variant".
     renderGrid({ initialItems: [sized] });
-
-    expect(screen.queryByLabelText('Price for Beetle leaf — Full')).toBeNull();
-
-    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
 
     expect(screen.getByLabelText('Price for Beetle leaf — Full')).toHaveValue(20);
     expect(screen.getByLabelText('Price for Beetle leaf — Half')).toHaveValue(12);
   });
 
+  it('lets one dish be folded away without folding the rest', () => {
+    renderGrid({ initialItems: [sized] });
+
+    fireEvent.click(screen.getByLabelText('Hide sizes for Beetle leaf'));
+    expect(screen.queryByLabelText('Price for Beetle leaf — Full')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
+    expect(screen.getByLabelText('Price for Beetle leaf — Full')).toBeInTheDocument();
+  });
+
   it('sends a size price in its own list, not the item list', () => {
     renderGrid({ initialItems: [sized] });
-    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
 
     fireEvent.change(screen.getByLabelText('Price for Beetle leaf — Half'), { target: { value: '14' } });
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
-    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { price: 14 } }]);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { price: 14 } }], []);
   });
 
   it('edits the consumption factor per size', () => {
     // "Uses" is an optional column, so turn it on the way a user would.
     localStorage.setItem('menu-quick-edit-columns', JSON.stringify(['name', 'price', 'consumption_factor']));
     renderGrid({ initialItems: [sized] });
-    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
 
     fireEvent.change(screen.getByLabelText('Uses for Beetle leaf — Half'), { target: { value: '0.25' } });
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
-    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { consumption_factor: 0.25 } }]);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { consumption_factor: 0.25 } }], []);
   });
 
   it('carries a bulk price rise down to the sizes', () => {
@@ -266,15 +273,18 @@ describe('QuickEditGrid sizes', () => {
         { id: 30, fields: { price: 22 } },
         { id: 31, fields: { price: 13.2 } },
       ],
+      [],
     );
   });
 
   it('highlights a rejected size and keeps it pending', async () => {
     bulkUpdateItems.mockRejectedValue(Object.assign(new Error('No changes were saved — 1 of 1 rows need fixing.'), {
-      body: { row_errors: {}, variant_row_errors: { 0: { price: ['The price field must be at least 0.'] } } },
+      body: {
+        row_errors: {}, new_row_errors: {},
+        variant_row_errors: { 0: { price: ['The price field must be at least 0.'] } },
+      },
     }));
     renderGrid({ initialItems: [sized] });
-    fireEvent.click(screen.getByLabelText('Show sizes for Beetle leaf'));
 
     fireEvent.change(screen.getByLabelText('Price for Beetle leaf — Half'), { target: { value: '14' } });
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
@@ -427,18 +437,21 @@ describe('QuickEditGrid expand all', () => {
     }),
   ];
 
-  it('opens and closes every dish at once', () => {
-    // Owner, 2026-09-01: "variant is minimized by default, i have to maximize
-    // each variant".
-    renderGrid({ initialItems: sizedMenu });
-    expect(screen.queryByTestId('quick-edit-size-50')).toBeNull();
-
-    fireEvent.click(screen.getByTestId('grid-expand-all'));
+  it('closes and reopens every dish at once, and remembers the choice', () => {
+    const { unmount } = renderGrid({ initialItems: sizedMenu });
     expect(screen.getByTestId('quick-edit-size-50')).toBeInTheDocument();
     expect(screen.getByTestId('quick-edit-size-60')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('grid-expand-all'));
     expect(screen.queryByTestId('quick-edit-size-50')).toBeNull();
+
+    // The preference survives leaving and coming back.
+    unmount();
+    renderGrid({ initialItems: sizedMenu });
+    expect(screen.queryByTestId('quick-edit-size-50')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('grid-expand-all'));
+    expect(screen.getByTestId('quick-edit-size-50')).toBeInTheDocument();
   });
 
   it('marks a sized dish price as the from price, not the real one', () => {
@@ -499,7 +512,7 @@ describe('QuickEditGrid extra bulk commands', () => {
     expect(bulkUpdateItems).toHaveBeenCalledWith([
       { id: 1, fields: { sort_order: 10 } },
       { id: 2, fields: { sort_order: 20 } },
-    ], []);
+    ], [], []);
   });
 
   it('sets a kitchen field across the selection', () => {
@@ -515,7 +528,7 @@ describe('QuickEditGrid extra bulk commands', () => {
     expect(bulkUpdateItems).toHaveBeenCalledWith([
       { id: 1, fields: { prep_time_minutes: 25 } },
       { id: 2, fields: { prep_time_minutes: 25 } },
-    ], []);
+    ], [], []);
   });
 
   it('hides cost and margin controls from anyone without recipes.manage', () => {
@@ -540,6 +553,163 @@ describe('QuickEditGrid extra bulk commands', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Stage 1 change/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
-    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 7, fields: { base_price: 22 } }], []);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 7, fields: { base_price: 22 } }], [], []);
+  });
+});
+
+describe('QuickEditGrid header filters', () => {
+  const priced = [
+    item({ id: 1, name: 'Bajiya', base_price: 3 }),
+    item({ id: 2, name: 'Gulha', base_price: 3 }),
+    item({ id: 3, name: 'Kulhi', base_price: 7 }),
+  ];
+
+  function openPriceFilter() {
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by Price' }));
+  }
+
+  it('lists the distinct values with counts', () => {
+    // Owner, 2026-09-01: "when i click price and select all the items for 3
+    // rufiyaa".
+    renderGrid({ initialItems: priced });
+    openPriceFilter();
+
+    const menu = within(screen.getByTestId('column-filter-menu'));
+    expect(menu.getByLabelText('Price 3.00')).toBeInTheDocument();
+    expect(menu.getByLabelText('Price 7.00')).toBeInTheDocument();
+  });
+
+  it('keeps only the rows carrying a ticked value', () => {
+    renderGrid({ initialItems: priced });
+    openPriceFilter();
+
+    // Untick 7.00, leaving the two rows priced at 3.
+    fireEvent.click(within(screen.getByTestId('column-filter-menu')).getByLabelText('Price 7.00'));
+
+    expect(screen.getByTestId('quick-edit-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId('quick-edit-row-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('quick-edit-row-3')).toBeNull();
+    expect(screen.getByTestId('grid-count')).toHaveTextContent('2 of 3 items');
+  });
+
+  it('narrows to one value with Only these', () => {
+    renderGrid({ initialItems: priced });
+    openPriceFilter();
+
+    const menu = within(screen.getByTestId('column-filter-menu'));
+    fireEvent.change(menu.getByLabelText('Find a value in Price'), { target: { value: '7' } });
+    fireEvent.click(menu.getByRole('button', { name: 'Only these' }));
+
+    expect(screen.getByTestId('quick-edit-row-3')).toBeInTheDocument();
+    expect(screen.queryByTestId('quick-edit-row-1')).toBeNull();
+  });
+
+  it('clears back to every row', () => {
+    renderGrid({ initialItems: priced });
+    openPriceFilter();
+    const menu = () => within(screen.getByTestId('column-filter-menu'));
+
+    fireEvent.click(menu().getByLabelText('Price 7.00'));
+    expect(screen.queryByTestId('quick-edit-row-3')).toBeNull();
+
+    fireEvent.click(menu().getByRole('button', { name: 'Clear' }));
+    expect(screen.getByTestId('quick-edit-row-3')).toBeInTheDocument();
+  });
+
+  it('counts a column pick towards the filter badge', () => {
+    renderGrid({ initialItems: priced });
+    openPriceFilter();
+    fireEvent.click(within(screen.getByTestId('column-filter-menu')).getByLabelText('Price 7.00'));
+
+    expect(screen.getByTestId('grid-filter-toggle')).toHaveTextContent('Filters (1)');
+  });
+});
+
+describe('QuickEditGrid new item row', () => {
+  it('adds nothing until a row is asked for', () => {
+    // Owner, 2026-09-01: "there is no new item add row in the sheet".
+    renderGrid();
+
+    expect(screen.queryByTestId('quick-edit-new-0')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+    expect(screen.getByTestId('quick-edit-new-0')).toBeInTheDocument();
+  });
+
+  it('does not count an untouched blank row as a pending change', () => {
+    renderGrid();
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
+    expect(screen.getByRole('button', { name: /^Save/ })).toBeDisabled();
+  });
+
+  it('sends a filled row as a new item', () => {
+    renderGrid();
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+
+    fireEvent.change(screen.getByLabelText('New row 1 Name'), { target: { value: 'Masroshi' } });
+    fireEvent.change(screen.getByLabelText('New row 1 Price'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [], [
+      expect.objectContaining({ name: 'Masroshi', base_price: 5 }),
+    ]);
+  });
+
+  it('sends new rows alongside edits in the same save', () => {
+    renderGrid();
+    fireEvent.change(screen.getByLabelText('Price for Bajiya'), { target: { value: '12' } });
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+    fireEvent.change(screen.getByLabelText('New row 1 Name'), { target: { value: 'Masroshi' } });
+    fireEvent.change(screen.getByLabelText('New row 1 Price'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith(
+      [{ id: 1, fields: { base_price: 12 } }],
+      [],
+      [expect.objectContaining({ name: 'Masroshi', base_price: 5 })],
+    );
+  });
+
+  it('removes a row that was added by mistake', () => {
+    renderGrid();
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+    fireEvent.change(screen.getByLabelText('New row 1 Name'), { target: { value: 'Oops' } });
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('1 unsaved change');
+
+    fireEvent.click(screen.getByLabelText('Remove new row 1'));
+
+    expect(screen.queryByTestId('quick-edit-new-0')).toBeNull();
+    expect(screen.getByTestId('quick-edit-dirty')).toHaveTextContent('No unsaved changes');
+  });
+
+  it('shows what the server refused on a new row', async () => {
+    bulkUpdateItems.mockRejectedValue(Object.assign(new Error('No changes were saved — 1 of 1 rows need fixing.'), {
+      body: {
+        row_errors: {}, variant_row_errors: {},
+        new_row_errors: { 0: { base_price: ['The base price field is required.'] } },
+      },
+    }));
+    renderGrid();
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+    fireEvent.change(screen.getByLabelText('New row 1 Name'), { target: { value: 'Masroshi' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    await waitFor(() =>
+      expect(screen.getByText('The base price field is required.')).toBeInTheDocument(),
+    );
+    // The typed row survives so it can be fixed rather than retyped.
+    expect(screen.getByLabelText('New row 1 Name')).toHaveValue('Masroshi');
+  });
+
+  it('discards new rows along with the other pending edits', () => {
+    renderGrid();
+    fireEvent.click(screen.getByTestId('grid-add-row'));
+    fireEvent.change(screen.getByLabelText('New row 1 Name'), { target: { value: 'Masroshi' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(screen.queryByTestId('quick-edit-new-0')).toBeNull();
   });
 });

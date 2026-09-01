@@ -356,6 +356,7 @@ export type BulkRowErrors = Record<number, Record<string, string[]>>;
 export type BulkUpdateResult = {
   message: string;
   updated: number;
+  created: number;
   unchanged: number;
   items: MenuItem[];
 };
@@ -371,10 +372,11 @@ export type BulkUpdateResult = {
 export async function bulkUpdateItems(
   changes: BulkItemChange[],
   variantChanges: BulkItemChange[] = [],
+  newItems: BulkItemFields[] = [],
 ): Promise<BulkUpdateResult> {
   return req('/items/bulk-update', {
     method: 'POST',
-    body: JSON.stringify({ changes, variant_changes: variantChanges }),
+    body: JSON.stringify({ changes, variant_changes: variantChanges, new_items: newItems }),
   });
 }
 
@@ -384,17 +386,20 @@ export async function bulkUpdateItems(
  * Items and sizes are reported separately because they are separate lists in
  * the request — an index means nothing without knowing which one it counts.
  */
-export function bulkRowErrors(
-  error: unknown,
-): { items: BulkRowErrors | null; variants: BulkRowErrors | null } | null {
+export function bulkRowErrors(error: unknown): {
+  items: BulkRowErrors | null;
+  variants: BulkRowErrors | null;
+  newRows: BulkRowErrors | null;
+} | null {
   const body = (error as { body?: unknown } | null)?.body;
   if (!body || typeof body !== 'object') return null;
   const asRows = (v: unknown) => (v && typeof v === 'object' ? (v as BulkRowErrors) : null);
   const items = asRows((body as { row_errors?: unknown }).row_errors);
   const variants = asRows((body as { variant_row_errors?: unknown }).variant_row_errors);
-  if (!items && !variants) return null;
+  const newRows = asRows((body as { new_row_errors?: unknown }).new_row_errors);
+  if (!items && !variants && !newRows) return null;
 
-  return { items, variants };
+  return { items, variants, newRows };
 }
 
 export async function deleteItem(id: number): Promise<void> {
