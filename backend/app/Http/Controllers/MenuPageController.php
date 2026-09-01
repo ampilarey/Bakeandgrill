@@ -13,6 +13,7 @@ use App\Support\ItemDisplayPhoto;
 use App\Support\PublicMediaUrl;
 use App\Support\SocialPreviewImage;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -86,7 +87,7 @@ class MenuPageController extends Controller
      * resolve: old social posts must not 404. A true 404 is only for an
      * id that never existed.
      */
-    public function show(int $item): View
+    public function show(int $item, Request $request): View
     {
         $row = Item::query()
             ->with(['variants', 'category', 'photos'])
@@ -105,7 +106,16 @@ class MenuPageController extends Controller
             app(SpecialPricingService::class)->activeSpecialsForDisplay(),
         );
 
+        // The menu grid opens an item in a sheet, so it asks for the body on
+        // its own. Gated on the header rather than a query string: a fragment
+        // has no <head>, no canonical and no structured data, so it must not
+        // be something a crawler or a shared link can land on. Anything that
+        // arrives without the header — a person, a bot, a pasted URL — gets
+        // the whole page exactly as before.
+        $isSheet = $request->header('X-Menu-Sheet') === '1';
+
         return view('menu-item', [
+            'menuItemLayout' => $isSheet ? 'layouts.fragment' : 'layout',
             'item' => $row,
             'itemAvailable' => $available,
             'alternatives' => $alternatives,

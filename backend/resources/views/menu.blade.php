@@ -463,6 +463,74 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-thumb { width: 36px; height: 36px; }
     .menu-cat-band { height: 76px; margin-top: 1rem; }
 }
+
+/* ── Item sheet ─────────────────────────────────────────────────────────
+   Slides up over the menu instead of navigating. Desktop gets a centred
+   panel: a bottom sheet on a wide screen is a phone idiom stranded. */
+.menu-sheet-backdrop {
+    position: fixed; inset: 0; z-index: 900;
+    background: rgba(28,20,8,0.45);
+    animation: menu-sheet-fade 0.16s ease;
+}
+@keyframes menu-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.menu-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 901;
+    max-height: min(92dvh, 92vh);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--card, #fff);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 40px rgba(28,20,8,0.22);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateY(100%);
+    transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.menu-sheet.is-open { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+    .menu-sheet { transition: none; }
+    .menu-sheet-backdrop { animation: none; }
+}
+
+.menu-sheet-grab {
+    width: 40px; height: 4px; border-radius: 999px;
+    background: var(--border, #e8e0d8);
+    margin: 10px auto 0;
+}
+.menu-sheet-close {
+    position: absolute; top: 8px; right: 10px; z-index: 2;
+    width: 40px; height: 40px; min-height: 40px;
+    border: none; border-radius: 999px;
+    background: rgba(255,255,255,0.92);
+    box-shadow: 0 1px 6px rgba(28,20,8,0.16);
+    font-size: 22px; line-height: 1; color: var(--dark, #1c1408);
+    cursor: pointer;
+}
+.menu-sheet-loading {
+    margin: 0; padding: 3rem 1rem; text-align: center;
+    color: var(--muted, #6b5d4f); font-weight: 600;
+}
+/* The item body carries its own page padding; inside the sheet the top of
+   it is the grab handle's job. */
+.menu-sheet .menu-item-page { padding-top: 0.5rem; }
+/* "Full menu" is the sheet's own close button here. */
+.menu-sheet .menu-item-back { display: none; }
+
+body.menu-sheet-open { overflow: hidden; }
+
+@media (min-width: 768px) {
+    .menu-sheet {
+        left: 50%; right: auto; bottom: auto; top: 50%;
+        width: min(520px, calc(100vw - 48px));
+        max-height: min(86vh, 760px);
+        border-radius: 18px;
+        transform: translate(-50%, -46%) scale(0.98);
+        opacity: 0;
+        transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+    .menu-sheet.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    .menu-sheet-grab { display: none; }
+}
 </style>
 @endsection
 
@@ -1154,4 +1222,128 @@ html.js .menu-fav { display: inline-flex; }
 })();
 </script>
 @include('partials.menu-favourite-script')
+
+{{-- ── Item sheet ─────────────────────────────────────────────────────────
+     Tapping a card used to be a page load: a blank flash, the header
+     redrawn, then the item. The order app opens the same thing as a sheet
+     and feels immediate, and the owner asked why the website could not.
+
+     It can, and without giving anything up. The cards stay real <a href>
+     links, so a crawler follows them to the full /menu/{id} document exactly
+     as before and nothing about indexing changes. The sheet is layered on
+     top: the tap is intercepted, the item's body is fetched on its own, and
+     the address bar is moved to the item URL with pushState — so Share, a
+     copied link and the back button all behave as if the page had loaded.
+
+     Every failure falls back to the plain navigation. No JS, an old browser,
+     a dropped request, a slow network: the link just works, the way it does
+     today. That is the whole safety argument for touching the busiest page
+     on the site. --}}
+<div class="menu-sheet-backdrop" data-sheet-backdrop hidden></div>
+<div class="menu-sheet" data-sheet role="dialog" aria-modal="true" aria-label="Menu item" hidden>
+    <button type="button" class="menu-sheet-close" data-sheet-close aria-label="Close">&times;</button>
+    <div class="menu-sheet-grab" aria-hidden="true"></div>
+    <div class="menu-sheet-body" data-sheet-body></div>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+(function () {
+    var sheet = document.querySelector('[data-sheet]');
+    var backdrop = document.querySelector('[data-sheet-backdrop]');
+    var body = document.querySelector('[data-sheet-body]');
+    var closeBtn = document.querySelector('[data-sheet-close]');
+    if (!sheet || !backdrop || !body || !window.fetch || !window.history || !history.pushState) return;
+
+    var open = false;
+    var menuUrl = location.pathname + location.search;
+    var lastFocus = null;
+    var cache = {};
+
+    function setOpen(on) {
+        open = on;
+        sheet.hidden = !on;
+        backdrop.hidden = !on;
+        // The page behind must not scroll under the sheet — on iOS that
+        // reads as the sheet sliding off its own content.
+        document.body.classList.toggle('menu-sheet-open', on);
+        if (on) {
+            window.requestAnimationFrame(function () { sheet.classList.add('is-open'); });
+        } else {
+            sheet.classList.remove('is-open');
+            body.innerHTML = '';
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+    }
+
+    function render(html) {
+        body.innerHTML = html;
+        sheet.scrollTop = 0;
+        // Share controls arrive with the fragment and bind on demand;
+        // favourites are delegated from the document and need nothing.
+        if (window.__shareInit) window.__shareInit();
+        var heading = body.querySelector('h1');
+        if (heading) sheet.setAttribute('aria-label', heading.textContent || 'Menu item');
+    }
+
+    function load(href) {
+        if (cache[href]) { render(cache[href]); return Promise.resolve(true); }
+
+        return fetch(href, {
+            credentials: 'same-origin',
+            headers: { 'X-Menu-Sheet': '1', 'Accept': 'text/html' }
+        }).then(function (res) {
+            if (!res.ok) throw new Error('sheet fetch failed');
+            return res.text();
+        }).then(function (html) {
+            cache[href] = html;
+            render(html);
+            return true;
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest ? e.target.closest('.menu-card-link') : null;
+        if (!link) return;
+        // Leave every deliberate "open elsewhere" gesture alone.
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+
+        var href = link.getAttribute('href');
+        if (!href || href.charAt(0) !== '/') return;
+
+        e.preventDefault();
+        lastFocus = link;
+        setOpen(true);
+        body.innerHTML = '<p class="menu-sheet-loading">Loading…</p>';
+        history.pushState({ menuSheet: href }, '', href);
+
+        load(href).catch(function () {
+            // Whatever went wrong, the customer still gets the item — just
+            // the slow way, which is what they had before any of this.
+            window.location = href;
+        });
+    });
+
+    function close() {
+        if (!open) return;
+        // Back rather than replace, so the sheet takes one entry in history
+        // and the URL returns to the menu the customer came from.
+        if (history.state && history.state.menuSheet) history.back();
+        else { setOpen(false); history.replaceState({}, '', menuUrl); }
+    }
+
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+    window.addEventListener('popstate', function (e) {
+        var state = e.state;
+        if (state && state.menuSheet) {
+            setOpen(true);
+            load(state.menuSheet).catch(function () { window.location = state.menuSheet; });
+            return;
+        }
+        if (open) setOpen(false);
+    });
+})();
+</script>
 @endsection

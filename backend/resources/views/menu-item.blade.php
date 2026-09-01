@@ -1,4 +1,13 @@
-@extends('layout')
+{{-- The layout is a variable so this one file serves two shapes.
+
+     Normally it extends the site layout and is the document a crawler indexes
+     and a shared link opens. The menu grid asks for the same view through
+     `layouts.fragment`, which emits the content section alone, and drops that
+     into a bottom sheet — so tapping a card costs a fetch instead of a page
+     load. One file means the sheet cannot drift from the page it stands in
+     for. Owner, 2026-09-01. --}}
+@php $menuItemLayout = $menuItemLayout ?? 'layout'; $isFragment = $menuItemLayout !== 'layout'; @endphp
+@extends($menuItemLayout)
 
 @php
     $itemName = function ($item) use ($menuLocale) {
@@ -375,6 +384,12 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
         ],
     ], fn ($v) => $v !== null);
 @endphp
-<script type="application/ld+json">@json($itemSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
-@include('partials.menu-favourite-script')
+@unless($isFragment)
+    {{-- A panel is not a page: repeating this inside the sheet would describe
+         a document that does not exist, and the script would not run anyway
+         (injected inline scripts are blocked by the CSP nonce). The menu page
+         already carries the delegated favourites handler. --}}
+    <script type="application/ld+json">@json($itemSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
+    @include('partials.menu-favourite-script')
+@endunless
 @endsection

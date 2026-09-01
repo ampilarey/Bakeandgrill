@@ -72,6 +72,11 @@
 </style>
 <script nonce="{{ csp_nonce() }}">
 (function () {
+    // Exposed and re-runnable because the menu opens an item in a sheet, so a
+    // share control can arrive long after this script first ran. The per-root
+    // `data-share-bound` guard below already makes a second pass harmless, so
+    // the sheet just calls this again once its markup is in the page.
+    window.__shareInit = function () {
     document.querySelectorAll('[data-share-root]').forEach(function (root) {
         if (root.getAttribute('data-share-bound') === '1') return;
         root.setAttribute('data-share-bound', '1');
@@ -159,5 +164,8 @@
             if (!root.contains(e.target)) setOpen(false);
         });
     });
+    };
+
+    window.__shareInit();
 })();
 </script>
