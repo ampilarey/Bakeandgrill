@@ -40,6 +40,7 @@ class OrderTotalsCalculator
         private readonly GstTaxCalculator $gstTax = new GstTaxCalculator,
         private readonly GstSettingsService $gstSettings = new GstSettingsService,
         private readonly OrderFeeTaxCalculator $feeTax = new OrderFeeTaxCalculator,
+        private readonly DiscountRevalidator $revalidator = new DiscountRevalidator,
     ) {}
 
     /**
@@ -236,6 +237,12 @@ class OrderTotalsCalculator
         // Gift cards are tender (payment), not pre-tax discounts — keep the
         // reserved amount on the order but never feed it into tax allocation.
         $giftCardTenderLaar = max(0, (int) ($order->gift_card_discount_laar ?? 0));
+
+        // Re-measure the discounts against the cart as it now stands, before
+        // reading them. The stored figures were sized for the cart at the
+        // moment they were applied; on an edited ticket they are a request,
+        // not an answer. See DiscountRevalidator for what that cost.
+        $this->revalidator->revalidate($order, $this->lineItemsSubtotalLaar($order));
 
         $discounts = new DiscountsInput(
             promoDiscountLaar: (int) ($order->promo_discount_laar ?? 0),

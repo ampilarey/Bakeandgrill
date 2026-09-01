@@ -90,6 +90,21 @@ class DiscountApprovalOtpTest extends TestCase
         SiteSetting::bust();
     }
 
+    /**
+     * Force a known code onto one approver's slot.
+     *
+     * Each approver is texted their own code now, so a test that wants a
+     * predictable code has to say whose it is — which is the whole point of
+     * the change: the code identifies the approver who used it.
+     */
+    private function forceCode(int $approvalId, string $code, int $approverIndex = 0): void
+    {
+        $approval = DiscountApproval::findOrFail($approvalId);
+        $rows = $approval->approver_codes ?? [];
+        $rows[$approverIndex]['code_hash'] = Hash::make($code);
+        $approval->update(['approver_codes' => $rows]);
+    }
+
     private function createOpenOrder(): Order
     {
         $create = $this->postJson('/api/orders', [
@@ -138,9 +153,7 @@ class DiscountApprovalOtpTest extends TestCase
             'discount_amount' => 15,
         ])->assertOk()->json('approval_id');
 
-        DiscountApproval::where('id', $approvalId)->update([
-            'code_hash' => Hash::make('4242'),
-        ]);
+        $this->forceCode($approvalId, '4242');
 
         $this->postJson("/api/orders/{$order->id}/discount/confirm", [
             'approval_id' => $approvalId,
@@ -157,6 +170,53 @@ class DiscountApprovalOtpTest extends TestCase
         ]);
     }
 
+    public function test_the_approver_who_answered_is_the_one_recorded(): void
+    {
+        // Two approvers are texted. The second one answers. Before this was
+        // fixed the order and the audit log both credited the first name on
+        // the list, whoever actually approved — which is the one thing an
+        // approval record exists to get right.
+        $order = $this->createOpenOrder();
+        $approvalId = (int) $this->postJson("/api/orders/{$order->id}/discount/request-approval", [
+            'discount_amount' => 15,
+        ])->assertOk()->json('approval_id');
+
+        $this->forceCode($approvalId, '8888', approverIndex: 1);
+
+        $this->postJson("/api/orders/{$order->id}/discount/confirm", [
+            'approval_id' => $approvalId,
+            'code' => '8888',
+        ])->assertOk();
+
+        $approval = DiscountApproval::find($approvalId);
+        $this->assertSame('approved', $approval?->status);
+        // "Backup" is configured by phone alone, so there is no user to point
+        // at — but the record must not therefore name the manager.
+        $this->assertNull($approval?->approved_by);
+        $this->assertSame('Backup', $approval?->approved_label);
+        $this->assertNull($order->refresh()->manual_discount_approved_by);
+    }
+
+    public function test_one_approvers_code_does_not_work_as_anothers(): void
+    {
+        $order = $this->createOpenOrder();
+        $approvalId = (int) $this->postJson("/api/orders/{$order->id}/discount/request-approval", [
+            'discount_amount' => 15,
+        ])->assertOk()->json('approval_id');
+
+        $this->forceCode($approvalId, '1234', approverIndex: 0);
+        $this->forceCode($approvalId, '5678', approverIndex: 1);
+
+        // A code neither of them was given.
+        $this->postJson("/api/orders/{$order->id}/discount/confirm", [
+            'approval_id' => $approvalId,
+            'code' => '4321',
+        ])->assertStatus(422);
+
+        $this->assertSame('pending', DiscountApproval::find($approvalId)?->status);
+        $this->assertSame(1, (int) DiscountApproval::find($approvalId)?->attempts);
+    }
+
     public function test_wrong_code_increments_and_invalidates_after_max(): void
     {
         SiteSetting::set(DiscountSettings::MAX_ATTEMPTS, '3');
@@ -167,9 +227,7 @@ class DiscountApprovalOtpTest extends TestCase
             'discount_amount' => 10,
         ])->assertOk()->json('approval_id');
 
-        DiscountApproval::where('id', $approvalId)->update([
-            'code_hash' => Hash::make('9999'),
-        ]);
+        $this->forceCode($approvalId, '9999');
 
         $this->postJson("/api/orders/{$order->id}/discount/confirm", [
             'approval_id' => $approvalId,
@@ -216,9 +274,7 @@ class DiscountApprovalOtpTest extends TestCase
             'discount_amount' => 10,
         ])->assertOk()->json('approval_id');
 
-        DiscountApproval::where('id', $approvalId)->update([
-            'code_hash' => Hash::make('2222'),
-        ]);
+        $this->forceCode($approvalId, '2222');
 
         $this->postJson("/api/orders/{$order->id}/discount/confirm", [
             'approval_id' => $approvalId,

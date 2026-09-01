@@ -30,6 +30,7 @@
         "subtotal_laar": 2200,
         "promo_discount_laar": 0,
         "manual_discount_laar": 0,
+        "manual_discount_subtotal_laar": null,
         "manual_discount_reason": null,
         "manual_discount_reason_note": null,
         "manual_discount_approved_by": null,

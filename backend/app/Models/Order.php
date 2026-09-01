@@ -43,6 +43,7 @@ class Order extends Model
         'promo_discount_laar',
         'loyalty_discount_laar',
         'manual_discount_laar',
+        'manual_discount_subtotal_laar',
         'manual_discount_reason',
         'manual_discount_reason_note',
         'manual_discount_approved_by',

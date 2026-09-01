@@ -194,6 +194,97 @@ class PromotionEvaluator
     }
 
     /**
+     * Re-measure the promotions already on an order against its current cart.
+     *
+     * Applying a promo used to be the last time anything checked it. The draft
+     * row kept the laari it was worth when the ticket was bigger, so a code
+     * needing MVR 500 of spend went on paying out on a MVR 100 ticket — audit,
+     * 2026-09-01, where that combination settled at MVR 0.00.
+     *
+     * A promotion that no longer qualifies is released rather than shrunk: its
+     * rules are objective, and half a promo nobody has earned is not a kinder
+     * answer than none. One that still qualifies is re-priced, which matters
+     * for percentage promos — 20% of a smaller cart is a smaller number.
+     *
+     * Releasing (not deleting) keeps the row for the ledger and frees the
+     * per-customer and campaign counts it was holding.
+     *
+     * @return list<string> human-readable notes on what changed
+     */
+    public function revalidateOrderPromotions(Order $order, int $subtotalLaar): array
+    {
+        $drafts = OrderPromotion::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'draft')
+            ->with('promotion')
+            ->get();
+
+        if ($drafts->isEmpty()) {
+            // Nothing pending, but the stored figure may still be left over
+            // from a draft that was consumed or released elsewhere.
+            $order->promo_discount_laar = 0;
+
+            return [];
+        }
+
+        // The evaluator reads subtotal_laar off the order; the caller has the
+        // freshly summed one, which the order row has not been given yet.
+        $original = $order->subtotal_laar;
+        $order->subtotal_laar = $subtotalLaar;
+
+        $notes = [];
+        $total = 0;
+
+        try {
+            foreach ($drafts as $draft) {
+                $promotion = $draft->promotion;
+                if ($promotion === null) {
+                    continue;
+                }
+
+                $check = $this->eligibilityForPromotion(
+                    $promotion,
+                    $order,
+                    $order->customer_id !== null ? (int) $order->customer_id : null,
+                    (int) $order->id,
+                );
+
+                $wasLaar = (int) $draft->discount_laar;
+
+                if (!$check['valid']) {
+                    $draft->update(['status' => 'released', 'discount_laar' => 0]);
+                    $notes[] = sprintf(
+                        'Promo %s removed — %s',
+                        $promotion->code ?? $promotion->name,
+                        lcfirst($check['message']),
+                    );
+
+                    continue;
+                }
+
+                $nowLaar = (int) $check['discount_laar'];
+                if ($nowLaar !== $wasLaar) {
+                    $draft->update(['discount_laar' => $nowLaar]);
+                    $notes[] = sprintf(
+                        'Promo %s changed from MVR %s to MVR %s for this ticket.',
+                        $promotion->code ?? $promotion->name,
+                        number_format($wasLaar / 100, 2),
+                        number_format($nowLaar / 100, 2),
+                    );
+                }
+
+                $total += $nowLaar;
+            }
+        } finally {
+            $order->subtotal_laar = $original;
+        }
+
+        $order->promo_discount_laar = $total;
+
+        return $notes;
+    }
+
+    /**
      * Shared eligibility + discount calc without requiring a code lookup.
      *
      * @return array{valid: bool, discount_laar: int, message: string, promotion: ?Promotion}

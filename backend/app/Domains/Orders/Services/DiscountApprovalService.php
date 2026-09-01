@@ -70,9 +70,23 @@ final class DiscountApprovalService
             abort(422, 'Discount amount must be greater than zero.');
         }
 
-        $issued = $this->otp->issue();
-        $plainCode = $issued['plain'];
-        $ttl = $issued['ttl_minutes'];
+        // A code each, so the one that comes back says who gave it. A single
+        // shared code left confirm() crediting the first name in the list
+        // whoever actually approved. Expiry is shared — it belongs to the
+        // request, not to each code.
+        $ttl = null;
+        $expiresAt = null;
+        $codes = [];
+        foreach ($approvers as $i => $approver) {
+            $issued = $this->otp->issue();
+            $ttl ??= $issued['ttl_minutes'];
+            $expiresAt ??= $issued['expires_at'];
+            $codes[$i] = [
+                'plain' => $issued['plain'],
+                'hash' => $issued['hash'],
+            ];
+        }
+
         $percent = $subtotalLaar > 0
             ? round($decision->discountLaar * 100 / $subtotalLaar, 1)
             : 0.0;
@@ -87,28 +101,40 @@ final class DiscountApprovalService
             'discount_percent' => $percent,
             'reason' => $decision->reason,
             'reason_note' => $decision->reasonNote,
-            'code_hash' => $issued['hash'],
-            'expires_at' => $issued['expires_at'],
+            // Kept for approvals already in flight across the deploy that
+            // introduced per-approver codes; new rows match on approver_codes.
+            'code_hash' => $codes[0]['hash'] ?? null,
+            'approver_codes' => array_map(
+                fn (int $i) => [
+                    'user_id' => $approvers[$i]['user_id'],
+                    'label' => $approvers[$i]['label'],
+                    'phone' => $approvers[$i]['phone'],
+                    'code_hash' => $codes[$i]['hash'],
+                ],
+                array_keys($codes),
+            ),
+            'expires_at' => $expiresAt,
             'attempts' => 0,
             'status' => 'pending',
         ]);
 
-        $fallback = "Bake & Grill: approval code {$plainCode} for a {$percent}% ({$amountMvr}) discount on order {$orderLabel}. Expires in {$ttl} min. Do not share.";
-        $body = $this->messages->build(
-            'discount_approval_otp',
-            [
-                'code' => $plainCode,
-                'percent' => (string) $percent,
-                'amount' => 'MVR ' . $amountMvr,
-                'order' => $orderLabel,
-                'minutes' => (string) $ttl,
-            ],
-            $fallback,
-        );
-
         $sentTo = [];
         $delivered = 0;
         foreach ($approvers as $i => $approver) {
+            $plainCode = $codes[$i]['plain'];
+            $fallback = "Bake & Grill: approval code {$plainCode} for a {$percent}% ({$amountMvr}) discount on order {$orderLabel}. Expires in {$ttl} min. Do not share.";
+            $body = $this->messages->build(
+                'discount_approval_otp',
+                [
+                    'code' => $plainCode,
+                    'percent' => (string) $percent,
+                    'amount' => 'MVR ' . $amountMvr,
+                    'order' => $orderLabel,
+                    'minutes' => (string) $ttl,
+                ],
+                $fallback,
+            );
+
             $log = $this->sms->send(new SmsMessage(
                 to: $approver['phone'],
                 message: $body,
@@ -172,8 +198,21 @@ final class DiscountApprovalService
             abort(422, 'This approval code is no longer valid.');
         }
 
-        $this->otp->assertValid(
-            $approval->code_hash,
+        // Each approver got their own code, so the one typed in identifies who
+        // gave it. Rows created before that change carry a single code_hash.
+        $approverCodes = is_array($approval->approver_codes) ? $approval->approver_codes : [];
+        $hashes = [];
+        foreach ($approverCodes as $i => $row) {
+            if (is_array($row) && is_string($row['code_hash'] ?? null)) {
+                $hashes[$i] = $row['code_hash'];
+            }
+        }
+        if ($hashes === [] && is_string($approval->code_hash)) {
+            $hashes[0] = $approval->code_hash;
+        }
+
+        $matched = $this->otp->assertValidAny(
+            $hashes,
             $approval->expires_at,
             (int) $approval->attempts,
             $code,
@@ -223,8 +262,18 @@ final class DiscountApprovalService
             abort(422, 'Discount amount changed. Request a new approval code.');
         }
 
-        $approvers = DiscountSettings::approvers();
-        $approvedBy = $approvers[0]['user_id'] ?? null;
+        // The approver whose code was used — not simply the first one on the
+        // list, which is what this credited before and got wrong every time a
+        // second approver answered.
+        $matchedApprover = $approverCodes[$matched] ?? null;
+        if (!is_array($matchedApprover)) {
+            $fallbackApprovers = DiscountSettings::approvers();
+            $matchedApprover = $fallbackApprovers[0] ?? null;
+        }
+        $approvedBy = is_array($matchedApprover) ? ($matchedApprover['user_id'] ?? null) : null;
+        $approvedLabel = is_array($matchedApprover)
+            ? trim((string) ($matchedApprover['label'] ?? '')) ?: null
+            : null;
 
         $decision = $this->policy->authorizeAndClamp(
             $actor,
@@ -240,6 +289,8 @@ final class DiscountApprovalService
 
         $order->update([
             'manual_discount_laar' => $decision->discountLaar,
+            // The share the SMS actually quoted, so an edit later keeps it.
+            'manual_discount_subtotal_laar' => $decision->discountLaar > 0 ? $subtotalLaar : null,
             'manual_discount_reason' => $decision->reason,
             'manual_discount_reason_note' => $decision->reasonNote,
             'manual_discount_approved_by' => $decision->approvedByUserId,
@@ -248,6 +299,9 @@ final class DiscountApprovalService
         $approval->update([
             'status' => 'approved',
             'approved_by' => $decision->approvedByUserId,
+            // Approvers configured by phone alone have no user row to point
+            // at; without the label the record would say nothing at all.
+            'approved_label' => $approvedLabel,
         ]);
 
         return $this->calculator->recalculateAndPersist($order->fresh(['items.item']));

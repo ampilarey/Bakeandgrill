@@ -224,6 +224,9 @@ class OrderCreationService
 
             $order->update([
                 'manual_discount_laar' => $decision->discountLaar,
+                // The cart it was sized against, so a later edit can keep the
+                // share that was approved rather than the bare laari figure.
+                'manual_discount_subtotal_laar' => $decision->discountLaar > 0 ? $subtotalLaar : null,
                 'manual_discount_reason' => $decision->reason,
                 'manual_discount_reason_note' => $decision->reasonNote,
                 'manual_discount_approved_by' => $decision->approvedByUserId,

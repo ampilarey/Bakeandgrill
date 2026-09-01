@@ -200,6 +200,7 @@ class OrderItemController extends Controller
                 );
 
                 $meta['manual_discount_laar'] = $decision->discountLaar;
+                $meta['manual_discount_subtotal_laar'] = $decision->discountLaar > 0 ? $subtotalLaar : null;
                 $meta['manual_discount_reason'] = $decision->reason;
                 $meta['manual_discount_reason_note'] = $decision->reasonNote;
                 $meta['manual_discount_approved_by'] = $decision->approvedByUserId;

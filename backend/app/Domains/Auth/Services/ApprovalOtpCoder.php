@@ -75,4 +75,57 @@ final class ApprovalOtpCoder
 
         unset($noun);
     }
+
+    /**
+     * Same rules, but against several codes at once — returning which matched.
+     *
+     * Discount approval texts a different code to each approver so the code
+     * that comes back says who gave it. Expiry and the attempt count belong to
+     * the request as a whole, not to each code, or one manager's typo would
+     * lock out the others.
+     *
+     * @param  array<array-key, string>  $codeHashes
+     * @param  callable(array{attempts?: int, expired?: bool, failed?: bool}): void  $persist
+     * @return array-key key of the hash that matched
+     */
+    public function assertValidAny(
+        array $codeHashes,
+        ?\DateTimeInterface $expiresAt,
+        int $attempts,
+        string $plainCode,
+        callable $persist,
+        string $label = 'verification',
+    ): int|string {
+        if ($codeHashes === []) {
+            abort(422, "No {$label} code has been issued.");
+        }
+
+        if ($expiresAt === null || now()->greaterThan($expiresAt)) {
+            $persist(['expired' => true]);
+            abort(422, $label === 'approval' ? 'Approval code expired.' : 'Verification code expired. Request a new code.');
+        }
+
+        $max = $this->maxAttempts();
+        if ($attempts >= $max) {
+            $persist(['failed' => true]);
+            abort(422, 'Too many attempts. Request a new code.');
+        }
+
+        $code = trim($plainCode);
+        if ($code !== '') {
+            foreach ($codeHashes as $key => $hash) {
+                if (is_string($hash) && $hash !== '' && Hash::check($code, $hash)) {
+                    return $key;
+                }
+            }
+        }
+
+        $next = $attempts + 1;
+        $failed = $next >= $max;
+        $persist(['attempts' => $next, 'failed' => $failed]);
+        if ($failed) {
+            abort(422, 'Too many attempts. Request a new code.');
+        }
+        abort(422, 'Invalid code.');
+    }
 }

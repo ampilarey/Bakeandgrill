@@ -204,6 +204,19 @@ class PromotionController extends Controller
                 return;
             }
 
+            // Budget, on the locked row. The pre-check read spent_laar outside
+            // any lock, so several carts could each see room for the last of a
+            // campaign's money and all be told yes. Re-reading it here means
+            // only one of them can be.
+            if ($lockedPromo->budget_laar !== null) {
+                $spent = (int) ($lockedPromo->spent_laar ?? 0);
+                if ($spent + (int) $result['discount_laar'] > (int) $lockedPromo->budget_laar) {
+                    $rejectMessage = 'This offer has reached its limit.';
+
+                    return;
+                }
+            }
+
             $existing = OrderPromotion::where('order_id', $order->id)
                 ->whereNotIn('status', ['released'])
                 ->first();

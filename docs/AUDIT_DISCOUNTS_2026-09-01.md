@@ -6,6 +6,20 @@ Findings are ranked by what they could actually cost.
 
 Audited against `main` at `b5d275734`.
 
+> **Status (2026-09-01, same day): H1, M1 and L1 are fixed.** The reproductions
+> below are now regression tests. **M2 and M3 are deliberately left open** —
+> both are settings the owner has to choose, not defects, and changing what
+> customers get charged is not a decision to make quietly inside a fix. See
+> the note under each.
+>
+> One thing changed during implementation. My first attempt at H1 held every
+> manual discount to the *share* it was approved at, which read well until a
+> test caught what it did to an innocent case: MVR 30 off a ticket edited down
+> from MVR 600 to MVR 200 became MVR 10, punishing a customer for an edit that
+> had nothing to do with their discount. The share now applies only when the
+> discount no longer fits the ticket. Recorded here because the wrong version
+> was plausible and the test is the only reason it did not ship.
+
 ## Bottom line
 
 The **gates** are good. Every discount is computed server-side from the order's
@@ -39,7 +53,7 @@ finding **H1** and it is the only thing here I would treat as urgent.
 
 ---
 
-## H1 — A discount is never re-checked against the cart it applies to
+## H1 — A discount is never re-checked against the cart it applies to  ·  **FIXED**
 
 **What happens.** `OrderTotalsCalculator::recalculateAndPersist()`
 (`backend/app/Domains/Orders/Services/OrderTotalsCalculator.php:240`) reads the
@@ -92,9 +106,36 @@ A cheaper stopgap, if the full fix is too big to take now: refuse to *settle* an
 order whose stored discounts exceed what the current cart would allow, and make
 the cashier re-apply. That closes the money leak without touching the edit path.
 
+**Fixed.** `DiscountRevalidator` re-measures the discounts on every
+recalculation of an unlocked order, before they are read. The stored figures
+became a request rather than an answer:
+
+- **Coded and automatic promos** are re-run through
+  `PromotionEvaluator::revalidateOrderPromotions()`. One that no longer
+  qualifies is *released* — half a promo nobody earned is not a kinder answer
+  than none — which also frees the campaign and per-customer counts it was
+  holding. One that still qualifies is re-priced, so a percentage promo follows
+  the cart down.
+- **Manual discounts** are held to `effectiveCapLaar()` on the current cart —
+  the same check the apply path runs, which the edit path skipped whenever the
+  discount field itself was not being changed. A discount that still fits is
+  untouched. Only when it no longer fits does the newly recorded basis
+  (`orders.manual_discount_subtotal_laar`) decide how much survives, falling
+  back to the share that was approved: MVR 200 off MVR 600 becomes MVR 33.33 on
+  a MVR 100 ticket rather than swallowing it whole.
+- **Loyalty and referral** are clamped to the merchandise left after the others.
+- **Discounts never grow.** A cart that gets bigger does not earn more off than
+  the cashier gave.
+- **Settled orders are left alone** — re-pricing a paid ticket would rewrite
+  what somebody already handed over.
+
+Both reproductions in the table above are now regression tests, along with the
+cases that must *not* change:
+`backend/tests/Feature/Promotions/StaleDiscountTest.php`.
+
 ---
 
-## M1 — The approval record names the wrong approver
+## M1 — The approval record names the wrong approver  ·  **FIXED**
 
 `DiscountApprovalService::confirm()`
 (`backend/app/Domains/Orders/Services/DiscountApprovalService.php:226`):
@@ -114,9 +155,17 @@ point of the approval flow.
 (pick one, send to one, record that one), or issue a distinct code per approver
 so the code that comes back identifies who gave it.
 
+**Fixed** by the second option, which keeps "any manager can approve" intact.
+Each approver is now texted their own code, and the code that comes back
+identifies who gave it (`ApprovalOtpCoder::assertValidAny()`). Expiry and the
+attempt count still belong to the request as a whole, so one manager's typo
+cannot lock the others out. Approvers configured by phone alone have no user row
+to point at, so `discount_approvals.approved_label` carries the name — without
+it the record would say nothing rather than something wrong.
+
 ---
 
-## M2 — Nothing bounds the total giveaway across layers
+## M2 — Nothing bounds the total giveaway across layers  ·  **OPEN — your call**
 
 Discounts stack in five independent layers, applied in this order:
 
@@ -150,7 +199,7 @@ how many active items have no cost — those are the ones it cannot protect.
 
 ---
 
-## M3 — "Once per customer" does not bind a walk-in
+## M3 — "Once per customer" does not bind a walk-in  ·  **OPEN — your call**
 
 `PromotionEvaluator::evaluateAgainstOrder()` (`:338`):
 
@@ -172,7 +221,7 @@ the two settings cannot contradict each other silently.
 
 ---
 
-## L1 — Budget and campaign caps can overshoot under concurrency
+## L1 — Budget and campaign caps can overshoot under concurrency  ·  **FIXED**
 
 `budgetGate()` (`:752`) carries its own honest comment: `spent_laar` increments
 at redemption, the check runs at apply time, so concurrent pending carts can
@@ -180,6 +229,11 @@ overshoot slightly before any of them pay. Campaign `max_uses` is handled better
 — `applyToOrder` re-checks it under `lockForUpdate` — but the budget is not.
 
 Low, because the overshoot is bounded by how many carts are open at once.
+
+**Fixed.** `PromotionController::applyToOrder` already re-checked campaign
+`max_uses` on the locked promotion row; the budget is now re-checked in the same
+place, so only one of several concurrent carts can take the last of a campaign's
+money.
 
 ---
 
@@ -207,12 +261,18 @@ Worth stating plainly, since an audit that only lists problems misleads:
 
 ---
 
-## Suggested order of work
+## What is left, and why it is left
 
-1. **H1** — the only finding that gives food away. Fix the settle path first if
-   the full re-evaluation is a bigger job than you want right now.
-2. **M1** — small change, and it restores the meaning of the approval record.
-3. **M2** — decide the policy, then turn the margin floor on and fill in the
-   missing cost prices.
-4. **M3** — a settings review of existing codes, not a code change.
-5. **L1** — only if promo budgets start mattering.
+**M2 and M3 are settings, not defects**, and both change what customers are
+charged. Turning the margin floor on, or making `registered_only` a default,
+would quietly alter live pricing on the strength of an audit nobody asked to
+act on yet. They are yours to decide:
+
+- **M2** — set `discount_margin_floor_pct` to a percentage you are happy with
+  and enable the floor. Before that, check how many active items have no cost
+  price, because those are the ones it cannot protect. Note also that
+  `discount_max_percent` ships at **100**, which is why H1's manual-discount fix
+  can only hold a discount to the whole ticket by default — set a real cap and
+  it holds to that instead.
+- **M3** — set `registered_only` on any code meant as one-per-person. Nothing
+  in the code needs to change; the existing codes need reviewing.

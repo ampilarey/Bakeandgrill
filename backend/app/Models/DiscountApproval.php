@@ -18,6 +18,8 @@ class DiscountApproval extends Model
         'reason',
         'reason_note',
         'code_hash',
+        'approver_codes',
+        'approved_label',
         'expires_at',
         'attempts',
         'status',
@@ -25,6 +27,7 @@ class DiscountApproval extends Model
     ];
 
     protected $casts = [
+        'approver_codes' => 'array',
         'subtotal_laar' => 'integer',
         'discount_laar' => 'integer',
         'discount_percent' => 'float',
