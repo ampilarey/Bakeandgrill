@@ -105,6 +105,8 @@ class ItemController extends Controller
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
                 // Full child Item models — public platter picker needs availability + tomorrow_remaining.
                 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem',
+                // The size check in ItemAvailabilityService needs these.
+                'platterGroups.allowedItems.item.variants',
                 'photos',
             ]);
             $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
@@ -542,6 +544,7 @@ class ItemController extends Controller
         if (!$isAdmin) {
             $with[] = 'comboItems.item';
             $with[] = 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem';
+            $with[] = 'platterGroups.allowedItems.item.variants';
             $with[] = 'photos';
             // Sizes cut from one ingredient pool (see RecipeStockService).
             $with[] = 'recipe.recipeItems.inventoryItem';

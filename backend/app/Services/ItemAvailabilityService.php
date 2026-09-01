@@ -72,7 +72,18 @@ class ItemAvailabilityService
             );
         }
 
-        // 3. Shared ingredient pool (opt-in per recipe). For a dish sold in
+        // 3. A dish sold in sizes needs at least one size somebody can pick.
+        // Without this the tile stays enabled, the customer opens it, and every
+        // size is greyed out — a dead end nobody can act on.
+        if (!$this->hasSellableSize($item)) {
+            return AvailabilityResult::unavailable(
+                'out_of_stock',
+                "{$item->name} is currently sold out.",
+                availableStock: 0,
+            );
+        }
+
+        // 4. Shared ingredient pool (opt-in per recipe). For a dish sold in
         // sizes this is the best any size can still do: the item stays on the
         // menu while one size is makeable, and the size picker says which.
         $portions = $this->recipeStock->portionsForItem($item);
@@ -84,7 +95,7 @@ class ItemAvailabilityService
             );
         }
 
-        // 4. Stock check (for prepared items only)
+        // 5. Stock check (for prepared items only)
         if ($item->track_stock && $item->availability_type === 'stock_based') {
             $available = $this->reservations->getAvailableStock($item);
             if ($portions !== null) {
@@ -187,6 +198,35 @@ class ItemAvailabilityService
         }
 
         return $result;
+    }
+
+    /**
+     * True unless this is a sized dish whose every size is off.
+     *
+     * A size is pickable when it is active (on the menu at all) and available
+     * (not sold out today). An item with no sizes is not affected.
+     *
+     * Queries when the relation is not loaded rather than assuming: an answer
+     * that changes with eager loading is worse than an extra query, and the
+     * feeds that call this in a loop already load variants.
+     */
+    private function hasSellableSize(Item $item): bool
+    {
+        if (!$item->has_variants) {
+            return true;
+        }
+
+        $variants = $item->relationLoaded('variants')
+            ? $item->variants
+            : $item->variants()->get();
+
+        if ($variants->isEmpty()) {
+            return true;
+        }
+
+        return $variants->contains(
+            fn (\App\Models\Variant $v) => $v->is_active && $v->isAvailableNow(),
+        );
     }
 
     private function channelAvailableFrom(Item $item, string $channel, Carbon $at): ?string

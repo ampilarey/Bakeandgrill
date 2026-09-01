@@ -169,8 +169,15 @@ class Item extends Model
      */
     public function displayPriceInfo(): array
     {
-        if ($this->has_variants && $this->relationLoaded('variants')) {
-            $active = $this->variants->where('is_active', true);
+        if ($this->has_variants) {
+            // Queried when the relation is not loaded rather than assumed: a
+            // sized dish's base_price is never what a customer pays, so
+            // falling back to it silently would print a wrong price with no
+            // error. Mirrors displayPrice() below.
+            $active = $this->relationLoaded('variants')
+                ? $this->variants->where('is_active', true)
+                : $this->variants()->where('is_active', true)->get();
+
             if ($active->isNotEmpty()) {
                 return ['price' => (float) $active->min('price'), 'from' => true];
             }

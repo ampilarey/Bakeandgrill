@@ -19,14 +19,23 @@ class VariantSyncService
     /**
      * Sync the full variants array for an item.
      *
-     * Each element may contain an optional 'id' to update an existing variant.
-     * Elements without 'id' are created. Existing variants not present in the
-     * payload are NOT touched (use destroy() to remove/deactivate individually).
+     * Each element may carry an 'id' to update an existing variant; elements
+     * without one are created. Sizes the payload leaves out are removed —
+     * through {@see destroy()}, so one that has ever been ordered is
+     * deactivated rather than deleted and its history stays intact.
+     *
+     * That pruning is the point of the word "full" in this method's name, and
+     * it was missing: the editor's remove button only dropped the row from the
+     * form, nothing ever called destroy(), and the omitted size stayed live.
+     * Owner, 2026-09-01 audit: a deleted size went on selling on the POS, the
+     * website and the app.
      *
      * @param array $variantsData Validated array from request
      */
     public function sync(Item $item, array $variantsData): void
     {
+        $keptIds = [];
+
         foreach ($variantsData as $i => $data) {
             $id = $data['id'] ?? null;
 
@@ -54,10 +63,36 @@ class VariantSyncService
                 $variant = Variant::where('item_id', $item->id)->find($id);
                 if ($variant) {
                     $variant->update($fields);
+                    $keptIds[] = (int) $variant->id;
                 }
             } else {
-                $item->variants()->create($fields);
+                $created = $item->variants()->create($fields);
+                $keptIds[] = (int) $created->id;
             }
+        }
+
+        $this->pruneMissing($item, $keptIds);
+    }
+
+    /**
+     * Remove the sizes this item has that the payload did not mention.
+     *
+     * Uses the same rule as a single delete: one that has ever been ordered is
+     * deactivated so old receipts and reports still resolve it; one that never
+     * sold is deleted outright. Its reservations and low-stock alerts null out,
+     * its special-price overrides cascade away.
+     *
+     * @param list<int> $keptIds
+     */
+    private function pruneMissing(Item $item, array $keptIds): void
+    {
+        $stale = Variant::query()
+            ->where('item_id', $item->id)
+            ->when($keptIds !== [], fn ($q) => $q->whereNotIn('id', $keptIds))
+            ->get();
+
+        foreach ($stale as $variant) {
+            $this->destroy($variant);
         }
     }
 

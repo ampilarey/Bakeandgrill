@@ -1212,7 +1212,9 @@ class ReportsService
         $recipeCosts = app(RecipeCostCalculator::class);
 
         $rows = Item::query()
-            ->with(['category:id,name', 'recipe.recipeItems.inventoryItem'])
+            // Variants are the price this report shows for a sized dish, so
+            // they have to be the cost as well — see below.
+            ->with(['category:id,name', 'recipe.recipeItems.inventoryItem', 'variants'])
             ->where('is_available', true)
             ->orderBy('name')
             ->limit($limit)
@@ -1220,15 +1222,22 @@ class ReportsService
 
         return [
             'rows' => $rows->map(function (Item $item) use ($recipeCosts) {
+                // displayPrice() is the cheapest active size on a sized dish,
+                // so cost that same size. Pairing it with the whole recipe made
+                // half portions read as far worse business than they are.
+                $variant = $item->has_variants
+                    ? $item->variants->where('is_active', true)->sortBy('price')->first()
+                    : null;
                 $price = $item->displayPrice();
-                $cost = $recipeCosts->effectiveCost($item);
+                $cost = $recipeCosts->effectiveCostForVariant($item, $variant);
                 $marginPct = ($cost !== null && $price > 0)
                     ? round((($price - $cost) / $price) * 100, 1)
                     : null;
 
                 return [
                     'item_id' => $item->id,
-                    'name' => (string) $item->name,
+                    'name' => (string) $item->name
+                        . ($variant !== null ? ' — ' . $variant->name : ''),
                     'price' => round($price, 2),
                     'cost' => $cost !== null ? round($cost, 2) : null,
                     'margin_pct' => $marginPct,

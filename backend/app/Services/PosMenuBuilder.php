@@ -333,6 +333,20 @@ class PosMenuBuilder
             ];
         }
 
+        // A dish sold in sizes needs at least one size the cashier can pick.
+        // Without this the tile stays enabled, the configure modal opens, and
+        // every size is greyed out — a dead end mid-service.
+        $sizes = $item->relationLoaded('variants') ? $item->variants : $item->variants()->get();
+        if ($item->has_variants && $sizes->isNotEmpty()
+            && !$sizes->contains(fn ($v) => $v->is_active && $v->isAvailableNow())) {
+            return [
+                'available' => false,
+                'reason_code' => 'out_of_stock',
+                'reason_message' => "{$item->name} is currently sold out.",
+                'available_stock' => 0,
+            ];
+        }
+
         // Shared ingredient pool (opt-in per recipe). For a dish sold in sizes
         // this is the best any size can still do — the dish stays on the menu
         // while one size is makeable, and the size picker says which.

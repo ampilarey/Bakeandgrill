@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Item;
+use App\Models\Variant;
 use App\Models\Recipe;
 
 /**
@@ -62,5 +63,29 @@ class RecipeCostCalculator
         }
 
         return $this->forItem($item);
+    }
+
+    /**
+     * What one of a given size costs to make.
+     *
+     * A recipe hangs off the item, so a Half of a dish carries the same
+     * ingredient list as a Full — its consumption factor is what says it uses
+     * half of it. Costing every size at the whole recipe makes the smaller
+     * ones look far less profitable than they are. A size with its own cost
+     * recorded uses that and skips the arithmetic entirely.
+     */
+    public function effectiveCostForVariant(Item $item, ?Variant $variant): ?float
+    {
+        if ($variant === null) {
+            return $this->effectiveCost($item);
+        }
+
+        if ($variant->cost !== null && (float) $variant->cost > 0) {
+            return (float) $variant->cost;
+        }
+
+        $itemCost = $this->effectiveCost($item);
+
+        return $itemCost === null ? null : round($itemCost * $variant->consumptionFactor(), 2);
     }
 }

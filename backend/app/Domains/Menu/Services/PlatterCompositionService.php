@@ -152,7 +152,9 @@ final class PlatterCompositionService
     ): array {
         $groups = $platter->relationLoaded('platterGroups')
             ? $platter->platterGroups
-            : $platter->platterGroups()->with(['allowedItems.item.recipe.recipeItems.inventoryItem'])->get();
+            : $platter->platterGroups()
+                ->with(['allowedItems.item.recipe.recipeItems.inventoryItem', 'allowedItems.item.variants'])
+                ->get();
 
         $availability = $channel !== null ? app(ItemAvailabilityService::class) : null;
 
@@ -161,7 +163,9 @@ final class PlatterCompositionService
                 ? $group->allowedItems
                 // The recipe comes along so availability does not lazy-load one
             // ingredient pool per child (see RecipeStockService).
-            : $group->allowedItems()->with(['item.recipe.recipeItems.inventoryItem'])->get();
+            : $group->allowedItems()
+                ->with(['item.recipe.recipeItems.inventoryItem', 'item.variants'])
+                ->get();
 
             return [
                 'id' => $group->id,
