@@ -228,6 +228,60 @@ describe('QuickEditGrid sizes', () => {
     expect(screen.getByLabelText('Price for Beetle leaf — Half')).toHaveValue(12);
   });
 
+  it('says what the sizes under a dish add up to', () => {
+    // Owner, 2026-09-01: "under selling today, if it has a variant, tick box
+    // is there for main name and each variant". Both are real — the dish's is
+    // the master — so the dish's cell says what the sizes below it come to.
+    renderGrid({ initialItems: [sized] });
+
+    expect(screen.getByTestId('available-summary-3')).toHaveTextContent('2/2 sizes');
+    expect(screen.getByTestId('active-summary-3')).toHaveTextContent('2/2 sizes');
+  });
+
+  it('counts down as sizes are switched off', () => {
+    renderGrid({ initialItems: [sized] });
+
+    fireEvent.click(screen.getByLabelText('Selling today for Beetle leaf — Half'));
+
+    expect(screen.getByTestId('available-summary-3')).toHaveTextContent('1/2 sizes');
+  });
+
+  it('calls out a dish left on with every size off', () => {
+    // The dish's tick reads as "selling" while nothing under it can be bought.
+    const stranded = item({
+      id: 4,
+      name: 'Water',
+      variants: [
+        { id: 40, name: 'Large', price: 20, is_active: true, is_available: false, sort_order: 0 },
+      ],
+    });
+    renderGrid({ initialItems: [stranded] });
+
+    expect(screen.getByTestId('available-summary-4')).toHaveTextContent('no sizes selling');
+  });
+
+  it('ignores sizes that are off the menu when counting today', () => {
+    // A size nobody can order either way should not drag the daily count down.
+    const mixed = item({
+      id: 5,
+      name: 'Tea',
+      variants: [
+        { id: 50, name: 'Cup', price: 10, is_active: true, is_available: true, sort_order: 0 },
+        { id: 51, name: 'Retired', price: 15, is_active: false, is_available: false, sort_order: 1 },
+      ],
+    });
+    renderGrid({ initialItems: [mixed] });
+
+    expect(screen.getByTestId('available-summary-5')).toHaveTextContent('1/1 sizes');
+    expect(screen.getByTestId('active-summary-5')).toHaveTextContent('1/2 sizes');
+  });
+
+  it('leaves a dish with no sizes alone', () => {
+    renderGrid({ initialItems: [item({ id: 6, name: 'Plain' })] });
+
+    expect(screen.queryByTestId('available-summary-6')).toBeNull();
+  });
+
   it('lets one dish be folded away without folding the rest', () => {
     renderGrid({ initialItems: [sized] });
 

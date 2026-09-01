@@ -596,8 +596,15 @@ export function QuickEditGrid({
               </thead>
               <tbody>
                 {rows.map((item) => {
+                  // Pending edits are folded in, because the dish row counts
+                  // how many sizes are on and that count has to describe what
+                  // is on screen now — not what was on screen before the
+                  // cashier started unticking.
                   const sizes = (item.variants ?? []).slice()
-                    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+                    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                    .map((v) => (v.id != null && variantDrafts[v.id]
+                      ? { ...v, ...variantDrafts[v.id] } as MenuVariant
+                      : v));
                   // A dirty or rejected size forces its dish open, so a pending
                   // edit can never be hidden behind a collapsed row.
                   const hasPendingSize = sizes.some((v) => v.id != null && variantDrafts[v.id]);
@@ -910,8 +917,18 @@ function ItemCell({
     );
   }
 
+  // The two switches on a sized dish are a master and a set of per-size ones,
+  // and drawn as bare ticks they look like the same control repeated — the
+  // owner read them that way. Unlike price, the dish-level box is not dead
+  // weight: it is checked before the sizes are, so unticking it stops every
+  // size at once. So both stay, and the dish's box says what the sizes under
+  // it add up to.
+  const summary = (column.key === 'available' || column.key === 'active')
+    ? sizeSummary(column.key, sizes)
+    : null;
+
   return (
-    <td style={cell}>
+    <td style={cell} title={summary?.title}>
       <Editor
         column={column}
         label={label}
@@ -922,9 +939,51 @@ function ItemCell({
         menuGroups={menuGroups}
         onChange={onChange}
       />
+      {summary && (
+        <div
+          data-testid={`${column.key}-summary-${item.id}`}
+          style={{
+            fontSize: 10, lineHeight: 1.3, textAlign: 'center', marginTop: 2,
+            // A dish left on while every size under it is off is not selling,
+            // whatever its own tick says. That contradiction is worth a colour.
+            color: summary.stranded && value !== false
+              ? 'var(--color-danger)'
+              : 'var(--color-text-muted)',
+          }}
+        >
+          {summary.text}
+        </div>
+      )}
       {errors && <FieldError messages={errors} />}
     </td>
   );
+}
+
+/**
+ * What the sizes under a dish add up to, for the dish's own row.
+ *
+ * `stranded` is the case that misleads: the dish is ticked, so the grid reads
+ * as "selling", while not one size beneath it can be bought.
+ */
+function sizeSummary(
+  key: 'available' | 'active',
+  sizes: MenuVariant[],
+): { text: string; title: string; stranded: boolean } | null {
+  // Sizes that are off the menu entirely cannot be sold today either way, so
+  // the daily count is taken over the ones still on it.
+  const pool = key === 'available' ? sizes.filter((v) => v.is_active !== false) : sizes;
+  if (pool.length === 0) return null;
+
+  const on = pool.filter((v) => (key === 'available' ? v.is_available !== false : v.is_active !== false)).length;
+  const noun = key === 'available' ? 'selling' : 'on menu';
+
+  return {
+    text: on === 0 ? `no sizes ${noun}` : `${on}/${pool.length} sizes`,
+    title: key === 'available'
+      ? 'This tick is the whole dish — untick it to stop selling every size today. The sizes below switch on their own.'
+      : 'This tick is the whole dish — untick it to take every size off the menu. The sizes below switch on their own.',
+    stranded: on === 0,
+  };
 }
 
 function VariantCell({
