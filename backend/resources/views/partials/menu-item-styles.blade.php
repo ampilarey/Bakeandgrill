@@ -136,14 +136,35 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     margin-top: 0.25rem;
     font-size: 0.85rem; color: #7C2D12; text-transform: capitalize; line-height: 1.4;
 }
-.menu-item-variants { margin: 0 0 1.25rem; padding: 0; list-style: none; }
-.menu-item-variants li {
-    display: flex; justify-content: space-between; gap: 1rem;
-    padding: 0.55rem 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.95rem;
+/* Sizes as chips, the way the order app's sheet shows them. They used to be
+   a two-column price list, which reads as information rather than a choice. */
+.menu-item-sizes {
+    margin: 0 0 1.25rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
 }
-.menu-item-variants li:first-child { border-top: 1px solid var(--border); }
+.menu-item-sizes-label {
+    margin: 0 0 0.6rem;
+    font-size: 0.9rem; font-weight: 700; color: var(--dark);
+}
+.menu-item-size-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.menu-item-size {
+    display: inline-flex; align-items: baseline; gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card, #fff);
+    font-family: inherit; font-size: 0.95rem; color: var(--dark);
+    cursor: pointer;
+}
+.menu-item-size[aria-pressed="true"] {
+    border-color: var(--amber);
+    background: var(--amber-light);
+    box-shadow: inset 0 0 0 1px var(--amber);
+}
+.menu-item-size-name { font-weight: 700; }
+.menu-item-size-price { font-weight: 600; color: var(--amber); }
+.menu-item-size .menu-item-was { margin-left: 0.3rem; font-size: 0.8rem; color: var(--muted); }
 /* One row, two buttons of equal weight and height. Before this the primary
    action was unstyled text (.btn-primary was defined only on the home page)
    sitting next to a pill-shaped secondary, so the page read as though "View

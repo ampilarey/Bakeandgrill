@@ -90,6 +90,11 @@
 <article class="menu-item-page">
     <div class="menu-item-topbar">
         <a class="menu-item-back" href="/menu"><span aria-hidden="true">←</span> Full menu</a>
+        {{-- The sheet's way out, in the same slot the link holds on the page.
+             Hidden unless the markup is inside a sheet (see menu.blade.php). --}}
+        <button type="button" class="menu-sheet-back" data-sheet-close>
+            <span aria-hidden="true">←</span> Full menu
+        </button>
         @include('partials.share-control', [
             'shareUrl' => $shareUrl,
             'shareTitle' => $iname['text'],
@@ -164,25 +169,38 @@
     @endif
 
     @if($variants->isNotEmpty())
-        <ul class="menu-item-variants">
-            @foreach($variants as $variant)
-                @php $vPrice = $menuVariantPrices[$variant->id] ?? ['price' => (float) $variant->price, 'was' => null]; @endphp
-                <li>
-                    <span>{{ $variant->name }}</span>
-                    <span>
-                        MVR {{ number_format((float) $vPrice['price'], 2) }}
-                        @if(!empty($vPrice['was']))
-                            <s class="menu-item-was">MVR {{ number_format((float) $vPrice['was'], 2) }}</s>
-                        @endif
-                    </span>
-                </li>
-            @endforeach
-        </ul>
+        {{-- Chips, matching the order app's item sheet, rather than the price
+             list this used to be. Two reasons beyond looking the same: a size
+             is a choice, and a row of text does not read as one; and picking
+             here carries the choice into the order app, so a customer who has
+             already decided on Large does not decide again on the next screen.
+             Owner, 2026-09-01. --}}
+        <div class="menu-item-sizes" data-sizes>
+            <p class="menu-item-sizes-label">Choose size</p>
+            <div class="menu-item-size-chips">
+                @foreach($variants as $variant)
+                    @php $vPrice = $menuVariantPrices[$variant->id] ?? ['price' => (float) $variant->price, 'was' => null]; @endphp
+                    <button type="button"
+                            class="menu-item-size"
+                            data-size
+                            data-variant="{{ $variant->id }}"
+                            aria-pressed="false">
+                        <span class="menu-item-size-name">{{ $variant->name }}</span>
+                        <span class="menu-item-size-price">
+                            MVR {{ number_format((float) $vPrice['price'], 2) }}
+                            @if(!empty($vPrice['was']))
+                                <s class="menu-item-was">MVR {{ number_format((float) $vPrice['was'], 2) }}</s>
+                            @endif
+                        </span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
     @endif
 
     <div class="menu-item-actions">
         @if($itemAvailable)
-            <a href="/order/menu?item={{ $item->id }}" class="btn-primary">Add to order</a>
+            <a href="/order/menu?item={{ $item->id }}" class="btn-primary" data-add-to-order data-item="{{ $item->id }}">Add to order</a>
             <a href="/order/menu" class="btn-outline">View cart</a>
         @else
             <a href="/menu" class="btn-primary">Today’s menu</a>

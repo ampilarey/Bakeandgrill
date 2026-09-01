@@ -494,27 +494,29 @@ html.js .menu-fav { display: inline-flex; }
 
 /* Sticky so the way out stays reachable however far down the item runs. */
 .menu-sheet-head {
-    position: sticky; top: 0; z-index: 3;
     display: flex; align-items: center;
-    padding: 8px 10px 6px;
+    padding: 10px 10px 2px;
     background: var(--card, #fff);
-    border-radius: 20px 20px 0 0;
 }
 .menu-sheet-grab {
     width: 40px; height: 4px; border-radius: 999px;
     background: var(--border, #e8e0d8);
     margin: 0 auto;
 }
-.menu-sheet-close {
-    position: absolute; right: 10px;
-    width: 40px; height: 40px; min-height: 40px;
-    border: 1px solid var(--border, #e8e0d8); border-radius: 999px;
-    background: var(--card, #fff);
-    font-size: 22px; line-height: 1; color: var(--dark, #1c1408);
-    cursor: pointer;
+/* The close takes the slot "← Full menu" holds on the full page, so the row
+   reads exactly as the order app's does: a way back on the left, Share on the
+   right. Floating it in the corner instead put it on top of Share and the
+   favourite heart — owner, 2026-09-01. */
+.menu-sheet .menu-item-back { display: none; }
+.menu-sheet-back {
+    display: none;
+    align-items: center; gap: 6px;
+    min-height: 44px; padding: 0;
+    background: none; border: none;
+    font-family: inherit; font-size: 0.95rem; font-weight: 700;
+    color: var(--amber); cursor: pointer;
 }
-/* The sheet's own close replaces "← Full menu", so Share keeps the right. */
-.menu-sheet .menu-item-topbar { justify-content: flex-end; }
+.menu-sheet .menu-sheet-back { display: inline-flex; }
 .menu-sheet-loading {
     margin: 0; padding: 3rem 1rem; text-align: center;
     color: var(--muted, #6b5d4f); font-weight: 600;
@@ -1257,7 +1259,6 @@ body.menu-sheet-open { overflow: hidden; }
          against the left edge. --}}
     <div class="menu-sheet-head">
         <div class="menu-sheet-grab" aria-hidden="true"></div>
-        <button type="button" class="menu-sheet-close" data-sheet-close aria-label="Close">&times;</button>
     </div>
     <div class="menu-sheet-body" data-sheet-body></div>
 </div>
@@ -1267,13 +1268,13 @@ body.menu-sheet-open { overflow: hidden; }
     var sheet = document.querySelector('[data-sheet]');
     var backdrop = document.querySelector('[data-sheet-backdrop]');
     var body = document.querySelector('[data-sheet-body]');
-    var closeBtn = document.querySelector('[data-sheet-close]');
     if (!sheet || !backdrop || !body || !window.fetch || !window.history || !history.pushState) return;
 
     var open = false;
     var menuUrl = location.pathname + location.search;
     var lastFocus = null;
     var cache = {};
+    var inflight = {};
 
     function setOpen(on) {
         open = on;
@@ -1303,6 +1304,14 @@ body.menu-sheet-open { overflow: hidden; }
 
     function load(href) {
         if (cache[href]) { render(cache[href]); return Promise.resolve(true); }
+        // A warm-up started on touch-down is usually already in the air.
+        if (inflight[href]) {
+            return inflight[href].then(function (html) {
+                if (!html) throw new Error('warm failed');
+                render(html);
+                return true;
+            });
+        }
 
         return fetch(href, {
             credentials: 'same-origin',
@@ -1347,9 +1356,60 @@ body.menu-sheet-open { overflow: hidden; }
         else { setOpen(false); history.replaceState({}, '', menuUrl); }
     }
 
-    closeBtn.addEventListener('click', close);
+    // Delegated: the close button arrives with the fetched item, not with the
+    // page, so nothing can be bound to it up front.
+    document.addEventListener('click', function (e) {
+        if (e.target.closest && e.target.closest('[data-sheet-close]')) { e.preventDefault(); close(); }
+    });
     backdrop.addEventListener('click', close);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+    // Sizes are a choice, so picking one here carries into the order app —
+    // a customer who has decided on Large should not decide again next screen.
+    document.addEventListener('click', function (e) {
+        var chip = e.target.closest ? e.target.closest('[data-size]') : null;
+        if (!chip) return;
+        var group = chip.closest('[data-sizes]');
+        if (!group) return;
+
+        var on = chip.getAttribute('aria-pressed') === 'true';
+        group.querySelectorAll('[data-size]').forEach(function (el) {
+            el.setAttribute('aria-pressed', 'false');
+        });
+        chip.setAttribute('aria-pressed', on ? 'false' : 'true');
+
+        var add = document.querySelector('[data-add-to-order]');
+        if (!add) return;
+        var itemId = add.getAttribute('data-item');
+        add.setAttribute(
+            'href',
+            on ? '/order/menu?item=' + itemId
+               : '/order/menu?item=' + itemId + '&variant=' + chip.getAttribute('data-variant')
+        );
+    });
+
+    // Warm the fetch on touch-down rather than on the click that follows it.
+    // A tap is 100-300ms of finger travel; spending it on the request is the
+    // difference between "opens" and "opens after a beat". Owner, 2026-09-01:
+    // "when item is clicked it takes some time to open".
+    function warm(e) {
+        var link = e.target.closest ? e.target.closest('.menu-card-link') : null;
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.charAt(0) !== '/' || cache[href] || inflight[href]) return;
+        inflight[href] = fetch(href, {
+            credentials: 'same-origin',
+            headers: { 'X-Menu-Sheet': '1', 'Accept': 'text/html' }
+        }).then(function (res) {
+            if (res.ok) return res.text();
+            throw new Error('warm failed');
+        }).then(function (html) {
+            cache[href] = html;
+            return html;
+        }).catch(function () { delete inflight[href]; });
+    }
+    document.addEventListener('pointerdown', warm, { passive: true });
+    document.addEventListener('mouseover', warm, { passive: true });
 
     window.addEventListener('popstate', function (e) {
         var state = e.state;

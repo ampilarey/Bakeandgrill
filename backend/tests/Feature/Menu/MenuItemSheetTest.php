@@ -164,6 +164,33 @@ class MenuItemSheetTest extends TestCase
             ->assertSee('X-Menu-Sheet', false);
     }
 
+    public function test_sizes_render_as_chips_that_carry_the_choice(): void
+    {
+        // They used to be a two-column price list, which reads as information
+        // rather than a choice — and picking one now travels to the order app
+        // so a customer who has decided on Large does not decide again.
+        $item = $this->item('Water', 5);
+        $large = $item->variants()->create(['name' => 'Large', 'price' => 10, 'is_active' => true, 'sort_order' => 0]);
+        $item->update(['has_variants' => true]);
+
+        $response = $this->get("/menu/{$item->id}")->assertOk();
+
+        $response->assertSee('data-variant="' . $large->id . '"', false);
+        $response->assertSee('Choose size', false);
+        $response->assertSee('data-add-to-order', false);
+    }
+
+    public function test_the_sheet_carries_its_own_way_out(): void
+    {
+        // The close arrives with the fetched item — the page cannot bind it up
+        // front — and sits where "Full menu" does, not floating over Share.
+        $item = $this->item();
+
+        $this->withHeader('X-Menu-Sheet', '1')
+            ->get("/menu/{$item->id}")
+            ->assertSee('data-sheet-close', false);
+    }
+
     // ── Nothing regressed for the odd cases ────────────────────────────────
 
     public function test_an_unavailable_item_still_opens_both_ways(): void
