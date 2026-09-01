@@ -64,7 +64,7 @@ html, body, #root {
   height: 100dvh;
   overflow: hidden;
   box-sizing: border-box;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: var(--pos-safe-bottom);
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
   overflow-x: hidden;
@@ -194,6 +194,16 @@ html, body, #root {
 }
 /* Layout tokens — viewport tiers override these (see Bug-020 below). */
 :root {
+  /* Half the home-indicator inset.
+   *
+   * iOS reserves the full inset for the indicator, which is more room than
+   * the till needs below a button — it cost a visible strip of dead space at
+   * the bottom of every screen. Owner, 2026-09-01: "still need to reduce the
+   * bottom padding 50% in ipad and phone".
+   *
+   * Halving env() is self-scoping: a desktop browser reports 0, so this only
+   * moves on the iPads and phones that actually have an indicator. */
+  --pos-safe-bottom: calc(env(safe-area-inset-bottom, 0px) / 2);
   --pos-cart-width: 420px;
   --pos-main-pad: 12px;
   --pos-main-gap: 12px;
@@ -285,7 +295,7 @@ html, body, #root {
  * exactly one screen tall the whole stack shows as a white band under the
  * Charge row. Owner, 2026-09-01: "now there is lot of space". */
 .pos-charge {
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: var(--pos-safe-bottom);
 }
 
 .pos-charge-overlay {
@@ -477,8 +487,13 @@ html, body, #root {
     --pos-menu-grid-gap: 8px;
   }
 
-  /* Phone + iPad portrait: menu on top, cart docked below. */
-  .pos-main { flex-direction: column; }
+  /* Phone + iPad portrait: menu on top, cart docked below. The pane's own
+   * bottom padding is halved too — the cart is the last thing in it, and a
+   * full gap under a docked bar is space the menu could have used. */
+  .pos-main {
+    flex-direction: column;
+    padding-bottom: calc(var(--pos-main-pad) / 2);
+  }
   .pos-menu {
     order: 1;
     flex: 1 1 auto;
@@ -521,8 +536,10 @@ html, body, #root {
     width: 100%;
     min-height: 56px;
     /* No safe-area inset here — the shell above it already pads the screen
-     * edge, and adding it again is what put a white band under the row. */
-    padding: 10px 12px;
+     * edge, and adding it again is what put a white band under the row. The
+     * bottom is half the top: this row is the last thing on the screen, and
+     * the shell's own inset sits under it. */
+    padding: 10px 12px 5px;
     box-sizing: border-box;
     background: #FFFFFF;
   }
@@ -555,7 +572,7 @@ html, body, #root {
     width: 100%;
     max-height: min(85dvh, 720px);
     border-radius: 16px 16px 0 0;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--pos-safe-bottom);
     box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
   }
   .pos-cart.pos-cart--sheet .pos-cart-dock-bar {
