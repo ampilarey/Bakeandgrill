@@ -325,6 +325,62 @@ export async function updateItem(id: number, data: Partial<MenuItemPayload>): Pr
   return req(`/items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+/** Columns the bulk editor is allowed to touch. Mirrors MenuBulkUpdateService::fieldRules(). */
+export type BulkItemFields = Partial<{
+  name: string;
+  name_dv: string | null;
+  sku: string | null;
+  barcode: string | null;
+  base_price: number;
+  cost: number | null;
+  category_id: number | null;
+  menu_group_id: number | null;
+  sort_order: number | null;
+  tax_code: string;
+  is_active: boolean;
+  is_available: boolean;
+  track_stock: boolean;
+  stock_quantity: number | null;
+  low_stock_threshold: number | null;
+  prep_time_minutes: number | null;
+  packaging_fee: number;
+  allow_pre_order: boolean;
+  show_on_signage: boolean;
+}>;
+
+export type BulkItemChange = { id: number; fields: BulkItemFields };
+
+/** Row index → field → messages. Present on a 422; nothing was saved. */
+export type BulkRowErrors = Record<number, Record<string, string[]>>;
+
+export type BulkUpdateResult = {
+  message: string;
+  updated: number;
+  unchanged: number;
+  items: MenuItem[];
+};
+
+/**
+ * Save one small change to each of many items.
+ *
+ * Sparse on purpose: only the keys present in `fields` are written, so this
+ * never clobbers a column somebody else is editing, and the server applies the
+ * whole batch in one transaction — on a validation failure nothing is saved
+ * and the thrown error carries `row_errors` keyed by position in `changes`.
+ */
+export async function bulkUpdateItems(changes: BulkItemChange[]): Promise<BulkUpdateResult> {
+  return req('/items/bulk-update', { method: 'POST', body: JSON.stringify({ changes }) });
+}
+
+/** Pull `row_errors` out of a failed bulkUpdateItems call, if it carried any. */
+export function bulkRowErrors(error: unknown): BulkRowErrors | null {
+  const body = (error as { body?: unknown } | null)?.body;
+  if (!body || typeof body !== 'object') return null;
+  const rows = (body as { row_errors?: unknown }).row_errors;
+
+  return rows && typeof rows === 'object' ? (rows as BulkRowErrors) : null;
+}
+
 export async function deleteItem(id: number): Promise<void> {
   await req(`/items/${id}`, { method: 'DELETE' });
 }

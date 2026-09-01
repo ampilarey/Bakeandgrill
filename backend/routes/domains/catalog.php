@@ -50,6 +50,10 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 
         Route::post('/items', [ItemController::class, 'store']);
+        // Sparse many-row edit for the quick-edit grid and the bulk-apply
+        // toolbar. Declared before /items/{id} so "bulk-update" is never read
+        // as an item id.
+        Route::post('/items/bulk-update', [ItemController::class, 'bulkUpdate']);
         Route::patch('/items/{id}', [ItemController::class, 'update']);
         Route::delete('/items/{id}', [ItemController::class, 'destroy']);
         Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);

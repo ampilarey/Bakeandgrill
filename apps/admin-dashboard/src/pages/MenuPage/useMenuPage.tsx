@@ -317,5 +317,8 @@ export function useMenuPage() {
     handleViewRecipe,
     handleRecipeSaved,
     itemToForm,
+    // Quick-edit saves many rows through one bulk call, so it needs to pull
+    // the page fresh rather than patch its own copy.
+    reloadItems: loadItems,
   };
 }

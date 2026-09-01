@@ -7,6 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';
 import { MenuItemEditorModal } from './MenuPage/MenuItemEditorModal';
 import { MenuItemTable } from './MenuPage/MenuItemTable';
+import { QuickEditGrid } from './MenuPage/QuickEditGrid';
 import { RecipeEditorModal } from './MenuPage/RecipeEditorModal';
 import { EMPTY_CAT, type CatForm, useMenuPage, type View } from './MenuPage/useMenuPage';
 
@@ -222,6 +223,8 @@ function CategoryFormModal({
 export function MenuPage() {
   usePageTitle('Menu');
   const m = useMenuPage();
+  const [quickEdit, setQuickEdit] = useState(false);
+  const [quickEditNotice, setQuickEditNotice] = useState('');
 
   return (
     <PageShell>
@@ -339,7 +342,50 @@ export function MenuPage() {
         )
       )}
 
-      {m.view === 'items' && (
+      {m.view === 'items' && m.canManage && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+          <Btn
+            small
+            variant={quickEdit ? 'primary' : 'secondary'}
+            onClick={() => setQuickEdit((v) => !v)}
+            data-testid="quick-edit-toggle"
+          >
+            {quickEdit ? '← Back to list' : 'Quick edit'}
+          </Btn>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+            {quickEdit
+              ? 'Edit prices and other single values straight in the table, or tick rows to change them together.'
+              : 'Edit many items at once in a spreadsheet-style table.'}
+          </span>
+        </div>
+      )}
+
+      {m.view === 'items' && quickEdit && m.canManage && (
+        <QuickEditGrid
+          items={m.items}
+          categories={m.categories}
+          menuGroups={m.menuGroups}
+          loading={m.loading}
+          canSeeCost={m.canSeeCost}
+          onSaved={(message) => { setQuickEditNotice(message); void m.reloadItems(); }}
+          onExit={() => setQuickEdit(false)}
+        />
+      )}
+
+      {quickEditNotice && (
+        <div
+          data-testid="quick-edit-notice"
+          style={{
+            marginTop: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+            color: 'var(--color-success)', background: 'var(--color-bg)',
+            border: '1px solid var(--color-success)',
+          }}
+        >
+          {quickEditNotice}
+        </div>
+      )}
+
+      {m.view === 'items' && !quickEdit && (
         <MenuItemTable
           categories={m.categories}
           items={m.items}

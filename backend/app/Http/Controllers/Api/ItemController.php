@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Catalog\Services\MenuBulkUpdateService;
 use App\Domains\Gst\Services\GstItemTaxNormalizer;
 use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Domains\Menu\Services\ComboCompositionService;
 use App\Domains\Menu\Services\PlatterCompositionService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BulkUpdateItemsRequest;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
@@ -808,6 +810,47 @@ class ItemController extends Controller
 
         return response()->json([
             'message' => 'Item deleted successfully',
+        ]);
+    }
+
+    /**
+     * POST /api/items/bulk-update — one small change to each of many items.
+     *
+     * Backs both the quick-edit grid (different columns, many rows) and the
+     * bulk-apply toolbar (one column, many rows); to the server they are the
+     * same sparse list. See {@see MenuBulkUpdateService} for why this is not
+     * ItemController::update() in a loop.
+     *
+     * Nothing is written unless every row validates, so a failure returns 422
+     * with errors addressed by row index and leaves the menu untouched.
+     */
+    public function bulkUpdate(BulkUpdateItemsRequest $request, MenuBulkUpdateService $bulk): JsonResponse
+    {
+        /** @var list<array{id: int, fields: array<string, mixed>}> $changes */
+        $changes = $request->validated()['changes'];
+
+        $canSeeCost = $request->user() instanceof \App\Models\User
+            && app(\App\Domains\Permissions\Services\PermissionService::class)
+                ->hasPermission($request->user(), 'recipes.manage');
+
+        $errors = $bulk->validate($changes, $canSeeCost);
+        if ($errors !== []) {
+            return response()->json([
+                'message' => 'No changes were saved — ' . count($errors)
+                    . ' of ' . count($changes) . ' rows need fixing.',
+                'row_errors' => $errors,
+            ], 422);
+        }
+
+        $result = $bulk->apply($changes, $request);
+
+        return response()->json([
+            'message' => $result['updated'] === 0
+                ? 'Nothing to save — those values were already set.'
+                : $result['updated'] . ' item' . ($result['updated'] === 1 ? '' : 's') . ' updated.',
+            'updated' => $result['updated'],
+            'unchanged' => $result['unchanged'],
+            'items' => $result['items'],
         ]);
     }
 
