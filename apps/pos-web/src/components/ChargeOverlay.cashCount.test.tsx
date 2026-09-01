@@ -30,18 +30,11 @@ const confirmButton = () => screen.getByRole("button", { name: /confirm payment/
 
 describe("ChargeOverlay — cash must be counted", () => {
   it("opens with nothing entered and Confirm locked", () => {
+    // The dim button is the whole prompt — a line of text explaining it was
+    // tried and removed at the owner's request, so nothing else says so.
     renderCharge();
 
     expect(confirmButton()).toBeDisabled();
-    expect(screen.getByTestId("charge-needs-count")).toBeInTheDocument();
-  });
-
-  it("says what to do rather than leaving a dead button", () => {
-    // A greyed Confirm with no reason is how a cashier gets stuck mid-queue.
-    renderCharge();
-
-    expect(screen.getByTestId("charge-needs-count").textContent)
-      .toMatch(/Enter how much cash you took/i);
   });
 
   it("unlocks on EXACT and takes the full total", async () => {
@@ -51,7 +44,6 @@ describe("ChargeOverlay — cash must be counted", () => {
     await user.click(screen.getByTestId("charge-quick-exact"));
 
     expect(confirmButton()).not.toBeDisabled();
-    expect(screen.queryByTestId("charge-needs-count")).toBeNull();
 
     await user.click(confirmButton());
     expect(onConfirm).toHaveBeenCalledWith([{ method: "cash", amount: 120 }]);
@@ -79,7 +71,6 @@ describe("ChargeOverlay — cash must be counted", () => {
     await user.click(screen.getByRole("button", { name: /^Card$/i }));
 
     expect(confirmButton()).not.toBeDisabled();
-    expect(screen.queryByTestId("charge-needs-count")).toBeNull();
 
     await user.click(confirmButton());
     expect(onConfirm).toHaveBeenCalledWith([{ method: "card", amount: 120 }]);
@@ -97,6 +88,5 @@ describe("ChargeOverlay — cash must be counted", () => {
     await user.click(screen.getByRole("button", { name: /^Cash$/i }));
 
     expect(confirmButton()).toBeDisabled();
-    expect(screen.getByTestId("charge-needs-count")).toBeInTheDocument();
   });
 });

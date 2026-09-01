@@ -217,6 +217,11 @@ export function ChargeOverlay({
    * Empty means Confirm stays locked for a cash tender until somebody says how
    * much came in — Exact, a note chip, or typed. One deliberate act, which is
    * all that separates "counted the money" from "tapped through".
+   *
+   * The dim Confirm button is the only prompt. A line of text explaining it
+   * sat here briefly and the owner had it removed: the quick-amount row is
+   * right above the button, so a cashier who taps a dead Confirm looks up and
+   * finds it. The lock is the point; the caption was not.
    */
   const [received, setReceived] = useState<string>("");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
@@ -386,16 +391,6 @@ export function ChargeOverlay({
   const walletOverLimit = method === "wallet" && walletEligible && walletAvailableMvr <= 0;
   const canConfirmWallet = (walletFullPay || walletPartialPay) && total > 0;
   const canConfirmAccountTender = canConfirmCredit || canConfirmWallet;
-
-  /**
-   * Cash tender with nothing counted yet — the one reason Confirm is greyed
-   * that the cashier can fix in a tap, so it earns a line of its own.
-   */
-  const needsCashCount = method === "cash"
-    && !fullyCovered
-    && !splitValid
-    && !canConfirmAccountTender
-    && received.trim() === "";
 
   const confirm = async () => {
     // Split tender: send TWO rows — the requested non-cash portion +
@@ -962,18 +957,6 @@ export function ChargeOverlay({
               animation: "pos-fade-in 0.18s ease",
             }}>
               ⛔ {errorMessage}
-            </div>
-          )}
-          {/* Confirm is dead until the cash is counted, so say why. A greyed
-              button with no reason is how a cashier gets stuck mid-queue. */}
-          {needsCashCount && (
-            <div role="status" data-testid="charge-needs-count" style={{
-              padding: "10px 12px", borderRadius: 8,
-              background: "#F8FAFC", border: "1px solid #CBD5E1",
-              color: "#475569", fontSize: 13, fontWeight: 600,
-            }}>
-              Enter how much cash you took — tap <strong>{fmtChip(exactTotal)} EXACT</strong>,
-              a note, or type it.
             </div>
           )}
           <div className="pos-charge-footer-actions" style={{ display: "flex", gap: 10 }}>
