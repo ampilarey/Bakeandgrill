@@ -95,7 +95,9 @@ export const GRID_COLUMNS: GridColumn[] = [
   { key: 'stock', label: 'Stock', group: 'Stock', kind: 'int', field: 'stock_quantity', variantField: 'stock_qty', width: 80, defaultOn: true, sortValue: (i) => numOf(i.stock_quantity) },
   { key: 'low_stock_threshold', label: 'Alert at', group: 'Stock', kind: 'int', field: 'low_stock_threshold', variantField: 'low_stock_threshold', width: 80, defaultOn: false, sortValue: (i) => numOf(i.low_stock_threshold) },
   { key: 'consumption_factor', label: 'Uses', group: 'Stock', kind: 'decimal', variantField: 'consumption_factor', width: 76, defaultOn: false },
-  { key: 'available', label: 'Avail', group: 'Basics', kind: 'bool', field: 'is_available', width: 66, defaultOn: true, sortValue: (i) => (i.is_available ? 1 : 0) },
+  // Sizes carry their own sold-out switch — running out of large cups does
+  // not mean the dish is off.
+  { key: 'available', label: 'Avail', group: 'Basics', kind: 'bool', field: 'is_available', variantField: 'is_available', width: 66, defaultOn: true, sortValue: (i) => (i.is_available ? 1 : 0) },
   { key: 'active', label: 'Active', group: 'Basics', kind: 'bool', field: 'is_active', variantField: 'is_active', width: 66, defaultOn: true, sortValue: (i) => (i.is_active ? 1 : 0) },
   { key: 'prep_time_minutes', label: 'Prep min', group: 'Kitchen', kind: 'int', field: 'prep_time_minutes', width: 84, defaultOn: false, sortValue: (i) => numOf(i.prep_time_minutes) },
   { key: 'spice_level', label: 'Spice', group: 'Kitchen', kind: 'select', field: 'spice_level', options: SPICE_LEVELS, minWidth: 110, defaultOn: false, sortValue: (i) => str(i.spice_level) },

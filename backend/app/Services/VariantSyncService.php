@@ -46,6 +46,7 @@ class VariantSyncService
                     ? max(0.0, (float) $data['consumption_factor'])
                     : 1.0,
                 'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
+                'is_available' => isset($data['is_available']) ? (bool) $data['is_available'] : true,
                 'sort_order' => $data['sort_order'] ?? $i,
             ];
 

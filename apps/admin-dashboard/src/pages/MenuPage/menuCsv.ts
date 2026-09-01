@@ -119,7 +119,7 @@ export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
         track_stock: boolCell(v.track_stock),
         stock: v.track_stock ? (v.stock_qty ?? 0) : '',
         consumption_factor: v.consumption_factor ?? 1,
-        available: '',
+        available: boolCell(v.is_available !== false),
         active: boolCell(v.is_active),
         sort: v.sort_order ?? 0,
       });
@@ -220,6 +220,7 @@ const VARIANT_COLUMN_FIELDS: Partial<Record<CsvColumn, string>> = {
   track_stock: 'track_stock',
   stock: 'stock_qty',
   consumption_factor: 'consumption_factor',
+  available: 'is_available',
   active: 'is_active',
   sort: 'sort_order',
 };
@@ -310,7 +311,7 @@ export function csvToDrafts(
       const value = cellToValue(column, row[column] ?? '', isVariant);
       if (value === undefined) continue;
 
-      const current = (target as unknown as Record<string, unknown>)[field as string];
+      const current = currentValue(target as unknown as Record<string, unknown>, field as string);
       if (!sameCell(current, value)) fields[field as string] = value;
     }
 
@@ -321,6 +322,27 @@ export function csvToDrafts(
   }
 
   return { drafts, variantDrafts, changedRows, unknownRows, malformedRows, ignoredColumns };
+}
+
+/**
+ * Columns whose absence means something other than "empty".
+ *
+ * `is_available` arrived after sizes already existed, so an older row has no
+ * value for it and is sellable. Exporting writes "yes"; without this the
+ * import would then read that "yes" as a change on every untouched size.
+ */
+const ABSENT_DEFAULTS: Record<string, unknown> = {
+  is_available: true,
+  consumption_factor: 1,
+};
+
+function currentValue(target: Record<string, unknown>, field: string): unknown {
+  const raw = target[field];
+  if (raw === null || raw === undefined) {
+    return field in ABSENT_DEFAULTS ? ABSENT_DEFAULTS[field] : raw;
+  }
+
+  return raw;
 }
 
 function sameCell(current: unknown, value: unknown): boolean {

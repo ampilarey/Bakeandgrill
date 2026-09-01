@@ -181,4 +181,31 @@ class VariantOrderTest extends TestCase
         // Variant name snapshot survives deactivation
         $this->assertEquals('XL (discontinued)', $this->inactiveVariant->name);
     }
+
+    public function test_a_sold_out_size_cannot_be_ordered(): void
+    {
+        // Owner, 2026-09-01: a size needs its own "sold out today" switch,
+        // independent of the dish. It has to actually refuse the sale, not
+        // just grey out in the app.
+        $this->variantLarge->update(['is_available' => false]);
+
+        $res = $this->postOrder($this->posPayload([
+            ['item_id' => $this->variantItem->id, 'variant_id' => $this->variantLarge->id, 'quantity' => 1],
+        ]));
+
+        $res->assertStatus(422);
+        $this->assertStringContainsString('sold out', (string) $res->json('message'));
+    }
+
+    public function test_the_other_sizes_of_the_same_dish_still_sell(): void
+    {
+        $this->variantLarge->update(['is_available' => false]);
+
+        $res = $this->postOrder($this->posPayload([
+            ['item_id' => $this->variantItem->id, 'variant_id' => $this->variantSmall->id, 'quantity' => 1],
+        ]));
+
+        $res->assertStatus(201);
+        $this->assertDatabaseHas('order_items', ['variant_id' => $this->variantSmall->id]);
+    }
 }

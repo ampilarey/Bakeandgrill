@@ -214,8 +214,8 @@ describe('QuickEditGrid sizes', () => {
     name: 'Beetle leaf',
     base_price: 20,
     variants: [
-      { id: 30, name: 'Full', price: 20, is_active: true, sort_order: 0, consumption_factor: 1 },
-      { id: 31, name: 'Half', price: 12, is_active: true, sort_order: 1, consumption_factor: 0.5 },
+      { id: 30, name: 'Full', price: 20, is_active: true, is_available: true, sort_order: 0, consumption_factor: 1 },
+      { id: 31, name: 'Half', price: 12, is_active: true, is_available: true, sort_order: 1, consumption_factor: 0.5 },
     ],
   });
 
@@ -245,6 +245,17 @@ describe('QuickEditGrid sizes', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { price: 14 } }], []);
+  });
+
+  it('marks one size sold out without touching the dish or the other size', () => {
+    // Owner, 2026-09-01: availability said "follows item" on a size row —
+    // "it should be independent for each variant".
+    renderGrid({ initialItems: [sized] });
+
+    fireEvent.click(screen.getByLabelText('Avail for Beetle leaf — Half'));
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { is_available: false } }], []);
   });
 
   it('edits the consumption factor per size', () => {

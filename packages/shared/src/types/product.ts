@@ -17,10 +17,10 @@ export type Variant = {
   is_active: boolean;
   sort_order?: number;
   /**
-   * Only sent when the item's recipe caps availability. Sizes share one pool of
-   * ingredients and draw on it at different rates, so each sells out at its own
-   * moment — a half portion outlives a full one. Absent means the pool does not
-   * limit this size.
+   * Whether a customer can pick this size right now. Combines the owner's
+   * "sold out today" switch with the shared ingredient pool, which sizes draw
+   * on at different rates — a half portion outlives a full one. Absent means
+   * nothing is limiting this size.
    */
   is_available?: boolean;
   available_stock?: number;

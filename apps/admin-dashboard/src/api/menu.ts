@@ -47,6 +47,8 @@ export type MenuVariant = {
    */
   consumption_factor?: number;
   is_active: boolean;
+  /** Sold-out-today switch for this size alone, independent of its dish. */
+  is_available?: boolean;
   sort_order?: number;
 };
 

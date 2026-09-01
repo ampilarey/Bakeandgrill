@@ -627,6 +627,11 @@ class OrderCreationService
                 if (!$variant->is_active) {
                     abort(422, "The selected option \"{$variant->name}\" for \"{$itemModel->name}\" is no longer available.");
                 }
+                // Sold out today, the same carve-out the item check gets: an
+                // order for tomorrow may include something 86'd right now.
+                if (!$deferStockForTomorrow && !$variant->isAvailableNow()) {
+                    abort(422, "\"{$variant->name}\" for \"{$itemModel->name}\" is sold out.");
+                }
             } elseif ($variantId) {
                 // Non-variant product: validate if a variant was still passed
                 $variant = $itemModel->variants->firstWhere('id', $variantId);

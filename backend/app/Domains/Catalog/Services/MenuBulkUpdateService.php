@@ -109,6 +109,7 @@ class MenuBulkUpdateService
             'low_stock_threshold' => 'nullable|integer|min:0',
             'consumption_factor' => 'numeric|min:0|max:1000',
             'is_active' => 'boolean',
+            'is_available' => 'boolean',
             'sort_order' => 'nullable|integer|min:0|max:100000',
         ];
     }

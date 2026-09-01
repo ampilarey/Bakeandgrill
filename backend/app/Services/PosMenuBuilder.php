@@ -143,10 +143,15 @@ class PosMenuBuilder
                         'sort_order' => $v->sort_order,
                     ];
 
+                    // Two ways a size can be off: the owner marked it sold out
+                    // today, or the shared ingredient pool no longer covers it.
+                    $soldOut = !$v->isAvailableNow();
                     if (array_key_exists((int) $v->id, $variantPortions)) {
                         $left = $variantPortions[(int) $v->id];
-                        $variantRow['is_available'] = $left > 0;
                         $variantRow['available_stock'] = $left;
+                        $variantRow['is_available'] = !$soldOut && $left > 0;
+                    } elseif ($soldOut) {
+                        $variantRow['is_available'] = false;
                     }
 
                     $variantPricing = $this->effectivePricing->resolveUnitPrice(

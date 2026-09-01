@@ -259,6 +259,7 @@ class ItemController extends Controller
                             'low_stock_threshold' => $v->low_stock_threshold,
                             'consumption_factor' => $v->consumptionFactor(),
                             'is_active' => $v->is_active,
+                            'is_available' => $v->isAvailableNow(),
                             'sort_order' => $v->sort_order,
                         ] : [
                             'id' => $v->id,
@@ -269,10 +270,18 @@ class ItemController extends Controller
                             'sort_order' => $v->sort_order,
                         ];
 
-                        if (array_key_exists((int) $v->id, $variantPortions)) {
-                            $left = $variantPortions[(int) $v->id];
-                            $variantRow['is_available'] = $left > 0;
-                            $variantRow['available_stock'] = $left;
+                        // Admin already has the raw flag above; for the public
+                        // and POS feeds it is combined with the shared pool, so
+                        // one field answers "can a customer pick this".
+                        if (!$includeAdminExtras) {
+                            $soldOut = !$v->isAvailableNow();
+                            if (array_key_exists((int) $v->id, $variantPortions)) {
+                                $left = $variantPortions[(int) $v->id];
+                                $variantRow['available_stock'] = $left;
+                                $variantRow['is_available'] = !$soldOut && $left > 0;
+                            } elseif ($soldOut) {
+                                $variantRow['is_available'] = false;
+                            }
                         }
 
                         if ($includeAvailability) {

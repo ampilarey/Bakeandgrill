@@ -22,6 +22,7 @@ class Variant extends Model
         'sku',
         'barcode',
         'is_active',
+        'is_available',
         'sort_order',
     ];
 
@@ -35,6 +36,7 @@ class Variant extends Model
         'low_stock_threshold' => 'integer',
         'consumption_factor' => 'float',
         'is_active' => 'boolean',
+        'is_available' => 'boolean',
     ];
 
     public function item(): BelongsTo
@@ -46,6 +48,19 @@ class Variant extends Model
     public function inStock(): bool
     {
         return !$this->track_stock || $this->stock_qty > 0;
+    }
+
+    /**
+     * Sellable right now.
+     *
+     * `is_active` is the permanent switch — the size is off the menu. This is
+     * the daily one: we ran out of large cups, it comes back tomorrow, and
+     * customers still see the option greyed out meanwhile. A column added
+     * later reads as available when absent, so old rows stay sellable.
+     */
+    public function isAvailableNow(): bool
+    {
+        return $this->is_available !== false;
     }
 
     /**

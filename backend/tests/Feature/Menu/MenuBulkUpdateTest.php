@@ -563,4 +563,49 @@ class MenuBulkUpdateTest extends TestCase
             [['name' => 'Masroshi', 'base_price' => 5]],
         )->assertOk()->assertJsonPath('message', '1 item created, 1 item updated.');
     }
+
+    // ── Per-size availability ────────────────────────────────────────────────
+
+    public function test_a_single_size_can_be_marked_sold_out(): void
+    {
+        // Owner, 2026-09-01: the grid said availability "follows item" on a
+        // size row — "it should be independent for each variant".
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $large = $item->variants()->create(['name' => 'Large', 'price' => 20, 'is_active' => true]);
+        $small = $item->variants()->create(['name' => 'Small', 'price' => 12, 'is_active' => true]);
+
+        $this->bulk([], [['id' => $large->id, 'fields' => ['is_available' => false]]])->assertOk();
+
+        $this->assertFalse($large->fresh()->isAvailableNow());
+        // The dish and the other size are untouched.
+        $this->assertTrue($small->fresh()->isAvailableNow());
+        $this->assertTrue((bool) $item->fresh()->is_available);
+    }
+
+    public function test_existing_sizes_stay_sellable(): void
+    {
+        // The column arrived later; nothing should have gone quietly sold out.
+        $this->actAsOwner();
+        $item = $this->variantItem();
+        $variant = $item->variants()->create(['name' => 'Full', 'price' => 20, 'is_active' => true]);
+
+        $this->assertTrue($variant->fresh()->isAvailableNow());
+    }
+
+    public function test_a_sold_out_size_still_shows_on_the_menu(): void
+    {
+        // is_active is the permanent switch; this is the daily one, so the
+        // option stays visible and simply cannot be picked.
+        Sanctum::actingAs($this->makeOwner(), ['staff']);
+        $item = $this->variantItem();
+        $large = $item->variants()->create(['name' => 'Large', 'price' => 20, 'is_active' => true, 'is_available' => false]);
+
+        $response = $this->getJson('/api/items?view=pos')->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $item->id);
+        $size = collect($row['variants'])->firstWhere('id', $large->id);
+
+        $this->assertNotNull($size, 'a sold-out size is still listed');
+        $this->assertFalse($size['is_available']);
+    }
 }

@@ -45,6 +45,7 @@ class VariantController extends Controller
             'low_stock_threshold' => 'nullable|integer|min:0',
             'consumption_factor' => 'nullable|numeric|min:0|max:1000',
             'is_active' => 'nullable|boolean',
+            'is_available' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
 
@@ -60,6 +61,7 @@ class VariantController extends Controller
             'low_stock_threshold' => (int) ($data['low_stock_threshold'] ?? 5),
             'consumption_factor' => max(0.0, (float) ($data['consumption_factor'] ?? 1.0)),
             'is_active' => isset($data['is_active']) ? (bool) $data['is_active'] : true,
+            'is_available' => isset($data['is_available']) ? (bool) $data['is_available'] : true,
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
@@ -83,6 +85,7 @@ class VariantController extends Controller
             'low_stock_threshold' => 'nullable|integer|min:0',
             'consumption_factor' => 'nullable|numeric|min:0|max:1000',
             'is_active' => 'nullable|boolean',
+            'is_available' => 'nullable|boolean',
             'sort_order' => 'nullable|integer',
         ]);
 
@@ -116,6 +119,7 @@ class VariantController extends Controller
             'low_stock_threshold' => $v->low_stock_threshold,
             'consumption_factor' => $v->consumptionFactor(),
             'is_active' => $v->is_active,
+            'is_available' => $v->isAvailableNow(),
             'sort_order' => $v->sort_order,
             'created_at' => $v->created_at?->toIso8601String(),
             'updated_at' => $v->updated_at?->toIso8601String(),

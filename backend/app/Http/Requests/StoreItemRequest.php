@@ -110,6 +110,7 @@ class StoreItemRequest extends FormRequest
             'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
             'variants.*.consumption_factor' => 'nullable|numeric|min:0|max:1000',
             'variants.*.is_active' => 'nullable|boolean',
+            'variants.*.is_available' => 'nullable|boolean',
             'variants.*.sort_order' => 'nullable|integer',
             'is_combo' => 'sometimes|boolean',
             'show_on_signage' => 'sometimes|boolean',
