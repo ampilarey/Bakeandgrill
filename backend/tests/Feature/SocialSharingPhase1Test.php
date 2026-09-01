@@ -296,4 +296,101 @@ class SocialSharingPhase1Test extends TestCase
             'share moved to the top bar beside Back',
         );
     }
+
+    public function test_the_offer_page_is_laid_out_like_the_item_page(): void
+    {
+        // Owner, 2026-09-01: the item page was restyled to match the order
+        // app's sheet and the offer pages were left on the old layout, so two
+        // shared links to the same dish landed on two different-looking pages.
+        $cat = $this->category();
+        $item = $this->item($cat, 'Grill Plate', 100);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/grill-full.jpg',
+            'thumb_url' => 'https://cdn.example.com/grill-thumb.jpg',
+            'alt_text' => 'Tonight grill plate',
+            'is_primary' => true,
+            'sort_order' => 0,
+            'media_type' => 'image',
+        ]);
+        $special = DailySpecial::create([
+            'item_id' => $item->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 70,
+            'badge_label' => 'Tonight',
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $html = $this->get('/offers/special/' . $special->id)->assertOk()->getContent();
+
+        // Match markup only — the same names appear earlier in the <style>
+        // block, so bare class names would compare CSS against HTML.
+        $order = [
+            'class="offer-topbar"',
+            'data-testid="share-open"',
+            'class="offer-hero',
+            '<h1>',
+            'class="offer-price"',
+            'class="offer-actions"',
+        ];
+        $last = -1;
+        foreach ($order as $needle) {
+            $at = strpos($html, $needle);
+            $this->assertNotFalse($at, $needle . ' must be on the offer page');
+            $this->assertGreaterThan($last, $at, $needle . ' is out of order');
+            $last = $at;
+        }
+
+        // Share belongs in the top row now, not in the bottom action stack.
+        $this->assertLessThan(
+            strpos($html, 'class="offer-actions"'),
+            strpos($html, 'data-testid="share-open"'),
+            'share moved to the top bar beside Back',
+        );
+    }
+
+    public function test_the_offer_page_shows_the_item_photo(): void
+    {
+        $cat = $this->category();
+        $item = $this->item($cat, 'Grill Plate', 100);
+        ItemPhoto::create([
+            'item_id' => $item->id,
+            'url' => 'https://cdn.example.com/grill-full.jpg',
+            'thumb_url' => 'https://cdn.example.com/grill-thumb.jpg',
+            'is_primary' => true,
+            'sort_order' => 0,
+            'media_type' => 'image',
+        ]);
+        $special = DailySpecial::create([
+            'item_id' => $item->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 70,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $html = $this->get('/offers/special/' . $special->id)->assertOk()->getContent();
+
+        // The card rendition in the hero, same as the item page uses.
+        $this->assertStringContainsString('grill-thumb.jpg', $html);
+    }
+
+    public function test_an_offer_on_an_item_with_no_photo_still_renders(): void
+    {
+        $special = DailySpecial::create([
+            'item_id' => $this->item($this->category(), 'Plain Rice')->id,
+            'is_active' => true,
+            'start_date' => today()->toDateString(),
+            'end_date' => today()->toDateString(),
+            'special_price' => 5,
+        ]);
+        app(SpecialPricingService::class)->bustCache();
+
+        $this->get('/offers/special/' . $special->id)
+            ->assertOk()
+            ->assertSee('class="offer-hero', false);
+    }
 }

@@ -7,9 +7,9 @@ namespace App\Http\Controllers;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
-use App\Models\ItemPhoto;
 use App\Services\EffectivePriceService;
 use App\Services\SpecialPricingService;
+use App\Support\ItemDisplayPhoto;
 use App\Support\PublicMediaUrl;
 use App\Support\SocialPreviewImage;
 use Illuminate\Contracts\View\View;
@@ -343,72 +343,13 @@ class MenuPageController extends Controller
      * @param Collection<int, Item> $items
      * @return array<int, array{url: ?string, webp: ?string, full: ?string, placeholder: bool}>
      */
+    /**
+     * @param Collection<int, Item> $items
+     * @return array<int, array{url: ?string, webp: ?string, full: ?string, placeholder: bool}>
+     */
     private function displayPhotos(Collection $items): array
     {
-        $default = PublicMediaUrl::absolute(content('default_item_image'));
-        $out = [];
-        foreach ($items as $item) {
-            $out[$item->id] = $this->displayPhotoFor($item, $default);
-        }
-
-        return $out;
-    }
-
-    /**
-     * `placeholder` marks the site-wide stand-in rather than a photo of this
-     * item. The two want different framing: a real photo should fill its box,
-     * but the stand-in is the logo, and cropping a logo into a wide hero
-     * slices the flame off the top and the wordmark off the bottom.
-     *
-     * @return array{url: ?string, webp: ?string, full: ?string, placeholder: bool}
-     */
-    private function displayPhotoFor(Item $item, ?string $default): array
-    {
-        $photos = $item->photos
-            ->sort(function (ItemPhoto $a, ItemPhoto $b) {
-                if ((bool) $a->is_primary !== (bool) $b->is_primary) {
-                    return $a->is_primary ? -1 : 1;
-                }
-
-                return $a->sort_order <=> $b->sort_order;
-            })
-            ->values();
-
-        foreach ($photos as $photo) {
-            if ($photo->isVideo()) {
-                $url = PublicMediaUrl::absolute($photo->poster_url ?: $photo->thumb_url);
-                if ($url) {
-                    // A poster is the only still we have — it is both sizes.
-                    return ['url' => $url, 'webp' => null, 'full' => $url, 'placeholder' => false];
-                }
-
-                continue;
-            }
-
-            $url = PublicMediaUrl::absolute($photo->thumb_url ?: $photo->url);
-            if (!$url) {
-                continue;
-            }
-
-            return [
-                'url' => $url,
-                'webp' => PublicMediaUrl::absolute($photo->thumb_webp_url ?: $photo->image_webp_url),
-                'full' => PublicMediaUrl::absolute($photo->url) ?: $url,
-                'placeholder' => false,
-            ];
-        }
-
-        $url = PublicMediaUrl::absolute($item->thumb_url ?: $item->image_url);
-        if ($url) {
-            return [
-                'url' => $url,
-                'webp' => PublicMediaUrl::absolute($item->thumb_webp_url ?: $item->image_webp_url),
-                'full' => PublicMediaUrl::absolute($item->image_url) ?: $url,
-                'placeholder' => false,
-            ];
-        }
-
-        return ['url' => $default, 'webp' => null, 'full' => $default, 'placeholder' => $default !== null];
+        return app(ItemDisplayPhoto::class)->forItems($items);
     }
 
     /**

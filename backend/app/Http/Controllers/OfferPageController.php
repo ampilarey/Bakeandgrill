@@ -9,6 +9,7 @@ use App\Models\DailySpecial;
 use App\Models\Item;
 use App\Models\Promotion;
 use App\Services\EffectivePriceService;
+use App\Support\ItemDisplayPhoto;
 use App\Support\SocialPreviewImage;
 use Illuminate\Contracts\View\View;
 
@@ -47,6 +48,8 @@ class OfferPageController extends Controller
             'item' => $item,
             'price' => $price,
             'socialImage' => $social,
+            // The same picture the item page shows, from the same resolver.
+            'photo' => $item ? app(ItemDisplayPhoto::class)->forItem($item) : null,
             'canonicalPath' => '/offers/special/' . $row->id,
             'addToOrderHref' => $item ? '/order/menu?item=' . $item->id : '/order/menu',
             'currentOffers' => $active ? [] : app(OffersService::class)->activeOffers(),
@@ -78,6 +81,7 @@ class OfferPageController extends Controller
             'item' => $item,
             'price' => $price,
             'socialImage' => $social,
+            'photo' => $item ? app(ItemDisplayPhoto::class)->forItem($item) : null,
             'canonicalPath' => '/offers/promo/' . $row->id,
             'addToOrderHref' => $item ? '/order/menu?item=' . $item->id : '/order/menu',
             'currentOffers' => $active ? [] : app(OffersService::class)->activeOffers(),
