@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuItem } from '../../api';
 import {
+  changedPreviewRows,
   countDirtyCells,
   draftsToChanges,
   fieldChanged,
@@ -142,5 +143,87 @@ describe('fieldChanged', () => {
   it('treats clearing a value as a change', () => {
     expect(fieldChanged(item({ sku: 'ABC' } as Partial<MenuItem>), 'sku', null)).toBe(true);
     expect(fieldChanged(item({ sku: null } as Partial<MenuItem>), 'sku', null)).toBe(false);
+  });
+});
+
+describe('sized dishes and price actions', () => {
+  const sized = item({
+    id: 5,
+    name: 'Water',
+    base_price: 99,
+    variants: [
+      { id: 50, name: 'Small', price: 10, is_active: true },
+      { id: 51, name: 'Large', price: 20, is_active: true },
+    ],
+  } as Partial<MenuItem>);
+
+  it('leaves the dish own price alone and shows the size range', () => {
+    // Owner, 2026-09-01: water has a price box and so do Small and Large.
+    // The dish's own price is never shown and never charged, so a repricing
+    // must not write it.
+    const [row] = previewAction([sized], { kind: 'price', mode: 'increase_pct', value: 10, round: 'none' });
+
+    expect(row.fields).toEqual({});
+    expect(row.before).toBe('10.00–20.00');
+    expect(row.after).toBe('11.00–22.00');
+    expect(row.changesSizes).toBe(true);
+  });
+
+  it('collapses the range when every size costs the same', () => {
+    const flat = item({
+      id: 6,
+      variants: [
+        { id: 60, name: 'A', price: 8, is_active: true },
+        { id: 61, name: 'B', price: 8, is_active: true },
+      ],
+    } as Partial<MenuItem>);
+
+    expect(previewAction([flat], { kind: 'price', mode: 'set', value: 9, round: 'none' })[0].before).toBe('8.00');
+  });
+
+  it('reports a sized dish as unmoved when sizes are excluded', () => {
+    const [row] = previewAction(
+      [sized],
+      { kind: 'price', mode: 'increase_pct', value: 10, round: 'none' },
+      { applyToSizes: false },
+    );
+
+    expect(row.changesSizes).toBe(false);
+    expect(row.after).toBe('sizes left alone');
+    expect(changedPreviewRows([row])).toEqual([]);
+  });
+
+  it('ignores inactive sizes when deciding the dish has any', () => {
+    // All sizes retired means base_price is live again, so it is editable.
+    const retired = item({
+      id: 7,
+      base_price: 10,
+      variants: [{ id: 70, name: 'Old', price: 5, is_active: false }],
+    } as Partial<MenuItem>);
+
+    const [row] = previewAction([retired], { kind: 'price', mode: 'set', value: 12, round: 'none' });
+
+    expect(row.fields).toEqual({ base_price: 12 });
+  });
+
+  it('still moves a plain dish own price', () => {
+    const [row] = previewAction([item({ base_price: 10 })], {
+      kind: 'price', mode: 'increase_pct', value: 10, round: 'none',
+    });
+
+    expect(row.fields).toEqual({ base_price: 11 });
+  });
+
+  it('counts a row that changes only through its sizes as changed', () => {
+    const rows = previewAction([sized], { kind: 'price', mode: 'increase_pct', value: 10, round: 'none' });
+
+    expect(changedPreviewRows(rows)).toHaveLength(1);
+  });
+
+  it('leaves non-price actions on a sized dish alone', () => {
+    // Category, GST and the rest belong to the dish itself.
+    const [row] = previewAction([sized], { kind: 'category', categoryId: 9 });
+
+    expect(row.fields).toEqual({ category_id: 9 });
   });
 });

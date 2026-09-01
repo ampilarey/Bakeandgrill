@@ -9,6 +9,7 @@ import { BulkActionBar } from './BulkActionBar';
 import { GridToolbar } from './GridToolbar';
 import {
   allVariants,
+  changedPreviewRows,
   countDirtyCells,
   draftsToChanges,
   fieldChanged,
@@ -289,7 +290,7 @@ export function QuickEditGrid({
 
   /** Stage an action as drafts so it lands in the same preview-and-save flow. */
   const applyAction = (action: BulkAction) => {
-    const previewed = previewAction(selectedItems, action);
+    const previewed = previewAction(selectedItems, action, { applyToSizes });
     setDrafts((d) => {
       const next = { ...d };
       for (const row of previewed) {
@@ -399,8 +400,8 @@ export function QuickEditGrid({
     }
   };
 
-  const previewRows = pending ? previewAction(selectedItems, pending) : [];
-  const previewChanged = previewRows.filter((r) => Object.keys(r.fields).length > 0);
+  const previewRows = pending ? previewAction(selectedItems, pending, { applyToSizes }) : [];
+  const previewChanged = changedPreviewRows(previewRows);
 
   if (loading && items.length === 0) return <Spinner />;
   if (loadError && items.length === 0) {
@@ -451,6 +452,18 @@ export function QuickEditGrid({
               ? 'Nothing would change'
               : `${previewChanged.length} of ${previewRows.length} selected item${previewRows.length === 1 ? '' : 's'} would change`}
           </div>
+          {/* When nothing moves, say why — a bare "nothing would change" after
+              deliberately selecting rows reads as a broken button. */}
+          {previewChanged.length === 0 && previewRows.length > 0 && (
+            <ul
+              data-testid="bulk-preview-reasons"
+              style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}
+            >
+              {[...new Set(previewRows.map((r) => r.after || 'already set'))].map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          )}
           {previewChanged.length > 0 && (
             <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 10 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -870,23 +883,26 @@ function ItemCell({
     );
   }
 
-  if (column.key === 'price' && sizes.length > 0) {
-    // On a sized dish this is only the "from" price the cards show — the
-    // customer pays a size price, which lives on the rows below.
+  if (column.key === 'price' && sizes.filter((v) => v.is_active !== false).length > 0) {
+    // A dish sold in sizes has no price of its own that anybody sees: the menu
+    // shows the cheapest size and the till charges the size chosen. Its
+    // base_price column is dead weight, so the grid shows the range the sizes
+    // cover rather than an input that would accept a number and change
+    // nothing. Edit the size rows below instead.
+    const prices = sizes.filter((v) => v.is_active !== false).map((v) => Number(v.price) || 0);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+
     return (
-      <td style={cell}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)' }}>from</span>
-          <input
-            type="number" min="0" step="0.01"
-            value={String(value ?? '')}
-            onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
-            aria-label={label}
-            title="Base price — sizes below carry what a customer actually pays"
-            style={{ ...inputStyle(dirty, !!errors, column.width ? column.width - 34 : 70), textAlign: 'right' }}
-          />
+      <td
+        style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }}
+        title="Set by the sizes below — this dish has no price of its own"
+        data-testid={`price-range-${item.id}`}
+      >
+        {min === max ? min.toFixed(2) : `${min.toFixed(2)}–${max.toFixed(2)}`}
+        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
+          from sizes
         </div>
-        {errors && <FieldError messages={errors} />}
       </td>
     );
   }

@@ -258,9 +258,10 @@ describe('QuickEditGrid sizes', () => {
     expect(bulkUpdateItems).toHaveBeenCalledWith([], [{ id: 31, fields: { consumption_factor: 0.25 } }], []);
   });
 
-  it('carries a bulk price rise down to the sizes', () => {
-    // The base price is not what a customer pays for a Full or a Half, so a
-    // repricing that stopped at the item row would miss the real number.
+  it('reprices the sizes and leaves the dish own dead price alone', () => {
+    // A sized dish has no price anybody sees: the menu shows the cheapest
+    // size and the till charges the chosen one. Writing base_price would
+    // change a number nobody reads.
     renderGrid({ initialItems: [sized] });
     fireEvent.click(screen.getByLabelText('Select Beetle leaf'));
     fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
@@ -268,13 +269,31 @@ describe('QuickEditGrid sizes', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
     expect(bulkUpdateItems).toHaveBeenCalledWith(
-      [{ id: 3, fields: { base_price: 22 } }],
+      [],
       [
         { id: 30, fields: { price: 22 } },
         { id: 31, fields: { price: 13.2 } },
       ],
       [],
     );
+  });
+
+  it('previews the size range rather than a base price', () => {
+    renderGrid({ initialItems: [sized] });
+    fireEvent.click(screen.getByLabelText('Select Beetle leaf'));
+    fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
+
+    const preview = within(screen.getByTestId('bulk-preview'));
+    expect(preview.getByText('12.00–20.00')).toBeInTheDocument();
+    expect(preview.getByText('13.20–22.00')).toBeInTheDocument();
+  });
+
+  it('shows the size range read-only on the dish row', () => {
+    renderGrid({ initialItems: [sized] });
+
+    expect(screen.getByTestId('price-range-3')).toHaveTextContent('12.00–20.00');
+    // No input to type an inert number into.
+    expect(screen.queryByLabelText('Price for Beetle leaf')).toBeNull();
   });
 
   it('highlights a rejected size and keeps it pending', async () => {
@@ -540,7 +559,9 @@ describe('QuickEditGrid extra bulk commands', () => {
     expect(screen.getByLabelText('Price amount')).toBeInTheDocument();
   });
 
-  it('can leave the sizes out of a price change when asked', () => {
+  it('says a sized dish would not move when sizes are excluded', () => {
+    // With the sizes off limits there is genuinely nothing to change on a
+    // sized dish, and the preview should say so rather than offer a stage.
     const sized = item({
       id: 7, name: 'Beetle leaf', base_price: 20,
       variants: [{ id: 70, name: 'Full', price: 20, is_active: true, sort_order: 0 }],
@@ -550,10 +571,24 @@ describe('QuickEditGrid extra bulk commands', () => {
 
     fireEvent.click(screen.getByLabelText('Apply price changes to sizes too'));
     fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
-    fireEvent.click(screen.getByRole('button', { name: /^Stage 1 change/ }));
+
+    const preview = within(screen.getByTestId('bulk-preview'));
+    expect(preview.getByText('Nothing would change')).toBeInTheDocument();
+    expect(preview.getByText('sizes left alone')).toBeInTheDocument();
+  });
+
+  it('still reprices a plain dish with no sizes', () => {
+    renderGrid({ initialItems: priced });
+    selectAll();
+
+    fireEvent.click(screen.getByRole('button', { name: /Preview price change/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Stage 2 changes/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
 
-    expect(bulkUpdateItems).toHaveBeenCalledWith([{ id: 7, fields: { base_price: 22 } }], [], []);
+    expect(bulkUpdateItems).toHaveBeenCalledWith([
+      { id: 1, fields: { base_price: 11 } },
+      { id: 2, fields: { base_price: 33 } },
+    ], [], []);
   });
 });
 

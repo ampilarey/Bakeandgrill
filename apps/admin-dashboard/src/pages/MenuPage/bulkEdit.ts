@@ -94,13 +94,62 @@ export function priceForMargin(cost: number, marginPct: number): number | null {
   return cost / (1 - marginPct / 100);
 }
 
-export function previewAction(items: MenuItem[], action: BulkAction): Array<{
+/** Active sizes of a dish, or [] — the list that decides whether its own price counts. */
+export function activeSizes(item: MenuItem): Array<{ id?: number; price: number; cost?: number | null }> {
+  return (item.variants ?? []).filter((v) => v.is_active !== false);
+}
+
+function priceRange(values: number[]): string {
+  if (values.length === 0) return '—';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+
+  return min === max ? min.toFixed(2) : `${min.toFixed(2)}–${max.toFixed(2)}`;
+}
+
+export type PreviewRow = {
   item: MenuItem;
   fields: BulkItemFields;
   before: string;
   after: string;
-}> {
+  /** True when the row changes through its sizes rather than its own cells. */
+  changesSizes?: boolean;
+};
+
+export function previewAction(
+  items: MenuItem[],
+  action: BulkAction,
+  opts: { applyToSizes?: boolean } = {},
+): PreviewRow[] {
+  const applyToSizes = opts.applyToSizes !== false;
+
   return items.map((item, index) => {
+    // On a dish sold in sizes the item's own price is never displayed and
+    // never charged — the menu shows the cheapest size and the till charges
+    // the chosen one. So a repricing works on the sizes, and leaves the
+    // item's dead base_price alone rather than writing a number nobody reads.
+    const sizes = activeSizes(item);
+    if (sizes.length > 0 && (action.kind === 'price' || action.kind === 'margin')) {
+      const before = priceRange(sizes.map((v) => Number(v.price) || 0));
+      if (!applyToSizes) {
+        return { item, fields: {}, before, after: 'sizes left alone', changesSizes: false };
+      }
+      const next = sizes.map((v) => {
+        const stand = { id: v.id, base_price: v.price, cost: v.cost, effective_cost: v.cost } as unknown as MenuItem;
+        const [row] = previewAction([stand], action, { applyToSizes: false });
+
+        return row.fields.base_price === undefined ? Number(v.price) || 0 : Number(row.fields.base_price);
+      });
+
+      return {
+        item,
+        fields: {},
+        before,
+        after: priceRange(next),
+        changesSizes: priceRange(next) !== before,
+      };
+    }
+
     switch (action.kind) {
       case 'price': {
         const current = Number(item.base_price) || 0;
@@ -242,6 +291,11 @@ export function draftsToChanges(items: EditableRecord[], drafts: Drafts): BulkIt
   }
 
   return changes;
+}
+
+/** Rows a previewed action would actually move, through their own cells or their sizes. */
+export function changedPreviewRows(rows: PreviewRow[]): PreviewRow[] {
+  return rows.filter((r) => Object.keys(r.fields).length > 0 || r.changesSizes);
 }
 
 /** How many cells across the grid are pending. Drives the Save button. */
