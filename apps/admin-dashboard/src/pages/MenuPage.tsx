@@ -276,7 +276,7 @@ export function MenuPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                         <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
-                        {cat.name_dv && <span style={{ color: '#94a3b8', fontSize: 13 }}>{cat.name_dv}</span>}
+                        {cat.name_dv && <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{cat.name_dv}</span>}
                         <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
                       </div>
                       {cat.description && (
@@ -284,7 +284,7 @@ export function MenuPage() {
                           {cat.description}
                         </p>
                       )}
-                      <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
                         Sort: {cat.sort_order ?? 0} · {cat.items?.length ?? '?'} items
                       </p>
                     </div>
@@ -305,7 +305,7 @@ export function MenuPage() {
                   <div className="menu-subcat-card">
                   <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid var(--color-border)' }}>
                     <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ fontSize: 16, color: '#94a3b8', flexShrink: 0 }}>↳</span>
+                      <span style={{ fontSize: 16, color: 'var(--color-text-muted)', flexShrink: 0 }}>↳</span>
                       {sub.image_url && (
                         <img src={sub.thumb_url || sub.image_url} alt={sub.name}
                           style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
@@ -314,10 +314,10 @@ export function MenuPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                           <span style={{ fontWeight: 600, fontSize: 14 }}>{sub.name}</span>
-                          {sub.name_dv && <span style={{ color: '#94a3b8', fontSize: 13 }}>{sub.name_dv}</span>}
+                          {sub.name_dv && <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{sub.name_dv}</span>}
                           <Badge label={sub.is_active ? 'Active' : 'Hidden'} color={sub.is_active ? 'green' : 'gray'} />
                         </div>
-                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
                           Sort: {sub.sort_order ?? 0} · {sub.items?.length ?? '?'} items
                         </p>
                       </div>
