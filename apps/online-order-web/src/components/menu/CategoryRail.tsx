@@ -139,22 +139,22 @@ export function CategoryRail({
                   className="cat-rail__thumb"
                   src={img}
                   webpSrc={webp}
-                  sizes="40px"
+                  sizes="48px"
                   alt=""
-                  width={40}
-                  height={40}
+                  width={48}
+                  height={48}
                   loading="lazy"
                   decoding="async"
-                  style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }}
+                  style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }}
                 />
               ) : (
                 <span
                   className="cat-rail__thumb"
                   aria-hidden="true"
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
                     background: tintFromId(cat.id),
                     display: 'flex',
                     alignItems: 'center',
@@ -234,9 +234,9 @@ export function CategoryRail({
               className="cat-rail__thumb"
               aria-hidden="true"
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: 48,
+                height: 48,
+                borderRadius: 12,
                 background: 'hsl(32 55% 88%)',
                 display: 'flex',
                 alignItems: 'center',

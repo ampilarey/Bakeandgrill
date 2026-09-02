@@ -75,20 +75,21 @@
     border-left-color: var(--amber);
     color: var(--amber);
 }
+/* Owner, 2026-09-02: bigger picture and text in the rail, same rail width. */
 .menu-rail-thumb {
-    width: 40px; height: 40px;
-    border-radius: 10px;
+    width: 48px; height: 48px;
+    border-radius: 12px;
     object-fit: cover;
     flex-shrink: 0;
 }
 /* Letter fallback only — an <img> is a replaced element and ignores this. */
 span.menu-rail-thumb {
     display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 0.9rem;
+    font-weight: 800; font-size: 1rem;
     color: #1C1408;
 }
 .menu-rail-label {
-    font-size: 0.625rem; font-weight: 600; line-height: 1.15;
+    font-size: 0.75rem; font-weight: 600; line-height: 1.15;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; word-break: break-word; max-width: 100%;
 }
@@ -98,16 +99,23 @@ span.menu-rail-thumb {
     border-top: 1px solid var(--border);
     font-weight: 700;
 }
-/* Sub-categories under their parent: text only, smaller, no thumbnail. */
+/* Sub-categories under their parent: text only, no thumbnail, a hairline
+   above each one. Owner, 2026-09-02: "its v small … adding a line to
+   separate each subcategory". */
 .menu-rail a.menu-rail-sub {
     flex-direction: row; justify-content: center;
     gap: 4px;
-    min-height: 28px;
-    margin-top: -2px;
-    padding: 0.2rem 0.3rem 0.2rem 0.45rem;
+    min-height: 34px;
+    padding: 0.3rem 0.3rem 0.3rem 0.45rem;
+    border-top: 1px solid var(--border);
+    color: var(--dark);
+    opacity: 0.8;
 }
-.menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6rem; }
+.menu-rail a.menu-rail-sub:hover, .menu-rail a.menu-rail-sub.is-active { opacity: 1; }
+.menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6875rem; }
 .menu-rail a.menu-rail-sub .menu-rail-count { font-size: 9px; }
+/* Close the group under the last sub-category. */
+.menu-rail a.menu-rail-sub + a:not(.menu-rail-sub) { border-top: 1px solid var(--border); }
 
 .menu-main { flex: 1; min-width: 0; }
 
@@ -484,7 +492,9 @@ html.js .menu-fav { display: inline-flex; }
     :root { --menu-rail-w: 76px; --menu-sticky: 64px; }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
     .menu-grid { grid-template-columns: repeat(2, 1fr); }
-    .menu-rail-thumb { width: 36px; height: 36px; }
+    .menu-rail-thumb { width: 44px; height: 44px; }
+    .menu-rail-label { font-size: 0.6875rem; }
+    .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
     .menu-cat-band { height: 76px; margin-top: 1rem; }
 }
 
@@ -703,7 +713,7 @@ body.menu-sheet-open { overflow: hidden; }
                 <a href="#{{ $anchorFor($group) }}"
                    aria-label="{{ $name['text'] }}, {{ $count }} {{ Str::plural('item', $count) }}">
                     @if($thumb)
-                        <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="40" height="40">
+                        <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="48" height="48">
                     @else
                         <span class="menu-rail-thumb" aria-hidden="true"
                               style="background: {{ $tintSoft($cat?->id ?? 0) }}">

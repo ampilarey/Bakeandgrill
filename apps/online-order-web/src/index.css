@@ -3794,8 +3794,10 @@ textarea.field-input {
 @media (max-width: 767px) {
   :root {
     --cat-rail-width: 76px;
-    /* Shared height: rail item (thumb + 2-line label) ↔ category banner */
-    --cat-rail-item-height: 76px;
+    /* Shared height: rail item (thumb + 2-line label) ↔ category banner.
+       Owner, 2026-09-02: bigger picture and text in the rail without a
+       wider rail — 44px thumb + two 11px lines needs the extra 10px. */
+    --cat-rail-item-height: 86px;
   }
 
   .cat-rail__item {
@@ -3806,7 +3808,7 @@ textarea.field-input {
   }
 
   .cat-rail__label {
-    font-size: 0.625rem !important;
+    font-size: 0.6875rem !important;
     font-weight: 600;
     line-height: 1.15;
     display: -webkit-box !important;
@@ -3819,8 +3821,8 @@ textarea.field-input {
 
   .cat-rail__item img,
   .cat-rail__thumb {
-    width: 36px !important;
-    height: 36px !important;
+    width: 44px !important;
+    height: 44px !important;
   }
 }
 
@@ -4018,7 +4020,7 @@ textarea.field-input {
 }
 
 .cat-rail__label {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-align: center;
   line-height: 1.25;
@@ -4046,22 +4048,26 @@ textarea.field-input {
 .cat-rail__subs {
   display: flex;
   flex-direction: column;
-  margin: -2px 0 4px;
+  margin: 0 0 4px;
+  border-bottom: 1px solid var(--color-border, #E8E0D8);
 }
+/* Owner, 2026-09-02: "its v small … adding a line to separate each
+   subcategory". A hairline above each one, and the text a step up. */
 .cat-rail__sub {
   width: 100%;
-  min-height: 30px;
+  min-height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 0.2rem 0.3rem 0.2rem 0.45rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.45rem;
   border: none;
+  border-top: 1px solid var(--color-border, #E8E0D8);
   border-left: 3px solid transparent;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary, #6B5D4F);
   font-family: inherit;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.15;
   text-align: center;
@@ -4086,8 +4092,8 @@ textarea.field-input {
 }
 @media (max-width: 767px) {
   .cat-rail__sub {
-    min-height: 28px;
-    font-size: 0.58rem;
+    min-height: 32px;
+    font-size: 0.625rem;
   }
 }
 
@@ -4411,7 +4417,7 @@ textarea.field-input {
 
   .cat-rail__label {
     -webkit-line-clamp: 1;
-    font-size: 0.58rem !important;
+    font-size: 0.625rem !important;
   }
 }
 
