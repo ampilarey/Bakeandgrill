@@ -5539,6 +5539,133 @@ work area is a single column that
   .qe-savebar-actions > button { flex: 1 1 0; justify-content: center; }
 }
 
+/* Item editor: the form in named sections with a chip row that jumps to
+   each one. The modal body is the scroll box, so the chips stick to its top. */
+.mie {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mie-nav {
+  position: sticky;
+  top: -4px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 -4px;
+  padding: 6px 4px 8px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-light);
+}
+.mie-nav-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mie-nav-chip:hover,
+.mie-nav-chip:focus-visible {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.mie-section {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg);
+  scroll-margin-top: 56px;
+}
+.mie-section-head { margin-bottom: 12px; }
+.mie-section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+}
+.mie-section-hint {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+.mie-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mie-section-body .mie-count {
+  margin: -6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.mie-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+.mie-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 148px;
+  gap: 16px;
+  align-items: start;
+}
+.mie-pack-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 80px 44px;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.mie-add-dashed {
+  margin-top: 4px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mie-add-dashed:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+@media (max-width: 767px) {
+  .mie-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mie-nav::-webkit-scrollbar { display: none; }
+  .mie-nav-chip { flex-shrink: 0; }
+  .mie-section { padding: 12px; }
+  .mie-card-grid { grid-template-columns: 1fr; }
+  .mie-card-preview { position: static !important; margin: 0 auto; }
+  .mie-pack-row {
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  .mie-pack-row > :first-child { grid-column: 1 / -1; }
+}
+
 /* Categories tab: one card per top-level category, sub-categories inside */
 .menu-cat-list {
   display: flex;

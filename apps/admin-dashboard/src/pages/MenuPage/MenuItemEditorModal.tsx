@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { MenuCategory, MenuGroupRow } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
-import { Btn, ErrorMsg, Input, Modal } from '../../components/Layout';
+import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/Layout';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {
@@ -29,6 +29,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
   return (
     <div
       data-testid="menu-card-live-preview"
+      className="mie-card-preview"
       style={{
         width: 148,
         padding: '12px 10px 14px',
@@ -360,6 +361,12 @@ const TAX_CODE_OPTIONS = [
   { value: 'out_of_scope', label: 'Out of scope' },
 ] as const;
 
+const selectStyle: React.CSSProperties = {
+  width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)',
+  padding: '0 10px', fontSize: 14, fontFamily: 'inherit', background: 'var(--color-surface)',
+  color: 'var(--color-text)', boxSizing: 'border-box',
+};
+
 function TaxCodeField({
   value,
   onChange,
@@ -375,7 +382,7 @@ function TaxCodeField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #E8DDD0', fontSize: 14 }}
+        style={selectStyle}
       >
         {TAX_CODE_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -466,7 +473,7 @@ function VariantsEditor({
   };
 
   const headerStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em',
+    fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em',
   };
   const cellStyle: React.CSSProperties = { padding: '4px 0' };
 
@@ -477,11 +484,11 @@ function VariantsEditor({
         <Btn variant="ghost" onClick={addRow} style={{ fontSize: 12, padding: '3px 10px' }}>+ Add variant</Btn>
       </div>
       {rows.length === 0 ? (
-        <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
           No variants yet. Click "+ Add variant" to start.
         </p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="mie-variants-scroll" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -622,6 +629,61 @@ function VariantsEditor({
   );
 }
 
+/**
+ * The form in named sections, with a chip row at the top that jumps to
+ * each one.
+ *
+ * Owner, 2026-09-02: "did u do the same for new item adding box". The
+ * editor had grown to twenty-odd fields in one unbroken column: category
+ * and menu group sat near the bottom under packaging and bundles, and the
+ * Save button was the last thing on the page — off screen on a phone and
+ * on a laptop alike until you had scrolled past everything. Now the
+ * basics come first, every group has a heading, the chips take you
+ * straight to a section, and Save lives in the dialog's own footer so it
+ * is always in reach.
+ */
+type SectionId =
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'bundle' | 'signage';
+
+const SECTIONS: Array<{ id: SectionId; label: string }> = [
+  { id: 'basics', label: 'Basics' },
+  { id: 'pricing', label: 'Price & sizes' },
+  { id: 'card', label: 'Menu card' },
+  { id: 'details', label: 'Details' },
+  { id: 'selling', label: 'Where sold' },
+  { id: 'photo', label: 'Photo' },
+  { id: 'stock', label: 'Stock' },
+  { id: 'packaging', label: 'Packaging' },
+  { id: 'bundle', label: 'Bundle' },
+  { id: 'signage', label: 'TV board' },
+];
+
+function Section({
+  id, title, hint, children, register, testId,
+}: {
+  id: SectionId;
+  title: string;
+  hint?: string;
+  children: ReactNode;
+  register: (id: SectionId, el: HTMLElement | null) => void;
+  testId?: string;
+}) {
+  return (
+    <section
+      ref={(el) => register(id, el)}
+      className="mie-section"
+      data-testid={testId ?? `mie-section-${id}`}
+      aria-labelledby={`mie-${id}-title`}
+    >
+      <div className="mie-section-head">
+        <h3 id={`mie-${id}-title`} className="mie-section-title">{title}</h3>
+        {hint && <p className="mie-section-hint">{hint}</p>}
+      </div>
+      <div className="mie-section-body">{children}</div>
+    </section>
+  );
+}
+
 export function MenuItemEditorModal({
   initial, title, categories, menuGroups, onSave, onClose, itemId,
   snoozedUntil = null,
@@ -647,8 +709,17 @@ export function MenuItemEditorModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const snoozeRef = useRef<ItemSnoozeControlsHandle>(null);
+  const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
   const gstBootstrap = useGstBootstrap();
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const register = (id: SectionId, el: HTMLElement | null) => { sectionRefs.current[id] = el; };
+  const jump = (id: SectionId) => {
+    const el = sectionRefs.current[id];
+    if (el && typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  };
 
   /** Keep form.is_available aligned with snooze API so Save Item cannot undo indefinite. */
   const handleSnooze = async (
@@ -739,6 +810,26 @@ export function MenuItemEditorModal({
     color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
   });
 
+  const sections = SECTIONS.filter((s) => s.id !== 'stock' || !form.has_variants);
+
+  // The footer is the dialog's own, so it stays on screen however long the
+  // form is. A validation message lands there too — next to the button that
+  // produced it, rather than at the top of a form the person has just
+  // scrolled to the bottom of.
+  const footer = activeTab === 'details' ? (
+    <div data-testid="mie-footer">
+      {error && <ErrorMsg message={error} />}
+      <ModalActions>
+        <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
+        <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
+      </ModalActions>
+    </div>
+  ) : (
+    <ModalActions>
+      <Btn variant="ghost" onClick={onClose}>Close</Btn>
+    </ModalActions>
+  );
+
   return (
     // 640 was the width of a simple form, and this stopped being one: it now
     // carries a sizes table of eight input columns, combo and platter builders,
@@ -749,19 +840,26 @@ export function MenuItemEditorModal({
     // Phones are unaffected — the global mobile rule forces the panel to
     // max-width:100vw as a bottom sheet, so this only lets it grow on a screen
     // that has the room.
-    <Modal title={title} onClose={onClose} maxWidth={1040}>
+    <Modal title={title} onClose={onClose} maxWidth={1040} footer={footer}>
 
       {itemId && (
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--color-border)', marginBottom: 12 }}>
           <button type="button" style={tabStyle(activeTab === 'details')} onClick={() => setActiveTab('details')}>Details</button>
           <button type="button" style={tabStyle(activeTab === 'photos')} onClick={() => setActiveTab('photos')}>Photos</button>
         </div>
       )}
 
       {activeTab === 'details' && (
-        <>
-          {error && <ErrorMsg message={error} />}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="mie">
+          <nav className="mie-nav" aria-label="Sections" data-testid="mie-nav">
+            {sections.map((s) => (
+              <button key={s.id} type="button" className="mie-nav-chip" onClick={() => jump(s.id)}>
+                {s.label}
+              </button>
+            ))}
+          </nav>
+
+          <Section id="basics" title="Basics" register={register}>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Name (English) *">
                 <Input value={form.name} onChange={(v) => set('name', v)} placeholder="e.g. Chicken Grill" />
@@ -770,156 +868,53 @@ export function MenuItemEditorModal({
                 <Input value={form.name_dv} onChange={(v) => set('name_dv', v)} placeholder="ދިވެހި" />
               </Field>
             </div>
-
-            <div
-              data-testid="menu-card-display-section"
-              style={{ padding: '14px 16px', background: '#F7FBFF', borderRadius: 12, border: '1px solid #D7E6F5' }}
-            >
-              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Menu card display</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                Controls the compact mobile menu card (circular image + name / little detail / price).
-                Leave blank to fall back to the full name and truncated description.
-              </p>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0, 1fr) 148px',
-                  gap: 16,
-                  alignItems: 'start',
-                }}
-                className="form-grid-2"
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <Field label="Card name (English)">
-                      <Input
-                        value={form.card_name}
-                        onChange={(v) => set('card_name', v.slice(0, 120))}
-                        placeholder={form.name || 'Falls back to name'}
-                      />
-                    </Field>
-                    <Field label="Card name (Dhivehi)">
-                      <Input
-                        value={form.card_name_dv}
-                        onChange={(v) => set('card_name_dv', v.slice(0, 120))}
-                        placeholder={form.name_dv || 'Falls back to name (DV)'}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Short description (English)">
-                    <FormTextarea
-                      value={form.short_description}
-                      onChange={(v) => set('short_description', v.slice(0, 140))}
-                      placeholder="Little detail line on the mobile menu card"
-                      rows={2}
-                    />
-                  </Field>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
-                    {form.short_description.length}/140 · little detail line on the mobile menu card
-                  </p>
-                  <Field label="Short description (Dhivehi)">
-                    <FormTextarea
-                      value={form.short_description_dv}
-                      onChange={(v) => set('short_description_dv', v.slice(0, 140))}
-                      placeholder="Optional Dhivehi detail line"
-                      rows={2}
-                    />
-                  </Field>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
-                    {form.short_description_dv.length}/140
-                  </p>
-                  <Field label="Price note">
-                    <Input
-                      value={form.price_note}
-                      onChange={(v) => set('price_note', v.slice(0, 40))}
-                      placeholder='e.g. "from" / "per box"'
-                    />
-                  </Field>
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '-4px 0 0' }}>
-                    {form.price_note.length}/40 · shown beside the price on the card
-                  </p>
-                </div>
-                <MenuCardLivePreview form={form} />
-              </div>
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Category">
+                <select
+                  value={form.category_id}
+                  onChange={(e) => set('category_id', e.target.value)}
+                  style={selectStyle}
+                >
+                  <option value="">— No category —</option>
+                  {categories.filter((c) => !c.parent_id).map((parent) => (
+                    <optgroup key={parent.id} label={parent.name}>
+                      <option value={String(parent.id)}>{parent.name}</option>
+                      {categories.filter((c) => c.parent_id === parent.id).map((sub) => (
+                        <option key={sub.id} value={String(sub.id)}>{'↳ ' + sub.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Menu group (chef / station)">
+                <select
+                  value={form.menu_group_id}
+                  onChange={(e) => set('menu_group_id', e.target.value)}
+                  style={selectStyle}
+                >
+                  {menuGroups.map((g) => (
+                    <option key={g.id} value={String(g.id)}>{g.name}</option>
+                  ))}
+                </select>
+              </Field>
             </div>
-
-            <div style={{ padding: '14px 16px', background: '#FFFAF5', borderRadius: 12, border: '1px solid #F0E0D0' }}>
-              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Customer-facing details</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                Full description shown on the item detail sheet when customers tap an item.
-              </p>
-              <Field label="Description">
-                <FormTextarea
-                  value={form.description}
-                  onChange={(v) => set('description', v)}
-                  placeholder={"Full item description — customers see this when they open the item."}
-                  rows={6}
-                />
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="SKU / Internal Code">
+                <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
               </Field>
-              {(() => {
-                const lines = form.description.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim()).length;
-                return (
-                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
-                    {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
-                    used as the card detail fallback when short description is empty
-                  </p>
-                );
-              })()}
-              <Field label="Dietary tags">
-                <TagChipField
-                  value={parseTagsCsv(form.dietary_tags)}
-                  onChange={(tags) => set('dietary_tags', tagsToCsv(tags))}
-                  presets={DIETARY_PRESETS}
-                  placeholder="Custom dietary tag…"
-                />
+              <Field label="Sort Order">
+                <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
               </Field>
-              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
-                Filter chips on the menu · also listed on the item detail sheet
-              </p>
-              <Field label="Allergens">
-                <TagChipField
-                  value={parseTagsCsv(form.allergens)}
-                  onChange={(tags) => set('allergens', tagsToCsv(tags))}
-                  presets={ALLERGEN_PRESETS}
-                  placeholder="Custom allergen…"
-                />
-              </Field>
-              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 12px' }}>
-                Shown as “Contains …” on the item detail sheet (not on the menu card)
-              </p>
-              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <Field label="Spice level">
-                  <select
-                    value={form.spice_level}
-                    onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
-                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14 }}
-                  >
-                    <option value="none">None / not spicy</option>
-                    <option value="mild">Mild</option>
-                    <option value="medium">Medium</option>
-                    <option value="hot">Hot</option>
-                    <option value="extra_hot">Extra hot</option>
-                  </select>
-                </Field>
-                <Field label="Prep time (min)">
-                  <Input
-                    value={form.prep_time_minutes}
-                    onChange={(v) => set('prep_time_minutes', v)}
-                    type="number"
-                    placeholder="e.g. 15"
-                  />
-                </Field>
-                <Field label="Calories (optional)">
-                  <Input
-                    value={form.calories}
-                    onChange={(v) => set('calories', v.replace(/[^\d]/g, ''))}
-                    type="number"
-                    placeholder="e.g. 450"
-                  />
-                </Field>
-              </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', padding: '8px 10px', background: 'var(--color-bg)', borderRadius: 8, border: '1px solid var(--color-border)' }}>
+          </Section>
+
+          <Section
+            id="pricing"
+            title="Price & sizes"
+            hint="A dish sold in sizes takes its price from the sizes; otherwise set one price here."
+            register={register}
+          >
+            <label className="mie-toggle">
               <input
                 type="checkbox"
                 checked={form.has_variants}
@@ -931,7 +926,7 @@ export function MenuItemEditorModal({
                 }}
               />
               <span style={{ fontWeight: 600 }}>This product has variants</span>
-              <span style={{ color: '#94a3b8', fontWeight: 400 }}>(e.g. sizes, portions)</span>
+              <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(e.g. sizes, portions)</span>
             </label>
 
             {form.has_variants ? (
@@ -939,49 +934,313 @@ export function MenuItemEditorModal({
                 <VariantsEditor rows={form.variants} onChange={(rows) => set('variants', rows)} />
                 <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
-                  <Field label="Sort Order">
-                    <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
-                  </Field>
                 </div>
               </>
             ) : (
-              <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="Price (MVR) *">
                   <Input value={form.base_price} onChange={(v) => set('base_price', v)} type="number" placeholder="0.00" />
                 </Field>
                 <TaxCodeField value={form.tax_code} onChange={(v) => set('tax_code', v)} bootstrap={gstBootstrap} />
-                <Field label="Sort Order">
-                  <Input value={form.sort_order} onChange={(v) => set('sort_order', v)} type="number" placeholder="0" />
-                </Field>
               </div>
             )}
+          </Section>
 
-            <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-              <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#3D2B1F' }}>Packaging</p>
-              <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <Field label="Charge mode">
-                  <select
-                    value={form.packaging_fee_mode}
-                    onChange={(e) => set('packaging_fee_mode', e.target.value as 'per_unit' | 'per_line')}
-                    style={{ width: '100%', minHeight: 44, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px', fontSize: 14 }}
-                  >
-                    <option value="per_unit">Per unit (× qty)</option>
-                    <option value="per_line">Per line (once)</option>
-                  </select>
+          <Section
+            id="card"
+            title="Menu card"
+            hint="The compact card on the mobile menu: circular image, name, a little detail line and the price. Leave blank to fall back to the full name and description."
+            register={register}
+            testId="menu-card-display-section"
+          >
+            <div className="mie-card-grid">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+                <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <Field label="Card name (English)">
+                    <Input
+                      value={form.card_name}
+                      onChange={(v) => set('card_name', v.slice(0, 120))}
+                      placeholder={form.name || 'Falls back to name'}
+                    />
+                  </Field>
+                  <Field label="Card name (Dhivehi)">
+                    <Input
+                      value={form.card_name_dv}
+                      onChange={(v) => set('card_name_dv', v.slice(0, 120))}
+                      placeholder={form.name_dv || 'Falls back to name (DV)'}
+                    />
+                  </Field>
+                </div>
+                <Field label="Short description (English)">
+                  <FormTextarea
+                    value={form.short_description}
+                    onChange={(v) => set('short_description', v.slice(0, 140))}
+                    placeholder="Little detail line on the mobile menu card"
+                    rows={2}
+                  />
                 </Field>
-                <Field label="Fallback fee (MVR)">
-                  <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
+                <p className="mie-count">
+                  {form.short_description.length}/140 · little detail line on the mobile menu card
+                </p>
+                <Field label="Short description (Dhivehi)">
+                  <FormTextarea
+                    value={form.short_description_dv}
+                    onChange={(v) => set('short_description_dv', v.slice(0, 140))}
+                    placeholder="Optional Dhivehi detail line"
+                    rows={2}
+                  />
                 </Field>
+                <p className="mie-count">
+                  {form.short_description_dv.length}/140
+                </p>
+                <Field label="Price note">
+                  <Input
+                    value={form.price_note}
+                    onChange={(v) => set('price_note', v.slice(0, 40))}
+                    placeholder='e.g. "from" / "per box"'
+                  />
+                </Field>
+                <p className="mie-count">
+                  {form.price_note.length}/40 · shown beside the price on the card
+                </p>
               </div>
-              <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                Fallback applies when this item has no packaging options. Dine-in is never charged.
-              </p>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#6B5B4F' }}>Options (optional)</p>
-              {form.packaging_options.map((row, idx) => (
-                <div
-                  key={row._key}
-                  style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 80px 44px', gap: 8, alignItems: 'end', marginBottom: 8 }}
+              <MenuCardLivePreview form={form} />
+            </div>
+          </Section>
+
+          <Section
+            id="details"
+            title="Details"
+            hint="What customers read when they open the item."
+            register={register}
+          >
+            <Field label="Description">
+              <FormTextarea
+                value={form.description}
+                onChange={(v) => set('description', v)}
+                placeholder={"Full item description — customers see this when they open the item."}
+                rows={6}
+              />
+            </Field>
+            {(() => {
+              const lines = form.description.replace(/\r\n/g, '\n').split('\n').filter((l) => l.trim()).length;
+              return (
+                <p className="mie-count">
+                  {form.description.trim().length} characters · {lines} line{lines === 1 ? '' : 's'} ·
+                  used as the card detail fallback when short description is empty
+                </p>
+              );
+            })()}
+            <Field label="Dietary tags">
+              <TagChipField
+                value={parseTagsCsv(form.dietary_tags)}
+                onChange={(tags) => set('dietary_tags', tagsToCsv(tags))}
+                presets={DIETARY_PRESETS}
+                placeholder="Custom dietary tag…"
+              />
+            </Field>
+            <p className="mie-count">
+              Filter chips on the menu · also listed on the item detail sheet
+            </p>
+            <Field label="Allergens">
+              <TagChipField
+                value={parseTagsCsv(form.allergens)}
+                onChange={(tags) => set('allergens', tagsToCsv(tags))}
+                presets={ALLERGEN_PRESETS}
+                placeholder="Custom allergen…"
+              />
+            </Field>
+            <p className="mie-count">
+              Shown as “Contains …” on the item detail sheet (not on the menu card)
+            </p>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <Field label="Spice level">
+                <select
+                  value={form.spice_level}
+                  onChange={(e) => set('spice_level', e.target.value as ItemForm['spice_level'])}
+                  style={selectStyle}
                 >
+                  <option value="none">None / not spicy</option>
+                  <option value="mild">Mild</option>
+                  <option value="medium">Medium</option>
+                  <option value="hot">Hot</option>
+                  <option value="extra_hot">Extra hot</option>
+                </select>
+              </Field>
+              <Field label="Prep time (min)">
+                <Input
+                  value={form.prep_time_minutes}
+                  onChange={(v) => set('prep_time_minutes', v)}
+                  type="number"
+                  placeholder="e.g. 15"
+                />
+              </Field>
+              <Field label="Calories (optional)">
+                <Input
+                  value={form.calories}
+                  onChange={(v) => set('calories', v.replace(/[^\d]/g, ''))}
+                  type="number"
+                  placeholder="e.g. 450"
+                />
+              </Field>
+            </div>
+          </Section>
+
+          <Section
+            id="selling"
+            title="Where sold"
+            hint="Which channels can order it, and whether it is on sale right now."
+            register={register}
+          >
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+                Where can this be ordered? (channel matrix)
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
+                {SALES_CHANNELS.map(({ id, label }) => (
+                  <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!form.channels[id]}
+                      onChange={(e) => setForm((f) => ({
+                        ...f,
+                        channels: { ...f.channels, [id]: e.target.checked },
+                      }))}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.45 }}>
+                Immediate sale needs dine-in / takeaway / pickup / delivery. Catering alone = event menu only
+                (not orderable at the till or online until you also enable an immediate channel). Delivery also
+                needs the global delivery switch and active menu duty above.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
+                On menu (exists in system)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
+                Selling today (orderable now)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.allow_pre_order}
+                  onChange={(e) => {
+                    set('allow_pre_order', e.target.checked);
+                    if (!e.target.checked) set('tomorrow_daily_capacity', '');
+                  }}
+                  data-testid="allow-pre-order-toggle"
+                />
+                Can be ordered for tomorrow
+              </label>
+            </div>
+            {form.allow_pre_order && (
+              <div style={{ maxWidth: 280 }} data-testid="tomorrow-daily-capacity-field">
+                <Field label="Most you can make in a day">
+                  <Input
+                    value={form.tomorrow_daily_capacity}
+                    onChange={(v) => set('tomorrow_daily_capacity', v.replace(/[^\d]/g, ''))}
+                    placeholder="No limit"
+                    data-testid="tomorrow-daily-capacity-input"
+                  />
+                </Field>
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Leave blank for no limit. Counts every tomorrow order for this item across all customers.
+                </p>
+              </div>
+            )}
+            {itemId != null && onSnooze && (
+              <ItemSnoozeControls
+                ref={snoozeRef}
+                canManage
+                snoozedUntil={snoozedUntil}
+                isAvailable={form.is_available}
+                reasonNote={reasonNote}
+                onSnooze={handleSnooze}
+              />
+            )}
+          </Section>
+
+          <Section id="photo" title="Photo" register={register}>
+            <ImageUploadField
+              value={form.image_url}
+              originalValue={form.image_original_url}
+              onChange={({ url, original_url, thumb_url, image_webp_url, thumb_webp_url }) => {
+                set('image_url', url);
+                set('image_original_url', original_url);
+                set('thumb_url', thumb_url ?? '');
+                set('image_webp_url', image_webp_url ?? '');
+                set('thumb_webp_url', thumb_webp_url ?? '');
+              }}
+            />
+          </Section>
+
+          {!form.has_variants && (
+            <Section
+              id="stock"
+              title="Stock"
+              hint="Turn on for pre-made batches (e.g. 12 croissants ready). Leave off for made-to-order items."
+              register={register}
+            >
+              <label className="mie-toggle">
+                <input
+                  type="checkbox"
+                  checked={form.track_stock}
+                  onChange={(e) => set('track_stock', e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Track prepared quantity</span>
+              </label>
+              {form.track_stock && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+                  <Field label="Quantity on hand">
+                    <Input
+                      value={form.stock_quantity}
+                      onChange={(v) => set('stock_quantity', v.replace(/[^\d]/g, ''))}
+                      placeholder="0"
+                    />
+                  </Field>
+                  <Field label="Low-stock alert at">
+                    <Input
+                      value={form.low_stock_threshold}
+                      onChange={(v) => set('low_stock_threshold', v.replace(/[^\d]/g, ''))}
+                      placeholder="5"
+                    />
+                  </Field>
+                </div>
+              )}
+            </Section>
+          )}
+
+          <Section
+            id="packaging"
+            title="Packaging"
+            hint="Fallback applies when this item has no packaging options. Dine-in is never charged."
+            register={register}
+          >
+            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Charge mode">
+                <select
+                  value={form.packaging_fee_mode}
+                  onChange={(e) => set('packaging_fee_mode', e.target.value as 'per_unit' | 'per_line')}
+                  style={selectStyle}
+                >
+                  <option value="per_unit">Per unit (× qty)</option>
+                  <option value="per_line">Per line (once)</option>
+                </select>
+              </Field>
+              <Field label="Fallback fee (MVR)">
+                <Input value={form.packaging_fee} onChange={(v) => set('packaging_fee', v)} type="number" placeholder="0.00" />
+              </Field>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Options (optional)</p>
+              {form.packaging_options.map((row, idx) => (
+                <div key={row._key} className="mie-pack-row">
                   <Field label={idx === 0 ? 'Name' : ' '}>
                     <Input
                       value={row.name}
@@ -1045,328 +1304,166 @@ export function MenuItemEditorModal({
                   ];
                   set('packaging_options', next);
                 }}
-                style={{
-                  marginTop: 4, minHeight: 40, padding: '0 12px', borderRadius: 8,
-                  border: '1px dashed #C4B5A5', background: 'transparent',
-                  cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#6B5B4F',
-                }}
+                className="mie-add-dashed"
               >
                 + Add packaging option
               </button>
             </div>
+          </Section>
 
-            <div style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-              <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>TV signage board</p>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={form.show_on_signage}
-                  onChange={(e) => set('show_on_signage', e.target.checked)}
-                />
-                <span style={{ fontWeight: 600 }}>Show on the TV board</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: form.show_on_signage ? 'pointer' : 'not-allowed', opacity: form.show_on_signage ? 1 : 0.5 }}>
-                <input
-                  type="checkbox"
-                  disabled={!form.show_on_signage}
-                  checked={form.is_signage_promoted}
-                  onChange={(e) => set('is_signage_promoted', e.target.checked)}
-                />
-                <span style={{ fontWeight: 600 }}>Feature on its own slide</span>
-              </label>
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                Items with a photo or an active discount already get their own slide. Tick this to feature an item that has neither.
-              </p>
-            </div>
-
-            <div
-              style={{ padding: '12px 14px', background: 'var(--color-bg)', borderRadius: 10, border: '1px solid var(--color-border)' }}
-              data-testid="bundle-platter-section"
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: form.is_combo ? 12 : 0 }}>
-                <input
-                  type="checkbox"
-                  checked={form.is_combo}
-                  onChange={(e) => {
-                    set('is_combo', e.target.checked);
-                    if (e.target.checked) {
-                      if (form.combo_mode === 'fixed' && form.combo_items.length === 0) {
-                        set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
-                      }
-                      if (form.combo_mode === 'choose' && form.platter_groups.length === 0) {
-                        set('platter_groups', [emptyPlatterGroupRow()]);
-                      }
+          <Section
+            id="bundle"
+            title="Bundle / combo / platter"
+            register={register}
+            testId="bundle-platter-section"
+          >
+            <label className="mie-toggle">
+              <input
+                type="checkbox"
+                checked={form.is_combo}
+                onChange={(e) => {
+                  set('is_combo', e.target.checked);
+                  if (e.target.checked) {
+                    if (form.combo_mode === 'fixed' && form.combo_items.length === 0) {
+                      set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
                     }
-                  }}
-                />
-                <span style={{ fontWeight: 600 }}>Bundle / combo / platter</span>
-              </label>
-              {form.is_combo && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <Field label="Bundle discount (%)">
-                    <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
-                  </Field>
-                  <div>
-                    <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                      How customers get what&apos;s inside
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
-                        <input
-                          type="radio"
-                          name="combo_mode"
-                          checked={form.combo_mode === 'fixed'}
-                          onChange={() => {
-                            set('combo_mode', 'fixed');
-                            if (form.combo_items.length === 0) {
-                              set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
-                            }
-                          }}
-                        />
-                        Fixed items (always the same)
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
-                        <input
-                          type="radio"
-                          name="combo_mode"
-                          checked={form.combo_mode === 'choose'}
-                          onChange={() => {
-                            set('combo_mode', 'choose');
-                            if (form.platter_groups.length === 0) {
-                              set('platter_groups', [emptyPlatterGroupRow()]);
-                            }
-                          }}
-                          data-testid="combo-mode-choose"
-                        />
-                        Build-your-own platter (customer chooses)
-                      </label>
-                    </div>
-                  </div>
-
-                  {form.combo_mode === 'fixed' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
-                      {form.combo_items.map((row, idx) => (
-                        <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-surface)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
-                            <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
-                          </div>
-                          <ItemSearch
-                            kind="menu"
-                            value={comboRowSelection(row)}
-                            excludeIds={itemId ? [itemId] : []}
-                            excludeCombos
-                            placeholder="Search menu item…"
-                            onChange={(sel) => {
-                              const next = [...form.combo_items];
-                              next[idx] = {
-                                ...next[idx],
-                                item_id: sel ? String(sel.id) : '',
-                                item_name: sel?.item.name,
-                              };
-                              set('combo_items', next);
-                            }}
-                          />
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                            <Input value={row.quantity} onChange={(v) => {
-                              const next = [...form.combo_items];
-                              next[idx] = { ...next[idx], quantity: v };
-                              set('combo_items', next);
-                            }} type="number" placeholder="Qty" />
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
-                              <input type="checkbox" checked={row.is_optional} onChange={(e) => {
-                                const next = [...form.combo_items];
-                                next[idx] = { ...next[idx], is_optional: e.target.checked };
-                                set('combo_items', next);
-                              }} />
-                              Optional
-                            </label>
-                          </div>
-                        </div>
-                      ))}
-                      <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
-                        + Add component
-                      </Btn>
-                    </div>
-                  ) : (
-                    <PlatterGroupsEditor
-                      groups={form.platter_groups}
-                      variants={form.has_variants ? form.variants : []}
-                      excludeItemId={itemId}
-                      onChange={(groups) => set('platter_groups', groups)}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Category">
-                <select
-                  value={form.category_id}
-                  onChange={(e) => set('category_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
-                >
-                  <option value="">— No category —</option>
-                  {categories.filter((c) => !c.parent_id).map((parent) => (
-                    <optgroup key={parent.id} label={parent.name}>
-                      <option value={String(parent.id)}>{parent.name}</option>
-                      {categories.filter((c) => c.parent_id === parent.id).map((sub) => (
-                        <option key={sub.id} value={String(sub.id)}>{'↳ ' + sub.name}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Menu group (chef / station)">
-                <select
-                  value={form.menu_group_id}
-                  onChange={(e) => set('menu_group_id', e.target.value)}
-                  style={{ width: '100%', border: '1px solid var(--color-border)', borderRadius: 9, padding: '9px 12px', fontSize: 14 }}
-                >
-                  {menuGroups.map((g) => (
-                    <option key={g.id} value={String(g.id)}>{g.name}</option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="SKU / Internal Code">
-              <Input value={form.sku} onChange={(v) => set('sku', v)} placeholder="e.g. CHKGRL-01" />
-            </Field>
-            <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                  Where can this be ordered? (channel matrix)
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 20px' }}>
-                  {SALES_CHANNELS.map(({ id, label }) => (
-                    <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
-                      <input
-                        type="checkbox"
-                        checked={!!form.channels[id]}
-                        onChange={(e) => setForm((f) => ({
-                          ...f,
-                          channels: { ...f.channels, [id]: e.target.checked },
-                        }))}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.45 }}>
-                  Immediate sale needs dine-in / takeaway / pickup / delivery. Catering alone = event menu only
-                  (not orderable at the till or online until you also enable an immediate channel). Delivery also
-                  needs the global delivery switch and active menu duty above.
-                </p>
-              </div>
-            <Field label="Image">
-              <ImageUploadField
-                value={form.image_url}
-                originalValue={form.image_original_url}
-                onChange={({ url, original_url, thumb_url, image_webp_url, thumb_webp_url }) => {
-                  set('image_url', url);
-                  set('image_original_url', original_url);
-                  set('thumb_url', thumb_url ?? '');
-                  set('image_webp_url', image_webp_url ?? '');
-                  set('thumb_webp_url', thumb_webp_url ?? '');
+                    if (form.combo_mode === 'choose' && form.platter_groups.length === 0) {
+                      set('platter_groups', [emptyPlatterGroupRow()]);
+                    }
+                  }
                 }}
               />
-            </Field>
-            {!form.has_variants && (
-              <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px', background: '#FAFAF8' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: form.track_stock ? 12 : 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={form.track_stock}
-                    onChange={(e) => set('track_stock', e.target.checked)}
-                  />
-                  Track prepared quantity
-                </label>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: '6px 0 0 24px' }}>
-                  Turn on for pre-made batches (e.g. 12 croissants ready). Leave off for made-to-order items.
-                </p>
-                {form.track_stock && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginTop: 14, paddingLeft: 24 }}>
-                    <Field label="Quantity on hand">
-                      <Input
-                        value={form.stock_quantity}
-                        onChange={(v) => set('stock_quantity', v.replace(/[^\d]/g, ''))}
-                        placeholder="0"
+              <span style={{ fontWeight: 600 }}>Bundle / combo / platter</span>
+            </label>
+            {form.is_combo && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Field label="Bundle discount (%)">
+                  <Input value={form.combo_discount_pct} onChange={(v) => set('combo_discount_pct', v)} type="number" placeholder="Optional" />
+                </Field>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    How customers get what&apos;s inside
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+                      <input
+                        type="radio"
+                        name="combo_mode"
+                        checked={form.combo_mode === 'fixed'}
+                        onChange={() => {
+                          set('combo_mode', 'fixed');
+                          if (form.combo_items.length === 0) {
+                            set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                          }
+                        }}
                       />
-                    </Field>
-                    <Field label="Low-stock alert at">
-                      <Input
-                        value={form.low_stock_threshold}
-                        onChange={(v) => set('low_stock_threshold', v.replace(/[^\d]/g, ''))}
-                        placeholder="5"
+                      Fixed items (always the same)
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', minHeight: 44 }}>
+                      <input
+                        type="radio"
+                        name="combo_mode"
+                        checked={form.combo_mode === 'choose'}
+                        onChange={() => {
+                          set('combo_mode', 'choose');
+                          if (form.platter_groups.length === 0) {
+                            set('platter_groups', [emptyPlatterGroupRow()]);
+                          }
+                        }}
+                        data-testid="combo-mode-choose"
                       />
-                    </Field>
+                      Build-your-own platter (customer chooses)
+                    </label>
                   </div>
+                </div>
+
+                {form.combo_mode === 'fixed' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', fontWeight: 600 }}>Included items</p>
+                    {form.combo_items.map((row, idx) => (
+                      <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, background: 'var(--color-surface)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Component {idx + 1}</span>
+                          <Btn variant="ghost" small onClick={() => set('combo_items', form.combo_items.filter((_, i) => i !== idx))}>Remove</Btn>
+                        </div>
+                        <ItemSearch
+                          kind="menu"
+                          value={comboRowSelection(row)}
+                          excludeIds={itemId ? [itemId] : []}
+                          excludeCombos
+                          placeholder="Search menu item…"
+                          onChange={(sel) => {
+                            const next = [...form.combo_items];
+                            next[idx] = {
+                              ...next[idx],
+                              item_id: sel ? String(sel.id) : '',
+                              item_name: sel?.item.name,
+                            };
+                            set('combo_items', next);
+                          }}
+                        />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                          <Input value={row.quantity} onChange={(v) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], quantity: v };
+                            set('combo_items', next);
+                          }} type="number" placeholder="Qty" />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, whiteSpace: 'nowrap' }}>
+                            <input type="checkbox" checked={row.is_optional} onChange={(e) => {
+                              const next = [...form.combo_items];
+                              next[idx] = { ...next[idx], is_optional: e.target.checked };
+                              set('combo_items', next);
+                            }} />
+                            Optional
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
+                      + Add component
+                    </Btn>
+                  </div>
+                ) : (
+                  <PlatterGroupsEditor
+                    groups={form.platter_groups}
+                    variants={form.has_variants ? form.variants : []}
+                    excludeItemId={itemId}
+                    onChange={(groups) => set('platter_groups', groups)}
+                  />
                 )}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} />
-                Active (exists in system)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.is_available} onChange={(e) => set('is_available', e.target.checked)} />
-                Available (orderable today)
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={form.allow_pre_order}
-                  onChange={(e) => {
-                    set('allow_pre_order', e.target.checked);
-                    if (!e.target.checked) set('tomorrow_daily_capacity', '');
-                  }}
-                  data-testid="allow-pre-order-toggle"
-                />
-                Can be ordered for tomorrow
-              </label>
-            </div>
-            {form.allow_pre_order && (
-              <div style={{ marginTop: 12, maxWidth: 280 }} data-testid="tomorrow-daily-capacity-field">
-                <Field label="Most you can make in a day">
-                  <Input
-                    value={form.tomorrow_daily_capacity}
-                    onChange={(v) => set('tomorrow_daily_capacity', v.replace(/[^\d]/g, ''))}
-                    placeholder="No limit"
-                    data-testid="tomorrow-daily-capacity-input"
-                  />
-                </Field>
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Leave blank for no limit. Counts every tomorrow order for this item across all customers.
-                </p>
-              </div>
-            )}
-            {itemId != null && onSnooze && (
-              <ItemSnoozeControls
-                ref={snoozeRef}
-                canManage
-                snoozedUntil={snoozedUntil}
-                isAvailable={form.is_available}
-                reasonNote={reasonNote}
-                onSnooze={handleSnooze}
+          </Section>
+
+          <Section
+            id="signage"
+            title="TV signage board"
+            hint="Items with a photo or an active discount already get their own slide. Feature an item that has neither."
+            register={register}
+          >
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.show_on_signage}
+                onChange={(e) => set('show_on_signage', e.target.checked)}
               />
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-            <Btn onClick={handleSave} disabled={loading}>{loading ? 'Saving…' : 'Save Item'}</Btn>
-          </div>
-        </>
+              <span style={{ fontWeight: 600 }}>Show on the TV board</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: form.show_on_signage ? 'pointer' : 'not-allowed', opacity: form.show_on_signage ? 1 : 0.5 }}>
+              <input
+                type="checkbox"
+                disabled={!form.show_on_signage}
+                checked={form.is_signage_promoted}
+                onChange={(e) => set('is_signage_promoted', e.target.checked)}
+              />
+              <span style={{ fontWeight: 600 }}>Feature on its own slide</span>
+            </label>
+          </Section>
+        </div>
       )}
 
       {activeTab === 'photos' && itemId && (
-        <>
-          <PhotosTab itemId={itemId} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-            <Btn variant="ghost" onClick={onClose}>Close</Btn>
-          </div>
-        </>
+        <PhotosTab itemId={itemId} />
       )}
     </Modal>
   );
