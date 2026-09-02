@@ -5509,24 +5509,20 @@ work area is a single column that
 @media (max-width: 767px) {
   .qe-toolbar-search { flex-basis: 100%; }
   .qe-toolbar-count { order: 2; width: 100%; }
+  /* Button rows wrap on a phone; none of them scroll sideways. */
   .qe-toolbar-actions {
     order: 1;
     width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .qe-toolbar-actions::-webkit-scrollbar { display: none; }
-  .qe-toolbar-actions > *, .qe-toolbar-actions > label > button { flex-shrink: 0; white-space: nowrap; }
-  .qe-bulk-tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  .qe-toolbar-actions > button, .qe-toolbar-actions > label > button {
+    flex: 1 1 auto;
+    justify-content: center;
+    white-space: nowrap;
   }
-  .qe-bulk-tabs::-webkit-scrollbar { display: none; }
+  .qe-toolbar-actions > label { display: flex; flex: 1 1 auto; }
+  .qe-bulk-tabs { flex-wrap: wrap; }
   /* The page scrolls on a phone; a nested scroll box fights the keyboard. */
   .qe-scroll { max-height: none; min-height: 0; }
   .qe-scroll.has-menu { min-height: 420px; }
@@ -5647,14 +5643,21 @@ work area is a single column that
 .mie-add-dashed:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 @media (max-width: 767px) {
+  /* Owner, 2026-09-02: "I have to scroll horizontally in filter buttons".
+     The chips wrap into rows instead. Three rows pinned to the top of a
+     phone sheet would eat it, so on a phone the row is not sticky. */
   .mie-nav {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    position: static;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0;
+    padding: 0 0 8px;
   }
-  .mie-nav::-webkit-scrollbar { display: none; }
-  .mie-nav-chip { flex-shrink: 0; }
+  .mie-nav-chip {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
   .mie-section { padding: 12px; }
   .mie-card-grid { grid-template-columns: 1fr; }
   .mie-card-preview { position: static !important; margin: 0 auto; }
