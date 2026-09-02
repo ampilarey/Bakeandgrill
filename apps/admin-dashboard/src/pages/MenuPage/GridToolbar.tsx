@@ -80,8 +80,8 @@ export function GridToolbar({
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ flex: '1 1 240px', minWidth: 200, position: 'relative' }}>
+      <div className="qe-toolbar" data-testid="grid-toolbar">
+        <div className="qe-toolbar-search">
           <input
             value={filters.search}
             onChange={(e) => set('search', e.target.value)}
@@ -104,43 +104,47 @@ export function GridToolbar({
           )}
         </div>
 
-        <Btn
-          small
-          variant={activeCount > 0 ? 'primary' : 'secondary'}
-          onClick={() => setShowFilters((v) => !v)}
-          data-testid="grid-filter-toggle"
-        >
-          Filters{activeCount > 0 ? ` (${activeCount})` : ''}
-        </Btn>
-        <Btn small variant="secondary" onClick={() => setShowColumns((v) => !v)} data-testid="grid-columns-toggle">
-          Columns ({visibleKeys.length})
-        </Btn>
-        {hasSizes && (
-          <Btn small variant="secondary" onClick={onToggleExpandAll} data-testid="grid-expand-all">
-            {allExpanded ? 'Collapse all sizes' : 'Expand all sizes'}
-          </Btn>
-        )}
-        <Btn small variant="secondary" onClick={onExport} data-testid="csv-export">⭳ Export CSV</Btn>
-        <label style={{ display: 'inline-flex' }}>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            data-testid="csv-file"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onImport(file);
-              e.target.value = '';
-            }}
-          />
-          <Btn small variant="secondary" onClick={(e) => {
-            (e.currentTarget.parentElement?.querySelector('input[type=file]') as HTMLInputElement | null)?.click();
-          }} data-testid="csv-import">⭱ Import CSV</Btn>
-        </label>
-
-        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }} data-testid="grid-count">
+        <span className="qe-toolbar-count" data-testid="grid-count">
           {shown === total ? `${total} items` : `${shown} of ${total} items`}
         </span>
+
+        {/* One row of buttons that scrolls sideways on a phone rather than
+            stacking into three lines above the sheet. */}
+        <div className="qe-toolbar-actions">
+          <Btn
+            small
+            variant={activeCount > 0 ? 'primary' : 'secondary'}
+            onClick={() => setShowFilters((v) => !v)}
+            data-testid="grid-filter-toggle"
+          >
+            Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+          </Btn>
+          <Btn small variant="secondary" onClick={() => setShowColumns((v) => !v)} data-testid="grid-columns-toggle">
+            Columns ({visibleKeys.length})
+          </Btn>
+          {hasSizes && (
+            <Btn small variant="secondary" onClick={onToggleExpandAll} data-testid="grid-expand-all">
+              {allExpanded ? 'Collapse sizes' : 'Expand sizes'}
+            </Btn>
+          )}
+          <Btn small variant="secondary" onClick={onExport} data-testid="csv-export">⭳ Export CSV</Btn>
+          <label style={{ display: 'inline-flex' }}>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              data-testid="csv-file"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onImport(file);
+                e.target.value = '';
+              }}
+            />
+            <Btn small variant="secondary" onClick={(e) => {
+              (e.currentTarget.parentElement?.querySelector('input[type=file]') as HTMLInputElement | null)?.click();
+            }} data-testid="csv-import">⭱ Import CSV</Btn>
+          </label>
+        </div>
       </div>
 
       {showFilters && (

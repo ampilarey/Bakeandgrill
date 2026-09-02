@@ -5378,6 +5378,167 @@ work area is a single column that
   font-size: 13px;
 }
 
+/* Quick edit: the spreadsheet. Header and name column pinned, save bar
+   pinned under it, toolbar buttons in one scrolling row on a phone. */
+.qe-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.qe-toolbar-search {
+  flex: 1 1 240px;
+  min-width: 200px;
+  position: relative;
+}
+.qe-toolbar-count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.qe-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.qe-hint {
+  margin-bottom: 14px;
+}
+.qe-bulk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.qe-scroll {
+  overflow: auto;
+  max-height: calc(100dvh - 240px);
+  min-height: 160px;
+}
+/* A column filter menu opens under its header; a short sheet must not
+   clip it. */
+.qe-scroll.has-menu { min-height: 420px; }
+.qe-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--color-bg);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
+.qe-table .qe-row > td {
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+}
+.qe-table .qe-row.is-selected > td,
+.qe-table .qe-row--size > td {
+  background: var(--color-bg);
+}
+.qe-table .qe-row--new > td {
+  background: var(--color-warning-bg);
+}
+.qe-table .qe-row--footer > td {
+  background: var(--color-surface);
+  border-bottom: none;
+}
+.qe-table .qe-col-select {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 34px;
+  min-width: 34px;
+}
+.qe-table .qe-col-name {
+  position: sticky;
+  left: 34px;
+  z-index: 2;
+  min-width: 220px;
+  box-shadow: 1px 0 0 var(--color-border);
+}
+.qe-table thead .qe-col-select,
+.qe-table thead .qe-col-name {
+  z-index: 4;
+}
+.qe-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.qe-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-overlay, 20);
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  box-shadow: 0 -6px 18px rgba(28, 20, 8, 0.06);
+}
+.qe-savebar[data-dirty="true"] {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+.qe-savebar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.qe-savebar-status {
+  flex: 1 1 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.qe-savebar-actions {
+  display: flex;
+  gap: 8px;
+}
+.qe-savebar-error {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--color-danger-strong);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
+}
+
+@media (max-width: 767px) {
+  .qe-toolbar-search { flex-basis: 100%; }
+  .qe-toolbar-count { order: 2; width: 100%; }
+  .qe-toolbar-actions {
+    order: 1;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .qe-toolbar-actions::-webkit-scrollbar { display: none; }
+  .qe-toolbar-actions > *, .qe-toolbar-actions > label > button { flex-shrink: 0; white-space: nowrap; }
+  .qe-bulk-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .qe-bulk-tabs::-webkit-scrollbar { display: none; }
+  /* The page scrolls on a phone; a nested scroll box fights the keyboard. */
+  .qe-scroll { max-height: none; min-height: 0; }
+  .qe-scroll.has-menu { min-height: 420px; }
+  .qe-table .qe-col-name { min-width: 160px; max-width: 200px; }
+  .qe-savebar {
+    bottom: var(--admin-tabbar-h, 56px);
+    border-radius: 10px 10px 0 0;
+  }
+  .qe-savebar-actions { width: 100%; }
+  .qe-savebar-actions > button { flex: 1 1 0; justify-content: center; }
+}
+
 /* Categories tab: one card per top-level category, sub-categories inside */
 .menu-cat-list {
   display: flex;

@@ -813,3 +813,67 @@ describe('QuickEditGrid new item row', () => {
     expect(screen.queryByTestId('quick-edit-new-0')).toBeNull();
   });
 });
+
+/**
+ * Owner, 2026-09-02: "can i do the same for the quick edit page" — the
+ * desktop/phone layout pass that the list and the categories tab got. jsdom
+ * applies no stylesheet, so these pin the structure the CSS hangs off: which
+ * cells are the pinned ones, where the save bar sits, and that the bulk card
+ * is not there when nothing is ticked.
+ */
+describe('QuickEditGrid layout', () => {
+  it('pins the tick and the name so the row keeps its label while scrolling sideways', () => {
+    renderGrid();
+
+    const row = screen.getByTestId('quick-edit-row-1');
+    const cells = row.querySelectorAll('td');
+    expect(cells[0]).toHaveClass('qe-col-select');
+    expect(cells[1]).toHaveClass('qe-col-name');
+    expect(row.closest('table')).toHaveClass('qe-table');
+    expect(row.closest('table')?.querySelector('thead .qe-col-name')).not.toBeNull();
+  });
+
+  it('puts the save bar under the sheet, not above it', () => {
+    renderGrid();
+
+    const sheet = screen.getByTestId('quick-edit-scroll');
+    const bar = screen.getByTestId('quick-edit-savebar');
+    // Node.DOCUMENT_POSITION_FOLLOWING — the bar comes after the sheet.
+    expect(sheet.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bar).toHaveAttribute('data-dirty', 'false');
+
+    fireEvent.change(screen.getByLabelText('Price for Bajiya'), { target: { value: '12' } });
+    expect(bar).toHaveAttribute('data-dirty', 'true');
+  });
+
+  it('shows the bulk card only once something is ticked', () => {
+    renderGrid();
+
+    expect(screen.getByTestId('quick-edit-selection')).toHaveTextContent('Tick rows to change them together.');
+    expect(screen.queryByTestId('bulk-actions')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('Select Bajiya'));
+
+    expect(screen.getByTestId('bulk-actions')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-tabs')).toHaveClass('qe-bulk-tabs');
+  });
+
+  it('keeps the error with the save bar it belongs to', async () => {
+    bulkUpdateItems.mockRejectedValue(Object.assign(new Error('No changes were saved — 1 of 1 rows need fixing.'), {
+      body: { row_errors: { 0: { base_price: ['Too low.'] } }, variant_row_errors: {}, new_row_errors: {} },
+    }));
+    renderGrid();
+    fireEvent.change(screen.getByLabelText('Price for Bajiya'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save/ }));
+
+    const error = await screen.findByTestId('quick-edit-error');
+    expect(screen.getByTestId('quick-edit-savebar')).toContainElement(error);
+  });
+
+  it('flags the sheet while a column menu is open so it is not clipped', () => {
+    renderGrid();
+
+    fireEvent.click(screen.getByLabelText('Filter by Price'));
+    expect(screen.getByTestId('quick-edit-scroll')).toHaveClass('has-menu');
+  });
+});

@@ -120,16 +120,17 @@ export function BulkActionBar({
         </label>
       </div>
 
-      <div style={{ display: 'flex', gap: 0, marginBottom: 12, flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)' }}>
+      <div className="qe-bulk-tabs" data-testid="bulk-tabs">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
+            aria-pressed={tab === t.key}
             onClick={() => setTab(t.key)}
             style={{
               padding: '7px 14px', fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
               color: tab === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              background: 'none', border: 'none', cursor: 'pointer',
+              background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
               borderBottom: tab === t.key ? '2px solid var(--color-primary)' : '2px solid transparent',
             }}
           >

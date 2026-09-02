@@ -430,18 +430,35 @@ export function QuickEditGrid({
         onImport={(file) => void importCsv(file)}
       />
 
-      <Card style={{ padding: '14px 16px', marginBottom: 14 }}>
-        <BulkActionBar
-          selectedCount={selected.length}
-          categories={categories}
-          menuGroups={menuGroups}
-          canSeeCost={canSeeCost}
-          applyToSizes={applyToSizes}
-          onApplyToSizesChange={setApplyToSizes}
-          onPropose={setPending}
-          onClear={() => setSelected([])}
-        />
-      </Card>
+      {/* With nothing ticked the bar is one line of hint, not an empty card
+          holding the sheet down. */}
+      {selected.length > 0 ? (
+        <Card style={{ padding: '14px 16px', marginBottom: 14 }}>
+          <BulkActionBar
+            selectedCount={selected.length}
+            categories={categories}
+            menuGroups={menuGroups}
+            canSeeCost={canSeeCost}
+            applyToSizes={applyToSizes}
+            onApplyToSizesChange={setApplyToSizes}
+            onPropose={setPending}
+            onClear={() => setSelected([])}
+          />
+        </Card>
+      ) : (
+        <div className="qe-hint">
+          <BulkActionBar
+            selectedCount={0}
+            categories={categories}
+            menuGroups={menuGroups}
+            canSeeCost={canSeeCost}
+            applyToSizes={applyToSizes}
+            onApplyToSizesChange={setApplyToSizes}
+            onPropose={setPending}
+            onClear={() => setSelected([])}
+          />
+        </div>
+      )}
 
       {/* A bulk price move is the change nobody can undo by hand, so every
           affected row is shown before it even becomes a pending edit. */}
@@ -521,47 +538,18 @@ export function QuickEditGrid({
         </Card>
       )}
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14,
-        padding: '10px 14px', borderRadius: 10,
-        background: dirtyCells > 0 ? 'var(--color-warning-bg)' : 'var(--color-bg)',
-        border: `1px solid ${dirtyCells > 0 ? 'var(--color-warning)' : 'var(--color-border)'}`,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }} data-testid="quick-edit-dirty">
-          {dirtyCells === 0
-            ? 'No unsaved changes'
-            : `${dirtyCells} unsaved change${dirtyCells === 1 ? '' : 's'} across ${dirtyRows} row${dirtyRows === 1 ? '' : 's'}`}
-        </span>
-        <div style={{ flex: 1 }} />
-        <Btn small variant="secondary" onClick={discard} disabled={dirtyCells === 0 || saving}>Discard</Btn>
-        <Btn small onClick={() => void save()} disabled={dirtyCells === 0 || saving}>
-          {saving ? 'Saving…' : `Save ${dirtyCells || ''}`.trim()}
-        </Btn>
-        <Btn small variant="secondary" onClick={onExit}>Done</Btn>
-      </div>
-
-      {error && (
-        <div
-          data-testid="quick-edit-error"
-          style={{
-            marginBottom: 14, padding: '10px 14px', borderRadius: 10, fontSize: 13,
-            color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
-            border: '1px solid var(--color-danger)',
-          }}
-        >
-          {error} Nothing was saved — fix the highlighted cells and press Save again.
-        </div>
-      )}
-
       {rows.length === 0 ? (
         <Card><EmptyState message="No items match these filters." /></Card>
       ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-scroll">
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          {/* The sheet scrolls inside this box on a desk, so the header and the
+              name column stay put while the rest moves. On a phone the page
+              scrolls and only the name column is pinned. */}
+          <div className={`qe-scroll${openFilter ? ' has-menu' : ''}`} data-testid="quick-edit-scroll">
+            <table className="qe-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ ...head, width: 34 }}>
+                <tr>
+                  <th className="qe-col-select" style={{ ...head, width: 34 }}>
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -614,12 +602,9 @@ export function QuickEditGrid({
                     <Fragment key={item.id}>
                       <tr
                         data-testid={`quick-edit-row-${item.id}`}
-                        style={{
-                          borderBottom: '1px solid var(--color-border-light)',
-                          background: selected.includes(item.id) ? 'var(--color-bg)' : undefined,
-                        }}
+                        className={`qe-row${selected.includes(item.id) ? ' is-selected' : ''}`}
                       >
-                        <td style={cell}>
+                        <td className="qe-col-select" style={cell}>
                           <input
                             type="checkbox"
                             checked={selected.includes(item.id)}
@@ -648,9 +633,9 @@ export function QuickEditGrid({
                         <tr
                           key={v.id}
                           data-testid={`quick-edit-size-${v.id}`}
-                          style={{ borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg)' }}
+                          className="qe-row qe-row--size"
                         >
-                          <td style={cell} />
+                          <td className="qe-col-select" style={cell} />
                           {columns.map((c) => (
                             <VariantCell
                               key={c.key}
@@ -675,9 +660,9 @@ export function QuickEditGrid({
                   <tr
                     key={row.key}
                     data-testid={`quick-edit-new-${index}`}
-                    style={{ borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-warning-bg)' }}
+                    className="qe-row qe-row--new"
                   >
-                    <td style={{ ...cell, textAlign: 'center' }}>
+                    <td className="qe-col-select" style={{ ...cell, textAlign: 'center' }}>
                       <button
                         type="button"
                         onClick={() => removeNewRow(row.key)}
@@ -703,14 +688,16 @@ export function QuickEditGrid({
                   </tr>
                 ))}
 
-                <tr>
+                <tr className="qe-row qe-row--footer">
                   <td colSpan={columns.length + 1} style={{ padding: '8px' }}>
-                    <Btn small variant="secondary" onClick={addNewRow} data-testid="grid-add-row">
-                      + Add item row
-                    </Btn>
-                    <span style={{ marginLeft: 10, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                      Name and price are required. Photos, sizes and recipes are added afterwards from Edit.
-                    </span>
+                    <div className="qe-add-row">
+                      <Btn small variant="secondary" onClick={addNewRow} data-testid="grid-add-row">
+                        + Add item row
+                      </Btn>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        Name and price are required. Photos, sizes and recipes are added afterwards from Edit.
+                      </span>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -718,6 +705,30 @@ export function QuickEditGrid({
           </div>
         </Card>
       )}
+
+      {/* Sits under the sheet and stays on screen while it scrolls, so Save
+          is never somewhere above two hundred rows. */}
+      <div className="qe-savebar" data-dirty={dirtyCells > 0 ? 'true' : 'false'} data-testid="quick-edit-savebar">
+        {error && (
+          <div className="qe-savebar-error" data-testid="quick-edit-error">
+            {error} Nothing was saved — fix the highlighted cells and press Save again.
+          </div>
+        )}
+        <div className="qe-savebar-row">
+          <span className="qe-savebar-status" data-testid="quick-edit-dirty">
+            {dirtyCells === 0
+              ? 'No unsaved changes'
+              : `${dirtyCells} unsaved change${dirtyCells === 1 ? '' : 's'} across ${dirtyRows} row${dirtyRows === 1 ? '' : 's'}`}
+          </span>
+          <div className="qe-savebar-actions">
+            <Btn small variant="secondary" onClick={discard} disabled={dirtyCells === 0 || saving}>Discard</Btn>
+            <Btn small onClick={() => void save()} disabled={dirtyCells === 0 || saving}>
+              {saving ? 'Saving…' : `Save ${dirtyCells || ''}`.trim()}
+            </Btn>
+            <Btn small variant="secondary" onClick={onExit}>Done</Btn>
+          </div>
+        </div>
+      </div>
 
       <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0', lineHeight: 1.6 }}>
         Photos, combos, platters, channels, descriptions and the list of sizes itself are not editable
@@ -742,9 +753,16 @@ function SortableHeader({
   const active = sort?.key === column.key;
   const arrow = !active ? '⇅' : sort?.direction === 'asc' ? '↑' : '↓';
 
+  // The name column's width lives in CSS, because it is the column pinned
+  // to the left edge and a phone cannot give it the desk's 200px.
+  const sizing = column.key === 'name'
+    ? {}
+    : { width: column.width, minWidth: column.minWidth ?? column.width };
+
   return (
     <th
-      style={{ ...head, width: column.width, minWidth: column.minWidth ?? column.width, position: 'relative' }}
+      className={column.key === 'name' ? 'qe-col-name' : undefined}
+      style={{ ...head, ...sizing }}
       title={column.help}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -810,7 +828,7 @@ function NewCell({
     : value;
 
   return (
-    <td style={cell}>
+    <td className={column.key === 'name' ? 'qe-col-name' : undefined} style={cell}>
       <Editor
         column={column}
         label={`New row ${index + 1} ${column.label}`}
@@ -862,7 +880,7 @@ function ItemCell({
 
   if (column.key === 'name') {
     return (
-      <td style={cell}>
+      <td className="qe-col-name" style={cell}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {sizes.length > 0 ? (
             <button
@@ -1010,7 +1028,7 @@ function VariantCell({
 
   if (column.key === 'name') {
     return (
-      <td style={cell}>
+      <td className="qe-col-name" style={cell}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 34 }}>
           <span style={{ color: 'var(--color-text-muted)', fontSize: 12, flexShrink: 0 }}>↳</span>
           <input
