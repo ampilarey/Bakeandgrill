@@ -75,6 +75,14 @@ describe("QtyStepper", () => {
     fireEvent.click(minus);
     expect(onDelta).toHaveBeenCalledWith(-1);
     expect(minus).toHaveAttribute("title", "Remove from ticket");
+    // At 1 the − end turns red, since the next tap takes the line off.
+    expect(minus).toHaveStyle({ background: "#FEE2E2" });
+  });
+
+  it("− is quiet grey above 1 and + is always the brand orange", () => {
+    renderPill(3);
+    expect(screen.getByRole("button", { name: "Decrease quantity Masroshi" })).toHaveStyle({ background: "#FFFFFF" });
+    expect(screen.getByRole("button", { name: "Increase quantity Masroshi" })).toHaveStyle({ background: "#D4813A" });
   });
 
   it("does nothing on a resumed ticket", () => {

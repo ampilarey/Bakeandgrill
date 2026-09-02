@@ -94,6 +94,12 @@ export function QtyStepper({
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
   });
 
+  // Colour says what each end does before it is pressed: + is the brand
+  // orange (the "add" colour everywhere else on the till), − is quiet grey
+  // until the line is at 1, when it turns red because the next tap removes
+  // the line. The number sits on a soft orange field between them.
+  const removes = quantity <= 1;
+
   return (
     <div
       className="pos-qty-stepper"
@@ -102,7 +108,7 @@ export function QtyStepper({
       onClick={(e) => e.stopPropagation()}
       style={{
         display: "inline-flex", alignItems: "stretch", flexShrink: 0,
-        borderRadius: 10, border: `1px solid ${palette.borderStrong}`,
+        borderRadius: 10, border: `1px solid ${palette.primaryLight}`,
         background: palette.panel, overflow: "hidden",
         opacity: disabled ? 0.4 : 1,
       }}
@@ -110,11 +116,13 @@ export function QtyStepper({
       <button
         type="button"
         aria-label={`Decrease quantity${suffix}`}
-        title={disabled ? disabledTitle : quantity === 1 ? "Remove from ticket" : "Hold to keep going"}
+        title={disabled ? disabledTitle : removes ? "Remove from ticket" : "Hold to keep going"}
         disabled={disabled}
         onClick={tap(-1)}
         {...holdHandlers(-1)}
-        style={btnStyle(disabled)}
+        style={btnStyle(disabled, removes
+          ? { background: palette.dangerBg, color: palette.danger }
+          : { background: palette.panel, color: palette.panelMuted })}
       >
         −
       </button>
@@ -125,10 +133,9 @@ export function QtyStepper({
         style={{
           display: "flex", alignItems: "center", justifyContent: "center",
           minWidth: 28, padding: "0 2px",
-          fontSize: 15, fontWeight: 800, color: palette.panelInk,
+          fontSize: 13, fontWeight: 800, color: palette.primaryDark,
           fontVariantNumeric: "tabular-nums",
-          borderLeft: `1px solid ${palette.border}`, borderRight: `1px solid ${palette.border}`,
-          background: palette.bg,
+          background: palette.primaryBg,
         }}
       >
         {quantity}
@@ -140,7 +147,7 @@ export function QtyStepper({
         disabled={disabled}
         onClick={tap(1)}
         {...holdHandlers(1)}
-        style={btnStyle(disabled)}
+        style={btnStyle(disabled, { background: palette.primary, color: "#FFFFFF" })}
       >
         +
       </button>
@@ -148,10 +155,11 @@ export function QtyStepper({
   );
 }
 
-function btnStyle(disabled: boolean): React.CSSProperties {
+function btnStyle(disabled: boolean, tone: { background: string; color: string }): React.CSSProperties {
   return {
-    border: "none", background: "transparent", padding: 0, margin: 0,
-    fontSize: 22, fontWeight: 700, lineHeight: 1, color: palette.panelInk,
+    border: "none", padding: 0, margin: 0,
+    background: tone.background, color: tone.color,
+    fontSize: 17, fontWeight: 700, lineHeight: 1,
     cursor: disabled ? "not-allowed" : "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontFamily: "inherit",

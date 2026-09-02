@@ -1187,8 +1187,10 @@ html, body, #root {
   width: var(--pos-qty-btn);
   height: var(--pos-qty-btn);
 }
+/* Each end carries its own colour inline, so the press state darkens
+ * whatever is there instead of painting over it. */
 .pos-qty-stepper button:active:not(:disabled) {
-  background: rgba(0, 0, 0, 0.08);
+  filter: brightness(0.88);
 }
 /* Modifier and note line under the title, indented to the name column:
  * two buttons + the 28px value + the 6px gap after the pill. */
