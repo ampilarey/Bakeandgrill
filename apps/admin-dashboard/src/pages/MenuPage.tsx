@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { MenuCategory } from '../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
+  Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
 } from '../components/Layout';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CategoryList } from './MenuPage/CategoryList';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';
 import { MenuItemEditorModal } from './MenuPage/MenuItemEditorModal';
 import { MenuItemTable } from './MenuPage/MenuItemTable';
@@ -263,82 +264,18 @@ export function MenuPage() {
         m.categories.length === 0 ? (
           <Card><EmptyState message="No categories yet. Add your first one." /></Card>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {m.categories.filter((c) => !c.parent_id).map((cat) => (
-              <div key={cat.id}>
-                <Card style={{ padding: '14px 18px' }}>
-                  <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    {cat.image_url && (
-                      <img src={cat.thumb_url || cat.image_url} alt={cat.name}
-                        style={{ width: 84, height: 36, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>{cat.name}</span>
-                        {cat.name_dv && <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{cat.name_dv}</span>}
-                        <Badge label={cat.is_active ? 'Active' : 'Hidden'} color={cat.is_active ? 'green' : 'gray'} />
-                      </div>
-                      {cat.description && (
-                        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {cat.description}
-                        </p>
-                      )}
-                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                        Sort: {cat.sort_order ?? 0} · {cat.items?.length ?? '?'} items
-                      </p>
-                    </div>
-                    <div className="menu-cat-actions" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {m.canManage && (
-                        <>
-                      <Btn small variant="ghost" onClick={() => m.handleToggleCat(cat)}>
-                        {cat.is_active ? 'Hide' : 'Show'}
-                      </Btn>
-                      <Btn small variant="secondary" onClick={() => m.setEditingCat(cat)}>Edit</Btn>
-                      <Btn small variant="danger" onClick={() => m.handleDeleteCat(cat.id)}>Delete</Btn>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-                {m.categories.filter((c) => c.parent_id === cat.id).map((sub) => (
-                  <div className="menu-subcat-card">
-                  <Card key={sub.id} style={{ padding: '12px 18px', marginTop: 6, marginLeft: 28, borderLeft: '3px solid var(--color-border)' }}>
-                    <div className="menu-cat-row" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ fontSize: 16, color: 'var(--color-text-muted)', flexShrink: 0 }}>↳</span>
-                      {sub.image_url && (
-                        <img src={sub.thumb_url || sub.image_url} alt={sub.name}
-                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 600, fontSize: 14 }}>{sub.name}</span>
-                          {sub.name_dv && <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{sub.name_dv}</span>}
-                          <Badge label={sub.is_active ? 'Active' : 'Hidden'} color={sub.is_active ? 'green' : 'gray'} />
-                        </div>
-                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-                          Sort: {sub.sort_order ?? 0} · {sub.items?.length ?? '?'} items
-                        </p>
-                      </div>
-                      <div className="menu-cat-actions" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {m.canManage && (
-                          <>
-                        <Btn small variant="ghost" onClick={() => m.handleToggleCat(sub)}>
-                          {sub.is_active ? 'Hide' : 'Show'}
-                        </Btn>
-                        <Btn small variant="secondary" onClick={() => m.setEditingCat(sub)}>Edit</Btn>
-                        <Btn small variant="danger" onClick={() => m.handleDeleteCat(sub.id)}>Delete</Btn>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+          <CategoryList
+            categories={m.categories}
+            canManage={m.canManage}
+            onToggle={(cat) => void m.handleToggleCat(cat)}
+            onEdit={m.setEditingCat}
+            onDelete={m.handleDeleteCat}
+            onViewItems={(cat) => {
+              m.setSelectedCat(cat.id);
+              setQuickEdit(false);
+              m.setView('items');
+            }}
+          />
         )
       )}
 
