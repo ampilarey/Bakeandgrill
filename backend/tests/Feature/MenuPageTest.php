@@ -549,6 +549,16 @@ class MenuPageTest extends TestCase
         $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Grill\s*</h2>#', $main[0]);
         $this->assertMatchesRegularExpression('#<h3 class="menu-subcat-title"[^>]*>Wraps</h3>#', $main[0]);
         $this->assertMatchesRegularExpression('#<h4 class="menu-card-name"[^>]*>Chicken Wrap</h4>#', $main[0]);
+
+        // The sub-category block carries the class the rule above its title
+        // hangs off; the category's own items, which sit straight under the
+        // band with no title, do not. Owner, 2026-09-02: "adding a line
+        // before subcategory".
+        $this->assertStringContainsString('<div class="menu-subcat-block">', $main[0]);
+        $this->assertMatchesRegularExpression(
+            '#<div class="menu-subcat-block menu-subcat-block--titled">\s*<h3 class="menu-subcat-title"#',
+            $main[0],
+        );
     }
 
     public function test_an_active_special_shows_the_discounted_price_and_the_original(): void

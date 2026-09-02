@@ -3925,17 +3925,33 @@ textarea.field-input {
  */
 
 /* Subcategory header — smaller / lighter than parent section title */
+/*
+ * A rule above each sub-category. The cards carry no borders, so without it
+ * two sub-categories read as one run of round photos with a stray grey word
+ * between them — worst in list view, where the title sat at the weight of
+ * an item description. Owner, 2026-09-02. The first block straight under
+ * the band skips the rule; the band already separates. Same style on the
+ * Blade menu.
+ */
 .menu-subcategory {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #E8E0D8);
+}
+
+.menu-section-header + .menu-subcategory {
   margin-top: 0.35rem;
+  padding-top: 0;
+  border-top: none;
 }
 
 .menu-subcat-title {
   margin: 0 0 0.55rem;
-  padding: 0.15rem 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--color-text-muted);
+  padding: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-dark, #1C1408);
   text-transform: none;
   border: none;
 }

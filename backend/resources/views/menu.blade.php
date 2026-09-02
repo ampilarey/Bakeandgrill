@@ -421,9 +421,23 @@ html.js .menu-fav { display: inline-flex; }
     box-shadow: 0 2px 8px rgba(220,38,38,0.35);
 }
 
+/* A rule above each sub-category. The cards carry no borders, so without
+   it two sub-categories read as one run of round photos with a stray word
+   between them. Owner, 2026-09-02. The first block under the band skips
+   the rule — the band already separates. Same style in the order app. */
+.menu-subcat-block--titled {
+    margin-top: 0.9rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.menu-cat-band + .menu-subcat-block--titled {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
 .menu-subcat-title {
-    margin: 1rem 0 0.5rem;
-    font-size: 1rem; font-weight: 700;
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem; font-weight: 700; letter-spacing: 0.01em;
     color: var(--dark);
 }
 
@@ -862,7 +876,7 @@ body.menu-sheet-open { overflow: hidden; }
                     {{-- Wrapped so filtering can hide a subcategory's title with
                          its items; a lone heading over an empty grid reads as a
                          rendering bug. --}}
-                    <div class="menu-subcat-block">
+                    <div class="menu-subcat-block{{ $block['heading'] ? ' menu-subcat-block--titled' : '' }}">
                     @if($block['heading'])
                         @php $subName = $categoryName($block['heading']); @endphp
                         <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
