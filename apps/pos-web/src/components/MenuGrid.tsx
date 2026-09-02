@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
-import type { PosQuickKeys } from "../api";
+import type { PosQuickLayout, PosQuickLayoutSource, PosQuickTab } from "../api";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
 import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
+import {
+  autoTabKey, fitCategoryPills, flattenTabs, moveInList, newTabId, tabKey,
+  type QuickScope, type ScopedQuickTab,
+} from "../utils/quickTabs";
 import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
+import { QuickTabPrompt, type QuickTabPromptResult, type QuickTabPromptState } from "./QuickTabPrompt";
 
-/** Room on the Quick tab. Mirrors PosQuickKeyService::MAX_KEYS. */
+/** Room on a Quick tab, and tabs per layout. Mirror PosQuickKeyService. */
 export const MAX_QUICK_KEYS = 24;
+export const MAX_QUICK_TABS = 6;
 
 type Props = {
   categories: Category[];
@@ -55,13 +61,16 @@ type Props = {
   orderType: PosOrderType;
 
   /**
-   * The Quick tab (a cashier's pinned items, or the shared set) and the
-   * Popular-now tab. Owner, 2026-09-02: "certain items are frequent in
-   * certain times … each staff on his own".
+   * The Quick tabs (a cashier's own layout in front of the shared one) and
+   * the Popular-now tab. Owner, 2026-09-02: "certain items are frequent in
+   * certain times … each staff on his own" — then several tabs, renamed,
+   * rearranged, switching by time of day, and copyable from a colleague.
    */
-  quickKeys?: PosQuickKeys;
+  quickLayout?: PosQuickLayout;
   canManageSharedQuickKeys?: boolean;
-  onUpdateQuickKeys?: (scope: "mine" | "shared", itemIds: number[]) => void;
+  onUpdateQuickLayout?: (scope: QuickScope, tabs: PosQuickTab[]) => void;
+  onCopyQuickLayout?: (fromUserId: number) => Promise<boolean>;
+  loadQuickLayoutSources?: () => Promise<PosQuickLayoutSource[]>;
   /** Item ids ranked by what sells at this hour, best first. */
   popularNow?: number[];
 };
@@ -270,15 +279,6 @@ function itemsInOrder(ids: number[], items: Item[]): Item[] {
   return ids.map((id) => byId.get(id)).filter((i): i is Item => i !== undefined);
 }
 
-function moveWithin(ids: number[], id: number, delta: -1 | 1): number[] {
-  const from = ids.indexOf(id);
-  const to = from + delta;
-  if (from < 0 || to < 0 || to >= ids.length) return ids;
-  const next = [...ids];
-  [next[from], next[to]] = [next[to], next[from]];
-  return next;
-}
-
 function isPercentDiscountItem(item: Item): boolean {
   if (item.special?.discount_pct != null && item.special.discount_pct > 0) return true;
   return (item.variants ?? []).some(
@@ -360,6 +360,53 @@ function CategoryPill({
   );
 }
 
+/**
+ * A Quick tab's pill. Same look as a category pill, with the hold gesture
+ * that opens rename / hours / move / delete, and a dotted edge on shared
+ * tabs so a cashier can tell theirs from the house's.
+ */
+function QuickTabPill({
+  label, active, shared, onClick, onLongPress, hint,
+}: {
+  label: string;
+  active: boolean;
+  shared: boolean;
+  onClick: () => void;
+  onLongPress?: () => void;
+  hint?: string;
+}) {
+  const { handlers, clickGuard } = useLongPress(onLongPress ?? (() => {}));
+  return (
+    <button
+      type="button"
+      onClick={onLongPress ? clickGuard(onClick) : onClick}
+      title={hint ?? (onLongPress ? 'Press and hold to rename, set hours, move or delete' : undefined)}
+      data-testid="quick-tab-pill"
+      data-shared={shared ? 'true' : undefined}
+      {...(onLongPress ? handlers : {})}
+      style={{
+        padding: '8px 16px',
+        borderRadius: 999,
+        border: `1px ${shared ? 'dashed' : 'solid'} ${active ? '#B86820' : '#E2E8F0'}`,
+        background: active ? '#D4813A' : '#FFF7ED',
+        color: active ? '#FFFFFF' : '#9A3412',
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        minHeight: 36,
+        boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
+        transition: 'background 0.12s, box-shadow 0.12s',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 const C = {
   panel: '#FFFFFF',
   border: '#E2E8F0',
@@ -413,7 +460,8 @@ export function MenuGrid({
   barcode, setBarcode, onBarcodeSubmit, readOnly = false,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
   orderType,
-  quickKeys, canManageSharedQuickKeys = false, onUpdateQuickKeys, popularNow = [],
+  quickLayout, canManageSharedQuickKeys = false, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources,
+  popularNow = [],
 }: Props) {
   const packagingEligible = isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
   // now, NOT here at the top of MenuGrid. Re-rendering the entire
@@ -423,26 +471,127 @@ export function MenuGrid({
   const [search, setSearch] = useState("");
   const [saleFilter, setSaleFilter] = useState<SaleFilter>("all");
 
-  // ── Quick tab ──────────────────────────────────────────────────────────────
-  // A cashier's own set stands in for the shared one once it has anything in
-  // it; until then they see what everyone starts with.
-  const quickEnabled = !!quickKeys && !!onUpdateQuickKeys;
-  const myKeys = quickKeys?.mine ?? [];
-  const sharedKeys = quickKeys?.shared ?? [];
-  const effectiveQuickIds = myKeys.length > 0 ? myKeys : sharedKeys;
-  const quickIdSet = useMemo(() => new Set(effectiveQuickIds), [effectiveQuickIds]);
+  // ── Quick tabs ─────────────────────────────────────────────────────────────
+  // The cashier's own tabs, then the shared ones, each a pill in front of the
+  // categories. A tab with hours opens itself when they start.
+  const quickEnabled = !!quickLayout && !!onUpdateQuickLayout;
+  const myTabs = useMemo(() => quickLayout?.mine ?? [], [quickLayout]);
+  const sharedTabs = useMemo(() => quickLayout?.shared ?? [], [quickLayout]);
+  const allTabs = useMemo(() => flattenTabs({ mine: myTabs, shared: sharedTabs }), [myTabs, sharedTabs]);
+  const editableTabs = useMemo(
+    () => allTabs.filter((t) => t.scope === "mine" || canManageSharedQuickKeys),
+    [allTabs, canManageSharedQuickKeys],
+  );
+  const pinnedIds = useMemo(() => new Set(allTabs.flatMap((t) => t.items)), [allTabs]);
+
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
+  const activeTab = allTabs.find((t) => tabKey(t.scope, t.id) === activeTabKey) ?? null;
+
+  const openTab = (tab: ScopedQuickTab) => {
+    setSelectedCategoryId(null);
+    setActiveTabKey(tabKey(tab.scope, tab.id));
+    setSaleFilter('quick');
+  };
+
+  // A tab that vanished — deleted here, or the layout changed elsewhere —
+  // must not leave the grid filtering on nothing.
+  useEffect(() => {
+    if (saleFilter === 'quick' && activeTabKey && !activeTab) {
+      setActiveTabKey(null);
+      setSaleFilter('all');
+    }
+  }, [saleFilter, activeTabKey, activeTab]);
+
+  // Time of day. The clock ticks once a minute; when the tab that should be
+  // open changes, the till switches to it. A cashier who then picks
+  // something else is left alone until the next tab's hours start.
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const autoKey = useMemo(() => autoTabKey(allTabs, new Date(clock)), [allTabs, clock]);
+  const lastAutoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoKey === lastAutoRef.current) return;
+    lastAutoRef.current = autoKey;
+    if (!autoKey) return;
+    const tab = allTabs.find((t) => tabKey(t.scope, t.id) === autoKey);
+    if (tab) openTab(tab);
+    // openTab is a plain closure over setters; allTabs is what autoKey derives from.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoKey]);
+
   const [quickPromptItem, setQuickPromptItem] = useState<Item | null>(null);
+  const [tabPrompt, setTabPrompt] = useState<QuickTabPromptState | null>(null);
+
+  const saveScope = (scope: QuickScope, tabs: PosQuickTab[]) => onUpdateQuickLayout?.(scope, tabs);
+  const tabsOf = (scope: QuickScope) => (scope === "mine" ? myTabs : sharedTabs);
 
   const applyQuickKeyAction = (item: Item, action: QuickKeyAction) => {
-    if (!onUpdateQuickKeys) return;
-    const current = action.scope === "mine" ? myKeys : sharedKeys;
-    let next = current;
-    if (action.kind === "add" && !current.includes(item.id)) next = [...current, item.id].slice(0, MAX_QUICK_KEYS);
-    if (action.kind === "remove") next = current.filter((id) => id !== item.id);
-    if (action.kind === "move") next = moveWithin(current, item.id, action.delta);
-    if (next !== current) onUpdateQuickKeys(action.scope, next);
+    if (action.kind === "add-new") {
+      const tab: PosQuickTab = { id: newTabId(myTabs), name: "Quick", items: [item.id], from: null, to: null };
+      saveScope("mine", [...myTabs, tab]);
+      setQuickPromptItem(null);
+      return;
+    }
+    const current = tabsOf(action.scope);
+    const next = current.map((tab) => {
+      if (tab.id !== action.tabId) return tab;
+      if (action.kind === "add" && !tab.items.includes(item.id)) {
+        return { ...tab, items: [...tab.items, item.id].slice(0, MAX_QUICK_KEYS) };
+      }
+      if (action.kind === "remove") return { ...tab, items: tab.items.filter((id) => id !== item.id) };
+      if (action.kind === "move") return { ...tab, items: moveInList(tab.items, tab.items.indexOf(item.id), action.delta) };
+      return tab;
+    });
+    saveScope(action.scope, next);
     setQuickPromptItem(null);
   };
+
+  const applyTabPromptResult = (result: QuickTabPromptResult) => {
+    if (!tabPrompt) return;
+    if (result.kind === "copy") {
+      void onCopyQuickLayout?.(result.fromUserId).then(() => setTabPrompt(null));
+      return;
+    }
+    if (result.kind === "create") {
+      const list = tabsOf(result.scope);
+      if (list.length >= MAX_QUICK_TABS) { setTabPrompt(null); return; }
+      const tab: PosQuickTab = { id: newTabId(list), name: result.name, items: [], from: result.from, to: result.to };
+      saveScope(result.scope, [...list, tab]);
+      openTab({ ...tab, scope: result.scope });
+      setTabPrompt(null);
+      return;
+    }
+    if (tabPrompt.mode !== "edit") return;
+    const { tab, index } = tabPrompt;
+    const list = tabsOf(tab.scope);
+    if (result.kind === "save") {
+      saveScope(tab.scope, list.map((t) => (t.id === tab.id ? { ...t, name: result.name, from: result.from, to: result.to } : t)));
+    }
+    if (result.kind === "move") saveScope(tab.scope, moveInList(list, index, result.delta));
+    if (result.kind === "delete") {
+      saveScope(tab.scope, list.filter((t) => t.id !== tab.id));
+      if (activeTabKey === tabKey(tab.scope, tab.id)) { setActiveTabKey(null); setSaleFilter('all'); }
+    }
+    setTabPrompt(null);
+  };
+
+  // ── Category strip overflow ───────────────────────────────────────────────
+  // Owner, 2026-09-02: "show all other actual categories when clicked more
+  // if there is no space". The row's width is watched; categories that do
+  // not fit go behind a More pill.
+  const pillRowRef = useRef<HTMLDivElement>(null);
+  const [pillRowWidth, setPillRowWidth] = useState(0);
+  useEffect(() => {
+    const el = pillRowRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => setPillRowWidth(entries[0]?.contentRect.width ?? 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // ── Category hierarchy ─────────────────────────────────────────────────────
   // The DB supports `parent_id` on categories (one level of nesting). The old
@@ -527,11 +676,11 @@ export function MenuGrid({
     if (saleFilter === 'special') return filteredItems.filter(isFixedSpecialItem);
     if (saleFilter === 'catering') return filteredItems.filter((i) => !!i.is_catering);
     // Both tabs clear the category, so filteredItems is the whole channel
-    // menu here — and the order is the list's own, not the admin's.
-    if (saleFilter === 'quick') return itemsInOrder(effectiveQuickIds, filteredItems);
+    // menu here — and the order is the tab's own, not the admin's.
+    if (saleFilter === 'quick') return itemsInOrder(activeTab?.items ?? [], filteredItems);
     if (saleFilter === 'popular') return itemsInOrder(popularNow, filteredItems);
     return filteredItems;
-  }, [filteredItems, saleFilter, effectiveQuickIds, popularNow]);
+  }, [filteredItems, saleFilter, activeTab, popularNow]);
 
   const popularCount = useMemo(
     () => (popularNow.length > 0 ? itemsInOrder(popularNow, filteredItems).length : 0),
@@ -665,18 +814,68 @@ export function MenuGrid({
       </div>
 
       {/* Category + sale filters in one row (avoids duplicate "All items"). */}
-      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0 || quickEnabled) && (
-        <div style={pillRowStyle}>
-          {/* The cashier's own tab comes first: it is the one they built.
-              Popular-now follows, drawn from what sells at this hour. */}
-          {quickEnabled && (
-            <CategoryPill
-              label={effectiveQuickIds.length > 0 ? `★ Quick (${effectiveQuickIds.length})` : '★ Quick'}
-              active={saleFilter === 'quick'}
+      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0 || quickEnabled) && (() => {
+        // The cashier's own tabs come first: they built them. Popular-now
+        // follows, drawn from what sells at this hour. Then the categories,
+        // as many as fit, and More for the rest.
+        const canAddOwnTab = quickEnabled && myTabs.length < MAX_QUICK_TABS;
+        const quickLabel = (t: ScopedQuickTab) => `★ ${t.name}${t.items.length > 0 ? ` (${t.items.length})` : ''}`;
+        const fixedLabels = [
+          ...allTabs.map(quickLabel),
+          ...(canAddOwnTab ? ['+ Tab'] : []),
+          ...(popularCount > 0 ? [`🔥 Now (${popularCount})`] : []),
+          'All items',
+          ...(discountCount > 0 ? [`% Off (${discountCount})`] : []),
+          ...(specialCount > 0 ? [`Specials (${specialCount})`] : []),
+          ...(cateringCount > 0 ? [`Events & Catering (${cateringCount})`] : []),
+        ];
+        const visibleCount = fitCategoryPills(pillRowWidth, fixedLabels, topLevelCategories.map((c) => c.name));
+        let visibleCats = topLevelCategories.slice(0, visibleCount);
+        let hiddenCats = topLevelCategories.slice(visibleCount);
+        // The selected category always has a pill of its own, even if it
+        // would otherwise be behind More — it swaps in for the last one.
+        const activeHidden = hiddenCats.find((c) => c.id === activeTopLevelId);
+        if (activeHidden && visibleCats.length > 0) {
+          const bumped = visibleCats[visibleCats.length - 1];
+          visibleCats = [...visibleCats.slice(0, -1), activeHidden];
+          hiddenCats = [bumped, ...hiddenCats.filter((c) => c.id !== activeHidden.id)];
+        }
+
+        return (
+        <>
+        <div ref={pillRowRef} style={pillRowStyle} data-testid="pos-pill-row">
+          {allTabs.map((tab, index) => (
+            <QuickTabPill
+              key={tabKey(tab.scope, tab.id)}
+              label={quickLabel(tab)}
+              active={saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id)}
+              shared={tab.scope === 'shared'}
               onClick={() => {
-                setSelectedCategoryId(null);
-                setSaleFilter((f) => (f === 'quick' ? 'all' : 'quick'));
+                if (saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id)) {
+                  setActiveTabKey(null);
+                  setSaleFilter('all');
+                } else {
+                  openTab(tab);
+                }
               }}
+              onLongPress={
+                tab.scope === 'mine' || canManageSharedQuickKeys
+                  ? () => setTabPrompt({
+                    mode: 'edit', tab,
+                    index: tabsOf(tab.scope).findIndex((t) => t.id === tab.id),
+                    count: tabsOf(tab.scope).length,
+                  })
+                  : undefined
+              }
+              hint={index === 0 && allTabs.length === 1 ? 'Hold to rename or move' : undefined}
+            />
+          ))}
+          {canAddOwnTab && (
+            <CategoryPill
+              label="+ Tab"
+              active={false}
+              subtle
+              onClick={() => setTabPrompt({ mode: 'new', scope: 'mine' })}
             />
           )}
           {popularCount > 0 && (
@@ -697,7 +896,7 @@ export function MenuGrid({
               setSaleFilter('all');
             }}
           />
-          {topLevelCategories.map((cat) => (
+          {visibleCats.map((cat) => (
             <CategoryPill
               key={cat.id}
               label={cat.name}
@@ -709,6 +908,14 @@ export function MenuGrid({
               caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
             />
           ))}
+          {hiddenCats.length > 0 && (
+            <CategoryPill
+              label={`More (${hiddenCats.length})`}
+              active={moreOpen}
+              onClick={() => setMoreOpen((o) => !o)}
+              caret
+            />
+          )}
           {discountCount > 0 && (
             <CategoryPill
               label={`% Off (${discountCount})`}
@@ -743,7 +950,35 @@ export function MenuGrid({
             />
           )}
         </div>
-      )}
+        {moreOpen && hiddenCats.length > 0 && (
+          <div
+            role="group"
+            aria-label="More categories"
+            data-testid="pos-more-categories"
+            style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6,
+              padding: 10, marginTop: 2, borderRadius: 12,
+              background: C.bg, border: `1px solid ${C.border}`,
+            }}
+          >
+            {hiddenCats.map((cat) => (
+              <CategoryPill
+                key={cat.id}
+                label={cat.name}
+                active={activeTopLevelId === cat.id && saleFilter === 'all'}
+                onClick={() => {
+                  setSelectedCategoryId(cat.id);
+                  setSaleFilter('all');
+                  setMoreOpen(false);
+                }}
+                caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
+              />
+            ))}
+          </div>
+        )}
+        </>
+        );
+      })()}
 
       {/* Secondary pill row: sub-categories of the active parent. Hidden
           when the active selection has no children. */}
@@ -825,7 +1060,7 @@ export function MenuGrid({
                   item={item}
                   readOnly={readOnly}
                   onClick={onClick}
-                  pinned={quickEnabled && quickIdSet.has(item.id)}
+                  pinned={quickEnabled && pinnedIds.has(item.id)}
                   onLongPress={quickEnabled ? () => setQuickPromptItem(item) : undefined}
                 />
               );
@@ -834,23 +1069,29 @@ export function MenuGrid({
         )}
         {saleFilter === 'quick' && quickEnabled && visibleItems.length === 0 && !search && (
           <p data-testid="quick-empty" style={{ margin: '12px 4px', fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
-            Nothing here yet. Press and hold any item on the menu to add it to your Quick tab.
+            Nothing on this tab yet. Press and hold any item on the menu to add it here.
           </p>
         )}
       </div>
 
-      {quickPromptItem && quickKeys && (
+      {quickPromptItem && quickLayout && (
         <QuickKeyPrompt
           item={quickPromptItem}
-          position={{
-            mine: myKeys.includes(quickPromptItem.id) ? myKeys.indexOf(quickPromptItem.id) : null,
-            shared: sharedKeys.includes(quickPromptItem.id) ? sharedKeys.indexOf(quickPromptItem.id) : null,
-          }}
-          sizes={{ mine: myKeys.length, shared: sharedKeys.length }}
-          max={MAX_QUICK_KEYS}
-          canManageShared={canManageSharedQuickKeys}
+          tabs={editableTabs}
+          maxItems={MAX_QUICK_KEYS}
+          canAddOwnTab={myTabs.length < MAX_QUICK_TABS}
           onAction={(action) => applyQuickKeyAction(quickPromptItem, action)}
           onClose={() => setQuickPromptItem(null)}
+        />
+      )}
+
+      {tabPrompt && quickLayout && (
+        <QuickTabPrompt
+          state={tabPrompt}
+          canManageShared={canManageSharedQuickKeys}
+          loadSources={onCopyQuickLayout ? loadQuickLayoutSources : undefined}
+          onResult={applyTabPromptResult}
+          onClose={() => setTabPrompt(null)}
         />
       )}
 

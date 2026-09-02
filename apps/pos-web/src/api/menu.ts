@@ -138,23 +138,35 @@ export function validateManualDiscountInput(opts: {
 }
 
 /**
- * The Quick tab: item ids in order. `shared` is the set every till starts
- * from; `mine` is this cashier's own, which stands in for the shared one
- * once it has anything in it. Both ride in the menu payload so the tab is
- * there offline. Owner, 2026-09-02.
+ * One Quick tab on the till: a name, items in order, and optionally the
+ * hours it opens itself ("06:00"–"11:00"; a window past midnight is fine).
+ * Owner, 2026-09-02.
  */
-export type PosQuickKeys = { shared: number[]; mine: number[] };
+export type PosQuickTab = {
+  id: string;
+  name: string;
+  items: number[];
+  from: string | null;
+  to: string | null;
+};
 
-/** The two tabs the server adds to both menu feeds. */
+/**
+ * `shared` is the layout every till starts with; `mine` is this cashier's
+ * own, shown in front of it. Both ride in the menu payload so the tabs are
+ * there offline and on whichever iPad the cashier logs into.
+ */
+export type PosQuickLayout = { shared: PosQuickTab[]; mine: PosQuickTab[] };
+
+/** What the server adds to both menu feeds for the till's own tabs. */
 export type PosTillTabs = {
-  quickKeys: PosQuickKeys;
+  quickLayout: PosQuickLayout;
   canManageSharedQuickKeys: boolean;
   /** Item ids ranked by what sells at this hour of the day, best first. */
   popularNow: number[];
 };
 
 type RawTillTabs = {
-  quick_keys?: { shared?: unknown; mine?: unknown };
+  quick_layout?: { shared?: unknown; mine?: unknown };
   can_manage_shared_quick_keys?: unknown;
   popular_now?: unknown;
 };
@@ -163,11 +175,34 @@ function idList(raw: unknown): number[] {
   return Array.isArray(raw) ? raw.map(Number).filter((n) => Number.isFinite(n) && n > 0) : [];
 }
 
+const HOUR = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function tabList(raw: unknown): PosQuickTab[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PosQuickTab[] = [];
+  raw.forEach((t, index) => {
+    if (!t || typeof t !== "object") return;
+    const tab = t as Record<string, unknown>;
+    const name = typeof tab.name === "string" ? tab.name.trim() : "";
+    if (!name) return;
+    const from = typeof tab.from === "string" && HOUR.test(tab.from) ? tab.from : null;
+    const to = typeof tab.to === "string" && HOUR.test(tab.to) ? tab.to : null;
+    out.push({
+      id: typeof tab.id === "string" && tab.id ? tab.id : `tab-${index + 1}`,
+      name,
+      items: idList(tab.items),
+      from: from && to ? from : null,
+      to: from && to ? to : null,
+    });
+  });
+  return out;
+}
+
 export function normalizePosTillTabs(raw: RawTillTabs | undefined): PosTillTabs {
   return {
-    quickKeys: {
-      shared: idList(raw?.quick_keys?.shared),
-      mine: idList(raw?.quick_keys?.mine),
+    quickLayout: {
+      shared: tabList(raw?.quick_layout?.shared),
+      mine: tabList(raw?.quick_layout?.mine),
     },
     canManageSharedQuickKeys: raw?.can_manage_shared_quick_keys === true,
     popularNow: idList(raw?.popular_now),
@@ -206,16 +241,36 @@ export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
 }
 
 /**
- * Replace a Quick set. The till holds the whole list and sends it back after
- * every change, so there is nothing to diff and nothing to drift.
+ * Replace a Quick layout. The till holds the whole thing and sends it back
+ * after every change, so there is nothing to diff and nothing to drift.
  */
-export async function savePosQuickKeys(scope: "mine" | "shared", itemIds: number[]): Promise<number[]> {
+export async function savePosQuickLayout(scope: "mine" | "shared", tabs: PosQuickTab[]): Promise<PosQuickTab[]> {
   const path = scope === "shared" ? "/pos/quick-keys/shared" : "/pos/quick-keys";
   const data = await request<{ mine?: unknown; shared?: unknown }>(path, {
     method: "PUT",
-    body: JSON.stringify({ item_ids: itemIds }),
+    body: JSON.stringify({ tabs }),
   });
-  return idList(scope === "shared" ? data.shared : data.mine);
+  return tabList(scope === "shared" ? data.shared : data.mine);
+}
+
+/** Cashiers whose Quick tabs can be copied. */
+export type PosQuickLayoutSource = { user_id: number; name: string; tabs: number };
+
+export async function fetchPosQuickLayoutSources(): Promise<PosQuickLayoutSource[]> {
+  const data = await request<{ sources?: unknown }>("/pos/quick-keys/sources");
+  if (!Array.isArray(data.sources)) return [];
+  return data.sources
+    .filter((s): s is PosQuickLayoutSource => !!s && typeof s === "object" && typeof (s as PosQuickLayoutSource).user_id === "number")
+    .map((s) => ({ user_id: s.user_id, name: String(s.name ?? ""), tabs: Number(s.tabs ?? 0) }));
+}
+
+/** Take a copy of another cashier's tabs as my own. Returns what was stored. */
+export async function copyPosQuickLayout(fromUserId: number): Promise<PosQuickTab[]> {
+  const data = await request<{ mine?: unknown }>("/pos/quick-keys/copy", {
+    method: "POST",
+    body: JSON.stringify({ user_id: fromUserId }),
+  });
+  return tabList(data.mine);
 }
 
 /**

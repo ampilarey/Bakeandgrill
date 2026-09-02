@@ -1,22 +1,25 @@
 /**
- * The Quick tab and the Popular-now tab on the till.
+ * The Quick tabs and the Popular-now tab on the till.
  *
  * Owner, 2026-09-02: the POS showed categories and items only in the
  * admin's order, "but usually pos used for dine in customers and certain
- * items are frequent in certain times … each staff on his own". So:
+ * items are frequent in certain times … each staff on his own" — then, the
+ * same afternoon: more than one tab, renamed, rearranged, switching by time
+ * of day, and copyable from a colleague. So:
  *
- *   - "★ Quick" is the first pill. It lists the cashier's own pinned items in
- *     their order, or the shared set until they have pinned anything.
- *   - "🔥 Now" lists what sells at this hour, best first, only when the
- *     server sent a ranking.
- *   - Press and hold a tile to add it, move it, or take it off; a menu
- *     manager also sees the shared set. A plain tap still rings it up.
+ *   - each Quick tab is a pill in front of the categories, own tabs first
+ *   - a tab with hours opens itself when they start
+ *   - hold a tab pill to rename, set hours, move or delete; "+ Tab" adds one
+ *   - hold a tile to put it on a tab, move it, or take it off; a tap rings up
+ *   - "🔥 Now" lists what sells at this hour, only when the server sent a list
+ *   - categories that do not fit the row go behind More
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MenuGrid } from "./MenuGrid";
 import type { Item } from "../types";
+import type { PosQuickTab } from "../api";
 
 vi.mock("../hooks/useCart", () => ({
   effectiveItemPrice: (item: Item) => Number(item.base_price),
@@ -31,6 +34,9 @@ const categories = [
 function item(id: number, name: string, category_id: number): Item {
   return { id, name, base_price: 10, category_id, is_available: true, has_variants: false, modifiers: [] } as unknown as Item;
 }
+function tab(id: string, name: string, items: number[], from: string | null = null, to: string | null = null): PosQuickTab {
+  return { id, name, items, from, to };
+}
 
 const bajiya = item(10, "Bajiya", 1);
 const gulha = item(11, "Gulha", 1);
@@ -40,7 +46,9 @@ const items = [bajiya, gulha, tea, coffee];
 
 function renderGrid(over: Record<string, unknown> = {}) {
   const addToCart = vi.fn();
-  const onUpdateQuickKeys = vi.fn();
+  const onUpdateQuickLayout = vi.fn();
+  const onCopyQuickLayout = vi.fn().mockResolvedValue(true);
+  const loadQuickLayoutSources = vi.fn().mockResolvedValue([{ user_id: 7, name: "Hassan", tabs: 2 }]);
   render(
     <MenuGrid
       {...({
@@ -60,18 +68,21 @@ function renderGrid(over: Record<string, unknown> = {}) {
         setBarcode: () => {},
         onBarcodeSubmit: (e: React.FormEvent) => e.preventDefault(),
         orderType: "Dine-in",
-        quickKeys: { shared: [tea.id], mine: [] },
+        quickLayout: { shared: [tab("s1", "House", [tea.id])], mine: [] },
         canManageSharedQuickKeys: false,
-        onUpdateQuickKeys,
+        onUpdateQuickLayout,
+        onCopyQuickLayout,
+        loadQuickLayoutSources,
         popularNow: [],
         ...over,
       } as never)}
     />,
   );
-  return { addToCart, onUpdateQuickKeys };
+  return { addToCart, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources };
 }
 
 const pill = (name: RegExp) => screen.getByRole("button", { name });
+const pillLabels = () => screen.getAllByTestId("quick-tab-pill").map((b) => b.textContent);
 const tileNames = () =>
   Array.from(document.querySelectorAll(".pos-menu-grid button")).map((b) => (b.textContent || "").replace(/MVR.*$/, "").replace("★", "").trim());
 
@@ -82,54 +93,145 @@ function hold(el: Element) {
   fireEvent.click(el);
 }
 
-describe("Quick tab", () => {
-  beforeEach(() => vi.useFakeTimers());
+describe("Quick tabs in the strip", () => {
+  beforeEach(() => vi.useFakeTimers({ now: new Date(2026, 8, 2, 13, 0) }));
   afterEach(() => vi.useRealTimers());
 
-  it("is the first pill and falls back to the shared set until the cashier has one", () => {
-    renderGrid();
+  it("draws own tabs first, then shared, ahead of the categories", () => {
+    renderGrid({ quickLayout: { shared: [tab("s1", "House", [tea.id])], mine: [tab("m1", "Morning", [bajiya.id, gulha.id]), tab("m2", "Regulars", [])] } });
 
-    const pills = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(pills[0]).toBe("★ Quick (1)");
-
-    fireEvent.click(pill(/Quick/));
-    expect(tileNames()).toEqual(["Black Tea"]);
+    expect(pillLabels()).toEqual(["★ Morning (2)", "★ Regulars", "★ House (1)"]);
+    const all = screen.getAllByRole("button").map((b) => b.textContent);
+    expect(all.indexOf("★ Morning (2)")).toBeLessThan(all.indexOf("All items"));
+    expect(screen.getByRole("button", { name: "★ House (1)" })).toHaveAttribute("data-shared", "true");
   });
 
-  it("shows the cashier's own set, in their order, once they have one", () => {
-    renderGrid({ quickKeys: { shared: [tea.id], mine: [coffee.id, bajiya.id] } });
+  it("opens a tab's items in the tab's own order, and closes on a second tap", () => {
+    renderGrid({ quickLayout: { shared: [], mine: [tab("m1", "Morning", [coffee.id, bajiya.id])] } });
 
-    fireEvent.click(pill(/Quick/));
+    fireEvent.click(pill(/Morning/));
     expect(tileNames()).toEqual(["Coffee", "Bajiya"]);
+
+    fireEvent.click(pill(/Morning/));
+    expect(tileNames()).toEqual(["Bajiya", "Gulha", "Black Tea", "Coffee"]);
   });
 
-  it("explains itself when empty", () => {
-    renderGrid({ quickKeys: { shared: [], mine: [] } });
-
-    fireEvent.click(pill(/Quick/));
+  it("explains an empty tab", () => {
+    renderGrid({ quickLayout: { shared: [], mine: [tab("m1", "Morning", [])] } });
+    fireEvent.click(pill(/Morning/));
     expect(screen.getByTestId("quick-empty")).toHaveTextContent("Press and hold any item");
   });
 
-  it("a hold on a tile offers to add it; a tap still rings it up", () => {
-    const { addToCart, onUpdateQuickKeys } = renderGrid();
+  it("opens the tab whose hours cover now, and switches when the next one starts", () => {
+    renderGrid({ quickLayout: { shared: [], mine: [
+      tab("m1", "Lunch", [bajiya.id], "12:00", "14:00"),
+      tab("m2", "Tea time", [tea.id], "14:00", "18:00"),
+    ] } });
+
+    // 13:00 — Lunch opened itself.
+    expect(tileNames()).toEqual(["Bajiya"]);
+
+    // The cashier goes back to everything; nothing forces Lunch back.
+    fireEvent.click(pill(/All items/));
+    expect(tileNames()).toHaveLength(4);
+
+    // 14:00 — Tea time starts and takes over.
+    act(() => { vi.setSystemTime(new Date(2026, 8, 2, 14, 0)); vi.advanceTimersByTime(60_000); });
+    expect(tileNames()).toEqual(["Black Tea"]);
+  });
+});
+
+describe("Editing a tab", () => {
+  beforeEach(() => vi.useFakeTimers({ now: new Date(2026, 8, 2, 13, 0) }));
+  afterEach(() => vi.useRealTimers());
+
+  it("hold on a tab pill: rename and set hours", () => {
+    const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [tab("m1", "Morning", [bajiya.id]), tab("m2", "Late", [])] } });
+
+    hold(pill(/Morning/));
+    const prompt = screen.getByTestId("quick-tab-prompt");
+    fireEvent.change(within(prompt).getByLabelText("Name"), { target: { value: "Breakfast" } });
+    fireEvent.change(within(prompt).getByLabelText("From"), { target: { value: "06:00" } });
+    fireEvent.change(within(prompt).getByLabelText("To"), { target: { value: "11:00" } });
+    fireEvent.click(within(prompt).getByRole("button", { name: "Save" }));
+
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("mine", [
+      tab("m1", "Breakfast", [bajiya.id], "06:00", "11:00"),
+      tab("m2", "Late", []),
+    ]);
+  });
+
+  it("hold on a tab pill: move right, and delete after confirming", () => {
+    const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [tab("m1", "A", []), tab("m2", "B", [])] } });
+
+    hold(pill(/★ A/));
+    fireEvent.click(within(screen.getByTestId("quick-tab-prompt")).getByRole("button", { name: /Move right/ }));
+    expect(onUpdateQuickLayout).toHaveBeenLastCalledWith("mine", [tab("m2", "B", []), tab("m1", "A", [])]);
+
+    hold(pill(/★ A/));
+    const prompt = screen.getByTestId("quick-tab-prompt");
+    fireEvent.click(within(prompt).getByRole("button", { name: "Delete this tab" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: /Yes, delete/ }));
+    expect(onUpdateQuickLayout).toHaveBeenLastCalledWith("mine", [tab("m2", "B", [])]);
+  });
+
+  it("a cashier cannot edit a shared tab; a menu manager can", () => {
+    renderGrid();
+    hold(pill(/House/));
+    expect(screen.queryByTestId("quick-tab-prompt")).toBeNull();
+
+    renderGrid({ canManageSharedQuickKeys: true });
+    hold(screen.getAllByRole("button", { name: /House/ })[1]);
+    expect(screen.getByTestId("quick-tab-prompt")).toBeInTheDocument();
+  });
+
+  it("+ Tab creates a tab of my own and opens it", () => {
+    const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [] } });
+
+    fireEvent.click(pill(/\+ Tab/));
+    const prompt = screen.getByTestId("quick-tab-prompt");
+    fireEvent.change(within(prompt).getByLabelText("Name"), { target: { value: "Tea time" } });
+    fireEvent.click(within(prompt).getByRole("button", { name: "Create tab" }));
+
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("mine", [tab("tab-1", "Tea time", [])]);
+  });
+
+  it("+ Tab offers to copy another cashier's tabs", async () => {
+    vi.useRealTimers();
+    const { onCopyQuickLayout, loadQuickLayoutSources } = renderGrid({ quickLayout: { shared: [], mine: [] } });
+
+    fireEvent.click(pill(/\+ Tab/));
+    const copy = await screen.findByTestId("quick-tab-copy");
+    expect(loadQuickLayoutSources).toHaveBeenCalled();
+    fireEvent.click(within(copy).getByRole("button", { name: /Copy Hassan’s tabs/ }));
+
+    expect(onCopyQuickLayout).toHaveBeenCalledWith(7);
+  });
+});
+
+describe("Putting items on tabs", () => {
+  beforeEach(() => vi.useFakeTimers({ now: new Date(2026, 8, 2, 13, 0) }));
+  afterEach(() => vi.useRealTimers());
+
+  it("a hold on a tile offers each of my tabs; a tap still rings it up", () => {
+    const { addToCart, onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [tab("s1", "House", [])], mine: [tab("m1", "Morning", []), tab("m2", "Late", [])] } });
 
     const tile = screen.getByRole("button", { name: /Bajiya/ });
     fireEvent.click(tile);
     expect(addToCart).toHaveBeenCalledTimes(1);
 
     hold(tile);
-    // The hold swallowed the click that followed it.
     expect(addToCart).toHaveBeenCalledTimes(1);
-
     const prompt = screen.getByTestId("quick-key-prompt");
-    fireEvent.click(within(prompt).getByRole("button", { name: "Add to my Quick keys" }));
+    // Not a manager: the shared tab is not on offer.
+    expect(within(prompt).queryByRole("button", { name: /House/ })).toBeNull();
+    fireEvent.click(within(prompt).getByRole("button", { name: "Add to Late" }));
 
-    expect(onUpdateQuickKeys).toHaveBeenCalledWith("mine", [bajiya.id]);
-    expect(screen.queryByTestId("quick-key-prompt")).toBeNull();
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("mine", [tab("m1", "Morning", []), tab("m2", "Late", [bajiya.id])]);
   });
 
-  it("a hold on a pinned tile offers move and remove, and marks it with a star", () => {
-    const { onUpdateQuickKeys } = renderGrid({ quickKeys: { shared: [], mine: [coffee.id, bajiya.id, tea.id] } });
+  it("a pinned tile is starred and can be moved or removed within its tab", () => {
+    const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [tab("m1", "Morning", [coffee.id, bajiya.id, tea.id])] } });
 
     const tile = screen.getByRole("button", { name: /Bajiya/ });
     expect(tile).toHaveAttribute("data-pinned", "true");
@@ -137,47 +239,56 @@ describe("Quick tab", () => {
 
     hold(tile);
     const prompt = screen.getByTestId("quick-key-prompt");
-    expect(within(prompt).getByRole("button", { name: "Move earlier in my Quick keys" })).toBeInTheDocument();
-    expect(within(prompt).getByRole("button", { name: "Move later in my Quick keys" })).toBeInTheDocument();
-    // Not a manager: nothing about the shared set.
-    expect(within(prompt).queryByRole("button", { name: /shared/ })).toBeNull();
-
-    fireEvent.click(within(prompt).getByRole("button", { name: "Move earlier in my Quick keys" }));
-    expect(onUpdateQuickKeys).toHaveBeenCalledWith("mine", [bajiya.id, coffee.id, tea.id]);
+    fireEvent.click(within(prompt).getByRole("button", { name: "Move earlier in Morning" }));
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("mine", [tab("m1", "Morning", [bajiya.id, coffee.id, tea.id])]);
   });
 
-  it("lets a menu manager pin to the shared set as well", () => {
-    const { onUpdateQuickKeys } = renderGrid({ canManageSharedQuickKeys: true, quickKeys: { shared: [tea.id], mine: [] } });
+  it("with no tab of my own, a hold offers to start one", () => {
+    const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [] } });
 
     hold(screen.getByRole("button", { name: /Gulha/ }));
-    const prompt = screen.getByTestId("quick-key-prompt");
-    fireEvent.click(within(prompt).getByRole("button", { name: "Add to the shared Quick keys" }));
+    fireEvent.click(within(screen.getByTestId("quick-key-prompt")).getByRole("button", { name: "Add to a new tab of my own" }));
 
-    expect(onUpdateQuickKeys).toHaveBeenCalledWith("shared", [tea.id, gulha.id]);
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("mine", [tab("tab-1", "Quick", [gulha.id])]);
   });
 
-  it("does not offer a hold when the till has no keys feature", () => {
-    const { addToCart } = renderGrid({ quickKeys: undefined, onUpdateQuickKeys: undefined });
+  it("a menu manager can pin to a shared tab", () => {
+    const { onUpdateQuickLayout } = renderGrid({ canManageSharedQuickKeys: true });
 
-    expect(screen.queryByRole("button", { name: /Quick/ })).toBeNull();
-    const tile = screen.getByRole("button", { name: /Bajiya/ });
-    hold(tile);
+    hold(screen.getByRole("button", { name: /Gulha/ }));
+    fireEvent.click(within(screen.getByTestId("quick-key-prompt")).getByRole("button", { name: "Add to House (shared)" }));
+
+    expect(onUpdateQuickLayout).toHaveBeenCalledWith("shared", [tab("s1", "House", [tea.id, gulha.id])]);
+  });
+
+  it("does nothing on a till without the feature", () => {
+    const { addToCart } = renderGrid({ quickLayout: undefined, onUpdateQuickLayout: undefined });
+
+    expect(screen.queryAllByTestId("quick-tab-pill")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /\+ Tab/ })).toBeNull();
+    hold(screen.getByRole("button", { name: /Bajiya/ }));
     expect(screen.queryByTestId("quick-key-prompt")).toBeNull();
-    // Without the hold wiring, the click goes straight through.
     expect(addToCart).toHaveBeenCalled();
   });
 });
 
 describe("Popular-now tab", () => {
-  it("appears only with a ranking, and keeps the server's order", () => {
+  it("appears only with a ranking", () => {
     renderGrid({ popularNow: [] });
     expect(screen.queryByRole("button", { name: /Now/ })).toBeNull();
   });
 
   it("lists what sells at this hour, best first, skipping anything not on this menu", () => {
     renderGrid({ popularNow: [coffee.id, 999, bajiya.id] });
-
     fireEvent.click(pill(/🔥 Now \(2\)/));
     expect(tileNames()).toEqual(["Coffee", "Bajiya"]);
+  });
+});
+
+describe("More categories", () => {
+  it("shows every category when the row width is unknown", () => {
+    renderGrid();
+    expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Drinks" })).toBeInTheDocument();
   });
 });

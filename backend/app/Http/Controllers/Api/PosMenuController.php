@@ -58,7 +58,7 @@ class PosMenuController extends Controller
         $itemIds = $menu['items']->pluck('id')->map('intval')->values()->all();
 
         return [
-            'quick_keys' => app(PosQuickKeyService::class)->forUser((int) $user->id),
+            'quick_layout' => app(PosQuickKeyService::class)->forUser((int) $user->id),
             'can_manage_shared_quick_keys' => app(PermissionService::class)->hasPermission($user, 'menu.manage'),
             'popular_now' => app(PosPopularNowService::class)->rank($itemIds),
         ];

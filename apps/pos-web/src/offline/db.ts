@@ -62,7 +62,7 @@ export type CachedMenuRecord = {
    * The Quick and Popular-now tabs, cached with the menu for the same reason
    * as the pairings. Optional: older caches have none.
    */
-  quick_keys?: { shared: number[]; mine: number[] };
+  quick_layout?: { shared: unknown[]; mine: unknown[] };
   can_manage_shared_quick_keys?: boolean;
   popular_now?: number[];
   tax_rate?: number;

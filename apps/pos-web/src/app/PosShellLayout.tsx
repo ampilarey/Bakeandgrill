@@ -21,7 +21,7 @@ import { PosUpdateBanner } from '../components/PosUpdateBanner';
 import { OnlineOrderToasts } from '../components/OnlineOrderToasts';
 import { RequestItemModal } from '../components/RequestItemModal';
 import { POS_BUILD_INFO } from '../posBuildInfo';
-import { closeTable, mergeTables, openTable, validateManualDiscountInput } from '../api';
+import { closeTable, fetchPosQuickLayoutSources, mergeTables, openTable, validateManualDiscountInput } from '../api';
 import { palette } from '../theme';
 import { validateDeliveryDetails, type PosOrderType } from '../orderTypes';
 import type { CartItem } from '../types';
@@ -632,9 +632,11 @@ export function PosShellLayout() {
               filteredItems={filteredItems}
               isLoading={menu.isLoading}
               dataError={menu.dataError || menu.quickKeysError}
-              quickKeys={menu.tillTabs.quickKeys}
+              quickLayout={menu.tillTabs.quickLayout}
               canManageSharedQuickKeys={menu.tillTabs.canManageSharedQuickKeys}
-              onUpdateQuickKeys={menu.updateQuickKeys}
+              onUpdateQuickLayout={menu.updateQuickLayout}
+              onCopyQuickLayout={menu.copyQuickLayoutFrom}
+              loadQuickLayoutSources={fetchPosQuickLayoutSources}
               popularNow={menu.tillTabs.popularNow}
               selectedItem={cart.selectedItem}
               selectedModifiers={cart.selectedModifiers}

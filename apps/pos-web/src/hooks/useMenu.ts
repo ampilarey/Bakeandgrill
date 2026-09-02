@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchPosBootstrap, fetchPosMenu, normalizePosTillTabs, savePosQuickKeys,
-  type PosDiscountControls, type PosPairings, type PosSmsNotifications, type PosTillTabs,
+  copyPosQuickLayout, fetchPosBootstrap, fetchPosMenu, normalizePosTillTabs, savePosQuickLayout,
+  type PosDiscountControls, type PosPairings, type PosQuickTab, type PosSmsNotifications, type PosTillTabs,
 } from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { PosOrderType } from "../orderTypes";
@@ -36,7 +36,7 @@ function formatMenuAge(ms: number): string {
 /** The tabs in the shape the offline cache stores them. */
 function cacheableTabs(tabs: PosTillTabs) {
   return {
-    quick_keys: tabs.quickKeys,
+    quick_layout: tabs.quickLayout,
     can_manage_shared_quick_keys: tabs.canManageSharedQuickKeys,
     popular_now: tabs.popularNow,
   };
@@ -105,7 +105,7 @@ export function useMenu(
     // Older caches predate pairings; an empty map just means no chips.
     setPairings((cached.pairings ?? {}) as PosPairings);
     setTillTabs(normalizePosTillTabs({
-      quick_keys: cached.quick_keys,
+      quick_layout: cached.quick_layout,
       can_manage_shared_quick_keys: cached.can_manage_shared_quick_keys,
       popular_now: cached.popular_now,
     }));
@@ -281,15 +281,21 @@ export function useMenu(
   }, []);
 
   /**
-   * Replace a Quick set. The screen changes at once and the cache with it, so
-   * the tab is right even if the save never gets through; the server is told
-   * afterwards. A failed save is reported, not rolled back — the cashier's
-   * list is the truth they can see, and the next successful save carries it.
+   * Replace a Quick layout. The screen changes at once and the cache with
+   * it, so the tabs are right even if the save never gets through; the
+   * server is told afterwards. A failed save is reported, not rolled back —
+   * the cashier's tabs are the truth they can see, and the next successful
+   * save carries them.
    */
   const [quickKeysError, setQuickKeysError] = useState("");
-  const updateQuickKeys = useCallback((scope: "mine" | "shared", itemIds: number[]) => {
+  const flashQuickKeysError = useCallback((message: string) => {
+    setQuickKeysError(message);
+    window.setTimeout(() => setQuickKeysError(""), 5000);
+  }, []);
+
+  const applyLayout = useCallback((scope: "mine" | "shared", tabs: PosQuickTab[]) => {
     setTillTabs((prev) => {
-      const next = { ...prev, quickKeys: { ...prev.quickKeys, [scope]: itemIds } };
+      const next = { ...prev, quickLayout: { ...prev.quickLayout, [scope]: tabs } };
       void (async () => {
         const cached = await loadCachedMenu(channelRef.current);
         if (cached) {
@@ -299,19 +305,35 @@ export function useMenu(
       })();
       return next;
     });
-    setQuickKeysError("");
-    savePosQuickKeys(scope, itemIds).catch(() => {
-      setQuickKeysError("Quick keys could not be saved to the server. They will stay on this till.");
-      window.setTimeout(() => setQuickKeysError(""), 5000);
-    });
   }, []);
+
+  const updateQuickLayout = useCallback((scope: "mine" | "shared", tabs: PosQuickTab[]) => {
+    applyLayout(scope, tabs);
+    setQuickKeysError("");
+    savePosQuickLayout(scope, tabs).catch(() => {
+      flashQuickKeysError("Quick tabs could not be saved to the server. They will stay on this till.");
+    });
+  }, [applyLayout, flashQuickKeysError]);
+
+  /** Copy another cashier's tabs over my own. Server first — a copy needs the network. */
+  const copyQuickLayoutFrom = useCallback(async (fromUserId: number): Promise<boolean> => {
+    try {
+      const tabs = await copyPosQuickLayout(fromUserId);
+      applyLayout("mine", tabs);
+      return true;
+    } catch {
+      flashQuickKeysError("Could not copy those tabs — check the connection and try again.");
+      return false;
+    }
+  }, [applyLayout, flashQuickKeysError]);
 
   return {
     categories,
     items,
     pairings,
     tillTabs,
-    updateQuickKeys,
+    updateQuickLayout,
+    copyQuickLayoutFrom,
     quickKeysError,
     selectedCategoryId,
     setSelectedCategoryId,

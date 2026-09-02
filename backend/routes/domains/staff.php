@@ -28,11 +28,14 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
     // POS menu — channel refetch after order-type change (no shift payload)
     Route::get('/pos/menu', [App\Http\Controllers\Api\PosMenuController::class, 'index'])
         ->middleware('throttle:120,1');
-    // Quick tab on the till — a cashier's own pinned items, and the shared
-    // set (menu managers). Read side rides in the menu payload.
+    // Quick tabs on the till — a cashier's own layout, the shared one (menu
+    // managers), and copying another cashier's. Read side rides in the menu
+    // payload.
     Route::put('/pos/quick-keys', [App\Http\Controllers\Api\PosQuickKeyController::class, 'updateMine']);
     Route::put('/pos/quick-keys/shared', [App\Http\Controllers\Api\PosQuickKeyController::class, 'updateShared'])
         ->middleware('permission:menu.manage');
+    Route::get('/pos/quick-keys/sources', [App\Http\Controllers\Api\PosQuickKeyController::class, 'sources']);
+    Route::post('/pos/quick-keys/copy', [App\Http\Controllers\Api\PosQuickKeyController::class, 'copy']);
     Route::patch('/auth/me/preferences', [StaffAuthController::class, 'updatePreferences']);
 
     // Online ordering gate — toggle (owner/manager) and public status is above

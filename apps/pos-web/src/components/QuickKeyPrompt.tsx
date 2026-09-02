@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
 import { z } from "../theme";
 import type { Item } from "../types";
+import type { QuickScope, ScopedQuickTab } from "../utils/quickTabs";
 
 export type QuickKeyAction =
-  | { kind: "add"; scope: "mine" | "shared" }
-  | { kind: "remove"; scope: "mine" | "shared" }
-  | { kind: "move"; scope: "mine" | "shared"; delta: -1 | 1 };
+  | { kind: "add"; scope: QuickScope; tabId: string }
+  | { kind: "remove"; scope: QuickScope; tabId: string }
+  | { kind: "move"; scope: QuickScope; tabId: string; delta: -1 | 1 }
+  /** No tab of my own yet: start one with this item. */
+  | { kind: "add-new" };
 
 type Props = {
   item: Item;
-  /** Where the item currently sits in each set; null when not in it. */
-  position: { mine: number | null; shared: number | null };
-  sizes: { mine: number; shared: number };
-  max: number;
-  canManageShared: boolean;
+  /** Every tab the cashier may put things on — their own, and the shared ones if they manage the menu. */
+  tabs: ScopedQuickTab[];
+  maxItems: number;
+  canAddOwnTab: boolean;
   onAction: (action: QuickKeyAction) => void;
   onClose: () => void;
 };
@@ -21,14 +23,12 @@ type Props = {
 /**
  * The sheet a press-and-hold on a menu tile raises.
  *
- * Owner, 2026-09-02: a cashier keeps their own Quick tab; a menu manager
- * keeps the shared one every till starts from. Same gesture and same confirm
- * step as the header shortcuts — a hold is easy to do by accident on a busy
- * till, so nothing rearranges without being asked.
+ * One row per tab: add to it, or — when the item is already there — move it
+ * earlier or later, or take it off. Same gesture and same confirm step as
+ * the header shortcuts: a hold is easy to do by accident on a busy till, so
+ * nothing rearranges without being asked. Owner, 2026-09-02.
  */
-export function QuickKeyPrompt({
-  item, position, sizes, max, canManageShared, onAction, onClose,
-}: Props) {
+export function QuickKeyPrompt({ item, tabs, maxItems, canAddOwnTab, onAction, onClose }: Props) {
   const firstRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -40,23 +40,18 @@ export function QuickKeyPrompt({
   }, [onClose]);
 
   const rows: Array<{ label: string; action: QuickKeyAction; tone?: "danger" }> = [];
-
-  const scopeRows = (scope: "mine" | "shared", noun: string) => {
-    const at = position[scope];
-    const size = sizes[scope];
-    if (at === null) {
-      if (size < max) rows.push({ label: `Add to ${noun}`, action: { kind: "add", scope } });
-      return;
+  for (const tab of tabs) {
+    const noun = tab.scope === "shared" ? `${tab.name} (shared)` : tab.name;
+    const at = tab.items.indexOf(item.id);
+    if (at < 0) {
+      if (tab.items.length < maxItems) rows.push({ label: `Add to ${noun}`, action: { kind: "add", scope: tab.scope, tabId: tab.id } });
+      continue;
     }
-    if (at > 0) rows.push({ label: `Move earlier in ${noun}`, action: { kind: "move", scope, delta: -1 } });
-    if (at < size - 1) rows.push({ label: `Move later in ${noun}`, action: { kind: "move", scope, delta: 1 } });
-    rows.push({ label: `Remove from ${noun}`, action: { kind: "remove", scope }, tone: "danger" });
-  };
-
-  scopeRows("mine", "my Quick keys");
-  if (canManageShared) scopeRows("shared", "the shared Quick keys");
-
-  const full = position.mine === null && sizes.mine >= max;
+    if (at > 0) rows.push({ label: `Move earlier in ${noun}`, action: { kind: "move", scope: tab.scope, tabId: tab.id, delta: -1 } });
+    if (at < tab.items.length - 1) rows.push({ label: `Move later in ${noun}`, action: { kind: "move", scope: tab.scope, tabId: tab.id, delta: 1 } });
+    rows.push({ label: `Remove from ${noun}`, action: { kind: "remove", scope: tab.scope, tabId: tab.id }, tone: "danger" });
+  }
+  if (canAddOwnTab) rows.push({ label: "Add to a new tab of my own", action: { kind: "add-new" } });
 
   return (
     <>
@@ -68,12 +63,13 @@ export function QuickKeyPrompt({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Quick keys: ${item.name}`}
+        aria-label={`Quick tabs: ${item.name}`}
         data-testid="quick-key-prompt"
         style={{
           position: "fixed", zIndex: z.drawerPanel,
           left: "50%", top: "50%", transform: "translate(-50%, -50%)",
-          width: "min(360px, calc(100vw - 40px))",
+          width: "min(380px, calc(100vw - 40px))",
+          maxHeight: "min(80dvh, 640px)", overflowY: "auto",
           background: "#fff", borderRadius: 16, padding: 18,
           boxShadow: "0 20px 60px rgba(15,23,42,0.28)",
         }}
@@ -85,9 +81,9 @@ export function QuickKeyPrompt({
           </p>
         </div>
         <p style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.5, color: "#475569" }}>
-          {full
-            ? `Your Quick tab is full — it holds ${max}. Remove one to make room.`
-            : "The Quick tab is the first tab on the till. Yours follows you to any till; the shared one is what everyone starts with."}
+          {rows.length === 0
+            ? `Every tab is full — each holds ${maxItems}. Take something off one first.`
+            : "Quick tabs are the first tabs on the till. Yours follow you to any till."}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((row, index) => (
