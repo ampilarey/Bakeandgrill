@@ -1181,6 +1181,14 @@ html, body, #root {
   to   { transform: translateY(0);   opacity: 1; }
 }
 
+/* "Goes with" card over the ticket footer — rises in like a toast. */
+.pos-suggest {
+  animation: pos-toast-in 160ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-suggest { animation: none; }
+}
+
 @keyframes pos-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

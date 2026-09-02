@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { trackPosSuggestion, type PosPairings } from "../api";
 import { palette } from "../theme";
@@ -18,18 +18,50 @@ type Props = {
   /** Dine-in never treats a packaging choice as a reason to configure. */
   packagingEligible?: boolean;
   maxChips?: number;
+  /** How long a fresh set stays up before it slides away on its own. */
+  autoHideMs?: number;
 };
 
+/** Where the card sits: just above the cart's footer, or above the docked bar on a phone. */
+type Anchor = { left: number; width: number; bottom: number };
+
+function measureAnchor(): Anchor | null {
+  if (typeof document === "undefined" || typeof window === "undefined") return null;
+  const visible = (el: Element | null): el is HTMLElement =>
+    el instanceof HTMLElement && el.getClientRects().length > 0;
+
+  // The footer is hidden while the phone cart is docked; the dock bar is
+  // hidden once it is open as a sheet. Whichever is on screen is the anchor.
+  const footer = document.querySelector(".pos-cart-footer");
+  const dock = document.querySelector(".pos-cart-dock-bar");
+  const target = visible(footer) ? footer : visible(dock) ? dock : null;
+  if (!target) return null;
+
+  const rect = target.getBoundingClientRect();
+  if (rect.width === 0) return null;
+
+  return {
+    left: rect.left,
+    width: rect.width,
+    bottom: Math.max(0, window.innerHeight - rect.top) + 8,
+  };
+}
+
 /**
- * "Goes well with" chips above the ticket.
+ * "Goes with" — a small card that pops up over the ticket when the last
+ * thing rung up has a pairing.
  *
- * The till is the one place a human is actually talking to the customer, so a
- * prompt here converts far better than a panel on a phone — but only if it
- * costs the cashier nothing. Hence chips rather than a modal: they sit in the
- * flow, they add in one tap, and they never block the queue.
+ * It used to be a row of chips laid out as a sibling of the cart, which on a
+ * wide till made it a third column: two lonely pills floating in the empty
+ * space left of the ticket. Owner, 2026-09-02: "goes with should be a popup
+ * msg". So it is now a card pinned just above the Charge area (or above the
+ * docked bar on a phone), named after the item it is pairing with, that
+ * slides away on its own after a few seconds or when the cashier taps ✕.
  *
- * The pairings arrive inside the menu payload and are cached with it, so this
- * keeps working when the connection drops.
+ * It still costs the cashier nothing: it never blocks the ticket or the
+ * menu, a chip adds in one tap, and it never comes back for the same set
+ * once dismissed. The pairings arrive inside the menu payload and are cached
+ * with it, so this keeps working when the connection drops.
  */
 export function SuggestionChips({
   items,
@@ -40,18 +72,20 @@ export function SuggestionChips({
   readOnly = false,
   packagingEligible = false,
   maxChips = 3,
+  autoHideMs = 12000,
 }: Props) {
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
-  const suggestions = useMemo(() => {
-    if (cartItems.length === 0) return [];
+  const { suggestions, anchorName } = useMemo(() => {
+    if (cartItems.length === 0) return { suggestions: [] as Item[], anchorName: "" };
 
     const inCart = new Set(cartItems.map((line) => line.id));
     const seen = new Set<number>();
     const out: Item[] = [];
+    let anchor = "";
 
     // Walk the ticket newest-first: the thing just rung up is what the cashier
-    // is talking about, so its pairings should lead.
+    // is talking about, so its pairings should lead — and name the card.
     for (let i = cartItems.length - 1; i >= 0; i -= 1) {
       for (const suggestedId of pairings[cartItems[i].id] ?? []) {
         if (inCart.has(suggestedId) || seen.has(suggestedId)) continue;
@@ -61,87 +95,153 @@ export function SuggestionChips({
         if (!item || item.is_available === false) continue;
         seen.add(suggestedId);
         out.push(item);
-        if (out.length >= maxChips) return out;
+        if (!anchor) anchor = cartItems[i].name;
+        if (out.length >= maxChips) return { suggestions: out, anchorName: anchor };
       }
     }
 
-    return out;
+    return { suggestions: out, anchorName: anchor };
   }, [cartItems, pairings, byId, maxChips]);
+
+  const signature = suggestions.map((s) => s.id).join(",");
 
   // Report a set once. This renders on every cart change, and counting the
   // same chips repeatedly would quietly destroy the take rate in the admin
   // report — the whole reason the tracking exists.
   const shownSignature = useRef("");
   useEffect(() => {
-    const signature = suggestions.map((s) => s.id).join(",");
     if (!signature || shownSignature.current === signature) return;
     shownSignature.current = signature;
     trackPosSuggestion("shown", suggestions.map((s) => s.id));
-  }, [suggestions]);
+  }, [signature, suggestions]);
 
-  if (suggestions.length === 0) return null;
+  // A set the cashier closed, or that timed out, stays closed. A new set —
+  // another item rung up — opens the card again.
+  const [hiddenSignature, setHiddenSignature] = useState("");
+  const open = signature !== "" && hiddenSignature !== signature;
+
+  useEffect(() => {
+    if (!open || autoHideMs <= 0) return;
+    const timer = window.setTimeout(() => setHiddenSignature(signature), autoHideMs);
+    return () => window.clearTimeout(timer);
+  }, [open, signature, autoHideMs]);
+
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => setAnchor(measureAnchor());
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open, signature, cartItems.length]);
+
+  if (!open) return null;
+
+  const placement: React.CSSProperties = anchor
+    ? { left: anchor.left, width: anchor.width, bottom: anchor.bottom }
+    : { left: 16, right: 16, bottom: 16 };
 
   return (
     <div
       data-testid="pos-suggestion-chips"
+      role="status"
+      aria-label={`Goes with ${anchorName}`}
+      className="pos-suggest"
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap",
-        padding: "8px 10px",
-        borderBottom: `1px solid ${palette.border}`,
+        position: "fixed",
+        zIndex: 60,
+        boxSizing: "border-box",
+        padding: "10px 12px 12px",
+        borderRadius: 12,
+        border: `1px solid ${palette.primaryLight}`,
+        borderLeft: `4px solid ${palette.primary}`,
+        background: palette.panel,
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.18)",
+        ...placement,
       }}
     >
-      <span style={{ fontSize: 11, fontWeight: 700, color: palette.panelMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-        Goes with
-      </span>
-      {suggestions.map((item) => {
-        const needsConfigure =
-          item.has_variants
-          || (item.modifiers?.length ?? 0) > 0
-          || (packagingEligible && (item.packaging_options?.length ?? 0) > 1);
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6, paddingRight: 36, marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, color: palette.primaryDark, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Goes with
+        </span>
+        <span
+          style={{
+            fontSize: 14, fontWeight: 700, color: palette.panelInk,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+          }}
+        >
+          {anchorName}
+        </span>
+      </div>
 
-        return (
-          <button
-            key={item.id}
-            type="button"
-            disabled={readOnly}
-            aria-label={`Add ${item.name}`}
-            onClick={() => {
-              if (readOnly) return;
-              // Same rule the menu tiles use, so a chip behaves exactly like
-              // tapping the item itself — no surprise second flow.
-              if (needsConfigure) handleSelectItem(item);
-              else addToCart(item);
-              trackPosSuggestion("accepted", [item.id]);
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              border: `1px solid ${palette.border}`,
-              background: palette.panel,
-              color: palette.panelInk,
-              fontFamily: "inherit",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: readOnly ? "not-allowed" : "pointer",
-              opacity: readOnly ? 0.5 : 1,
-              // Comfortable for a thumb at a counter without stealing a row
-              // from the ticket.
-              minHeight: 36,
-            }}
-          >
-            <span>{item.name}</span>
-            <span style={{ color: palette.panelMuted, fontWeight: 500 }}>
-              +{Number(item.base_price).toFixed(2)}
-            </span>
-          </button>
-        );
-      })}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {suggestions.map((item) => {
+          const needsConfigure =
+            item.has_variants
+            || (item.modifiers?.length ?? 0) > 0
+            || (packagingEligible && (item.packaging_options?.length ?? 0) > 1);
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              disabled={readOnly}
+              aria-label={`Add ${item.name}`}
+              onClick={() => {
+                if (readOnly) return;
+                // Same rule the menu tiles use, so a chip behaves exactly like
+                // tapping the item itself — no surprise second flow.
+                if (needsConfigure) handleSelectItem(item);
+                else addToCart(item);
+                trackPosSuggestion("accepted", [item.id]);
+              }}
+              style={{
+                flex: "1 1 auto",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                minHeight: 44,
+                padding: "6px 12px 6px 14px",
+                borderRadius: 10,
+                border: `1px solid ${palette.border}`,
+                background: palette.bg,
+                color: palette.panelInk,
+                fontFamily: "inherit",
+                fontSize: 14,
+                fontWeight: 700,
+                textAlign: "left",
+                cursor: readOnly ? "not-allowed" : "pointer",
+                opacity: readOnly ? 0.5 : 1,
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span aria-hidden="true" style={{ color: palette.primary, marginRight: 6 }}>+</span>
+                {item.name}
+              </span>
+              <span style={{ color: palette.panelMuted, fontWeight: 600, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                {Number(item.base_price) > 0 ? Number(item.base_price).toFixed(2) : "free"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Last in the DOM so the chips keep their order for a screen reader;
+          drawn in the corner. */}
+      <button
+        type="button"
+        onClick={() => setHiddenSignature(signature)}
+        aria-label="Hide suggestions"
+        style={{
+          position: "absolute", top: 6, right: 6,
+          width: 32, height: 32, borderRadius: 8,
+          border: "none", background: "transparent",
+          color: palette.panelMuted, fontSize: 16, lineHeight: 1, cursor: "pointer",
+        }}
+      >
+        ✕
+      </button>
     </div>
   );
 }

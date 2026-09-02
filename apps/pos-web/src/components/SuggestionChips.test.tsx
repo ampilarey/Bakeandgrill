@@ -10,7 +10,7 @@
  *   - each set is reported as shown exactly once, or the take rate in the
  *     admin report is inflated into meaninglessness
  */
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -50,8 +50,12 @@ function draw(cartItems: ReturnType<typeof line>[], extra: Record<string, unknow
   );
 }
 
+// Chips are the "Add …" buttons; the card's ✕ is not one of them.
 const chipNames = () =>
-  screen.queryAllByRole("button").map((b) => (b.textContent || "").replace(/\+[\d.]+$/, "").trim());
+  screen.queryAllByRole("button")
+    .map((b) => b.getAttribute("aria-label") ?? "")
+    .filter((label) => label.startsWith("Add "))
+    .map((label) => label.slice(4));
 
 describe("POS suggestion chips", () => {
   beforeEach(() => {
@@ -145,5 +149,73 @@ describe("POS suggestion chips", () => {
   it("stays quiet when the menu has no pairings at all", () => {
     draw([line(burger)], { pairings: {} });
     expect(screen.queryByTestId("pos-suggestion-chips")).toBeNull();
+  });
+
+  // Owner, 2026-09-02: "goes with should be a popup msg". The card names
+  // the item it pairs with, can be closed, closes itself, and comes back
+  // only for a different set.
+  describe("as a popup", () => {
+    it("is named after the line it is pairing with", () => {
+      draw([line(burger), line(coke)]);
+      expect(screen.getByRole("status", { name: "Goes with Coke" })).toBeInTheDocument();
+    });
+
+    it("closes on ✕ and stays closed for the same set", async () => {
+      const user = userEvent.setup();
+      const { rerender } = draw([line(burger)]);
+
+      await user.click(screen.getByLabelText("Hide suggestions"));
+      expect(screen.queryByTestId("pos-suggestion-chips")).toBeNull();
+
+      rerender(
+        <SuggestionChips
+          {...({ items, pairings, cartItems: [line(burger)], addToCart, handleSelectItem } as never)}
+        />,
+      );
+      expect(screen.queryByTestId("pos-suggestion-chips")).toBeNull();
+    });
+
+    it("comes back when another item is rung up", async () => {
+      const user = userEvent.setup();
+      const { rerender } = draw([line(burger)]);
+      await user.click(screen.getByLabelText("Hide suggestions"));
+
+      rerender(
+        <SuggestionChips
+          {...({ items, pairings, cartItems: [line(burger), line(coke)], addToCart, handleSelectItem } as never)}
+        />,
+      );
+      expect(screen.getByRole("status", { name: "Goes with Coke" })).toBeInTheDocument();
+    });
+
+    it("slides away on its own", () => {
+      vi.useFakeTimers();
+      try {
+        draw([line(burger)], { autoHideMs: 5000 });
+        expect(screen.getByTestId("pos-suggestion-chips")).toBeInTheDocument();
+        act(() => { vi.advanceTimersByTime(5000); });
+        expect(screen.queryByTestId("pos-suggestion-chips")).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("sits just above the cart footer when there is one", () => {
+      const footer = document.createElement("div");
+      footer.className = "pos-cart-footer";
+      footer.getBoundingClientRect = () => ({ left: 20, top: 500, width: 300, height: 100 } as DOMRect);
+      footer.getClientRects = () => [{}] as unknown as DOMRectList;
+      document.body.appendChild(footer);
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+      try {
+        draw([line(burger)]);
+        const card = screen.getByTestId("pos-suggestion-chips");
+        expect(card.style.left).toBe("20px");
+        expect(card.style.width).toBe("300px");
+        expect(card.style.bottom).toBe("308px");
+      } finally {
+        footer.remove();
+      }
+    });
   });
 });

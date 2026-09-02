@@ -461,8 +461,9 @@ export function PosShellLayout() {
             </div>
           ) : (
           <>
-            {/* Above the ticket, in the cashier's line of sight while they are
-                still talking to the customer — the moment an upsell lands. */}
+            {/* A card that pops up over the ticket's footer while the cashier
+                is still talking to the customer — the moment an upsell lands.
+                Fixed-position, so it takes no column of its own. */}
             <SuggestionChips
               items={menu.items}
               pairings={menu.pairings}
