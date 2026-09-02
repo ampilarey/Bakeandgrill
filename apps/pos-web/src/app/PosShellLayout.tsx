@@ -631,7 +631,11 @@ export function PosShellLayout() {
               setSelectedCategoryId={menu.setSelectedCategoryId}
               filteredItems={filteredItems}
               isLoading={menu.isLoading}
-              dataError={menu.dataError}
+              dataError={menu.dataError || menu.quickKeysError}
+              quickKeys={menu.tillTabs.quickKeys}
+              canManageSharedQuickKeys={menu.tillTabs.canManageSharedQuickKeys}
+              onUpdateQuickKeys={menu.updateQuickKeys}
+              popularNow={menu.tillTabs.popularNow}
               selectedItem={cart.selectedItem}
               selectedModifiers={cart.selectedModifiers}
               handleSelectItem={cart.handleSelectItem}

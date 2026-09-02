@@ -40,6 +40,7 @@ class StaffRouteAuthCoverageTest extends TestCase
         'GET api/devices/self-status' => 'api/devices/self-status — any signed-in staff; DeviceController::selfStatus (own device)',
         'GET api/pos/bootstrap' => 'api/pos/bootstrap — any signed-in staff; PosBootstrapController, no privileged writes',
         'GET api/pos/menu' => 'api/pos/menu — any signed-in staff; PosMenuController catalog read for POS',
+        'PUT api/pos/quick-keys' => 'api/pos/quick-keys — any signed-in staff; writes only the caller\'s own Quick tab (PosQuickKeyController::updateMine); the shared set is a separate route gated on menu.manage',
         'GET api/pos/events' => 'api/pos/events — device.active middleware; PosEventController SSE for active POS device',
         'GET api/items/{id}/barcode-label' => 'api/items/{id}/barcode-label — any signed-in staff; ItemController::barcodeLabel print helper',
         'GET api/orders/{id}' => 'api/orders/{id} — OrderVisibilityService in OrderCreationController::show',

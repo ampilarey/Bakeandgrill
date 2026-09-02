@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Item, Modifier, Variant } from "../types";
+import type { PosQuickKeys } from "../api";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
+import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
+import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
+
+/** Room on the Quick tab. Mirrors PosQuickKeyService::MAX_KEYS. */
+export const MAX_QUICK_KEYS = 24;
 
 type Props = {
   categories: Category[];
@@ -47,6 +53,17 @@ type Props = {
 
   /** Current ticket order type — packaging picker only for takeaway/pickup/delivery. */
   orderType: PosOrderType;
+
+  /**
+   * The Quick tab (a cashier's pinned items, or the shared set) and the
+   * Popular-now tab. Owner, 2026-09-02: "certain items are frequent in
+   * certain times … each staff on his own".
+   */
+  quickKeys?: PosQuickKeys;
+  canManageSharedQuickKeys?: boolean;
+  onUpdateQuickKeys?: (scope: "mine" | "shared", itemIds: number[]) => void;
+  /** Item ids ranked by what sells at this hour, best first. */
+  popularNow?: number[];
 };
 
 // Per-category colour swatches. Loyverse-style highly-saturated chips
@@ -80,11 +97,19 @@ function MenuItemTile({
   item,
   readOnly,
   onClick,
+  pinned = false,
+  onLongPress,
 }: {
   item: Item;
   readOnly?: boolean;
   onClick: () => void;
+  /** On the Quick tab — drawn with a star so the cashier can tell. */
+  pinned?: boolean;
+  /** Press and hold: pin to / unpin from the Quick tab. */
+  onLongPress?: () => void;
 }) {
+  const { handlers: holdHandlers, clickGuard } = useLongPress(onLongPress ?? (() => {}));
+  const hold = onLongPress ? holdHandlers : {};
   const c = tileColor(item.category_id);
   const price = effectiveItemPrice(item);
   const wasPrice = originalItemPrice(item);
@@ -103,9 +128,11 @@ function MenuItemTile({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={onLongPress ? clickGuard(onClick) : onClick}
       disabled={readOnly}
       title={readOnly ? 'Resumed ticket is view-only. Cancel resume to edit.' : undefined}
+      data-pinned={pinned ? 'true' : undefined}
+      {...hold}
       style={{
         aspectRatio: '1 / 1',
         position: 'relative',
@@ -154,6 +181,22 @@ function MenuItemTile({
             opacity: 0.85,
           }}
         />
+      )}
+
+      {pinned && (
+        <span
+          aria-hidden="true"
+          title="On your Quick tab"
+          style={{
+            position: 'absolute', top: 6, right: 6, zIndex: 2,
+            width: 22, height: 22, borderRadius: 999,
+            background: 'rgba(255,255,255,0.92)', color: '#D4813A',
+            fontSize: 13, lineHeight: '22px', textAlign: 'center',
+            boxShadow: '0 1px 2px rgba(15,23,42,0.18)',
+          }}
+        >
+          ★
+        </span>
       )}
 
       {/* Bottom caption — gradient over photos so name/price stay readable */}
@@ -219,7 +262,22 @@ function MenuItemTile({
   );
 }
 
-type SaleFilter = 'all' | 'discount' | 'special' | 'catering';
+type SaleFilter = 'all' | 'discount' | 'special' | 'catering' | 'quick' | 'popular';
+
+/** Items in the order a list of ids gives, skipping ids no longer on the menu. */
+function itemsInOrder(ids: number[], items: Item[]): Item[] {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return ids.map((id) => byId.get(id)).filter((i): i is Item => i !== undefined);
+}
+
+function moveWithin(ids: number[], id: number, delta: -1 | 1): number[] {
+  const from = ids.indexOf(id);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= ids.length) return ids;
+  const next = [...ids];
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}
 
 function isPercentDiscountItem(item: Item): boolean {
   if (item.special?.discount_pct != null && item.special.discount_pct > 0) return true;
@@ -355,6 +413,7 @@ export function MenuGrid({
   barcode, setBarcode, onBarcodeSubmit, readOnly = false,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
   orderType,
+  quickKeys, canManageSharedQuickKeys = false, onUpdateQuickKeys, popularNow = [],
 }: Props) {
   const packagingEligible = isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
   // now, NOT here at the top of MenuGrid. Re-rendering the entire
@@ -363,6 +422,27 @@ export function MenuGrid({
   // self-rotates without involving the rest of the grid.
   const [search, setSearch] = useState("");
   const [saleFilter, setSaleFilter] = useState<SaleFilter>("all");
+
+  // ── Quick tab ──────────────────────────────────────────────────────────────
+  // A cashier's own set stands in for the shared one once it has anything in
+  // it; until then they see what everyone starts with.
+  const quickEnabled = !!quickKeys && !!onUpdateQuickKeys;
+  const myKeys = quickKeys?.mine ?? [];
+  const sharedKeys = quickKeys?.shared ?? [];
+  const effectiveQuickIds = myKeys.length > 0 ? myKeys : sharedKeys;
+  const quickIdSet = useMemo(() => new Set(effectiveQuickIds), [effectiveQuickIds]);
+  const [quickPromptItem, setQuickPromptItem] = useState<Item | null>(null);
+
+  const applyQuickKeyAction = (item: Item, action: QuickKeyAction) => {
+    if (!onUpdateQuickKeys) return;
+    const current = action.scope === "mine" ? myKeys : sharedKeys;
+    let next = current;
+    if (action.kind === "add" && !current.includes(item.id)) next = [...current, item.id].slice(0, MAX_QUICK_KEYS);
+    if (action.kind === "remove") next = current.filter((id) => id !== item.id);
+    if (action.kind === "move") next = moveWithin(current, item.id, action.delta);
+    if (next !== current) onUpdateQuickKeys(action.scope, next);
+    setQuickPromptItem(null);
+  };
 
   // ── Category hierarchy ─────────────────────────────────────────────────────
   // The DB supports `parent_id` on categories (one level of nesting). The old
@@ -446,8 +526,17 @@ export function MenuGrid({
     if (saleFilter === 'discount') return filteredItems.filter(isPercentDiscountItem);
     if (saleFilter === 'special') return filteredItems.filter(isFixedSpecialItem);
     if (saleFilter === 'catering') return filteredItems.filter((i) => !!i.is_catering);
+    // Both tabs clear the category, so filteredItems is the whole channel
+    // menu here — and the order is the list's own, not the admin's.
+    if (saleFilter === 'quick') return itemsInOrder(effectiveQuickIds, filteredItems);
+    if (saleFilter === 'popular') return itemsInOrder(popularNow, filteredItems);
     return filteredItems;
-  }, [filteredItems, saleFilter]);
+  }, [filteredItems, saleFilter, effectiveQuickIds, popularNow]);
+
+  const popularCount = useMemo(
+    () => (popularNow.length > 0 ? itemsInOrder(popularNow, filteredItems).length : 0),
+    [popularNow, filteredItems],
+  );
 
   // Cross-category text search: when the cashier types in the search box we
   // ignore the category filter so common items can be reached quickly. The
@@ -576,8 +665,30 @@ export function MenuGrid({
       </div>
 
       {/* Category + sale filters in one row (avoids duplicate "All items"). */}
-      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0) && (
+      {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0 || quickEnabled) && (
         <div style={pillRowStyle}>
+          {/* The cashier's own tab comes first: it is the one they built.
+              Popular-now follows, drawn from what sells at this hour. */}
+          {quickEnabled && (
+            <CategoryPill
+              label={effectiveQuickIds.length > 0 ? `★ Quick (${effectiveQuickIds.length})` : '★ Quick'}
+              active={saleFilter === 'quick'}
+              onClick={() => {
+                setSelectedCategoryId(null);
+                setSaleFilter((f) => (f === 'quick' ? 'all' : 'quick'));
+              }}
+            />
+          )}
+          {popularCount > 0 && (
+            <CategoryPill
+              label={`🔥 Now (${popularCount})`}
+              active={saleFilter === 'popular'}
+              onClick={() => {
+                setSelectedCategoryId(null);
+                setSaleFilter((f) => (f === 'popular' ? 'all' : 'popular'));
+              }}
+            />
+          )}
           <CategoryPill
             label="All items"
             active={selectedCategoryId == null && saleFilter === 'all'}
@@ -714,12 +825,34 @@ export function MenuGrid({
                   item={item}
                   readOnly={readOnly}
                   onClick={onClick}
+                  pinned={quickEnabled && quickIdSet.has(item.id)}
+                  onLongPress={quickEnabled ? () => setQuickPromptItem(item) : undefined}
                 />
               );
             })}
           </div>
         )}
+        {saleFilter === 'quick' && quickEnabled && visibleItems.length === 0 && !search && (
+          <p data-testid="quick-empty" style={{ margin: '12px 4px', fontSize: 13, color: C.muted, lineHeight: 1.5 }}>
+            Nothing here yet. Press and hold any item on the menu to add it to your Quick tab.
+          </p>
+        )}
       </div>
+
+      {quickPromptItem && quickKeys && (
+        <QuickKeyPrompt
+          item={quickPromptItem}
+          position={{
+            mine: myKeys.includes(quickPromptItem.id) ? myKeys.indexOf(quickPromptItem.id) : null,
+            shared: sharedKeys.includes(quickPromptItem.id) ? sharedKeys.indexOf(quickPromptItem.id) : null,
+          }}
+          sizes={{ mine: myKeys.length, shared: sharedKeys.length }}
+          max={MAX_QUICK_KEYS}
+          canManageShared={canManageSharedQuickKeys}
+          onAction={(action) => applyQuickKeyAction(quickPromptItem, action)}
+          onClose={() => setQuickPromptItem(null)}
+        />
+      )}
 
       {/* Configure modal — modifiers / variants / packaging choices */}
       {selectedItem && (

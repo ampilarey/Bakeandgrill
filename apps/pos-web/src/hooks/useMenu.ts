@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchPosBootstrap, fetchPosMenu, type PosDiscountControls, type PosPairings, type PosSmsNotifications } from "../api";
+import {
+  fetchPosBootstrap, fetchPosMenu, normalizePosTillTabs, savePosQuickKeys,
+  type PosDiscountControls, type PosPairings, type PosSmsNotifications, type PosTillTabs,
+} from "../api";
 import type { PosBootstrapShift, PosSalesChannel } from "../api";
 import type { PosOrderType } from "../orderTypes";
 import type { Category, Item } from "../types";
@@ -30,6 +33,15 @@ function formatMenuAge(ms: number): string {
   return `${days}d`;
 }
 
+/** The tabs in the shape the offline cache stores them. */
+function cacheableTabs(tabs: PosTillTabs) {
+  return {
+    quick_keys: tabs.quickKeys,
+    can_manage_shared_quick_keys: tabs.canManageSharedQuickKeys,
+    popular_now: tabs.popularNow,
+  };
+}
+
 function channelForOrderType(orderType: PosOrderType): PosSalesChannel {
   if (orderType === "Dine-in") return "dine_in";
   if (orderType === "Pickup") return "online_pickup";
@@ -51,6 +63,9 @@ export function useMenu(
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [pairings, setPairings] = useState<PosPairings>({});
+  // The Quick and Popular-now tabs. Owner, 2026-09-02. Cached with the menu
+  // like the pairings, for the same reason: the tab has to be there offline.
+  const [tillTabs, setTillTabs] = useState<PosTillTabs>(() => normalizePosTillTabs(undefined));
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -89,6 +104,11 @@ export function useMenu(
     setItems((cached.items ?? []) as Item[]);
     // Older caches predate pairings; an empty map just means no chips.
     setPairings((cached.pairings ?? {}) as PosPairings);
+    setTillTabs(normalizePosTillTabs({
+      quick_keys: cached.quick_keys,
+      can_manage_shared_quick_keys: cached.can_manage_shared_quick_keys,
+      popular_now: cached.popular_now,
+    }));
     setUsingCachedMenu(true);
     const savedAtMs = Date.parse(cached.cached_at);
     setLastRefreshedAt(savedAtMs);
@@ -144,12 +164,13 @@ export function useMenu(
           setCategories(cats);
           setItems(its);
           setPairings(boot.pairings ?? {});
+          setTillTabs(boot.tillTabs);
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its, pairings: boot.pairings ?? {} });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: boot.pairings ?? {}, ...cacheableTabs(boot.tillTabs) });
           attemptRef.current = 0;
           bootstrapDoneRef.current = true;
           onBootstrapShiftRef.current?.(boot.shift ?? null);
@@ -164,12 +185,13 @@ export function useMenu(
           setCategories(cats);
           setItems(its);
           setPairings(menu.pairings ?? {});
+          setTillTabs(menu.tillTabs);
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its, pairings: menu.pairings ?? {} });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: menu.pairings ?? {}, ...cacheableTabs(menu.tillTabs) });
           attemptRef.current = 0;
           if (mode === "initial") {
             setSelectedCategoryId(null);
@@ -258,10 +280,39 @@ export function useMenu(
     setDismissedStaleAt(Date.now());
   }, []);
 
+  /**
+   * Replace a Quick set. The screen changes at once and the cache with it, so
+   * the tab is right even if the save never gets through; the server is told
+   * afterwards. A failed save is reported, not rolled back — the cashier's
+   * list is the truth they can see, and the next successful save carries it.
+   */
+  const [quickKeysError, setQuickKeysError] = useState("");
+  const updateQuickKeys = useCallback((scope: "mine" | "shared", itemIds: number[]) => {
+    setTillTabs((prev) => {
+      const next = { ...prev, quickKeys: { ...prev.quickKeys, [scope]: itemIds } };
+      void (async () => {
+        const cached = await loadCachedMenu(channelRef.current);
+        if (cached) {
+          const { id: _id, channel: _channel, cached_at: _at, ...rest } = cached;
+          void saveCachedMenu(channelRef.current, { ...rest, ...cacheableTabs(next) });
+        }
+      })();
+      return next;
+    });
+    setQuickKeysError("");
+    savePosQuickKeys(scope, itemIds).catch(() => {
+      setQuickKeysError("Quick keys could not be saved to the server. They will stay on this till.");
+      window.setTimeout(() => setQuickKeysError(""), 5000);
+    });
+  }, []);
+
   return {
     categories,
     items,
     pairings,
+    tillTabs,
+    updateQuickKeys,
+    quickKeysError,
     selectedCategoryId,
     setSelectedCategoryId,
     isLoading,

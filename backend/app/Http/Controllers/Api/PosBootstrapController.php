@@ -69,6 +69,6 @@ class PosBootstrapController extends Controller
                 'reasons' => DiscountSettings::reasons(),
                 'approval_required' => DiscountSettings::approvalRequired(),
             ],
-        ]);
+        ] + PosMenuController::tillTabs($menu, $user));
     }
 }

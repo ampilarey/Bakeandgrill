@@ -137,11 +137,49 @@ export function validateManualDiscountInput(opts: {
   return null;
 }
 
+/**
+ * The Quick tab: item ids in order. `shared` is the set every till starts
+ * from; `mine` is this cashier's own, which stands in for the shared one
+ * once it has anything in it. Both ride in the menu payload so the tab is
+ * there offline. Owner, 2026-09-02.
+ */
+export type PosQuickKeys = { shared: number[]; mine: number[] };
+
+/** The two tabs the server adds to both menu feeds. */
+export type PosTillTabs = {
+  quickKeys: PosQuickKeys;
+  canManageSharedQuickKeys: boolean;
+  /** Item ids ranked by what sells at this hour of the day, best first. */
+  popularNow: number[];
+};
+
+type RawTillTabs = {
+  quick_keys?: { shared?: unknown; mine?: unknown };
+  can_manage_shared_quick_keys?: unknown;
+  popular_now?: unknown;
+};
+
+function idList(raw: unknown): number[] {
+  return Array.isArray(raw) ? raw.map(Number).filter((n) => Number.isFinite(n) && n > 0) : [];
+}
+
+export function normalizePosTillTabs(raw: RawTillTabs | undefined): PosTillTabs {
+  return {
+    quickKeys: {
+      shared: idList(raw?.quick_keys?.shared),
+      mine: idList(raw?.quick_keys?.mine),
+    },
+    canManageSharedQuickKeys: raw?.can_manage_shared_quick_keys === true,
+    popularNow: idList(raw?.popular_now),
+  };
+}
+
 /** Login bootstrap — menu + current shift in one request. */
 export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
   pairings: PosPairings;
+  tillTabs: PosTillTabs;
   shift: PosBootstrapShift | null;
   smsNotifications: PosSmsNotifications;
   discountControls: PosDiscountControls;
@@ -155,15 +193,29 @@ export async function fetchPosBootstrap(channel?: PosSalesChannel): Promise<{
     pairings?: PosPairings;
     sms_notifications?: PosSmsNotifications;
     discount_controls?: unknown;
-  }>(`/pos/bootstrap?${params.toString()}`);
+  } & RawTillTabs>(`/pos/bootstrap?${params.toString()}`);
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
     pairings: data.pairings ?? {},
+    tillTabs: normalizePosTillTabs(data),
     shift: data.shift ?? null,
     smsNotifications: normalizePosSmsNotifications(data.sms_notifications),
     discountControls: normalizePosDiscountControls(data.discount_controls),
   };
+}
+
+/**
+ * Replace a Quick set. The till holds the whole list and sends it back after
+ * every change, so there is nothing to diff and nothing to drift.
+ */
+export async function savePosQuickKeys(scope: "mine" | "shared", itemIds: number[]): Promise<number[]> {
+  const path = scope === "shared" ? "/pos/quick-keys/shared" : "/pos/quick-keys";
+  const data = await request<{ mine?: unknown; shared?: unknown }>(path, {
+    method: "PUT",
+    body: JSON.stringify({ item_ids: itemIds }),
+  });
+  return idList(scope === "shared" ? data.shared : data.mine);
 }
 
 /**
@@ -182,16 +234,18 @@ export async function fetchPosMenu(channel?: PosSalesChannel): Promise<{
   categories: Category[];
   items: Item[];
   pairings: PosPairings;
+  tillTabs: PosTillTabs;
 }> {
   const params = new URLSearchParams();
   if (channel) params.set("channel", channel);
-  const data = await request<{ categories: Category[]; items: Item[]; pairings?: PosPairings }>(
+  const data = await request<{ categories: Category[]; items: Item[]; pairings?: PosPairings } & RawTillTabs>(
     `/pos/menu?${params.toString()}`,
   );
   return {
     categories: data.categories ?? [],
     items: data.items ?? [],
     pairings: data.pairings ?? {},
+    tillTabs: normalizePosTillTabs(data),
   };
 }
 
