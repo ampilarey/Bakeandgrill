@@ -92,6 +92,9 @@ describe("ReceiptsPanel list", () => {
     expect(row).toHaveTextContent("Cash");
     expect(row).toHaveTextContent("Paid");
     expect(row).toHaveTextContent("T4");
+    // Safari squeezes shrinkable <button> rows in a column list until the
+    // second line is painted over by the next row.
+    expect(row).toHaveStyle({ flexShrink: "0" });
 
     const card = screen.getByTestId("receipt-row-2");
     expect(card).toHaveTextContent("Card");

@@ -384,6 +384,10 @@ function ReceiptRow({ receipt: r, selected, onClick }: { receipt: Receipt; selec
       data-testid={`receipt-row-${r.id}`}
       aria-pressed={selected}
       style={{
+        // Safari lets a <button> flex item shrink below its content in a
+        // column list; without this every row collapses to one line and the
+        // next row paints over the rest.
+        flexShrink: 0,
         textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
         background: selected ? palette.primaryBg : palette.panel,
         border: `1px solid ${selected ? palette.primary : palette.border}`,
