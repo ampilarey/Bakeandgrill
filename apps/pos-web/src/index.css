@@ -265,6 +265,8 @@ html, body, #root {
    * moves on the iPads and phones that actually have an indicator. */
   --pos-safe-bottom: calc(env(safe-area-inset-bottom, 0px) / 2);
   --pos-cart-width: 420px;
+  /* Ticket-line quantity pill button size; 44px on a phone (900px rule). */
+  --pos-qty-btn: 36px;
   --pos-main-pad: 12px;
   --pos-main-gap: 12px;
   --pos-menu-tile-min: 120px;
@@ -528,10 +530,8 @@ html, body, #root {
     min-height: 44px;
     padding: 10px 14px;
   }
-  .pos-qty-btn {
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+  :root {
+    --pos-qty-btn: 44px;
   }
   .pos-line-action-btn {
     width: 40px;
@@ -1176,6 +1176,39 @@ html, body, #root {
 }
 .pos-shell .pos-cart-line button {
   min-height: 0;
+}
+
+/* Ticket-line quantity pill `[ − | 2 | + ]`. Sized here, not inline, so the
+ * phone override in the 900px media query really applies. The row also
+ * adds one on tap, so the pill needs no more than the two buttons.
+ * --pos-qty-btn is declared with the other layout variables near the top,
+ * ahead of the 900px override. */
+.pos-qty-stepper button {
+  width: var(--pos-qty-btn);
+  height: var(--pos-qty-btn);
+}
+.pos-qty-stepper button:active:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
+}
+/* Modifier and note line under the title, indented to the name column:
+ * two buttons + the 28px value + the 6px gap after the pill. */
+.pos-cart-line-meta {
+  padding-left: calc(var(--pos-qty-btn) * 2 + 34px);
+}
+/* The number and the line total pop when they change, so a tap on the row
+ * is seen even when the cashier's eye was on the menu. */
+@keyframes pos-qty-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.pos-qty-stepper-value,
+.pos-qty-bump {
+  animation: pos-qty-bump 220ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-qty-stepper-value,
+  .pos-qty-bump { animation: none; }
 }
 
 @keyframes pos-toast-in {

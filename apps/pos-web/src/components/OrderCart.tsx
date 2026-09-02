@@ -7,6 +7,7 @@ import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { ManualDiscountField } from "./ManualDiscountField";
+import { QtyStepper } from "./cart/QtyStepper";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
 import { posOrderTypeEmoji, posOrderTypeLabel, isCustomerAppOrder } from "../orderTypeLabels";
@@ -1223,7 +1224,7 @@ export function OrderCart(p: Props) {
  * saves ~24px of vertical space per item, which adds up to one or
  * two extra visible items in the cart on a 9.7" iPad.
  */
-function CartLine({
+export function CartLine({
   item,
   cartItems,
   setCartItems,
@@ -1284,6 +1285,38 @@ function CartLine({
     // undo toast. Snapshot is the original item, not a copy of
     // the cart — we only need the line that vanished.
     onLineRemoved?.(item);
+  };
+
+  const changeQty = (delta: 1 | -1) => {
+    if (isResumed) return;
+    if (delta === -1 && item.quantity <= 1) {
+      removeLine();
+      return;
+    }
+    setCartItems(
+      cartItems.map((ci) =>
+        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
+          ? { ...ci, quantity: ci.quantity + delta }
+          : ci,
+      ),
+    );
+  };
+
+  // Owner, 2026-09-02: "tap the row to +". The whole line is the target for
+  // the most common adjustment, the same way tapping the menu tile again
+  // adds one. Two guards keep a slip from padding the bill:
+  //  - a tap while the red Delete strip is showing only closes the strip;
+  //  - the pill and the note chip stop their own clicks, and the browser
+  //    never turns a scroll or a swipe into a click.
+  // The number and the total bump when they change (CSS on the value), so
+  // an accidental tap is seen, and − on the pill or the undo toast fixes it.
+  const onRowTap = () => {
+    if (isResumed) return;
+    if (dragRef.current > 0) {
+      setDragTo(0);
+      return;
+    }
+    changeQty(1);
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -1347,6 +1380,8 @@ function CartLine({
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onClick={onRowTap}
+        data-testid={`cart-line-${itemKey}`}
         style={{
           padding: '6px 10px',
           display: 'flex', flexDirection: 'column', gap: 2,
@@ -1364,55 +1399,17 @@ function CartLine({
             (Mail.app pattern). */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          minHeight: 32,
+          minHeight: 36,
         }}>
-          {/* Qty stepper — left side, compact 26×26 buttons. */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 2,
-            flexShrink: 0,
-          }}>
-            <button
-              aria-label="Decrease quantity"
-              className="pos-qty-btn"
-              disabled={isResumed}
-              title={isResumed ? 'Cancel resume to edit items' : undefined}
-              onClick={() =>
-                setCartItems(
-                  cartItems
-                    .map((ci) =>
-                      makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
-                        ? { ...ci, quantity: ci.quantity - 1 }
-                        : ci,
-                    )
-                    .filter((ci) => ci.quantity > 0),
-                )
-              }
-              style={qtyBtnStyle(isResumed)}
-            >−</button>
-            <span style={{
-              minWidth: 18, textAlign: 'center',
-              fontSize: 13, fontWeight: 700, color: C.text,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {item.quantity}
-            </span>
-            <button
-              aria-label="Increase quantity"
-              className="pos-qty-btn"
-              disabled={isResumed}
-              title={isResumed ? 'Cancel resume to edit items' : undefined}
-              onClick={() =>
-                setCartItems(
-                  cartItems.map((ci) =>
-                    makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
-                      ? { ...ci, quantity: ci.quantity + 1 }
-                      : ci,
-                  ),
-                )
-              }
-              style={qtyBtnStyle(isResumed)}
-            >+</button>
-          </div>
+          {/* Qty stepper — one segmented pill, sized by CSS so the
+              phone rule really applies (see QtyStepper). */}
+          <QtyStepper
+            quantity={item.quantity}
+            onDelta={changeQty}
+            disabled={isResumed}
+            disabledTitle="Cancel resume to edit items"
+            itemName={item.name}
+          />
 
           {/* Name · variant · @ unit price — all inline with ellipsis,
               so long names truncate cleanly instead of pushing the
@@ -1476,11 +1473,15 @@ function CartLine({
 
           {/* Line total — right-aligned, tabular figures so columns
               line up vertically even at different quantities. */}
-          <div style={{
-            fontSize: 13, fontWeight: 700, color: C.text,
-            whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
-            flexShrink: 0,
-          }}>
+          <div
+            key={item.quantity}
+            className="pos-qty-bump"
+            style={{
+              fontSize: 13, fontWeight: 700, color: C.text,
+              whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+              flexShrink: 0,
+            }}
+          >
             {lineTotal.toFixed(2)}
           </div>
 
@@ -1495,7 +1496,7 @@ function CartLine({
               aria-label={notes.length > 0 ? `Edit notes (${notes.length})` : 'Add a note'}
               disabled={isResumed}
               title={isResumed ? 'Cancel resume to edit items' : 'Add kitchen note'}
-              onClick={() => onOpenNotePicker?.(itemKey)}
+              onClick={(e) => { e.stopPropagation(); onOpenNotePicker?.(itemKey); }}
               style={{
                 width: 26, height: 26, borderRadius: 999,
                 border: `1px solid ${notes.length > 0 ? '#FBD9B8' : 'transparent'}`,
@@ -1532,8 +1533,7 @@ function CartLine({
             name above. Unit price is no longer here (it lives inline
             in the title for qty > 1). */}
         {(item.modifiers.length > 0 || notes.length > 0) && (
-          <div style={{
-            paddingLeft: 70,  // qty stepper + gap width, aligned with name
+          <div className="pos-cart-line-meta" style={{
             display: 'flex', flexWrap: 'wrap', alignItems: 'center',
             gap: 6, fontSize: 10, color: C.subtle, lineHeight: 1.2,
           }}>
@@ -1661,19 +1661,6 @@ function TableFloorActions({
       {err && <div style={{ fontSize: 11, color: "#B91C1C" }}>{err}</div>}
     </div>
   );
-}
-
-function qtyBtnStyle(isResumed: boolean): React.CSSProperties {
-  return {
-    width: 26, height: 26, borderRadius: 6,
-    background: C.bg, border: `1px solid ${C.border}`,
-    fontSize: 15, lineHeight: 1, color: C.text,
-    cursor: isResumed ? 'not-allowed' : 'pointer',
-    opacity: isResumed ? 0.4 : 1,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: 0,
-    flexShrink: 0,
-  };
 }
 
 function Row({ label, value, accent }: { label: string; value: string; accent?: string }) {
