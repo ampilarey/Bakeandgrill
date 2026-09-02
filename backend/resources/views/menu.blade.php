@@ -141,9 +141,15 @@ html.js .menu-filters {
     gap: 0.5rem;
     width: 100%;
 }
+.menu-filter-rows {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+}
 .menu-tool {
     display: inline-flex; align-items: center; gap: 0.35rem;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.85rem;
     border: 1px solid var(--border);
     border-radius: 999px;
@@ -164,7 +170,7 @@ html.js .menu-filters {
     overflow: hidden;
 }
 .menu-view-btn {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 0.8rem;
     border: none;
     background: transparent;
@@ -174,9 +180,12 @@ html.js .menu-filters {
 }
 .menu-view-btn.is-active { background: var(--amber); color: #fff; }
 
+/* In the tools row: takes the room between Search and Grid/List on a desk,
+   and the whole row on a phone (see the mobile block). */
 .menu-search {
     position: relative;
-    width: 100%;
+    flex: 1 1 200px;
+    min-width: 0;
     display: flex;
     align-items: center;
 }
@@ -198,7 +207,8 @@ html.js .menu-filters {
 }
 .menu-search input {
     width: 100%;
-    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    min-height: 44px;
+    padding: 0.5rem 2.4rem 0.5rem 2rem;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--bg);
@@ -495,6 +505,26 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-thumb { width: 44px; height: 44px; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
+
+    /* Only the tools row is pinned on a phone. The wrapper stops being a
+       box so the row sticks against .menu-main, not against a bar that
+       scrolls away with it; sort and filter chips scroll with the page. */
+    html.js .menu-filters {
+        display: contents;
+        position: static;
+    }
+    .menu-tools {
+        position: sticky;
+        top: var(--menu-sticky);
+        z-index: 5;
+        padding: 0.5rem 0;
+        background: var(--bg);
+    }
+    .menu-filter-rows { padding: 0.35rem 0 0.5rem; }
+    /* Open search takes the row: the buttons step aside, the field fills. */
+    .menu-tools.is-searching .menu-tool,
+    .menu-tools.is-searching .menu-view-toggle { display: none; }
+    .menu-tools.is-searching .menu-search { flex-basis: 100%; }
     .menu-cat-band { height: 76px; margin-top: 1rem; }
 }
 
@@ -782,20 +812,28 @@ body.menu-sheet-open { overflow: hidden; }
                     <span aria-hidden="true">🔍</span> Search
                 </button>
 
+                {{-- The field lives in the tools row, so opening it on a phone
+                     swaps the buttons for the field in place rather than
+                     growing the pinned bar by a row. Owner, 2026-09-02: "search
+                     button is floating … I think its difficult". --}}
+                <div class="menu-search" id="menuSearchWrap" hidden>
+                    <label class="visually-hidden" for="menuSearch">Search the menu</label>
+                    <span class="menu-search-icon" aria-hidden="true">🔍</span>
+                    <input type="search" id="menuSearch" placeholder="Search the menu"
+                           autocomplete="off" enterkeyhint="search">
+                    <button type="button" class="menu-search-close" aria-label="Close search">✕</button>
+                </div>
+
                 <div class="menu-view-toggle" role="group" aria-label="Menu layout">
                     <button type="button" class="menu-view-btn is-active" data-view="grid" aria-pressed="true">Grid</button>
                     <button type="button" class="menu-view-btn" data-view="list" aria-pressed="false">List</button>
                 </div>
             </div>
 
-            <div class="menu-search" id="menuSearchWrap" hidden>
-                <label class="visually-hidden" for="menuSearch">Search the menu</label>
-                <span class="menu-search-icon" aria-hidden="true">🔍</span>
-                <input type="search" id="menuSearch" placeholder="Search the menu"
-                       autocomplete="off" enterkeyhint="search">
-                <button type="button" class="menu-search-close" aria-label="Close search">✕</button>
-            </div>
-
+            {{-- Sort and filters scroll away with the page on a phone; only the
+                 tools row above stays pinned. They are set once, and three
+                 pinned rows left half a phone screen for the food. --}}
+            <div class="menu-filter-rows">
             {{-- Sort is one choice, so these are radio-ish: exactly one on at a
                  time. Filters below are independent and combine. --}}
             <div class="menu-chips" role="group" aria-label="Sort the menu">
@@ -828,6 +866,7 @@ body.menu-sheet-open { overflow: hidden; }
                     <button type="button" class="menu-chip menu-clear-chip" hidden>Clear</button>
                 </div>
             @endif
+            </div>{{-- /.menu-filter-rows --}}
         </div>
 
         <p class="menu-no-match" data-testid="menu-no-match" hidden>
@@ -1210,11 +1249,17 @@ body.menu-sheet-open { overflow: hidden; }
     } catch (e) { /* private mode */ }
 
     // ── Search box ────────────────────────────────────────────────────
+    var tools = bar.querySelector('.menu-tools');
     function openSearch(open) {
         if (!searchWrap || !searchToggle) return;
         searchWrap.hidden = !open;
         searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // On a phone the field stands in for the buttons (CSS reads this).
+        if (tools) tools.classList.toggle('is-searching', open);
         if (open && input) input.focus();
+        // Closing has to give focus back to the button that opened it, since
+        // that button was hidden underneath on a phone.
+        if (!open && searchToggle && document.activeElement !== document.body) searchToggle.focus();
         if (!open && input && input.value) { input.value = ''; apply(); }
     }
     if (searchToggle) {

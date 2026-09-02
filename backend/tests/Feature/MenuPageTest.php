@@ -965,6 +965,15 @@ class MenuPageTest extends TestCase
 
         // The field starts collapsed behind the button, as in the order app.
         $this->assertMatchesRegularExpression('#id="menuSearchWrap"[^>]*hidden#', $html);
+
+        // The field sits in the tools row, between Search and Grid/List, and
+        // the sort/filter chips sit in their own block below — the phone pins
+        // the row and lets the chips scroll. Owner, 2026-09-02.
+        $this->assertMatchesRegularExpression(
+            '#<div class="menu-tools">.*id="menuSearchToggle".*id="menuSearchWrap".*class="menu-view-toggle".*</div>\s*(\{\{--.*?--\}\}\s*)?<div class="menu-filter-rows">#s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression('#\.menu-tools\.is-searching \.menu-tool#', $html);
     }
 
     public function test_cards_sort_by_the_price_they_actually_advertise(): void
