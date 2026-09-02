@@ -530,10 +530,50 @@ export async function fetchReceipts(params: {
     total: number;
     subtotal: number;
     discount_amount: number;
+    /** Money lines the Receipts pane breaks out. Absent on older servers. */
+    tax_amount?: number | null;
+    service_charge_amount?: number | null;
+    service_charge_label?: string | null;
+    packaging_fee?: number | null;
+    delivery_fee?: number | null;
+    paid_at?: string | null;
+    is_customer_placed?: boolean;
     created_at: string;
     customer?: { id: number; name?: string; phone?: string } | null;
     user?: { id: number; name?: string } | null;
-    items?: Array<{ id: number; item_name: string; quantity: number; unit_price: number; total_price: number }>;
+    device?: { id: number; name?: string | null; identifier?: string | null } | null;
+    items?: Array<{
+      id: number;
+      item_name: string;
+      variant_name?: string | null;
+      notes?: string | null;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+    }>;
+    payments?: Array<{
+      id: number;
+      method: string;
+      amount: number;
+      amount_laar?: number | null;
+      tendered_amount?: number | null;
+      change_given?: number | null;
+      status?: string | null;
+      created_at?: string | null;
+    }>;
+    refunds?: Array<{
+      id: number;
+      amount: number;
+      status: string;
+      reason_category?: string | null;
+      created_at?: string | null;
+    }>;
+    payment_settlement?: {
+      settlement: string;
+      paid_on_credit: boolean;
+      label: string;
+      short_label: string;
+    } | null;
     ticket_name?: string | null;
     ticket_note?: string | null;
     /** Restaurant table the dine-in ticket was rung against. Surfaced

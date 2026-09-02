@@ -51,14 +51,18 @@ class OrderCreationController extends Controller
             'user:id,name',
             'device:id,name,identifier',
             'shift:id,opened_at',
-            'items:id,order_id,item_name,quantity,unit_price,total_price',
+            // Size and note travel with each line so the Receipts pane can
+            // show "Water · Small" and "no ice" the way the printed receipt
+            // does. Owner, 2026-09-02.
+            'items:id,order_id,item_name,variant_name,notes,quantity,unit_price,total_price',
             // Eager-load the table so the POS Active orders search
             // can match on table name (e.g. cashier types "T4"
             // and lands on Table T4's open ticket without
             // scrolling). Relation on Order is `table()`, schema
             // columns are id/name/location.
             'table:id,name,location',
-            'payments:id,order_id,method,amount,amount_laar,status',
+            'payments:id,order_id,method,amount,amount_laar,tendered_amount,change_given,status,created_at',
+            'refunds:id,order_id,amount,status,reason_category,created_at',
         ])
             ->orderBy('created_at', 'desc');
 
@@ -478,7 +482,7 @@ class OrderCreationController extends Controller
             $looksPaid = $order->paid_at !== null
                 || $order->payment_status === 'paid'
                 || in_array($order->status, ['paid', 'completed'], true);
-            if (! $looksPaid) {
+            if (!$looksPaid) {
                 try {
                     app(\App\Domains\Payments\Services\PaymentService::class)
                         ->reconcilePendingBmlPayment($order);

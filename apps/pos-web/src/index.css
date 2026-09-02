@@ -1116,9 +1116,11 @@ html, body, #root {
  * receipt list is given a max-height so it doesn't push the
  * detail pane off-screen. */
 @media (max-width: 760px) {
+  /* Receipts: one pane at a time on a phone — the list, then the detail
+   * with a Back button — rather than both squeezed into one column. The
+   * component switches panes; this just drops the two-column grid. */
   .pos-receipts {
     grid-template-columns: 1fr !important;
-    grid-template-rows: minmax(160px, 40vh) 1fr !important;
   }
 
   /* Shift history — same master/detail stack as receipts. */
