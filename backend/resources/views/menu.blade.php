@@ -98,6 +98,16 @@ span.menu-rail-thumb {
     border-top: 1px solid var(--border);
     font-weight: 700;
 }
+/* Sub-categories under their parent: text only, smaller, no thumbnail. */
+.menu-rail a.menu-rail-sub {
+    flex-direction: row; justify-content: center;
+    gap: 4px;
+    min-height: 28px;
+    margin-top: -2px;
+    padding: 0.2rem 0.3rem 0.2rem 0.45rem;
+}
+.menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6rem; }
+.menu-rail a.menu-rail-sub .menu-rail-count { font-size: 9px; }
 
 .menu-main { flex: 1; min-width: 0; }
 
@@ -703,6 +713,24 @@ body.menu-sheet-open { overflow: hidden; }
                     <span class="menu-rail-label" @if($name['dv']) lang="dv" @endif>{{ $name['text'] }}</span>
                     <span class="menu-rail-count" aria-hidden="true">{{ $count }}</span>
                 </a>
+                {{-- Sub-categories under their parent, text only. Owner,
+                     2026-09-02: "add subcategories to the rail as well".
+                     data-parent lets the scroll-spy keep the parent lit while
+                     one of its sub-categories is the section in view. --}}
+                @foreach($group['subcategories'] ?? [] as $sub)
+                    @php
+                        $subCat = $sub['category'];
+                        $subName = $categoryName($subCat);
+                        $subCount = count($sub['items']);
+                    @endphp
+                    <a href="#cat-{{ $subCat->id }}"
+                       class="menu-rail-sub"
+                       data-parent="{{ $anchorFor($group) }}"
+                       aria-label="{{ $subName['text'] }}, {{ $subCount }} {{ Str::plural('item', $subCount) }}">
+                        <span class="menu-rail-label" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</span>
+                        <span class="menu-rail-count" aria-hidden="true">{{ $subCount }}</span>
+                    </a>
+                @endforeach
             @endforeach
             {{-- Same last-on-rail shortcut as the order app CategoryRail.
                  Off-page: the wizard lives at /order/events, not an in-page anchor. --}}
@@ -876,7 +904,7 @@ body.menu-sheet-open { overflow: hidden; }
                     {{-- Wrapped so filtering can hide a subcategory's title with
                          its items; a lone heading over an empty grid reads as a
                          rendering bug. --}}
-                    <div class="menu-subcat-block{{ $block['heading'] ? ' menu-subcat-block--titled' : '' }}">
+                    <div class="menu-subcat-block{{ $block['heading'] ? ' menu-subcat-block--titled' : '' }}"@if($block['heading']) id="cat-{{ $block['heading']->id }}"@endif>
                     @if($block['heading'])
                         @php $subName = $categoryName($block['heading']); @endphp
                         <h3 class="menu-subcat-title" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</h3>
@@ -1110,9 +1138,11 @@ body.menu-sheet-open { overflow: hidden; }
         // The rail counts what is showing, or it contradicts the page.
         document.querySelectorAll('.menu-rail a[href^="#cat-"]').forEach(function (a) {
             var el = document.getElementById(a.getAttribute('href').slice(1));
-            var section = el && el.closest('.menu-cat-section');
-            if (!section) return;
-            var n = section.querySelectorAll('.menu-card:not([hidden])').length;
+            // A sub-category link counts its own block; a category link
+            // counts the whole section, sub-categories included.
+            var scope = el && (el.classList.contains('menu-subcat-block') ? el : el.closest('.menu-cat-section'));
+            if (!scope) return;
+            var n = scope.querySelectorAll('.menu-card:not([hidden])').length;
             var count = a.querySelector('.menu-rail-count');
             if (count) count.textContent = n;
             a.hidden = filtering && n === 0;
@@ -1234,6 +1264,9 @@ body.menu-sheet-open { overflow: hidden; }
             var active = byId[entry.target.id];
             if (active) {
                 active.classList.add('is-active');
+                // A sub-category in view keeps its parent lit too.
+                var parent = active.getAttribute('data-parent');
+                if (parent && byId[parent]) byId[parent].classList.add('is-active');
                 // The rail scrolls independently once there are more categories
                 // than fit; without this the active pill drifts out of sight.
                 if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });

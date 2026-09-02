@@ -152,6 +152,7 @@ export function MenuPage() {
   const [waitMinutes, setWaitMinutes] = useState<number | null>(null);
 
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [activeSubcategoryId, setActiveSubcategoryId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
@@ -203,6 +204,8 @@ export function MenuPage() {
   const isProgrammaticScroll = useRef(false);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
+  /** Sub-category blocks on their own, so the rail can mark the one in view. */
+  const subVisibilityRef = useRef<Map<number, { id: number; parentId: number; ratio: number; top: number }>>(new Map());
   const pendingCategoryScrollRef = useRef<number | null>(null);
   const menuStickyRef = useRef<HTMLDivElement | null>(null);
   const [stickyOffset, setStickyOffset] = useState(112);
@@ -617,6 +620,18 @@ export function MenuPage() {
     };
   }, [loading, deliveryFallback, waitMinutes, filtersActive]);
 
+  // Only sub-categories that actually have items on this menu — the sections
+  // already drop empty ones, and a rail entry with nothing to scroll to is a
+  // dead tap.
+  const railSubcategories = useMemo(
+    () => Object.fromEntries(
+      sectionedMenu.sections
+        .filter((section) => section.subcategories.length > 0)
+        .map((section) => [section.category.id, section.subcategories.map((block) => block.category)]),
+    ),
+    [sectionedMenu.sections],
+  );
+
   const scrollToCategorySection = (categoryId: number, behavior: ScrollBehavior = 'smooth') => {
     const section = document.getElementById(`menu-section-${categoryId}`);
     if (!section) return;
@@ -673,8 +688,24 @@ export function MenuPage() {
   const handleSelectCategory = (categoryId: number) => {
     setCateringRailActive(false);
     setActiveCategoryId(categoryId);
+    setActiveSubcategoryId(null);
     isProgrammaticScroll.current = true;
     scrollToCategorySection(categoryId);
+    if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
+    programmaticScrollTimerRef.current = window.setTimeout(() => {
+      isProgrammaticScroll.current = false;
+      programmaticScrollTimerRef.current = null;
+    }, 500);
+  };
+
+  // A sub-category block carries the same `menu-section-{id}` id as a
+  // section, so the one scroll helper reaches both.
+  const handleSelectSubcategory = (subcategoryId: number, parentId: number) => {
+    setCateringRailActive(false);
+    setActiveCategoryId(parentId);
+    setActiveSubcategoryId(subcategoryId);
+    isProgrammaticScroll.current = true;
+    scrollToCategorySection(subcategoryId);
     if (programmaticScrollTimerRef.current !== null) window.clearTimeout(programmaticScrollTimerRef.current);
     programmaticScrollTimerRef.current = window.setTimeout(() => {
       isProgrammaticScroll.current = false;
@@ -697,6 +728,7 @@ export function MenuPage() {
     if (headers.length === 0) return;
 
     sectionVisibilityRef.current = new Map();
+    subVisibilityRef.current = new Map();
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         const el = entry.target as HTMLElement;
@@ -708,6 +740,17 @@ export function MenuPage() {
           ratio: entry.intersectionRatio,
           top: entry.boundingClientRect.top,
         });
+        if (el.dataset.parentCategoryId) {
+          const subId = Number(el.dataset.categoryId);
+          if (Number.isFinite(subId)) {
+            subVisibilityRef.current.set(subId, {
+              id: subId,
+              parentId: id,
+              ratio: entry.intersectionRatio,
+              top: entry.boundingClientRect.top,
+            });
+          }
+        }
       }
 
       if (isProgrammaticScroll.current) return;
@@ -716,6 +759,13 @@ export function MenuPage() {
         setCateringRailActive(false);
         setActiveCategoryId(next);
       }
+      // The sub-category in view, if any, under the section now active. The
+      // most-visible one wins; nothing in view means the rail marks only the
+      // parent — the category's own items have no sub-entry to light up.
+      const subs = Array.from(subVisibilityRef.current.values())
+        .filter((s) => s.parentId === next && s.ratio > 0)
+        .sort((a, b) => b.ratio - a.ratio || Math.abs(a.top) - Math.abs(b.top));
+      setActiveSubcategoryId(subs.length > 0 ? subs[0].id : null);
     }, {
       rootMargin: `-${Math.max(stickyOffset, 1)}px 0px -55% 0px`,
       threshold: [0, 0.01, 0.25, 0.5, 0.75, 1],
@@ -1020,6 +1070,9 @@ export function MenuPage() {
           onSelect={handleSelectCategory}
           dimmed={loading || filtersActive}
           counts={catItemCounts}
+          subcategories={railSubcategories}
+          activeSubcategoryId={activeSubcategoryId}
+          onSelectSubcategory={handleSelectSubcategory}
           showOffersPill={offers.length > 0}
           onOffersClick={() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           showCateringPill
@@ -1104,6 +1157,7 @@ export function MenuPage() {
                   {section.subcategories.map((sub) => (
                     <div
                       key={sub.category.id}
+                      id={`menu-section-${sub.category.id}`}
                       className="menu-subcategory"
                       data-testid="menu-subcategory"
                       data-category-id={sub.category.id}

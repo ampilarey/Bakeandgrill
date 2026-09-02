@@ -525,8 +525,11 @@ class MenuPageTest extends TestCase
         $this->assertMatchesRegularExpression('#<h3 class="menu-card-name"[^>]*>Bajiya</h3>#', $main[0]);
     }
 
-    public function test_a_subcategory_sits_inside_its_parent_not_in_the_rail(): void
+    public function test_a_subcategory_sits_inside_its_parent_and_under_it_in_the_rail(): void
     {
+        // The rail used to list parents only; the owner asked for
+        // sub-categories under them (2026-09-02), as smaller text-only links
+        // that jump to the sub-category's own block.
         $parent = $this->category('Grill', 1);
         $child = Category::create([
             'parent_id' => $parent->id,
@@ -543,7 +546,15 @@ class MenuPageTest extends TestCase
         preg_match('#<nav class="menu-rail".*?</nav>#s', $html, $rail);
         $this->assertNotEmpty($rail);
         $this->assertStringContainsString('aria-label="Grill, 2 items"', $rail[0]);
-        $this->assertStringNotContainsString('href="#cat-' . $child->id . '"', $rail[0]);
+        $this->assertMatchesRegularExpression(
+            '#<a href="\#cat-' . $child->id . '"\s+class="menu-rail-sub"\s+data-parent="cat-' . $parent->id . '"\s+aria-label="Wraps, 1 item"#',
+            $rail[0],
+        );
+        // Under its parent, not before it.
+        $this->assertGreaterThan(
+            strpos($rail[0], 'href="#cat-' . $parent->id . '"'),
+            strpos($rail[0], 'href="#cat-' . $child->id . '"'),
+        );
 
         preg_match('#<div class="menu-main">.*#s', $html, $main);
         $this->assertMatchesRegularExpression('#<h2[^>]*>\s*Grill\s*</h2>#', $main[0]);
@@ -555,8 +566,9 @@ class MenuPageTest extends TestCase
         // band with no title, do not. Owner, 2026-09-02: "adding a line
         // before subcategory".
         $this->assertStringContainsString('<div class="menu-subcat-block">', $main[0]);
+        // …and the block carries the anchor the rail link points at.
         $this->assertMatchesRegularExpression(
-            '#<div class="menu-subcat-block menu-subcat-block--titled">\s*<h3 class="menu-subcat-title"#',
+            '#<div class="menu-subcat-block menu-subcat-block--titled" id="cat-' . $child->id . '">\s*<h3 class="menu-subcat-title"#',
             $main[0],
         );
     }

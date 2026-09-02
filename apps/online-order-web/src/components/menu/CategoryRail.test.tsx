@@ -39,6 +39,41 @@ describe('CategoryRail', () => {
     });
   });
 
+  it('lists sub-categories under their parent as smaller tabs that jump on their own', () => {
+    const onSelect = vi.fn();
+    const onSelectSubcategory = vi.fn();
+    const { container } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={2}
+        activeSubcategoryId={21}
+        onSelect={onSelect}
+        onSelectSubcategory={onSelectSubcategory}
+        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
+        counts={{ 2: 5, 21: 3, 22: 2 }}
+      />,
+    );
+
+    // Under Grills, not under Breakfast Specials, and after the parent tab.
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]')).map((el) => (
+      el.querySelector('.cat-rail__label, .cat-rail__sub-label')?.textContent?.trim()
+    ));
+    expect(tabs).toEqual(['Breakfast Specials', 'Grills', 'Chicken', 'Beef']);
+
+    const chicken = screen.getByRole('tab', { name: /Chicken/ });
+    expect(chicken).toHaveClass('cat-rail__sub');
+    expect(chicken.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: /Beef/ }).getAttribute('aria-selected')).toBe('false');
+    // The parent stays lit while one of its sub-categories is in view.
+    expect(screen.getByRole('tab', { name: /Grills/ }).getAttribute('aria-selected')).toBe('true');
+    // No thumbnail on a sub-entry.
+    expect(chicken.querySelector('.cat-rail__thumb')).toBeNull();
+
+    screen.getByRole('tab', { name: /Beef/ }).click();
+    expect(onSelectSubcategory).toHaveBeenCalledWith(22, 2);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it('places Events shortcut after regular categories on the left rail', () => {
     const { container } = render(
       <CategoryRail

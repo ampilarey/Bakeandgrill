@@ -4035,6 +4035,62 @@ textarea.field-input {
   border-radius: 10px;
 }
 
+/*
+ * Sub-categories under their parent in the rail: text only, smaller, no
+ * thumbnail. Owner, 2026-09-02: "add subcategories to the rail as well".
+ */
+.cat-rail__group {
+  display: flex;
+  flex-direction: column;
+}
+.cat-rail__subs {
+  display: flex;
+  flex-direction: column;
+  margin: -2px 0 4px;
+}
+.cat-rail__sub {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0.2rem 0.3rem 0.2rem 0.45rem;
+  border: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+}
+.cat-rail__sub:hover { color: var(--color-primary); }
+.cat-rail__sub.is-active {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-left-color: var(--color-primary);
+}
+.cat-rail__sub-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.cat-rail__sub-count {
+  font-size: 9px;
+  opacity: 0.7;
+}
+@media (max-width: 767px) {
+  .cat-rail__sub {
+    min-height: 28px;
+    font-size: 0.58rem;
+  }
+}
+
 .stat-chip {
   min-height: var(--chip-height);
   min-width: 7.5rem;

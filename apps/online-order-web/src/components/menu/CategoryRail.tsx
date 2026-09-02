@@ -23,10 +23,19 @@ type Props = {
   cateringActive?: boolean;
   cateringCount?: number;
   onCateringClick?: () => void;
+  /** Sub-categories by parent id, listed under their parent as text-only tabs. */
+  subcategories?: Record<number, Category[]>;
+  activeSubcategoryId?: number | null;
+  onSelectSubcategory?: (id: number, parentId: number) => void;
 };
 
 /**
  * Sticky left category rail — scroll-spy sync via activeCategoryId.
+ *
+ * Sub-categories sit under their parent as smaller, text-only entries.
+ * Owner, 2026-09-02: "add subcategories to the rail as well" — until then
+ * a customer looking for Beef under Grill had nothing in the rail to tap,
+ * and the spy folded every sub-category into its parent.
  */
 export function CategoryRail({
   categories,
@@ -40,6 +49,9 @@ export function CategoryRail({
   cateringActive = false,
   cateringCount = 0,
   onCateringClick,
+  subcategories = {},
+  activeSubcategoryId = null,
+  onSelectSubcategory,
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -97,9 +109,10 @@ export function CategoryRail({
           const img = resolve(cat.image_url);
           const webp = resolve(cat.image_webp_url);
           const initial = (cat.name?.trim()?.[0] ?? '?').toUpperCase();
+          const subs = subcategories[cat.id] ?? [];
           return (
+            <div key={cat.id} className="cat-rail__group" role="presentation">
             <button
-              key={cat.id}
               ref={active ? activeRef : undefined}
               type="button"
               role="tab"
@@ -161,6 +174,31 @@ export function CategoryRail({
                 <span style={{ fontSize: 10, opacity: 0.7 }}>{counts[cat.id]}</span>
               )}
             </button>
+            {subs.length > 0 && (
+              <div className="cat-rail__subs" role="presentation">
+                {subs.map((sub) => {
+                  const subActive = activeSubcategoryId === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={subActive}
+                      className={`cat-rail__sub${subActive ? ' is-active' : ''}`}
+                      data-testid="cat-rail-sub"
+                      data-parent-category-id={cat.id}
+                      onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
+                    >
+                      <span className="cat-rail__sub-label">{sub.name}</span>
+                      {(counts[sub.id] ?? 0) > 0 && (
+                        <span className="cat-rail__sub-count">{counts[sub.id]}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            </div>
           );
         })}
         {/* Events / catering shortcut — always last on the left rail */}
