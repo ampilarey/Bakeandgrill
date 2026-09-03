@@ -236,6 +236,16 @@ export function MenuPage() {
     });
   };
 
+  // The floating cart button and back-to-top live in the shell, not here, so
+  // the rail side is published on <html> for them to read (owner, 2026-09-03:
+  // on a phone the cart button would otherwise sit over a right-hand rail).
+  // Cleared on leaving the menu, where there is no rail to clash with.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('rail-right', railSide === 'right');
+    return () => root.classList.remove('rail-right');
+  }, [railSide]);
+
   const toggleRailSide = () => {
     const next: RailSide = railSide === 'right' ? 'left' : 'right';
     setRailSide(next);

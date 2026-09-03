@@ -2972,6 +2972,24 @@ textarea.field-input {
   min-height: var(--touch-target);
 }
 
+/* Owner, 2026-09-03: "when rail changed to right, change mini cart icon to
+   left in mobile." On a phone the cart button sits over the category rail
+   once the rail is swapped to that edge, so the two trade sides — and
+   back-to-top goes with them, or it would end up under the cart button.
+   `rail-right` is set on <html> by the menu page while it is open, so off
+   the menu (no rail to clash with) both return to their usual corners. */
+@media (max-width: 767px) {
+  html.rail-right .float-cart-fab {
+    right: auto;
+    left: max(var(--page-gutter), calc(50% - (var(--shell-max) / 2) + var(--page-gutter)));
+  }
+
+  html.rail-right .back-to-top {
+    left: auto;
+    right: max(var(--page-gutter), 1rem);
+  }
+}
+
 .float-cart-fab__logo-wrap {
   position: relative;
   width: 56px;

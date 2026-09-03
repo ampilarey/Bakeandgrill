@@ -277,9 +277,28 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(screen.getByTestId('menu-columns')).toHaveClass('menu-columns--rail-right');
     expect(screen.getByTestId('menu-rail-side')).toHaveAttribute('aria-pressed', 'true');
     expect(localStorage.getItem('bg-menu-rail-side')).toBe('right');
+    // The shell's cart button and back-to-top read this to swap sides too.
+    expect(document.documentElement).toHaveClass('rail-right');
 
     await user.click(screen.getByTestId('menu-rail-side'));
     expect(screen.getByTestId('menu-columns')).not.toHaveClass('menu-columns--rail-right');
     expect(localStorage.getItem('bg-menu-rail-side')).toBe('left');
+    expect(document.documentElement).not.toHaveClass('rail-right');
+  });
+
+  /** Off the menu there is no rail to clash with, so the corners go back to normal. */
+  it('clears the rail-side mark from the page when the menu is left', async () => {
+    localStorage.setItem('bg-menu-rail-side', 'right');
+    const { unmount } = render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(document.documentElement).toHaveClass('rail-right');
+    });
+
+    unmount();
+    expect(document.documentElement).not.toHaveClass('rail-right');
   });
 });
