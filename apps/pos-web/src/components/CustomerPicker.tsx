@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchRecentCustomers, quickCreateCustomer, searchCustomers,
@@ -52,6 +52,14 @@ type Props = {
   /** Auto-focus the input on mount — useful when the panel was just
    *  expanded by the cashier clicking "+ Add customer". */
   autoFocus?: boolean;
+  /**
+   * Half a row wide, beside the table picker: a short label and no margin
+   * of its own, so the row that holds it owns the spacing.
+   */
+  compact?: boolean;
+  /** Told when the picker opens or closes, so a compact row can give it
+   *  the full width while it is open. */
+  onOpenChange?: (open: boolean) => void;
 };
 
 const C = {
@@ -75,8 +83,14 @@ function isValidPhone(s: string): boolean {
 
 type Mode = "phone" | "name";
 
-export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Props) {
-  const [open, setOpen] = useState<boolean>(autoFocus ?? false);
+export function CustomerPicker({ customer, onAttach, onDetach, autoFocus, compact, onOpenChange }: Props) {
+  const [open, setOpenState] = useState<boolean>(autoFocus ?? false);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  const setOpen = useCallback((next: boolean) => {
+    setOpenState(next);
+    onOpenChangeRef.current?.(next);
+  }, []);
   const isSheet = useMediaQuery("(max-width: 840px)");
   const [mode, setMode] = useState<Mode>("phone");
 
@@ -169,7 +183,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
-  }, [open, isSheet, phone, name, nameQuery]);
+  }, [open, isSheet, phone, name, nameQuery, setOpen]);
 
   // ── Focus management ───────────────────────────────────────────────
   useEffect(() => {
@@ -248,6 +262,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
         customer={customer}
         onDetach={onDetach}
         onUpdated={(updated) => onAttach(updated)}
+        compact={compact}
       />
     );
   }
@@ -262,12 +277,16 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
           padding: "10px 12px",
           background: C.bg, border: `1px dashed ${C.border2}`,
           borderRadius: 8, fontSize: 13, fontWeight: 600,
-          color: C.muted, cursor: "pointer", marginBottom: 10,
-          minHeight: 44,
+          color: C.muted, cursor: "pointer", marginBottom: compact ? 0 : 10,
+          minHeight: 44, boxSizing: "border-box",
+          justifyContent: compact ? "center" : "flex-start",
+          whiteSpace: "nowrap", overflow: "hidden",
         }}
       >
         <span aria-hidden="true" style={{ fontSize: 16 }}>＋</span>
-        <span>Add customer (phone / name)</span>
+        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+          {compact ? "Customer" : "Add customer (phone / name)"}
+        </span>
       </button>
     );
   }
@@ -515,7 +534,7 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
           style={{
             width: "100%",
             padding: "10px 12px",
-            marginBottom: 10,
+            marginBottom: compact ? 0 : 10,
             borderRadius: 8,
             border: `1px dashed ${C.border2}`,
             background: C.bg,
@@ -554,11 +573,12 @@ export function CustomerPicker({ customer, onAttach, onDetach, autoFocus }: Prop
 // editing the matching key from POS is dangerous (silent customer merges,
 // broken SMS); admin handles that case via Admin → Customers.
 function AttachedCustomerChip({
-  customer, onDetach, onUpdated,
+  customer, onDetach, onUpdated, compact,
 }: {
   customer: PosCustomer;
   onDetach: () => void;
   onUpdated: (c: PosCustomer) => void;
+  compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(customer.name ?? "");
@@ -602,7 +622,8 @@ function AttachedCustomerChip({
         background: C.primarySoft,
         border: `1px solid ${C.primary}33`,
         borderRadius: 8,
-        marginBottom: 10,
+        marginBottom: compact ? 0 : 10,
+        boxSizing: "border-box",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

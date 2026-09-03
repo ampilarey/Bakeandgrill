@@ -240,15 +240,27 @@ export function OrderCart(p: Props) {
   // Drag the sheet's grab bar down to close it (a tap closes it too).
   const sheetDragStartY = useRef<number | null>(null);
 
-  // Owner, 2026-09-02: once the ticket has items, order type, table and
-  // customer fold into one chip so the lines get the room. A tap on the
-  // chip opens them again; an empty ticket shows them in full because that
-  // is when the choice is made. A Delivery ticket with no address yet stays
-  // open — the form still has to be filled.
-  const [headerOpen, setHeaderOpen] = useState(false);
+  // Owner, 2026-09-03: "dine in, takeaway etc. appears when clicked. But
+  // keep it always. Because it's used frequently." So the order-type row is
+  // always on show, and the room comes back from the two controls under it
+  // — table and customer share one row — and from the Discounts & rewards
+  // drawer, whose button moved up beside Save and Orders.
+  //
+  // The delivery address block is the one thing still worth folding: it is
+  // five fields tall, and once it is filled the cashier is done with it. A
+  // Delivery ticket with no address yet stays open — the form still has to
+  // be filled.
+  const [addressOpen, setAddressOpen] = useState(false);
   useEffect(() => {
-    if (p.cartItems.length === 0) setHeaderOpen(false);
+    if (p.cartItems.length === 0) setAddressOpen(false);
   }, [p.cartItems.length]);
+  // The customer picker takes the whole row while it is open, and while a
+  // customer is attached — the chip carries a name, a phone and its own
+  // buttons, which do not read well in half a row.
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  // Discounts & rewards: the button lives in the header row; this is its
+  // drawer's open state, and the drawer itself is above the totals.
+  const [adjustOpen, setAdjustOpen] = useState(false);
   const cartClassName = [
     "pos-cart",
     dockMode ? "pos-cart--dock" : "",
@@ -269,10 +281,9 @@ export function OrderCart(p: Props) {
   const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType, p.resumedStaffUserId);
 
   const deliveryNeedsAddress = isDelivery && !onlineFulfillment && !p.deliveryDetails.addressLine1.trim();
-  const headerCollapsed = p.cartItems.length > 0 && !headerOpen && !deliveryNeedsAddress;
-  const ORDER_TYPE_EMOJI: Record<string, string> = { "Dine-in": "🍽️", Takeaway: "🥡", Pickup: "🛍️", Delivery: "🛵" };
-  const contextLabel = onlineFulfillment && isResumed ? fulfillmentLabel : p.orderType;
-  const contextEmoji = onlineFulfillment && isResumed ? fulfillmentEmoji : (ORDER_TYPE_EMOJI[p.orderType] ?? "");
+  const showDeliveryForm = isDelivery && !onlineFulfillment;
+  const deliveryCollapsed = showDeliveryForm && p.cartItems.length > 0
+    && !deliveryNeedsAddress && !addressOpen;
 
   // What is on the ticket beyond the items, for the Discounts & rewards bar.
   const adjustmentSummary = [
@@ -283,6 +294,8 @@ export function OrderCart(p: Props) {
   ].filter((s): s is string => s !== null);
   const showDiscountField = p.canApplyDiscount !== false && p.discountControls?.manual_enabled !== false;
   const showRewards = p.canUseRewards !== false;
+  const showAdjustments = p.cartItems.length > 0 && (showDiscountField || showRewards);
+  const customerCellWide = customerPickerOpen || p.attachedCustomer != null;
 
   // ── Two-tap confirm for the "Clear" button ────────────────────
   // One tap on Clear used to wipe the entire cart instantly — 10+
@@ -629,13 +642,18 @@ export function OrderCart(p: Props) {
       <div className="pos-cart-body">
       {/* ── Top: ticket header + order type pills ─────────────────── */}
       <div className="pos-cart-header" style={{ padding: 14, borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 6, marginBottom: 10,
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: C.text, minWidth: 0 }}>
             {isResumed ? `Order ${orderLabel}` : 'New Order'}
           </div>
           {/* Save and Orders live up here now, not on a row of their own
               in the footer: the header row had the room, the footer did
-              not. Owner, 2026-09-02. */}
+              not. Owner, 2026-09-02. Discounts joined them on 2026-09-03,
+              for the same reason — the bar it used to have above the
+              totals cost 52px on every ticket. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {p.canHoldResume !== false && (
           <button
@@ -668,6 +686,33 @@ export function OrderCart(p: Props) {
             )}
           </button>
           )}
+          {showAdjustments && (
+          <button
+            onClick={() => setAdjustOpen((o) => !o)}
+            aria-expanded={adjustOpen}
+            aria-label="Discounts and rewards"
+            title="Discount, promo code, points and gift card"
+            data-testid="cart-adjust-toggle"
+            style={{
+              ...smallBtn(false),
+              flex: 'none', padding: '6px 10px', minHeight: 36,
+              background: adjustmentSummary.length > 0 ? '#FEF3E2' : '#FFFFFF',
+              border: `1px solid ${adjustmentSummary.length > 0 ? C.primary : C.border2}`,
+              color: adjustmentSummary.length > 0 ? C.primaryDark : C.muted,
+              fontWeight: adjustmentSummary.length > 0 ? 800 : 600,
+            }}
+          >
+            🏷️ Disc
+            {adjustmentSummary.length > 0 && (
+              <span
+                style={{
+                  marginLeft: 6, padding: '1px 7px', borderRadius: 999,
+                  background: C.primary, color: '#fff', fontSize: 11, fontWeight: 800,
+                }}
+              >{adjustmentSummary.length}</span>
+            )}
+          </button>
+          )}
           <button
             onClick={handleClearTap}
             disabled={p.cartItems.length === 0 || lockedReadOnly}
@@ -689,29 +734,8 @@ export function OrderCart(p: Props) {
           </div>
         </div>
 
-        {headerCollapsed ? (
-          <button
-            type="button"
-            data-testid="cart-context-chip"
-            onClick={() => setHeaderOpen(true)}
-            title="Change order type, table or customer"
-            style={{
-              width: '100%', minHeight: 40, padding: '6px 10px', borderRadius: 8,
-              border: `1px solid ${C.border}`, background: C.bg, color: C.text,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
-            }}
-          >
-            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span aria-hidden="true" style={{ marginRight: 6 }}>{contextEmoji}</span>
-              {contextLabel}
-              {selectedTableName ? ` · ${selectedTableName}` : ''}
-              {` · ${p.attachedCustomer?.name?.trim() || 'Walk-in'}`}
-            </span>
-            <span aria-hidden="true" style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>Change ▾</span>
-          </button>
-        ) : (<>
-        <div style={{ display: 'flex', flexWrap: 'wrap', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
+        {/* Order type: always on show, on every screen size. */}
+        <div data-testid="cart-order-types" style={{ display: 'flex', flexWrap: 'wrap', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
           {onlineFulfillment && isResumed ? (
             <div style={{
               flex: 1, padding: '8px 10px', fontSize: 12, fontWeight: 700,
@@ -806,46 +830,92 @@ export function OrderCart(p: Props) {
           </div>
         )}
 
-        {dineIn && (
-          <div style={{ marginTop: 10 }}>
-            <select
-              value={p.selectedTableId ?? ""}
-              onChange={(e) => p.setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
-              disabled={lockedReadOnly}
-              style={{
-                width: '100%', padding: '10px 12px',
-                borderRadius: 8, border: `1px solid ${C.border2}`,
-                fontSize: 13, background: '#FFFFFF', color: C.text,
-              }}
-            >
-              <option value="">Select table</option>
-              {p.tables.map((t) => {
-                const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
-                const inUse = tableIsInUse(t);
-                // Never keep another ticket's seat selectable via sticky selection.
-                const blocked = inUse && !ours;
-                return (
-                  <option key={t.id} value={t.id} disabled={blocked}>
-                    {t.name}
-                  </option>
-                );
-              })}
-            </select>
-            {p.selectedTableId != null && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
-              <TableFloorActions
-                tables={p.tables}
-                selectedTableId={p.selectedTableId}
-                ourOrderId={p.resumedOrderId}
-                onOpenTable={p.onOpenTable}
-                onCloseTable={p.onCloseTable}
-                onMergeTables={p.onMergeTables}
-                onRefreshTables={p.onRefreshTables}
-              />
-            )}
+        {/* Owner, 2026-09-03: "keep select tables and add customer in one row
+            side by side to save space." Two half-width cells that wrap on a
+            narrow till; either one takes the whole row when it needs the
+            width — an open picker, or an attached customer with a name, a
+            phone and buttons of its own. */}
+        <div
+          data-testid="cart-table-customer-row"
+          style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}
+        >
+          {dineIn && (
+            <div style={{ flex: customerCellWide ? '1 1 100%' : '1 1 45%', minWidth: 140 }}>
+              <select
+                aria-label="Table"
+                value={p.selectedTableId ?? ""}
+                onChange={(e) => p.setSelectedTableId(e.target.value ? Number(e.target.value) : null)}
+                disabled={lockedReadOnly}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  borderRadius: 8, border: `1px solid ${C.border2}`,
+                  fontSize: 13, background: '#FFFFFF', color: C.text,
+                  minHeight: 44, boxSizing: 'border-box',
+                }}
+              >
+                <option value="">Select table</option>
+                {p.tables.map((t) => {
+                  const ours = p.resumedOrderId != null && t.current_order_id === p.resumedOrderId;
+                  const inUse = tableIsInUse(t);
+                  // Never keep another ticket's seat selectable via sticky selection.
+                  const blocked = inUse && !ours;
+                  return (
+                    <option key={t.id} value={t.id} disabled={blocked}>
+                      {t.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          <div style={{ flex: customerCellWide ? '1 1 100%' : '1 1 45%', minWidth: 140 }}>
+            <CustomerPicker
+              compact
+              customer={p.attachedCustomer}
+              onAttach={p.onAttachCustomer}
+              onDetach={p.onDetachCustomer}
+              onOpenChange={setCustomerPickerOpen}
+            />
           </div>
+        </div>
+
+        {/* Open / close / merge take the full width — they are a row of
+            controls in their own right, not a field. */}
+        {dineIn && p.selectedTableId != null && (p.onOpenTable || p.onCloseTable || p.onMergeTables) && (
+          <TableFloorActions
+            tables={p.tables}
+            selectedTableId={p.selectedTableId}
+            ourOrderId={p.resumedOrderId}
+            onOpenTable={p.onOpenTable}
+            onCloseTable={p.onCloseTable}
+            onMergeTables={p.onMergeTables}
+            onRefreshTables={p.onRefreshTables}
+          />
         )}
 
-        {isDelivery && !onlineFulfillment && (
+        {deliveryCollapsed && (
+          <button
+            type="button"
+            data-testid="cart-address-chip"
+            onClick={() => setAddressOpen(true)}
+            title="Change the delivery address"
+            style={{
+              width: '100%', marginTop: 10, minHeight: 40, padding: '6px 10px', borderRadius: 8,
+              border: `1px solid ${C.border}`, background: C.bg, color: C.text,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span aria-hidden="true" style={{ marginRight: 6 }}>🛵</span>
+              {p.deliveryDetails.addressLine1}
+              {p.deliveryDetails.island ? `, ${p.deliveryDetails.island}` : ''}
+            </span>
+            <span aria-hidden="true" style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>Change ▾</span>
+          </button>
+        )}
+
+        {showDeliveryForm && !deliveryCollapsed && (
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {p.customerAddresses && p.customerAddresses.length > 0 && p.onSelectDeliveryAddress && (
               <select
@@ -953,15 +1023,6 @@ export function OrderCart(p: Props) {
           </div>
         )}
 
-        <div style={{ marginTop: 10 }}>
-          <CustomerPicker
-            customer={p.attachedCustomer}
-            onAttach={p.onAttachCustomer}
-            onDetach={p.onDetachCustomer}
-          />
-        </div>
-
-        </>)}
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}
@@ -1039,8 +1100,14 @@ export function OrderCart(p: Props) {
         {/* Discounts & rewards — one bar; open it for the manual discount,
             promo code, points and gift card. Server apply for the rewards
             still happens during charge between createOrder and settleOrder. */}
-        {p.cartItems.length > 0 && (showDiscountField || showRewards) && (
-          <TicketAdjustments summary={adjustmentSummary} forceOpen={!!p.discountFieldError} openSignal={p.scanRequest?.nonce ?? 0}>
+        {showAdjustments && (
+          <TicketAdjustments
+            summary={adjustmentSummary}
+            forceOpen={!!p.discountFieldError}
+            openSignal={p.scanRequest?.nonce ?? 0}
+            open={adjustOpen}
+            onOpenChange={setAdjustOpen}
+          >
             {showDiscountField && (
               <ManualDiscountField
                 discountAmount={p.discountAmount}
