@@ -7,6 +7,7 @@ import {
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
+import { ScanSheet } from '../components/ScanSheet';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
@@ -53,8 +54,9 @@ export default function InventoryPage() {
   const [adjError, setAdjError] = useState('');
   const [quickAdjusting, setQuickAdjusting] = useState<Record<number, boolean>>({});
   const [createOpen, setCreateOpen] = useState(false);
+  const [scanBarcode, setScanBarcode] = useState(false);
   const [createForm, setCreateForm] = useState({
-    name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
+    name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
     inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
   });
   const [createSaving, setCreateSaving] = useState(false);
@@ -426,7 +428,7 @@ export default function InventoryPage() {
                 setCreateOpen(true);
                 setCreateError('');
                 setCreateForm({
-                  name: '', sku: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
+                  name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 if (cats.length === 0) void loadCats();
@@ -678,6 +680,31 @@ export default function InventoryPage() {
               <span style={S.label}>SKU</span>
               <input style={S.input} value={createForm.sku} onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))} />
             </label>
+            {/* The supplier's barcode, so a delivery is received by scanning
+                the packet. Type it, scan it with a gun into the box, or use
+                the camera. Owner, 2026-09-02. */}
+            <label>
+              <span style={S.label}>Barcode</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  style={{ ...S.input, flex: 1 }}
+                  value={createForm.barcode}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, barcode: e.target.value }))}
+                  placeholder="Scan or type the packet barcode"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  data-testid="inventory-barcode"
+                />
+                <Btn variant="secondary" onClick={() => setScanBarcode(true)} aria-label="Scan barcode with the camera" title="Scan with the camera">📷</Btn>
+              </div>
+            </label>
+            {scanBarcode && (
+              <ScanSheet
+                title="Scan the packet"
+                onScan={(code) => { setCreateForm((f) => ({ ...f, barcode: code.trim() })); setScanBarcode(false); }}
+                onClose={() => setScanBarcode(false)}
+              />
+            )}
             <label>
               <span style={S.label}>Category</span>
               <select
@@ -759,6 +786,7 @@ export default function InventoryPage() {
               void createInventoryItem({
                 name: createForm.name.trim(),
                 sku: createForm.sku.trim() || undefined,
+                barcode: createForm.barcode.trim() || undefined,
                 unit: createForm.unit.trim(),
                 current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
                 reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,

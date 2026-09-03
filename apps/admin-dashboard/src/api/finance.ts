@@ -765,7 +765,7 @@ export interface Purchase {
     received_quantity: number;
     receive_status: string;
     unit_cost: number;
-    inventory_item: { id: number; name: string } | null;
+    inventory_item: { id: number; name: string; barcode?: string | null; sku?: string | null } | null;
   }[];
 }
 

@@ -18,6 +18,7 @@ class StoreInventoryItemRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:100|unique:inventory_items,sku',
+            'barcode' => 'nullable|string|max:64|unique:inventory_items,barcode',
             'unit' => 'required|string|max:50',
             'current_stock' => 'nullable|numeric|min:0',
             'reorder_point' => 'nullable|numeric|min:0',

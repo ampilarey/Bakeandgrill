@@ -4,6 +4,8 @@ import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPu
 import { Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH } from '../components/Layout';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { ScanSheet } from '../components/ScanSheet';
+import { countScannedItem } from '../utils/receivingScan';
 import { today } from '../utils/dateHelpers';
 
 type ManualPoLine = {
@@ -51,6 +53,17 @@ export function PurchaseOrdersPage() {
   // per-item receive quantities (purchase_item_id → qty)
   const [receiveQtys, setReceiveQtys]     = useState<Record<number, number>>({});
   const [receiveNotes, setReceiveNotes]   = useState('');
+  // Receiving by scan: a gun into the box, or the camera. Owner, 2026-09-02.
+  const [scanCode, setScanCode] = useState('');
+  const [scanMsg, setScanMsg] = useState('');
+  const [scanCamera, setScanCamera] = useState(false);
+  const applyScan = (code: string) => {
+    if (!detail) return;
+    const r = countScannedItem(detail.items ?? [], receiveQtys, code);
+    setReceiveQtys(r.qtys);
+    setScanMsg(r.message);
+    setScanCode('');
+  };
   const [gstForm, setGstForm] = useState({
     is_input_tax_claimable: false,
     supplier_tin: '',
@@ -496,6 +509,35 @@ export function PurchaseOrdersPage() {
               </tbody>
             </table>
           </TableCard>
+
+          {['ordered', 'partial'].includes(detail.status) && (
+            <Card style={{ padding: 12, marginTop: 12 }} data-testid="receive-scan">
+              <form
+                onSubmit={(e) => { e.preventDefault(); if (scanCode.trim()) applyScan(scanCode); }}
+                style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}
+              >
+                <input
+                  value={scanCode}
+                  onChange={(e) => setScanCode(e.target.value)}
+                  placeholder="Scan a packet, or type its barcode, then Enter"
+                  aria-label="Scan a packet barcode"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  style={{ flex: '1 1 240px', height: 40, padding: '0 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 14, fontFamily: 'inherit' }}
+                />
+                <Btn variant="secondary" onClick={() => setScanCamera(true)} aria-label="Scan with the camera" title="Scan with the camera">📷 Camera</Btn>
+                {scanMsg && <span role="status" style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexBasis: '100%' }}>{scanMsg}</span>}
+              </form>
+              {scanCamera && (
+                <ScanSheet
+                  title="Scan the packet"
+                  hint="Each scan counts one more of that line as received. Scan again for the next packet."
+                  onScan={(code) => { setScanCamera(false); applyScan(code); }}
+                  onClose={() => setScanCamera(false)}
+                />
+              )}
+            </Card>
+          )}
 
           {['ordered', 'partial'].includes(detail.status) && (
             <>

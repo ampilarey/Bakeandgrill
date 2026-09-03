@@ -575,6 +575,7 @@ export async function createInventoryItem(data: {
   name: string;
   unit: string;
   sku?: string;
+  barcode?: string;
   current_stock?: number;
   reorder_point?: number;
   lead_days?: number | null;
@@ -599,6 +600,7 @@ export async function updateInventoryItem(
     name: string;
     unit: string;
     sku: string | null;
+    barcode: string | null;
     reorder_point: number | null;
     reorder_quantity: number | null;
     lead_days: number | null;
