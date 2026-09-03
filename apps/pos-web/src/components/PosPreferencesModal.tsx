@@ -15,18 +15,22 @@ const LOCK_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 0, label: "Never auto-lock" },
 ];
 
+type CartSide = "left" | "right";
+
 type Props = {
   idleLockMinutes: number;
+  cartSide?: CartSide;
   onClose: () => void;
-  onSaved: (resolvedMinutes: number) => void;
+  onSaved: (resolvedMinutes: number, cartSide: CartSide) => void;
 };
 
 /**
- * Personal POS settings — auto-lock timeout saved to the staff user's
- * account (same value as Admin → My Account).
+ * Personal POS settings — auto-lock timeout and which side the ticket sits
+ * on, saved to the staff user's account (same values as Admin → My Account).
  */
-export function PosPreferencesModal({ idleLockMinutes, onClose, onSaved }: Props) {
+export function PosPreferencesModal({ idleLockMinutes, cartSide = "right", onClose, onSaved }: Props) {
   const [minutes, setMinutes] = useState(idleLockMinutes);
+  const [side, setSide] = useState<CartSide>(cartSide);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
@@ -48,9 +52,9 @@ export function PosPreferencesModal({ idleLockMinutes, onClose, onSaved }: Props
     setErr("");
     setOk(false);
     try {
-      const res = await updateMyPreferences({ pos_idle_lock_minutes: minutes });
+      const res = await updateMyPreferences({ pos_idle_lock_minutes: minutes, pos_cart_side: side });
       const resolved = resolveIdleLockMinutes(res.user);
-      onSaved(resolved);
+      onSaved(resolved, res.user.pos_cart_side === "left" ? "left" : "right");
       setOk(true);
       window.setTimeout(onClose, 800);
     } catch (e) {
@@ -116,6 +120,36 @@ export function PosPreferencesModal({ idleLockMinutes, onClose, onSaved }: Props
             ))}
           </select>
         </label>
+
+        {/* Owner, 2026-09-02: a left-hand option. On a phone the ticket is
+            docked at the bottom, so this only shows on a wide till. */}
+        <div style={{ marginTop: 16 }}>
+          <span style={{ ...type.label, display: "block", marginBottom: 6, color: palette.panelMuted }}>
+            Ticket side on the till
+          </span>
+          <div role="group" aria-label="Ticket side" style={{ display: "flex", gap: 8 }}>
+            {(["right", "left"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={side === s}
+                disabled={busy}
+                onClick={() => setSide(s)}
+                style={{
+                  flex: 1, minHeight: 44, borderRadius: radius.m, fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  border: `1px solid ${side === s ? palette.primaryDark : palette.border}`,
+                  background: side === s ? palette.primary : "#fff",
+                  color: side === s ? "#fff" : palette.panelInk,
+                }}
+              >
+                {s === "right" ? "Right (default)" : "Left"}
+              </button>
+            ))}
+          </div>
+          <p style={{ ...type.bodySm, margin: "6px 0 0", color: palette.panelMuted }}>
+            Puts the ticket on the other side of the menu for a left-handed cashier. Phones keep the ticket at the bottom.
+          </p>
+        </div>
 
         {err && (
           <p role="alert" style={{ margin: "12px 0 0", fontSize: 13, color: "#B91C1C" }}>{err}</p>

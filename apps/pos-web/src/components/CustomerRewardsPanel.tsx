@@ -53,6 +53,8 @@ type Props = {
   readOnly?: boolean;
   /** Staff needs promotions.discounts (same as backend staffApply). */
   canApplyGiftCard?: boolean;
+  /** Rendered inside the Discounts & rewards drawer: no header of its own, always open. */
+  embedded?: boolean;
 };
 
 const COLOR = {
@@ -97,6 +99,7 @@ export function CustomerRewardsPanel({
   orderId = null,
   readOnly = false,
   canApplyGiftCard = true,
+  embedded = false,
 }: Props) {
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -298,13 +301,16 @@ export function CustomerRewardsPanel({
   };
 
   return (
-    <div style={{
+    <div style={embedded ? { marginTop: 8 } : {
       marginTop: 8,
       borderRadius: 10,
       border: `1px solid ${COLOR.border}`,
       background: COLOR.card,
       overflow: "hidden",
     }}>
+      {/* Inside the Discounts & rewards drawer the drawer's own bar does
+          the opening and closing; this header would be a second one. */}
+      {!embedded && (
       <button
         type="button"
         onClick={() => setExpanded((x) => !x)}
@@ -358,9 +364,10 @@ export function CustomerRewardsPanel({
         </div>
         <span style={{ fontSize: 14, color: COLOR.muted, marginLeft: 8 }}>{expanded ? "▾" : "▸"}</span>
       </button>
+      )}
 
-      {expanded && (
-        <div style={{ padding: 12, borderTop: `1px solid ${COLOR.border}`, display: "grid", gap: 14 }}>
+      {(expanded || embedded) && (
+        <div style={{ padding: embedded ? 0 : 12, borderTop: embedded ? "none" : `1px solid ${COLOR.border}`, display: "grid", gap: 14 }}>
           {hasCustomer && (
             <>
               {/* ── At-a-glance customer card ─────────────────────────────── */}

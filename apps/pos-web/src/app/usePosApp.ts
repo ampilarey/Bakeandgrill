@@ -115,6 +115,9 @@ export function usePosApp() {
   const canManageEvents = hasPosPermission(staffPermissions, "events.manage");
   const [kitchenHandoverSettings, setKitchenHandoverSettings] = useState<KitchenHandoverSettings | null>(null);
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
+  // Which side of the till the ticket sits on. Per cashier, saved to their
+  // account with the auto-lock minutes. Owner, 2026-09-02.
+  const [cartSide, setCartSide] = useState<"left" | "right">("right");
   const [deviceId]                    = useState(() => {
     // Priority order:
     //  1. Previously persisted id in localStorage — once a device is
@@ -538,6 +541,7 @@ export function usePosApp() {
           localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
           setStaffPermissions(perms);
           setIdleLockMinutes(resolveIdleLockMinutes(user));
+          setCartSide(user.pos_cart_side === "left" ? "left" : "right");
           void cacheStaffSessionFromUser({
             id: user.id,
             name: user.name,
@@ -905,6 +909,7 @@ export function usePosApp() {
     setStaffRole(response.user?.role ?? "");
     setStaffPermissions(loginPerms);
     setIdleLockMinutes(resolveIdleLockMinutes(response.user));
+    setCartSide(response.user?.pos_cart_side === "left" ? "left" : "right");
     setAuthToken(response.token);
     if (response.user?.id) {
       void cacheStaffSessionFromUser({
@@ -956,6 +961,7 @@ export function usePosApp() {
     setStaffRole("");
     setStaffPermissions([]);
     setIdleLockMinutes(5);
+    setCartSide("right");
     setUsername("");
     setIsLocked(false);
   };
@@ -1101,6 +1107,7 @@ export function usePosApp() {
       setStaffRole(res.user?.role ?? "");
       setStaffPermissions(unlockPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(res.user));
+      setCartSide(res.user?.pos_cart_side === "left" ? "left" : "right");
       if (res.user?.id) {
         void cacheStaffSessionFromUser({
           id: res.user.id,
@@ -1248,7 +1255,7 @@ export function usePosApp() {
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canRequestRefund, canApproveRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
-    canBuyAssigned, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, deviceId,
+    canBuyAssigned, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, cartSide, setCartSide, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,
     drawerOpen, setDrawerOpen, showPreferences, setShowPreferences, connectivity, isOnline,
     isReachable, offlineQueueCount, offlinePendingCount, offlinePendingTotals,

@@ -306,6 +306,44 @@ class StaffAuthTest extends TestCase
         ]);
     }
 
+    /** Owner, 2026-09-02: a left-hand option for the till, saved per cashier. */
+    public function test_staff_can_put_the_ticket_on_the_left_and_it_follows_them(): void
+    {
+        $owner = $this->createOwner();
+        $login = $this->postJson('/api/auth/staff/pin-login', [
+            'username' => 'owner@example.com',
+            'pin' => '1234',
+            'device_identifier' => 'POS-001',
+        ]);
+        $token = $login->json('token');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'left'])
+            ->assertOk()
+            ->assertJsonPath('user.pos_cart_side', 'left');
+        $this->assertDatabaseHas('users', ['id' => $owner->id, 'pos_cart_side' => 'left']);
+
+        // One preference at a time: saving the lock minutes leaves the side alone.
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', ['pos_idle_lock_minutes' => 10])
+            ->assertOk()
+            ->assertJsonPath('user.pos_cart_side', 'left');
+
+        // Right is the default and is stored as nothing at all.
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'right'])
+            ->assertOk()
+            ->assertJsonPath('user.pos_cart_side', 'right');
+        $this->assertDatabaseHas('users', ['id' => $owner->id, 'pos_cart_side' => null]);
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'middle'])
+            ->assertStatus(422);
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', [])
+            ->assertStatus(422);
+    }
+
     public function test_me_includes_pos_idle_lock_preference(): void
     {
         $owner = $this->createOwner();

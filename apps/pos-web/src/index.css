@@ -319,6 +319,20 @@ html, body, #root {
   display: none;
 }
 
+/* Per-cashier: the ticket on the left of the menu (My settings). Only on a
+ * wide till — below 840px the cart is docked at the bottom regardless. */
+@media (min-width: 841px) {
+  .pos-main--cart-left .pos-cart {
+    order: -1;
+  }
+}
+
+/* The grab bar at the top of the phone ticket sheet: tap or drag down to
+ * close it. Hidden except in sheet mode, which is set in the markup. */
+.pos-cart-sheet-handle {
+  touch-action: none;
+}
+
 .pos-cart-sheet-backdrop {
   display: none;
 }

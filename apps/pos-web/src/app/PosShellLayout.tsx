@@ -146,6 +146,7 @@ export function PosShellLayout() {
     chargeWalletEligible, chargeWalletAvailable, showSaveTicket, setShowSaveTicket,
     showCloseShift, setShowCloseShift, showOpenShift, setShowOpenShift, openShiftBusy,
     receiptsFocusOrderId, setReceiptsFocusOrderId, idleLockMinutes, setIdleLockMinutes,
+    cartSide, setCartSide,
     onlineOrderWatcher,
   } = app;
 
@@ -431,7 +432,12 @@ export function PosShellLayout() {
       )}
 
       {/* Main body */}
-      <main className={pane === 'sales' ? 'pos-main pos-main--sales' : 'pos-main'}>
+      <main className={[
+        'pos-main',
+        pane === 'sales' ? 'pos-main--sales' : '',
+        // Per-cashier: the ticket column on the left of the menu.
+        pane === 'sales' && cartSide === 'left' ? 'pos-main--cart-left' : '',
+      ].filter(Boolean).join(' ')}>
         {pane === 'sales' && (
           !shiftOpen ? (
             <div style={{
@@ -919,8 +925,9 @@ export function PosShellLayout() {
       {showPreferences && (
         <PosPreferencesModal
           idleLockMinutes={idleLockMinutes}
+          cartSide={cartSide}
           onClose={() => setShowPreferences(false)}
-          onSaved={(resolved) => setIdleLockMinutes(resolved)}
+          onSaved={(resolved, side) => { setIdleLockMinutes(resolved); setCartSide(side); }}
         />
       )}
 

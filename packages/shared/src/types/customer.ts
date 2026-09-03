@@ -25,6 +25,8 @@ export type StaffUser = {
   pos_idle_lock_minutes?: number | null;
   /** Effective minutes used by POS (never null). */
   pos_idle_lock_minutes_resolved?: number;
+  /** Which side of the till the ticket sits on. Absent or null means right. */
+  pos_cart_side?: 'left' | 'right' | null;
 };
 
 export type StaffLoginResponse = {

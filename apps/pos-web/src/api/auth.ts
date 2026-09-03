@@ -41,7 +41,8 @@ export async function fetchMe(): Promise<StaffUser> {
 }
 
 export async function updateMyPreferences(data: {
-  pos_idle_lock_minutes: number;
+  pos_idle_lock_minutes?: number;
+  pos_cart_side?: "left" | "right";
 }): Promise<{ message: string; user: StaffUser }> {
   return request("/auth/me/preferences", {
     method: "PATCH",

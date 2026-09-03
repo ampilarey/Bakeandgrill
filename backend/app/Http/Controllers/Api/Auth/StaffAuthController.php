@@ -431,13 +431,25 @@ class StaffAuthController extends Controller
         }
 
         $validated = $request->validate([
-            'pos_idle_lock_minutes' => 'required|integer|min:0|max:60',
+            'pos_idle_lock_minutes' => 'sometimes|required|integer|min:0|max:60',
+            'pos_cart_side' => 'sometimes|required|in:left,right',
         ]);
+        if ($validated === []) {
+            return response()->json(['message' => 'Nothing to save.'], 422);
+        }
 
         $user = $request->user();
-        $user->update([
-            'pos_idle_lock_minutes' => $validated['pos_idle_lock_minutes'],
-        ]);
+        // Only what was sent changes; the till saves one preference at a time
+        // as well as both together.
+        $changes = [];
+        if (array_key_exists('pos_idle_lock_minutes', $validated)) {
+            $changes['pos_idle_lock_minutes'] = $validated['pos_idle_lock_minutes'];
+        }
+        if (array_key_exists('pos_cart_side', $validated)) {
+            // Right is the default, stored as null.
+            $changes['pos_cart_side'] = $validated['pos_cart_side'] === 'left' ? 'left' : null;
+        }
+        $user->update($changes);
         $user->loadMissing('role');
 
         return response()->json([
@@ -756,6 +768,8 @@ class StaffAuthController extends Controller
             'pos_staff_permissions' => $permissions,
             'pos_idle_lock_minutes' => $user->pos_idle_lock_minutes,
             'pos_idle_lock_minutes_resolved' => $user->resolvedPosIdleLockMinutes(),
+            // Which side of the till the ticket sits on; null means right.
+            'pos_cart_side' => $user->pos_cart_side === 'left' ? 'left' : 'right',
         ];
     }
 }

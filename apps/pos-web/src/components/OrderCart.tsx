@@ -7,6 +7,7 @@ import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { ManualDiscountField } from "./ManualDiscountField";
+import { TicketAdjustments } from "./TicketAdjustments";
 import { QtyStepper } from "./cart/QtyStepper";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
@@ -231,6 +232,18 @@ export function OrderCart(p: Props) {
 
   const dockMode = isNarrowStack && !cartExpanded;
   const sheetMode = isNarrowStack && cartExpanded;
+  // Drag the sheet's grab bar down to close it (a tap closes it too).
+  const sheetDragStartY = useRef<number | null>(null);
+
+  // Owner, 2026-09-02: once the ticket has items, order type, table and
+  // customer fold into one chip so the lines get the room. A tap on the
+  // chip opens them again; an empty ticket shows them in full because that
+  // is when the choice is made. A Delivery ticket with no address yet stays
+  // open — the form still has to be filled.
+  const [headerOpen, setHeaderOpen] = useState(false);
+  useEffect(() => {
+    if (p.cartItems.length === 0) setHeaderOpen(false);
+  }, [p.cartItems.length]);
   const cartClassName = [
     "pos-cart",
     dockMode ? "pos-cart--dock" : "",
@@ -249,6 +262,22 @@ export function OrderCart(p: Props) {
     && isCustomerAppOrder(p.resumedStaffUserId);
   const fulfillmentLabel = posOrderTypeLabel(p.resumedOrderType, p.resumedStaffUserId);
   const fulfillmentEmoji = posOrderTypeEmoji(p.resumedOrderType, p.resumedStaffUserId);
+
+  const deliveryNeedsAddress = isDelivery && !onlineFulfillment && !p.deliveryDetails.addressLine1.trim();
+  const headerCollapsed = p.cartItems.length > 0 && !headerOpen && !deliveryNeedsAddress;
+  const ORDER_TYPE_EMOJI: Record<string, string> = { "Dine-in": "🍽️", Takeaway: "🥡", Pickup: "🛍️", Delivery: "🛵" };
+  const contextLabel = onlineFulfillment && isResumed ? fulfillmentLabel : p.orderType;
+  const contextEmoji = onlineFulfillment && isResumed ? fulfillmentEmoji : (ORDER_TYPE_EMOJI[p.orderType] ?? "");
+
+  // What is on the ticket beyond the items, for the Discounts & rewards bar.
+  const adjustmentSummary = [
+    p.discountValue > 0 ? `Discount MVR ${p.discountValue.toFixed(2)}` : null,
+    p.appliedPromo ? `Promo ${p.appliedPromo.serverApplied ? "on ticket" : p.appliedPromo.code} MVR ${p.appliedPromo.discount.toFixed(2)}` : null,
+    p.appliedLoyalty ? `Points MVR ${p.appliedLoyalty.discount.toFixed(2)}` : null,
+    p.appliedGiftCard ? `Gift card MVR ${p.appliedGiftCard.discount.toFixed(2)}` : null,
+  ].filter((s): s is string => s !== null);
+  const showDiscountField = p.canApplyDiscount !== false && p.discountControls?.manual_enabled !== false;
+  const showRewards = p.canUseRewards !== false;
 
   // ── Two-tap confirm for the "Clear" button ────────────────────
   // One tap on Clear used to wipe the entire cart instantly — 10+
@@ -508,6 +537,27 @@ export function OrderCart(p: Props) {
           </button>
         )}
       </div>
+      {/* Grab bar on the phone sheet: tap, or drag down, to close it. */}
+      {sheetMode && (
+        <button
+          type="button"
+          className="pos-cart-sheet-handle"
+          data-testid="cart-sheet-handle"
+          aria-label="Close ticket"
+          onClick={() => setCartExpanded(false)}
+          onTouchStart={(e) => { sheetDragStartY.current = e.touches[0]?.clientY ?? null; }}
+          onTouchEnd={(e) => {
+            const start = sheetDragStartY.current;
+            const end = e.changedTouches[0]?.clientY;
+            sheetDragStartY.current = null;
+            if (start != null && end != null && end - start > 40) setCartExpanded(false);
+          }}
+          style={{ width: '100%', border: 'none', background: 'transparent', padding: '8px 0 4px', cursor: 'pointer', minHeight: 0 }}
+        >
+          <span aria-hidden="true" style={{ display: 'block', width: 40, height: 5, borderRadius: 999, background: C.border2, margin: '0 auto' }} />
+        </button>
+      )}
+
       {/* ── Resumed-ticket banner ─────────────────────────────────
             Unpaid: editable immediately; Save only when dirty.
             Paid online: view-only. Cancel re-holds held tickets. */}
@@ -578,6 +628,41 @@ export function OrderCart(p: Props) {
           <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>
             {isResumed ? `Order ${orderLabel}` : 'New Order'}
           </div>
+          {/* Save and Orders live up here now, not on a row of their own
+              in the footer: the header row had the room, the footer did
+              not. Owner, 2026-09-02. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {p.canHoldResume !== false && (
+          <button
+            onClick={p.onSaveTicket}
+            disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
+            title={isResumed ? 'Already a resumed ticket' : 'Save this ticket for later'}
+            aria-label="Save ticket"
+            style={{ ...smallBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed), flex: 'none', padding: '6px 10px', minHeight: 36 }}
+          >
+            🎫 Save
+          </button>
+          )}
+          {p.canViewActiveOrders !== false && (
+          <button
+            onClick={p.onOpenTickets}
+            disabled={p.isSubmitting}
+            aria-label={p.openTicketsCount > 0 ? `Active orders, ${p.openTicketsCount}` : 'Active orders'}
+            style={{ ...smallBtn(p.isSubmitting), flex: 'none', padding: '6px 10px', minHeight: 36, position: 'relative' }}
+          >
+            Orders
+            {p.openTicketsCount > 0 && (
+              <span
+                title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
+                style={{
+                  marginLeft: 6, padding: '1px 7px', borderRadius: 999,
+                  background: p.openTicketsCritical ? '#B91C1C' : '#D4813A',
+                  color: '#fff', fontSize: 11, fontWeight: 800,
+                }}
+              >{p.openTicketsCount > 99 ? '99+' : p.openTicketsCount}</span>
+            )}
+          </button>
+          )}
           <button
             onClick={handleClearTap}
             disabled={p.cartItems.length === 0 || lockedReadOnly}
@@ -596,8 +681,31 @@ export function OrderCart(p: Props) {
           >
             {clearArmed ? 'Tap again to clear' : 'Clear'}
           </button>
+          </div>
         </div>
 
+        {headerCollapsed ? (
+          <button
+            type="button"
+            data-testid="cart-context-chip"
+            onClick={() => setHeaderOpen(true)}
+            title="Change order type, table or customer"
+            style={{
+              width: '100%', minHeight: 40, padding: '6px 10px', borderRadius: 8,
+              border: `1px solid ${C.border}`, background: C.bg, color: C.text,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span aria-hidden="true" style={{ marginRight: 6 }}>{contextEmoji}</span>
+              {contextLabel}
+              {selectedTableName ? ` · ${selectedTableName}` : ''}
+              {` · ${p.attachedCustomer?.name?.trim() || 'Walk-in'}`}
+            </span>
+            <span aria-hidden="true" style={{ color: C.muted, fontSize: 12, flexShrink: 0 }}>Change ▾</span>
+          </button>
+        ) : (<>
         <div style={{ display: 'flex', flexWrap: 'wrap', background: C.bg, borderRadius: 8, padding: 3, gap: 3 }}>
           {onlineFulfillment && isResumed ? (
             <div style={{
@@ -848,38 +956,7 @@ export function OrderCart(p: Props) {
           />
         </div>
 
-        {/* Rewards drawer — gift card works for walk-ins; promo/loyalty
-            need an attached customer. Server apply still happens during
-            charge between createOrder and settleOrder. */}
-        {p.cartItems.length > 0 && p.canUseRewards !== false && (
-          <CustomerRewardsPanel
-            customer={p.attachedCustomer}
-            taxableSubtotal={p.taxableSubtotal}
-            cartLines={p.cartItems.map((item) => {
-              const unit =
-                item.price + item.modifiers.reduce((sum, m) => sum + m.price, 0);
-              return {
-                item_id: item.id,
-                quantity: item.quantity,
-                unit_price: unit,
-                total_price: Math.round(unit * item.quantity * 100) / 100,
-              };
-            })}
-            manualDiscountMvr={p.discountValue}
-            tenderRoom={p.cartGrandTotal ?? p.cartTotal + (p.appliedGiftCard?.discount ?? 0)}
-            applied={{
-              promo: p.appliedPromo,
-              loyalty: p.appliedLoyalty,
-              giftCard: p.appliedGiftCard,
-            }}
-            setAppliedPromo={p.setAppliedPromo}
-            setAppliedLoyalty={p.setAppliedLoyalty}
-            setAppliedGiftCard={p.setAppliedGiftCard}
-            orderId={p.resumedOrderId}
-            readOnly={lockedReadOnly}
-            canApplyGiftCard={p.canApplyDiscount !== false}
-          />
-        )}
+        </>)}
       </div>
 
       {/* ── Cart lines ───────────────────────────────────────────── */}
@@ -954,6 +1031,66 @@ export function OrderCart(p: Props) {
       {/* Padding lives in index.css so phones can tighten it — see
           .pos-cart-footer. */}
       <div className="pos-cart-footer" style={{ borderTop: `1px solid ${C.border}`, background: C.bg }}>
+        {/* Discounts & rewards — one bar; open it for the manual discount,
+            promo code, points and gift card. Server apply for the rewards
+            still happens during charge between createOrder and settleOrder. */}
+        {p.cartItems.length > 0 && (showDiscountField || showRewards) && (
+          <TicketAdjustments summary={adjustmentSummary} forceOpen={!!p.discountFieldError}>
+            {showDiscountField && (
+              <ManualDiscountField
+                discountAmount={p.discountAmount}
+                setDiscountAmount={p.setDiscountAmount}
+                discountReason={p.discountReason}
+                setDiscountReason={p.setDiscountReason}
+                discountReasonNote={p.discountReasonNote}
+                setDiscountReasonNote={p.setDiscountReasonNote}
+                discountControls={p.discountControls ?? {
+                  manual_enabled: true,
+                  max_percent: 100,
+                  max_fixed_mvr: 0,
+                  reason_required: false,
+                  reasons: [],
+                }}
+                discountFieldError={p.discountFieldError}
+                subtotal={p.cartSubtotal}
+                disabled={lockedReadOnly}
+                mutedColor={C.muted}
+                borderColor={C.border2}
+                textColor={C.text}
+              />
+            )}
+            {showRewards && (
+              <CustomerRewardsPanel
+                embedded
+                customer={p.attachedCustomer}
+                taxableSubtotal={p.taxableSubtotal}
+                cartLines={p.cartItems.map((item) => {
+                  const unit =
+                    item.price + item.modifiers.reduce((sum, m) => sum + m.price, 0);
+                  return {
+                    item_id: item.id,
+                    quantity: item.quantity,
+                    unit_price: unit,
+                    total_price: Math.round(unit * item.quantity * 100) / 100,
+                  };
+                })}
+                manualDiscountMvr={p.discountValue}
+                tenderRoom={p.cartGrandTotal ?? p.cartTotal + (p.appliedGiftCard?.discount ?? 0)}
+                applied={{
+                  promo: p.appliedPromo,
+                  loyalty: p.appliedLoyalty,
+                  giftCard: p.appliedGiftCard,
+                }}
+                setAppliedPromo={p.setAppliedPromo}
+                setAppliedLoyalty={p.setAppliedLoyalty}
+                setAppliedGiftCard={p.setAppliedGiftCard}
+                orderId={p.resumedOrderId}
+                readOnly={lockedReadOnly}
+                canApplyGiftCard={p.canApplyDiscount !== false}
+              />
+            )}
+          </TicketAdjustments>
+        )}
         {/* Subtotal / discount / tax breakdown.
             We render this whenever there's a discount OR tax (the most
             common case is GST/TGST on every item, so 99% of tickets land
@@ -1030,65 +1167,6 @@ export function OrderCart(p: Props) {
           </div>
         )}
 
-        {/* Discount — config-driven. Hidden when manual discounts are
-            disabled globally or the cashier lacks promotions.discounts.
-            Cap hint + reason chips come from POS bootstrap. */}
-        {p.canApplyDiscount !== false && p.discountControls?.manual_enabled !== false && (
-        <ManualDiscountField
-          discountAmount={p.discountAmount}
-          setDiscountAmount={p.setDiscountAmount}
-          discountReason={p.discountReason}
-          setDiscountReason={p.setDiscountReason}
-          discountReasonNote={p.discountReasonNote}
-          setDiscountReasonNote={p.setDiscountReasonNote}
-          discountControls={p.discountControls ?? {
-            manual_enabled: true,
-            max_percent: 100,
-            max_fixed_mvr: 0,
-            reason_required: false,
-            reasons: [],
-          }}
-          discountFieldError={p.discountFieldError}
-          subtotal={p.cartSubtotal}
-          disabled={lockedReadOnly}
-          mutedColor={C.muted}
-          borderColor={C.border2}
-          textColor={C.text}
-        />
-        )}
-
-        {/* Save ticket / Open tickets — Save is disabled in resumed
-            mode because it would create a brand new held order; the
-            cashier already has Cancel Resume + edit + Save flow. */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-          {p.canHoldResume !== false && (
-          <button
-            onClick={p.onSaveTicket}
-            disabled={p.cartItems.length === 0 || p.isSubmitting || isResumed}
-            title={isResumed ? 'Already a resumed ticket' : undefined}
-            style={smallBtn(p.cartItems.length === 0 || p.isSubmitting || isResumed)}
-          >
-            🎫 Save ticket
-          </button>
-          )}
-          <button
-            onClick={p.onOpenTickets}
-            disabled={p.isSubmitting}
-            style={{ ...smallBtn(p.isSubmitting), position: 'relative' }}
-          >
-            Active orders
-            {p.openTicketsCount > 0 && (
-              <span
-                title={p.openTicketsCritical ? "One or more tickets are critically aged" : undefined}
-                style={{
-                  marginLeft: 6, padding: '1px 8px', borderRadius: 999,
-                  background: p.openTicketsCritical ? '#B91C1C' : '#D4813A',
-                  color: '#fff', fontSize: 11, fontWeight: 800,
-                }}
-              >{p.openTicketsCount}</span>
-            )}
-          </button>
-        </div>
 
         {/* Retry-payment banner */}
         {p.pendingPaymentForOrderId !== null && (

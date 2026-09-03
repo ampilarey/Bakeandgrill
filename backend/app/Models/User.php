@@ -34,6 +34,7 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
         'pos_idle_lock_minutes',
+        'pos_cart_side',
     ];
 
     /**
