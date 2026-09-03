@@ -62,6 +62,27 @@ describe("ChargeOverlay quick note photos", () => {
     expect(screen.getByTestId("charge-quick-note-1000")).toBeTruthy();
   });
 
+  /**
+   * Owner, 2026-09-03: "when i click 100 note it enters as 10." The chips
+   * were photographs and nothing else, so a tap that landed on the wrong
+   * one left no trace of what had been entered. Every chip now says what it
+   * is worth.
+   */
+  it("writes the value on every note chip, not only the photo", () => {
+    render(
+      <ChargeOverlay
+        total={3}
+        submitting={false}
+        onClose={() => undefined}
+        onConfirm={vi.fn(async () => undefined)}
+      />,
+    );
+
+    for (const face of [5, 10, 20, 50, 100]) {
+      expect(screen.getByTestId(`charge-quick-note-${face}`)).toHaveTextContent(`MVR ${face}`);
+    }
+  });
+
   it("sums selected notes into Received and highlights both", async () => {
     const user = userEvent.setup();
     render(

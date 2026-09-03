@@ -441,8 +441,18 @@ html, body, #root {
   font-weight: 700;
 }
 .pos-charge-quick-btn--note {
-  /* Hug the note photo — no extra chrome under it. */
-  padding: 3px;
+  /* Hug the note photo, with room for the value under it. */
+  padding: 3px 3px 2px;
+}
+/* The photo says which note; this says what it is worth. A cashier must be
+ * able to read back what they just tapped on a money screen. */
+.pos-charge-quick-btn--note .pos-charge-quick-btn-label {
+  font-size: 11px;
+  line-height: 1.15;
+  color: #334155;
+}
+.pos-charge-quick-btn--note.is-selected .pos-charge-quick-btn-label {
+  color: #B86820;
 }
 .pos-charge-quick-btn.is-selected {
   border-color: #D4813A;
@@ -992,12 +1002,26 @@ html, body, #root {
     font-size: 22px !important;
     line-height: 1.05 !important;
   }
+  /* This column holds the tender buttons, the note photos and the numpad.
+   * It used to be forced `overflow: visible`, which on a short phone put
+   * the lower half of it OUTSIDE the sheet: the sheet is position:fixed, so
+   * nothing scrolls the spill into view, and what paints past the bottom
+   * lands under the Cancel / Confirm bar. Measured at 360x640 the column is
+   * 353px tall and its content needs about 480px. It scrolls again. */
   .pos-charge-tender {
     flex: 1 1 auto;
     min-height: 0;
     padding: 10px 10px 12px !important;
     gap: 8px !important;
-    overflow: visible !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Air between the tender row and the quick amounts: they are one tap
+   * apart, and hitting Transfer when you meant a note swaps the whole
+   * screen for one with no cash controls on it. */
+  .pos-charge-quick-amounts {
+    margin-top: 4px;
   }
   .pos-charge-tender > div > p {
     margin-bottom: 4px !important;

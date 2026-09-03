@@ -882,6 +882,12 @@ export function ChargeOverlay({
                               }
                             }}
                           />
+                          {/* Owner, 2026-09-03: "when i click 100 note it
+                              enters as 10." The chip was a photo and nothing
+                              else, so a tap that landed on the wrong one said
+                              nothing about it. The face value is now written
+                              on the chip as well. */}
+                          <span className="pos-charge-quick-btn-label">{fmtChip(face)}</span>
                         </button>
                       );
                     })}
