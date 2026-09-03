@@ -25,6 +25,31 @@ export type PrintPayload = {
     }>;
   };
   type?: string;
+  /** Public web receipt URL; printed as a QR at the foot of a receipt. */
+  receipt_url?: string | null;
+};
+
+/**
+ * ESC/POS for a QR code (GS ( k), as Epson and the compatible clones read
+ * it: model 2, module size 5, error correction M, then store and print.
+ * Every byte here is below 0x80, so it survives the string-to-bytes step
+ * whatever the encoding, as long as the payload stays under 128 bytes —
+ * a receipt link is about 80.
+ */
+export const escPosQr = (data: string): string => {
+  if (data.length === 0 || data.length > 120) return '';
+  const len = data.length + 3;
+  const pL = String.fromCharCode(len & 0xff);
+  const pH = String.fromCharCode((len >> 8) & 0xff);
+  return [
+    '\x1Ba\x01',                       // centre
+    '\x1D(k\x04\x00\x31\x41\x32\x00', // model 2
+    '\x1D(k\x03\x00\x31\x43\x05',     // module size 5
+    '\x1D(k\x03\x00\x31\x45\x31',     // error correction M
+    `\x1D(k${pL}${pH}\x31\x50\x30${data}`, // store
+    '\x1D(k\x03\x00\x31\x51\x30',     // print
+    '\x1Ba\x00',                       // left again
+  ].join('');
 };
 
 /**
@@ -110,6 +135,19 @@ export const buildReceiptTicket = (payload: PrintPayload): string => {
   if (payload.order.notes) {
     lines.push('-----------------------------\n');
     lines.push(`Notes: ${s(payload.order.notes)}\n`);
+  }
+  // The receipt's own link as a QR. Owner, 2026-09-02: one scan brings the
+  // order back up at the till, or opens feedback and complaints. The URL is
+  // ours, never customer text, so it does not go through the sanitizer —
+  // that would strip nothing useful and the QR bytes must be exact.
+  const qr = typeof payload.receipt_url === 'string' && /^https?:\/\/[^\s]+$/.test(payload.receipt_url)
+    ? escPosQr(payload.receipt_url)
+    : '';
+  if (qr) {
+    lines.push('-----------------------------\n');
+    lines.push('\x1Ba\x01Scan for your receipt\n\x1Ba\x00');
+    lines.push(qr);
+    lines.push('\n');
   }
   lines.push('\n\n\n');
   lines.push('\x1DVA0');

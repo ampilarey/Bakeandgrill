@@ -6,6 +6,7 @@ import {
   type LoyaltyAccountAdmin, type LoyaltySettings, type LoyaltyTierRow,
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { CounterSignModal } from '../components/CounterSignModal';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions,
   PageHeader, PageShell, Spinner, TableCard, TD, TH,
@@ -147,6 +148,7 @@ function ProgramSettingsPanel() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
+  const [showSign, setShowSign] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -304,7 +306,12 @@ function ProgramSettingsPanel() {
         />
       </div>
 
-      <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save program settings'}</Btn>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Btn onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save program settings'}</Btn>
+        {/* A "show your code" sign for the till. Owner, 2026-09-02. */}
+        <Btn variant="secondary" onClick={() => setShowSign(true)} data-testid="print-counter-sign">Print counter sign</Btn>
+      </div>
+      {showSign && <CounterSignModal onClose={() => setShowSign(false)} />}
     </Card>
   );
 }

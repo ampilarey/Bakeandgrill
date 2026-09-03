@@ -11,6 +11,7 @@ export type ScanResolution =
   | { kind: "gift_card"; code: string }
   | { kind: "promotion"; code: string; name: string; valid: boolean }
   | { kind: "customer"; customer: PosCustomer }
+  | { kind: "receipt"; order_id: number; order_number: string }
   | { kind: "unknown"; code: string };
 
 /** A code the till wants the rewards drawer to apply, from a scan. */

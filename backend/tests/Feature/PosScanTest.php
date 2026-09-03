@@ -124,6 +124,22 @@ class PosScanTest extends TestCase
             ->assertJsonPath('item.id', $item->id);
     }
 
+    public function test_the_qr_on_a_receipt_brings_the_order_back_up(): void
+    {
+        $order = \App\Models\Order::factory()->create(['order_number' => 'BG-20260902-0034']);
+        $receipt = \App\Models\Receipt::create(['order_id' => $order->id, 'token' => str_repeat('a1B2', 12)]);
+
+        $this->getJson('/api/pos/scan?code=' . rawurlencode(url('/receipts/' . $receipt->token)))
+            ->assertOk()
+            ->assertJsonPath('kind', 'receipt')
+            ->assertJsonPath('order_id', $order->id)
+            ->assertJsonPath('order_number', 'BG-20260902-0034');
+
+        $this->getJson('/api/pos/scan?code=' . $receipt->token)
+            ->assertOk()
+            ->assertJsonPath('kind', 'receipt');
+    }
+
     public function test_nothing_matching_is_unknown(): void
     {
         $this->getJson('/api/pos/scan?code=NOPE-1234')

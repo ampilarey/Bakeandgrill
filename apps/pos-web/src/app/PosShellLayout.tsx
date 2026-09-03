@@ -212,6 +212,11 @@ export function PosShellLayout() {
           void handleAttachCustomer(res.customer);
           order.flashNotice(`${res.customer.name ?? 'Customer'} attached to the ticket.`);
           return;
+        case 'receipt':
+          // The QR on a printed receipt: open that order in Receipts.
+          setReceiptsFocusOrderId(res.order_id);
+          setPane('receipts');
+          return;
         default:
           order.flashError(`Nothing matches "${code}".`);
       }

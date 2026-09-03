@@ -112,4 +112,18 @@
         @endif
     @endforeach
 @endif
+
+{{-- The receipt's own link as a QR, so the paper brings the order back up
+     at the till and reaches feedback and complaints in one scan. --}}
+<table style="width:100%;margin-top:18px;border-top:1px solid #E8E0D8;padding-top:10px;">
+    <tr>
+        <td style="width:110px;vertical-align:middle;">
+            <img src="{{ \App\Support\QrSvg::dataUri(url('/receipts/' . $receipt->token), 100) }}" alt="Receipt QR code" width="96" height="96" style="width:96px;height:96px;">
+        </td>
+        <td style="vertical-align:middle;font-size:11px;color:#6B5D4F;line-height:1.5;">
+            <strong style="color:#1C1408;">Scan to open this receipt</strong><br>
+            Show it at the counter to bring the order up, or scan it later for feedback and a complaint form.
+        </td>
+    </tr>
+</table>
 @endsection

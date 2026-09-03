@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\Promotion;
+use App\Models\Receipt;
 use App\Models\Variant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,18 @@ class PosScanController extends Controller
         $raw = trim((string) $request->query('code', ''));
         if ($raw === '' || mb_strlen($raw) > 200) {
             return response()->json(['kind' => 'unknown', 'code' => $raw]);
+        }
+
+        // The QR printed on a receipt: bring that order back up.
+        if (preg_match('#/receipts/([A-Za-z0-9]{40,64})(?:[/?\#]|$)#', $raw, $m) || preg_match('/^[A-Za-z0-9]{48}$/', $raw, $m)) {
+            $receipt = Receipt::query()->where('token', $m[1] ?? $m[0])->with('order:id,order_number')->first();
+            if ($receipt?->order) {
+                return response()->json([
+                    'kind' => 'receipt',
+                    'order_id' => (int) $receipt->order_id,
+                    'order_number' => (string) $receipt->order->order_number,
+                ]);
+            }
         }
 
         // A QR on a card may carry a link with the code in it.

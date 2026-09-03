@@ -69,3 +69,21 @@ test('builders still emit their own init and cut commands', () => {
   assert.ok(ticket.startsWith('\x1B@\n'), 'starts with ESC @ init');
   assert.ok(ticket.endsWith('\x1DVA0'), 'ends with GS V cut');
 });
+
+test('receipt prints its link as an ESC/POS QR when one is given', () => {
+  const payload = hostilePayload();
+  payload.receipt_url = 'https://bakeandgrill.mv/receipts/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKL';
+  const ticket = buildReceiptTicket(payload);
+  assert.ok(ticket.includes('Scan for your receipt'));
+  // GS ( k … store (cn=49, fn=80) carries the URL; print (fn=81) follows it.
+  assert.ok(ticket.includes(`${GS}(k`));
+  assert.ok(ticket.includes(`\x31\x50\x30${payload.receipt_url}`));
+  assert.ok(ticket.indexOf('\x31\x51\x30') > ticket.indexOf(payload.receipt_url));
+});
+
+test('receipt prints no QR without a link, or with one that is not a URL', () => {
+  assert.ok(!buildReceiptTicket(hostilePayload()).includes('Scan for your receipt'));
+  const bad = hostilePayload();
+  bad.receipt_url = `${GS}(k not a url`;
+  assert.ok(!buildReceiptTicket(bad).includes('Scan for your receipt'));
+});

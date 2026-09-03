@@ -45,6 +45,10 @@
         $waLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : 'https://wa.me/9609120011';
     }
     $receiptRef = $order->order_number ?? ($receipt->token ?? '');
+    // The page's own link as a QR: one scan reaches this receipt, its
+    // feedback and complaint form, and the till pulls the order back up.
+    $receiptUrl = url('/receipts/' . $receipt->token);
+    $receiptQr = \App\Support\QrSvg::dataUri($receiptUrl, 140);
     $mistakeTotal = $doc['balance_due'] > 0.009
         ? $doc['balance_due']
         : ($isPaid ? $netTotal : (float) $order->total);
@@ -162,6 +166,14 @@
                 @endforeach
             </div>
         @endif
+
+        <div class="doc-qr" data-testid="receipt-qr" style="display:flex;align-items:center;gap:14px;margin:18px 0 6px;padding:12px;border:1px solid var(--border, #E8E0D8);border-radius:12px;background:#fff;">
+            <img src="{{ $receiptQr }}" alt="QR code for this receipt" width="96" height="96" style="width:96px;height:96px;flex-shrink:0;">
+            <div style="font-size:13px;line-height:1.5;color:#6B5D4F;">
+                <strong style="display:block;color:#1C1408;">Scan to open this receipt</strong>
+                Show it at the counter to bring the order up, or scan it later for feedback and a complaint form.
+            </div>
+        </div>
 
         <div class="doc-actions">
             @if ($doc['show_pdf'])
