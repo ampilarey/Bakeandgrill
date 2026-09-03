@@ -223,10 +223,46 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(String(showToast.mock.calls[1][0])).toMatch(/modeSheet\.eat_here_unavailable/);
   });
 
+  /** Owner, 2026-09-03: "keep A–Z, price, up/down, grid, list etc. hidden … to keep more space for menu items." */
+  it('folds sort, layout and search behind one button in the top row, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    localStorage.removeItem('bg-menu-controls-open');
+    render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('menu-controls-toggle')).toBeInTheDocument();
+    });
+
+    // Closed by default: no sort/layout row taking space above the food.
+    expect(screen.queryByTestId('menu-controls')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Grid' })).toBeNull();
+    expect(screen.queryByTestId('menu-rail-side')).toBeNull();
+    expect(screen.getByTestId('menu-controls-toggle')).toHaveAttribute('aria-expanded', 'false');
+    // The day and mode controls stay — only the set-once ones fold.
+    expect(screen.getByTestId('mode-switch-pickup')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('menu-controls-toggle'));
+    expect(screen.getByTestId('menu-controls')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
+    expect(screen.getByTestId('menu-open-search')).toBeInTheDocument();
+    expect(screen.getByTestId('menu-rail-side')).toBeInTheDocument();
+    expect(screen.getByTestId('menu-controls-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(localStorage.getItem('bg-menu-controls-open')).toBe('1');
+
+    await user.click(screen.getByTestId('menu-controls-toggle'));
+    expect(screen.queryByTestId('menu-controls')).toBeNull();
+    expect(localStorage.getItem('bg-menu-controls-open')).toBe('0');
+  });
+
   /** Owner, 2026-09-03: a button beside Grid/List moves the rail to the other edge, remembered per device. */
   it('moves the category rail to the right and back, and remembers the choice', async () => {
     const user = userEvent.setup();
     localStorage.removeItem('bg-menu-rail-side');
+    localStorage.setItem('bg-menu-controls-open', '1');
     render(
       <MemoryRouter>
         <MenuPage />

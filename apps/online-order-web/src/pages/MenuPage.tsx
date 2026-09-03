@@ -213,6 +213,29 @@ export function MenuPage() {
   // left". The rail sits under the left thumb by default; a right-handed
   // customer can move it to the other edge. Remembered per device.
   const [railSide, setRailSide] = useState<RailSide>(() => readRailSide());
+  // Owner, 2026-09-03: "keep A–Z, price, up/down, grid, list etc. hidden …
+  // this to keep more space for menu items." Sort, dietary chips, view
+  // toggle and quick filters are set once and then sit in the way of the
+  // food, so they fold behind the one button in the top row. Remembered per
+  // device, so anyone who works with them open keeps them open.
+  const CONTROLS_KEY = 'bg-menu-controls-open';
+  const [controlsOpen, setControlsOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(CONTROLS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleControls = () => {
+    setControlsOpen((open) => {
+      const next = !open;
+      try {
+        localStorage.setItem(CONTROLS_KEY, next ? '1' : '0');
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   const toggleRailSide = () => {
     const next: RailSide = railSide === 'right' ? 'left' : 'right';
     setRailSide(next);
@@ -994,10 +1017,14 @@ export function MenuPage() {
               );
             })}
           </div>
+          {/* One button for search, sort and layout — everything that used to
+              take two rows above the food (owner, 2026-09-03). */}
           <button
             type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label={t('menu.search_aria')}
+            data-testid="menu-controls-toggle"
+            onClick={toggleControls}
+            aria-expanded={controlsOpen}
+            aria-controls="menu-controls"
             style={{
               minWidth: 44,
               minHeight: 44,
@@ -1008,8 +1035,8 @@ export function MenuPage() {
               gap: '0.4rem',
               border: '1.5px solid var(--color-border)',
               borderRadius: 'var(--radius-lg)',
-              background: searchQuery.trim() ? 'var(--color-primary-light)' : 'var(--color-surface)',
-              color: searchQuery.trim() ? 'var(--color-primary)' : 'var(--color-text)',
+              background: searchQuery.trim() || filtersActive ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: searchQuery.trim() || filtersActive ? 'var(--color-primary)' : 'var(--color-text)',
               fontFamily: 'inherit',
               fontWeight: 700,
               fontSize: '0.875rem',
@@ -1017,10 +1044,63 @@ export function MenuPage() {
               whiteSpace: 'nowrap',
             }}
           >
-            {t('menu.open_search')}
-            {searchQuery.trim() ? ` · "${searchQuery.trim()}"` : ''}
+            {t('menu.controls_toggle')}
+            {searchQuery.trim()
+              ? ` · "${searchQuery.trim()}"`
+              : filtersActive ? ` · ${t('menu.controls_on')}` : ''}
+            <span aria-hidden="true" style={{ fontSize: '0.7rem', opacity: 0.7 }}>
+              {controlsOpen ? '▾' : '▸'}
+            </span>
           </button>
+          {/* Wait time is status, not a control, so it stays in view. */}
+          {waitMinutes !== null && (
+            <div
+              role="status"
+              style={{
+                padding: '0.4rem 0.85rem',
+                borderRadius: 999,
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                border: '1px solid var(--color-border)',
+                fontSize: '0.8rem',
+                fontWeight: 800,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ~{waitMinutes} min wait
+            </div>
+          )}
         </div>
+
+        {controlsOpen && (
+        <div id="menu-controls" data-testid="menu-controls">
+        <button
+          type="button"
+          data-testid="menu-open-search"
+          onClick={() => setSearchOpen(true)}
+          aria-label={t('menu.search_aria')}
+          style={{
+            width: '100%',
+            minHeight: 44,
+            margin: '0.5rem 0 0.25rem',
+            padding: '0 0.9rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            border: '1.5px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--color-surface)',
+            color: searchQuery.trim() ? 'var(--color-text)' : 'var(--color-text-muted)',
+            fontFamily: 'inherit',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span aria-hidden="true">🔍</span>
+          {searchQuery.trim() ? `"${searchQuery.trim()}"` : t('menu.open_search')}
+        </button>
 
         <FilterChipsRow
           sortBy={sortBy}
@@ -1069,24 +1149,9 @@ export function MenuPage() {
             specialCount={specialCount}
             bestsellerCount={bestsellerCount}
           />
-          {waitMinutes !== null && (
-            <div
-              role="status"
-              style={{
-                padding: '0.4rem 0.85rem',
-                borderRadius: 999,
-                background: 'var(--color-primary-light)',
-                color: 'var(--color-primary)',
-                border: '1px solid var(--color-border)',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              ~{waitMinutes} min wait
-            </div>
-          )}
         </div>
+        </div>
+        )}
 
         {deliveryFallback && (
           <div

@@ -105,6 +105,8 @@ const TRANSLATIONS: Translations = {
   "menu.filter_specials": "Specials",
   "menu.filter_all_diets": "All diets",
   "menu.open_search": "Search",
+  "menu.controls_toggle": "Search & sort",
+  "menu.controls_on": "on",
   "menu.unavailable": "Unavailable",
   "menu.out_of_stock": "Sold out",
   "menu.sold_out_tomorrow": "Sold out for tomorrow",
