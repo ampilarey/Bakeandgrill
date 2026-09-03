@@ -27,6 +27,13 @@ type Props = {
  * the drawer, so "Done" only closes the dialog — there is nothing to save.
  * It sits on `z.cartModal`, below the scanner, so scanning a gift card from
  * inside it puts the camera on top rather than behind.
+ *
+ * Owner, 2026-09-03: "when numbers are entered, size changes. And when gift
+ * code is clicked the popup screen [gets] v bigger." On a phone the dialog
+ * is a fixed-height sheet (see `.pos-discounts-modal` in index.css) and only
+ * this body scrolls, so typing a digit or opening the gift-card fields moves
+ * what is inside it and never the dialog itself — the keypad above stays
+ * exactly where the thumb left it.
  */
 export function DiscountsModal({ summary, onClose, children }: Props) {
   const applied = summary.length > 0;
@@ -34,6 +41,7 @@ export function DiscountsModal({ summary, onClose, children }: Props) {
   return (
     <Overlay onEscape={onClose} zIndex={z.cartModal}>
       <div
+        className="pos-discounts-modal"
         data-testid="discounts-modal"
         style={{
           background: palette.panel, borderRadius: 16,
@@ -80,7 +88,11 @@ export function DiscountsModal({ summary, onClose, children }: Props) {
 
         <div
           data-testid="discounts-modal-body"
-          style={{ padding: "4px 16px 16px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}
+          style={{
+            padding: "4px 16px 16px",
+            flex: "1 1 auto", minHeight: 0,
+            overflowY: "auto", WebkitOverflowScrolling: "touch",
+          }}
         >
           {children}
         </div>

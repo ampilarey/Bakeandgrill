@@ -216,8 +216,16 @@ export function ManualDiscountField({
       {/* The other way of saying the same number, so a cashier who typed
           15% sees MVR 22.50 go on the ticket, and one who typed MVR 20
           sees it is 13.3%. */}
-      {equivalent && (
-        <div data-testid="discount-equivalent" style={{ marginTop: 4, fontSize: 11, color: mutedColor, textAlign: "right" }}>
+      {(equivalent || numpad) && (
+        <div
+          data-testid="discount-equivalent"
+          style={{
+            marginTop: 4, fontSize: 11, color: mutedColor, textAlign: "right",
+            // With the pad, this line comes and goes on every digit. Holding
+            // its row open keeps the chips under it still.
+            minHeight: numpad ? 15 : undefined,
+          }}
+        >
           {equivalent}
         </div>
       )}

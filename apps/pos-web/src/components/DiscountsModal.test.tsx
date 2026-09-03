@@ -44,6 +44,23 @@ describe("DiscountsModal", () => {
     expect(screen.getByTestId("discounts-modal-summary")).toHaveTextContent("Nothing applied yet");
   });
 
+  /**
+   * Owner, 2026-09-03: "when numbers are entered, size changes. And when
+   * gift code is clicked the popup screen [gets] v bigger." The body is the
+   * scroller and the dialog carries the class that fixes its height on a
+   * phone, so growing content moves what is inside it, not the dialog.
+   */
+  it("scrolls inside itself rather than growing with its content", () => {
+    render(
+      <DiscountsModal summary={[]} onClose={() => {}}>
+        <div />
+      </DiscountsModal>,
+    );
+    expect(screen.getByTestId("discounts-modal")).toHaveClass("pos-discounts-modal");
+    const body = screen.getByTestId("discounts-modal-body");
+    expect(body).toHaveStyle({ overflowY: "auto", flex: "1 1 auto" });
+  });
+
   /** A gift card scanned from inside the dialog must not open the camera
    *  behind it. */
   it("sits below the scanner's layer", () => {
@@ -89,6 +106,24 @@ describe("The discount number pad", () => {
     fireEvent.click(within(pad).getByRole("button", { name: "Digit 1" }));
     fireEvent.click(within(pad).getByRole("button", { name: "Digit 0" }));
     expect(screen.getByTestId("discount-equivalent")).toHaveTextContent("= MVR 20.00");
+  });
+
+  /** The keys must not shuffle under the thumb as the line above the chips
+   *  comes and goes on each digit. */
+  it("holds the equivalent line's row open so nothing below the pad jumps", () => {
+    const { view } = renderField();
+    expect(screen.getByTestId("discount-equivalent")).toHaveTextContent("");
+
+    view.rerender(
+      <ManualDiscountField
+        numpad
+        discountAmount="20"
+        setDiscountAmount={() => {}}
+        discountControls={controls}
+        subtotal={200}
+      />,
+    );
+    expect(screen.getByTestId("discount-equivalent")).toHaveTextContent("= 10.0% of MVR 200.00");
   });
 
   it("keeps the quick percent chips — faster than typing for the usual ones", () => {

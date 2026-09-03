@@ -1111,6 +1111,21 @@ html, body, #root {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Discounts & rewards dialog. Owner, 2026-09-03: "when numbers are entered,
+ * size changes. And when gift code is clicked the popup screen [gets] v
+ * bigger." Sized to its content, the dialog grew on every digit (the "= MVR
+ * 20.00" line appearing) and jumped when the gift-card fields opened — and a
+ * dialog that resizes takes the keypad with it, out from under the thumb.
+ *
+ * On a phone and an iPad in portrait it is a fixed-height sheet instead: the
+ * body inside it scrolls, so nothing the cashier types moves the dialog. On
+ * a wide till there is room to spare, so it stays snug to its content. */
+@media (max-width: 840px) {
+  .pos-discounts-modal {
+    height: min(92dvh, 860px);
+  }
+}
+
 /* Surfaces outside .pos-shell (login, lock, kitchen landing). */
 .pos-app-root {
   touch-action: manipulation;
