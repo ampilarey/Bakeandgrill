@@ -57,14 +57,14 @@ class ItemController extends Controller
      */
     public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability, SpecialPricingService $specialPricing, EffectivePriceService $effectivePricing)
     {
-        $isAdmin = $request->user() instanceof \App\Models\User
-                   && $request->user()->tokenCan('staff');
+        $isAdmin = $request->user('sanctum') instanceof \App\Models\User
+                   && $request->user('sanctum')->tokenCan('staff');
         // Cost price, margin and profit are owner-only (recipes.manage). A menu
         // manager sees the item and its selling price but not what it costs to
         // make — that stays with whoever holds the costing permission.
-        $canSeeCost = $request->user() instanceof \App\Models\User
+        $canSeeCost = $request->user('sanctum') instanceof \App\Models\User
                    && app(\App\Domains\Permissions\Services\PermissionService::class)
-                       ->hasPermission($request->user(), 'recipes.manage');
+                       ->hasPermission($request->user('sanctum'), 'recipes.manage');
         // Public /items route — POS passes view=pos without staff middleware.
         $isPosView = $request->query('view') === 'pos';
 
@@ -559,8 +559,8 @@ class ItemController extends Controller
         ItemAvailabilityService $availability,
         $id,
     ) {
-        $isAdmin = $request->user() instanceof \App\Models\User
-                   && $request->user()->tokenCan('staff');
+        $isAdmin = $request->user('sanctum') instanceof \App\Models\User
+                   && $request->user('sanctum')->tokenCan('staff');
 
         $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'];
         if (!$isAdmin) {
@@ -857,9 +857,9 @@ class ItemController extends Controller
             return response()->json(['message' => 'Nothing to save.'], 422);
         }
 
-        $canSeeCost = $request->user() instanceof \App\Models\User
+        $canSeeCost = $request->user('sanctum') instanceof \App\Models\User
             && app(\App\Domains\Permissions\Services\PermissionService::class)
-                ->hasPermission($request->user(), 'recipes.manage');
+                ->hasPermission($request->user('sanctum'), 'recipes.manage');
 
         $errors = $bulk->validate($changes, $canSeeCost);
         $variantErrors = $bulk->validateVariants($variantChanges, $canSeeCost);
@@ -927,8 +927,8 @@ class ItemController extends Controller
      */
     public function lookupByBarcode(Request $request, KitchenMenuResolver $kitchenMenuResolver, $barcode)
     {
-        $isStaff = $request->user() instanceof \App\Models\User
-            && $request->user()->tokenCan('staff');
+        $isStaff = $request->user('sanctum') instanceof \App\Models\User
+            && $request->user('sanctum')->tokenCan('staff');
 
         $weightGrams = null;
         $lookupBarcode = $barcode;
@@ -1130,7 +1130,7 @@ class ItemController extends Controller
     public function bulkStockCheck(Request $request): JsonResponse
     {
         $request->validate(['item_ids' => 'required|array|max:50', 'item_ids.*' => 'integer']);
-        $isStaff = $request->user()?->tokenCan('staff');
+        $isStaff = $request->user('sanctum')?->tokenCan('staff');
 
         $items = Item::whereIn('id', $request->input('item_ids', []))
             ->select(['id', 'name', 'stock_quantity', 'track_stock', 'availability_type', 'low_stock_threshold'])

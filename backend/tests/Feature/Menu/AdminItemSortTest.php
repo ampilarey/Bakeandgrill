@@ -74,6 +74,31 @@ class AdminItemSortTest extends TestCase
         $this->assertSame(['Bajiya', 'Kebab', 'Croissant'], $this->names('nonsense'), 'unknown sort falls back');
     }
 
+    /**
+     * The admin dashboard signs in with a session cookie, not a token. The
+     * staff check used to read the token ability only, so a session admin
+     * was served the public list and the sort was ignored (owner,
+     * 2026-09-03: "sort option is there but not sorting").
+     */
+    public function test_admin_signed_in_with_a_session_gets_the_sort_and_the_admin_list(): void
+    {
+        $role = Role::firstOrCreate(['slug' => 'owner'], ['name' => 'Owner', 'description' => '', 'is_active' => true]);
+        PermissionCatalogSync::sync();
+        $user = User::create([
+            'name' => 'Owner', 'email' => 'session-owner@test.local', 'password' => Hash::make('password'),
+            'role_id' => $role->id, 'is_active' => true,
+        ]);
+        $this->seedItems();
+        Item::factory()->create(['name' => 'Hidden', 'category_id' => Category::first()->id, 'is_active' => false]);
+
+        $res = $this->actingAs($user)->getJson('/api/items?admin=1&per_page=50&sort=name_desc')->assertOk();
+        $names = array_values(array_filter(
+            array_map(fn ($r) => $r['name'], $res->json('data')),
+            fn ($n) => in_array($n, ['Bajiya', 'Kebab', 'Croissant', 'Hidden'], true),
+        ));
+        $this->assertSame(['Kebab', 'Hidden', 'Croissant', 'Bajiya'], $names, 'sorted, and off-menu items are listed for staff');
+    }
+
     public function test_recently_updated_comes_first_under_updated(): void
     {
         $this->actingAsStaff();
