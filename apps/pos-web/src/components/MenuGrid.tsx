@@ -6,7 +6,7 @@ import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
 import {
-  autoTabKey, fitPillRow, flattenTabs, moveInList, newTabId, tabKey,
+  autoTabKey, fitPillRow, flattenTabs, moveInList, newTabId, tabKey, tabOpenAt,
   type QuickScope, type ScopedQuickTab,
 } from "../utils/quickTabs";
 import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
@@ -341,6 +341,11 @@ type StripPill = {
   onClick: () => void;
   caret?: boolean;
   muted?: boolean;
+  /**
+   * Out of its hours: it steps back behind More whatever the row width is,
+   * and comes back to the row when its hours start.
+   */
+  demoted?: boolean;
   /** Set for a cashier's quick tab, which is drawn and held differently. */
   quick?: { shared: boolean; onLongPress?: () => void; hint?: string };
 };
@@ -925,6 +930,13 @@ export function MenuGrid({
         // More however much room there is.
         const canAddOwnTab = quickEnabled && myTabs.length < MAX_QUICK_TABS;
         const quickLabel = (t: ScopedQuickTab) => `★ ${t.name}${t.items.length > 0 ? ` (${t.items.length})` : ''}`;
+        // Owner, 2026-09-03: a tab with hours steps back behind More outside
+        // them, so the front row is what is live now. It is never gone — a
+        // tap in More opens it at any hour — and it returns to the row by
+        // itself when its hours start, on the same one-minute clock that
+        // opens it. A tab with no hours is always on the row.
+        const now = new Date(clock);
+        const offHours = (t: ScopedQuickTab) => !!t.from && !!t.to && !tabOpenAt(t, now);
 
         const strip: StripPill[] = [
           ...allTabs.map((tab, index) => ({
@@ -949,8 +961,11 @@ export function MenuGrid({
                     count: tabsOf(tab.scope).length,
                   })
                   : undefined,
-              hint: index === 0 && allTabs.length === 1 ? 'Hold to rename or move' : undefined,
+              hint: offHours(tab)
+                ? `Opens ${tab.from}–${tab.to}`
+                : index === 0 && allTabs.length === 1 ? 'Hold to rename or move' : undefined,
             },
+            demoted: offHours(tab),
           })),
           ...(popularCount > 0 ? [{
             key: 'popular',
@@ -1003,11 +1018,15 @@ export function MenuGrid({
           }] : []),
         ];
 
-        const fit = fitPillRow(pillRowWidth, 'All', strip.map((p) => p.label), {
+        // Only the pills that are in play compete for the row; an off-hours
+        // tab is behind More however much room there is.
+        const fittable = strip.filter((p) => !p.demoted);
+        const fit = fitPillRow(pillRowWidth, 'All', fittable.map((p) => p.label), {
           moreLabel: `More (${strip.length})`,
         });
-        let visible = fit.visible.map((i) => strip[i]);
-        let hidden = fit.hidden.map((i) => strip[i]);
+        const onRow = new Set(fit.visible.map((i) => fittable[i].key));
+        let visible = strip.filter((p) => onRow.has(p.key));
+        let hidden = strip.filter((p) => !onRow.has(p.key));
         // Whatever is switched on keeps a pill of its own rather than hiding
         // behind More: it swaps in for the last one that fits.
         const activeHidden = hidden.find((p) => p.active);

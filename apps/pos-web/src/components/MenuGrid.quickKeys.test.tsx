@@ -15,6 +15,7 @@
  *   - "🔥 Now" lists what sells at this hour, only when the server sent a list
  *   - the strip fits the screen: "All" pinned left, "More" pinned right,
  *     and whatever is over the line behind More
+ *   - a tab outside its hours waits behind More until they start
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -333,6 +334,38 @@ describe("More", () => {
     fireEvent.click(pill(/^More/));
     const more = screen.getByTestId("pos-more-categories");
     expect(within(more).getByRole("button", { name: /\+ Tab/ })).toBeInTheDocument();
+  });
+
+  /**
+   * Owner, 2026-09-03: "will the tab disappear during off time?" — not gone,
+   * moved: an off-hours tab steps back behind More so the row is what is
+   * live now, and comes back to the row when its hours start.
+   */
+  it("keeps an off-hours tab behind More, and puts it back on the row in its hours", () => {
+    vi.useFakeTimers({ now: new Date(2026, 8, 2, 13, 0) });
+    renderGrid({ quickLayout: { shared: [], mine: [
+      tab("m1", "Lunch", [bajiya.id], "12:00", "14:00"),
+      tab("m2", "Late", [tea.id], "22:00", "02:00"),
+      tab("m3", "Anytime", [gulha.id]),
+    ] } });
+
+    const row = screen.getByTestId("pos-pill-row");
+    // 13:00 — Lunch is its hour; the one with no hours is always on the row.
+    expect(within(row).getByRole("button", { name: /Lunch/ })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: /Anytime/ })).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: /Late/ })).toBeNull();
+
+    // Not gone — behind More, saying when it opens, and it still opens on a tap.
+    fireEvent.click(within(row).getByRole("button", { name: /^More/ }));
+    const late = within(screen.getByTestId("pos-more-categories")).getByRole("button", { name: /Late/ });
+    expect(late).toHaveAttribute("title", "Opens 22:00–02:00");
+    fireEvent.click(late);
+    expect(tileNames()).toEqual(["Black Tea"]);
+
+    // 22:00 — its hours start and it takes its place on the row again.
+    act(() => { vi.setSystemTime(new Date(2026, 8, 2, 22, 0)); vi.advanceTimersByTime(60_000); });
+    expect(within(screen.getByTestId("pos-pill-row")).getByRole("button", { name: /Late/ })).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("has no More at all on a till without Quick tabs and with room to spare", () => {
