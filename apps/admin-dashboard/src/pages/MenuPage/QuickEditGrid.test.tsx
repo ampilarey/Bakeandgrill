@@ -276,6 +276,24 @@ describe('QuickEditGrid sizes', () => {
     expect(screen.getByTestId('active-summary-5')).toHaveTextContent('1/2 sizes');
   });
 
+  /** Owner, 2026-09-03: "if there is a variant, selling today, stock, on menu etc. should be only for the variant." */
+  it('offers the per-sale switches and stock on the sizes only, not on the dish row', () => {
+    renderGrid({ initialItems: [sized, item({ id: 6, name: 'Plain' })] });
+
+    // Sized dish: no dish-level inputs, only what the sizes add up to.
+    expect(screen.queryByLabelText('Selling today for Beetle leaf')).toBeNull();
+    expect(screen.queryByLabelText('On menu for Beetle leaf')).toBeNull();
+    expect(screen.queryByLabelText('Stock for Beetle leaf')).toBeNull();
+    expect(screen.getByTestId('available-summary-3')).toHaveTextContent('2/2 sizes');
+    expect(screen.getByTestId('stock-per-size-3')).toHaveTextContent('per size');
+    expect(screen.getByLabelText('Selling today for Beetle leaf — Full')).toBeInTheDocument();
+    expect(screen.getByLabelText('Stock for Beetle leaf — Half')).toBeInTheDocument();
+
+    // A dish without sizes keeps its own.
+    expect(screen.getByLabelText('Selling today for Plain')).toBeInTheDocument();
+    expect(screen.getByLabelText('Stock for Plain')).toBeInTheDocument();
+  });
+
   it('leaves a dish with no sizes alone', () => {
     renderGrid({ initialItems: [item({ id: 6, name: 'Plain' })] });
 

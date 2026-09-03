@@ -844,6 +844,9 @@ function NewCell({
   );
 }
 
+/** Columns a size owns once a dish has sizes; the dish row shows a summary. */
+const SIZE_OWNED_COLUMNS = new Set(['available', 'active', 'cost', 'track_stock', 'stock', 'low_stock_threshold']);
+
 function ItemCell({
   column, item, sizes, isOpen, onToggleExpanded, categories, menuGroups,
   value, dirty, errors, onChange,
@@ -935,18 +938,58 @@ function ItemCell({
     );
   }
 
-  // The two switches on a sized dish are a master and a set of per-size ones,
-  // and drawn as bare ticks they look like the same control repeated — the
-  // owner read them that way. Unlike price, the dish-level box is not dead
-  // weight: it is checked before the sizes are, so unticking it stops every
-  // size at once. So both stay, and the dish's box says what the sizes under
-  // it add up to.
-  const summary = (column.key === 'available' || column.key === 'active')
-    ? sizeSummary(column.key, sizes)
-    : null;
+  // Owner, 2026-09-03: "if there is a variant, selling today, stock, on menu
+  // etc. should be only for the variant, not for the main item." A sized dish
+  // sells by its sizes, so the dish row carries no input for anything a size
+  // owns — it only says what the sizes under it add up to. The dish-level
+  // switches still exist (the editor has them) but are not offered here,
+  // where they read as one more tick in the same column.
+  const liveSizes = sizes.filter((v) => v.is_active !== false);
+  if (liveSizes.length > 0 && SIZE_OWNED_COLUMNS.has(column.key)) {
+    if (column.key === 'available' || column.key === 'active') {
+      const summary = sizeSummary(column.key, sizes);
+      return (
+        <td style={{ ...cell, textAlign: 'center' }} title={summary?.title}>
+          <div
+            data-testid={`${column.key}-summary-${item.id}`}
+            style={{
+              fontSize: 11, lineHeight: 1.3,
+              color: summary?.stranded ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+            }}
+          >
+            {summary?.text ?? '—'}
+          </div>
+        </td>
+      );
+    }
+    if (column.key === 'cost') {
+      const costs = liveSizes.map((v) => Number(v.cost)).filter((n) => Number.isFinite(n) && n > 0);
+      const min = costs.length ? Math.min(...costs) : null;
+      const max = costs.length ? Math.max(...costs) : null;
+      return (
+        <td
+          style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }}
+          title="Set by the sizes below"
+          data-testid={`cost-range-${item.id}`}
+        >
+          {min === null || max === null ? '—' : min === max ? min.toFixed(2) : `${min.toFixed(2)}–${max.toFixed(2)}`}
+          <div style={{ fontSize: 10, color: 'var(--color-text-muted)', lineHeight: 1.3 }}>from sizes</div>
+        </td>
+      );
+    }
+    return (
+      <td
+        style={{ ...cell, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 11 }}
+        title="Set per size below"
+        data-testid={`${column.key}-per-size-${item.id}`}
+      >
+        per size
+      </td>
+    );
+  }
 
   return (
-    <td style={cell} title={summary?.title}>
+    <td style={cell}>
       <Editor
         column={column}
         label={label}
@@ -957,21 +1000,6 @@ function ItemCell({
         menuGroups={menuGroups}
         onChange={onChange}
       />
-      {summary && (
-        <div
-          data-testid={`${column.key}-summary-${item.id}`}
-          style={{
-            fontSize: 10, lineHeight: 1.3, textAlign: 'center', marginTop: 2,
-            // A dish left on while every size under it is off is not selling,
-            // whatever its own tick says. That contradiction is worth a colour.
-            color: summary.stranded && value !== false
-              ? 'var(--color-danger)'
-              : 'var(--color-text-muted)',
-          }}
-        >
-          {summary.text}
-        </div>
-      )}
       {errors && <FieldError messages={errors} />}
     </td>
   );
