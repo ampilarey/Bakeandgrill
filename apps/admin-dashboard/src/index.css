@@ -5179,6 +5179,25 @@ work area is a single column that
 .menu-items-search { flex: 1 1 240px; min-width: 0; }
 .menu-items-category { flex: 0 1 220px; min-width: 0; cursor: pointer; }
 .menu-items-sort { flex: 0 1 190px; min-width: 0; cursor: pointer; }
+
+/* Sortable column headers on the item table: the header text is the button. */
+.menu-item-sort-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menu-item-sort-th:hover { color: var(--color-primary); }
+.menu-item-sort-th.is-on { color: var(--color-primary); }
+.menu-item-sort-th__arrow { font-size: 11px; opacity: 0.55; }
+.menu-item-sort-th.is-on .menu-item-sort-th__arrow { opacity: 1; }
 .menu-items-catering {
   display: inline-flex;
   align-items: center;

@@ -252,6 +252,35 @@ export function MenuItemTable({
 
   const actionProps = { canManage, canSeeCost, onEditItem, onDeleteItem, onBarcodeLabel, onViewRecipe };
 
+  // Owner, 2026-09-03: "when I click Item, it changes from A–Z to Z–A".
+  // A header click steps asc → desc → back to the menu order; columns with
+  // one direction step asc → menu order.
+  const sortableTh = (
+    label: string,
+    asc: AdminItemSort,
+    desc: AdminItemSort | null,
+    className?: string,
+    title?: string,
+  ) => {
+    const state = sort === asc ? 'ascending' : desc && sort === desc ? 'descending' : 'none';
+    const next: AdminItemSort = state === 'none' ? asc : state === 'ascending' && desc ? desc : 'menu';
+    const arrow = state === 'ascending' ? '↑' : state === 'descending' ? '↓' : '↕';
+    return (
+      <th scope="col" className={className} aria-sort={state} title={title}>
+        <button
+          type="button"
+          className={`menu-item-sort-th${state !== 'none' ? ' is-on' : ''}`}
+          data-testid={`sort-th-${asc}`}
+          onClick={() => onSortChange(next)}
+          title={state === 'none' ? `Sort by ${label}` : state === 'ascending' && desc ? `Sort by ${label}, reversed` : 'Back to menu order'}
+        >
+          {label}
+          <span className="menu-item-sort-th__arrow" aria-hidden="true">{arrow}</span>
+        </button>
+      </th>
+    );
+  };
+
   const snooze = (item: MenuItem) => (
     <ItemSnoozeControls
       compact
@@ -363,10 +392,10 @@ export function MenuItemTable({
                 <table className="menu-item-table" data-testid="menu-item-table">
                   <thead>
                     <tr>
-                      <th scope="col" className="menu-item-col-name">Item</th>
-                      <th scope="col">Category</th>
-                      <th scope="col" className="menu-item-col-price">Price</th>
-                      <th scope="col" title="Whether the item can be ordered right now">Selling today</th>
+                      {sortableTh('Item', 'name', 'name_desc', 'menu-item-col-name')}
+                      {sortableTh('Category', 'category', null)}
+                      {sortableTh('Price', 'price', 'price_desc', 'menu-item-col-price')}
+                      {sortableTh('Selling today', 'unavailable', null, undefined, 'Whether the item can be ordered right now')}
                       <th scope="col" title="Off-menu items are hidden from customers entirely">On menu</th>
                       <th scope="col" className="menu-item-col-actions"><span className="sr-only">Actions</span></th>
                     </tr>
