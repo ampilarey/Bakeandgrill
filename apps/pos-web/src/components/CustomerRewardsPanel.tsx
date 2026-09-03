@@ -9,6 +9,7 @@ import type { PosCustomer, PosCustomerSummary } from "../api";
 import type { PromoPreviewLine } from "../api/loyalty";
 import { removeGiftCardFromOrder } from "../api/loyalty";
 import { previewGiftCardDiscount } from "../utils/giftCardPreview";
+import type { ScanRequest } from "../api/scan";
 import { ApiRequestError } from "@shared/api";
 
 type AppliedPromo = {
@@ -55,6 +56,10 @@ type Props = {
   canApplyGiftCard?: boolean;
   /** Rendered inside the Discounts & rewards drawer: no header of its own, always open. */
   embedded?: boolean;
+  /** A promo or gift code that arrived by scan; applied when the nonce changes. */
+  scanRequest?: ScanRequest | null;
+  /** Open the camera for one of the code fields. */
+  onScanRequest?: (target: "promo" | "gift") => void;
 };
 
 const COLOR = {
@@ -100,6 +105,8 @@ export function CustomerRewardsPanel({
   readOnly = false,
   canApplyGiftCard = true,
   embedded = false,
+  scanRequest = null,
+  onScanRequest,
 }: Props) {
   const [summary, setSummary] = useState<PosCustomerSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -158,8 +165,8 @@ export function CustomerRewardsPanel({
   const creditBalanceMvr = (summary?.credit?.balance_laar ?? 0) / 100;
   const hasCustomer = !!customer;
 
-  const handleApplyPromo = async () => {
-    const code = promoCode.trim().toUpperCase();
+  const handleApplyPromo = async (codeArg?: string) => {
+    const code = (codeArg ?? promoCode).trim().toUpperCase();
     if (!code) return;
     if (!orderId && cartLines.length === 0) {
       setPromoError("Add items before applying a promo.");
@@ -191,6 +198,23 @@ export function CustomerRewardsPanel({
       setPromoBusy(false);
     }
   };
+
+  // A code that came in by scan is put in its field and applied at once, so
+  // the cashier sees what was read and what it did.
+  useEffect(() => {
+    if (!scanRequest || readOnly) return;
+    if (scanRequest.kind === "promo") {
+      setPromoCode(scanRequest.code);
+      setPromoError("");
+      void handleApplyPromo(scanRequest.code);
+    } else {
+      setGiftCode(scanRequest.code);
+      setGiftError("");
+      void handleApplyGiftCard(scanRequest.code);
+    }
+    // The nonce is the event; the handlers read everything else fresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanRequest?.nonce]);
 
   const handleApplyLoyalty = async () => {
     const points = Number.parseInt(loyaltyPoints, 10);
@@ -236,8 +260,8 @@ export function CustomerRewardsPanel({
     }
   };
 
-  const handleApplyGiftCard = async () => {
-    const code = giftCode.trim().toUpperCase();
+  const handleApplyGiftCard = async (codeArg?: string) => {
+    const code = (codeArg ?? giftCode).trim().toUpperCase();
     if (!code) return;
     setGiftBusy(true);
     setGiftError("");
@@ -438,9 +462,14 @@ export function CustomerRewardsPanel({
                     disabled={!!applied.promo || readOnly}
                     style={fieldStyle}
                   />
+                  {onScanRequest && !applied.promo && !readOnly && (
+                    <button type="button" onClick={() => onScanRequest("promo")} aria-label="Scan promo or discount card" title="Scan with the camera" style={ghostBtn(false)}>
+                      📷
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleApplyPromo}
+                    onClick={() => void handleApplyPromo()}
                     disabled={!promoCode.trim() || promoBusy || !!applied.promo || readOnly}
                     style={primaryBtn(!promoCode.trim() || promoBusy || !!applied.promo || readOnly)}
                   >
@@ -522,9 +551,14 @@ export function CustomerRewardsPanel({
                   autoCapitalize="characters"
                   autoComplete="off"
                 />
+                {onScanRequest && !applied.giftCard && !readOnly && (
+                  <button type="button" onClick={() => onScanRequest("gift")} aria-label="Scan gift card" title="Scan with the camera" style={ghostBtn(false)}>
+                    📷
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleApplyGiftCard}
+                  onClick={() => void handleApplyGiftCard()}
                   disabled={!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly}
                   style={primaryBtn(!giftCode.trim() || giftBusy || !!applied.giftCard || readOnly)}
                 >

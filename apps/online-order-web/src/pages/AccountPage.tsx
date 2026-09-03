@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -251,6 +252,21 @@ export function AccountPage() {
         <PageHeader title={t('account.title')} />
         <div style={{ padding: '0 var(--page-gutter)', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <AuthBlock onSuccess={handleAuthSuccess} />
+          {/* The till scans this to attach the account to a counter order.
+              Owner, 2026-09-02. The code carries the phone number the
+              account is registered under; nothing more. */}
+          {isAuthenticated && customer?.phone && (
+            <SectionCard title={t('account.my_code')}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }} data-testid="account-my-code">
+                <div style={{ padding: 10, background: '#fff', borderRadius: 12, border: '1px solid var(--color-border, #E8E0D8)' }}>
+                  <QRCodeSVG value={`BG-C-${customer.phone}`} size={132} />
+                </div>
+                <p style={{ margin: 0, flex: '1 1 160px', fontSize: 14, lineHeight: 1.5, color: 'var(--color-text-secondary, #6B5D4F)' }}>
+                  {t('account.my_code_hint')}
+                </p>
+              </div>
+            </SectionCard>
+          )}
           <SectionCard title={t('account.prayer_times')}>
             <div style={{ overflow: 'visible' }}>
               <PrayerBar />

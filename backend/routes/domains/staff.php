@@ -28,6 +28,10 @@ if (routes_domain_section_is('staff', 'protected') && !routes_domain_loaded('sta
     // POS menu — channel refetch after order-type change (no shift payload)
     Route::get('/pos/menu', [App\Http\Controllers\Api\PosMenuController::class, 'index'])
         ->middleware('throttle:120,1');
+    // Anything the till scans — gun, camera or search box — resolved to an
+    // item, gift card, promotion or customer.
+    Route::get('/pos/scan', [App\Http\Controllers\Api\PosScanController::class, 'resolve'])
+        ->middleware(['permission:pos.ring_sales', 'throttle:120,1']);
     // Quick tabs on the till — a cashier's own layout, the shared one (menu
     // managers), and copying another cashier's. Read side rides in the menu
     // payload.

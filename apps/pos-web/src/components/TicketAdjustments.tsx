@@ -6,6 +6,8 @@ type Props = {
   summary: string[];
   /** Open the drawer whether the cashier asked or not — a field has an error to show. */
   forceOpen?: boolean;
+  /** Changes when something was applied from outside (a scan); the drawer opens to show it. */
+  openSignal?: number;
   children: ReactNode;
 };
 
@@ -21,11 +23,14 @@ type Props = {
  * change any of them; it takes effect the moment it is applied, and the
  * totals rows above Charge show every line either way.
  */
-export function TicketAdjustments({ summary, forceOpen = false, children }: Props) {
+export function TicketAdjustments({ summary, forceOpen = false, openSignal = 0, children }: Props) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true);
+  }, [openSignal]);
 
   const applied = summary.length > 0;
 

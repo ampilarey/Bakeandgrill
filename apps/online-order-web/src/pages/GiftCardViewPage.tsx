@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLanguage } from '../context/LanguageContext';
 import { PageHeader } from '../components/shell/PageHeader';
@@ -172,6 +173,12 @@ export function GiftCardViewPage() {
 
             <section style={codeSection}>
               <p style={codeLabel}>{t('gift.view_code_label')}</p>
+              {/* The counter scans this instead of typing the code. Owner, 2026-09-02. */}
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 10px' }} data-testid="gift-card-qr">
+                <div style={{ padding: 10, background: '#fff', borderRadius: 12, border: '1px solid var(--color-border, #E8E0D8)' }}>
+                  <QRCodeSVG value={data.code} size={148} aria-label={t('gift.qr_label')} />
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => void copyCode()}

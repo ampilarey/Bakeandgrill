@@ -8,6 +8,7 @@ import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { ManualDiscountField } from "./ManualDiscountField";
 import { TicketAdjustments } from "./TicketAdjustments";
+import type { ScanRequest } from "../api/scan";
 import { QtyStepper } from "./cart/QtyStepper";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { palette } from "../theme";
@@ -171,6 +172,10 @@ type Props = {
 
   canRingSales?: boolean;
   canHoldResume?: boolean;
+  /** A promo or gift code that arrived by scan; the drawer applies it and opens. */
+  scanRequest?: ScanRequest | null;
+  /** Open the camera for a code field in the drawer. */
+  onOpenScanner?: (target: "promo" | "gift") => void;
   canViewActiveOrders?: boolean;
   canApplyDiscount?: boolean;
   canUseRewards?: boolean;
@@ -1035,7 +1040,7 @@ export function OrderCart(p: Props) {
             promo code, points and gift card. Server apply for the rewards
             still happens during charge between createOrder and settleOrder. */}
         {p.cartItems.length > 0 && (showDiscountField || showRewards) && (
-          <TicketAdjustments summary={adjustmentSummary} forceOpen={!!p.discountFieldError}>
+          <TicketAdjustments summary={adjustmentSummary} forceOpen={!!p.discountFieldError} openSignal={p.scanRequest?.nonce ?? 0}>
             {showDiscountField && (
               <ManualDiscountField
                 discountAmount={p.discountAmount}
@@ -1087,6 +1092,8 @@ export function OrderCart(p: Props) {
                 orderId={p.resumedOrderId}
                 readOnly={lockedReadOnly}
                 canApplyGiftCard={p.canApplyDiscount !== false}
+                scanRequest={p.scanRequest ?? null}
+                onScanRequest={p.onOpenScanner}
               />
             )}
           </TicketAdjustments>

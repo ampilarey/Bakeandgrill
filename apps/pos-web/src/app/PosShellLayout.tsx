@@ -30,6 +30,10 @@ import { paneTitle, Banner, NoticeBanner, shouldShowStatusBanner } from './posUi
 import { HeaderShortcuts, type ShortcutTarget } from '../components/HeaderShortcuts';
 import { ShortcutPrompt, type ShortcutPromptState } from '../components/ShortcutPrompt';
 import { useHeaderShortcuts, isPane, MAX_HEADER_SHORTCUTS } from '../hooks/useHeaderShortcuts';
+import { useScanWedge } from '../hooks/useScanWedge';
+import { ScanSheet } from '../components/ScanSheet';
+import { normalizeScannedCode, resolveScan, type ScanRequest } from '../api/scan';
+import type { Item, Variant } from '../types';
 import type { Pane } from './types';
 
 // Secondary panes — not needed on the cashier first screen (sales + cart).
@@ -146,9 +150,79 @@ export function PosShellLayout() {
     chargeWalletEligible, chargeWalletAvailable, showSaveTicket, setShowSaveTicket,
     showCloseShift, setShowCloseShift, showOpenShift, setShowOpenShift, openShiftBusy,
     receiptsFocusOrderId, setReceiptsFocusOrderId, idleLockMinutes, setIdleLockMinutes,
-    cartSide, setCartSide,
+    cartSide, setCartSide, isOnline,
     onlineOrderWatcher,
   } = app;
+
+  // ── Scanning ────────────────────────────────────────────────────────────
+  // Owner, 2026-09-02: a gun, the camera or the search box hand the till a
+  // code. This is the one place that decides what it was. Items come from
+  // the cached menu first, so a gun works offline; anything else asks the
+  // server, which answers item / gift card / promotion / customer.
+  const [scanRequest, setScanRequest] = useState<ScanRequest | null>(null);
+  const [scanner, setScanner] = useState<null | 'any' | 'promo' | 'gift'>(null);
+
+  const findLocalItem = (code: string): { item: Item; variant: Variant | null } | null => {
+    for (const item of menu.items) {
+      const it = item as Item & { barcode?: string | null; sku?: string | null };
+      if (it.barcode === code || it.sku === code) return { item, variant: null };
+      const hit = (item.variants ?? []).find((v) => {
+        const vv = v as Variant & { barcode?: string | null; sku?: string | null };
+        return vv.barcode === code || vv.sku === code;
+      });
+      if (hit) return { item, variant: hit };
+    }
+    return null;
+  };
+
+  const routeScannedCode = async (raw: string, target?: 'promo' | 'gift') => {
+    const code = normalizeScannedCode(raw);
+    if (!code) return;
+    if (target) {
+      setScanRequest({ kind: target, code, nonce: Date.now() });
+      return;
+    }
+    const local = findLocalItem(code);
+    if (local) {
+      cart.addToCart(local.item, local.variant ? { variant: local.variant } : undefined);
+      return;
+    }
+    if (/^GC-\d{6,8}-\d{4}$/i.test(code)) {
+      setScanRequest({ kind: 'gift', code, nonce: Date.now() });
+      return;
+    }
+    if (!isOnline) {
+      order.flashError('Nothing on the menu has that code, and the till is offline.');
+      return;
+    }
+    try {
+      const res = await resolveScan(code);
+      switch (res.kind) {
+        case 'item':
+          cart.addToCart(res.item, res.variant ? { variant: res.variant } : undefined);
+          return;
+        case 'gift_card':
+          setScanRequest({ kind: 'gift', code: res.code, nonce: Date.now() });
+          return;
+        case 'promotion':
+          if (!res.valid) { order.flashError(`${res.name} has expired or is not active.`); return; }
+          setScanRequest({ kind: 'promo', code: res.code, nonce: Date.now() });
+          return;
+        case 'customer':
+          void handleAttachCustomer(res.customer);
+          order.flashNotice(`${res.customer.name ?? 'Customer'} attached to the ticket.`);
+          return;
+        default:
+          order.flashError(`Nothing matches "${code}".`);
+      }
+    } catch {
+      order.flashError('Could not look that code up.');
+    }
+  };
+
+  useScanWedge((code) => { void routeScannedCode(code); }, {
+    enabled: pane === 'sales' && shiftOpen && scanner === null,
+  });
 
   // ── Header shortcuts ────────────────────────────────────────────────────
   // Pinned by press-and-hold in the drawer, removed the same way in the header.
@@ -480,6 +554,8 @@ export function PosShellLayout() {
               packagingEligible={orderType !== "Dine-in"}
             />
             <OrderCart
+              scanRequest={scanRequest}
+              onOpenScanner={(target) => setScanner(target)}
               orderType={orderType}
               setOrderType={handleOrderTypeToggle}
               deliveryDetails={deliveryDetails}
@@ -654,6 +730,8 @@ export function PosShellLayout() {
               barcode={order.barcode}
               setBarcode={order.setBarcode}
               onBarcodeSubmit={(e) => order.handleBarcodeSubmit(e, menu.items, cart.addToCart)}
+              onScanCode={(code) => { void routeScannedCode(code); }}
+              onOpenScanner={() => setScanner('any')}
               // Lock the menu only for paid online view-only resumes.
               readOnly={order.resumedOrderId !== null && !order.isEditingActive}
               onRefreshMenu={refreshAll}
@@ -921,6 +999,21 @@ export function PosShellLayout() {
           setPane(id as Pane);
         }}
       />
+
+      {scanner && (
+        <ScanSheet
+          title={scanner === 'gift' ? 'Scan gift card' : scanner === 'promo' ? 'Scan promo or discount card' : 'Scan a code'}
+          hint={scanner === 'any'
+            ? 'An item barcode adds it to the ticket. A gift card, discount card or customer code is applied to the ticket.'
+            : 'Point the camera at the QR code or barcode on the card.'}
+          onScan={(code) => {
+            const target = scanner === 'any' ? undefined : scanner;
+            setScanner(null);
+            void routeScannedCode(code, target);
+          }}
+          onClose={() => setScanner(null)}
+        />
+      )}
 
       {showPreferences && (
         <PosPreferencesModal

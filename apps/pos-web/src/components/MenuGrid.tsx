@@ -11,6 +11,7 @@ import {
 } from "../utils/quickTabs";
 import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
 import { QuickTabPrompt, type QuickTabPromptResult, type QuickTabPromptState } from "./QuickTabPrompt";
+import { looksLikeScanCode } from "../api/scan";
 
 /** Room on a Quick tab, and tabs per layout. Mirror PosQuickKeyService. */
 export const MAX_QUICK_KEYS = 24;
@@ -42,6 +43,10 @@ type Props = {
   barcode: string;
   setBarcode: (v: string) => void;
   onBarcodeSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  /** Text typed or scanned into the search box that is a code, not a search. */
+  onScanCode?: (code: string) => void;
+  /** Open the camera scanner. */
+  onOpenScanner?: () => void;
   /** When true the grid is dimmed and item taps are blocked — set
    *  while a held ticket is in "resumed" mode (cart is read-only). */
   readOnly?: boolean;
@@ -459,7 +464,7 @@ export function MenuGrid({
   categories, selectedCategoryId, setSelectedCategoryId, filteredItems,
   isLoading, dataError, selectedItem, selectedModifiers,
   handleSelectItem, toggleModifier, addToCart, clearSelectedItem,
-  barcode, setBarcode, onBarcodeSubmit, readOnly = false,
+  barcode, setBarcode, onBarcodeSubmit, onScanCode, onOpenScanner, readOnly = false,
   onRefreshMenu, isRefreshingMenu = false, lastRefreshedAt = null,
   orderType,
   quickLayout, canManageSharedQuickKeys = false, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources,
@@ -713,6 +718,12 @@ export function MenuGrid({
           onSubmit={(e) => {
             if (barcode.trim()) { onBarcodeSubmit(e); return; }
             e.preventDefault();
+            // A gun typing a gift card or discount card into the search box
+            // lands here with letters in it; it is a code, not a search.
+            if (onScanCode && looksLikeScanCode(search)) {
+              onScanCode(search);
+              setSearch("");
+            }
           }}
         >
           <div style={{ position: 'relative', flex: 1 }}>
@@ -757,6 +768,21 @@ export function MenuGrid({
             </button>
           )}
         </form>
+        {onOpenScanner && (
+          <button
+            type="button"
+            onClick={onOpenScanner}
+            aria-label="Scan with the camera"
+            title="Scan a barcode or QR code with the camera"
+            style={{
+              flexShrink: 0, minWidth: 44, minHeight: 44, borderRadius: 8,
+              border: `1px solid ${C.border2}`, background: '#FFFFFF', color: C.text,
+              fontSize: 18, cursor: 'pointer',
+            }}
+          >
+            📷
+          </button>
+        )}
 
         {/* Manual menu refresh — for when the owner adds an item mid-
             shift and the cashier wants it now rather than waiting for
