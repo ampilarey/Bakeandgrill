@@ -247,9 +247,13 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     is_available: form.is_available,
     category_id: form.category_id !== '' ? parseInt(form.category_id) : null,
     menu_group_id: form.menu_group_id !== '' ? parseInt(form.menu_group_id, 10) : null,
+    // Sizes switched off means "remove them", so the server must be told an
+    // empty list. Sending nothing left the old sizes in place — flagged
+    // sizeless in the editor, still listed in the quick-edit sheet and still
+    // sellable (owner, 2026-09-03: Black Tea's old sizes came back).
     variants: form.has_variants
       ? form.variants.map(({ _key, ...v }, i) => ({ ...v, sort_order: i }))
-      : undefined,
+      : [],
   };
   if (!form.has_variants) {
     payload.track_stock = form.track_stock;

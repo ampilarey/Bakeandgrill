@@ -267,7 +267,9 @@ class ItemController extends Controller
                 'stock_quantity' => $includeAdminExtras ? (int) $item->stock_quantity : null,
                 'low_stock_threshold' => $includeAdminExtras ? (int) $item->low_stock_threshold : null,
                 'availability_type' => $includeAdminExtras ? $item->availability_type : null,
-                'variants' => $item->variants
+                // A sizeless item lists no sizes, even if retired rows linger
+                // for old receipts (owner, 2026-09-03).
+                'variants' => ($item->has_variants ? $item->variants : $item->variants->take(0))
                     ->sortBy('sort_order')
                     ->map(function ($v) use ($includeAdminExtras, $includeCost, $includeAvailability, $item, $effectivePricing, $variantPortions) {
                         $variantRow = $includeAdminExtras ? [
@@ -610,7 +612,7 @@ class ItemController extends Controller
                 'name_dv' => $item->category->name_dv,
             ] : null,
             'has_variants' => $item->has_variants,
-            'variants' => $item->variants
+            'variants' => ($item->has_variants ? $item->variants : $item->variants->take(0))
                 ->where('is_active', true)
                 ->sortBy('sort_order')
                 ->map(fn ($v) => [
@@ -703,6 +705,11 @@ class ItemController extends Controller
             ], $data));
         }
         $variantsData = $data['variants'] ?? null;
+        // A sizeless item has no sizes. Saying so without listing any used to
+        // leave the old sizes live under a false flag (owner, 2026-09-03).
+        if ($variantsData === null && array_key_exists('has_variants', $data) && !$data['has_variants']) {
+            $variantsData = [];
+        }
         $comboRows = $data['combo_items'] ?? null;
         $platterGroups = $data['platter_groups'] ?? null;
         $packagingOptions = $data['packaging_options'] ?? null;
