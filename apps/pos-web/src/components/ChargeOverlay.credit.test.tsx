@@ -11,10 +11,10 @@ import { ChargeOverlay } from "./ChargeOverlay";
  *   1. eligible + fits → single house_account row on confirm.
  *   2. eligible + total exceeds available → split into
  *      [{house_account, available}, {cash, remainder}].
- *   3. permission granted but no attached customer → muted hint,
- *      credit button disabled, confirm blocked.
- *   4. attached customer but no credit account → muted hint,
- *      credit button disabled.
+ *   3. permission granted but no attached customer → credit button
+ *      disabled and says why, confirm blocked.
+ *   4. attached customer but no credit account → credit button
+ *      disabled and says why.
  *   5. total 0 < available fully utilised (over-limit) → banner
  *      reads "No credit available" and confirm stays disabled.
  *
@@ -85,7 +85,7 @@ describe("ChargeOverlay — credit tender (FIX 5 / FIX 9c)", { timeout: 15_000 }
     ]);
   });
 
-  it("shows 'attach a customer' hint and disables Credit when no customer is attached", () => {
+  it("disables Credit, and says why on the button, when no customer is attached", () => {
     render(
       <ChargeOverlay
         total={50}
@@ -99,12 +99,16 @@ describe("ChargeOverlay — credit tender (FIX 5 / FIX 9c)", { timeout: 15_000 }
       />,
     );
 
-    expect(screen.getByText(/Attach a customer to charge a credit account/i)).toBeTruthy();
+    // Owner, 2026-09-03: the standing hint under the chip cost 41px of the
+    // tender column and pushed the note photos under the Confirm bar on an
+    // iPad. The reason rides on the dimmed button instead.
+    expect(screen.queryByText(/Attach a customer to charge a credit account/i)).toBeNull();
     const btn = screen.getByRole("button", { name: /Credit Account/i });
     expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("title", "Attach a customer to charge a credit account.");
   });
 
-  it("shows 'no credit account' hint when customer attached but not eligible", () => {
+  it("says on the button when an attached customer has no credit account", () => {
     render(
       <ChargeOverlay
         total={50}
@@ -118,9 +122,9 @@ describe("ChargeOverlay — credit tender (FIX 5 / FIX 9c)", { timeout: 15_000 }
       />,
     );
 
-    expect(screen.getByText(/Customer has no credit account/i)).toBeTruthy();
     const btn = screen.getByRole("button", { name: /Credit Account/i });
     expect(btn).toBeDisabled();
+    expect(btn).toHaveAttribute("title", "Customer has no credit account.");
   });
 
   it("blocks confirm and shows 'No credit available' when limit is fully utilised", async () => {

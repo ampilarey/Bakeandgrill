@@ -673,6 +673,13 @@ export function ChargeOverlay({
                         onSelectCredit?.();
                       }}
                       disabled={!creditEligible}
+                      title={
+                        creditEligible
+                          ? undefined
+                          : hasAttachedCustomer
+                            ? "Customer has no credit account."
+                            : "Attach a customer to charge a credit account."
+                      }
                       style={{
                         flex: "1 1 120px", padding: "12px 8px", borderRadius: 10,
                         background: method === "house_account" ? "#1D4ED8" : "#EFF6FF",
@@ -701,33 +708,18 @@ export function ChargeOverlay({
                 </div>
               )}
               {/*
-                FIX 9c — discoverability hints. On iPad/desktop these stay
-                visible under the Credit Account chip. On phones they only
-                appear after Credit is selected (saves vertical space).
-                  • has permission, no customer → "attach a customer"
-                  • has permission, customer without credit account →
-                    "customer has no credit account"
+                Owner, 2026-09-03: "in ipad, when in payment screen, some of
+                the notes are under confirm payment banner. I think u can
+                remove the note."
+
+                A standing hint under the Credit Account chip said why credit
+                was unavailable — and cost 41px of the tender column on every
+                ticket. Measured on an iPad in landscape (1024x768) the column
+                overflowed by 34px, which put the last row of note photos
+                under the Confirm payment bar. The reason now rides on the
+                button itself, which is already dimmed and unusable, so it is
+                still there for anyone who looks and takes no room at all.
               */}
-              <div className={`pos-charge-credit-hints${method === "house_account" ? " is-active" : ""}`}>
-                {canPayCredit && !isOffline && !hasAttachedCustomer && (
-                  <div className="pos-charge-credit-hint" style={{
-                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                    fontSize: 12, color: "#64748B",
-                  }}>
-                    Attach a customer to charge a credit account.
-                  </div>
-                )}
-                {canPayCredit && !isOffline && hasAttachedCustomer && !creditEligible && (
-                  <div className="pos-charge-credit-hint" style={{
-                    marginTop: 8, padding: "8px 12px", borderRadius: 8,
-                    background: "#F8FAFC", border: "1px dashed #CBD5E1",
-                    fontSize: 12, color: "#64748B",
-                  }}>
-                    Customer has no credit account.
-                  </div>
-                )}
-              </div>
               {method === "house_account" && (
                 <div style={{
                   marginTop: 8, padding: "10px 12px", borderRadius: 8,

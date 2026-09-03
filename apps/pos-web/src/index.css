@@ -822,10 +822,6 @@ html, body, #root {
   .pos-charge-extra-tenders:not(:has(.pos-charge-wallet-btn)) {
     display: none !important;
   }
-  /* Attach / no-account hints only after Credit is selected. */
-  .pos-charge-credit-hints:not(.is-active) .pos-charge-credit-hint {
-    display: none;
-  }
   .pos-charge-tender-btn {
     display: inline-flex !important;
     align-items: center;
