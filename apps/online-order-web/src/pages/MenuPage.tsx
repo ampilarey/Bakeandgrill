@@ -57,6 +57,17 @@ function readMenuView(): MenuViewMode {
   }
 }
 
+/** Which edge the category rail sits on. Same key as the website menu. */
+type RailSide = 'left' | 'right';
+const RAIL_SIDE_KEY = 'bg-menu-rail-side';
+function readRailSide(): RailSide {
+  try {
+    return localStorage.getItem(RAIL_SIDE_KEY) === 'right' ? 'right' : 'left';
+  } catch {
+    return 'left';
+  }
+}
+
 function isItemOnSale(item: Item): boolean {
   if (item.special?.effective_price != null) return true;
   return (item.variants ?? []).some(
@@ -195,6 +206,18 @@ export function MenuPage() {
     setViewMode(mode);
     try {
       localStorage.setItem(MENU_VIEW_KEY, mode);
+    } catch { /* ignore */ }
+  };
+
+  // Owner, 2026-09-03: "a button near grid/list to change from right to
+  // left". The rail sits under the left thumb by default; a right-handed
+  // customer can move it to the other edge. Remembered per device.
+  const [railSide, setRailSide] = useState<RailSide>(() => readRailSide());
+  const toggleRailSide = () => {
+    const next: RailSide = railSide === 'right' ? 'left' : 'right';
+    setRailSide(next);
+    try {
+      localStorage.setItem(RAIL_SIDE_KEY, next);
     } catch { /* ignore */ }
   };
 
@@ -1023,6 +1046,17 @@ export function MenuPage() {
               List
             </button>
           </div>
+          <button
+            type="button"
+            className="menu-rail-side-btn"
+            data-testid="menu-rail-side"
+            aria-pressed={railSide === 'right'}
+            aria-label={railSide === 'right' ? t('menu.rail_side_left') : t('menu.rail_side_right')}
+            title={t('menu.rail_side_title')}
+            onClick={toggleRailSide}
+          >
+            <span className="menu-rail-side-btn__icon" aria-hidden="true">⇆</span>
+          </button>
           <MenuQuickFilters
             saleFilter={saleFilter}
             onChange={setSaleFilter}
@@ -1067,7 +1101,11 @@ export function MenuPage() {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', position: 'relative' }}>
+      <div
+        className={`menu-columns${railSide === 'right' ? ' menu-columns--rail-right' : ''}`}
+        data-testid="menu-columns"
+        style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', position: 'relative' }}
+      >
         <CategoryRail
           categories={railCategories}
           activeCategoryId={activeCategoryId}

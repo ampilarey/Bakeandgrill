@@ -209,6 +209,21 @@ html.js .menu-filters {
 }
 .menu-view-btn.is-active { background: var(--amber); color: #fff; }
 
+/* Rail side (owner, 2026-09-03: "a button near grid/list to change from
+   right to left"). The rail sits under the left thumb by default; a
+   right-handed customer can move it to the other edge. Remembered per
+   device under the same key the order app uses, applied on <html> before
+   the shell paints so the page never jumps. */
+.menu-rail-side {
+    width: 44px; min-height: 44px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; line-height: 1;
+}
+.menu-rail-side .menu-rail-side__icon { display: inline-block; }
+html.rail-right .menu-shell { flex-direction: row-reverse; }
+html.rail-right .menu-rail { border-right: 0; border-left: 1px solid var(--border); }
+html.rail-right .menu-rail-side .menu-rail-side__icon { transform: scaleX(-1); }
+
 /* In the tools row: takes the room between Search and Grid/List on a desk,
    and the whole row on a phone (see the mobile block). */
 .menu-search {
@@ -753,6 +768,10 @@ body.menu-sheet-open { overflow: hidden; }
         <p style="margin-top:1rem"><a href="/contact" class="btn-primary">Contact us →</a></p>
     </div>
 @else
+{{-- Rail side, before the shell paints so a remembered "right" never jumps. --}}
+<script nonce="{{ csp_nonce() }}">
+try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.documentElement.classList.add('rail-right'); } catch (e) {}
+</script>
 <div class="menu-shell">
     <nav class="menu-rail" aria-label="Menu categories">
         <div class="menu-rail-scroll">
@@ -874,6 +893,12 @@ body.menu-sheet-open { overflow: hidden; }
                     <button type="button" class="menu-view-btn is-active" data-view="grid" aria-pressed="true">Grid</button>
                     <button type="button" class="menu-view-btn" data-view="list" aria-pressed="false">List</button>
                 </div>
+                <button type="button" class="menu-tool menu-rail-side" id="menuRailSide"
+                        data-testid="menu-rail-side"
+                        aria-pressed="false" aria-label="Move the categories to the right side"
+                        title="Swap the category rail to the other side">
+                    <span class="menu-rail-side__icon" aria-hidden="true">⇆</span>
+                </button>
             </div>
 
             {{-- Sort and filters scroll away with the page on a phone; only the
@@ -1293,6 +1318,27 @@ body.menu-sheet-open { overflow: hidden; }
     try {
         if (localStorage.getItem(VIEW_KEY) === 'list') setView('list');
     } catch (e) { /* private mode */ }
+
+    // ── Rail side ─────────────────────────────────────────────────────
+    // Same key as the order app. The early script above the shell already
+    // applied a remembered "right"; this just flips it and keeps the
+    // button's state honest.
+    var RAIL_SIDE_KEY = 'bg-menu-rail-side';
+    var railSideBtn = document.getElementById('menuRailSide');
+    function syncRailSideBtn() {
+        if (!railSideBtn) return;
+        var right = document.documentElement.classList.contains('rail-right');
+        railSideBtn.setAttribute('aria-pressed', right ? 'true' : 'false');
+        railSideBtn.setAttribute('aria-label', right ? 'Move the categories to the left side' : 'Move the categories to the right side');
+    }
+    if (railSideBtn) {
+        railSideBtn.addEventListener('click', function () {
+            var right = document.documentElement.classList.toggle('rail-right');
+            try { localStorage.setItem(RAIL_SIDE_KEY, right ? 'right' : 'left'); } catch (e) { /* private mode */ }
+            syncRailSideBtn();
+        });
+        syncRailSideBtn();
+    }
 
     // ── Search box ────────────────────────────────────────────────────
     var tools = bar.querySelector('.menu-tools');

@@ -222,4 +222,28 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(setMode).toHaveBeenCalledTimes(1);
     expect(String(showToast.mock.calls[1][0])).toMatch(/modeSheet\.eat_here_unavailable/);
   });
+
+  /** Owner, 2026-09-03: a button beside Grid/List moves the rail to the other edge, remembered per device. */
+  it('moves the category rail to the right and back, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    localStorage.removeItem('bg-menu-rail-side');
+    render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('menu-rail-side')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('menu-columns')).not.toHaveClass('menu-columns--rail-right');
+
+    await user.click(screen.getByTestId('menu-rail-side'));
+    expect(screen.getByTestId('menu-columns')).toHaveClass('menu-columns--rail-right');
+    expect(screen.getByTestId('menu-rail-side')).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem('bg-menu-rail-side')).toBe('right');
+
+    await user.click(screen.getByTestId('menu-rail-side'));
+    expect(screen.getByTestId('menu-columns')).not.toHaveClass('menu-columns--rail-right');
+    expect(localStorage.getItem('bg-menu-rail-side')).toBe('left');
+  });
 });

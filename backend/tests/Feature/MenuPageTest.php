@@ -963,6 +963,12 @@ class MenuPageTest extends TestCase
         // is honoured on the other instead of each forgetting the other.
         $this->assertStringContainsString("'bg-menu-view'", $html);
 
+        // Rail side button beside Grid/List (owner, 2026-09-03), remembered
+        // under the order app's key and applied before the shell paints.
+        $this->assertStringContainsString('data-testid="menu-rail-side"', $html);
+        $this->assertStringContainsString("'bg-menu-rail-side'", $html);
+        $this->assertMatchesRegularExpression('#html\.rail-right \.menu-shell \{ flex-direction: row-reverse; \}#', $html);
+
         // The field starts collapsed behind the button, as in the order app.
         $this->assertMatchesRegularExpression('#id="menuSearchWrap"[^>]*hidden#', $html);
 
