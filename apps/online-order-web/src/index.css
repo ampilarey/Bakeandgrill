@@ -4038,33 +4038,40 @@ textarea.field-input {
 }
 
 /*
- * Sub-categories under their parent in the rail: text only, smaller, no
- * thumbnail. Owner, 2026-09-02: "add subcategories to the rail as well".
+ * Sub-categories in the rail. Owner, 2026-09-02: "add subcategories to the
+ * rail as well"; 2026-09-03: "too congested". They now unfold only under the
+ * category in view, as pills with air between them — no hairlines, no
+ * counts — so the rail reads as one entry per category until you are
+ * inside one. A collapsed parent that has more shows a small chevron.
  */
 .cat-rail__group {
   display: flex;
   flex-direction: column;
 }
+.cat-rail__more {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.55;
+  margin-top: -2px;
+}
 .cat-rail__subs {
   display: flex;
   flex-direction: column;
-  margin: 0 0 4px;
-  border-bottom: 1px solid var(--color-border, #E8E0D8);
+  gap: 5px;
+  padding: 4px 6px 10px 9px;
+  background: var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
 }
-/* Owner, 2026-09-02: "its v small … adding a line to separate each
-   subcategory". A hairline above each one, and the text a step up. */
 .cat-rail__sub {
   width: 100%;
-  min-height: 34px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0.3rem 0.3rem 0.3rem 0.45rem;
-  border: none;
-  border-top: 1px solid var(--color-border, #E8E0D8);
-  border-left: 3px solid transparent;
-  background: transparent;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--color-border, #E8E0D8);
+  border-radius: 999px;
+  background: var(--color-surface, #fff);
   color: var(--color-text-secondary, #6B5D4F);
   font-family: inherit;
   font-size: 0.6875rem;
@@ -4073,26 +4080,29 @@ textarea.field-input {
   text-align: center;
   cursor: pointer;
 }
-.cat-rail__sub:hover { color: var(--color-primary); }
-.cat-rail__sub.is-active {
+.cat-rail__sub:hover {
   color: var(--color-primary);
-  background: var(--color-primary-light);
-  border-left-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.cat-rail__sub.is-active {
+  color: #fff;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .cat-rail__sub-label {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  display: block;
+  max-width: 100%;
   overflow: hidden;
-  word-break: break-word;
-}
-.cat-rail__sub-count {
-  font-size: 9px;
-  opacity: 0.7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 @media (max-width: 767px) {
+  .cat-rail__subs {
+    gap: 4px;
+    padding: 3px 5px 8px 7px;
+  }
   .cat-rail__sub {
-    min-height: 32px;
+    min-height: 28px;
     font-size: 0.625rem;
   }
 }

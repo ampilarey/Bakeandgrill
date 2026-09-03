@@ -99,23 +99,38 @@ span.menu-rail-thumb {
     border-top: 1px solid var(--border);
     font-weight: 700;
 }
-/* Sub-categories under their parent: text only, no thumbnail, a hairline
-   above each one. Owner, 2026-09-02: "its v small … adding a line to
-   separate each subcategory". */
+/* Sub-categories. Owner, 2026-09-02: "add subcategories to the rail as
+   well"; 2026-09-03: "too congested". They unfold only under the category
+   in view, as pills with air between them — no hairlines, no visible
+   counts (the count stays in the link's aria-label). Until the scroll-spy
+   has run (or without JS at all) every group stays open, so the links are
+   never lost; `js-ready` on the rail switches on the folding. */
+.menu-rail-group { display: flex; flex-direction: column; }
+.menu-rail-more { font-size: 9px; line-height: 1; opacity: 0.55; margin-top: -2px; }
+.menu-rail.js-ready .menu-rail-group:not(.is-open) .menu-rail-subs { display: none; }
+.menu-rail.js-ready .menu-rail-group.is-open .menu-rail-more { display: none; }
+.menu-rail-subs {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 4px 6px 10px 9px;
+    background: var(--amber-light);
+    border-left: 3px solid var(--amber);
+}
 .menu-rail a.menu-rail-sub {
     flex-direction: row; justify-content: center;
-    gap: 4px;
-    min-height: 34px;
-    padding: 0.3rem 0.3rem 0.3rem 0.45rem;
-    border-top: 1px solid var(--border);
+    min-height: 30px;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: #fff;
     color: var(--dark);
-    opacity: 0.8;
 }
-.menu-rail a.menu-rail-sub:hover, .menu-rail a.menu-rail-sub.is-active { opacity: 1; }
-.menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6875rem; }
-.menu-rail a.menu-rail-sub .menu-rail-count { font-size: 9px; }
-/* Close the group under the last sub-category. */
-.menu-rail a.menu-rail-sub + a:not(.menu-rail-sub) { border-top: 1px solid var(--border); }
+.menu-rail a.menu-rail-sub:hover { color: var(--amber); border-color: var(--amber); background: #fff; }
+.menu-rail a.menu-rail-sub.is-active { color: #fff; background: var(--amber); border-color: var(--amber); }
+.menu-rail a.menu-rail-sub .menu-rail-label {
+    font-size: 0.6875rem;
+    display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.menu-rail a.menu-rail-sub .menu-rail-count { display: none; }
 
 .menu-main { flex: 1; min-width: 0; }
 
@@ -505,6 +520,8 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-thumb { width: 44px; height: 44px; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
+    .menu-rail-subs { gap: 4px; padding: 3px 5px 8px 7px; }
+    .menu-rail a.menu-rail-sub { min-height: 28px; }
 
     /* Only the tools row is pinned on a phone. The wrapper stops being a
        box so the row sticks against .menu-main, not against a bar that
@@ -738,6 +755,11 @@ body.menu-sheet-open { overflow: hidden; }
                     $thumb = $mediaUrl($cat?->thumb_url ?: $cat?->image_url);
                     $count = $sectionCount($group);
                 @endphp
+                @php $subs = $group['subcategories'] ?? []; @endphp
+                {{-- One group per category: the parent link, then its
+                     sub-categories. The scroll-spy opens the group in view
+                     and folds the rest (owner, 2026-09-03: "too congested"). --}}
+                <div class="menu-rail-group" data-group="{{ $anchorFor($group) }}">
                 {{-- The count is a bare numeral beside a name; spoken aloud it
                      reads "Shorteats 3", so the link carries it as words instead. --}}
                 <a href="#{{ $anchorFor($group) }}"
@@ -752,12 +774,17 @@ body.menu-sheet-open { overflow: hidden; }
                     @endif
                     <span class="menu-rail-label" @if($name['dv']) lang="dv" @endif>{{ $name['text'] }}</span>
                     <span class="menu-rail-count" aria-hidden="true">{{ $count }}</span>
+                    @if(count($subs) > 0)
+                        <span class="menu-rail-more" aria-hidden="true">▾</span>
+                    @endif
                 </a>
                 {{-- Sub-categories under their parent, text only. Owner,
                      2026-09-02: "add subcategories to the rail as well".
                      data-parent lets the scroll-spy keep the parent lit while
                      one of its sub-categories is the section in view. --}}
-                @foreach($group['subcategories'] ?? [] as $sub)
+                @if(count($subs) > 0)
+                <div class="menu-rail-subs">
+                @foreach($subs as $sub)
                     @php
                         $subCat = $sub['category'];
                         $subName = $categoryName($subCat);
@@ -771,6 +798,9 @@ body.menu-sheet-open { overflow: hidden; }
                         <span class="menu-rail-count" aria-hidden="true">{{ $subCount }}</span>
                     </a>
                 @endforeach
+                </div>
+                @endif
+                </div>
             @endforeach
             {{-- Same last-on-rail shortcut as the order app CategoryRail.
                  Off-page: the wizard lives at /order/events, not an in-page anchor. --}}
@@ -1300,8 +1330,9 @@ body.menu-sheet-open { overflow: hidden; }
      HTML; this just marks which section you are looking at. --}}
 <script nonce="{{ csp_nonce() }}">
 (function () {
+    var rail = document.querySelector('.menu-rail');
     var links = Array.prototype.slice.call(document.querySelectorAll('.menu-rail a'));
-    if (!links.length || !('IntersectionObserver' in window)) return;
+    if (!rail || !links.length || !('IntersectionObserver' in window)) return;
 
     var byId = {};
     links.forEach(function (a) {
@@ -1311,6 +1342,17 @@ body.menu-sheet-open { overflow: hidden; }
         if (href.charAt(0) !== '#') return;
         byId[href.slice(1)] = a;
     });
+
+    // Fold every group's sub-categories except the one in view. Only once
+    // the spy is running: before that (and without JS) all of them show.
+    var groups = Array.prototype.slice.call(rail.querySelectorAll('.menu-rail-group'));
+    function openGroup(id) {
+        groups.forEach(function (g) {
+            g.classList.toggle('is-open', g.getAttribute('data-group') === id);
+        });
+    }
+    rail.classList.add('js-ready');
+    if (groups.length) openGroup(groups[0].getAttribute('data-group'));
 
     var observer = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
@@ -1329,6 +1371,7 @@ body.menu-sheet-open { overflow: hidden; }
                 // A sub-category in view keeps its parent lit too.
                 var parent = active.getAttribute('data-parent');
                 if (parent && byId[parent]) byId[parent].classList.add('is-active');
+                openGroup(parent || entry.target.id);
                 // The rail scrolls independently once there are more categories
                 // than fit; without this the active pill drifts out of sight.
                 if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });

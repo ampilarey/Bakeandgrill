@@ -173,8 +173,14 @@ export function CategoryRail({
               {(counts[cat.id] ?? 0) > 0 && (
                 <span style={{ fontSize: 10, opacity: 0.7 }}>{counts[cat.id]}</span>
               )}
+              {subs.length > 0 && !active && (
+                <span className="cat-rail__more" aria-hidden="true" data-testid="cat-rail-more">▾</span>
+              )}
             </button>
-            {subs.length > 0 && (
+            {/* Owner, 2026-09-03: "too congested". Sub-categories unfold only
+                under the category in view, as spaced pills, so the rail is
+                one entry per category until you are inside one. */}
+            {subs.length > 0 && active && (
               <div className="cat-rail__subs" role="presentation">
                 {subs.map((sub) => {
                   const subActive = activeSubcategoryId === sub.id;
@@ -184,15 +190,13 @@ export function CategoryRail({
                       type="button"
                       role="tab"
                       aria-selected={subActive}
+                      aria-label={(counts[sub.id] ?? 0) > 0 ? `${sub.name}, ${counts[sub.id]} item${counts[sub.id] === 1 ? '' : 's'}` : undefined}
                       className={`cat-rail__sub${subActive ? ' is-active' : ''}`}
                       data-testid="cat-rail-sub"
                       data-parent-category-id={cat.id}
                       onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
                     >
                       <span className="cat-rail__sub-label">{sub.name}</span>
-                      {(counts[sub.id] ?? 0) > 0 && (
-                        <span className="cat-rail__sub-count">{counts[sub.id]}</span>
-                      )}
                     </button>
                   );
                 })}

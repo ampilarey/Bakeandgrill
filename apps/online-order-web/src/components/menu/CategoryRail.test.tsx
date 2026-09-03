@@ -74,6 +74,42 @@ describe('CategoryRail', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  /** Owner, 2026-09-03: "too congested" — sub-categories fold away under any category that is not in view. */
+  it('folds sub-categories under categories that are not active, with a chevron hinting there is more', () => {
+    const { container, rerender } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={1}
+        onSelect={() => {}}
+        onSelectSubcategory={() => {}}
+        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
+        counts={{ 21: 3 }}
+      />,
+    );
+
+    expect(screen.queryByRole('tab', { name: /Chicken/ })).toBeNull();
+    expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(0);
+    // Grills has more inside; Breakfast Specials has nothing to unfold.
+    expect(screen.getByRole('tab', { name: /Grills/ }).querySelector('[data-testid="cat-rail-more"]')).not.toBeNull();
+    expect(screen.getByRole('tab', { name: /Breakfast Specials/ }).querySelector('[data-testid="cat-rail-more"]')).toBeNull();
+
+    rerender(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={2}
+        onSelect={() => {}}
+        onSelectSubcategory={() => {}}
+        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
+        counts={{ 21: 3 }}
+      />,
+    );
+    expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(2);
+    expect(screen.getByRole('tab', { name: /Grills/ }).querySelector('[data-testid="cat-rail-more"]')).toBeNull();
+    // No visible count on a pill; the count lives in the accessible name only.
+    const chicken = screen.getByRole('tab', { name: 'Chicken, 3 items' });
+    expect(chicken.textContent?.trim()).toBe('Chicken');
+  });
+
   it('places Events shortcut after regular categories on the left rail', () => {
     const { container } = render(
       <CategoryRail

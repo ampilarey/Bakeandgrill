@@ -1,1 +1,0 @@
-import{j as a}from"./index-Bmj0svUR.js";function s({label:s,onClick:i,disabled:t,loading:e,type:c="button",above:l,className:n}){return a.jsxs("div",{className:"sticky-cta-bar"+(n?` ${n}`:""),children:[l,a.jsx("button",{type:c,className:"sticky-cta-bar__btn",onClick:i,disabled:t||e,"aria-busy":e||void 0,children:e?"…":s})]})}export{s as S};
