@@ -3785,7 +3785,9 @@ textarea.field-input {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  padding: 0.5rem 0;
+  /* Room under the last entry so it can be scrolled clear of the bottom nav;
+     CategoryRail trims max-height to what is on screen as the page moves. */
+  padding: 0.5rem 0 calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* First category: small breathing room under sticky controls (not flush, not a large gap) */

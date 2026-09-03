@@ -129,6 +129,38 @@ export function CategoryRail({
 
   const noteTouch = () => { userTouchedAt.current = Date.now(); };
 
+  // Size the scroller to what is actually on screen. A fixed
+  // `100dvh - header - bottom nav` is only right once the rail is stuck; at
+  // the top of the page the rail starts lower, so its bottom entries sat
+  // below the fold and could not be reached until the page itself moved
+  // (owner, 2026-09-03: "make it scroll till the last cat").
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || typeof window === 'undefined') return;
+    let pending = false;
+    const fit = () => {
+      pending = false;
+      const nav = document.querySelector<HTMLElement>('.bottom-nav');
+      const floor = nav && getComputedStyle(nav).position === 'fixed'
+        ? nav.getBoundingClientRect().top
+        : window.innerHeight;
+      const room = floor - box.getBoundingClientRect().top - 8;
+      box.style.maxHeight = `${Math.max(160, Math.round(room))}px`;
+    };
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      window.requestAnimationFrame(fit);
+    };
+    fit();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, []);
+
   return (
     <nav
       className={`cat-rail${dimmed ? ' is-dimmed' : ''}`}

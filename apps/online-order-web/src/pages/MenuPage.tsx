@@ -24,7 +24,6 @@ import { useToast } from '../context/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { OrderDayToggle } from '../components/OrderDayToggle';
-import { OrderModeSheet } from '../components/OrderModeSheet';
 import { DaySwitchConfirmSheet } from '../components/DaySwitchConfirmSheet';
 import { useOrderDay, type OrderDay } from '../context/OrderDayContext';
 import { isItemAvailableNow } from '../utils/itemAvailability';
@@ -184,8 +183,7 @@ export function MenuPage() {
   const [collectTomorrowDate, setCollectTomorrowDate] = useState<string | null>(null);
 
   const { day, setDay } = useOrderDay();
-  const { mode, modeConfirmed } = useOrderMode();
-  const [modeSheetOpen, setModeSheetOpen] = useState(false);
+  const { mode, modeConfirmed, setMode } = useOrderMode();
   /** Pending manual day switch that would remove cart lines — asks first. */
   const [daySwitchConfirm, setDaySwitchConfirm] = useState<{ target: OrderDay; count: number } | null>(null);
 
@@ -443,7 +441,6 @@ export function MenuPage() {
     if (target === 'tomorrow') {
       showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
     }
-    if (!modeConfirmed) setModeSheetOpen(true);
   };
 
   const filteredItems = useMemo(() => {
@@ -910,8 +907,6 @@ export function MenuPage() {
                 if (next === 'tomorrow') {
                   showToast(t('menu.tomorrow_note').replace('{date}', formatTomorrowDateLabel(collectTomorrowDate)));
                 }
-                // Day picked — ask "how" right away unless already chosen.
-                if (!modeConfirmed) setModeSheetOpen(true);
               }}
               onBlockedTap={(blockedDay) => {
                 showToast(
@@ -933,16 +928,19 @@ export function MenuPage() {
                 id: 'pickup' as const,
                 label: t('mode.pickup'),
                 blocked: pickupBlocked,
+                blockedReason: t('modeSheet.pickup_unavailable'),
               },
               {
                 id: 'delivery' as const,
                 label: t('mode.delivery'),
                 blocked: deliveryBlocked,
+                blockedReason: getServiceEntry('online_delivery')?.public_message?.trim() || gateMessage || t('modeSheet.delivery_unavailable'),
               },
               {
                 id: 'dine_in' as const,
                 label: t('mode.eat_here'),
                 blocked: !dineInAvailable,
+                blockedReason: day === 'tomorrow' ? t('modeSheet.eat_here_tomorrow') : t('modeSheet.eat_here_unavailable'),
               },
             ]).map((opt) => {
               const active = modeConfirmed ? mode === opt.id : opt.id === 'pickup';
@@ -951,7 +949,13 @@ export function MenuPage() {
                   key={opt.id}
                   type="button"
                   data-testid={`mode-switch-${opt.id}`}
-                  onClick={() => setModeSheetOpen(true)}
+                  // Owner, 2026-09-03: a tap switches straight away; the
+                  // "How do you want your order?" sheet was one tap too many.
+                  // A dimmed option explains itself in a short toast instead.
+                  onClick={() => {
+                    if (opt.blocked) { showToast(opt.blockedReason, 'info'); return; }
+                    setMode(opt.id);
+                  }}
                   aria-pressed={active}
                   aria-disabled={opt.blocked || undefined}
                   data-blocked={opt.blocked ? 'true' : undefined}
@@ -1239,16 +1243,6 @@ export function MenuPage() {
           )}
         </main>
       </div>
-
-      <OrderModeSheet
-        open={modeSheetOpen}
-        onClose={() => setModeSheetOpen(false)}
-        deliveryBlockedToday={deliveryBlocked}
-        deliveryBlockedReason={getServiceEntry('online_delivery')?.public_message || gateMessage || null}
-        pickupBlocked={pickupBlocked}
-        dineInAvailable={dineInAvailable}
-        tomorrowDate={collectTomorrowDate}
-      />
 
       <SearchOverlay
         open={searchOpen}

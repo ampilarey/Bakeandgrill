@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenuPage } from './MenuPage';
 
 const showToast = vi.fn();
+const setMode = vi.fn();
 
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
@@ -92,7 +93,7 @@ vi.mock('../context/ServiceStatusContext', () => ({
 vi.mock('../context/OrderModeContext', () => ({
   useOrderMode: () => ({
     mode: 'pickup',
-    setMode: vi.fn(),
+    setMode,
     modeConfirmed: false,
     channel: 'online_pickup',
   }),
@@ -193,5 +194,32 @@ describe('MenuPage declutter + pickup toast', () => {
     // Mock marks online_pickup unavailable → pickup dimmed; eat here off until gate loads.
     expect(screen.getByTestId('mode-switch-pickup')).toHaveAttribute('data-blocked', 'true');
     expect(screen.getByTestId('mode-switch-dine_in')).toHaveAttribute('data-blocked', 'true');
+  });
+
+  /** Owner, 2026-09-03: a tap switches straight away; a dimmed option only explains itself in a toast. */
+  it('switches mode on a tap with no sheet, and toasts why a dimmed option cannot be chosen', async () => {
+    const user = userEvent.setup();
+    setMode.mockClear();
+    render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('mode-chip')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('mode-switch-delivery'));
+    expect(setMode).toHaveBeenCalledWith('delivery');
+    expect(showToast).not.toHaveBeenCalled();
+    expect(screen.queryByText(/modeSheet\.title/)).toBeNull();
+
+    await user.click(screen.getByTestId('mode-switch-pickup'));
+    expect(setMode).toHaveBeenCalledTimes(1);
+    expect(String(showToast.mock.calls[0][0])).toMatch(/modeSheet\.pickup_unavailable/);
+
+    await user.click(screen.getByTestId('mode-switch-dine_in'));
+    expect(setMode).toHaveBeenCalledTimes(1);
+    expect(String(showToast.mock.calls[1][0])).toMatch(/modeSheet\.eat_here_unavailable/);
   });
 });

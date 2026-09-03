@@ -64,7 +64,9 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    padding: 0.5rem 0;
+    /* Room under the last entry so it can be scrolled clear of the phone's
+       bottom edge; the script above trims max-height to what is on screen. */
+    padding: 0.5rem 0 calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 /* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
    between entries, no boxes. Active = brand colour + left bar only. */
@@ -537,17 +539,17 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-list { padding: 0 4px; }
     .menu-rail-group { padding: 2px; border-radius: 12px; }
 
-    /* Only the tools row is pinned on a phone. The wrapper stops being a
-       box so the row sticks against .menu-main, not against a bar that
-       scrolls away with it; sort and filter chips scroll with the page. */
+    /* Nothing in the filter bar is pinned on a phone (owner, 2026-09-03:
+       "search and grid/list container is fixed" — again). Search, Grid/List,
+       sort and filter chips all scroll away with the page; only the header
+       and the rail stay. The wrapper stops being a box so the rows sit
+       directly in .menu-main. */
     html.js .menu-filters {
         display: contents;
         position: static;
     }
     .menu-tools {
-        position: sticky;
-        top: var(--menu-sticky);
-        z-index: 5;
+        position: static;
         padding: 0.5rem 0;
         background: var(--bg);
     }
@@ -1348,6 +1350,26 @@ body.menu-sheet-open { overflow: hidden; }
     var scroller = document.querySelector('.menu-rail-scroll') || rail;
     var links = Array.prototype.slice.call(document.querySelectorAll('.menu-rail a'));
     if (!rail || !links.length || !('IntersectionObserver' in window)) return;
+
+    // Size the scroller to what is actually on screen. A fixed
+    // `100dvh - header` is only right once the rail is stuck; at the top
+    // of the page the rail starts lower, so its bottom entries sat below
+    // the fold and could not be reached until the page itself moved
+    // (owner, 2026-09-03: "make it scroll till the last cat").
+    function fitRail() {
+        var top = scroller.getBoundingClientRect().top;
+        var room = window.innerHeight - top - 8;
+        scroller.style.maxHeight = Math.max(160, room) + 'px';
+    }
+    var fitPending = false;
+    function scheduleFit() {
+        if (fitPending) return;
+        fitPending = true;
+        requestAnimationFrame(function () { fitPending = false; fitRail(); });
+    }
+    fitRail();
+    window.addEventListener('scroll', scheduleFit, { passive: true });
+    window.addEventListener('resize', scheduleFit);
 
     // Follow the active entry by scrolling the rail's own scroller only.
     // scrollIntoView scrolled every ancestor, so it could nudge the page, and
