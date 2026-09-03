@@ -156,14 +156,15 @@ span.menu-rail-thumb--sub { font-size: 0.9rem; }
 /* Hidden until JS is confirmed — see html.js in the layout. A search box
    that cannot search is worse than none. */
 .menu-filters { display: none; }
+/* Nothing in the filter bar is pinned, on any screen (owner, 2026-09-03:
+   "mobile is ok but desktop still fixes the search box"). Search, Grid/List,
+   sort and filter chips are set once and then scroll away with the page;
+   only the header and the category rail stay put. */
 html.js .menu-filters {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    position: sticky;
-    top: var(--menu-sticky);
-    z-index: 5;
     padding: 0.6rem 0;
     background: var(--bg);
 }
