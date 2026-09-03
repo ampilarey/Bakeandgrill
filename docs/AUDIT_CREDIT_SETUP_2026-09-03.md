@@ -38,7 +38,7 @@ F4 and F7.
 | Action | Permission | Who has it |
 |---|---|---|
 | Approve credit, set limits, hold/block | `customers.credit.manage` | Manager and above |
-| Record a repayment | `customers.credit.repay` | **Owner only** |
+| Record a repayment | `customers.credit.repay` | Manager and above (F2, 2026-09-03) |
 | Write off a balance | `customers.credit.writeoff` | Owner only |
 | Charge a sale to credit at the till | `payments.credit` | Per-role, POS |
 
