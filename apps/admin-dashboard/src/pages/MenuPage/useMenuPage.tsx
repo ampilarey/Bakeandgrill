@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { AdminItemSort } from '../../api';
 import {
   fetchAdminCategories, createCategory, updateCategory, deleteCategory,
   fetchAdminItems, createItem, updateItem, deleteItem, toggleItemAvailability,
@@ -46,6 +47,20 @@ export function useMenuPage() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
+  // Owner, 2026-09-03: "there is no sort option in menu items". Server-side,
+  // since the list is paginated; remembered per browser.
+  const [sort, setSortState] = useState<AdminItemSort>(() => {
+    try {
+      const v = localStorage.getItem('bg-admin-menu-sort');
+      return (v || 'menu') as AdminItemSort;
+    } catch {
+      return 'menu';
+    }
+  });
+  const setSort = (next: AdminItemSort) => {
+    setSortState(next);
+    try { localStorage.setItem('bg-admin-menu-sort', next); } catch { /* ignore */ }
+  };
 
   const { state: dlg, ask: askConfirm, close: closeDlg } = useConfirmDialog();
   const [editingCat, setEditingCat] = useState<MenuCategory | null>(null);
@@ -75,6 +90,7 @@ export function useMenuPage() {
         search: search || undefined,
         page: p,
         per_page: perPage,
+        sort,
       });
       setItems(res.data ?? []);
       setLastPage(res.meta?.last_page ?? 1);
@@ -95,7 +111,7 @@ export function useMenuPage() {
   }, [view]);
   useEffect(() => {
     if (view === 'items') { setPage(1); void loadItems(1); }
-  }, [view, selectedCat, search, perPage]);
+  }, [view, selectedCat, search, perPage, sort]);
 
   const handleCreateCat = async (form: CatForm) => {
     try {
@@ -278,6 +294,8 @@ export function useMenuPage() {
     setSearch,
     cateringOnly,
     setCateringOnly,
+    sort,
+    setSort,
     page,
     lastPage,
     perPage,

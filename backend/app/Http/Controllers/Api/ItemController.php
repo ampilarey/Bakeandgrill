@@ -15,6 +15,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\BulkUpdateItemsRequest;
 use App\Http\Requests\StoreItemRequest;
 use App\Http\Requests\UpdateItemRequest;
+use App\Models\Category;
 use App\Models\Item;
 use App\Models\ItemChannelAvailability;
 use App\Models\Variant;
@@ -146,7 +147,26 @@ class ItemController extends Controller
             : ($isAdmin
                 ? min(100, max(10, (int) $request->input('per_page', 25)))
                 : 100); // public menu always gets all items
-        $items = $query->orderBy('sort_order')->orderBy('name')->paginate($perPage);
+        // Admin list order (owner, 2026-09-03: "there is no sort option in
+        // menu items"). The public menu and the POS keep the menu's own
+        // sort_order; the admin table can be ordered by what the manager
+        // is doing — pricing, tidying a category, finding what was just
+        // edited. Anything not on the list falls back to the menu order.
+        $sort = ($isAdmin && !$isPosView) ? (string) $request->query('sort', 'menu') : 'menu';
+        match ($sort) {
+            'name' => $query->orderBy('name'),
+            'name_desc' => $query->orderByDesc('name'),
+            'price' => $query->orderBy('base_price')->orderBy('name'),
+            'price_desc' => $query->orderByDesc('base_price')->orderBy('name'),
+            'category' => $query
+                ->orderBy(Category::select('sort_order')->whereColumn('categories.id', 'items.category_id'))
+                ->orderBy(Category::select('name')->whereColumn('categories.id', 'items.category_id'))
+                ->orderBy('sort_order')->orderBy('name'),
+            'updated' => $query->orderByDesc('updated_at')->orderBy('name'),
+            'unavailable' => $query->orderBy('is_available')->orderBy('is_active')->orderBy('sort_order')->orderBy('name'),
+            default => $query->orderBy('sort_order')->orderBy('name'),
+        };
+        $items = $query->paginate($perPage);
 
         // Remaining count for collect-tomorrow (never expose the configured capacity).
         $tomorrowRemainingMap = [];

@@ -5165,7 +5165,8 @@ work area is a single column that
   margin-bottom: 14px;
 }
 .menu-items-search,
-.menu-items-category {
+.menu-items-category,
+.menu-items-sort {
   min-height: 44px;
   padding: 0 12px;
   border: 1.5px solid var(--color-border);
@@ -5177,6 +5178,7 @@ work area is a single column that
 }
 .menu-items-search { flex: 1 1 240px; min-width: 0; }
 .menu-items-category { flex: 0 1 220px; min-width: 0; cursor: pointer; }
+.menu-items-sort { flex: 0 1 190px; min-width: 0; cursor: pointer; }
 .menu-items-catering {
   display: inline-flex;
   align-items: center;
@@ -5788,7 +5790,8 @@ work area is a single column that
   .menu-duty-save { margin-left: 0; width: 100%; justify-content: center; }
 
   .menu-items-search { flex-basis: 100%; }
-  .menu-items-category { flex: 1 1 0; }
+  .menu-items-category,
+  .menu-items-sort { flex: 1 1 0; }
 
   .menu-items-footer { justify-content: space-between; }
   .menu-items-count { flex-basis: 100%; text-align: center; }

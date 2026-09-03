@@ -307,15 +307,20 @@ export async function deleteCategory(id: number): Promise<void> {
   await req(`/categories/${id}`, { method: 'DELETE' });
 }
 
+/** Admin list order; the server falls back to the menu order for anything else. */
+export type AdminItemSort = 'menu' | 'name' | 'name_desc' | 'price' | 'price_desc' | 'category' | 'updated' | 'unavailable';
+
 export async function fetchAdminItems(params?: {
   category_id?: number;
   search?: string;
   page?: number;
   per_page?: number;
+  sort?: AdminItemSort;
 }): Promise<{ data: MenuItem[]; meta?: { total: number; last_page: number; current_page: number } }> {
   const qs = new URLSearchParams({ admin: '1' });
   if (params?.category_id) qs.set('category_id', String(params.category_id));
   if (params?.search) qs.set('search', params.search);
+  if (params?.sort && params.sort !== 'menu') qs.set('sort', params.sort);
   if (params?.page) qs.set('page', String(params.page));
   if (params?.per_page) qs.set('per_page', String(params.per_page));
   return req(`/items?${qs}`);

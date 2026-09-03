@@ -335,12 +335,14 @@ export function MenuPage() {
           selectedCat={m.selectedCat}
           search={m.search}
           cateringOnly={m.cateringOnly}
+          sort={m.sort}
           page={m.page}
           lastPage={m.lastPage}
           perPage={m.perPage}
           onSelectedCatChange={m.setSelectedCat}
           onSearchChange={m.setSearch}
           onCateringOnlyChange={m.setCateringOnly}
+          onSortChange={m.setSort}
           onPerPageChange={m.handlePerPageChange}
           onPageChange={m.handlePageChange}
           onToggleKitchenGroup={m.toggleKitchenGroup}

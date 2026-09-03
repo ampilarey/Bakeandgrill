@@ -37,6 +37,7 @@ function renderTable(over: Partial<Parameters<typeof MenuItemTable>[0]> = {}) {
     onSelectedCatChange: vi.fn(),
     onSearchChange: vi.fn(),
     onCateringOnlyChange: vi.fn(),
+    onSortChange: vi.fn(),
     onPerPageChange: vi.fn(),
     onPageChange: vi.fn(),
     onToggleKitchenGroup: vi.fn(),
@@ -67,6 +68,7 @@ function renderTable(over: Partial<Parameters<typeof MenuItemTable>[0]> = {}) {
       selectedCat={null}
       search=""
       cateringOnly={false}
+      sort="menu"
       page={1}
       lastPage={1}
       perPage={25}

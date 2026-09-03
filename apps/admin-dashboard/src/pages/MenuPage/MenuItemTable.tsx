@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil } from '../../api';
+import type { AdminItemSort, MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil } from '../../api';
 import { Badge, Btn, Card, EmptyState, Spinner } from '../../components/Layout';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
@@ -18,12 +18,15 @@ type MenuItemTableProps = {
   selectedCat: number | null;
   search: string;
   cateringOnly: boolean;
+  /** Server-side list order (owner, 2026-09-03: "no sort option in menu items"). */
+  sort: AdminItemSort;
   page: number;
   lastPage: number;
   perPage: number;
   onSelectedCatChange: (cat: number | null) => void;
   onSearchChange: (search: string) => void;
   onCateringOnlyChange: (v: boolean) => void;
+  onSortChange: (sort: AdminItemSort) => void;
   onPerPageChange: (perPage: number) => void;
   onPageChange: (page: number) => void;
   onToggleKitchenGroup: (id: number) => void;
@@ -41,6 +44,17 @@ type MenuItemTableProps = {
 };
 
 const PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
+const SORT_OPTIONS: Array<{ value: AdminItemSort; label: string }> = [
+  { value: 'menu', label: 'Menu order' },
+  { value: 'name', label: 'Name A–Z' },
+  { value: 'name_desc', label: 'Name Z–A' },
+  { value: 'price', label: 'Price: low to high' },
+  { value: 'price_desc', label: 'Price: high to low' },
+  { value: 'category', label: 'Category' },
+  { value: 'updated', label: 'Recently edited' },
+  { value: 'unavailable', label: 'Unavailable first' },
+];
 
 function isCateringItem(item: MenuItem): boolean {
   return !!item.is_catering
@@ -212,12 +226,14 @@ export function MenuItemTable({
   selectedCat,
   search,
   cateringOnly,
+  sort,
   page,
   lastPage,
   perPage,
   onSelectedCatChange,
   onSearchChange,
   onCateringOnlyChange,
+  onSortChange,
   onPerPageChange,
   onPageChange,
   onToggleKitchenGroup,
@@ -281,6 +297,17 @@ export function MenuItemTable({
                 <option key={sub.id} value={sub.id}>{'↳ ' + sub.name}</option>
               ))}
             </optgroup>
+          ))}
+        </select>
+        <select
+          className="menu-items-sort"
+          data-testid="menu-items-sort"
+          value={sort}
+          onChange={(e) => onSortChange(e.target.value as AdminItemSort)}
+          aria-label="Sort items"
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
         <label className="menu-items-catering" data-on={cateringOnly ? 'true' : 'false'}>
