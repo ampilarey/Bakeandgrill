@@ -3768,17 +3768,24 @@ textarea.field-input {
   }
 }
 
+/* The nav sticks; its child scrolls. iOS Safari will not touch-scroll an
+   element that is both sticky and the scroller, which went unnoticed while
+   the rail was short enough to fit (owner, 2026-09-03: "rail not scrolling"). */
 .cat-rail {
   width: var(--cat-rail-width);
   flex-shrink: 0;
   position: sticky;
   top: var(--menu-sticky-offset, var(--menu-header-height));
   align-self: flex-start;
+  border-right: 1px solid var(--color-border);
+}
+.cat-rail__scroll {
   max-height: calc(100dvh - var(--menu-sticky-offset, var(--menu-header-height)) - var(--bottom-nav-height));
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding: 0.5rem 0;
-  border-right: 1px solid var(--color-border);
 }
 
 /* First category: small breathing room under sticky controls (not flush, not a large gap) */

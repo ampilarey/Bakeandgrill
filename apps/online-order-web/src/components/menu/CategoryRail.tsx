@@ -104,10 +104,30 @@ export function CategoryRail({
 }: Props) {
   const { t } = useLanguage();
   const activeRef = useRef<HTMLButtonElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const userTouchedAt = useRef(0);
 
+  // Follow the active entry by scrolling the rail's own scroller only.
+  // scrollIntoView used to scroll every ancestor, so it could nudge the page
+  // while the customer was reading, and it fought a finger that was
+  // scrolling the rail at that moment — so after a touch on the rail the
+  // follow-along waits a moment (owner, 2026-09-03: "rail not scrolling").
   useEffect(() => {
-    activeRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    const el = activeRef.current;
+    const box = scrollRef.current;
+    if (!el || !box) return;
+    if (Date.now() - userTouchedAt.current < 1500) return;
+    const top = el.offsetTop;
+    const bottom = top + el.offsetHeight;
+    const viewTop = box.scrollTop;
+    const viewBottom = viewTop + box.clientHeight;
+    if (top >= viewTop && bottom <= viewBottom) return;
+    const target = top < viewTop ? top - 8 : bottom - box.clientHeight + 8;
+    if (typeof box.scrollTo === 'function') box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    else box.scrollTop = Math.max(0, target);
   }, [activeCategoryId, activeSubcategoryId, cateringActive]);
+
+  const noteTouch = () => { userTouchedAt.current = Date.now(); };
 
   return (
     <nav
@@ -116,10 +136,17 @@ export function CategoryRail({
       style={{
         opacity: dimmed ? 0.4 : 1,
         pointerEvents: dimmed ? 'none' : 'auto',
-        overflowY: 'auto',
-        padding: '0.5rem 0',
       }}
     >
+      {/* The sticky nav does not scroll itself: iOS Safari will not take a
+          touch-scroll on an element that is both sticky and the scroller. */}
+      <div
+        ref={scrollRef}
+        className="cat-rail__scroll"
+        onTouchStart={noteTouch}
+        onPointerDown={noteTouch}
+        onWheel={noteTouch}
+      >
       <div role="tablist" aria-orientation="vertical" className="cat-rail__list">
         {showOffersPill && onOffersClick && (
           <button
@@ -208,6 +235,7 @@ export function CategoryRail({
             <span className="cat-rail__label">Events</span>
           </button>
         )}
+      </div>
       </div>
     </nav>
   );

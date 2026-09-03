@@ -47,17 +47,24 @@
 
 /* Plain anchor links, so the rail works before JS and keeps working without
    it. The scroll-spy at the bottom of the page only adds the active mark. */
+/* The nav sticks; its child scrolls. iOS Safari will not touch-scroll an
+   element that is both sticky and the scroller, which went unnoticed while
+   the rail was short enough to fit (owner, 2026-09-03: "rail not scrolling"). */
 .menu-rail {
     flex: 0 0 var(--menu-rail-w);
     width: var(--menu-rail-w);
     position: sticky;
     top: var(--menu-sticky);
     align-self: flex-start;
+    border-right: 1px solid var(--border);
+}
+.menu-rail-scroll {
     max-height: calc(100dvh - var(--menu-sticky) - 1rem);
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     padding: 0.5rem 0;
-    border-right: 1px solid var(--border);
 }
 /* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
    between entries, no boxes. Active = brand colour + left bar only. */
@@ -746,6 +753,7 @@ body.menu-sheet-open { overflow: hidden; }
 @else
 <div class="menu-shell">
     <nav class="menu-rail" aria-label="Menu categories">
+        <div class="menu-rail-scroll">
         <div class="menu-rail-list">
             @if($menuOffers->isNotEmpty())
                 <a href="#menu-view-offers" data-testid="menu-offers-pill"
@@ -829,6 +837,7 @@ body.menu-sheet-open { overflow: hidden; }
                 </span>
                 <span class="menu-rail-label">Events</span>
             </a>
+        </div>
         </div>
     </nav>
 
@@ -1336,8 +1345,25 @@ body.menu-sheet-open { overflow: hidden; }
 <script nonce="{{ csp_nonce() }}">
 (function () {
     var rail = document.querySelector('.menu-rail');
+    var scroller = document.querySelector('.menu-rail-scroll') || rail;
     var links = Array.prototype.slice.call(document.querySelectorAll('.menu-rail a'));
     if (!rail || !links.length || !('IntersectionObserver' in window)) return;
+
+    // Follow the active entry by scrolling the rail's own scroller only.
+    // scrollIntoView scrolled every ancestor, so it could nudge the page, and
+    // it fought a finger scrolling the rail — so wait a moment after a touch.
+    var touchedAt = 0;
+    ['touchstart', 'pointerdown', 'wheel'].forEach(function (ev) {
+        scroller.addEventListener(ev, function () { touchedAt = Date.now(); }, { passive: true });
+    });
+    function revealInRail(el) {
+        if (Date.now() - touchedAt < 1500) return;
+        var top = el.offsetTop, bottom = top + el.offsetHeight;
+        var viewTop = scroller.scrollTop, viewBottom = viewTop + scroller.clientHeight;
+        if (top >= viewTop && bottom <= viewBottom) return;
+        var target = Math.max(0, top < viewTop ? top - 8 : bottom - scroller.clientHeight + 8);
+        if (scroller.scrollTo) scroller.scrollTo({ top: target, behavior: 'smooth' }); else scroller.scrollTop = target;
+    }
 
     var byId = {};
     links.forEach(function (a) {
@@ -1367,7 +1393,7 @@ body.menu-sheet-open { overflow: hidden; }
                 if (parent && byId[parent]) byId[parent].classList.add('is-active');
                 // The rail scrolls independently once there are more categories
                 // than fit; without this the active pill drifts out of sight.
-                if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+                revealInRail(active);
             }
         });
     }, { rootMargin: '-20% 0px -70% 0px' });
