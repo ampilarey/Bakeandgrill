@@ -72,9 +72,9 @@ class DiscountControlsController extends Controller
             }
             SiteSetting::set(DiscountSettings::REASONS, json_encode($reasons, JSON_UNESCAPED_UNICODE));
         }
-        if (array_key_exists('discount_approval_required', $validated)) {
-            SiteSetting::set(DiscountSettings::APPROVAL_REQUIRED, $validated['discount_approval_required'] ? 'true' : 'false');
-        }
+        // Approval is no longer a switch (see DiscountSettings::approvalRequired).
+        // The key is still accepted so an older admin build does not fail
+        // validation, but nothing is written for it.
         if (array_key_exists('discount_approval_approvers', $validated)) {
             $approvers = [];
             foreach ($validated['discount_approval_approvers'] as $row) {
@@ -168,6 +168,12 @@ class DiscountControlsController extends Controller
             'discount_approval_max_attempts' => DiscountSettings::maxAttempts(),
             'discount_margin_floor_enabled' => DiscountSettings::marginFloorEnabled(),
             'discount_margin_floor_pct' => DiscountSettings::marginFloorPct(),
+            // The floor can only protect a line whose cost is known. This is
+            // how many active items it cannot protect.
+            'items_without_cost' => \App\Models\Item::query()
+                ->where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('cost')->orWhere('cost', '<=', 0))
+                ->count(),
             'roles_with_discounts' => $rolesWithDiscount,
             'roles_with_override' => $rolesWithOverride,
         ];

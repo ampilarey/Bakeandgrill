@@ -7,7 +7,6 @@ namespace Tests\Feature\Orders;
 use App\Domains\Notifications\Support\SmsTypeRegistry;
 use App\Domains\Orders\Support\DiscountSettings;
 use App\Domains\Permissions\PermissionCatalogSync;
-use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Device;
 use App\Models\DiscountApproval;
@@ -304,7 +303,11 @@ class DiscountApprovalOtpTest extends TestCase
         $this->assertTrue($hit429, 'Expected throttle:5,1 to return 429');
     }
 
-    public function test_when_approval_off_discount_applies_directly(): void
+    /**
+     * Owner, 2026-09-02: "a cashier must not apply a random discount any
+     * amount without manager/admin approval". The old off switch is gone.
+     */
+    public function test_a_cashier_cannot_apply_a_discount_directly_even_with_the_old_setting_off(): void
     {
         SiteSetting::set(DiscountSettings::APPROVAL_REQUIRED, 'false');
         SiteSetting::bust();
@@ -319,10 +322,52 @@ class DiscountApprovalOtpTest extends TestCase
             ]],
             'reprint_kitchen' => false,
             'discount_amount' => 20,
+        ])->assertStatus(422)->assertJsonPath('message', 'Manager approval code required.');
+
+        $this->assertSame(0, (int) Order::find($order->id)?->manual_discount_laar);
+    }
+
+    public function test_someone_who_approves_discounts_applies_directly_and_is_recorded_as_the_approver(): void
+    {
+        // The catalog is synced in setUp, so the permission exists; this
+        // cashier is simply granted it, the way a manager's role carries it.
+        $this->staff->grantPermission('promotions.discount_override');
+        $this->staff->unsetRelation('permissions');
+
+        $order = $this->createOpenOrder();
+
+        $this->patchJson("/api/orders/{$order->id}/items", [
+            'items' => [[
+                'item_id' => $this->item->id,
+                'name' => $this->item->name,
+                'quantity' => 1,
+            ]],
+            'reprint_kitchen' => false,
+            'discount_amount' => 20,
         ])->assertOk();
 
-        $this->assertSame(2000, (int) Order::find($order->id)?->manual_discount_laar);
+        $fresh = Order::find($order->id);
+        $this->assertSame(2000, (int) $fresh?->manual_discount_laar);
+        $this->assertSame((int) $this->staff->id, (int) $fresh?->manual_discount_approved_by);
         $this->assertSame(0, DiscountApproval::count());
+    }
+
+    public function test_with_no_approvers_configured_the_code_goes_to_whoever_may_approve(): void
+    {
+        SiteSetting::set(DiscountSettings::APPROVERS, '[]');
+        SiteSetting::bust();
+
+        // The manager from setUp holds the approve permission through their
+        // role and has a phone, so the code goes to them even though the
+        // approver list is empty. The cashier has no phone and no permission.
+        $order = $this->createOpenOrder();
+        $this->postJson("/api/orders/{$order->id}/discount/request-approval", ['discount_amount' => 20])
+            ->assertOk();
+
+        $approval = DiscountApproval::firstOrFail();
+        $this->assertCount(1, $approval->approver_codes);
+        $this->assertSame((int) $this->manager->id, (int) ($approval->approver_codes[0]['user_id'] ?? 0));
+        $this->assertSame('7654321', $approval->approver_codes[0]['phone'] ?? null);
     }
 
     public function test_global_kill_switch_blocks_approval_sms(): void
@@ -340,7 +385,7 @@ class DiscountApprovalOtpTest extends TestCase
 
         $this->assertTrue(
             SmsLog::where('type', 'discount_approval_otp')->where('status', 'disabled')->exists()
-            || DiscountApproval::where('status', 'failed')->exists()
+            || DiscountApproval::where('status', 'failed')->exists(),
         );
     }
 }

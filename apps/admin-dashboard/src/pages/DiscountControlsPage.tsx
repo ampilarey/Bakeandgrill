@@ -124,6 +124,7 @@ function applyControls(
     setMaxAttempts: (v: number) => void;
     setRolesWithDiscounts: (v: string[]) => void;
     setRolesWithOverride: (v: string[]) => void;
+    setItemsWithoutCost?: (v: number | null) => void;
   },
 ) {
   setters.setEnabled(data.discount_manual_enabled);
@@ -142,6 +143,7 @@ function applyControls(
   setters.setMarginFloorPct(data.discount_margin_floor_pct ?? 0);
   setters.setRolesWithDiscounts(data.roles_with_discounts ?? []);
   setters.setRolesWithOverride(data.roles_with_override ?? []);
+  setters.setItemsWithoutCost?.(typeof data.items_without_cost === 'number' ? data.items_without_cost : null);
 }
 
 export function DiscountControlsPage() {
@@ -169,6 +171,7 @@ export function DiscountControlsPage() {
   const [marginFloorPct, setMarginFloorPct] = useState(0);
   const [rolesWithDiscounts, setRolesWithDiscounts] = useState<string[]>([]);
   const [rolesWithOverride, setRolesWithOverride] = useState<string[]>([]);
+  const [itemsWithoutCost, setItemsWithoutCost] = useState<number | null>(null);
 
   const setters = {
     setEnabled,
@@ -185,6 +188,7 @@ export function DiscountControlsPage() {
     setMaxAttempts,
     setRolesWithDiscounts,
     setRolesWithOverride,
+    setItemsWithoutCost,
   };
 
   const load = useCallback(async () => {
@@ -306,9 +310,16 @@ export function DiscountControlsPage() {
           <section style={sectionStyle} aria-labelledby="dc-margin">
             <h2 id="dc-margin" style={sectionTitleStyle}>Promo margin floor</h2>
             <p style={sectionHintStyle}>
-              When on, item/category promo discounts cannot push unit price below cost × (1 + floor %).
-              Off by default so existing promos stay behaviour-neutral.
+              When on, stacked discounts cannot push a line below cost × (1 + floor %). This clamps manual
+              discounts too, so a deliberate 100% comp gets cut as well. Off by default.
             </p>
+            {itemsWithoutCost != null && (
+              <p style={sectionHintStyle} data-testid="dc-items-without-cost">
+                {itemsWithoutCost === 0
+                  ? 'Every active item has a cost price, so the floor can protect all of them.'
+                  : `${itemsWithoutCost} active item${itemsWithoutCost === 1 ? ' has' : 's have'} no cost price. The floor cannot protect those.`}
+              </p>
+            )}
             <Toggle
               checked={marginFloorEnabled}
               onChange={setMarginFloorEnabled}
@@ -493,16 +504,15 @@ export function DiscountControlsPage() {
           <section style={sectionStyle} aria-labelledby="dc-approval">
             <h2 id="dc-approval" style={sectionTitleStyle}>SMS approval</h2>
             <p style={sectionHintStyle}>
-              When on, every manual discount requires a one-time code sent by SMS to the approvers below.
-              Codes expire and are attempt-limited. Approval never exceeds the configured caps.
+              Every manual discount needs a manager. A cashier is sent a one-time code by SMS from the
+              approvers below and types it in at Charge. Anyone who can approve discounts
+              ({rolesWithOverride.length > 0 ? rolesWithOverride.join(', ') : 'owner'}) applies theirs directly and is
+              recorded as the approver. Codes expire and are attempt-limited. Approval never exceeds the caps above.
             </p>
-            <div style={{ marginBottom: 14 }}>
-              <Toggle
-                checked={approvalRequired}
-                onChange={setApprovalRequired}
-                label={approvalRequired ? 'SMS approval required' : 'SMS approval off'}
-              />
-            </div>
+            <p style={{ ...sectionHintStyle, marginBottom: 14 }} data-testid="dc-approval-rule">
+              This cannot be switched off. With no approvers listed, codes go to everyone who can approve
+              discounts and has a phone number.
+            </p>
             <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <Input
                 label="Code TTL (minutes)"

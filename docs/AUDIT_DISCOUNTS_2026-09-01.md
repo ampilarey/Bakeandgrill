@@ -7,10 +7,10 @@ Findings are ranked by what they could actually cost.
 Audited against `main` at `b5d275734`.
 
 > **Status (2026-09-01, same day): H1, M1 and L1 are fixed.** The reproductions
-> below are now regression tests. **M2 and M3 are deliberately left open** —
-> both are settings the owner has to choose, not defects, and changing what
-> customers get charged is not a decision to make quietly inside a fix. See
-> the note under each.
+> below are now regression tests. M2 and M3 were left open as owner decisions;
+> **on 2026-09-02 the owner decided**: "a cashier must not apply a random
+> discount any amount without manager/admin approval". Both are now closed —
+> see the note under each.
 >
 > One thing changed during implementation. My first attempt at H1 held every
 > manual discount to the *share* it was approved at, which read well until a
@@ -165,7 +165,16 @@ it the record would say nothing rather than something wrong.
 
 ---
 
-## M2 — Nothing bounds the total giveaway across layers  ·  **OPEN — your call**
+## M2 — Nothing bounds the total giveaway across layers  ·  **ADDRESSED 2026-09-02**
+
+> The bound is now a person. A manual discount of any size needs somebody who
+> holds `promotions.discount_override` — the managers, and owner/admin by role.
+> A cashier gets an SMS code from one of them; a manager applies directly and
+> is recorded as the approver. The old "require approval" switch is gone.
+> The margin floor stays a setting, and stays off: it clamps manual discounts
+> too, so switching it on would silently cut a manager's deliberate 100% comp
+> on a complaint. The admin Discount controls page now shows how many active
+> items have no cost price, which is what the floor cannot protect.
 
 Discounts stack in five independent layers, applied in this order:
 
@@ -199,7 +208,12 @@ how many active items have no cost — those are the ones it cannot protect.
 
 ---
 
-## M3 — "Once per customer" does not bind a walk-in  ·  **OPEN — your call**
+## M3 — "Once per customer" does not bind a walk-in  ·  **FIXED 2026-09-02**
+
+> A promotion with `max_uses_per_customer` or `first_order_only` is now
+> refused on an order with no customer, with a message that says to sign in
+> or have the cashier add the customer. `registered_only` still exists for
+> offers that want an account even without a per-customer limit.
 
 `PromotionEvaluator::evaluateAgainstOrder()` (`:338`):
 

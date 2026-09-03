@@ -24,6 +24,8 @@ export type DiscountControls = {
   discount_approval_max_attempts: number;
   discount_margin_floor_enabled: boolean;
   discount_margin_floor_pct: number;
+  /** Active items with no cost price: the margin floor cannot protect these. */
+  items_without_cost?: number;
   roles_with_discounts: string[];
   roles_with_override: string[];
 };

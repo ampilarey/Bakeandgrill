@@ -21,13 +21,24 @@ describe("normalizePosDiscountControls", () => {
       reason_required: true,
       reasons: ["Loyal customer", "  ", "Staff meal"],
       approval_required: true,
+      can_self_approve: true,
     });
     expect(n.manual_enabled).toBe(false);
     expect(n.max_percent).toBe(15);
     expect(n.max_fixed_mvr).toBe(50);
     expect(n.reason_required).toBe(true);
     expect(n.approval_required).toBe(true);
+    expect(n.can_self_approve).toBe(true);
     expect(n.reasons).toEqual(["Loyal customer", "Staff meal"]);
+  });
+
+  it("assumes a code is needed unless the server says otherwise", () => {
+    // Owner, 2026-09-02: approval is the rule. An older server that sends no
+    // flag, or a payload with the flag missing, still asks for a code.
+    const n = normalizePosDiscountControls({ manual_enabled: true });
+    expect(n.approval_required).toBe(true);
+    expect(n.can_self_approve).toBe(false);
+    expect(normalizePosDiscountControls({ approval_required: false }).approval_required).toBe(false);
   });
 });
 

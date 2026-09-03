@@ -442,8 +442,10 @@ export function useOrderCreation(params: Params) {
 
   const parsedDiscountAmount = () => Math.max(0, Number.parseFloat(params.discountAmount) || 0);
 
+  // A cashier needs a manager's code for any discount; a manager applies
+  // theirs directly. The server makes the same call in ManualDiscountPolicy.
   const needsDiscountApproval = (amount: number) =>
-    amount > 0 && controls.approval_required === true;
+    amount > 0 && controls.approval_required === true && controls.can_self_approve !== true;
 
   const preflightManualDiscount = (amount: number): string | null => {
     if (amount <= 0) return null;

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Orders\Support;
 
 use App\Domains\Notifications\Support\SmsTypeRegistry;
+use App\Domains\Permissions\Services\PermissionService;
 use App\Models\SiteSetting;
+use App\Models\User;
 
 /**
  * Typed getters for POS discount control SiteSettings.
@@ -99,12 +101,61 @@ final class DiscountSettings
         ), fn ($r) => $r !== ''));
     }
 
+    /**
+     * Whether a manual discount needs a manager's say-so. Always, now.
+     *
+     * Owner, 2026-09-02: "a cashier must not apply a random discount any
+     * amount without manager/admin approval". This used to be a switch that
+     * shipped off; it is no longer a switch. A cashier gets an SMS code from
+     * an approver; somebody who holds `promotions.discount_override` (the
+     * managers, and owner/admin by their role) is the approver and applies
+     * directly, recorded as approving their own discount. The stored setting
+     * is kept only so old rows and payloads keep their shape.
+     */
     public static function approvalRequired(): bool
     {
-        return SmsTypeRegistry::settingIsTruthy(
-            SiteSetting::get(self::APPROVAL_REQUIRED, 'false'),
-            false,
-        );
+        return true;
+    }
+
+    /** Whether this person may apply a manual discount without a code. */
+    public static function canSelfApprove(?User $user): bool
+    {
+        return $user instanceof User && app(PermissionService::class)->hasPermission($user, 'promotions.discount_override');
+    }
+
+    /**
+     * Who receives the approval code: the configured approvers, or, when
+     * nobody has been configured, every active user who may approve
+     * discounts and has a phone number. Without the fallback a fresh
+     * install, or a cleared list, would leave every cashier unable to give
+     * any discount at all.
+     *
+     * @return list<array{user_id: int|null, phone: string, label: string}>
+     */
+    public static function effectiveApprovers(): array
+    {
+        $configured = self::approvers();
+        if ($configured !== []) {
+            return $configured;
+        }
+
+        $permissions = app(PermissionService::class);
+
+        return User::query()
+            ->where('is_active', true)
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->with('role')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (User $u) => $permissions->hasPermission($u, 'promotions.discount_override'))
+            ->map(fn (User $u) => [
+                'user_id' => (int) $u->id,
+                'phone' => trim((string) $u->phone),
+                'label' => (string) $u->name,
+            ])
+            ->values()
+            ->all();
     }
 
     /** @return list<array{user_id: int|null, phone: string, label: string}> */

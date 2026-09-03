@@ -68,6 +68,9 @@ class PosBootstrapController extends Controller
                 'reason_required' => DiscountSettings::reasonRequired(),
                 'reasons' => DiscountSettings::reasons(),
                 'approval_required' => DiscountSettings::approvalRequired(),
+                // Managers apply directly; everyone else needs a code. UX only —
+                // ManualDiscountPolicy makes the same call server-side.
+                'can_self_approve' => DiscountSettings::canSelfApprove($user),
             ],
         ] + PosMenuController::tillTabs($menu, $user));
     }

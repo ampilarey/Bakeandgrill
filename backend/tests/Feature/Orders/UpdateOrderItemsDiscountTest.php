@@ -69,6 +69,10 @@ class UpdateOrderItemsDiscountTest extends TestCase
     {
         $perm = Permission::where('slug', 'promotions.discounts')->firstOrFail();
         $this->staff->grantPermission($perm->slug);
+        // A discount needs an approver (owner, 2026-09-02). This suite is
+        // about the totals, so the actor is their own approver.
+        $this->staff->grantPermission('promotions.discount_override');
+        $this->staff->unsetRelation('permissions');
         $this->staff->unsetRelation('permissions');
     }
 

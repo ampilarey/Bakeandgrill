@@ -44,6 +44,10 @@ class OrderCreationDiscountTest extends TestCase
             'is_active' => true,
         ]);
         $this->staff->grantPermission('promotions.discounts');
+        // A discount needs an approver (owner, 2026-09-02). This suite is
+        // about what gets persisted, so the actor is their own approver.
+        $this->staff->grantPermission('promotions.discount_override');
+        $this->staff->unsetRelation('permissions');
         $this->staff->unsetRelation('permissions');
 
         $this->device = Device::create([

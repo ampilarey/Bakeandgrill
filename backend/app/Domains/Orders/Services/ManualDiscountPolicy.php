@@ -74,7 +74,9 @@ final class ManualDiscountPolicy
 
         $discountLaar = min($requested, max(0, $subtotalLaar));
 
-        if ($requireApprovalGate && DiscountSettings::approvalRequired()) {
+        // A cashier never applies a discount on their own say-so. Somebody who
+        // may approve discounts is the approver, and applies directly.
+        if ($requireApprovalGate && DiscountSettings::approvalRequired() && !DiscountSettings::canSelfApprove($actor)) {
             abort(422, 'Manager approval code required.');
         }
 
@@ -84,7 +86,7 @@ final class ManualDiscountPolicy
     /**
      * Validate + audit. Call when persisting a discount.
      *
-     * @param  bool  $viaApprovalConfirm  Skips the approval-required gate.
+     * @param bool $viaApprovalConfirm Skips the approval-required gate.
      */
     public function authorizeAndClamp(
         ?User $actor,
@@ -108,6 +110,13 @@ final class ManualDiscountPolicy
 
         if ($decision->discountLaar <= 0) {
             return $decision;
+        }
+
+        // Applied without a code: the actor was their own approver. Record
+        // them, so every discount on every ticket names who allowed it.
+        $selfApproved = !$viaApprovalConfirm && $approvedByUserId === null && $actor instanceof User;
+        if ($selfApproved) {
+            $approvedByUserId = (int) $actor->id;
         }
 
         $final = new DiscountDecision(
@@ -136,6 +145,7 @@ final class ManualDiscountPolicy
                 'reason_note' => $final->reasonNote,
                 'approved_by' => $approvedByUserId,
                 'via_approval' => $viaApprovalConfirm,
+                'self_approved' => $selfApproved,
                 'cap_laar' => $capLaar,
                 'actor_role' => $roleSlug,
             ],

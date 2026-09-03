@@ -42,6 +42,9 @@ class ManualDiscountPolicyTest extends TestCase
             'is_active' => true,
         ]);
         $this->staff->grantPermission('promotions.discounts');
+        // Most of this suite is about caps and reasons, not about who may
+        // give a discount, so the actor is their own approver.
+        $this->staff->grantPermission('promotions.discount_override');
         $this->staff->unsetRelation('permissions');
         $this->staff->load('role');
 
@@ -158,23 +161,42 @@ class ManualDiscountPolicyTest extends TestCase
         $this->assertSame($before, AuditLog::count());
     }
 
-    public function test_defaults_allow_up_to_subtotal_deploy_neutral(): void
+    public function test_defaults_allow_up_to_subtotal_for_an_approver(): void
     {
-        // Migration defaults: enabled, 100%, fixed 0, reason off, approval off.
+        // Migration defaults: enabled, 100%, fixed 0, reason off. The actor
+        // may approve discounts, so the whole subtotal is theirs to give, and
+        // the record names them as the approver.
         $decision = $this->policy->authorizeAndClamp($this->staff, 10000, 10000, null, null, 9);
         $this->assertSame(10000, $decision->discountLaar);
+        $this->assertSame((int) $this->staff->id, $decision->approvedByUserId);
     }
 
-    public function test_approval_required_blocks_direct_apply(): void
+    /**
+     * Owner, 2026-09-02: "a cashier must not apply a random discount any
+     * amount without manager/admin approval". The old setting no longer
+     * turns this off.
+     */
+    public function test_a_cashier_without_the_approve_permission_is_blocked_whatever_the_setting_says(): void
     {
-        $this->setSetting(DiscountSettings::APPROVAL_REQUIRED, 'true');
+        $this->setSetting(DiscountSettings::APPROVAL_REQUIRED, 'false');
+        $cashier = User::create([
+            'name' => 'Cashier', 'email' => 'cashier-policy@test.com',
+            'password' => Hash::make('password'), 'role_id' => $this->staffRole->id,
+            'is_active' => true,
+        ]);
+        $cashier->grantPermission('promotions.discounts');
 
         try {
-            $this->policy->authorizeAndClamp($this->staff, 10000, 500, null, null, 1);
+            $this->policy->authorizeAndClamp($cashier, 10000, 500, null, null, 1);
             $this->fail('Expected 422');
         } catch (HttpException $e) {
             $this->assertSame(422, $e->getStatusCode());
             $this->assertStringContainsString('approval', strtolower($e->getMessage()));
         }
+
+        // The same request through the approval path (code confirmed) is fine.
+        $decision = $this->policy->authorizeAndClamp($cashier, 10000, 500, null, null, 1, 42, viaApprovalConfirm: true);
+        $this->assertSame(500, $decision->discountLaar);
+        $this->assertSame(42, $decision->approvedByUserId);
     }
 }

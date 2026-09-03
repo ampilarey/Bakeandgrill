@@ -68,6 +68,15 @@ class StaleDiscountTest extends TestCase
             ['name' => 'Apply Discounts', 'group' => 'Promotions'],
         );
         $this->staff->grantPermission('promotions.discounts');
+        // This suite is about re-checking a discount after the cart changes,
+        // not about who may give one. Make the actor their own approver so
+        // the discount lands without the SMS code a cashier would need.
+        Permission::updateOrCreate(
+            ['slug' => 'promotions.discount_override'],
+            ['name' => 'Approve POS discounts', 'group' => 'Promotions'],
+        );
+        $this->staff->grantPermission('promotions.discount_override');
+        $this->staff->unsetRelation('permissions');
         $this->preparePosApi($this->staff, $this->device);
         Sanctum::actingAs($this->staff, ['staff']);
     }

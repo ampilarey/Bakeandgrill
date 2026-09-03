@@ -40,13 +40,9 @@ final class DiscountApprovalService
         ?string $reasonNote,
         ?Request $request = null,
     ): array {
-        if (!DiscountSettings::approvalRequired()) {
-            abort(422, 'Discount approval is not required.');
-        }
-
-        $approvers = DiscountSettings::approvers();
+        $approvers = DiscountSettings::effectiveApprovers();
         if ($approvers === []) {
-            abort(422, 'No discount approvers are configured. Ask an admin to add approvers.');
+            abort(422, 'Nobody can approve discounts right now. Add approvers under Discount controls, or give a manager the "Approve POS discounts" permission and a phone number.');
         }
 
         $order->loadMissing('items');
@@ -217,12 +213,12 @@ final class DiscountApprovalService
             (int) $approval->attempts,
             $code,
             function (array $state) use ($approval): void {
-                if (! empty($state['expired'])) {
+                if (!empty($state['expired'])) {
                     $approval->update(['status' => 'expired']);
 
                     return;
                 }
-                if (! empty($state['failed'])) {
+                if (!empty($state['failed'])) {
                     $approval->update([
                         'attempts' => $state['attempts'] ?? $approval->attempts,
                         'status' => 'failed',
@@ -267,7 +263,7 @@ final class DiscountApprovalService
         // second approver answered.
         $matchedApprover = $approverCodes[$matched] ?? null;
         if (!is_array($matchedApprover)) {
-            $fallbackApprovers = DiscountSettings::approvers();
+            $fallbackApprovers = DiscountSettings::effectiveApprovers();
             $matchedApprover = $fallbackApprovers[0] ?? null;
         }
         $approvedBy = is_array($matchedApprover) ? ($matchedApprover['user_id'] ?? null) : null;

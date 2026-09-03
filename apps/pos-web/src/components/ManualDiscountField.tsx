@@ -9,6 +9,7 @@ export type ManualDiscountControlsConfig = {
   reason_required: boolean;
   reasons: string[];
   approval_required?: boolean;
+  can_self_approve?: boolean;
 };
 
 type Props = {
@@ -48,8 +49,12 @@ export function ManualDiscountField({
   if (maxPct < 100) capParts.push(`max ${maxPct}%`);
   if (maxFixed > 0) capParts.push(`max MVR ${maxFixed.toFixed(2)}`);
 
-  const showReasons =
-    discountControls.reason_required && (Number.parseFloat(discountAmount) || 0) > 0;
+  const amountEntered = (Number.parseFloat(discountAmount) || 0) > 0;
+  const showReasons = discountControls.reason_required && amountEntered;
+  // Say so before Charge, not after: a cashier who types a discount is about
+  // to be asked for a manager's code.
+  const needsCode =
+    amountEntered && discountControls.approval_required !== false && !discountControls.can_self_approve;
 
   return (
     <div style={{ marginTop: 8 }} data-testid="manual-discount-field">
@@ -85,6 +90,11 @@ export function ManualDiscountField({
       {discountFieldError && (
         <div role="alert" style={{ marginTop: 4, fontSize: 11, color: "#B91C1C" }}>
           {discountFieldError}
+        </div>
+      )}
+      {needsCode && !discountFieldError && (
+        <div data-testid="discount-needs-code" style={{ marginTop: 4, fontSize: 11, color: mutedColor }}>
+          A manager's code is needed to apply this. You will be asked for it at Charge.
         </div>
       )}
       {showReasons && (

@@ -31,6 +31,8 @@ use Illuminate\Support\Facades\Log;
  */
 class PromotionEvaluator
 {
+    public const PER_CUSTOMER_NEEDS_CUSTOMER = 'This offer is limited per customer, so the order needs a customer on it. Sign in, or ask the cashier to add you.';
+
     public function __construct(
         private PromotionRepositoryInterface $promotionRepo,
         private PromotionRedemptionRepositoryInterface $redemptionRepo,
@@ -344,6 +346,13 @@ class PromotionEvaluator
             return $this->reject($registeredCheck);
         }
 
+        // A limit per customer means nothing without a customer. A walk-in at
+        // the till, or a guest checkout, used to slip past "once per customer"
+        // and "first order only" entirely; now the order needs someone on it.
+        if ($customerId === null && ($promotion->max_uses_per_customer || $promotion->first_order_only)) {
+            return $this->reject(self::PER_CUSTOMER_NEEDS_CUSTOMER);
+        }
+
         $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
         if ($firstOrderCheck !== null) {
             return $this->reject($firstOrderCheck);
@@ -455,6 +464,13 @@ class PromotionEvaluator
         $registeredCheck = $this->registeredOnlyGate($promotion, $customerId);
         if ($registeredCheck !== null) {
             return $this->reject($registeredCheck);
+        }
+
+        // A limit per customer means nothing without a customer. A walk-in at
+        // the till, or a guest checkout, used to slip past "once per customer"
+        // and "first order only" entirely; now the order needs someone on it.
+        if ($customerId === null && ($promotion->max_uses_per_customer || $promotion->first_order_only)) {
+            return $this->reject(self::PER_CUSTOMER_NEEDS_CUSTOMER);
         }
 
         $firstOrderCheck = $this->firstOrderGate($promotion, $customerId, $excludeOrderId);
@@ -700,7 +716,7 @@ class PromotionEvaluator
     /**
      * Cart reward picker: earned free_item offers with a choice of reward items.
      *
-     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}>  $lines
+     * @param array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}> $lines
      * @return list<array{promotion_id: int, promotion_name: string, message: string, reward_items: list<array{id: int, name: string, base_price: float, image_url: ?string}>}>
      */
     public function earnedRewardChoices(array $lines, ?int $customerId = null): array
@@ -794,8 +810,8 @@ class PromotionEvaluator
     /**
      * Validate client-submitted reward claims. Returns null if ok, or an error message.
      *
-     * @param  list<array{promotion_id: int, item_id: int}>  $claims
-     * @param  array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}>  $lines
+     * @param list<array{promotion_id: int, item_id: int}> $claims
+     * @param array<int, array{item_id: int, quantity?: numeric, unit_price?: numeric, total_price?: numeric}> $lines
      */
     public function validateRewardClaims(array $claims, array $lines, ?int $customerId = null): ?string
     {
@@ -882,8 +898,8 @@ class PromotionEvaluator
         if (!$promotion->first_order_only) {
             return null;
         }
-        // Guests (no linked customer) count as first-order eligible unless
-        // registered_only is set (handled by registeredOnlyGate above).
+        // No customer never reaches here: evaluateAgainstOrder rejects a
+        // per-customer offer on an order with nobody on it.
         if ($customerId === null) {
             return null;
         }

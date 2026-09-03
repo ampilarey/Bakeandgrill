@@ -24,7 +24,13 @@ class RegisteredOnlyPromoTest extends TestCase
         $this->seedCatalog();
     }
 
-    public function test_registered_only_false_guest_still_receives_first_order_promo(): void
+    /**
+     * Discount audit M3, fixed 2026-09-02: a first-order offer on an order
+     * with nobody on it used to be honoured for every walk-in, every time.
+     * Now the order needs a customer before a per-customer offer applies,
+     * whether or not registered_only is set.
+     */
+    public function test_a_first_order_promo_needs_a_customer_on_the_order_even_without_registered_only(): void
     {
         $this->makePromo([
             'type' => 'fixed',
@@ -39,8 +45,31 @@ class RegisteredOnlyPromoTest extends TestCase
 
         $result = app(PromotionEvaluator::class)->evaluate('GUESTOK', $order->fresh(['items.item']), null);
 
-        $this->assertTrue($result['valid'], $result['message'] ?? 'expected guest eligible');
-        $this->assertSame(500, $result['discount_laar']);
+        $this->assertFalse($result['valid']);
+        $this->assertSame(PromotionEvaluator::PER_CUSTOMER_NEEDS_CUSTOMER, $result['message']);
+
+        // With the customer on the order it applies as before.
+        $withCustomer = app(PromotionEvaluator::class)->evaluate('GUESTOK', $this->buildPromoOrder(100.0), $this->customer->id);
+        $this->assertTrue($withCustomer['valid'], $withCustomer['message'] ?? '');
+        $this->assertSame(500, $withCustomer['discount_laar']);
+    }
+
+    public function test_a_once_per_customer_promo_needs_a_customer_on_the_order(): void
+    {
+        $this->makePromo([
+            'type' => 'fixed',
+            'discount_value' => 500,
+            'code' => 'ONCE',
+            'max_uses_per_customer' => 1,
+        ]);
+
+        $order = $this->buildPromoOrder(100.0);
+        $order->update(['customer_id' => null]);
+
+        $result = app(PromotionEvaluator::class)->evaluate('ONCE', $order->fresh(['items.item']), null);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame(PromotionEvaluator::PER_CUSTOMER_NEEDS_CUSTOMER, $result['message']);
     }
 
     public function test_registered_only_true_rejects_guest_with_sign_in_message(): void
@@ -102,13 +131,12 @@ class RegisteredOnlyPromoTest extends TestCase
         $this->assertSame('This offer is only available on your first order.', $result['message']);
     }
 
-    public function test_missing_registered_only_defaults_false_guest_eligible(): void
+    public function test_missing_registered_only_defaults_false_and_a_guest_is_still_eligible_for_an_open_promo(): void
     {
         $promo = $this->makePromo([
             'type' => 'fixed',
             'discount_value' => 300,
             'code' => 'LEGACY',
-            'first_order_only' => true,
         ]);
         $this->assertFalse((bool) $promo->fresh()->registered_only);
 
@@ -176,7 +204,7 @@ class RegisteredOnlyPromoTest extends TestCase
         unset($perm);
         Sanctum::actingAs($staff, ['staff']);
 
-        $this->postJson('/api/orders/'.$order->id.'/apply-promo', ['code' => 'SIGNIN'])
+        $this->postJson('/api/orders/' . $order->id . '/apply-promo', ['code' => 'SIGNIN'])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Sign in or create an account to use this offer.');
     }

@@ -48,6 +48,8 @@ export type PosDiscountControls = {
   reason_required: boolean;
   reasons: string[];
   approval_required: boolean;
+  /** This cashier may approve discounts, so they apply theirs without a code. */
+  can_self_approve: boolean;
 };
 
 export const DEFAULT_POS_DISCOUNT_CONTROLS: PosDiscountControls = {
@@ -57,7 +59,9 @@ export const DEFAULT_POS_DISCOUNT_CONTROLS: PosDiscountControls = {
   effective_cap_percent: 100,
   reason_required: false,
   reasons: [],
-  approval_required: false,
+  // Approval is the rule now, so the safe default is to ask for a code.
+  approval_required: true,
+  can_self_approve: false,
 };
 
 export function normalizePosDiscountControls(raw: unknown): PosDiscountControls {
@@ -81,7 +85,9 @@ export function normalizePosDiscountControls(raw: unknown): PosDiscountControls 
       : DEFAULT_POS_DISCOUNT_CONTROLS.effective_cap_percent,
     reason_required: o.reason_required === true,
     reasons,
-    approval_required: o.approval_required === true,
+    // An older server that does not send the flag still gets the rule.
+    approval_required: o.approval_required !== false,
+    can_self_approve: o.can_self_approve === true,
   };
 }
 

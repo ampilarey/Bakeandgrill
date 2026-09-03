@@ -60,7 +60,8 @@ class FirstOrderOnlyTest extends TestCase
         $this->assertSame('This offer is only available on your first order.', $result['message']);
     }
 
-    public function test_guest_counts_as_first_order(): void
+    /** A guest is nobody's first order. The offer waits for a customer on the order. */
+    public function test_a_guest_does_not_count_as_a_first_order(): void
     {
         $this->makePromo([
             'type' => 'fixed',
@@ -74,6 +75,7 @@ class FirstOrderOnlyTest extends TestCase
 
         $result = app(PromotionEvaluator::class)->evaluate('GUEST1', $order->fresh(['items.item']), null);
 
-        $this->assertTrue($result['valid']);
+        $this->assertFalse($result['valid']);
+        $this->assertSame(PromotionEvaluator::PER_CUSTOMER_NEEDS_CUSTOMER, $result['message']);
     }
 }

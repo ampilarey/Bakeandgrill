@@ -90,3 +90,27 @@ describe("ManualDiscountField", () => {
     expect(screen.queryByTestId("manual-discount-field")).not.toBeInTheDocument();
   });
 });
+
+describe("manager code hint", () => {
+  const controls = {
+    manual_enabled: true, max_percent: 100, max_fixed_mvr: 0, reason_required: false, reasons: [],
+    approval_required: true,
+  };
+  const field = (over: Record<string, unknown>) => (
+    <ManualDiscountField
+      discountAmount="10"
+      setDiscountAmount={() => {}}
+      discountControls={{ ...controls, ...over }}
+    />
+  );
+
+  it("warns a cashier that a manager's code will be asked for", () => {
+    render(field({ can_self_approve: false }));
+    expect(screen.getByTestId("discount-needs-code")).toHaveTextContent("manager's code");
+  });
+
+  it("says nothing to someone who approves their own", () => {
+    render(field({ can_self_approve: true }));
+    expect(screen.queryByTestId("discount-needs-code")).toBeNull();
+  });
+});

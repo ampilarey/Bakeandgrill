@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Orders;
 
 use App\Domains\Permissions\PermissionCatalogSync;
-use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -54,7 +53,7 @@ class DiscountControlsControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('discount_manual_enabled', true)
             ->assertJsonPath('discount_max_percent', 100)
-            ->assertJsonPath('discount_approval_required', false)
+            ->assertJsonPath('discount_approval_required', true)
             ->assertJsonStructure([
                 'discount_reasons',
                 'discount_approval_approvers',
