@@ -86,6 +86,25 @@ class Item extends Model
         return $this->belongsTo(MenuGroup::class, 'menu_group_id');
     }
 
+    /**
+     * "Also show in" — the extra categories the menus list this item under,
+     * on top of its home `category_id` (owner, 2026-09-03: Bajiya under
+     * Kulhi Hedhikaa and under Evening Tea). Home owns sort order, reports,
+     * station and stock; these only add placements.
+     */
+    public function extraCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'item_categories');
+    }
+
+    /** @return list<int> */
+    public function extraCategoryIds(): array
+    {
+        return $this->relationLoaded('extraCategories')
+            ? $this->extraCategories->pluck('id')->map(fn ($id) => (int) $id)->values()->all()
+            : $this->extraCategories()->pluck('categories.id')->map(fn ($id) => (int) $id)->values()->all();
+    }
+
     public function channelAvailabilities(): HasMany
     {
         return $this->hasMany(ItemChannelAvailability::class, 'item_id');

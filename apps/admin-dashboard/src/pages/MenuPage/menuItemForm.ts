@@ -55,6 +55,8 @@ export type ItemForm = {
   tax_code: string;
   sort_order: string; is_active: boolean; is_available: boolean;
   category_id: string;
+  /** "Also show in": extra categories the menus list this item under. */
+  extra_category_ids: number[];
   menu_group_id: string;
   channels: Record<string, boolean>;
   has_variants: boolean;
@@ -151,6 +153,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     is_active: item.is_active,
     is_available: item.is_available,
     category_id: item.category_id != null ? String(item.category_id) : '',
+    extra_category_ids: [...(item.extra_category_ids ?? [])],
     menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
     channels: channelsFromItem(item),
     has_variants: item.has_variants ?? false,
@@ -246,6 +249,9 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     is_active: form.is_active,
     is_available: form.is_available,
     category_id: form.category_id !== '' ? parseInt(form.category_id) : null,
+    // The home is never an extra; the server drops it too, but the form
+    // should not ask for a card twice in one section.
+    extra_category_ids: form.extra_category_ids.filter((id) => String(id) !== form.category_id),
     menu_group_id: form.menu_group_id !== '' ? parseInt(form.menu_group_id, 10) : null,
     // Sizes switched off means "remove them", so the server must be told an
     // empty list. Sending nothing left the old sizes in place — flagged
@@ -390,6 +396,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     tax_code: 'standard_8', sort_order: '',
     is_active: true, is_available: true,
     category_id: selectedCat != null ? String(selectedCat) : '',
+    extra_category_ids: [],
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false },
     has_variants: false, variants: [],

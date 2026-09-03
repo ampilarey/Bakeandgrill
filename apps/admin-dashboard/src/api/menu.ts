@@ -107,6 +107,8 @@ export type MenuItem = {
   /** Max units kitchen can make for one tomorrow collection date. Null = no limit. */
   tomorrow_daily_capacity?: number | null;
   category_id?: number | null;
+  /** "Also show in": extra menu placements beside the home category. */
+  extra_category_ids?: number[];
   menu_group_id?: number | null;
   prep_time_minutes?: number | null;
   spice_level?: 'none' | 'mild' | 'medium' | 'hot' | 'extra_hot' | null;
@@ -193,6 +195,7 @@ export type MenuItemPayload = {
   tax_rate?: number | null;
   tax_code?: string | null;
   category_id?: number | null;
+  extra_category_ids?: number[];
   menu_group_id?: number | null;
   sort_order?: number | null;
   is_active?: boolean;

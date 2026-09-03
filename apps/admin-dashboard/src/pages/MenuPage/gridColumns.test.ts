@@ -22,7 +22,9 @@ describe('column set', () => {
   it('gives every editable column a field to write', () => {
     // A column that renders an input but has no field would silently discard
     // whatever was typed into it.
-    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor'].includes(c.key));
+    // margin is arithmetic, consumption_factor is size-only, also_in is picked
+    // in the item editor and only shown here.
+    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor', 'also_in'].includes(c.key));
 
     for (const column of editable) {
       expect(column.field, `${column.key} needs a field`).toBeTruthy();

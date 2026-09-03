@@ -879,6 +879,22 @@ function ItemCell({
     return <td style={{ ...cell, textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>—</td>;
   }
 
+  // "Also show in" is picked in the item editor; here it is only shown.
+  if (column.key === 'also_in') {
+    const names = (item.extra_category_ids ?? [])
+      .map((id) => categories.find((c) => c.id === id)?.name)
+      .filter((n): n is string => !!n);
+    return (
+      <td
+        style={{ ...cell, fontSize: 12, color: names.length ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}
+        title={names.length ? `Also listed under ${names.join(', ')} — change it in the item editor` : 'Only under its own category — add more in the item editor'}
+        data-testid={`also-in-${item.id}`}
+      >
+        {names.length ? names.join(', ') : '—'}
+      </td>
+    );
+  }
+
   const label = `${column.label} for ${item.name}`;
 
   if (column.key === 'name') {

@@ -10,7 +10,6 @@ use App\Models\Item;
 use App\Services\EffectivePriceService;
 use App\Services\SpecialPricingService;
 use App\Support\ItemDisplayPhoto;
-use App\Support\PublicMediaUrl;
 use App\Support\SocialPreviewImage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -135,7 +134,7 @@ class MenuPageController extends Controller
     private function sellableItems(): Collection
     {
         return Item::query()
-            ->with(['variants', 'category', 'photos'])
+            ->with(['variants', 'category', 'photos', 'extraCategories'])
             ->where('is_active', true)
             ->where('is_available', true)
             ->orderBy('sort_order')
@@ -177,12 +176,19 @@ class MenuPageController extends Controller
 
         $parents = $categories->filter(fn (Category $category) => $category->parent_id === null);
 
+        // An item is listed under its home category and under every "also
+        // show in" category (owner, 2026-09-03: Bajiya under Kulhi Hedhikaa
+        // and under Evening Tea). Same card in each place; the home still
+        // owns its sort order and everything else.
+        $inCategory = fn (Item $item, int $categoryId): bool => (int) $item->category_id === $categoryId
+            || in_array($categoryId, $item->extraCategoryIds(), true);
+
         foreach ($parents as $parent) {
-            $direct = $items->where('category_id', $parent->id)->values();
+            $direct = $items->filter(fn (Item $item) => $inCategory($item, (int) $parent->id))->values();
             $subs = $categories
                 ->filter(fn (Category $category) => (int) $category->parent_id === (int) $parent->id)
-                ->map(function (Category $sub) use ($items) {
-                    $subItems = $items->where('category_id', $sub->id)->values();
+                ->map(function (Category $sub) use ($items, $inCategory) {
+                    $subItems = $items->filter(fn (Item $item) => $inCategory($item, (int) $sub->id))->values();
 
                     return $subItems->isEmpty() ? null : [
                         'category' => $sub,

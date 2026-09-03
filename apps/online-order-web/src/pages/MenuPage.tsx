@@ -561,6 +561,11 @@ export function MenuPage() {
 
   const sectionedMenu = useMemo(() => {
     const usedItemIds = new Set<number>();
+    // An item sits under its home category and under every "also show in"
+    // category (owner, 2026-09-03: Bajiya under Kulhi Hedhikaa and Evening
+    // Tea). Same card in each place.
+    const inCategory = (item: Item, categoryId: number) =>
+      item.category_id === categoryId || (item.extra_category_ids ?? []).includes(categoryId);
     const sections = parentCategories
       .map((category) => {
         const childCats = categories
@@ -569,7 +574,7 @@ export function MenuPage() {
 
         const directItems = sortMenuItems(
           items.filter(
-            (item) => item.category_id === category.id && !isMenuCateringItem(item, categories),
+            (item) => inCategory(item, category.id) && !isMenuCateringItem(item, categories),
           ),
           sortBy,
         );
@@ -578,7 +583,7 @@ export function MenuPage() {
             category: sub,
             items: sortMenuItems(
               items.filter(
-                (item) => item.category_id === sub.id && !isMenuCateringItem(item, categories),
+                (item) => inCategory(item, sub.id) && !isMenuCateringItem(item, categories),
               ),
               sortBy,
             ),

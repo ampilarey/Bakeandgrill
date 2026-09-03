@@ -68,7 +68,7 @@ class ItemController extends Controller
         // Public /items route — POS passes view=pos without staff middleware.
         $isPosView = $request->query('view') === 'pos';
 
-        $with = ['category', 'variants', 'modifiers', 'packagingOptions'];
+        $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'extraCategories'];
         // Sizes cut from one ingredient pool need the recipe to say how many
         // of each are still makeable (see RecipeStockService).
         if (!$isAdmin || $isPosView) {
@@ -238,6 +238,9 @@ class ItemController extends Controller
                 'is_signage_promoted' => (bool) ($item->is_signage_promoted ?? false),
                 'created_at' => $item->created_at?->toIso8601String(),
                 'category_id' => $item->category_id,
+                // "Also show in" (owner, 2026-09-03): every surface places the
+                // item under these as well as its home category.
+                'extra_category_ids' => $item->extraCategoryIds(),
                 'menu_group_id' => $item->menu_group_id,
                 'category' => $item->category ? [
                     'id' => $item->category->id,
@@ -497,6 +500,18 @@ class ItemController extends Controller
             $variantSync->sync($item, $variantsData);
         }
 
+        // "Also show in" (owner, 2026-09-03). The home category is never an
+        // extra: listing it twice would put the same card in one section twice.
+        if ($request->has('extra_category_ids')) {
+            $extra = collect($request->input('extra_category_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->reject(fn (int $id) => $id === (int) $item->category_id)
+                ->unique()
+                ->values()
+                ->all();
+            $item->extraCategories()->sync($extra);
+        }
+
         if ($packagingOptions !== null) {
             app(\App\Domains\Catalog\Services\PackagingOptionsSyncService::class)->sync($item, $packagingOptions);
         }
@@ -564,7 +579,7 @@ class ItemController extends Controller
         $isAdmin = $request->user('sanctum') instanceof \App\Models\User
                    && $request->user('sanctum')->tokenCan('staff');
 
-        $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities'];
+        $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities', 'extraCategories'];
         if (!$isAdmin) {
             $with[] = 'comboItems.item';
             $with[] = 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem';
@@ -611,6 +626,7 @@ class ItemController extends Controller
                 'name' => $item->category->name,
                 'name_dv' => $item->category->name_dv,
             ] : null,
+            'extra_category_ids' => $item->extraCategoryIds(),
             'has_variants' => $item->has_variants,
             'variants' => ($item->has_variants ? $item->variants : $item->variants->take(0))
                 ->where('is_active', true)
@@ -720,6 +736,7 @@ class ItemController extends Controller
             $data['combo_items'],
             $data['platter_groups'],
             $data['packaging_options'],
+            $data['extra_category_ids'],
         );
 
         $oldImageUrl = $item->image_url;
@@ -760,6 +777,18 @@ class ItemController extends Controller
 
         if ($variantsData !== null) {
             $variantSync->sync($item, $variantsData);
+        }
+
+        // "Also show in" (owner, 2026-09-03). The home category is never an
+        // extra: listing it twice would put the same card in one section twice.
+        if ($request->has('extra_category_ids')) {
+            $extra = collect($request->input('extra_category_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->reject(fn (int $id) => $id === (int) $item->category_id)
+                ->unique()
+                ->values()
+                ->all();
+            $item->extraCategories()->sync($extra);
         }
 
         if ($packagingOptions !== null) {

@@ -885,6 +885,58 @@ export function MenuItemEditorModal({
                     </optgroup>
                   ))}
                 </select>
+                {/* Owner, 2026-09-03: "Bajiya is Kulhi Hedhikaa, but it's an
+                    evening tea item, so can it be in that too?" The category
+                    above is the home — sort order, reports, station, stock.
+                    These only add where else the menus list the same card. */}
+                <details className="also-show-in" data-testid="also-show-in" style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                    Also show in
+                    {form.extra_category_ids.length > 0 && (
+                      <strong style={{ marginLeft: 6, color: 'var(--color-primary)' }}>
+                        {form.extra_category_ids
+                          .map((id) => categories.find((c) => c.id === id)?.name)
+                          .filter(Boolean)
+                          .join(', ')}
+                      </strong>
+                    )}
+                  </summary>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 8 }}>
+                    {categories
+                      .filter((c) => String(c.id) !== form.category_id)
+                      .map((c) => {
+                        const parent = c.parent_id ? categories.find((p) => p.id === c.parent_id) : null;
+                        const on = form.extra_category_ids.includes(c.id);
+                        return (
+                          <label
+                            key={c.id}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                              borderRadius: 999, border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                              background: on ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                              fontSize: 12, cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={(e) => set(
+                                'extra_category_ids',
+                                e.target.checked
+                                  ? [...form.extra_category_ids, c.id]
+                                  : form.extra_category_ids.filter((id) => id !== c.id),
+                              )}
+                              aria-label={`Also show in ${parent ? `${parent.name} › ` : ''}${c.name}`}
+                            />
+                            {parent ? `${parent.name} › ${c.name}` : c.name}
+                          </label>
+                        );
+                      })}
+                  </div>
+                  <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    The same card appears under each of these as well. Reports, sort order and stock stay with the category above.
+                  </p>
+                </details>
               </Field>
               <Field label="Menu group (chef / station)">
                 <select

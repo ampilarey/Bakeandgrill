@@ -54,6 +54,9 @@ class StoreItemRequest extends FormRequest
     {
         return $this->scanCodeRules() + [
             'category_id' => 'nullable|exists:categories,id',
+            // "Also show in" — extra menu placements beside the home category.
+            'extra_category_ids' => 'sometimes|array|max:20',
+            'extra_category_ids.*' => 'integer|exists:categories,id',
             'name' => 'required|string|max:255',
             'name_dv' => 'nullable|string|max:255',
             'card_name' => 'nullable|string|max:120',

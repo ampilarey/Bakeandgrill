@@ -95,6 +95,12 @@ export type MenuItem = {
   /** True when the catering channel is enabled — display only; not orderability. */
   is_catering?: boolean;
   category_id: number | null;
+  /**
+   * "Also show in": extra categories the menus list this item under, beside
+   * its home category_id (owner, 2026-09-03). Placement only — the home still
+   * owns sort order, reports, station and stock.
+   */
+  extra_category_ids?: number[];
   barcode?: string | null;
   track_stock?: boolean;
   stock_quantity?: number | null;

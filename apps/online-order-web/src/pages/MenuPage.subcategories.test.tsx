@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenuPage } from './MenuPage';
@@ -42,6 +42,17 @@ vi.mock('../api', async () => {
           description: 'Sub item 2',
           base_price: 70,
           category_id: 3,
+          is_available: true,
+          has_variants: false,
+          variants: [],
+        },
+        {
+          id: 13,
+          name: 'Mixed Skewer',
+          description: 'Home under Chicken, also shown under Beef',
+          base_price: 60,
+          category_id: 2,
+          extra_category_ids: [3],
           is_available: true,
           has_variants: false,
           variants: [],
@@ -170,5 +181,28 @@ describe('MenuPage subcategory sub-headers', () => {
 
     // The parent is named once, on its banner — not again above its items.
     expect(screen.getAllByText('Grill')).toHaveLength(1);
+  });
+
+  /** Owner, 2026-09-03: "can an item be in 2 categories?" — home plus "also show in". */
+  it('lists an item under its home sub-category and under every "also show in" category', async () => {
+    render(
+      <MemoryRouter>
+        <MenuPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText('Mixed Skewer').length).toBeGreaterThan(0);
+    });
+
+    // Once under Chicken (home), once under Beef (also shown in) — the same
+    // card in each block, rendered exactly as its neighbours are.
+    const subBlocks = screen.getAllByTestId('menu-subcategory');
+    const inBlock = (i: number, name: string) => within(subBlocks[i]).queryAllByText(name).length;
+    expect(inBlock(0, 'Mixed Skewer')).toBeGreaterThan(0);
+    expect(inBlock(0, 'Mixed Skewer')).toBe(inBlock(0, 'Chicken Skewer'));
+    expect(inBlock(1, 'Mixed Skewer')).toBe(inBlock(1, 'Beef Grill'));
+    // A home-only item stays in its own block.
+    expect(inBlock(1, 'Chicken Skewer')).toBe(0);
+    expect(inBlock(0, 'Beef Grill')).toBe(0);
   });
 });

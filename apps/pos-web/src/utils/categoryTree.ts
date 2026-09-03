@@ -56,7 +56,7 @@ export function categoryWithDescendants(
  *
  * `selectedId == null` is the "All items" tab and returns everything.
  */
-export function itemsForCategory<T extends { category_id?: number | null }>(
+export function itemsForCategory<T extends { category_id?: number | null; extra_category_ids?: number[] | null }>(
   items: ReadonlyArray<T>,
   categories: ReadonlyArray<CategoryLike>,
   selectedId: number | null,
@@ -64,5 +64,9 @@ export function itemsForCategory<T extends { category_id?: number | null }>(
   if (selectedId == null) return items as T[];
   const matchIds = categoryWithDescendants(categories, selectedId);
 
-  return items.filter((item) => item.category_id != null && matchIds.has(item.category_id));
+  // An item sits under its home category and under any "also show in"
+  // category (owner, 2026-09-03: Bajiya under Kulhi Hedhikaa and Evening Tea).
+  return items.filter((item) =>
+    (item.category_id != null && matchIds.has(item.category_id))
+    || (item.extra_category_ids ?? []).some((id) => matchIds.has(id)));
 }
