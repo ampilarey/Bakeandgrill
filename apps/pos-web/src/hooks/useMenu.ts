@@ -66,6 +66,51 @@ export function useMenu(
   // The Quick and Popular-now tabs. Owner, 2026-09-02. Cached with the menu
   // like the pairings, for the same reason: the tab has to be there offline.
   const [tillTabs, setTillTabs] = useState<PosTillTabs>(() => normalizePosTillTabs(undefined));
+
+  const [quickKeysError, setQuickKeysError] = useState("");
+  const flashQuickKeysError = useCallback((message: string) => {
+    setQuickKeysError(message);
+    window.setTimeout(() => setQuickKeysError(""), 5000);
+  }, []);
+
+  /**
+   * Layouts changed on this till that the server has not confirmed. Until it
+   * does, the till's copy is the truth: a menu refresh must not put the
+   * server's older layout back over the cashier's edits, and every refresh
+   * is a chance to send them again.
+   */
+  const unsavedRef = useRef<Partial<Record<"mine" | "shared", PosQuickTab[]>>>({});
+
+  const mergeUnsaved = useCallback((fresh: PosTillTabs): PosTillTabs => {
+    const unsaved = unsavedRef.current;
+    if (!unsaved.mine && !unsaved.shared) return fresh;
+    return {
+      ...fresh,
+      quickLayout: {
+        mine: unsaved.mine ?? fresh.quickLayout.mine,
+        shared: unsaved.shared ?? fresh.quickLayout.shared,
+      },
+    };
+  }, []);
+
+  const sendLayout = useCallback((scope: "mine" | "shared", tabs: PosQuickTab[], quiet: boolean) => {
+    unsavedRef.current[scope] = tabs;
+    savePosQuickLayout(scope, tabs)
+      .then(() => {
+        // Only clear if nothing newer was queued while this was in flight.
+        if (unsavedRef.current[scope] === tabs) delete unsavedRef.current[scope];
+      })
+      .catch(() => {
+        if (!quiet) flashQuickKeysError("Quick tabs could not be saved to the server. They will stay on this till and be sent again.");
+      });
+  }, [flashQuickKeysError]);
+
+  const retryUnsaved = useCallback(() => {
+    for (const scope of ["mine", "shared"] as const) {
+      const tabs = unsavedRef.current[scope];
+      if (tabs) sendLayout(scope, tabs, true);
+    }
+  }, [sendLayout]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -164,13 +209,15 @@ export function useMenu(
           setCategories(cats);
           setItems(its);
           setPairings(boot.pairings ?? {});
-          setTillTabs(boot.tillTabs);
+          const bootTabs = mergeUnsaved(boot.tillTabs);
+          setTillTabs(bootTabs);
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its, pairings: boot.pairings ?? {}, ...cacheableTabs(boot.tillTabs) });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: boot.pairings ?? {}, ...cacheableTabs(bootTabs) });
+          retryUnsaved();
           attemptRef.current = 0;
           bootstrapDoneRef.current = true;
           onBootstrapShiftRef.current?.(boot.shift ?? null);
@@ -185,13 +232,15 @@ export function useMenu(
           setCategories(cats);
           setItems(its);
           setPairings(menu.pairings ?? {});
-          setTillTabs(menu.tillTabs);
+          const menuTabs = mergeUnsaved(menu.tillTabs);
+          setTillTabs(menuTabs);
           setDataError("");
           setUsingCachedMenu(false);
           setStaleMenuWarning(null);
           setLastRefreshedAt(Date.now());
           markOfflineBootstrap();
-          void saveCachedMenu(ch, { categories: cats, items: its, pairings: menu.pairings ?? {}, ...cacheableTabs(menu.tillTabs) });
+          void saveCachedMenu(ch, { categories: cats, items: its, pairings: menu.pairings ?? {}, ...cacheableTabs(menuTabs) });
+          retryUnsaved();
           attemptRef.current = 0;
           if (mode === "initial") {
             setSelectedCategoryId(null);
@@ -284,15 +333,9 @@ export function useMenu(
    * Replace a Quick layout. The screen changes at once and the cache with
    * it, so the tabs are right even if the save never gets through; the
    * server is told afterwards. A failed save is reported, not rolled back —
-   * the cashier's tabs are the truth they can see, and the next successful
-   * save carries them.
+   * the cashier's tabs are the truth they can see, they are kept over
+   * whatever the next refresh brings, and every refresh sends them again.
    */
-  const [quickKeysError, setQuickKeysError] = useState("");
-  const flashQuickKeysError = useCallback((message: string) => {
-    setQuickKeysError(message);
-    window.setTimeout(() => setQuickKeysError(""), 5000);
-  }, []);
-
   const applyLayout = useCallback((scope: "mine" | "shared", tabs: PosQuickTab[]) => {
     setTillTabs((prev) => {
       const next = { ...prev, quickLayout: { ...prev.quickLayout, [scope]: tabs } };
@@ -310,10 +353,8 @@ export function useMenu(
   const updateQuickLayout = useCallback((scope: "mine" | "shared", tabs: PosQuickTab[]) => {
     applyLayout(scope, tabs);
     setQuickKeysError("");
-    savePosQuickLayout(scope, tabs).catch(() => {
-      flashQuickKeysError("Quick tabs could not be saved to the server. They will stay on this till.");
-    });
-  }, [applyLayout, flashQuickKeysError]);
+    sendLayout(scope, tabs, false);
+  }, [applyLayout, sendLayout]);
 
   /** Copy another cashier's tabs over my own. Server first — a copy needs the network. */
   const copyQuickLayoutFrom = useCallback(async (fromUserId: number): Promise<boolean> => {

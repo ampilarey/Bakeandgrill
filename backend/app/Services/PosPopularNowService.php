@@ -74,7 +74,8 @@ class PosPopularNowService
             ->whereNull('order_items.deleted_at')
             ->whereNotNull('order_items.item_id')
             ->where('orders.created_at', '>=', $since)
-            ->whereNotIn('orders.status', ['cancelled', 'held'])
+            // Pending is an online order nobody paid for yet; it is not a sale.
+            ->whereNotIn('orders.status', ['cancelled', 'held', 'pending'])
             ->get(['order_items.item_id', 'order_items.quantity', 'orders.created_at']);
 
         $totals = [];

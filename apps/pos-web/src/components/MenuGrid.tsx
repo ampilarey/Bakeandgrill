@@ -6,7 +6,7 @@ import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
 import {
-  autoTabKey, fitCategoryPills, flattenTabs, moveInList, newTabId, tabKey,
+  autoTabKey, fitCategoryPills, flattenTabs, moveInList, newTabId, pillWidth, tabKey,
   type QuickScope, type ScopedQuickTab,
 } from "../utils/quickTabs";
 import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
@@ -73,6 +73,8 @@ type Props = {
   loadQuickLayoutSources?: () => Promise<PosQuickLayoutSource[]>;
   /** Item ids ranked by what sells at this hour, best first. */
   popularNow?: number[];
+  /** A timed Quick tab only opens itself while nothing is on the ticket. */
+  ticketEmpty?: boolean;
 };
 
 // Per-category colour swatches. Loyverse-style highly-saturated chips
@@ -462,6 +464,7 @@ export function MenuGrid({
   orderType,
   quickLayout, canManageSharedQuickKeys = false, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources,
   popularNow = [],
+  ticketEmpty = true,
 }: Props) {
   const packagingEligible = isPackagingEligible(orderType);  // Bug-024: the per-20s freshness tick lives inside <FreshnessLabel>
   // now, NOT here at the top of MenuGrid. Re-rendering the entire
@@ -514,13 +517,16 @@ export function MenuGrid({
   const lastAutoRef = useRef<string | null>(null);
   useEffect(() => {
     if (autoKey === lastAutoRef.current) return;
+    // Never mid-ticket: a cashier half-way through an order at 11:00 sharp
+    // must not lose their place. The switch waits for the ticket to clear.
+    if (!ticketEmpty) return;
     lastAutoRef.current = autoKey;
     if (!autoKey) return;
     const tab = allTabs.find((t) => tabKey(t.scope, t.id) === autoKey);
     if (tab) openTab(tab);
     // openTab is a plain closure over setters; allTabs is what autoKey derives from.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoKey]);
+  }, [autoKey, ticketEmpty]);
 
   const [quickPromptItem, setQuickPromptItem] = useState<Item | null>(null);
   const [tabPrompt, setTabPrompt] = useState<QuickTabPromptState | null>(null);
@@ -829,7 +835,14 @@ export function MenuGrid({
           ...(specialCount > 0 ? [`Specials (${specialCount})`] : []),
           ...(cateringCount > 0 ? [`Events & Catering (${cateringCount})`] : []),
         ];
-        const visibleCount = fitCategoryPills(pillRowWidth, fixedLabels, topLevelCategories.map((c) => c.name));
+        // The More pill is as wide as its own label at the largest count it
+        // could show, so the row never has to scroll to reach it.
+        const visibleCount = fitCategoryPills(
+          pillRowWidth,
+          fixedLabels,
+          topLevelCategories.map((c) => c.name),
+          { moreWidth: pillWidth(`More (${topLevelCategories.length})`) },
+        );
         let visibleCats = topLevelCategories.slice(0, visibleCount);
         let hiddenCats = topLevelCategories.slice(visibleCount);
         // The selected category always has a pill of its own, even if it

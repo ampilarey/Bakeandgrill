@@ -289,4 +289,32 @@ class PosQuickLayoutTest extends TestCase
 
         $this->assertSame([], app(PosPopularNowService::class)->rank([$item->id], $now));
     }
+
+    public function test_an_unpaid_pending_order_does_not_count(): void
+    {
+        Cache::flush();
+        $item = $this->item('Bajiya');
+        $now = CarbonImmutable::parse('2026-09-01 12:00:00');
+        $order = Order::factory()->create(['status' => 'pending', 'created_at' => $now->subWeek(), 'updated_at' => $now->subWeek()]);
+        OrderItem::create([
+            'order_id' => $order->id, 'item_id' => $item->id, 'item_name' => $item->name,
+            'quantity' => 9, 'unit_price' => 10, 'total_price' => 90,
+        ]);
+
+        $this->assertSame([], app(PosPopularNowService::class)->rank([$item->id], $now));
+    }
+
+    public function test_saving_the_shared_layout_twice_leaves_one_shared_row(): void
+    {
+        Sanctum::actingAs($this->staff('owner', 'boss@test.local', 'Boss'), ['staff']);
+        $item = $this->item('Bajiya');
+
+        foreach ([1, 2] as $n) {
+            $this->putJson('/api/pos/quick-keys/shared', ['tabs' => [$this->tab("Quick $n", [$item->id])]])
+                ->assertOk();
+        }
+
+        $this->assertSame(1, PosQuickLayout::query()->whereNull('user_id')->count());
+        $this->assertSame('Quick 2', PosQuickLayout::query()->whereNull('user_id')->first()->tabs[0]['name']);
+    }
 }

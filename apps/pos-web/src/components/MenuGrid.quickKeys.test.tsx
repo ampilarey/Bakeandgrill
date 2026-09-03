@@ -49,7 +49,7 @@ function renderGrid(over: Record<string, unknown> = {}) {
   const onUpdateQuickLayout = vi.fn();
   const onCopyQuickLayout = vi.fn().mockResolvedValue(true);
   const loadQuickLayoutSources = vi.fn().mockResolvedValue([{ user_id: 7, name: "Hassan", tabs: 2 }]);
-  render(
+  const element = (props: Record<string, unknown>) => (
     <MenuGrid
       {...({
         categories,
@@ -75,10 +75,15 @@ function renderGrid(over: Record<string, unknown> = {}) {
         loadQuickLayoutSources,
         popularNow: [],
         ...over,
+        ...props,
       } as never)}
-    />,
+    />
   );
-  return { addToCart, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources };
+  const view = render(element({}));
+  return {
+    addToCart, onUpdateQuickLayout, onCopyQuickLayout, loadQuickLayoutSources,
+    rerender: (props: Record<string, unknown>) => view.rerender(element(props)),
+  };
 }
 
 const pill = (name: RegExp) => screen.getByRole("button", { name });
@@ -138,6 +143,20 @@ describe("Quick tabs in the strip", () => {
     // 14:00 — Tea time starts and takes over.
     act(() => { vi.setSystemTime(new Date(2026, 8, 2, 14, 0)); vi.advanceTimersByTime(60_000); });
     expect(tileNames()).toEqual(["Black Tea"]);
+  });
+
+  it("waits for the ticket to clear before a timed tab opens itself", () => {
+    const { rerender } = renderGrid({
+      ticketEmpty: false,
+      quickLayout: { shared: [], mine: [tab("m1", "Lunch", [bajiya.id], "12:00", "14:00")] },
+    });
+
+    // 13:00 with items on the ticket: the cashier keeps their place.
+    expect(tileNames()).toHaveLength(4);
+
+    // The ticket clears: now Lunch opens.
+    rerender({ ticketEmpty: true, quickLayout: { shared: [], mine: [tab("m1", "Lunch", [bajiya.id], "12:00", "14:00")] } });
+    expect(tileNames()).toEqual(["Bajiya"]);
   });
 });
 

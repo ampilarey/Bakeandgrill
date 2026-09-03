@@ -1314,7 +1314,14 @@ body.menu-sheet-open { overflow: hidden; }
 
     var observer = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-            if (!entry.isIntersecting) return;
+            if (!entry.isIntersecting) {
+                // A sub-category scrolling out of view goes dark on its own,
+                // so scrolling back up into the parent's own items leaves
+                // only the parent lit.
+                var gone = byId[entry.target.id];
+                if (gone && gone.classList.contains('menu-rail-sub')) gone.classList.remove('is-active');
+                return;
+            }
             links.forEach(function (a) { a.classList.remove('is-active'); });
             var active = byId[entry.target.id];
             if (active) {

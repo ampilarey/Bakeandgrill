@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createRefund,
   fetchReceipts,
@@ -74,6 +74,15 @@ export function refundedTotal(r: Receipt): number {
     .reduce((sum, f) => sum + Number(f.amount || 0), 0);
 }
 
+/** Refunds requested and still waiting for an OTP or a manager. Not paid out, but spoken for. */
+export function pendingRefundTotal(r: Receipt): number {
+  return (r.refunds ?? [])
+    .filter((f) => ["pending", "requested", "awaiting_otp"].includes((f.status ?? "").toLowerCase()))
+    .reduce((sum, f) => sum + Number(f.amount || 0), 0);
+}
+
+const PAGE_SIZE = 50;
+
 /** One word on the state of the money, and a colour for it. */
 export function receiptState(r: Receipt): { label: string; tone: "ok" | "warn" | "danger" | "muted" } {
   const status = (r.status ?? "").toLowerCase();
@@ -148,6 +157,13 @@ export function ReceiptsPanel({
   // On a phone the detail is its own screen; a tap on a row opens it.
   const [detailOpen, setDetailOpen] = useState(initialOrderId != null);
   const [reloadKey, setReloadKey] = useState(0);
+  // How many receipts the server has for this scope, and the last page loaded.
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
+  const [lastPage, setLastPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // The receipt a charge just produced is opened once. After that the
+  // cashier's own choice stands, even when the list reloads after a refund.
+  const initialAppliedRef = useRef(false);
 
   // Debounce so we don't fire on every keystroke.
   useEffect(() => {
@@ -155,24 +171,29 @@ export function ReceiptsPanel({
     return () => clearTimeout(id);
   }, [q]);
 
+  const queryParams = (page: number) => ({
+    // Recompute on each fetch so a POS left open past midnight stays correct,
+    // and use local calendar date (not UTC) for Maldives overnight shifts.
+    ...(scope === "today" ? { date: localDateYmd() } : {}),
+    ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
+    ...(debouncedQ ? { q: debouncedQ } : {}),
+    per_page: PAGE_SIZE,
+    page,
+  });
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     void (async () => {
       try {
-        // Recompute on each fetch so a POS left open past midnight stays correct,
-        // and use local calendar date (not UTC) for Maldives overnight shifts.
-        const today = localDateYmd();
-        const res = await fetchReceipts({
-          ...(scope === "today" ? { date: today } : {}),
-          ...(scope === "shift" && shiftId ? { shift_id: shiftId } : {}),
-          ...(debouncedQ ? { q: debouncedQ } : {}),
-          per_page: 50,
-        });
+        const res = await fetchReceipts(queryParams(1));
         if (!cancelled) {
           setItems(res.data);
+          setServerTotal(typeof res.total === "number" ? res.total : null);
+          setLastPage(1);
           setErr("");
-          if (initialOrderId != null && res.data.some((r) => r.id === initialOrderId)) {
+          if (initialOrderId != null && !initialAppliedRef.current && res.data.some((r) => r.id === initialOrderId)) {
+            initialAppliedRef.current = true;
             setSelectedId(initialOrderId);
           } else if (res.data.length && selectedId == null && !isNarrow) {
             setSelectedId(res.data[0].id);
@@ -187,6 +208,27 @@ export function ReceiptsPanel({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, debouncedQ, shiftId, initialOrderId, reloadKey]);
+
+  const hasMore = serverTotal != null ? items.length < serverTotal : items.length >= PAGE_SIZE * lastPage;
+
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetchReceipts(queryParams(lastPage + 1));
+      setItems((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...res.data.filter((r) => !seen.has(r.id))];
+      });
+      setServerTotal(typeof res.total === "number" ? res.total : null);
+      setLastPage((p) => p + 1);
+      setErr("");
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const visible = useMemo(
     () => (payFilter === "all"
@@ -293,6 +335,8 @@ export function ReceiptsPanel({
         <span data-testid="receipts-summary" style={{ marginLeft: "auto", fontSize: 12, color: palette.panelMuted, whiteSpace: "nowrap" }}>
           {summary.count} {summary.count === 1 ? "receipt" : "receipts"} · {money(summary.sales)}
           {summary.refunds > 0 ? ` · refunded ${money(summary.refunds)}` : ""}
+          {/* The figures cover what is loaded, and say so while more remain. */}
+          {hasMore ? ` · first ${items.length}${serverTotal != null ? ` of ${serverTotal}` : ""}` : ""}
         </span>
       </div>
     </div>
@@ -331,6 +375,16 @@ export function ReceiptsPanel({
                 onClick={() => { setSelectedId(r.id); setDetailOpen(true); }}
               />
             ))}
+            {!loading && hasMore && (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                style={{ ...secondaryBtn, flexShrink: 0, marginTop: 4 }}
+              >
+                {loadingMore ? "Loading…" : `Show more${serverTotal != null ? ` (${serverTotal - items.length} left)` : ""}`}
+              </button>
+            )}
           </div>
         )}
 
@@ -443,7 +497,10 @@ function ReceiptDetail({
   const [info, setInfo] = useState("");
   const [refundOpen, setRefundOpen] = useState(false);
   const alreadyRefunded = refundedTotal(receipt);
-  const refundable = Math.max(0, Number(receipt.total) - alreadyRefunded);
+  // A request still waiting for its OTP is spoken for: the cap comes down by
+  // it, so a second request cannot be staged for money the first will take.
+  const awaitingRefund = pendingRefundTotal(receipt);
+  const refundable = Math.max(0, Number(receipt.total) - alreadyRefunded - awaitingRefund);
   const [refundAmount, setRefundAmount] = useState(refundable.toFixed(2));
   const [refundCategory, setRefundCategory] = useState<RefundReasonCategory | "">("");
   const [refundReason, setRefundReason] = useState("");
@@ -683,7 +740,7 @@ function ReceiptDetail({
               aria-expanded={refundOpen}
               style={{ ...secondaryBtn, marginLeft: "auto", color: palette.dangerDark, borderColor: palette.dangerBorder }}
             >
-              {refundOpen ? "Cancel refund" : alreadyRefunded > 0 ? "Refund more" : "Refund"}
+              {refundOpen ? "Cancel refund" : alreadyRefunded > 0 || awaitingRefund > 0 ? "Refund more" : "Refund"}
             </button>
           )}
         </div>
@@ -706,7 +763,13 @@ function ReceiptDetail({
         {canRefund && refundOpen && (
           <div data-testid="refund-form" style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 8, borderTop: `1px dashed ${palette.border}` }}>
             <div style={{ fontSize: 12, color: palette.panelMuted }}>
-              Up to {money(refundable)} can be refunded on this receipt{alreadyRefunded > 0 ? ` (${money(alreadyRefunded)} already refunded)` : ""}.
+              Up to {money(refundable)} can be refunded on this receipt
+              {alreadyRefunded > 0 || awaitingRefund > 0
+                ? ` (${[
+                  alreadyRefunded > 0 ? `${money(alreadyRefunded)} already refunded` : null,
+                  awaitingRefund > 0 ? `${money(awaitingRefund)} awaiting approval` : null,
+                ].filter(Boolean).join(", ")})`
+                : ""}.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <input

@@ -638,6 +638,7 @@ export function PosShellLayout() {
               onCopyQuickLayout={menu.copyQuickLayoutFrom}
               loadQuickLayoutSources={fetchPosQuickLayoutSources}
               popularNow={menu.tillTabs.popularNow}
+              ticketEmpty={cart.cartItems.length === 0}
               selectedItem={cart.selectedItem}
               selectedModifiers={cart.selectedModifiers}
               handleSelectItem={cart.handleSelectItem}

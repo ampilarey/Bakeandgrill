@@ -126,7 +126,50 @@ describe("ReceiptsPanel list", () => {
   });
 });
 
+describe("ReceiptsPanel paging", () => {
+  it("says when more receipts remain, and loads them on request", async () => {
+    const third = { ...cashSale, id: 3, order_number: "BG-103" };
+    fetchReceipts.mockResolvedValueOnce({ data: [cardSale, cashSale], total: 3 });
+    renderPanel();
+    await screen.findByTestId("receipt-row-1");
+
+    expect(screen.getByTestId("receipts-summary")).toHaveTextContent("first 2 of 3");
+
+    fetchReceipts.mockResolvedValueOnce({ data: [third], total: 3 });
+    fireEvent.click(screen.getByRole("button", { name: "Show more (1 left)" }));
+    await screen.findByTestId("receipt-row-3");
+    expect(fetchReceipts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
+    expect(screen.getByTestId("receipts-summary")).not.toHaveTextContent("first");
+    expect(screen.queryByRole("button", { name: /Show more/ })).toBeNull();
+  });
+
+  it("opens the just-charged receipt once, then keeps the cashier's own pick across reloads", async () => {
+    renderPanel({ initialOrderId: 2 });
+    await screen.findByTestId("receipt-row-1");
+    expect(screen.getByTestId("receipt-row-2")).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByTestId("receipt-row-1"));
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    await waitFor(() => expect(fetchReceipts).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByTestId("receipt-row-1")).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByTestId("receipt-row-2")).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
 describe("ReceiptsPanel detail", () => {
+  it("counts a refund still awaiting approval against what can be refunded", async () => {
+    const awaiting = { id: 32, amount: 30, status: "pending", reason_category: "other", created_at: "2026-09-02T11:30:00+05:00" };
+    fetchReceipts.mockResolvedValue({ data: [{ ...cardSale, refunds: [...cardSale.refunds, awaiting] }] });
+    renderPanel();
+    fireEvent.click(await screen.findByTestId("receipt-row-2"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Refund more" }));
+    const form = screen.getByTestId("refund-form");
+    expect(form).toHaveTextContent("Up to MVR 40.00 can be refunded");
+    expect(form).toHaveTextContent("MVR 30.00 awaiting approval");
+    expect(within(form).getByLabelText("Refund amount")).toHaveValue("40.00");
+  });
+
   it("reads like the paper receipt: sizes, notes, money lines, payment and change", async () => {
     renderPanel();
     fireEvent.click(await screen.findByTestId("receipt-row-1"));

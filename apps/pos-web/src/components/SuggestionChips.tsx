@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { trackPosSuggestion, type PosPairings } from "../api";
-import { palette } from "../theme";
+import { palette, z } from "../theme";
 import type { CartItem, Item } from "../types";
 
 type Props = {
@@ -25,8 +25,9 @@ type Props = {
 /** Where the card sits: just above the cart's footer, or above the docked bar on a phone. */
 type Anchor = { left: number; width: number; bottom: number };
 
-function measureAnchor(): Anchor | null {
-  if (typeof document === "undefined" || typeof window === "undefined") return null;
+/** The element the card sits above, when one is on screen. */
+function anchorElement(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
   const visible = (el: Element | null): el is HTMLElement =>
     el instanceof HTMLElement && el.getClientRects().length > 0;
 
@@ -34,9 +35,11 @@ function measureAnchor(): Anchor | null {
   // hidden once it is open as a sheet. Whichever is on screen is the anchor.
   const footer = document.querySelector(".pos-cart-footer");
   const dock = document.querySelector(".pos-cart-dock-bar");
-  const target = visible(footer) ? footer : visible(dock) ? dock : null;
-  if (!target) return null;
+  return visible(footer) ? footer : visible(dock) ? dock : null;
+}
 
+function measureAnchor(target: HTMLElement | null): Anchor | null {
+  if (!target || typeof window === "undefined") return null;
   const rect = target.getBoundingClientRect();
   if (rect.width === 0) return null;
 
@@ -129,10 +132,18 @@ export function SuggestionChips({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
-    const place = () => setAnchor(measureAnchor());
+    const target = anchorElement();
+    const place = () => setAnchor(measureAnchor(target));
     place();
     window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    // The footer grows when a discount or fee line lands; follow it, or the
+    // card ends up over the Charge button until the next item is rung up.
+    const ro = typeof ResizeObserver !== "undefined" && target ? new ResizeObserver(place) : null;
+    ro?.observe(target!);
+    return () => {
+      window.removeEventListener("resize", place);
+      ro?.disconnect();
+    };
   }, [open, signature, cartItems.length]);
 
   if (!open) return null;
@@ -149,7 +160,9 @@ export function SuggestionChips({
       className="pos-suggest"
       style={{
         position: "fixed",
-        zIndex: 60,
+        // Below the modal layer: a size or modifier dialog must never have
+        // this card sitting on top of it.
+        zIndex: z.banner,
         boxSizing: "border-box",
         padding: "10px 12px 12px",
         borderRadius: 12,

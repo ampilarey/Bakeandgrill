@@ -57,12 +57,17 @@ export function QuickTabPrompt({ state, canManageShared, loadSources, onResult, 
   const [copying, setCopying] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
+  // Focus once, on open. The parent hands down a fresh onClose on every
+  // render, and re-running this for each one pulled focus back to Name
+  // while the cashier was in a time field.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
     window.addEventListener("keydown", onKey);
     window.setTimeout(() => nameRef.current?.focus(), 0);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   // Only a new tab of my own can be replaced by a copy of somebody else's.
   const canCopy = state.mode === "new" && scope === "mine" && !!loadSources;
@@ -126,7 +131,9 @@ export function QuickTabPrompt({ state, canManageShared, loadSources, onResult, 
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748B", lineHeight: 1.4 }}>
               {!hoursValid
                 ? "Set both times, or clear both."
-                : "The till switches to this tab when its hours start. Leave blank for a tab you open by hand."}
+                : from !== "" && from === to
+                  ? "Same start and end means all day: the till opens this tab whenever the ticket is empty."
+                  : "The till switches to this tab when its hours start, once the ticket is empty. Leave blank for a tab you open by hand."}
             </p>
           </div>
 

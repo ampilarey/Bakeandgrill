@@ -31,13 +31,16 @@ type Props = {
 export function QuickKeyPrompt({ item, tabs, maxItems, canAddOwnTab, onAction, onClose }: Props) {
   const firstRef = useRef<HTMLButtonElement>(null);
 
+  // Focus once, on open; onClose changes on every parent render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCloseRef.current(); };
     window.addEventListener("keydown", onKey);
     window.setTimeout(() => firstRef.current?.focus(), 0);
 
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, []);
 
   const rows: Array<{ label: string; action: QuickKeyAction; tone?: "danger" }> = [];
   for (const tab of tabs) {
@@ -88,7 +91,8 @@ export function QuickKeyPrompt({ item, tabs, maxItems, canAddOwnTab, onAction, o
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((row, index) => (
             <button
-              key={row.label}
+              // Two tabs may share a name; the action is what is unique.
+              key={row.action.kind === "add-new" ? "add-new" : `${row.action.kind}:${row.action.scope}:${row.action.tabId}:${"delta" in row.action ? row.action.delta : ""}`}
               ref={index === 0 ? firstRef : undefined}
               type="button"
               onClick={() => onAction(row.action)}

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Item;
 use App\Models\PosQuickLayout;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -72,9 +73,32 @@ class PosQuickKeyService
         }
         unset($tab);
 
-        PosQuickLayout::query()->updateOrCreate(['user_id' => $userId], ['tabs' => $tabs]);
+        self::store($userId, $tabs);
 
         return $tabs;
+    }
+
+    /**
+     * One row per owner, held under a lock while it is written. The unique
+     * index does that for a cashier's row, but MySQL lets any number of
+     * NULLs through a unique column, so two menu managers saving the shared
+     * layout at once could otherwise leave two shared rows behind.
+     *
+     * @param list<Tab> $tabs
+     */
+    private static function store(?int $userId, array $tabs): void
+    {
+        DB::transaction(function () use ($userId, $tabs) {
+            $row = PosQuickLayout::query()
+                ->when($userId === null, fn ($q) => $q->whereNull('user_id'), fn ($q) => $q->where('user_id', $userId))
+                ->lockForUpdate()
+                ->first();
+            if ($row) {
+                $row->update(['tabs' => $tabs]);
+            } else {
+                PosQuickLayout::query()->create(['user_id' => $userId, 'tabs' => $tabs]);
+            }
+        });
     }
 
     /**
@@ -121,7 +145,7 @@ class PosQuickKeyService
         }
         unset($tab);
 
-        PosQuickLayout::query()->updateOrCreate(['user_id' => $toUserId], ['tabs' => $tabs]);
+        self::store($toUserId, $tabs);
 
         return $tabs;
     }
