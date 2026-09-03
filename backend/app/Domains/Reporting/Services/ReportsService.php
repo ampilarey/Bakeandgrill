@@ -23,6 +23,7 @@ use App\Models\Payment;
 use App\Models\PurchaseItem;
 use App\Models\Refund;
 use App\Models\Shift;
+use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
 use App\Models\User;
 use App\Services\RecipeCostCalculator;
@@ -1012,6 +1013,98 @@ class ReportsService
      *
      * @return array{from: string, to: string, rows: list<array{item_id: int, item_name: string, qty_sold: int, velocity: string}>}
      */
+    /**
+     * What the shelf says against what the recipes say.
+     *
+     * Stock audit, 2026-09-03 (S4): recipes deduct ingredients as dishes are
+     * sold and a stock count writes what is really there, but nothing put the
+     * two side by side. The gap is the number that finds theft, over-portioning
+     * and unrecorded waste, and `stock-discrepancy` only listed items already
+     * negative — the symptom, long after the fact.
+     *
+     * Read straight off the ledger, so it needs no new bookkeeping: within the
+     * window, per item, what came in, what the recipes took, what was thrown
+     * away, and what the counts had to correct. That correction IS the
+     * unexplained difference; it is valued at what the item costs, and the
+     * worst is listed first.
+     *
+     * @return array<string, mixed>
+     */
+    public function usageVariance(Carbon $from, Carbon $to, int $limit = 50): array
+    {
+        $limit = min(200, max(10, $limit));
+
+        $rows = StockMovement::query()
+            ->selectRaw('stock_movements.inventory_item_id as item_id')
+            ->selectRaw("SUM(CASE WHEN stock_movements.type = 'purchase' THEN stock_movements.quantity ELSE 0 END) as received")
+            ->selectRaw("SUM(CASE WHEN stock_movements.type = 'sale' THEN -stock_movements.quantity ELSE 0 END) as recipe_usage")
+            ->selectRaw("SUM(CASE WHEN stock_movements.type = 'waste' THEN -stock_movements.quantity ELSE 0 END) as waste")
+            ->selectRaw("SUM(CASE WHEN stock_movements.reference_type = 'stock_count' THEN stock_movements.quantity ELSE 0 END) as counted_variance")
+            ->selectRaw("SUM(CASE WHEN stock_movements.type = 'adjustment' AND (stock_movements.reference_type <> 'stock_count' OR stock_movements.reference_type IS NULL) THEN stock_movements.quantity ELSE 0 END) as manual_adjustments")
+            ->selectRaw("COUNT(CASE WHEN stock_movements.reference_type = 'stock_count' THEN 1 END) as counts")
+            ->whereBetween('stock_movements.created_at', [$from, $to])
+            ->whereNotNull('stock_movements.inventory_item_id')
+            ->groupBy('stock_movements.inventory_item_id')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'items' => [], 'total_loss_mvr' => 0.0, 'total_gain_mvr' => 0.0];
+        }
+
+        $items = InventoryItem::query()
+            ->whereIn('id', $rows->pluck('item_id'))
+            ->get(['id', 'name', 'unit', 'unit_cost'])
+            ->keyBy('id');
+
+        $out = [];
+        $loss = 0.0;
+        $gain = 0.0;
+        foreach ($rows as $row) {
+            $item = $items[$row->item_id] ?? null;
+            if ($item === null) {
+                continue;
+            }
+            $variance = (float) $row->counted_variance;
+            // A count that found nothing wrong is not worth a line.
+            if ((int) $row->counts === 0 && abs($variance) < 0.0001) {
+                continue;
+            }
+            $cost = (float) ($item->unit_cost ?? 0);
+            $value = round($variance * $cost, 2);
+            if ($value < 0) {
+                $loss += abs($value);
+            } else {
+                $gain += $value;
+            }
+
+            $out[] = [
+                'item_id' => (int) $item->id,
+                'name' => (string) $item->name,
+                'unit' => $item->unit,
+                'received' => round((float) $row->received, 3),
+                'recipe_usage' => round((float) $row->recipe_usage, 3),
+                'waste' => round((float) $row->waste, 3),
+                'manual_adjustments' => round((float) $row->manual_adjustments, 3),
+                'counts' => (int) $row->counts,
+                // Negative: the shelf held less than the books said.
+                'unexplained' => round($variance, 3),
+                'unit_cost' => $cost,
+                'unexplained_value_mvr' => $value,
+            ];
+        }
+
+        usort($out, fn (array $a, array $b) => $a['unexplained_value_mvr'] <=> $b['unexplained_value_mvr']);
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'items' => array_slice($out, 0, $limit),
+            'total_loss_mvr' => round($loss, 2),
+            'total_gain_mvr' => round($gain, 2),
+            'net_mvr' => round($gain - $loss, 2),
+        ];
+    }
+
     public function stockVelocity(Carbon $from, Carbon $to, int $limit = 50): array
     {
         $limit = min(100, max(10, $limit));

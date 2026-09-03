@@ -20,6 +20,8 @@ class Supplier extends Model
         'tin',
         'address',
         'payment_terms',
+        // Stock audit 2026-09-03 (S6): days from order to delivery, per vendor.
+        'lead_days',
         'notes',
         'is_active',
     ];

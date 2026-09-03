@@ -5,6 +5,7 @@ import {
   getDiscountsByTypeReport, getVoidsByStaffReport, getVoidsByReasonReport, getRefundsByReasonReport, getCreditExposureReport, getDepositExposureReport, getDepositActivityReport,
   getManagerOverridesReport, getStockVelocityReport, getShiftVariancesReport, getCustomerLtvReport,
   getCashierPerformanceReport, getProductMarginsReport, getCustomerCohortsReport, getStockDiscrepancyReport,
+  getUsageVarianceReport,
   getHourlySalesReport, getStationPerformanceReport, getSpendByItem, getSpendHub,
   type SalesSummary, type SalesBreakdown, type XReport, type ZReport,
   type TaxReport, type InventoryValuation, type AccountsPayable, type AccountsReceivable,
@@ -13,7 +14,7 @@ import {
   type ManagerOverridesReport, type StockVelocityReport, type ShiftVariancesReport, type CustomerLtvReport,
   type CashierPerformanceReport, type ProductMarginsReport, type CustomerCohortsReport, type StockDiscrepancyReport,
   type HourlySalesReport, type StationPerformanceReport, type SpendByItemReport, type SpendHubReport,
-  type PaymentCommissionSummary,
+  type PaymentCommissionSummary, type UsageVarianceReport,
 } from '../../api';
 import { localISO, today, daysAgo } from '../../utils/dateHelpers';
 import { ResponsiveTable } from '../../components/Layout';
@@ -94,7 +95,7 @@ export const REPORT_SECTIONS = [
   {
     id: 'inventory',
     label: 'Inventory',
-    tabs: ['Inventory', 'Spend by Item', 'Stock Velocity', 'Stock Discrepancy'],
+    tabs: ['Inventory', 'Spend by Item', 'Stock Velocity', 'Usage Variance', 'Stock Discrepancy'],
   },
   {
     id: 'customers',
@@ -150,6 +151,7 @@ export type ReportData = {
   cashierPerf?: CashierPerformanceReport;
   productMargins?: ProductMarginsReport;
   stockDiscrepancy?: StockDiscrepancyReport;
+  usageVariance?: UsageVarianceReport;
   hourlySales?: HourlySalesReport;
   stationPerf?: StationPerformanceReport;
 };
@@ -204,6 +206,7 @@ export async function fetchReportData(
   if (tab === 'Cashier Performance') result.cashierPerf = await getCashierPerformanceReport({ from, to });
   if (tab === 'Product Margins') result.productMargins = await getProductMarginsReport();
   if (tab === 'Stock Discrepancy') result.stockDiscrepancy = await getStockDiscrepancyReport();
+  if (tab === 'Usage Variance') result.usageVariance = await getUsageVarianceReport({ from, to });
   if (tab === 'Hourly Sales') result.hourlySales = await getHourlySalesReport({ from, to });
   if (tab === 'Station Performance') result.stationPerf = await getStationPerformanceReport({ from, to });
   return result;
@@ -257,5 +260,5 @@ export function BarCell({ value, max }: { value: number; max: number }) {
 }
 
 export function tabNeedsDate(tab: Tab): boolean {
-  return tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Spend by Item' || tab === 'Spend Hub' || tab === 'Stock Velocity' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
+  return tab === 'Summary' || tab === 'Breakdown' || tab === 'Delivery Zones' || tab === 'Tax' || tab === 'Promotions' || tab === 'Loyalty' || tab === 'Discounts' || tab === 'Voids' || tab === 'Refunds' || tab === 'Overrides' || tab === 'Spend by Item' || tab === 'Spend Hub' || tab === 'Stock Velocity' || tab === 'Usage Variance' || tab === 'Shift Variances' || tab === 'Cashier Performance' || tab === 'Customer LTV' || tab === 'Customer Cohorts' || tab === 'Hourly Sales' || tab === 'Station Performance' || tab === 'Deposit Activity';
 }

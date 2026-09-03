@@ -5,7 +5,10 @@
 bought entered and its price and vendors are there"
 **Scope:** how stock is counted and corrected, the two ways a purchase enters
 stock, how a purchase sets an item's cost, and what is held about suppliers.
-Read-only — nothing in this pass was changed.
+
+**Audited read-only, then fixed on the owner's "fix all" the same day** — see
+Status below. The Findings keep the original wording so the fault is on record;
+each one says what was done.
 
 ---
 
@@ -74,9 +77,29 @@ notes, active flag. Plus, around it:
 
 ---
 
+## Status — fixed 2026-09-03
+
+All of them, plus one more the fixes uncovered.
+
+| | Finding | Outcome |
+|---|---|---|
+| S1 | A receipt with no price destroyed the cost | No price, no opinion: stock in, cost untouched |
+| S2 | Stock count unreviewed | Valued per line; a reason required over a threshold |
+| S3 | Cheapest supplier read one source, all time | Reads price history, windowed to 90 days |
+| S4 | No theoretical-vs-actual usage | New Usage Variance report, screen and CSV |
+| S5 | Adjustments needed no reason | Same threshold rule as the count |
+| S6 | No per-vendor lead time, no invoice check | `suppliers.lead_days`; paid-vs-quote recorded on every buy |
+| S7 | Retry duplicated a price point | Moved inside the idempotency guard |
+| S8 | Negative stock only showed up later | Logged and audited the moment it happens |
+| S9 | *(found while fixing)* an adjustment with no unit cost threw a 500 | `stock_movements.unit_cost` is nullable |
+
+The threshold lives in **Settings → Stock Corrections** (MVR 500 to begin with).
+
+---
+
 ## Findings
 
-### S1 — A receipt with no price entered quietly destroys the item's cost (high)
+### S1 — A receipt with no price entered quietly destroys the item's cost (high) — **FIXED**
 
 `applyStockIn()` computes `$newCost = ($item->actual_unit_cost_laar ?? 0) / 100`
 and averages it in. On `markBought` and `markPartial` that field is
@@ -96,11 +119,13 @@ It flows straight into recipe cost, dish margin, the break-even calculator and
 the inventory valuation, so the damage is not confined to one screen. The
 purchase-order path is safe: `unit_cost` is required there.
 
-*Fix:* skip the cost average when no price was given (take the stock, keep the
-old cost), and make the price required to verify — or ask for it at verify time
-if the runner did not have it.
+**Fixed.** Both receipt paths now treat "no price" as no opinion about cost:
+the stock arrives, `unit_cost` and `last_purchase_price` are left exactly as
+they were, and the movement records `unit_cost` as null — "we do not know",
+which a report can tell apart from "this was free". The buy is audited with
+`no_price_recorded` so the gap is findable.
 
-### S2 — A stock count is one unreviewed write (medium)
+### S2 — A stock count is one unreviewed write (medium) — **FIXED**
 
 `POST /inventory/stock-count` takes a list of item ids and quantities, sets
 `current_stock` to each, writes an `adjustment` movement and an audit row.
@@ -112,12 +137,17 @@ Worth contrasting with the cash count at close of shift, which is deliberately
 blind, has variance thresholds, and raises an alert. Stock has none of that,
 though it is the same class of risk.
 
-*Fix, in order of value:* (a) require a reason on any line whose variance is
-worth more than a set amount; (b) show the variance in MVR as it is entered, and
-record it on the movement; (c) a proper count session — open, enter, review the
-variance, post — with the posting gated on a second person for large ones.
+**Fixed (a and b).** Every count line is valued at what the item costs, the
+value comes back in the response and goes into the audit row, and a line worth
+more than **Settings → Stock Corrections** (MVR 500 to begin with) is refused
+until it says why. Nothing is written until every line passes, so a rejected
+count leaves the stock exactly as it was. The threshold is in money, not units:
+a kilo of saffron asks sooner than a kilo of rice.
 
-### S3 — Two records of what was paid, and "cheapest supplier" only reads one (medium)
+Not done: (c), a full count session with a second person posting it. That is a
+workflow, not a guard, and worth doing on its own.
+
+### S3 — Two records of what was paid, and "cheapest supplier" only reads one (medium) — **FIXED**
 
 Purchase orders record price in `purchase_items`; purchase-request buys record
 it in `supplier_price_history`. `InventoryController::cheapestSupplier()` queries
@@ -127,10 +157,12 @@ invisible to it** — which is most of the day-to-day buying.
 It also takes an all-time `MIN(unit_cost)` with no date window, so a price from
 a year ago beats a real quote from this week.
 
-*Fix:* read `supplier_price_history` (both paths write it, and it carries
-`recorded_at`), and window it — last 90 days, say.
+**Fixed.** It reads `supplier_price_history`, which both paths write, and
+windows it — 90 days by default, `?days=` to change it, `days=0` for all time.
+The answer says which supplier, when that price was last seen, and whether it
+came from inside the window or is an older fallback.
 
-### S4 — Nothing compares what should have been used with what was (medium)
+### S4 — Nothing compares what should have been used with what was (medium) — **FIXED**
 
 Recipes deduct ingredients as dishes are sold, and a stock count writes what is
 really on the shelf. The difference between the two is the number that finds
@@ -138,37 +170,61 @@ theft, over-portioning and unrecorded waste — and nothing computes it. The
 `stock-discrepancy` report only lists items already negative, which is the
 symptom after the fact.
 
-*Fix:* a usage-variance report between two counts — opening + purchases − recipe
-usage − waste = expected, against counted, valued at `unit_cost`.
+**Fixed.** **Reports → Inventory → Usage Variance**, with a CSV. Read straight
+off the ledger, so it needs no new bookkeeping: per item over a date range, what
+came in, what the recipes took, what was thrown away, and what the counts had to
+correct — that correction being the unexplained part, valued at what the item
+costs, worst first, with the total loss on top.
 
-### S5 — Manual adjustments need no reason (low)
+### S5 — Manual adjustments need no reason (low) — **FIXED**
 
 `POST /inventory/{id}/adjust` takes any signed quantity with `type` in
 `adjustment | waste | correction` and `notes` nullable. It is audited and
 ledgered, but a stock write-down of any size can be made with no words attached.
 
-*Fix:* require notes when the movement's value passes a threshold, the same rule
-S2 wants.
+**Fixed.** Same rule and same threshold as the count.
 
-### S6 — A supplier record has no price list and no lead time (low)
+### S6 — A supplier record has no price list and no lead time (low) — **FIXED**
 
 Prices exist only as the history of what was actually paid. There is no agreed
 price per item, so an invoice cannot be checked against what was quoted, and no
 per-supplier lead time (`lead_days` lives on the inventory item, so one item has
 one lead time regardless of who supplies it).
 
-### S7 — A duplicated purchase writes a duplicate price point (low)
+**Fixed, using what was already there.** `suppliers.lead_days` gives each vendor
+its own lead time. For the price half there is no need for a parallel price
+list: the buying list already takes **quotes** per line, so marking an item
+bought now compares what was paid against the cheapest quote on that line and
+records `cheapest_quote_laar` and `over_quote_laar` in the audit trail. Paying
+over the quote leaves a trail instead of passing quietly.
+
+### S7 — A duplicated purchase writes a duplicate price point (low) — **FIXED**
 
 In `PurchaseController::store()` the `SupplierPriceHistory::create()` sits
 outside the `StockMovement` idempotency check. The stock is protected; the price
 history is not, so a retried create can leave two identical price points and
 skew any average built on them.
 
-### S8 — Negative stock is allowed, and only shows up in a report (informational)
+### S8 — Negative stock is allowed, and only shows up in a report (informational) — **FIXED**
 
 Sales deduct past zero. `inventoryValuation` flags negative lines and
 `stock-discrepancy` lists them, but nothing blocks or alerts at the moment it
 goes negative — which is when someone could still say why.
+
+**Fixed.** The first time an item crosses below zero it writes a warning to the
+log the ops alerting already watches, and an `inventory.went_negative` audit row
+naming the item, what it was, what it went to, and the order that did it. Sales
+are not blocked — a kitchen that has run out still has to be able to sell what
+it has.
+
+### S9 — An adjustment with no unit cost threw a 500 (medium) — **FIXED**
+
+Found while fixing the rest. `POST /inventory/{id}/adjust` passes
+`unit_cost => null` when the caller does not send one, and
+`stock_movements.unit_cost` was `NOT NULL` — so the insert failed and the
+endpoint returned a 500 rather than recording the adjustment. The column is
+nullable now, which the S1 fix wanted anyway: null means "we do not know what
+this cost", which is a different thing from zero.
 
 ---
 

@@ -5,6 +5,7 @@ import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
 import { CreditAccountSettings } from './SettingsPage/CreditAccountSettings';
 import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
+import { StockSettings } from './SettingsPage/StockSettings';
 import {
   getSiteSettings, updateSiteSettings,
   fetchSmsTemplates,
@@ -33,6 +34,7 @@ const SETTINGS_TABS = [
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
   { id: 'credit',        label: 'Credit Accounts',       desc: 'Approval ceiling, payment terms, and whether credit is open' },
+  { id: 'stock',         label: 'Stock Corrections',     desc: 'How big a stock difference has to be before it says why' },
   { id: 'currency',      label: 'Currency Photos',       desc: 'Note & coin photos shown on the POS cash count' },
 ] as const;
 
@@ -405,6 +407,7 @@ export function SettingsPage() {
       {active === 'notifications' && <NotificationsSettings />}
       {active === 'charges' && <ChargesSettings />}
       {active === 'credit' && <CreditAccountSettings />}
+      {active === 'stock' && <StockSettings />}
       {active === 'currency' && <CurrencyPhotosSettings />}
     </PageShell>
   );

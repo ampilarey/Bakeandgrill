@@ -45,6 +45,8 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/product-margins', [ReportsController::class, 'productMargins']);
         Route::get('/reports/customer-cohorts', [ReportsController::class, 'customerCohorts']);
         Route::get('/reports/stock-discrepancy', [ReportsController::class, 'stockDiscrepancy']);
+        // S4: recipe-theoretical usage against what the counts had to correct.
+        Route::get('/reports/usage-variance', [ReportsController::class, 'usageVariance']);
         Route::get('/reports/hourly-sales', [ReportsController::class, 'hourlySales']);
         Route::get('/reports/station-performance', [ReportsController::class, 'stationPerformance']);
         Route::get('/reports/sales-summary/csv', [ReportsController::class, 'salesSummaryCsv'])->middleware('throttle:20,1');
@@ -54,6 +56,7 @@ if (routes_domain_section_is_or_unset('reporting', 'reports', 'reports') && !rou
         Route::get('/reports/inventory-valuation/csv', [ReportsController::class, 'inventoryValuationCsv'])->middleware('throttle:20,1');
         // FIX 9b: CSV export of the credit exposure snapshot.
         Route::get('/reports/credit-exposure/csv', [ReportsController::class, 'creditExposureCsv'])->middleware('throttle:20,1');
+        Route::get('/reports/usage-variance/csv', [ReportsController::class, 'usageVarianceCsv'])->middleware('throttle:20,1');
     });
 }
 

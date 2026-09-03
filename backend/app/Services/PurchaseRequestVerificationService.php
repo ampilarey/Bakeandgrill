@@ -359,13 +359,20 @@ final class PurchaseRequestVerificationService
         $oldCost = (float) ($invItem->unit_cost ?? 0);
 
         $invItem->current_stock = $oldStock + $incomingQty;
-        if ($invItem->current_stock > 0) {
+
+        // Stock audit, 2026-09-03 (S1): a buy with no price recorded used to
+        // average a cost of ZERO into the item — ten kilos at MVR 20 plus ten
+        // kilos at nothing left the item costing MVR 10, and unit_cost is what
+        // recipe cost, dish margin, break-even and the stock valuation all read.
+        // No price means no opinion about cost: take the stock, keep the cost.
+        $costRecorded = $newCost > 0;
+        if ($costRecorded && $invItem->current_stock > 0) {
             $invItem->unit_cost = round(
                 ($oldStock * $oldCost + $incomingQty * $newCost) / $invItem->current_stock,
                 4,
             );
         }
-        if ($newCost > 0) {
+        if ($costRecorded) {
             $invItem->last_purchase_price = $newCost;
         }
         $invItem->save();
@@ -377,10 +384,14 @@ final class PurchaseRequestVerificationService
             'type' => 'purchase',
             'quantity' => $incomingQty,
             'balance_after' => $invItem->current_stock,
-            'unit_cost' => $newCost,
+            // Null, not zero: "we do not know what this cost", which a report
+            // can tell apart from "this was free".
+            'unit_cost' => $costRecorded ? $newCost : null,
             'reference_type' => 'purchase_request',
             'reference_id' => $item->purchase_request_id,
-            'notes' => 'Verified from purchase request item #' . $item->id,
+            'notes' => $costRecorded
+                ? 'Verified from purchase request item #' . $item->id
+                : 'Verified from purchase request item #' . $item->id . ' — no price recorded, item cost left unchanged',
         ]);
 
         if ($item->supplier_id && $newCost > 0) {

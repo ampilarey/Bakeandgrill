@@ -11,8 +11,10 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\RecipeItem;
 use App\Models\StockMovement;
+use App\Services\AuditLogService;
 use App\Services\UnitConversionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InventoryDeductionService
 {
@@ -224,6 +226,31 @@ class InventoryDeductionService
 
                     if ((float) $inventoryItem->current_stock < 0) {
                         $hadConflict = true;
+
+                        // Stock audit, 2026-09-03 (S8): going below zero only
+                        // showed up later, in a report, when nobody could still
+                        // say why. Say it at the moment it happens — the item,
+                        // the order that did it, and what it went to — so it is
+                        // in the log the ops alerting already watches, and the
+                        // audit trail beside every other stock event.
+                        if ($oldStock >= 0) {
+                            Log::warning('inventory.went_negative', [
+                                'inventory_item_id' => $inventoryItem->id,
+                                'name' => $inventoryItem->name,
+                                'was' => $oldStock,
+                                'now' => (float) $inventoryItem->current_stock,
+                                'order_id' => $order->id,
+                                'order_number' => $order->order_number,
+                            ]);
+                            app(AuditLogService::class)->log(
+                                'inventory.went_negative',
+                                'InventoryItem',
+                                $inventoryItem->id,
+                                ['current_stock' => $oldStock],
+                                ['current_stock' => (float) $inventoryItem->current_stock],
+                                ['order_id' => $order->id, 'order_number' => $order->order_number],
+                            );
+                        }
                     }
 
                     event(new StockLevelChanged(new StockLevelChangedData(

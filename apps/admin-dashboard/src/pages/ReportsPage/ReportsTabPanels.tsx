@@ -53,6 +53,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
   const cashierPerf = reportData?.cashierPerf ?? null;
   const productMargins = reportData?.productMargins ?? null;
   const stockDiscrepancy = reportData?.stockDiscrepancy ?? null;
+  const usageVariance = reportData?.usageVariance ?? null;
   const hourlySales = reportData?.hourlySales ?? null;
   const stationPerf = reportData?.stationPerf ?? null;
 
@@ -1380,6 +1381,72 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             </ResponsiveTable>
           )}
         </Card>
+      )}
+
+      {/* Stock audit 2026-09-03 (S4): the gap between what the recipes say we
+          used and what the counts had to correct — the number that finds
+          theft, over-portioning and unrecorded waste. */}
+      {!loading && tab === 'Usage Variance' && usageVariance && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <a
+              href={`/api/reports/usage-variance/csv?from=${usageVariance.from}&to=${usageVariance.to}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '8px 14px', borderRadius: 8, border: '1px solid var(--color-primary)',
+                color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700, fontSize: 13,
+              }}
+            >
+              ↓ Export CSV
+            </a>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+            <StatCard label="Unexplained loss" value={mvr(usageVariance.total_loss_mvr)} accent="var(--color-danger)" />
+            <StatCard label="Found over" value={mvr(usageVariance.total_gain_mvr)} accent="var(--color-success)" />
+          </div>
+          {(usageVariance.items ?? []).length === 0 ? (
+            <Card>
+              <p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>
+                No stock counts in this period — nothing to compare the recipes against.
+              </p>
+            </Card>
+          ) : (
+            <Card>
+              <ResponsiveTable>
+                <thead>
+                  <tr>
+                    <th style={S.th}>Item</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Received</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Recipes used</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Waste</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Unexplained</th>
+                    <th style={{ ...S.th, textAlign: 'right' }}>Value</th>
+                  </tr>
+                </thead>
+                <tbody data-testid="usage-variance-rows">
+                  {(usageVariance.items ?? []).map((row) => (
+                    <tr key={row.item_id}>
+                      <td style={S.td}>{row.name}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{row.received} {row.unit ?? ''}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{row.recipe_usage} {row.unit ?? ''}</td>
+                      <td style={{ ...S.td, textAlign: 'right' }}>{row.waste} {row.unit ?? ''}</td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700 }}>{row.unexplained} {row.unit ?? ''}</td>
+                      <td style={{
+                        ...S.td,
+                        textAlign: 'right',
+                        fontWeight: 700,
+                        color: row.unexplained_value_mvr < 0 ? 'var(--color-danger)' : 'var(--color-text)',
+                      }}>
+                        {mvr(row.unexplained_value_mvr)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </ResponsiveTable>
+            </Card>
+          )}
+        </>
       )}
 
       {!loading && tab === 'Stock Discrepancy' && stockDiscrepancy && (

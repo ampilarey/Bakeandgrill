@@ -1324,6 +1324,35 @@ export async function getCustomerCohortsReport(params: { from?: string; to?: str
   return req(`/reports/customer-cohorts?${q}`);
 }
 
+/**
+ * Stock audit 2026-09-03 (S4): what the recipes say we used, against what the
+ * counts had to correct. The correction is the unexplained part.
+ */
+export interface UsageVarianceReport {
+  from: string;
+  to: string;
+  total_loss_mvr: number;
+  total_gain_mvr: number;
+  net_mvr?: number;
+  items: {
+    item_id: number;
+    name: string;
+    unit: string | null;
+    received: number;
+    recipe_usage: number;
+    waste: number;
+    manual_adjustments: number;
+    counts: number;
+    unexplained: number;
+    unit_cost: number;
+    unexplained_value_mvr: number;
+  }[];
+}
+
+export async function getUsageVarianceReport(params: { from: string; to: string }): Promise<UsageVarianceReport> {
+  return req(`/reports/usage-variance?from=${params.from}&to=${params.to}`);
+}
+
 export async function getStockDiscrepancyReport(): Promise<StockDiscrepancyReport> {
   return req('/reports/stock-discrepancy');
 }

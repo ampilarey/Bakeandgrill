@@ -285,6 +285,47 @@ class ReportsController extends Controller
         return response()->json($this->reports->stockVelocity($from, $to, $limit));
     }
 
+    /** S4: what the shelf says against what the recipes say. */
+    public function usageVariance(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        $limit = min(200, max(10, (int) $request->input('limit', 50)));
+
+        return response()->json($this->reports->usageVariance($from, $to, $limit));
+    }
+
+    public function usageVarianceCsv(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+        $data = $this->reports->usageVariance($from, $to, 200);
+
+        $rows = [
+            ['metric', 'value'],
+            ['from', $data['from'] ?? ''],
+            ['to', $data['to'] ?? ''],
+            ['total_loss_mvr', $data['total_loss_mvr'] ?? 0],
+            ['total_gain_mvr', $data['total_gain_mvr'] ?? 0],
+            [],
+            ['item', 'unit', 'received', 'recipe_usage', 'waste', 'manual_adjustments', 'counts', 'unexplained', 'unit_cost', 'unexplained_value_mvr'],
+        ];
+        foreach ($data['items'] ?? [] as $row) {
+            $rows[] = [
+                $row['name'] ?? '',
+                $row['unit'] ?? '',
+                $row['received'] ?? 0,
+                $row['recipe_usage'] ?? 0,
+                $row['waste'] ?? 0,
+                $row['manual_adjustments'] ?? 0,
+                $row['counts'] ?? 0,
+                $row['unexplained'] ?? 0,
+                $row['unit_cost'] ?? 0,
+                $row['unexplained_value_mvr'] ?? 0,
+            ];
+        }
+
+        return $this->csvResponse('usage-variance.csv', $rows);
+    }
+
     public function driverSettlement(Request $request)
     {
         [$from, $to] = $this->parseRange($request);

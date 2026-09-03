@@ -148,6 +148,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/settings/charges', icon: Percent, label: 'Charges & Fees', permission: 'settings.update', description: 'Service charge and payment commission' },
       { to: '/settings/credit', icon: HandCoins, label: 'Credit Accounts', permission: 'settings.update', description: 'Approval ceiling, payment terms, open or closed' },
+      { to: '/settings/stock', icon: Boxes, label: 'Stock Corrections', permission: 'settings.update', description: 'When a stock difference has to say why' },
       { to: '/settings/currency', icon: Banknote, label: 'Currency Photos', permission: 'website.manage', description: 'Note & coin photos for the POS cash count' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },

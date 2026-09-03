@@ -254,6 +254,19 @@ final class PurchaseRequestService
             $unitCostLaar = isset($data['actual_unit_cost_laar']) ? (int) $data['actual_unit_cost_laar'] : null;
             $totalLaar = $unitCostLaar !== null ? (int) round($qty * $unitCostLaar) : null;
 
+            // Stock audit, 2026-09-03 (S6): an invoice could not be checked
+            // against what was quoted. When this line has quotes, note in the
+            // audit what the cheapest one said and what was actually paid, so
+            // paying over the quote leaves a trail instead of passing quietly.
+            $cheapestQuoteLaar = PurchaseRequestItemQuote::query()
+                ->where('purchase_request_item_id', $item->id)
+                ->whereNotNull('unit_price_laar')
+                ->where('unit_price_laar', '>', 0)
+                ->min('unit_price_laar');
+            $overQuoteLaar = ($cheapestQuoteLaar !== null && $unitCostLaar !== null && $unitCostLaar > (int) $cheapestQuoteLaar)
+                ? $unitCostLaar - (int) $cheapestQuoteLaar
+                : null;
+
             $item->update([
                 'status' => 'bought',
                 'actual_qty' => $qty,
@@ -281,7 +294,20 @@ final class PurchaseRequestService
             $pr = $item->purchaseRequest;
             $this->recomputeTotals($pr);
             $this->recomputeRequestStatus($pr);
-            $this->auditItem('purchase_request.bought', $item->fresh(), ['status' => 'assigned'], ['status' => 'bought'], $request, $user);
+            $this->auditItem(
+                'purchase_request.bought',
+                $item->fresh(),
+                ['status' => 'assigned'],
+                ['status' => 'bought'],
+                $request,
+                $user,
+                array_filter([
+                    'paid_unit_cost_laar' => $unitCostLaar,
+                    'no_price_recorded' => $unitCostLaar === null || $unitCostLaar <= 0 ? true : null,
+                    'cheapest_quote_laar' => $cheapestQuoteLaar !== null ? (int) $cheapestQuoteLaar : null,
+                    'over_quote_laar' => $overQuoteLaar,
+                ], fn ($v) => $v !== null),
+            );
 
             return $item->fresh(['purchaseRequest', 'inventoryItem', 'quotes']);
         });
@@ -652,13 +678,14 @@ final class PurchaseRequestService
 
     /** @param array<string, mixed> $old */
     /** @param array<string, mixed> $new */
-    private function auditItem(string $action, PurchaseRequestItem $item, array $old, array $new, Request $request, User $user): void
+    /** @param array<string, mixed> $meta */
+    private function auditItem(string $action, PurchaseRequestItem $item, array $old, array $new, Request $request, User $user, array $meta = []): void
     {
-        $this->audit->log($action, 'PurchaseRequestItem', $item->id, $old, $new, [
+        $this->audit->log($action, 'PurchaseRequestItem', $item->id, $old, $new, array_merge([
             'request_id' => $item->purchase_request_id,
             'item_id' => $item->id,
             'role' => $user->role?->slug,
             'user_id' => $user->id,
-        ], $request);
+        ], $meta), $request);
     }
 }

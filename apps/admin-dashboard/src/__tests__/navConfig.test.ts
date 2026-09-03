@@ -73,6 +73,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/settings/notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/settings/charges', permission: 'settings.update' },
   { to: '/settings/credit', permission: 'settings.update' },
+  { to: '/settings/stock', permission: 'settings.update' },
   { to: '/settings/currency', permission: 'website.manage' },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
@@ -168,7 +169,7 @@ describe('navConfig', () => {
     for (const g of getNavGroups()) {
       // System includes Website Content, Order App Content, Business Details
       // and the Credit Accounts settings page.
-      expect(g.items.length).toBeLessThanOrEqual(16);
+      expect(g.items.length).toBeLessThanOrEqual(17);
       for (const item of g.items) {
         expect(item.to.startsWith('/') || item.to.startsWith('#')).toBe(true);
         const key = item.to;

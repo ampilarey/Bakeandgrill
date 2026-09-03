@@ -697,6 +697,8 @@ export interface Supplier {
   email: string | null;
   address: string | null;
   payment_terms: string | null;
+  /** Stock audit 2026-09-03 (S6): days from order to delivery, per vendor. */
+  lead_days: number | null;
   notes: string | null;
   is_active: boolean;
   created_at?: string;
@@ -728,6 +730,7 @@ export async function createSupplier(data: {
   contact_name?: string;
   phone?: string;
   email?: string;
+  lead_days?: number | null;
 }): Promise<{ supplier: Supplier }> {
   return req('/suppliers', { method: 'POST', body: JSON.stringify(data) });
 }
@@ -737,6 +740,7 @@ export async function updateSupplier(id: number, data: Partial<{
   contact_name: string;
   phone: string;
   email: string;
+  lead_days: number | null;
   is_active: boolean;
 }>): Promise<{ supplier: Supplier }> {
   return req(`/suppliers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });

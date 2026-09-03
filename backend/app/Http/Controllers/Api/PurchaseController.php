@@ -272,14 +272,20 @@ class PurchaseController extends Controller
                     $idempotencyKey = 'purchase:' . $purchase->id . ':item:' . $purchaseItem->id;
                     if (!StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
                         $inventoryItem->current_stock = $oldStock + $newQty;
-                        $inventoryItem->last_purchase_price = $newCost;
 
+                        // S1, same rule as the purchase-request path: a line
+                        // priced at nothing says nothing about what the item
+                        // costs, so it must not average zero into unit_cost.
+                        $costRecorded = $newCost > 0;
                         $totalStock = $oldStock + $newQty;
-                        if ($totalStock > 0) {
-                            $inventoryItem->unit_cost = round(
-                                ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
-                                4,
-                            );
+                        if ($costRecorded) {
+                            $inventoryItem->last_purchase_price = $newCost;
+                            if ($totalStock > 0) {
+                                $inventoryItem->unit_cost = round(
+                                    ($oldStock * $oldCost + $newQty * $newCost) / $totalStock,
+                                    4,
+                                );
+                            }
                         }
                         $inventoryItem->save();
 
@@ -290,22 +296,25 @@ class PurchaseController extends Controller
                             'type' => 'purchase',
                             'quantity' => $newQty,
                             'balance_after' => $inventoryItem->current_stock,
-                            'unit_cost' => $itemPayload['unit_cost'],
+                            'unit_cost' => $costRecorded ? $itemPayload['unit_cost'] : null,
                             'reference_type' => 'purchase',
                             'reference_id' => $purchase->id,
                             'notes' => $validated['notes'] ?? null,
                         ]);
-                    }
 
-                    if ($purchase->supplier_id) {
-                        SupplierPriceHistory::create([
-                            'supplier_id' => $purchase->supplier_id,
-                            'inventory_item_id' => $inventoryItem->id,
-                            'purchase_id' => $purchase->id,
-                            'unit_price' => $itemPayload['unit_cost'],
-                            'unit' => $inventoryItem->unit,
-                            'recorded_at' => $purchase->purchase_date ?? now()->toDateString(),
-                        ]);
+                        // S7: inside the guard. A retried create used to leave a
+                        // second identical price point behind and skew any
+                        // average built on it, while the stock itself was safe.
+                        if ($purchase->supplier_id && $costRecorded) {
+                            SupplierPriceHistory::create([
+                                'supplier_id' => $purchase->supplier_id,
+                                'inventory_item_id' => $inventoryItem->id,
+                                'purchase_id' => $purchase->id,
+                                'unit_price' => $itemPayload['unit_cost'],
+                                'unit' => $inventoryItem->unit,
+                                'recorded_at' => $purchase->purchase_date ?? now()->toDateString(),
+                            ]);
+                        }
                     }
                 }
             }
