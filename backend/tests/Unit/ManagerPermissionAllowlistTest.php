@@ -28,6 +28,10 @@ class ManagerPermissionAllowlistTest extends TestCase
         'customers.analytics',
         'customers.create',
         'customers.credit.manage',
+        // Added 2026-09-03 on the owner's explicit decision, not to make a
+        // mismatch go away: a manager who may approve credit may now also
+        // record the repayment. See docs/AUDIT_CREDIT_SETUP_2026-09-03.md (F2).
+        'customers.credit.repay',
         'customers.deposit.freeze',
         'customers.deposit.manage',
         'customers.deposit.receive',

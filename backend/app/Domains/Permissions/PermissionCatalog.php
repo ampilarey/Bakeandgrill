@@ -326,12 +326,9 @@ final class PermissionCatalog
         return [
             'complaints.manage',
             'complaints.view',
-            // Audit 2026-09-03 (F2): a manager may approve credit but not take
-            // the repayment, which makes the owner a bottleneck at the counter.
-            // Left as it is on purpose — ManagerPermissionAllowlistTest freezes
-            // manager defaults so widening them is never a side effect. Moving
-            // this one line to managerSlugs() is the owner's call.
-            'customers.credit.repay',
+            // Audit 2026-09-03 (F2): customers.credit.repay moved to managers
+            // on the owner's say-so — see managerSlugs(). Writing a balance OFF
+            // is money out with no cash trail, and stays here.
             'customers.credit.writeoff',
             'customers.deposit.adjust',
             'customers.deposit.transfer_credit',
@@ -375,6 +372,13 @@ final class PermissionCatalog
             'customers.analytics',
             'customers.create',
             'customers.credit.manage',
+            // Audit 2026-09-03 (F2), owner-approved: a manager could approve
+            // credit and raise a limit but not take the customer's payment
+            // against it, which made the owner a bottleneck at the counter.
+            // Money IN is reconcilable — a repayment writes a CashMovement into
+            // the taker's shift, so a false one shows as a short drawer at
+            // close. Money OUT (customers.credit.writeoff) stays owner-only.
+            'customers.credit.repay',
             'customers.deposit.freeze',
             'customers.deposit.manage',
             'customers.deposit.receive',

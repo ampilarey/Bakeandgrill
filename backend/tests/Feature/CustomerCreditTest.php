@@ -802,8 +802,7 @@ class CustomerCreditTest extends TestCase
         $eligibility = app(\App\Domains\Credit\Services\CreditEligibilityService::class);
         $this->assertFalse($eligibility->canCharge($this->customer->fresh()));
 
-        // Repayment is the owner's to record; closed does not stop it.
-        Sanctum::actingAs($this->owner, ['staff']);
+        // Closed stops charges, never repayments.
         $repay = $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
             'amount_mvr' => 50, 'method' => 'bank_transfer',
         ]);
@@ -847,12 +846,11 @@ class CustomerCreditTest extends TestCase
     }
 
     /**
-     * F2: left as it is on purpose. A manager may approve credit and set the
-     * limit, but the repayment and the write-off are both the owner's — the
-     * manager defaults are frozen by ManagerPermissionAllowlistTest, so
-     * widening them is a decision, never a side effect.
+     * F2, owner-approved 2026-09-03: a manager may now take the money in —
+     * every repayment writes a CashMovement into their shift — but writing a
+     * balance off is money out with no cash trail, and stays the owner's.
      */
-    public function test_a_manager_may_approve_credit_but_not_settle_or_write_it_off(): void
+    public function test_a_manager_can_record_a_repayment_but_not_write_the_balance_off(): void
     {
         Sanctum::actingAs($this->manager, ['staff']);
         $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
@@ -862,17 +860,19 @@ class CustomerCreditTest extends TestCase
 
         $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
             'amount_mvr' => 100, 'method' => 'bank_transfer',
-        ])->assertForbidden();
+        ])->assertCreated();
+        $this->assertSame(10000, (int) $this->customer->fresh()->credit_balance_laar);
 
         $this->postJson("/api/admin/customers/{$this->customer->id}/credit/write-off", [
             'amount_mvr' => 100, 'reason' => 'Gone for good',
         ])->assertForbidden();
+    }
 
-        // The owner can do both.
-        Sanctum::actingAs($this->owner, ['staff']);
-        $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
-            'amount_mvr' => 100, 'method' => 'bank_transfer',
-        ])->assertCreated();
-        $this->assertSame(10000, (int) $this->customer->fresh()->credit_balance_laar);
+    /** The role default carries it, not only a per-user grant. */
+    public function test_the_manager_role_carries_the_repayment_permission_by_default(): void
+    {
+        $this->assertTrue($this->manager->fresh()->hasPermission('customers.credit.repay'));
+        $this->assertFalse($this->manager->fresh()->hasPermission('customers.credit.writeoff'));
+        $this->assertFalse($this->staff->fresh()->hasPermission('customers.credit.repay'));
     }
 }

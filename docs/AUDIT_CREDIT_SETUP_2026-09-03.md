@@ -69,13 +69,12 @@ That is a sound spine. The findings below are about the setup around it.
 
 ## Status — fixed 2026-09-03
 
-Every finding below is closed except **F2**, which is left as it is on purpose;
-each entry says how.
+All seven are closed; each entry says how.
 
 | | Finding | Outcome |
 |---|---|---|
 | F1 | Ceiling not editable | Settings → Credit Accounts |
-| F2 | Manager approves, owner collects | **Unchanged — needs the owner's yes** |
+| F2 | Manager approves, owner collects | Managers may record repayments (owner-approved) |
 | F3 | Approve reversed an SMS opt-out | Only a first approval opts in |
 | F4 | No house default for terms | `credit_payment_terms_default_days` |
 | F5 | No aging | Four buckets in the report, the UI and the CSV |
@@ -100,7 +99,7 @@ never been made.
 **Fixed.** Settings → Credit Accounts now edits it, alongside the two settings
 added for F4 and F7. `CreditPolicy::maxLimitLaar()` is the single reader.
 
-### F2 — A manager can grow the debt but cannot clear it (medium, policy) — **UNCHANGED, BY DESIGN**
+### F2 — A manager can grow the debt but cannot clear it (medium, policy) — **FIXED**
 
 `customers.credit.manage` is a manager permission; `customers.credit.repay` is
 owner-only. A manager can approve an account and raise its limit, but cannot take
@@ -112,19 +111,22 @@ This may well be deliberate — money in is the sensitive direction. But the pai
 is unusual (most tills let whoever may extend credit also collect it), so it is
 worth an explicit decision rather than an inherited default.
 
-**Left as it is.** `ManagerPermissionAllowlistTest` freezes the manager default
-set byte-for-byte, with the instruction "do not fix a mismatch by editing this
-list — that would change what managers can do". Widening what a manager may do
-with money is exactly what that guard exists to stop happening as a side effect,
-so it wants the owner's yes, not mine.
+**Fixed, on the owner's explicit decision** ("do the manager repayment
+permission too", 2026-09-03). `customers.credit.repay` moved from
+`ownerOnlySlugs()` to `managerSlugs()`, and migration
+`2026_09_03_130000_manager_may_record_credit_repayments` re-syncs the catalog so
+the manager role holds it after a deploy.
 
-If you want it: move `'customers.credit.repay'` from `ownerOnlySlugs()` to
-`managerSlugs()` in `PermissionCatalog.php`, add the same string to
-`PRE_HARDENING_MANAGER_SLUGS` in the test, and run
-`php artisan permissions:sync` (or deploy — a catalog migration re-syncs). The
-risk is bounded: a repayment writes a `CashMovement` into the taker's shift, so
-a false one shows up as a short drawer at close. `customers.credit.writeoff` —
-money out, no cash trail — should stay owner-only either way.
+`ManagerPermissionAllowlistTest` freezes manager defaults byte-for-byte, with
+the instruction "do not fix a mismatch by editing this list". The snapshot was
+edited here **because the owner decided to widen the default**, not to make a
+failing test pass — the entry carries a comment saying exactly that, so the next
+reader can tell the two apart.
+
+The risk is bounded and reconcilable: a repayment writes a `CashMovement` into
+the taker's shift, so a false one shows up as a short drawer at close, and every
+one is audited. `customers.credit.writeoff` — money out, with no cash trail —
+stays owner-only.
 
 ### F3 — Approving credit silently re-subscribes a customer to reminder SMS (low) — **FIXED**
 
