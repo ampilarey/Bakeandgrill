@@ -62,16 +62,16 @@ describe("fitPillRow", () => {
   const pills = ["Drinks", "Hedhika", "Breakfast", "Grill", "Desserts", "Events & Catering"];
 
   it("shows everything when the width is unknown", () => {
-    expect(fitPillRow(0, "All items", pills).visible).toHaveLength(pills.length);
-    expect(fitPillRow(0, "All items", pills).hidden).toEqual([]);
+    expect(fitPillRow(0, "All", pills).visible).toHaveLength(pills.length);
+    expect(fitPillRow(0, "All", pills).hidden).toEqual([]);
   });
 
   it("shows everything when it all fits", () => {
-    expect(fitPillRow(2000, "All items", pills).hidden).toEqual([]);
+    expect(fitPillRow(2000, "All", pills).hidden).toEqual([]);
   });
 
   it("keeps room for the pinned pills once something has to hide", () => {
-    const { visible, hidden } = fitPillRow(420, "All items", pills);
+    const { visible, hidden } = fitPillRow(420, "All", pills);
     expect(visible.length).toBeGreaterThan(0);
     expect(hidden.length).toBeGreaterThan(0);
     // Nothing is lost and nothing is listed twice.
@@ -79,7 +79,7 @@ describe("fitPillRow", () => {
   });
 
   it("keeps the strip in order — a short label never jumps a long one", () => {
-    const { visible, hidden } = fitPillRow(420, "All items", ["Grill", "A very long category name here", "Tea"]);
+    const { visible, hidden } = fitPillRow(420, "All", ["Grill", "A very long category name here", "Tea"]);
     expect(visible).toEqual([0]);
     expect(hidden).toEqual([1, 2]);
   });
@@ -87,8 +87,8 @@ describe("fitPillRow", () => {
   it("holds back a safety margin so a pill is never clipped", () => {
     // A width that fits the estimate exactly must still not fill the row.
     const one = [pills[0]];
-    const exact = pillWidth("All items") + 6 + pillWidth(one[0]);
-    expect(fitPillRow(exact, "All items", one).hidden).toHaveLength(1);
-    expect(fitPillRow(exact + 20, "All items", one).hidden).toHaveLength(0);
+    const exact = pillWidth("All") + 6 + pillWidth(one[0]);
+    expect(fitPillRow(exact, "All", one).hidden).toHaveLength(1);
+    expect(fitPillRow(exact + 20, "All", one).hidden).toHaveLength(0);
   });
 });

@@ -54,7 +54,7 @@ export function categoryWithDescendants(
 /**
  * Items to show for the current selection.
  *
- * `selectedId == null` is the "All items" tab and returns everything.
+ * `selectedId == null` is the "All" tab and returns everything.
  */
 export function itemsForCategory<T extends { category_id?: number | null; extra_category_ids?: number[] | null }>(
   items: ReadonlyArray<T>,

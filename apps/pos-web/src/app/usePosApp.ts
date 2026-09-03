@@ -483,7 +483,7 @@ export function usePosApp() {
   /**
    * Items visible in the menu grid for the current category selection.
    *
-   *   • `selectedCategoryId == null` → "All items" tab — return everything.
+   *   • `selectedCategoryId == null` → "All" tab — return everything.
    *   • Selected id matches a TOP-LEVEL category that has sub-categories
    *     → show items in that parent AND in every descendant. (Previously
    *     selecting a parent like "Drinks" returned an empty grid because

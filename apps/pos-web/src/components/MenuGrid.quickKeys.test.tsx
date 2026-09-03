@@ -13,8 +13,8 @@
  *     adds one
  *   - hold a tile to put it on a tab, move it, or take it off; a tap rings up
  *   - "🔥 Now" lists what sells at this hour, only when the server sent a list
- *   - the strip fits the screen: "All items" pinned left, "More" pinned
- *     right, and whatever is over the line behind More
+ *   - the strip fits the screen: "All" pinned left, "More" pinned right,
+ *     and whatever is over the line behind More
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -108,10 +108,10 @@ describe("Quick tabs in the strip", () => {
     renderGrid({ quickLayout: { shared: [tab("s1", "House", [tea.id])], mine: [tab("m1", "Morning", [bajiya.id, gulha.id]), tab("m2", "Regulars", [])] } });
 
     expect(pillLabels()).toEqual(["★ Morning (2)", "★ Regulars", "★ House (1)"]);
-    // "All items" is pinned at the left edge; the tabs come first of the rest,
+    // "All" is pinned at the left edge; the tabs come first of the rest,
     // ahead of the categories.
     const all = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(all[0]).toBe("All items");
+    expect(all[0]).toBe("All");
     expect(all.indexOf("★ Morning (2)")).toBeLessThan(all.indexOf("Food"));
     expect(screen.getByRole("button", { name: "★ House (1)" })).toHaveAttribute("data-shared", "true");
   });
@@ -142,7 +142,7 @@ describe("Quick tabs in the strip", () => {
     expect(tileNames()).toEqual(["Bajiya"]);
 
     // The cashier goes back to everything; nothing forces Lunch back.
-    fireEvent.click(pill(/All items/));
+    fireEvent.click(pill(/^All$/));
     expect(tileNames()).toHaveLength(4);
 
     // 14:00 — Tea time starts and takes over.

@@ -76,7 +76,7 @@ describe('itemsForCategory', () => {
     expect(names(itemsForCategory(items, categories, 4))).toEqual(['Latte']);
   });
 
-  it('returns everything for the All items tab, uncategorised included', () => {
+  it('returns everything for the All tab, uncategorised included', () => {
     expect(itemsForCategory(items, categories, null)).toHaveLength(items.length);
   });
 

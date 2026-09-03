@@ -19,7 +19,7 @@ export const MAX_QUICK_TABS = 6;
 
 type Props = {
   categories: Category[];
-  /** null = "All items" tab (no category filter applied). */
+  /** null = "All" tab (no category filter applied). */
   selectedCategoryId: number | null;
   setSelectedCategoryId: (id: number | null) => void;
   filteredItems: Item[];
@@ -324,7 +324,7 @@ const stripRowStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-/** The pills between the pinned "All items" and "More". */
+/** The pills between the pinned "All" and "More". */
 const stripMiddleStyle: React.CSSProperties = {
   display: 'flex',
   gap: 6,
@@ -910,12 +910,14 @@ export function MenuGrid({
         )}
       </div>
 
-      {/* Category + sale filters in one row (avoids duplicate "All items"). */}
+      {/* Category + sale filters in one row (avoids duplicate "All"). */}
       {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0 || quickEnabled) && (() => {
         // Owner, 2026-09-03: the strip fits the screen instead of scrolling
-        // sideways — "All items" pinned at the left, "More" pinned at the
-        // right, and as much as fits in between. Anything that does not fit
-        // is behind More, so nothing is off-screen with no sign of it.
+        // sideways — "All" pinned at the left, "More" pinned at the right,
+        // and as much as fits in between. Anything that does not fit is
+        // behind More, so nothing is off-screen with no sign of it. The
+        // left pill is just "All" (owner, 2026-09-03) to leave that much
+        // more room for the categories.
         //
         // Order is by how often a hand reaches for it: the cashier's own
         // tabs, what is selling now, the categories, then the sale filters.
@@ -1001,7 +1003,7 @@ export function MenuGrid({
           }] : []),
         ];
 
-        const fit = fitPillRow(pillRowWidth, 'All items', strip.map((p) => p.label), {
+        const fit = fitPillRow(pillRowWidth, 'All', strip.map((p) => p.label), {
           moreLabel: `More (${strip.length})`,
         });
         let visible = fit.visible.map((i) => strip[i]);
@@ -1020,7 +1022,7 @@ export function MenuGrid({
         <>
         <div ref={pillRowRef} style={stripRowStyle} data-testid="pos-pill-row">
           <CategoryPill
-            label="All items"
+            label="All"
             active={selectedCategoryId == null && saleFilter === 'all'}
             onClick={() => {
               setSelectedCategoryId(null);
