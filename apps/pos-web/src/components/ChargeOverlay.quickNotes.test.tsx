@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ChargeOverlay, pickChargeQuickNotes } from "./ChargeOverlay";
@@ -62,13 +62,9 @@ describe("ChargeOverlay quick note photos", () => {
     expect(screen.getByTestId("charge-quick-note-1000")).toBeTruthy();
   });
 
-  /**
-   * Owner, 2026-09-03: "when i click 100 note it enters as 10." The chips
-   * were photographs and nothing else, so a tap that landed on the wrong
-   * one left no trace of what had been entered. Every chip now says what it
-   * is worth.
-   */
-  it("writes the value on every note chip, not only the photo", () => {
+  /** Owner, 2026-09-03: "when note is shown remove the MVR amount … only
+   *  note is better." The photo is the whole chip. */
+  it("shows the photo alone, with no amount written over it", () => {
     render(
       <ChargeOverlay
         total={3}
@@ -79,8 +75,30 @@ describe("ChargeOverlay quick note photos", () => {
     );
 
     for (const face of [5, 10, 20, 50, 100]) {
-      expect(screen.getByTestId(`charge-quick-note-${face}`)).toHaveTextContent(`MVR ${face}`);
+      const chip = screen.getByTestId(`charge-quick-note-${face}`);
+      expect(chip.querySelector("img")).toBeTruthy();
+      expect(chip).toHaveTextContent("");
     }
+  });
+
+  /** A chip with no photo would be a blank box on a money screen, so that
+   *  one — and only that one — names itself. */
+  it("names a note whose photo will not load", () => {
+    render(
+      <ChargeOverlay
+        total={3}
+        submitting={false}
+        onClose={() => undefined}
+        onConfirm={vi.fn(async () => undefined)}
+      />,
+    );
+
+    const chip = screen.getByTestId("charge-quick-note-100");
+    fireEvent.error(chip.querySelector("img")!);
+
+    expect(screen.getByTestId("charge-quick-note-100")).toHaveTextContent("MVR 100");
+    // The ones that loaded are untouched.
+    expect(screen.getByTestId("charge-quick-note-50")).toHaveTextContent("");
   });
 
   it("sums selected notes into Received and highlights both", async () => {

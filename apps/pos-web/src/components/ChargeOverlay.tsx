@@ -226,6 +226,8 @@ export function ChargeOverlay({
   const [received, setReceived] = useState<string>("");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
   const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
+  /** Faces whose photo would not load; those chips name themselves instead. */
+  const [brokenNotes, setBrokenNotes] = useState<number[]>([]);
   /** Owner-uploaded note photos (laari face → URL); bundled assets otherwise. */
   const [customImages, setCustomImages] = useState<Record<string, string>>({});
   /**
@@ -861,6 +863,12 @@ export function ChargeOverlay({
                       const asset = currencyAssetForLaari(laari);
                       const custom = customImages[String(laari)];
                       const src = custom ? absoluteMediaUrl(custom) : asset.src;
+                      // Owner, 2026-09-03: "when note is shown remove the MVR
+                      // amount … only note is better." The photo is the whole
+                      // chip, as it was. The value is written on it only when
+                      // there is no photo to read — a blank box on a money
+                      // screen would say nothing at all.
+                      const noPhoto = brokenNotes.includes(face);
                       return (
                         <button
                           key={face}
@@ -871,23 +879,25 @@ export function ChargeOverlay({
                           className={`pos-charge-quick-btn pos-charge-quick-btn--note${selected ? " is-selected" : ""}`}
                           onClick={() => toggleNote(face)}
                         >
-                          <img
-                            src={src}
-                            alt=""
-                            draggable={false}
-                            className="pos-charge-quick-note-img"
-                            onError={(e) => {
-                              if (custom && e.currentTarget.src !== asset.src) {
-                                e.currentTarget.src = asset.src;
-                              }
-                            }}
-                          />
-                          {/* Owner, 2026-09-03: "when i click 100 note it
-                              enters as 10." The chip was a photo and nothing
-                              else, so a tap that landed on the wrong one said
-                              nothing about it. The face value is now written
-                              on the chip as well. */}
-                          <span className="pos-charge-quick-btn-label">{fmtChip(face)}</span>
+                          {noPhoto ? (
+                            <span className="pos-charge-quick-btn-label">{fmtChip(face)}</span>
+                          ) : (
+                            <img
+                              src={src}
+                              alt=""
+                              draggable={false}
+                              className="pos-charge-quick-note-img"
+                              onError={(e) => {
+                                // A custom upload falls back to the bundled
+                                // photo; if that fails too, show the value.
+                                if (custom && e.currentTarget.src !== asset.src) {
+                                  e.currentTarget.src = asset.src;
+                                  return;
+                                }
+                                setBrokenNotes((f) => (f.includes(face) ? f : [...f, face]));
+                              }}
+                            />
+                          )}
                         </button>
                       );
                     })}
