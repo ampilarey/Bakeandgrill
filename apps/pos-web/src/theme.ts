@@ -130,6 +130,10 @@ export const z = {
   base: 0,
   raised: 10,
   banner: 40,
+  /** Cart-level dialogs — Discounts & rewards. Deliberately below
+   *  `modal`: a scan started from inside one opens the ScanSheet, which
+   *  has to land on top of it. */
+  cartModal: 45,
   modalBackdrop: 50,
   modal: 51,
   toast: 80,

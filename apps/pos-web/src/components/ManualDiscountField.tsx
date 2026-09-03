@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CashInput } from "./CashInput";
 
 /**
  * Config-driven manual discount input + optional reason chips.
@@ -43,6 +44,14 @@ type Props = {
   mutedColor?: string;
   borderColor?: string;
   textColor?: string;
+  /**
+   * Enter the number on an on-screen pad rather than a cramped inline
+   * field. Owner, 2026-09-03: "can add a number pad to enter the number if
+   * possible." On an iPad there is no numeric-only soft keyboard, so a
+   * plain decimal input pops the full alphanumeric one over half the
+   * screen — the same reason cash entry has had a pad for months.
+   */
+  numpad?: boolean;
 };
 
 export function ManualDiscountField({
@@ -59,6 +68,7 @@ export function ManualDiscountField({
   mutedColor = "#64748B",
   borderColor = "#CBD5E1",
   textColor = "#0F172A",
+  numpad = false,
 }: Props) {
   const [mode, setMode] = useState<Mode>("mvr");
   const [pctText, setPctText] = useState("");
@@ -146,7 +156,7 @@ export function ManualDiscountField({
             </button>
           ))}
         </div>
-        {mode === "pct" ? (
+        {numpad && !disabled ? null : mode === "pct" ? (
           <input
             value={pctText}
             onChange={(e) => setPctText(e.target.value)}
@@ -190,6 +200,19 @@ export function ManualDiscountField({
           />
         )}
       </div>
+      {/* One pad for both modes: the MVR / % switch above says which
+          number is being typed, and the line under it says what that
+          comes to the other way round. */}
+      {numpad && !disabled && (
+        <div style={{ marginTop: 8 }} data-testid="discount-numpad">
+          <CashInput
+            value={mode === "pct" ? pctText : discountAmount}
+            onChange={mode === "pct" ? setPctText : setDiscountAmount}
+            unit={mode === "pct" ? "%" : "MVR"}
+            placeholder={mode === "pct" ? "0" : "0.00"}
+          />
+        </div>
+      )}
       {/* The other way of saying the same number, so a cashier who typed
           15% sees MVR 22.50 go on the ticket, and one who typed MVR 20
           sees it is 13.3%. */}

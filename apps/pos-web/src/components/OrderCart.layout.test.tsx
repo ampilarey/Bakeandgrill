@@ -134,19 +134,28 @@ describe("Table and customer share a row", () => {
 });
 
 describe("Discounts & rewards in the header row", () => {
-  it("sits beside Save and Orders, and its drawer is closed until asked", () => {
+  it("sits beside Save and Orders, and opens a dialog of its own", () => {
     renderCart();
     const toggle = screen.getByTestId("cart-adjust-toggle");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    // Closed, the drawer costs nothing.
-    expect(screen.queryByTestId("ticket-adjustments")).toBeNull();
+    // Closed, it costs nothing at all in the cart.
+    expect(screen.queryByTestId("discounts-modal")).toBeNull();
 
     fireEvent.click(toggle);
-    expect(screen.getByTestId("ticket-adjustments")).toBeInTheDocument();
+    const modal = screen.getByTestId("discounts-modal");
+    expect(modal).toBeInTheDocument();
     expect(screen.getByTestId("cart-adjust-toggle")).toHaveAttribute("aria-expanded", "true");
+    // Owner, 2026-09-03: "can add a number pad to enter the number."
+    expect(within(modal).getByTestId("discount-numpad")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("cart-adjust-toggle"));
-    expect(screen.queryByTestId("ticket-adjustments")).toBeNull();
+    fireEvent.click(within(modal).getByRole("button", { name: "Done" }));
+    expect(screen.queryByTestId("discounts-modal")).toBeNull();
+  });
+
+  it("opens by itself when a discount was refused, so the reason is seen", () => {
+    renderCart({ discountFieldError: "Over the 20% cap." });
+    expect(screen.getByTestId("discounts-modal")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Over the 20% cap.");
   });
 
   it("counts what is applied, so a closed drawer still says so", () => {

@@ -26,6 +26,9 @@ type Props = {
   /** Hide the text field (numpad-only). Used on phone Charge when the
    *  Received amount already shows in the top summary card. */
   showField?: boolean;
+  /** What the number is in — shown at the left of the field. Cash is in
+   *  MVR; the discount dialog also enters a percentage on this pad. */
+  unit?: string;
 };
 
 const C = {
@@ -40,6 +43,7 @@ const C = {
 
 export function CashInput({
   value, onChange, autoFocus, placeholder = "0.00", showNumpad = true, showField = true,
+  unit = "MVR",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
@@ -99,7 +103,7 @@ export function CashInput({
             autoCapitalize="off"
             spellCheck={false}
             placeholder={placeholder}
-            aria-label="Amount in MVR"
+            aria-label={`Amount in ${unit}`}
             style={{
               width: "100%", boxSizing: "border-box",
               padding: "14px 16px", borderRadius: 10,
@@ -122,7 +126,7 @@ export function CashInput({
               fontSize: 12, fontWeight: 700, color: C.muted, letterSpacing: "0.06em",
             }}
           >
-            MVR
+            {unit}
           </span>
         </div>
       )}

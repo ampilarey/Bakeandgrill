@@ -178,10 +178,14 @@ export function Overlay({
   children,
   onEscape,
   className,
+  zIndex = z.shiftModal,
 }: {
   children: React.ReactNode;
   onEscape?: () => void;
   className?: string;
+  /** Which layer this dialog sits on; see `z` in theme.ts. Shift dialogs
+   *  keep the default, above everything but the lock screen. */
+  zIndex?: number;
 }) {
   // Bug-035: shared modal overlay traps focus while open. Several
   // call-sites (OpenShift, CloseShift, ShiftPanel, history) all
@@ -196,7 +200,7 @@ export function Overlay({
       aria-modal="true"
       className={className}
       style={{
-        position: "fixed", inset: 0, zIndex: z.shiftModal,
+        position: "fixed", inset: 0, zIndex,
         background: "rgba(15,23,42,0.55)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px))",

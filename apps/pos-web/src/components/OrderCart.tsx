@@ -7,7 +7,7 @@ import type { PosCustomer, PosCustomerAddress } from "../api";
 import { CustomerPicker } from "./CustomerPicker";
 import { CustomerRewardsPanel } from "./CustomerRewardsPanel";
 import { ManualDiscountField } from "./ManualDiscountField";
-import { TicketAdjustments } from "./TicketAdjustments";
+import { DiscountsModal } from "./DiscountsModal";
 import type { ScanRequest } from "../api/scan";
 import { QtyStepper } from "./cart/QtyStepper";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -258,9 +258,19 @@ export function OrderCart(p: Props) {
   // customer is attached — the chip carries a name, a phone and its own
   // buttons, which do not read well in half a row.
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
-  // Discounts & rewards: the button lives in the header row; this is its
-  // drawer's open state, and the drawer itself is above the totals.
+  // Discounts & rewards: the button lives in the header row, the fields in
+  // a dialog of their own.
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // A field error has to be seen, so it opens the dialog by itself…
+  const discountFieldError = p.discountFieldError;
+  useEffect(() => {
+    if (discountFieldError) setAdjustOpen(true);
+  }, [discountFieldError]);
+  // …and so does a code that arrived by scan, to show what it did.
+  const scanNonce = p.scanRequest?.nonce ?? 0;
+  useEffect(() => {
+    if (scanNonce > 0) setAdjustOpen(true);
+  }, [scanNonce]);
   const cartClassName = [
     "pos-cart",
     dockMode ? "pos-cart--dock" : "",
@@ -1097,17 +1107,11 @@ export function OrderCart(p: Props) {
       {/* Padding lives in index.css so phones can tighten it — see
           .pos-cart-footer. */}
       <div className="pos-cart-footer" style={{ borderTop: `1px solid ${C.border}`, background: C.bg }}>
-        {/* Discounts & rewards — one bar; open it for the manual discount,
-            promo code, points and gift card. Server apply for the rewards
-            still happens during charge between createOrder and settleOrder. */}
-        {showAdjustments && (
-          <TicketAdjustments
-            summary={adjustmentSummary}
-            forceOpen={!!p.discountFieldError}
-            openSignal={p.scanRequest?.nonce ?? 0}
-            open={adjustOpen}
-            onOpenChange={setAdjustOpen}
-          >
+        {/* Discounts & rewards — a dialog, opened from the header button.
+            Server apply for the rewards still happens during charge between
+            createOrder and settleOrder. */}
+        {showAdjustments && adjustOpen && (
+          <DiscountsModal summary={adjustmentSummary} onClose={() => setAdjustOpen(false)}>
             {showDiscountField && (
               <ManualDiscountField
                 discountAmount={p.discountAmount}
@@ -1126,6 +1130,7 @@ export function OrderCart(p: Props) {
                 discountFieldError={p.discountFieldError}
                 subtotal={p.cartSubtotal}
                 disabled={lockedReadOnly}
+                numpad
                 mutedColor={C.muted}
                 borderColor={C.border2}
                 textColor={C.text}
@@ -1163,7 +1168,7 @@ export function OrderCart(p: Props) {
                 onScanRequest={p.onOpenScanner}
               />
             )}
-          </TicketAdjustments>
+          </DiscountsModal>
         )}
         {/* Subtotal / discount / tax breakdown.
             We render this whenever there's a discount OR tax (the most
