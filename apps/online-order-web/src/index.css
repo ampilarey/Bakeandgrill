@@ -3998,7 +3998,8 @@ textarea.field-input {
 .cat-rail__list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  padding: 0 6px;
 }
 
 .cat-rail__item {
@@ -4011,7 +4012,7 @@ textarea.field-input {
   padding: 0.6rem 0.3rem;
   background: transparent;
   border: none;
-  border-left: 3px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
   color: var(--color-text-secondary, #6B5D4F);
@@ -4023,7 +4024,7 @@ textarea.field-input {
 
 .cat-rail__item.is-active {
   color: var(--color-primary);
-  border-left-color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 .cat-rail__item.is-active .cat-rail__label { font-weight: 700; }
 
@@ -4051,16 +4052,34 @@ textarea.field-input {
  * category big and subcategory little smaller". Same shape as a category
  * entry — photo over label — one size down, under its parent.
  */
+/* Owner, 2026-09-03: "no visual separation between categories, and between
+   sub-categories". Each category is its own soft panel; its sub-categories
+   sit inside it under thin inset lines; panels have air between them. */
 .cat-rail__group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  background: var(--color-bg, #F8F6F3);
+  border: 1px solid var(--color-border-light, #F0EBE5);
+  border-radius: 14px;
+  padding: 3px;
 }
 .cat-rail__item.cat-rail__sub {
   min-height: 0;
   gap: 0.3rem;
-  padding: 0.35rem 0.3rem 0.5rem;
+  padding: 0.45rem 0.3rem 0.5rem;
+  border-radius: 10px;
+  position: relative;
 }
+.cat-rail__item.cat-rail__sub::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10px;
+  right: 10px;
+  border-top: 1px solid var(--color-border, #E8E0D8);
+}
+.cat-rail__item.cat-rail__sub.is-active::before,
+.cat-rail__item.is-active + .cat-rail__sub::before { border-top-color: transparent; }
 /* Outranks the mobile `.cat-rail__item img` size rule above. */
 .cat-rail__item .cat-rail__thumb--sub {
   width: 36px !important;
@@ -4073,6 +4092,9 @@ textarea.field-input {
 }
 .cat-rail__item.cat-rail__sub.is-active .cat-rail__sub-label { font-weight: 700; }
 @media (max-width: 767px) {
+  /* The 76px rail: keep the panel inset small so two-word labels still fit. */
+  .cat-rail__list { padding: 0 4px; }
+  .cat-rail__group { padding: 2px; border-radius: 12px; }
   .cat-rail__item .cat-rail__thumb--sub {
     width: 32px !important;
     height: 32px !important;

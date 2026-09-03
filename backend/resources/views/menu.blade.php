@@ -61,24 +61,40 @@
 }
 /* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
    between entries, no boxes. Active = brand colour + left bar only. */
-.menu-rail-list { display: flex; flex-direction: column; gap: 6px; }
+.menu-rail-list { display: flex; flex-direction: column; gap: 8px; padding: 0 6px; }
 .menu-rail a {
     display: flex; flex-direction: column; align-items: center;
     gap: 0.4rem;
     padding: 0.6rem 0.3rem;
-    border-left: 3px solid transparent;
+    border-radius: 12px;
     color: var(--muted);
     text-decoration: none;
     text-align: center;
 }
 .menu-rail a:hover { color: var(--amber); }
 .menu-rail a.is-active {
-    border-left-color: var(--amber);
+    background: var(--amber-light);
     color: var(--amber);
 }
 .menu-rail a.is-active .menu-rail-label { font-weight: 700; }
-/* A sub-category directly under its parent sits a little closer to it. */
-.menu-rail a + a.menu-rail-sub { margin-top: -4px; }
+/* Owner, 2026-09-03: "no visual separation between categories, and between
+   sub-categories". Each category is its own soft panel; its sub-categories
+   sit inside it under thin inset lines; panels have air between them. */
+.menu-rail-group {
+    display: flex; flex-direction: column;
+    /* A shade off the page, in both themes: the border colour thinned into the surface. */
+    background: color-mix(in srgb, var(--border) 30%, var(--surface));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 3px;
+}
+.menu-rail a.menu-rail-sub { position: relative; border-radius: 10px; }
+.menu-rail a.menu-rail-sub::before {
+    content: ''; position: absolute; top: 0; left: 10px; right: 10px;
+    border-top: 1px solid var(--border);
+}
+.menu-rail a.menu-rail-sub.is-active::before,
+.menu-rail a.is-active + a.menu-rail-sub::before { border-top-color: transparent; }
 /* Owner, 2026-09-02: bigger picture and text in the rail, same rail width. */
 .menu-rail-thumb {
     width: 48px; height: 48px;
@@ -510,6 +526,9 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
     .menu-rail-thumb--sub { width: 32px; height: 32px; }
+    /* The 76px rail: keep the panel inset small so two-word labels still fit. */
+    .menu-rail-list { padding: 0 4px; }
+    .menu-rail-group { padding: 2px; border-radius: 12px; }
 
     /* Only the tools row is pinned on a phone. The wrapper stops being a
        box so the row sticks against .menu-main, not against a bar that
@@ -743,6 +762,7 @@ body.menu-sheet-open { overflow: hidden; }
                     $thumb = $mediaUrl($cat?->thumb_url ?: $cat?->image_url);
                     $count = $sectionCount($group);
                 @endphp
+                <div class="menu-rail-group">
                 {{-- The count is a bare numeral beside a name; spoken aloud it
                      reads "Shorteats 3", so the link carries it as words instead. --}}
                 <a href="#{{ $anchorFor($group) }}"
@@ -785,6 +805,7 @@ body.menu-sheet-open { overflow: hidden; }
                         <span class="menu-rail-count" aria-hidden="true">{{ $subCount }}</span>
                     </a>
                 @endforeach
+                </div>
             @endforeach
             {{-- Same last-on-rail shortcut as the order app CategoryRail.
                  Off-page: the wizard lives at /order/events, not an in-page anchor. --}}
