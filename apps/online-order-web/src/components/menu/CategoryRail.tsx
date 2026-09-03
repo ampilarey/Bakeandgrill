@@ -34,7 +34,11 @@ type Props = {
   onSelectSubcategory?: (id: number, parentId: number) => void;
 };
 
-/** Photo (or tinted initial) for a rail entry. `size` is the box in px. */
+/**
+ * Photo (or tinted initial) for a rail entry. `size` is the intrinsic box
+ * in px for the image hint; the rendered size comes from the stylesheet,
+ * which fits the photo to the rail width at each breakpoint.
+ */
 function RailThumb({ category, size, className }: { category: Category; size: number; className: string }) {
   const img = resolve(category.image_url);
   const webp = resolve(category.image_webp_url);
@@ -51,7 +55,6 @@ function RailThumb({ category, size, className }: { category: Category; size: nu
         height={size}
         loading="lazy"
         decoding="async"
-        style={{ width: size, height: size, borderRadius: Math.round(size / 4), objectFit: 'cover' }}
       />
     );
   }
@@ -60,15 +63,12 @@ function RailThumb({ category, size, className }: { category: Category; size: nu
       className={className}
       aria-hidden="true"
       style={{
-        width: size,
-        height: size,
-        borderRadius: Math.round(size / 4),
         background: tintFromId(category.id),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontWeight: 800,
-        fontSize: size >= 44 ? '0.9rem' : '0.75rem',
+        fontSize: size >= 60 ? '1.1rem' : '0.95rem',
         color: 'var(--color-dark)',
       }}
     >
@@ -191,9 +191,9 @@ export function CategoryRail({
               className="cat-rail__thumb"
               aria-hidden="true"
               style={{
-                width: 48, height: 48, borderRadius: 12, background: 'hsl(18 55% 88%)',
+                background: 'hsl(18 55% 88%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 800, fontSize: '1rem', color: 'var(--color-dark)',
+                fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-dark)',
               }}
             >
               %
@@ -215,7 +215,7 @@ export function CategoryRail({
                 className={`cat-rail__item${active ? ' is-active' : ''}`}
                 onClick={() => onSelect(cat.id)}
               >
-                <RailThumb category={cat} size={48} className="cat-rail__thumb" />
+                <RailThumb category={cat} size={64} className="cat-rail__thumb" />
                 <span className="cat-rail__label">{cat.name}</span>
               </button>
               {subs.map((sub) => {
@@ -234,7 +234,7 @@ export function CategoryRail({
                     data-parent-category-id={cat.id}
                     onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
                   >
-                    <RailThumb category={sub} size={36} className="cat-rail__thumb cat-rail__thumb--sub" />
+                    <RailThumb category={sub} size={52} className="cat-rail__thumb cat-rail__thumb--sub" />
                     <span className="cat-rail__label cat-rail__sub-label">{sub.name}</span>
                   </button>
                 );
@@ -258,11 +258,11 @@ export function CategoryRail({
               className="cat-rail__thumb"
               aria-hidden="true"
               style={{
-                width: 48, height: 48, borderRadius: 12, background: 'hsl(32 55% 88%)',
+                background: 'hsl(32 55% 88%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-dark)',
               }}
             >
-              <PartyPopper size={18} strokeWidth={2.25} />
+              <PartyPopper size={24} strokeWidth={2.25} />
             </span>
             <span className="cat-rail__label">Events</span>
           </button>

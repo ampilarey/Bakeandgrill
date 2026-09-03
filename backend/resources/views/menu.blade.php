@@ -70,11 +70,15 @@
 }
 /* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
    between entries, no boxes. Active = brand colour + left bar only. */
-.menu-rail-list { display: flex; flex-direction: column; gap: 8px; padding: 0 6px; }
+.menu-rail-list { display: flex; flex-direction: column; gap: 8px; padding: 0 4px; }
+/* Owner, 2026-09-03: "make the cat photo in rail maximum bigger without
+   changing the rail size". No side padding on an entry: the photo takes the
+   panel's inner width (92px rail → 64px photo, 52px for a sub-category;
+   76px phone rail → 60 and 48). */
 .menu-rail a {
     display: flex; flex-direction: column; align-items: center;
-    gap: 0.4rem;
-    padding: 0.6rem 0.3rem;
+    gap: 0.35rem;
+    padding: 0.55rem 0;
     border-radius: 12px;
     color: var(--muted);
     text-decoration: none;
@@ -106,8 +110,8 @@
 .menu-rail a.is-active + a.menu-rail-sub::before { border-top-color: transparent; }
 /* Owner, 2026-09-02: bigger picture and text in the rail, same rail width. */
 .menu-rail-thumb {
-    width: 48px; height: 48px;
-    border-radius: 12px;
+    width: 64px; height: 64px;
+    border-radius: 14px;
     object-fit: cover;
     flex-shrink: 0;
 }
@@ -136,12 +140,12 @@ span.menu-rail-thumb {
    the link's aria-label only. */
 .menu-rail a.menu-rail-sub {
     gap: 0.3rem;
-    padding: 0.35rem 0.3rem 0.5rem;
+    padding: 0.4rem 0 0.5rem;
     color: var(--muted);
 }
 .menu-rail a.menu-rail-sub.is-active { color: var(--amber); }
-.menu-rail-thumb--sub { width: 36px; height: 36px; border-radius: 9px; }
-span.menu-rail-thumb--sub { font-size: 0.75rem; }
+.menu-rail-thumb--sub { width: 52px; height: 52px; border-radius: 12px; }
+span.menu-rail-thumb--sub { font-size: 0.9rem; }
 .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6875rem; font-weight: 500; }
 .menu-rail a.menu-rail-sub.is-active .menu-rail-label { font-weight: 700; }
 .menu-rail a.menu-rail-sub .menu-rail-count { display: none; }
@@ -546,12 +550,12 @@ html.js .menu-fav { display: inline-flex; }
     :root { --menu-rail-w: 76px; --menu-sticky: 64px; }
     .menu-shell { gap: 0.5rem; padding: 0 0.75rem 5rem; }
     .menu-grid { grid-template-columns: repeat(2, 1fr); }
-    .menu-rail-thumb { width: 44px; height: 44px; }
+    .menu-rail-thumb { width: 60px; height: 60px; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
-    .menu-rail-thumb--sub { width: 32px; height: 32px; }
+    .menu-rail-thumb--sub { width: 48px; height: 48px; }
     /* The 76px rail: keep the panel inset small so two-word labels still fit. */
-    .menu-rail-list { padding: 0 4px; }
+    .menu-rail-list { padding: 0 3px; }
     .menu-rail-group { padding: 2px; border-radius: 12px; }
 
     /* Nothing in the filter bar is pinned on a phone (owner, 2026-09-03:
@@ -797,7 +801,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 <a href="#{{ $anchorFor($group) }}"
                    aria-label="{{ $name['text'] }}, {{ $count }} {{ Str::plural('item', $count) }}">
                     @if($thumb)
-                        <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="48" height="48">
+                        <img class="menu-rail-thumb" src="{{ $thumb }}" alt="" loading="lazy" width="64" height="64">
                     @else
                         <span class="menu-rail-thumb" aria-hidden="true"
                               style="background: {{ $tintSoft($cat?->id ?? 0) }}">
@@ -823,7 +827,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                        data-parent="{{ $anchorFor($group) }}"
                        aria-label="{{ $subName['text'] }}, {{ $subCount }} {{ Str::plural('item', $subCount) }}">
                         @if($subThumb)
-                            <img class="menu-rail-thumb menu-rail-thumb--sub" src="{{ $subThumb }}" alt="" loading="lazy" width="36" height="36">
+                            <img class="menu-rail-thumb menu-rail-thumb--sub" src="{{ $subThumb }}" alt="" loading="lazy" width="52" height="52">
                         @else
                             <span class="menu-rail-thumb menu-rail-thumb--sub" aria-hidden="true"
                                   style="background: {{ $tintSoft($subCat?->id ?? 0) }}">

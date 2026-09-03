@@ -96,15 +96,19 @@ describe('CategoryRail', () => {
     // Not folded away: Grills is not the active category, its children still show.
     expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(2);
 
+    // Sizes live in the stylesheet (they fit the rail width per breakpoint);
+    // the intrinsic hints say which is the bigger one.
     const grillsImg = screen.getByRole('tab', { name: /Grills/ }).querySelector('img');
-    expect(grillsImg?.getAttribute('width')).toBe('48');
+    expect(grillsImg?.getAttribute('width')).toBe('64');
+    expect(grillsImg).toHaveClass('cat-rail__thumb');
+    expect(grillsImg).not.toHaveClass('cat-rail__thumb--sub');
     const chickenImg = screen.getByRole('tab', { name: 'Chicken, 3 items' }).querySelector('img');
     expect(chickenImg?.getAttribute('src')).toContain('/media/chicken.jpg');
-    expect(chickenImg?.getAttribute('width')).toBe('36');
-    // No image → tinted initial, still the smaller size.
+    expect(chickenImg?.getAttribute('width')).toBe('52');
+    expect(chickenImg).toHaveClass('cat-rail__thumb--sub');
+    // No image → tinted initial, still the smaller size class.
     const beefThumb = screen.getByRole('tab', { name: /Beef/ }).querySelector('.cat-rail__thumb--sub') as HTMLElement;
     expect(beefThumb.textContent).toBe('B');
-    expect(beefThumb.style.width).toBe('36px');
     // No visible count on a sub-entry; it lives in the accessible name only.
     expect(screen.getByRole('tab', { name: 'Chicken, 3 items' }).textContent?.trim()).toBe('Chicken');
   });
