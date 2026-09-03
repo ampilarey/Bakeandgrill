@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
  */
 class PosQuickKeyService
 {
-    public const MAX_TABS = 6;
+    public const MAX_TABS = 10;
     public const MAX_KEYS = 24;
     public const MAX_NAME = 24;
 

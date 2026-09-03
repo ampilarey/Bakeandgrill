@@ -15,7 +15,7 @@ import { looksLikeScanCode } from "../api/scan";
 
 /** Room on a Quick tab, and tabs per layout. Mirror PosQuickKeyService. */
 export const MAX_QUICK_KEYS = 24;
-export const MAX_QUICK_TABS = 6;
+export const MAX_QUICK_TABS = 10;
 
 type Props = {
   categories: Category[];

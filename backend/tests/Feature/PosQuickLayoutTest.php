@@ -15,6 +15,7 @@ use App\Models\PosQuickLayout;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PosPopularNowService;
+use App\Services\PosQuickKeyService;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -158,8 +159,11 @@ class PosQuickLayoutTest extends TestCase
         $this->putJson('/api/pos/quick-keys', ['tabs' => [$this->tab('Morning', [$bajiya->id], '06:00', null)]])->assertStatus(422);
         // Not a clock time.
         $this->putJson('/api/pos/quick-keys', ['tabs' => [$this->tab('Morning', [$bajiya->id], '6am', '11am')]])->assertStatus(422);
-        // Too many tabs.
-        $tabs = array_map(fn (int $i) => $this->tab("Tab $i", [$bajiya->id], null, null, "tab-$i"), range(1, 7));
+        // Too many tabs — one over PosQuickKeyService::MAX_TABS.
+        $tabs = array_map(
+            fn (int $i) => $this->tab("Tab $i", [$bajiya->id], null, null, "tab-$i"),
+            range(1, PosQuickKeyService::MAX_TABS + 1),
+        );
         $this->putJson('/api/pos/quick-keys', ['tabs' => $tabs])->assertStatus(422);
         // Too many items on one tab.
         $this->putJson('/api/pos/quick-keys', ['tabs' => [$this->tab('Big', range(1, 40))]])->assertStatus(422);
