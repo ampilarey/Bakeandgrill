@@ -24,6 +24,7 @@ apps/**/.env.*
 /node_modules
 /apps/**/node_modules
 /print-proxy/node_modules
+/print-proxy/.run.lock
 /packages/**/node_modules
 # Catch-all: the list above missed backend/, and a stray `npm install` run from
 # that directory staged ~3.7k dependency files (2026-08-17).

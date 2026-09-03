@@ -19,6 +19,8 @@ export interface InventoryItem {
   id: number;
   name: string;
   sku: string | null;
+  /** Supplier barcode (EAN/UPC) as printed on the packet, when known. */
+  barcode: string | null;
   unit: string;
   quantity_on_hand: number;
   reorder_level: number | null;
@@ -40,6 +42,7 @@ type BackendInventoryRow = {
   id: number;
   name: string;
   sku: string | null;
+  barcode?: string | null;
   unit: string;
   current_stock: number | string | null;
   reorder_point: number | string | null;
@@ -56,6 +59,7 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     id: row.id,
     name: row.name,
     sku: row.sku ?? null,
+    barcode: row.barcode ?? null,
     unit: row.unit,
     quantity_on_hand: Number(row.current_stock ?? 0),
     reorder_level: row.reorder_point != null ? Number(row.reorder_point) : null,

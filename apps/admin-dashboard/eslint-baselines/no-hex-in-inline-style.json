@@ -78,7 +78,7 @@
   "src/pages/StaffPage.tsx": 8,
   "src/pages/StaffPage/SchedulesTab.tsx": 2,
   "src/pages/SupplierIntelligencePage.tsx": 4,
-  "src/pages/SystemHealthPage.tsx": 2,
+  "src/pages/SystemHealthPage.tsx": 3,
   "src/pages/TablesPage.tsx": 4,
   "src/pages/TestChecklistPage.tsx": 27,
   "src/pages/TimeClockPage.tsx": 1,

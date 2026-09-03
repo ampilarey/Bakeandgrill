@@ -156,7 +156,9 @@ jobs:
           SESSION_DRIVER: array
           QUEUE_CONNECTION: sync
           MAIL_MAILER: array
-        run: php artisan test --stop-on-failure
+        # Paratest (2026-09-03): each process gets its own in-memory SQLite,
+        # so the suite runs in about a quarter of the serial time.
+        run: php artisan test --parallel --processes=4
 
   test-postgres:
     name: PHPUnit tests (PostgreSQL)
@@ -261,6 +263,28 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      # Each app also tracks its own package-lock.json (the deploy script runs
+      # npm ci inside the app dir). One had drifted from package.json for
+      # months before anyone noticed (2026-09-03). `npm ci --dry-run` fails
+      # fast on a lock that no longer matches, without installing anything.
+      - name: App lock files match package.json
+        run: |
+          for app in apps/admin-dashboard apps/pos-web apps/online-order-web apps/kds-web apps/delivery-web print-proxy; do
+            [ -f "$app/package-lock.json" ] || continue
+            echo "== $app"
+            (cd "$app" && npm ci --dry-run --no-workspaces --ignore-scripts >/dev/null) || {
+              echo "::error::$app/package-lock.json is out of step with its package.json — run: cd $app && npm install --package-lock-only --no-workspaces"
+              exit 1
+            }
+          done
+
+      # Errors fail the build; warnings only print. Admin also checks hex in CSS.
+      - name: Lint apps
+        run: |
+          npm run lint --workspace=apps/admin-dashboard
+          npm run lint --workspace=apps/pos-web
+          npm run lint --workspace=apps/online-order-web
+
       - name: Type-check all apps
         run: |
           npx tsc --noEmit -p apps/online-order-web/tsconfig.json
@@ -319,9 +343,11 @@ jobs:
           TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
         run: |
           # Non-blocking for test deploy visibility; production uses e2e-gate below.
+          # @pos-offline (2026-09-03) drives a real offline cash sale through the
+          # POS and its resync; it stays out of the blocking gate on purpose.
           npx playwright test \
             --project=chromium \
-            --grep "@smoke|public-pages|admin-auth|apps-smoke" \
+            --grep "@smoke|public-pages|admin-auth|apps-smoke|@pos-offline" \
             --reporter=github \
             --timeout=30000 \
             || true

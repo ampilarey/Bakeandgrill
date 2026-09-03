@@ -422,13 +422,13 @@ export function PrayerBar() {
 
     // Default to Malé — with 3-second fallback so the bar shows even if API is slow
     let didLoad = false;
-    const useIsland = (info: IslandInfo) => {
+    const applyIsland = (info: IslandInfo) => {
       if (didLoad) return; didLoad = true;
       setIsland(info);
       try { localStorage.setItem('pt_island', JSON.stringify(info)); } catch { /* ignore */ }
       loadPrayers(info.id, finishLoad);
     };
-    const fallbackTimer = setTimeout(() => useIsland(MALE_FALLBACK), 3000);
+    const fallbackTimer = setTimeout(() => applyIsland(MALE_FALLBACK), 3000);
     fetch(`${API_BASE_URL}/prayer-times/islands`)
       .then(r => r.json())
       .then(d => {
@@ -436,9 +436,9 @@ export function PrayerBar() {
         const islands = normalizeIslands(d?.islands);
         setAllIslands(islands);
         try { localStorage.setItem('pt_islands_list', JSON.stringify(islands)); } catch { /* ignore */ }
-        useIsland(findMaleIsland(islands));
+        applyIsland(findMaleIsland(islands));
       })
-      .catch(() => { clearTimeout(fallbackTimer); useIsland(MALE_FALLBACK); });
+      .catch(() => { clearTimeout(fallbackTimer); applyIsland(MALE_FALLBACK); });
   }, [loadPrayers, finishLoad]);
 
   // ── Cleanup tick on unmount ─────────────────────────────────────────────

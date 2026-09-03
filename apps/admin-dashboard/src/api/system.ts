@@ -15,7 +15,9 @@ export interface SystemHealthDetailed {
   payment_pending_stuck: number;
   sms_failed_24h: number;
   print_proxy_ok: boolean | null;
-  print_proxy_status: 'ok' | 'unreachable' | 'not_configured' | string;
+  print_proxy_status: 'ok' | 'unreachable' | 'not_configured' | 'printers_offline' | string;
+  /** Whitelisted printers the proxy could not reach, by name. */
+  printers_offline?: string[];
   queue_depth: number;
   redis?: {
     status: 'up' | 'down' | 'degraded' | string;

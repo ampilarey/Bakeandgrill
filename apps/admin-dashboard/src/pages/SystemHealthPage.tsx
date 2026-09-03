@@ -26,10 +26,20 @@ function fmtDeployWhen(iso: string | null | undefined): string {
   return d.toLocaleString('en-MV', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function printProxyLabel(status: string, ok: boolean | null): string {
+export function printProxyLabel(status: string, ok: boolean | null, offline: string[] = []): string {
   if (status === 'not_configured') return 'Not configured';
+  if (status === 'printers_offline' || offline.length > 0) {
+    return `${offline.length} printer${offline.length === 1 ? '' : 's'} offline`;
+  }
   if (ok === true) return 'Reachable';
   if (status === 'unreachable') return 'Unreachable';
+  return status;
+}
+
+/** Second line under the print card: which printers, or the raw status. */
+export function printProxySub(status: string, offline: string[] = []): string {
+  if (offline.length > 0) return offline.join(', ');
+  if (status === 'ok') return 'proxy and printers answering';
   return status;
 }
 
@@ -228,7 +238,7 @@ export function SystemHealthPage() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
             padding: '12px 16px', borderRadius: 12,
-            background: degraded ? 'var(--color-danger-bg)' : '#F0FDF4',
+            background: degraded ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
             border: `1px solid ${degraded ? '#FECACA' : '#BBF7D0'}`,
           }}>
             {degraded ? <AlertTriangle size={20} color="var(--color-danger-strong)" /> : <CheckCircle2 size={20} color="var(--color-success-strong)" />}
@@ -326,9 +336,14 @@ export function SystemHealthPage() {
             />
             <StatCard
               label="Print proxy"
-              value={printProxyLabel(data.print_proxy_status, data.print_proxy_ok)}
-              sub={data.print_proxy_status}
-              accent={data.print_proxy_ok === false ? 'var(--color-danger)' : data.print_proxy_ok === true ? 'var(--color-success)' : 'var(--color-text-muted)'}
+              value={printProxyLabel(data.print_proxy_status, data.print_proxy_ok, data.printers_offline ?? [])}
+              sub={printProxySub(data.print_proxy_status, data.printers_offline ?? [])}
+              accent={
+                data.print_proxy_ok === false ? 'var(--color-danger)'
+                  : (data.printers_offline?.length ?? 0) > 0 ? 'var(--color-warning)'
+                    : data.print_proxy_ok === true ? 'var(--color-success)'
+                      : 'var(--color-text-muted)'
+              }
               icon={Printer}
             />
             <StatCard
@@ -434,7 +449,7 @@ export function SystemHealthPage() {
                           disabled={jobBusy === j.uuid}
                           onClick={() => void handleForget(j.uuid)}
                           style={{
-                            padding: '5px 10px', borderRadius: 8, border: '1px solid #FECACA',
+                            padding: '5px 10px', borderRadius: 8, border: '1px solid var(--color-danger)',
                             background: 'var(--color-danger-bg)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             color: 'var(--color-danger-strong)', fontFamily: 'inherit',
                           }}

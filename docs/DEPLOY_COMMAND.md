@@ -93,15 +93,38 @@ and TTF uploads are stored uncompressed instead of converted.
 crontab -l | grep -E "schedule:run|queue:work"
 ```
 
-It should match the three lines below exactly. These were repaired on
+It should match the four lines below exactly. The first three were repaired on
 2026-08-21 after both the scheduler and the queue worker were found dead —
-see "Why these lines look the way they do".
+see "Why these lines look the way they do". The fourth (2026-09-03) keeps the
+print proxy alive the same way, and only belongs on the host that runs the
+proxy (where `print-proxy/.env` exists).
 
 ```
 * * * * * /bin/flock -n /home/bakeandgrill/public_html/backend/storage/queue-worker.lock -c 'cd /home/bakeandgrill/public_html/backend && exec /opt/alt/php84/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600' >> /home/bakeandgrill/public_html/backend/storage/logs/queue-worker.log 2>&1
 * * * * * /bin/flock -n /home/bakeandgrill/test.bakeandgrill.mv/backend/storage/queue-worker.lock -c 'cd /home/bakeandgrill/test.bakeandgrill.mv/backend && exec /opt/alt/php84/usr/bin/php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600' >> /home/bakeandgrill/test.bakeandgrill.mv/backend/storage/logs/queue-worker.log 2>&1
 * * * * * cd /home/bakeandgrill/public_html/backend && /opt/alt/php84/usr/bin/php artisan schedule:run > /dev/null 2>> storage/logs/schedule-error.log
+* * * * * /bin/flock -n /home/bakeandgrill/public_html/print-proxy/.run.lock /home/bakeandgrill/public_html/scripts/print-proxy-run.sh >> /home/bakeandgrill/public_html/backend/storage/logs/print-proxy.log 2>&1
 ```
+
+**Print proxy keepalive.** `scripts/print-proxy-run.sh` loads `print-proxy/.env`
+and runs `node dist/index.js` in the foreground; `flock -n` on
+`print-proxy/.run.lock` means cron starts it only when nothing holds the lock,
+so a crash or a reboot is repaired within a minute and there is never a second
+copy. `full-deploy.sh` rebuilds the proxy, kills the old process, and starts
+the new one through the same lock. If cron's PATH has no `node`, set
+`NODE_BIN=/opt/alt/alt-nodejs20/root/usr/bin/node` (check with `command -v node`
+from a login shell) in `print-proxy/.env`. Confirm with:
+
+```bash
+pgrep -af "print-proxy/dist/index.js"
+curl -s http://127.0.0.1:3000/health   # lists printers_offline by name
+```
+
+If the proxy runs on a Windows PC beside the printers instead, use Task
+Scheduler: a task "At log on" running `npm start` in the print-proxy folder,
+with "Restart the task if it fails" every 1 minute. There is no cron there and
+the deploy script does not reach it, so after a merge that touches
+`print-proxy/` pull and `npm run build` on that PC by hand.
 
 Edit them by writing a file, never by pasting into a shell — a bare `*` at the
 start of a line is a glob, and bash will expand it against your home directory:

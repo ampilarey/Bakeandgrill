@@ -7,6 +7,7 @@ import {
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
 } from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
+import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
@@ -435,6 +436,30 @@ export default function InventoryPage() {
                 if (suppliers.length === 0) void loadSuppliers();
               }}>
                 + Add SKU
+              </Btn>
+            )}
+            {items.length > 0 && (
+              <Btn
+                small
+                variant="secondary"
+                title="Print a sheet of barcodes for the items listed — supplier barcode where known, otherwise the SKU — so receiving can scan them"
+                onClick={() => {
+                  const plan = planShelfLabels(items);
+                  if (plan.labels.length === 0) {
+                    setError('None of the listed items has a barcode or SKU to print.');
+                    return;
+                  }
+                  const win = window.open('', '_blank', 'noopener,width=900,height=700');
+                  if (!win) {
+                    setError('The browser blocked the label window — allow pop-ups for this site and try again.');
+                    return;
+                  }
+                  win.document.open();
+                  win.document.write(shelfLabelsHtml(plan, `Shelf labels — ${items.length} item${items.length === 1 ? '' : 's'}`));
+                  win.document.close();
+                }}
+              >
+                🏷 Print labels ({items.length})
               </Btn>
             )}
           </div>

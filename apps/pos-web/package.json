@@ -8,6 +8,7 @@
     "build": "node scripts/generate-version.mjs && tsc && vite build",
     "verify-deploy": "node scripts/verify-pos-deploy.mjs",
     "preview": "vite preview",
+    "lint": "eslint .",
     "test": "vitest"
   },
   "dependencies": {
@@ -27,8 +28,12 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^28.1.0",
     "postcss": "^8.5.8",

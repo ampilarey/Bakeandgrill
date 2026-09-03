@@ -114,6 +114,45 @@ class SystemHealthDetailedTest extends TestCase
         $this->assertArrayHasKey('redis', $data);
     }
 
+    /** The proxy answers but the kitchen printer does not: named on the page, counted as an issue. */
+    public function test_detailed_health_names_printers_the_proxy_cannot_reach(): void
+    {
+        $this->actingOwner();
+
+        Http::fake([
+            'http://127.0.0.1:3000/health' => Http::response([
+                'status' => 'ok',
+                'printers' => [
+                    ['name' => 'kitchen', 'reachable' => false],
+                    ['name' => 'counter', 'reachable' => true],
+                ],
+                'printers_offline' => ['kitchen'],
+            ], 200),
+        ]);
+        config(['services.print_proxy.url' => 'http://127.0.0.1:3000']);
+
+        $data = $this->getJson('/api/admin/system/health/detailed')->assertOk()->json();
+
+        $this->assertTrue($data['print_proxy_ok'], 'the proxy itself is reachable');
+        $this->assertSame('printers_offline', $data['print_proxy_status']);
+        $this->assertSame(['kitchen'], $data['printers_offline']);
+        $this->assertSame('degraded', $data['status']);
+    }
+
+    /** An older proxy build answers without the printer list — still plain ok. */
+    public function test_detailed_health_accepts_a_proxy_without_printer_list(): void
+    {
+        $this->actingOwner();
+
+        Http::fake(['http://127.0.0.1:3000/health' => Http::response(['status' => 'ok'], 200)]);
+        config(['services.print_proxy.url' => 'http://127.0.0.1:3000']);
+
+        $data = $this->getJson('/api/admin/system/health/detailed')->assertOk()->json();
+
+        $this->assertSame('ok', $data['print_proxy_status']);
+        $this->assertSame([], $data['printers_offline']);
+    }
+
     public function test_detailed_health_ok_when_no_issues(): void
     {
         $this->actingOwner();

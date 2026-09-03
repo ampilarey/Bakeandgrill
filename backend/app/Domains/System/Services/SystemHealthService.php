@@ -157,7 +157,10 @@ class SystemHealthService
         $redis = $this->checkRedis();
 
         $issues = $failedJobs24h + $webhookFailures24h + $paymentPendingStuck + $smsFailed24h;
-        if ($printProxy['status'] === 'unreachable') {
+        // Offline printers count as an issue on the health page but are not
+        // in degradedDependencies(): printers are switched off every night,
+        // and the heartbeat monitor must not page the owner for that.
+        if (in_array($printProxy['status'], ['unreachable', 'printers_offline'], true)) {
             $issues++;
         }
         if ($disk['ok'] === false) {
@@ -176,6 +179,7 @@ class SystemHealthService
             'sms_failed_24h' => $smsFailed24h,
             'print_proxy_ok' => $printProxy['ok'],
             'print_proxy_status' => $printProxy['status'],
+            'printers_offline' => $printProxy['printers_offline'],
             'queue_depth' => $queueDepth,
             'disk' => $disk,
             'redis' => $redis,
@@ -278,7 +282,7 @@ class SystemHealthService
             $latency = round((microtime(true) - $started) * 1000, 1);
             $ok = $pong === true || $pong === 'PONG' || $pong === '+PONG';
 
-            if (! $ok) {
+            if (!$ok) {
                 return [
                     'status' => 'degraded',
                     'ok' => false,
@@ -556,25 +560,44 @@ class SystemHealthService
     }
 
     /**
-     * @return array{ok: bool|null, status: string}
+     * The proxy's /health lists each whitelisted printer's reachability by
+     * name (print-proxy/src/printers.ts, 2026-09-03). A proxy that answers
+     * but cannot reach a printer is `printers_offline`, with the names, so
+     * the health page says which one is unplugged. Older proxies without the
+     * list still report plain `ok`.
+     *
+     * @return array{ok: bool|null, status: string, printers_offline: list<string>}
      */
     private function checkPrintProxy(): array
     {
         $url = (string) config('services.print_proxy.url');
 
         if ($url === '') {
-            return ['ok' => null, 'status' => 'not_configured'];
+            return ['ok' => null, 'status' => 'not_configured', 'printers_offline' => []];
         }
 
         try {
             $response = Http::timeout(2)->get(rtrim($url, '/') . '/health');
 
+            if (!$response->successful()) {
+                return ['ok' => false, 'status' => 'unreachable', 'printers_offline' => []];
+            }
+
+            $printers = $response->json('printers');
+            $offline = is_array($printers)
+                ? array_values(array_map(
+                    fn (array $p) => (string) ($p['name'] ?? '?'),
+                    array_filter($printers, fn ($p) => is_array($p) && ($p['reachable'] ?? true) === false),
+                ))
+                : [];
+
             return [
-                'ok' => $response->successful(),
-                'status' => $response->successful() ? 'ok' : 'unreachable',
+                'ok' => true,
+                'status' => $offline === [] ? 'ok' : 'printers_offline',
+                'printers_offline' => $offline,
             ];
         } catch (\Throwable) {
-            return ['ok' => false, 'status' => 'unreachable'];
+            return ['ok' => false, 'status' => 'unreachable', 'printers_offline' => []];
         }
     }
 

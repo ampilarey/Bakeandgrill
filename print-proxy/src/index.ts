@@ -1,6 +1,7 @@
 import express from 'express';
 import net from 'net';
 import { timingSafeEqual } from 'crypto';
+import { createPrinterMonitor, offlineNames } from './printers.js';
 
 const app = express();
 app.use(express.json({ limit: '256kb' })); // Conservative limit — receipts are small
@@ -69,20 +70,25 @@ const requireApiKey = (req: express.Request, res: express.Response, next: expres
 };
 
 // ── Health check ──────────────────────────────────────────────────────────────
-// Production: minimal response only — no metadata leakage.
-// Development: includes debug info to assist troubleshooting.
-app.get('/health', (_req, res) => {
-  if (IS_PROD) {
-    res.json({ status: 'ok' });
-    return;
-  }
-  // Non-production only — extra info for local debugging
-  res.json({
+// Always: status plus each whitelisted printer's reachability, by name only
+// (2026-09-03). The backend shows the offline ones on System Health, so an
+// unplugged kitchen printer is noticed before a cashier reports it.
+// Development adds debug info; production never exposes hosts or the key.
+const printerMonitor = createPrinterMonitor(PRINTER_WHITELIST);
+
+app.get('/health', async (_req, res) => {
+  const printers = await printerMonitor.statuses();
+  const body: Record<string, unknown> = {
     status: 'ok',
-    env: 'development',
-    printers_configured: PRINTER_WHITELIST.length,
-    api_key_set: !!PRINT_API_KEY,
-  });
+    printers,
+    printers_offline: offlineNames(printers),
+  };
+  if (!IS_PROD) {
+    body.env = 'development';
+    body.printers_configured = PRINTER_WHITELIST.length;
+    body.api_key_set = !!PRINT_API_KEY;
+  }
+  res.json(body);
 });
 
 // ── Payload types ─────────────────────────────────────────────────────────────
