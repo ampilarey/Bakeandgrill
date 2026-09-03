@@ -300,7 +300,43 @@ export function CustomerCreditSection({ customerId }: Props) {
               <Btn small variant="secondary" onClick={() => void runAction({ action: 'set_status', credit_status: 'on_hold' })} disabled={saving}>On hold</Btn>
               <Btn small variant="secondary" onClick={() => void runAction({ action: 'set_status', credit_status: 'blocked' })} disabled={saving}>Block</Btn>
               <Btn small variant="secondary" onClick={() => void runAction({ action: 'set_status', credit_status: 'active' })} disabled={saving}>Activate</Btn>
-              <Btn small variant="danger" onClick={() => void runAction({ action: 'disable' })} disabled={saving}>Disable credit</Btn>
+              <Btn
+                small
+                variant="danger"
+                data-testid="credit-disable"
+                onClick={() => {
+                  // Audit 2026-09-03 (F6): disabling stops new charges; it does
+                  // not clear what is already owed. Say so before, not after.
+                  if (credit.balance_mvr > 0
+                    && !window.confirm(
+                      `This account still owes MVR ${credit.balance_mvr.toFixed(2)}.\n\n`
+                      + 'Disabling stops new charges. The balance stays collectable — '
+                      + 'record repayments here, or write it off.\n\nDisable credit?',
+                    )) {
+                    return;
+                  }
+                  void runAction({ action: 'disable' });
+                }}
+                disabled={saving}
+              >
+                Disable credit
+              </Btn>
+            </div>
+          )}
+
+          {/* The debt that outlives a disabled or blocked account. */}
+          {canManage && !credit.enabled && credit.balance_mvr > 0 && (
+            <div
+              data-testid="credit-outstanding-note"
+              style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning)',
+                fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5,
+              }}
+            >
+              Credit is off for this customer, and they still owe{' '}
+              <strong>MVR {credit.balance_mvr.toFixed(2)}</strong>. It stays collectable —
+              record a repayment below, or write it off.
             </div>
           )}
 

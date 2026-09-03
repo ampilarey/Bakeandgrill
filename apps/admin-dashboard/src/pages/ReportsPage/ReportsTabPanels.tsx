@@ -1056,6 +1056,44 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Total Outstanding" value={mvr(creditExposure.total_balance)} accent="var(--color-danger)" />
             <StatCard label="Customers with Balance" value={String(creditExposure.customers_count)} accent="#8b5cf6" />
           </div>
+          {/* Audit 2026-09-03 (F5): how old the money is, not only how much. */}
+          {creditExposure.aging && (
+            <Card style={{ marginBottom: 20 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
+                How old the money is
+              </h3>
+              <div
+                data-testid="credit-aging"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}
+              >
+                {(['current', 'd1_30', 'd31_60', 'd60_plus'] as const).map((key) => {
+                  const bucket = creditExposure.aging?.[key];
+                  if (!bucket) return null;
+                  const late = key !== 'current';
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        padding: '12px 14px', borderRadius: 10,
+                        border: '1px solid var(--color-border)',
+                        background: late && bucket.amount > 0 ? 'var(--color-warning-bg)' : 'var(--color-surface)',
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)' }}>
+                        {bucket.label}
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: key === 'd60_plus' && bucket.amount > 0 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                        {mvr(bucket.amount)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        {bucket.invoices} invoice{bucket.invoices === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
           {(creditExposure.top_customers ?? []).length === 0 ? (
             <Card><p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)', fontSize: 14 }}>No outstanding credit balances.</p></Card>
           ) : (

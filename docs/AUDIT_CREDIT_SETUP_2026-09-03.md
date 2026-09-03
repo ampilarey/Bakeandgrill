@@ -27,9 +27,11 @@ Per customer (`customers` table, migration `2026_05_22_190000`):
 A new customer therefore starts with **no credit, blocked**, which is the right
 default: credit is something granted, never assumed.
 
-Site-wide there is exactly one setting: **`credit_limit_max_mvr`**, seeded at
-**MVR 50,000** (migration `2026_07_21_200200`), the highest limit a manager may
-approve without an owner override.
+Site-wide, at the time of the audit, there was exactly one setting:
+**`credit_limit_max_mvr`**, seeded at **MVR 50,000** (migration
+`2026_07_21_200200`), the highest limit a manager may approve without an owner
+override. There are now three, all in **Settings → Credit Accounts** — see F1,
+F4 and F7.
 
 ## Who may do what
 
@@ -65,9 +67,26 @@ That is a sound spine. The findings below are about the setup around it.
 
 ---
 
+## Status — fixed 2026-09-03
+
+Every finding below is closed except **F2**, which is left as it is on purpose;
+each entry says how.
+
+| | Finding | Outcome |
+|---|---|---|
+| F1 | Ceiling not editable | Settings → Credit Accounts |
+| F2 | Manager approves, owner collects | **Unchanged — needs the owner's yes** |
+| F3 | Approve reversed an SMS opt-out | Only a first approval opts in |
+| F4 | No house default for terms | `credit_payment_terms_default_days` |
+| F5 | No aging | Four buckets in the report, the UI and the CSV |
+| F6 | Disable said nothing about the debt | Warned before, and stated after |
+| F7 | No global switch | `credit_accounts_mode`: open / no new accounts / closed |
+
+---
+
 ## Findings
 
-### F1 — The one global setting has no way to change it (medium)
+### F1 — The one global setting has no way to change it (medium) — **FIXED**
 
 `credit_limit_max_mvr` governs every manager approval, and **nothing in the admin
 app edits it**. It exists in `site_settings` with a label and description, the
@@ -78,10 +97,10 @@ So the ceiling is whatever the migration seeded, **MVR 50,000**, unless somebody
 edits the database by hand. If that number was ever meant to be a decision, it has
 never been made.
 
-*Fix:* a field in Settings → Customers, owner-only, alongside the other money
-ceilings.
+**Fixed.** Settings → Credit Accounts now edits it, alongside the two settings
+added for F4 and F7. `CreditPolicy::maxLimitLaar()` is the single reader.
 
-### F2 — A manager can grow the debt but cannot clear it (medium, policy)
+### F2 — A manager can grow the debt but cannot clear it (medium, policy) — **UNCHANGED, BY DESIGN**
 
 `customers.credit.manage` is a manager permission; `customers.credit.repay` is
 owner-only. A manager can approve an account and raise its limit, but cannot take
@@ -93,42 +112,75 @@ This may well be deliberate — money in is the sensitive direction. But the pai
 is unusual (most tills let whoever may extend credit also collect it), so it is
 worth an explicit decision rather than an inherited default.
 
-### F3 — Approving credit silently re-subscribes a customer to reminder SMS (low)
+**Left as it is.** `ManagerPermissionAllowlistTest` freezes the manager default
+set byte-for-byte, with the instruction "do not fix a mismatch by editing this
+list — that would change what managers can do". Widening what a manager may do
+with money is exactly what that guard exists to stop happening as a side effect,
+so it wants the owner's yes, not mine.
+
+If you want it: move `'customers.credit.repay'` from `ownerOnlySlugs()` to
+`managerSlugs()` in `PermissionCatalog.php`, add the same string to
+`PRE_HARDENING_MANAGER_SLUGS` in the test, and run
+`php artisan permissions:sync` (or deploy — a catalog migration re-syncs). The
+risk is bounded: a repayment writes a `CashMovement` into the taker's shift, so
+a false one shows up as a short drawer at close. `customers.credit.writeoff` —
+money out, no cash trail — should stay owner-only either way.
+
+### F3 — Approving credit silently re-subscribes a customer to reminder SMS (low) — **FIXED**
 
 `approveCredit()` writes `credit_reminder_sms => true` unconditionally. A customer
 can opt out of reminders themselves through `PATCH /credit/preferences`. If anyone
 then re-runs **Approve** on that customer — to change terms, or notes — their
 opt-out is reversed without a word to anybody.
 
-*Fix:* on approve, keep the existing preference when the customer already has one;
-only default to `true` for an account being approved for the first time.
+**Fixed.** Only a first approval (`credit_approved_at === null`) opts them in;
+a re-approval keeps whatever the customer chose.
 
-### F4 — No house default for payment terms (low)
+### F4 — No house default for payment terms (low) — **FIXED**
 
 `DEFAULT_PAYMENT_TERMS_DAYS = 30` is a constant in `CreditEligibilityService`.
 Every new account starts at 30 days unless the approver changes it in the form.
 There is no setting for "our terms are 14 days", so the house policy lives in each
 approver's memory.
 
-### F5 — The exposure report has no aging (low)
+**Fixed.** `credit_payment_terms_default_days`, edited in Settings → Credit
+Accounts and clamped to the same 7–90 days the per-customer field allows, so a
+bad setting can never produce an account nobody could have approved by hand.
+
+### F5 — The exposure report has no aging (low) — **FIXED**
 
 `/reports/credit-exposure` gives the total outstanding, how many customers owe it,
 the top 10 by balance, and a count of overdue invoices each. It has no aging
 buckets — current / 1–30 / 31–60 / 60+ — which is the split you actually chase
 money by, and the one an accountant asks for.
 
-### F6 — Disabling credit says nothing about the balance left behind (low)
+**Fixed.** The four buckets are computed from the open sale invoices behind the
+balances, and appear in the report payload, on the Credit Exposure screen, and
+in the CSV.
+
+### F6 — Disabling credit says nothing about the balance left behind (low) — **FIXED**
 
 `disableCredit()` sets `credit_enabled = false, credit_status = blocked` with no
 regard for an outstanding balance. Stopping new charges on an account that still
 owes money is correct; saying nothing about the debt that survives is not. The
 response and the admin UI should state the balance that remains collectable.
 
-### F7 — There is no global on/off for credit (informational)
+**Fixed.** Disabling an account that owes money asks first, naming the amount,
+and the credit panel then carries a standing note that the balance is still
+collectable. The API returns `outstanding_balance_mvr` and
+`has_outstanding_balance`.
+
+### F7 — There is no global on/off for credit (informational) — **FIXED**
 
 Credit is turned off for a site by not granting the permissions. That works, but
 there is no single switch, and no way to say "no new credit accounts" while
 existing ones wind down.
+
+**Fixed.** `credit_accounts_mode` — **open**, **no new accounts** (existing ones
+carry on, nobody new is approved), or **closed** (no new accounts and no new
+charges at the till). Repayments work in every mode, so a balance can always be
+paid off. Enforced in `approveCredit()` and in `assertCanCharge()`, which is the
+same gate the POS tender goes through.
 
 ---
 

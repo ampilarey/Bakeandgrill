@@ -66,6 +66,7 @@ final class CreditEligibilityService
             'credit_notes' => $customer->credit_notes,
             'approved_by' => $customer->credit_approved_by,
             'approved_at' => $customer->credit_approved_at?->toIso8601String(),
+            'accepts_new_charges' => CreditPolicy::acceptsNewCharges(),
             'payment_terms_days' => (int) ($customer->credit_payment_terms_days ?? self::DEFAULT_PAYMENT_TERMS_DAYS),
             'reminder_sms_enabled' => (bool) ($customer->credit_reminder_sms ?? true),
             'next_payment_due_date' => $nextDue,
@@ -107,7 +108,8 @@ final class CreditEligibilityService
 
     public function canCharge(Customer $customer): bool
     {
-        return $customer->credit_enabled
+        return CreditPolicy::acceptsNewCharges()
+            && $customer->credit_enabled
             && $customer->credit_status === 'active'
             && $this->availableCreditLaar($customer) > 0;
     }
@@ -117,6 +119,12 @@ final class CreditEligibilityService
      */
     public function assertCanCharge(Customer $customer, int $amountLaar): void
     {
+        // F7: credit closed house-wide. Repayments still work — this is the
+        // only door that shuts.
+        if (!CreditPolicy::acceptsNewCharges()) {
+            abort(422, CreditPolicy::closedMessage());
+        }
+
         if (!$customer->credit_enabled) {
             abort(422, 'This customer is not approved for credit.');
         }

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
+import { CreditAccountSettings } from './SettingsPage/CreditAccountSettings';
 import { CurrencyPhotosSettings } from './SettingsPage/CurrencyPhotosSubPage';
 import {
   getSiteSettings, updateSiteSettings,
@@ -31,6 +32,7 @@ const SETTINGS_TABS = [
   { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
   { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
   { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
+  { id: 'credit',        label: 'Credit Accounts',       desc: 'Approval ceiling, payment terms, and whether credit is open' },
   { id: 'currency',      label: 'Currency Photos',       desc: 'Note & coin photos shown on the POS cash count' },
 ] as const;
 
@@ -402,6 +404,7 @@ export function SettingsPage() {
       )}
       {active === 'notifications' && <NotificationsSettings />}
       {active === 'charges' && <ChargesSettings />}
+      {active === 'credit' && <CreditAccountSettings />}
       {active === 'currency' && <CurrencyPhotosSettings />}
     </PageShell>
   );

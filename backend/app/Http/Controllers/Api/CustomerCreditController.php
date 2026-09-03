@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Credit\Services\CreditPolicy;
 use App\Domains\Customers\Services\CustomerCreditService;
 use App\Models\Customer;
 use App\Models\CustomerCreditLedger;
@@ -313,6 +314,17 @@ class CustomerCreditController extends Controller
             'available_mvr' => round($summary['available_laar'] / 100, 2),
             'limit_max_laar' => $maxLaar,
             'limit_max_mvr' => round($maxLaar / 100, 2),
+            // F6: a blocked or disabled account can still owe money. Say so,
+            // rather than leaving the debt to be discovered in a report.
+            'outstanding_balance_mvr' => round($summary['balance_laar'] / 100, 2),
+            'has_outstanding_balance' => $summary['balance_laar'] > 0,
+            // F1/F4/F7: the house policy the admin screen edits.
+            'policy' => [
+                'mode' => CreditPolicy::mode(),
+                'accepts_new_accounts' => CreditPolicy::acceptsNewAccounts(),
+                'accepts_new_charges' => CreditPolicy::acceptsNewCharges(),
+                'default_payment_terms_days' => CreditPolicy::defaultPaymentTermsDays(),
+            ],
         ]);
     }
 

@@ -823,7 +823,71 @@ class ReportsService
             'total_balance' => round($totalLaar / 100, 2),
             'customers_count' => $customersCount,
             'top_customers' => $top,
+            'aging' => $this->creditAging($today),
         ];
+    }
+
+    /**
+     * How old the money is, in the four buckets anyone chasing debt asks for.
+     *
+     * Audit, 2026-09-03 (F5): the exposure snapshot gave a total and the ten
+     * biggest debtors, which says who owes but not how long they have owed it.
+     * Measured on the open sale invoices behind the balances — an invoice not
+     * yet due is "current", the rest fall by how many days past its due date.
+     *
+     * @return array<string, mixed>
+     */
+    private function creditAging(string $today): array
+    {
+        $rows = Invoice::query()
+            ->selectRaw('due_date, SUM(total_laar - amount_paid_laar) as outstanding_laar, COUNT(*) as cnt')
+            ->where('type', 'sale')
+            ->whereIn('status', ['sent', 'overdue'])
+            ->whereRaw('total_laar > amount_paid_laar')
+            ->whereNotNull('customer_id')
+            ->groupBy('due_date')
+            ->get();
+
+        $buckets = [
+            'current' => ['label' => 'Not yet due', 'laar' => 0, 'invoices' => 0],
+            'd1_30' => ['label' => '1–30 days', 'laar' => 0, 'invoices' => 0],
+            'd31_60' => ['label' => '31–60 days', 'laar' => 0, 'invoices' => 0],
+            'd60_plus' => ['label' => 'Over 60 days', 'laar' => 0, 'invoices' => 0],
+        ];
+
+        $todayDate = \Illuminate\Support\Carbon::parse($today)->startOfDay();
+        foreach ($rows as $row) {
+            $due = $row->due_date;
+            $amount = (int) $row->outstanding_laar;
+            $count = (int) $row->cnt;
+            if ($amount <= 0) {
+                continue;
+            }
+
+            // An invoice with no due date has nothing to be late against.
+            $daysLate = $due === null
+                ? 0
+                : (int) $todayDate->diffInDays(\Illuminate\Support\Carbon::parse($due)->startOfDay(), false) * -1;
+
+            $key = match (true) {
+                $daysLate <= 0 => 'current',
+                $daysLate <= 30 => 'd1_30',
+                $daysLate <= 60 => 'd31_60',
+                default => 'd60_plus',
+            };
+            $buckets[$key]['laar'] += $amount;
+            $buckets[$key]['invoices'] += $count;
+        }
+
+        return array_map(
+            fn (array $b) => [
+                'label' => $b['label'],
+                'amount_laar' => $b['laar'],
+                'amount' => round($b['laar'] / 100, 2),
+                'invoices' => $b['invoices'],
+            ],
+            $buckets,
+        );
     }
 
     /**

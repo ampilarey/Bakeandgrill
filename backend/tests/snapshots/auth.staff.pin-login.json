@@ -190,6 +190,6 @@
         ],
         "pos_idle_lock_minutes": null,
         "pos_idle_lock_minutes_resolved": 5,
-        "pos_cart_side": "right"
+        "pos_cart_side": "left"
     }
 }

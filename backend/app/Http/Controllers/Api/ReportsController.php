@@ -233,8 +233,14 @@ class ReportsController extends Controller
             ['total_balance_mvr', $data['total_balance'] ?? 0],
             ['customers_count', $data['customers_count'] ?? 0],
             [],
-            ['customer_id', 'name', 'balance_mvr', 'limit_mvr', 'available_mvr', 'status', 'overdue_invoices_count'],
+            // F5: how old the money is, not only how much of it there is.
+            ['aging_bucket', 'amount_mvr', 'invoices'],
         ];
+        foreach ($data['aging'] ?? [] as $bucket) {
+            $rows[] = [$bucket['label'] ?? '', $bucket['amount'] ?? 0, $bucket['invoices'] ?? 0];
+        }
+        $rows[] = [];
+        $rows[] = ['customer_id', 'name', 'balance_mvr', 'limit_mvr', 'available_mvr', 'status', 'overdue_invoices_count'];
         foreach ($data['top_customers'] ?? [] as $c) {
             $rows[] = [
                 $c['id'] ?? '',

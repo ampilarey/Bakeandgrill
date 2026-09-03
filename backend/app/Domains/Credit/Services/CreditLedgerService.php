@@ -11,7 +11,6 @@ use App\Models\CustomerCreditLedger;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\SiteSetting;
 use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\ShiftAccessService;
@@ -34,13 +33,7 @@ final class CreditLedgerService
      */
     public static function creditLimitMaxLaar(): int
     {
-        $raw = SiteSetting::get('credit_limit_max_mvr', '50000');
-        $mvr = (float) $raw;
-        if (!is_finite($mvr) || $mvr < 0) {
-            $mvr = 50000.0;
-        }
-
-        return (int) round($mvr * 100);
+        return CreditPolicy::maxLimitLaar();
     }
 
     private function assertLimitWithinMax(int $limitLaar, User $actor, ?string $reason = null): bool
@@ -78,10 +71,18 @@ final class CreditLedgerService
             abort(422, 'Credit limit must be a positive number.');
         }
 
+        // F7: a customer who has never been approved cannot be approved while
+        // credit is winding down. An account that already exists may still be
+        // re-approved — a limit or terms change must not be blocked by the mode.
+        if (!CreditPolicy::acceptsNewAccounts() && !$customer->credit_enabled && $customer->credit_approved_at === null) {
+            abort(422, CreditPolicy::closedMessage());
+        }
+
         $exceededMax = $this->assertLimitWithinMax($limitLaar, $actor, $reason);
 
+        // F4: the house default, not a constant.
         $termsDays = $this->eligibility->validatePaymentTermsDays(
-            $paymentTermsDays ?? CreditEligibilityService::DEFAULT_PAYMENT_TERMS_DAYS,
+            $paymentTermsDays ?? CreditPolicy::defaultPaymentTermsDays(),
         );
 
         return DB::transaction(function () use ($customer, $limitLaar, $actor, $notes, $request, $termsDays, $reason, $exceededMax) {
@@ -96,7 +97,11 @@ final class CreditLedgerService
                 'credit_status' => 'active',
                 'credit_notes' => $notes ?? $locked->credit_notes,
                 'credit_payment_terms_days' => $termsDays,
-                'credit_reminder_sms' => true,
+                // F3: only a first approval opts them in. A customer who turned
+                // reminders off themselves keeps that through a re-approval.
+                'credit_reminder_sms' => $locked->credit_approved_at === null
+                    ? true
+                    : (bool) $locked->credit_reminder_sms,
             ]);
 
             $this->audit->log(
@@ -407,7 +412,7 @@ final class CreditLedgerService
         // (balance + unbilled holding). Invoicing moves value from holding into
         // balance — re-checking available credit would double-count and refuse
         // legitimate invoices when headroom was tied up in consigned stock.
-        if (! $locked->credit_enabled || ($locked->credit_status ?? '') !== 'active') {
+        if (!$locked->credit_enabled || ($locked->credit_status ?? '') !== 'active') {
             abort(422, 'Customer credit must be enabled and active to invoice on account.');
         }
 
@@ -424,7 +429,7 @@ final class CreditLedgerService
             'payment_id' => null,
             'method' => 'house_account',
             'recorded_by' => $actor->id,
-            'notes' => 'Wholesale invoice '.$invoice->invoice_number,
+            'notes' => 'Wholesale invoice ' . $invoice->invoice_number,
             'idempotency_key' => $idempotencyKey,
         ]);
 
@@ -451,7 +456,7 @@ final class CreditLedgerService
         Invoice $creditNote,
         User $actor,
     ): CustomerCreditLedger {
-        $key = 'trade:cn:reverse:'.$creditNote->id;
+        $key = 'trade:cn:reverse:' . $creditNote->id;
         $existing = CustomerCreditLedger::where('idempotency_key', $key)->first();
         if ($existing !== null) {
             return $existing;
@@ -476,7 +481,7 @@ final class CreditLedgerService
             'invoice_id' => $creditNote->id,
             'method' => 'credit_note',
             'recorded_by' => $actor->id,
-            'notes' => 'Credit note '.$creditNote->invoice_number.' reversing '.$parentInvoice->invoice_number,
+            'notes' => 'Credit note ' . $creditNote->invoice_number . ' reversing ' . $parentInvoice->invoice_number,
             'idempotency_key' => $key,
         ]);
 

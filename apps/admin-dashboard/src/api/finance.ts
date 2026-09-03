@@ -1544,6 +1544,13 @@ export interface CreditExposureReport {
     credit_enabled: boolean;
     overdue_invoices_count: number;
   }[];
+  /** Audit 2026-09-03 (F5): outstanding split by how late it is. */
+  aging?: Record<'current' | 'd1_30' | 'd31_60' | 'd60_plus', {
+    label: string;
+    amount_laar: number;
+    amount: number;
+    invoices: number;
+  }>;
 }
 
 export async function getCreditExposureReport(): Promise<CreditExposureReport> {

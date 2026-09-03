@@ -326,6 +326,11 @@ final class PermissionCatalog
         return [
             'complaints.manage',
             'complaints.view',
+            // Audit 2026-09-03 (F2): a manager may approve credit but not take
+            // the repayment, which makes the owner a bottleneck at the counter.
+            // Left as it is on purpose — ManagerPermissionAllowlistTest freezes
+            // manager defaults so widening them is never a side effect. Moving
+            // this one line to managerSlugs() is the owner's call.
             'customers.credit.repay',
             'customers.credit.writeoff',
             'customers.deposit.adjust',

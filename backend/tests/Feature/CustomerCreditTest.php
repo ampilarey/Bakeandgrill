@@ -15,6 +15,7 @@ use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\Role;
 use App\Models\Shift;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -737,5 +738,141 @@ class CustomerCreditTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, CustomerCreditLedger::where('payment_id', $payment->id)->where('type', 'charge')->count());
+    }
+
+    // ── Credit settings audit, 2026-09-03 ───────────────────────────────
+
+    /** F4: the house default for payment terms is a setting, not a constant. */
+    public function test_a_new_account_takes_the_house_payment_terms(): void
+    {
+        SiteSetting::set('credit_payment_terms_default_days', '14');
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve',
+            'credit_limit_mvr' => 500,
+        ])->assertOk()->assertJsonPath('customer.payment_terms_days', 14);
+    }
+
+    /** A setting outside 7–90 can never produce an account nobody could approve. */
+    public function test_house_payment_terms_are_clamped_to_the_allowed_range(): void
+    {
+        SiteSetting::set('credit_payment_terms_default_days', '400');
+        Sanctum::actingAs($this->manager, ['staff']);
+
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve',
+            'credit_limit_mvr' => 500,
+        ])->assertOk()->assertJsonPath('customer.payment_terms_days', 90);
+    }
+
+    /** F7: no new accounts, existing ones carry on. */
+    public function test_no_new_accounts_mode_refuses_a_first_approval_but_allows_a_re_approval(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $existing = Customer::create(['name' => 'Already on credit', 'phone' => '9607700009']);
+        $this->patchJson("/api/admin/customers/{$existing->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertOk();
+
+        SiteSetting::set('credit_accounts_mode', 'no_new_accounts');
+
+        // Somebody new is turned away…
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertStatus(422);
+
+        // …while an account that already exists can still be changed.
+        $this->patchJson("/api/admin/customers/{$existing->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 800,
+        ])->assertOk();
+    }
+
+    /** F7: closed stops new charges at the till; repayment still works. */
+    public function test_closed_mode_refuses_a_charge_and_still_takes_a_repayment(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertOk();
+
+        $this->customer->refresh()->update(['credit_balance_laar' => 10000]);
+        SiteSetting::set('credit_accounts_mode', 'closed');
+
+        $eligibility = app(\App\Domains\Credit\Services\CreditEligibilityService::class);
+        $this->assertFalse($eligibility->canCharge($this->customer->fresh()));
+
+        // Repayment is the owner's to record; closed does not stop it.
+        Sanctum::actingAs($this->owner, ['staff']);
+        $repay = $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
+            'amount_mvr' => 50, 'method' => 'bank_transfer',
+        ]);
+        $repay->assertCreated();
+        $this->assertSame(5000, (int) $this->customer->fresh()->credit_balance_laar);
+    }
+
+    /** F3: a customer who turned reminders off keeps them off. */
+    public function test_re_approving_does_not_undo_a_customers_own_sms_opt_out(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertOk();
+
+        // The customer opts out.
+        $this->customer->refresh()->update(['credit_reminder_sms' => false]);
+
+        // An admin re-approves to change the terms.
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500, 'credit_payment_terms_days' => 45,
+        ])->assertOk()->assertJsonPath('customer.reminder_sms_enabled', false);
+
+        $this->assertFalse((bool) $this->customer->fresh()->credit_reminder_sms);
+    }
+
+    /** F6: disabling an account that still owes money says so. */
+    public function test_disabling_credit_reports_the_balance_left_behind(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertOk();
+        $this->customer->refresh()->update(['credit_balance_laar' => 12500]);
+
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", ['action' => 'disable'])
+            ->assertOk()
+            ->assertJsonPath('customer.enabled', false)
+            ->assertJsonPath('customer.has_outstanding_balance', true)
+            ->assertJsonPath('customer.outstanding_balance_mvr', 125);
+    }
+
+    /**
+     * F2: left as it is on purpose. A manager may approve credit and set the
+     * limit, but the repayment and the write-off are both the owner's — the
+     * manager defaults are frozen by ManagerPermissionAllowlistTest, so
+     * widening them is a decision, never a side effect.
+     */
+    public function test_a_manager_may_approve_credit_but_not_settle_or_write_it_off(): void
+    {
+        Sanctum::actingAs($this->manager, ['staff']);
+        $this->patchJson("/api/admin/customers/{$this->customer->id}/credit", [
+            'action' => 'approve', 'credit_limit_mvr' => 500,
+        ])->assertOk();
+        $this->customer->refresh()->update(['credit_balance_laar' => 20000]);
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
+            'amount_mvr' => 100, 'method' => 'bank_transfer',
+        ])->assertForbidden();
+
+        $this->postJson("/api/admin/customers/{$this->customer->id}/credit/write-off", [
+            'amount_mvr' => 100, 'reason' => 'Gone for good',
+        ])->assertForbidden();
+
+        // The owner can do both.
+        Sanctum::actingAs($this->owner, ['staff']);
+        $this->postJson("/api/admin/customers/{$this->customer->id}/credit/repayments", [
+            'amount_mvr' => 100, 'method' => 'bank_transfer',
+        ])->assertCreated();
+        $this->assertSame(10000, (int) $this->customer->fresh()->credit_balance_laar);
     }
 }
