@@ -113,6 +113,41 @@ describe('CategoryRail', () => {
     expect(screen.getByRole('tab', { name: 'Chicken, 3 items' }).textContent?.trim()).toBe('Chicken');
   });
 
+  /** Owner, 2026-09-03: "make the selected cat / sub cat more visible." */
+  it('marks the entry in view as chosen and its parent only as containing it', () => {
+    const subs = { 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] };
+    const { rerender } = render(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={2}
+        activeSubcategoryId={21}
+        onSelect={() => {}}
+        onSelectSubcategory={() => {}}
+        subcategories={subs}
+      />,
+    );
+
+    // The sub-category is the chosen one; Grills only contains it.
+    expect(screen.getByRole('tab', { name: /Chicken/ })).toHaveClass('is-active');
+    expect(screen.getByRole('tab', { name: /Chicken/ })).not.toHaveClass('is-within');
+    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-active');
+    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-within');
+
+    // With no sub-category in view the parent itself is the chosen one.
+    rerender(
+      <CategoryRail
+        categories={cats}
+        activeCategoryId={2}
+        activeSubcategoryId={null}
+        onSelect={() => {}}
+        onSelectSubcategory={() => {}}
+        subcategories={subs}
+      />,
+    );
+    expect(screen.getByRole('tab', { name: /Grills/ })).toHaveClass('is-active');
+    expect(screen.getByRole('tab', { name: /Grills/ })).not.toHaveClass('is-within');
+  });
+
   it('places Events shortcut after regular categories on the left rail', () => {
     const { container } = render(
       <CategoryRail

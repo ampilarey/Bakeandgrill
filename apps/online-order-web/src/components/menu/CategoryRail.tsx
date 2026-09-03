@@ -212,7 +212,10 @@ export function CategoryRail({
                 role="tab"
                 aria-selected={active}
                 aria-label={(counts[cat.id] ?? 0) > 0 ? `${cat.name}, ${counts[cat.id]} item${counts[cat.id] === 1 ? '' : 's'}` : undefined}
-                className={`cat-rail__item${active ? ' is-active' : ''}`}
+                // A parent whose sub-category is the one in view is "within",
+                // not chosen: it keeps a soft tint so exactly one entry reads
+                // as selected (owner, 2026-09-03).
+                className={`cat-rail__item${active ? ' is-active' : ''}${active && activeSubcategoryId != null ? ' is-within' : ''}`}
                 onClick={() => onSelect(cat.id)}
               >
                 <RailThumb category={cat} size={64} className="cat-rail__thumb" />

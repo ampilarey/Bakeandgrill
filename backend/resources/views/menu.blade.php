@@ -85,11 +85,25 @@
     text-align: center;
 }
 .menu-rail a:hover { color: var(--amber); }
+/* Owner, 2026-09-03: "make the selected cat / sub cat more visible". A tint
+   alone was easy to miss against the panels, so the selection carries a ring
+   around its photo, a filled background, an accent bar down its left edge
+   and a bolder label. */
 .menu-rail a.is-active {
     background: var(--amber-light);
     color: var(--amber);
+    box-shadow: inset 3px 0 0 var(--amber);
 }
-.menu-rail a.is-active .menu-rail-label { font-weight: 700; }
+.menu-rail a.is-active .menu-rail-label { font-weight: 800; }
+.menu-rail a.is-active .menu-rail-thumb { box-shadow: 0 0 0 2px var(--amber); }
+/* A parent that merely contains the section in view keeps the soft tint, so
+   exactly one entry reads as chosen. */
+.menu-rail a.is-active.is-within {
+    box-shadow: none;
+    background: color-mix(in srgb, var(--amber-light) 50%, transparent);
+}
+.menu-rail a.is-active.is-within .menu-rail-label { font-weight: 700; }
+.menu-rail a.is-active.is-within .menu-rail-thumb { box-shadow: none; }
 /* Owner, 2026-09-03: "no visual separation between categories, and between
    sub-categories". Each category is its own soft panel; its sub-categories
    sit inside it under thin inset lines; panels have air between them. */
@@ -1454,16 +1468,17 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                 // so scrolling back up into the parent's own items leaves
                 // only the parent lit.
                 var gone = byId[entry.target.id];
-                if (gone && gone.classList.contains('menu-rail-sub')) gone.classList.remove('is-active');
+                if (gone && gone.classList.contains('menu-rail-sub')) gone.classList.remove('is-active', 'is-within');
                 return;
             }
-            links.forEach(function (a) { a.classList.remove('is-active'); });
+            links.forEach(function (a) { a.classList.remove('is-active', 'is-within'); });
             var active = byId[entry.target.id];
             if (active) {
                 active.classList.add('is-active');
-                // A sub-category in view keeps its parent lit too.
+                // A sub-category in view keeps its parent lit too — but as
+                // "within", a softer mark, so only one entry looks chosen.
                 var parent = active.getAttribute('data-parent');
-                if (parent && byId[parent]) byId[parent].classList.add('is-active');
+                if (parent && byId[parent]) byId[parent].classList.add('is-active', 'is-within');
                 // The rail scrolls independently once there are more categories
                 // than fit; without this the active pill drifts out of sight.
                 revealInRail(active);

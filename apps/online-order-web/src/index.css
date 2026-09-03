@@ -4062,11 +4062,28 @@ textarea.field-input {
   text-align: center;
 }
 
+/* Owner, 2026-09-03: "make the selected cat / sub cat more visible". A tint
+   alone was easy to miss against the panels, so the selection now carries a
+   ring around its photo, a filled background, an accent bar down its left
+   edge and a bolder label. */
 .cat-rail__item.is-active {
   color: var(--color-primary);
   background: var(--color-primary-light);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
-.cat-rail__item.is-active .cat-rail__label { font-weight: 700; }
+.cat-rail__item.is-active .cat-rail__label { font-weight: 800; }
+.cat-rail__item.is-active .cat-rail__thumb {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* A parent that merely contains the section in view keeps the soft tint, so
+   exactly one entry reads as chosen. */
+.cat-rail__item.is-active.is-within {
+  box-shadow: none;
+  background: color-mix(in srgb, var(--color-primary-light) 50%, transparent);
+}
+.cat-rail__item.is-active.is-within .cat-rail__label { font-weight: 700; }
+.cat-rail__item.is-active.is-within .cat-rail__thumb { box-shadow: none; }
 
 .cat-rail__label {
   font-size: 0.75rem;
