@@ -319,11 +319,27 @@ html, body, #root {
   display: none;
 }
 
-/* Per-cashier: the ticket on the left of the menu (My settings). Only on a
- * wide till — below 840px the cart is docked at the bottom regardless. */
-@media (min-width: 841px) {
-  .pos-main--cart-left .pos-cart {
-    order: -1;
+/* Per-cashier: which side of the menu the ticket sits on (My settings).
+ *
+ * Both sides are stated, because the ticket comes FIRST in the markup: with
+ * no order at all it is always on the left, which is why the setting did
+ * nothing until 2026-09-03. Left is the default — what every till has
+ * actually shown — and Right is the choice.
+ *
+ * Only where the two are side by side: below 841px the ticket is docked at
+ * the bottom and neither side means anything. */
+@media (min-width: 841px), (max-width: 900px) and (max-height: 500px) {
+  .pos-main--sales .pos-cart {
+    order: 0;
+  }
+  .pos-main--sales .pos-menu {
+    order: 1;
+  }
+  .pos-main--cart-right .pos-cart {
+    order: 1;
+  }
+  .pos-main--cart-right .pos-menu {
+    order: 0;
   }
 }
 

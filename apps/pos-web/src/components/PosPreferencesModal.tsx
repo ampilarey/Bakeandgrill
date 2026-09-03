@@ -28,7 +28,7 @@ type Props = {
  * Personal POS settings — auto-lock timeout and which side the ticket sits
  * on, saved to the staff user's account (same values as Admin → My Account).
  */
-export function PosPreferencesModal({ idleLockMinutes, cartSide = "right", onClose, onSaved }: Props) {
+export function PosPreferencesModal({ idleLockMinutes, cartSide = "left", onClose, onSaved }: Props) {
   const [minutes, setMinutes] = useState(idleLockMinutes);
   const [side, setSide] = useState<CartSide>(cartSide);
   const [busy, setBusy] = useState(false);
@@ -54,7 +54,7 @@ export function PosPreferencesModal({ idleLockMinutes, cartSide = "right", onClo
     try {
       const res = await updateMyPreferences({ pos_idle_lock_minutes: minutes, pos_cart_side: side });
       const resolved = resolveIdleLockMinutes(res.user);
-      onSaved(resolved, res.user.pos_cart_side === "left" ? "left" : "right");
+      onSaved(resolved, res.user.pos_cart_side === "right" ? "right" : "left");
       setOk(true);
       window.setTimeout(onClose, 800);
     } catch (e) {
@@ -128,7 +128,7 @@ export function PosPreferencesModal({ idleLockMinutes, cartSide = "right", onClo
             Ticket side on the till
           </span>
           <div role="group" aria-label="Ticket side" style={{ display: "flex", gap: 8 }}>
-            {(["right", "left"] as const).map((s) => (
+            {(["left", "right"] as const).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -142,12 +142,12 @@ export function PosPreferencesModal({ idleLockMinutes, cartSide = "right", onClo
                   color: side === s ? "#fff" : palette.panelInk,
                 }}
               >
-                {s === "right" ? "Right (default)" : "Left"}
+                {s === "left" ? "Left (default)" : "Right"}
               </button>
             ))}
           </div>
           <p style={{ ...type.bodySm, margin: "6px 0 0", color: palette.panelMuted }}>
-            Puts the ticket on the other side of the menu for a left-handed cashier. Phones keep the ticket at the bottom.
+            Puts the ticket on the other side of the menu. It applies where the two sit side by side — a wide till, or an iPad in landscape. In portrait, and on a phone, the ticket is docked at the bottom and neither side means anything.
           </p>
         </div>
 

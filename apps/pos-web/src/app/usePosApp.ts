@@ -117,7 +117,7 @@ export function usePosApp() {
   const [idleLockMinutes, setIdleLockMinutes] = useState(5);
   // Which side of the till the ticket sits on. Per cashier, saved to their
   // account with the auto-lock minutes. Owner, 2026-09-02.
-  const [cartSide, setCartSide] = useState<"left" | "right">("right");
+  const [cartSide, setCartSide] = useState<"left" | "right">("left");
   const [deviceId]                    = useState(() => {
     // Priority order:
     //  1. Previously persisted id in localStorage — once a device is
@@ -541,7 +541,7 @@ export function usePosApp() {
           localStorage.setItem("pos_staff_permissions", JSON.stringify(perms));
           setStaffPermissions(perms);
           setIdleLockMinutes(resolveIdleLockMinutes(user));
-          setCartSide(user.pos_cart_side === "left" ? "left" : "right");
+          setCartSide(user.pos_cart_side === "right" ? "right" : "left");
           void cacheStaffSessionFromUser({
             id: user.id,
             name: user.name,
@@ -909,7 +909,7 @@ export function usePosApp() {
     setStaffRole(response.user?.role ?? "");
     setStaffPermissions(loginPerms);
     setIdleLockMinutes(resolveIdleLockMinutes(response.user));
-    setCartSide(response.user?.pos_cart_side === "left" ? "left" : "right");
+    setCartSide(response.user?.pos_cart_side === "right" ? "right" : "left");
     setAuthToken(response.token);
     if (response.user?.id) {
       void cacheStaffSessionFromUser({
@@ -1107,7 +1107,7 @@ export function usePosApp() {
       setStaffRole(res.user?.role ?? "");
       setStaffPermissions(unlockPerms);
       setIdleLockMinutes(resolveIdleLockMinutes(res.user));
-      setCartSide(res.user?.pos_cart_side === "left" ? "left" : "right");
+      setCartSide(res.user?.pos_cart_side === "right" ? "right" : "left");
       if (res.user?.id) {
         void cacheStaffSessionFromUser({
           id: res.user.id,

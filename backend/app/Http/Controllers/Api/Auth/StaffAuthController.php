@@ -446,8 +446,10 @@ class StaffAuthController extends Controller
             $changes['pos_idle_lock_minutes'] = $validated['pos_idle_lock_minutes'];
         }
         if (array_key_exists('pos_cart_side', $validated)) {
-            // Right is the default, stored as null.
-            $changes['pos_cart_side'] = $validated['pos_cart_side'] === 'left' ? 'left' : null;
+            // Left is the default — what every till has shown — and is
+            // stored as null. Only a cashier who asks for the right-hand
+            // ticket gets a row value.
+            $changes['pos_cart_side'] = $validated['pos_cart_side'] === 'right' ? 'right' : null;
         }
         $user->update($changes);
         $user->loadMissing('role');
@@ -768,8 +770,9 @@ class StaffAuthController extends Controller
             'pos_staff_permissions' => $permissions,
             'pos_idle_lock_minutes' => $user->pos_idle_lock_minutes,
             'pos_idle_lock_minutes_resolved' => $user->resolvedPosIdleLockMinutes(),
-            // Which side of the till the ticket sits on; null means right.
-            'pos_cart_side' => $user->pos_cart_side === 'left' ? 'left' : 'right',
+            // Which side of the till the ticket sits on; anything but an
+            // explicit 'right' — null, or a stale 'left' — means left.
+            'pos_cart_side' => $user->pos_cart_side === 'right' ? 'right' : 'left',
         ];
     }
 }

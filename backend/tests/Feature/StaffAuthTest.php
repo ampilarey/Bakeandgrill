@@ -307,7 +307,7 @@ class StaffAuthTest extends TestCase
     }
 
     /** Owner, 2026-09-02: a left-hand option for the till, saved per cashier. */
-    public function test_staff_can_put_the_ticket_on_the_left_and_it_follows_them(): void
+    public function test_staff_can_put_the_ticket_on_the_right_and_it_follows_them(): void
     {
         $owner = $this->createOwner();
         $login = $this->postJson('/api/auth/staff/pin-login', [
@@ -317,24 +317,34 @@ class StaffAuthTest extends TestCase
         ]);
         $token = $login->json('token');
 
+        // Left is what the till has always shown, so that is the default.
+        $this->assertNull($owner->fresh()->pos_cart_side);
         $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'left'])
+            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'right'])
             ->assertOk()
-            ->assertJsonPath('user.pos_cart_side', 'left');
-        $this->assertDatabaseHas('users', ['id' => $owner->id, 'pos_cart_side' => 'left']);
+            ->assertJsonPath('user.pos_cart_side', 'right');
+        $this->assertDatabaseHas('users', ['id' => $owner->id, 'pos_cart_side' => 'right']);
 
         // One preference at a time: saving the lock minutes leaves the side alone.
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->patchJson('/api/auth/me/preferences', ['pos_idle_lock_minutes' => 10])
             ->assertOk()
-            ->assertJsonPath('user.pos_cart_side', 'left');
-
-        // Right is the default and is stored as nothing at all.
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'right'])
-            ->assertOk()
             ->assertJsonPath('user.pos_cart_side', 'right');
+
+        // Left is the default and is stored as nothing at all.
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'left'])
+            ->assertOk()
+            ->assertJsonPath('user.pos_cart_side', 'left');
         $this->assertDatabaseHas('users', ['id' => $owner->id, 'pos_cart_side' => null]);
+
+        // A row left over from when 'left' was the stored value still reads
+        // as left — nobody's till moves under them.
+        $owner->forceFill(['pos_cart_side' => 'left'])->save();
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.pos_cart_side', 'left');
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->patchJson('/api/auth/me/preferences', ['pos_cart_side' => 'middle'])

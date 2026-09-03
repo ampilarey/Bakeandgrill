@@ -514,8 +514,9 @@ export function PosShellLayout() {
       <main className={[
         'pos-main',
         pane === 'sales' ? 'pos-main--sales' : '',
-        // Per-cashier: the ticket column on the left of the menu.
-        pane === 'sales' && cartSide === 'left' ? 'pos-main--cart-left' : '',
+        // Per-cashier: the ticket column on the right of the menu. Left is
+        // the default and needs no class — see .pos-main--cart-right.
+        pane === 'sales' && cartSide === 'right' ? 'pos-main--cart-right' : '',
       ].filter(Boolean).join(' ')}>
         {pane === 'sales' && (
           !shiftOpen ? (
