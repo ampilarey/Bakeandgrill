@@ -1049,6 +1049,7 @@ export function OrderCart(p: Props) {
             reasons: [],
           }}
           discountFieldError={p.discountFieldError}
+          subtotal={p.cartSubtotal}
           disabled={lockedReadOnly}
           mutedColor={C.muted}
           borderColor={C.border2}

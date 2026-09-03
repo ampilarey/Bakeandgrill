@@ -114,3 +114,66 @@ describe("manager code hint", () => {
     expect(screen.queryByTestId("discount-needs-code")).toBeNull();
   });
 });
+
+describe("percent mode", () => {
+  const controls = {
+    manual_enabled: true, max_percent: 20, max_fixed_mvr: 0, reason_required: false, reasons: [],
+    approval_required: true, can_self_approve: true,
+  };
+
+  function PctHarness({ subtotal, initial = "" }: { subtotal: number; initial?: string }) {
+    const [amount, setAmount] = useState(initial);
+    return (
+      <>
+        <ManualDiscountField discountAmount={amount} setDiscountAmount={setAmount} discountControls={controls} subtotal={subtotal} />
+        <output data-testid="amount">{amount}</output>
+      </>
+    );
+  }
+
+  it("turns a typed percentage into MVR against the subtotal", async () => {
+    const user = userEvent.setup();
+    render(<PctHarness subtotal={150} />);
+
+    await user.click(screen.getByRole("button", { name: "%" }));
+    await user.type(screen.getByLabelText("Discount percent"), "10");
+
+    expect(screen.getByTestId("amount")).toHaveTextContent("15.00");
+    expect(screen.getByTestId("discount-equivalent")).toHaveTextContent("= MVR 15.00");
+  });
+
+  it("offers percent chips up to the cap, and a chip sets the amount in one tap", async () => {
+    const user = userEvent.setup();
+    render(<PctHarness subtotal={150} />);
+
+    const chips = screen.getByTestId("discount-percent-chips");
+    expect(chips).toHaveTextContent("5%10%15%20%");
+    expect(chips).not.toHaveTextContent("25%");
+
+    await user.click(screen.getByRole("button", { name: "20%" }));
+    expect(screen.getByTestId("amount")).toHaveTextContent("30.00");
+    expect(screen.getByLabelText("Discount percent")).toHaveValue("20");
+  });
+
+  it("keeps the percentage when the cart changes", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<PctHarness subtotal={150} />);
+    await user.click(screen.getByRole("button", { name: "10%" }));
+    expect(screen.getByTestId("amount")).toHaveTextContent("15.00");
+
+    rerender(<PctHarness subtotal={200} />);
+    // Same harness instance with a bigger subtotal: 10% is now MVR 20.
+    expect(screen.getByTestId("amount")).toHaveTextContent("20.00");
+  });
+
+  it("shows what a typed MVR amount is as a percentage, and carries it across the toggle", async () => {
+    const user = userEvent.setup();
+    render(<PctHarness subtotal={150} initial="30" />);
+
+    expect(screen.getByTestId("discount-equivalent")).toHaveTextContent("= 20.0% of MVR 150.00");
+
+    await user.click(screen.getByRole("button", { name: "%" }));
+    expect(screen.getByLabelText("Discount percent")).toHaveValue("20");
+    expect(screen.getByTestId("amount")).toHaveTextContent("30.00");
+  });
+});
