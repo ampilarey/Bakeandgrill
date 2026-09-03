@@ -59,11 +59,13 @@
     padding: 0.5rem 0;
     border-right: 1px solid var(--border);
 }
-.menu-rail-list { display: flex; flex-direction: column; gap: 2px; }
+/* ZUS-style entries (owner, 2026-09-03): photo over a short label, air
+   between entries, no boxes. Active = brand colour + left bar only. */
+.menu-rail-list { display: flex; flex-direction: column; gap: 6px; }
 .menu-rail a {
     display: flex; flex-direction: column; align-items: center;
-    gap: 4px;
-    padding: 0.5rem 0.35rem;
+    gap: 0.4rem;
+    padding: 0.6rem 0.3rem;
     border-left: 3px solid transparent;
     color: var(--muted);
     text-decoration: none;
@@ -71,10 +73,12 @@
 }
 .menu-rail a:hover { color: var(--amber); }
 .menu-rail a.is-active {
-    background: var(--amber-light);
     border-left-color: var(--amber);
     color: var(--amber);
 }
+.menu-rail a.is-active .menu-rail-label { font-weight: 700; }
+/* A sub-category directly under its parent sits a little closer to it. */
+.menu-rail a + a.menu-rail-sub { margin-top: -4px; }
 /* Owner, 2026-09-02: bigger picture and text in the rail, same rail width. */
 .menu-rail-thumb {
     width: 48px; height: 48px;
@@ -93,43 +97,28 @@ span.menu-rail-thumb {
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; word-break: break-word; max-width: 100%;
 }
-.menu-rail-count { font-size: 10px; opacity: 0.7; }
+/* The count stays in the link's aria-label; no numeral under the photo (ZUS look). */
+.menu-rail-count { display: none; }
 .menu-rail a.menu-rail-events {
     margin-top: 6px;
     border-top: 1px solid var(--border);
     font-weight: 700;
 }
 /* Sub-categories. Owner, 2026-09-02: "add subcategories to the rail as
-   well"; 2026-09-03: "too congested". They unfold only under the category
-   in view, as pills with air between them — no hairlines, no visible
-   counts (the count stays in the link's aria-label). Until the scroll-spy
-   has run (or without JS at all) every group stays open, so the links are
-   never lost; `js-ready` on the rail switches on the folding. */
-.menu-rail-group { display: flex; flex-direction: column; }
-.menu-rail-more { font-size: 9px; line-height: 1; opacity: 0.55; margin-top: -2px; }
-.menu-rail.js-ready .menu-rail-group:not(.is-open) .menu-rail-subs { display: none; }
-.menu-rail.js-ready .menu-rail-group.is-open .menu-rail-more { display: none; }
-.menu-rail-subs {
-    display: flex; flex-direction: column; gap: 5px;
-    padding: 4px 6px 10px 9px;
-    background: var(--amber-light);
-    border-left: 3px solid var(--amber);
-}
+   well"; 2026-09-03: "add photos to subcategory also … main category big
+   and subcategory little smaller" — the ZUS app look. Same shape as a
+   category entry, photo over label, one size down. The count stays in
+   the link's aria-label only. */
 .menu-rail a.menu-rail-sub {
-    flex-direction: row; justify-content: center;
-    min-height: 30px;
-    padding: 0.25rem 0.4rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: #fff;
-    color: var(--dark);
+    gap: 0.3rem;
+    padding: 0.35rem 0.3rem 0.5rem;
+    color: var(--muted);
 }
-.menu-rail a.menu-rail-sub:hover { color: var(--amber); border-color: var(--amber); background: #fff; }
-.menu-rail a.menu-rail-sub.is-active { color: #fff; background: var(--amber); border-color: var(--amber); }
-.menu-rail a.menu-rail-sub .menu-rail-label {
-    font-size: 0.6875rem;
-    display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.menu-rail a.menu-rail-sub.is-active { color: var(--amber); }
+.menu-rail-thumb--sub { width: 36px; height: 36px; border-radius: 9px; }
+span.menu-rail-thumb--sub { font-size: 0.75rem; }
+.menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.6875rem; font-weight: 500; }
+.menu-rail a.menu-rail-sub.is-active .menu-rail-label { font-weight: 700; }
 .menu-rail a.menu-rail-sub .menu-rail-count { display: none; }
 
 .menu-main { flex: 1; min-width: 0; }
@@ -520,8 +509,7 @@ html.js .menu-fav { display: inline-flex; }
     .menu-rail-thumb { width: 44px; height: 44px; }
     .menu-rail-label { font-size: 0.6875rem; }
     .menu-rail a.menu-rail-sub .menu-rail-label { font-size: 0.625rem; }
-    .menu-rail-subs { gap: 4px; padding: 3px 5px 8px 7px; }
-    .menu-rail a.menu-rail-sub { min-height: 28px; }
+    .menu-rail-thumb--sub { width: 32px; height: 32px; }
 
     /* Only the tools row is pinned on a phone. The wrapper stops being a
        box so the row sticks against .menu-main, not against a bar that
@@ -755,11 +743,6 @@ body.menu-sheet-open { overflow: hidden; }
                     $thumb = $mediaUrl($cat?->thumb_url ?: $cat?->image_url);
                     $count = $sectionCount($group);
                 @endphp
-                @php $subs = $group['subcategories'] ?? []; @endphp
-                {{-- One group per category: the parent link, then its
-                     sub-categories. The scroll-spy opens the group in view
-                     and folds the rest (owner, 2026-09-03: "too congested"). --}}
-                <div class="menu-rail-group" data-group="{{ $anchorFor($group) }}">
                 {{-- The count is a bare numeral beside a name; spoken aloud it
                      reads "Shorteats 3", so the link carries it as words instead. --}}
                 <a href="#{{ $anchorFor($group) }}"
@@ -774,33 +757,34 @@ body.menu-sheet-open { overflow: hidden; }
                     @endif
                     <span class="menu-rail-label" @if($name['dv']) lang="dv" @endif>{{ $name['text'] }}</span>
                     <span class="menu-rail-count" aria-hidden="true">{{ $count }}</span>
-                    @if(count($subs) > 0)
-                        <span class="menu-rail-more" aria-hidden="true">▾</span>
-                    @endif
                 </a>
-                {{-- Sub-categories under their parent, text only. Owner,
-                     2026-09-02: "add subcategories to the rail as well".
-                     data-parent lets the scroll-spy keep the parent lit while
-                     one of its sub-categories is the section in view. --}}
-                @if(count($subs) > 0)
-                <div class="menu-rail-subs">
-                @foreach($subs as $sub)
+                {{-- Sub-categories under their parent, same shape with a
+                     smaller photo (owner, 2026-09-03). data-parent lets the
+                     scroll-spy keep the parent lit while one of its
+                     sub-categories is the section in view. --}}
+                @foreach($group['subcategories'] ?? [] as $sub)
                     @php
                         $subCat = $sub['category'];
                         $subName = $categoryName($subCat);
                         $subCount = count($sub['items']);
+                        $subThumb = $mediaUrl($subCat?->thumb_url ?: $subCat?->image_url);
                     @endphp
                     <a href="#cat-{{ $subCat->id }}"
                        class="menu-rail-sub"
                        data-parent="{{ $anchorFor($group) }}"
                        aria-label="{{ $subName['text'] }}, {{ $subCount }} {{ Str::plural('item', $subCount) }}">
+                        @if($subThumb)
+                            <img class="menu-rail-thumb menu-rail-thumb--sub" src="{{ $subThumb }}" alt="" loading="lazy" width="36" height="36">
+                        @else
+                            <span class="menu-rail-thumb menu-rail-thumb--sub" aria-hidden="true"
+                                  style="background: {{ $tintSoft($subCat?->id ?? 0) }}">
+                                {{ mb_strtoupper(mb_substr($subName['text'], 0, 1)) }}
+                            </span>
+                        @endif
                         <span class="menu-rail-label" @if($subName['dv']) lang="dv" @endif>{{ $subName['text'] }}</span>
                         <span class="menu-rail-count" aria-hidden="true">{{ $subCount }}</span>
                     </a>
                 @endforeach
-                </div>
-                @endif
-                </div>
             @endforeach
             {{-- Same last-on-rail shortcut as the order app CategoryRail.
                  Off-page: the wizard lives at /order/events, not an in-page anchor. --}}
@@ -1343,17 +1327,6 @@ body.menu-sheet-open { overflow: hidden; }
         byId[href.slice(1)] = a;
     });
 
-    // Fold every group's sub-categories except the one in view. Only once
-    // the spy is running: before that (and without JS) all of them show.
-    var groups = Array.prototype.slice.call(rail.querySelectorAll('.menu-rail-group'));
-    function openGroup(id) {
-        groups.forEach(function (g) {
-            g.classList.toggle('is-open', g.getAttribute('data-group') === id);
-        });
-    }
-    rail.classList.add('js-ready');
-    if (groups.length) openGroup(groups[0].getAttribute('data-group'));
-
     var observer = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
             if (!entry.isIntersecting) {
@@ -1371,7 +1344,6 @@ body.menu-sheet-open { overflow: hidden; }
                 // A sub-category in view keeps its parent lit too.
                 var parent = active.getAttribute('data-parent');
                 if (parent && byId[parent]) byId[parent].classList.add('is-active');
-                openGroup(parent || entry.target.id);
                 // The rail scrolls independently once there are more categories
                 // than fit; without this the active pill drifts out of sight.
                 if (active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });

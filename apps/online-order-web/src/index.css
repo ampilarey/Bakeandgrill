@@ -3993,20 +3993,28 @@ textarea.field-input {
   }
 }
 
+/* ZUS-style rail (owner, 2026-09-03): a photo over a short label, air
+   between entries, no boxes. Active = brand colour + left bar only. */
+.cat-rail__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .cat-rail__item {
   width: 100%;
   min-height: var(--touch-target);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.35rem;
+  gap: 0.4rem;
+  padding: 0.6rem 0.3rem;
   background: transparent;
   border: none;
   border-left: 3px solid transparent;
   cursor: pointer;
   font-family: inherit;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary, #6B5D4F);
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.2;
@@ -4015,9 +4023,9 @@ textarea.field-input {
 
 .cat-rail__item.is-active {
   color: var(--color-primary);
-  background: var(--color-primary-light);
   border-left-color: var(--color-primary);
 }
+.cat-rail__item.is-active .cat-rail__label { font-weight: 700; }
 
 .cat-rail__label {
   font-size: 0.75rem;
@@ -4039,71 +4047,38 @@ textarea.field-input {
 
 /*
  * Sub-categories in the rail. Owner, 2026-09-02: "add subcategories to the
- * rail as well"; 2026-09-03: "too congested". They now unfold only under the
- * category in view, as pills with air between them — no hairlines, no
- * counts — so the rail reads as one entry per category until you are
- * inside one. A collapsed parent that has more shows a small chevron.
+ * rail as well"; 2026-09-03: "add photos to subcategory also … main
+ * category big and subcategory little smaller". Same shape as a category
+ * entry — photo over label — one size down, under its parent.
  */
 .cat-rail__group {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
-.cat-rail__more {
-  font-size: 9px;
-  line-height: 1;
-  opacity: 0.55;
-  margin-top: -2px;
+.cat-rail__item.cat-rail__sub {
+  min-height: 0;
+  gap: 0.3rem;
+  padding: 0.35rem 0.3rem 0.5rem;
 }
-.cat-rail__subs {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 4px 6px 10px 9px;
-  background: var(--color-primary-light);
-  border-left: 3px solid var(--color-primary);
-}
-.cat-rail__sub {
-  width: 100%;
-  min-height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--color-border, #E8E0D8);
-  border-radius: 999px;
-  background: var(--color-surface, #fff);
-  color: var(--color-text-secondary, #6B5D4F);
-  font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.15;
-  text-align: center;
-  cursor: pointer;
-}
-.cat-rail__sub:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-.cat-rail__sub.is-active {
-  color: #fff;
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+/* Outranks the mobile `.cat-rail__item img` size rule above. */
+.cat-rail__item .cat-rail__thumb--sub {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9px;
 }
 .cat-rail__sub-label {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.6875rem !important;
+  font-weight: 500;
 }
+.cat-rail__item.cat-rail__sub.is-active .cat-rail__sub-label { font-weight: 700; }
 @media (max-width: 767px) {
-  .cat-rail__subs {
-    gap: 4px;
-    padding: 3px 5px 8px 7px;
+  .cat-rail__item .cat-rail__thumb--sub {
+    width: 32px !important;
+    height: 32px !important;
   }
-  .cat-rail__sub {
-    min-height: 28px;
-    font-size: 0.625rem;
+  .cat-rail__sub-label {
+    font-size: 0.625rem !important;
   }
 }
 

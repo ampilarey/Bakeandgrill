@@ -66,48 +66,47 @@ describe('CategoryRail', () => {
     expect(screen.getByRole('tab', { name: /Beef/ }).getAttribute('aria-selected')).toBe('false');
     // The parent stays lit while one of its sub-categories is in view.
     expect(screen.getByRole('tab', { name: /Grills/ }).getAttribute('aria-selected')).toBe('true');
-    // No thumbnail on a sub-entry.
-    expect(chicken.querySelector('.cat-rail__thumb')).toBeNull();
+    // A sub-entry has its own, smaller photo (tinted initial here — no image).
+    expect(chicken.querySelector('.cat-rail__thumb--sub')?.textContent).toBe('C');
 
     screen.getByRole('tab', { name: /Beef/ }).click();
     expect(onSelectSubcategory).toHaveBeenCalledWith(22, 2);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  /** Owner, 2026-09-03: "too congested" — sub-categories fold away under any category that is not in view. */
-  it('folds sub-categories under categories that are not active, with a chevron hinting there is more', () => {
-    const { container, rerender } = render(
+  /** Owner, 2026-09-03: "add photos to subcategory also … main category big and subcategory little smaller". */
+  it('gives every entry a photo, one size smaller for a sub-category, and lists sub-categories whether or not the parent is active', () => {
+    const { container } = render(
       <CategoryRail
-        categories={cats}
+        categories={[
+          { id: 1, name: 'Breakfast Specials', sort_order: 1 },
+          { id: 2, name: 'Grills', sort_order: 2, image_url: '/media/grills.jpg' },
+        ]}
         activeCategoryId={1}
         onSelect={() => {}}
         onSelectSubcategory={() => {}}
-        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
+        subcategories={{ 2: [
+          { id: 21, name: 'Chicken', parent_id: 2, image_url: '/media/chicken.jpg' },
+          { id: 22, name: 'Beef', parent_id: 2 },
+        ] }}
         counts={{ 21: 3 }}
       />,
     );
 
-    expect(screen.queryByRole('tab', { name: /Chicken/ })).toBeNull();
-    expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(0);
-    // Grills has more inside; Breakfast Specials has nothing to unfold.
-    expect(screen.getByRole('tab', { name: /Grills/ }).querySelector('[data-testid="cat-rail-more"]')).not.toBeNull();
-    expect(screen.getByRole('tab', { name: /Breakfast Specials/ }).querySelector('[data-testid="cat-rail-more"]')).toBeNull();
-
-    rerender(
-      <CategoryRail
-        categories={cats}
-        activeCategoryId={2}
-        onSelect={() => {}}
-        onSelectSubcategory={() => {}}
-        subcategories={{ 2: [{ id: 21, name: 'Chicken', parent_id: 2 }, { id: 22, name: 'Beef', parent_id: 2 }] }}
-        counts={{ 21: 3 }}
-      />,
-    );
+    // Not folded away: Grills is not the active category, its children still show.
     expect(container.querySelectorAll('[data-testid="cat-rail-sub"]').length).toBe(2);
-    expect(screen.getByRole('tab', { name: /Grills/ }).querySelector('[data-testid="cat-rail-more"]')).toBeNull();
-    // No visible count on a pill; the count lives in the accessible name only.
-    const chicken = screen.getByRole('tab', { name: 'Chicken, 3 items' });
-    expect(chicken.textContent?.trim()).toBe('Chicken');
+
+    const grillsImg = screen.getByRole('tab', { name: /Grills/ }).querySelector('img');
+    expect(grillsImg?.getAttribute('width')).toBe('48');
+    const chickenImg = screen.getByRole('tab', { name: 'Chicken, 3 items' }).querySelector('img');
+    expect(chickenImg?.getAttribute('src')).toContain('/media/chicken.jpg');
+    expect(chickenImg?.getAttribute('width')).toBe('36');
+    // No image → tinted initial, still the smaller size.
+    const beefThumb = screen.getByRole('tab', { name: /Beef/ }).querySelector('.cat-rail__thumb--sub') as HTMLElement;
+    expect(beefThumb.textContent).toBe('B');
+    expect(beefThumb.style.width).toBe('36px');
+    // No visible count on a sub-entry; it lives in the accessible name only.
+    expect(screen.getByRole('tab', { name: 'Chicken, 3 items' }).textContent?.trim()).toBe('Chicken');
   });
 
   it('places Events shortcut after regular categories on the left rail', () => {

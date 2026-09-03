@@ -11,6 +11,11 @@ function tintFromId(id: number): string {
   return `hsl(${h} 55% 88%)`;
 }
 
+function resolve(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.startsWith('http') ? url : `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 type Props = {
   categories: Category[];
   activeCategoryId: number | null;
@@ -23,19 +28,63 @@ type Props = {
   cateringActive?: boolean;
   cateringCount?: number;
   onCateringClick?: () => void;
-  /** Sub-categories by parent id, listed under their parent as text-only tabs. */
+  /** Sub-categories by parent id, listed under their parent with a smaller photo. */
   subcategories?: Record<number, Category[]>;
   activeSubcategoryId?: number | null;
   onSelectSubcategory?: (id: number, parentId: number) => void;
 };
 
+/** Photo (or tinted initial) for a rail entry. `size` is the box in px. */
+function RailThumb({ category, size, className }: { category: Category; size: number; className: string }) {
+  const img = resolve(category.image_url);
+  const webp = resolve(category.image_webp_url);
+  const initial = (category.name?.trim()?.[0] ?? '?').toUpperCase();
+  if (img) {
+    return (
+      <PictureImg
+        className={className}
+        src={img}
+        webpSrc={webp}
+        sizes={`${size}px`}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
+        style={{ width: size, height: size, borderRadius: Math.round(size / 4), objectFit: 'cover' }}
+      />
+    );
+  }
+  return (
+    <span
+      className={className}
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size / 4),
+        background: tintFromId(category.id),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 800,
+        fontSize: size >= 44 ? '0.9rem' : '0.75rem',
+        color: 'var(--color-dark)',
+      }}
+    >
+      {initial}
+    </span>
+  );
+}
+
 /**
  * Sticky left category rail — scroll-spy sync via activeCategoryId.
  *
- * Sub-categories sit under their parent as smaller, text-only entries.
- * Owner, 2026-09-02: "add subcategories to the rail as well" — until then
- * a customer looking for Beef under Grill had nothing in the rail to tap,
- * and the spy folded every sub-category into its parent.
+ * One look for every entry, the way the ZUS app does it (owner, 2026-09-03:
+ * "make the pic in main category big and subcategory little smaller"): a
+ * photo over a short label, air between entries, the active one marked by
+ * a left bar and the brand colour. Sub-categories sit under their parent
+ * with the same shape and a smaller photo — no pills, hairlines or folding.
  */
 export function CategoryRail({
   categories,
@@ -58,7 +107,7 @@ export function CategoryRail({
 
   useEffect(() => {
     activeRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
-  }, [activeCategoryId, cateringActive]);
+  }, [activeCategoryId, activeSubcategoryId, cateringActive]);
 
   return (
     <nav
@@ -71,137 +120,66 @@ export function CategoryRail({
         padding: '0.5rem 0',
       }}
     >
-      <div role="tablist" aria-orientation="vertical" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div role="tablist" aria-orientation="vertical" className="cat-rail__list">
         {showOffersPill && onOffersClick && (
           <button
             type="button"
             role="tab"
-            className="cat-rail__item"
+            className="cat-rail__item cat-rail__item--offers"
             onClick={onOffersClick}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              padding: '0.5rem 0.35rem',
-              border: 'none',
-              background: 'transparent',
-              borderLeft: '3px solid transparent',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              color: 'var(--color-primary)',
-              width: '100%',
-              fontWeight: 700,
-              fontSize: 11,
-            }}
           >
-            Offers
+            <span
+              className="cat-rail__thumb"
+              aria-hidden="true"
+              style={{
+                width: 48, height: 48, borderRadius: 12, background: 'hsl(18 55% 88%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: '1rem', color: 'var(--color-dark)',
+              }}
+            >
+              %
+            </span>
+            <span className="cat-rail__label">Offers</span>
           </button>
         )}
         {categories.map((cat) => {
           const active = activeCategoryId === cat.id;
-          const resolve = (url: string | null | undefined) => {
-            if (!url) return null;
-            return url.startsWith('http')
-              ? url
-              : `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
-          };
-          const img = resolve(cat.image_url);
-          const webp = resolve(cat.image_webp_url);
-          const initial = (cat.name?.trim()?.[0] ?? '?').toUpperCase();
           const subs = subcategories[cat.id] ?? [];
           return (
             <div key={cat.id} className="cat-rail__group" role="presentation">
-            <button
-              ref={active ? activeRef : undefined}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={`cat-rail__item${active ? ' is-active' : ''}`}
-              onClick={() => onSelect(cat.id)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                padding: '0.5rem 0.35rem',
-                border: 'none',
-                background: active ? 'var(--color-primary-light)' : 'transparent',
-                borderLeft: active ? '3px solid var(--color-primary)' : '3px solid transparent',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                width: '100%',
-              }}
-            >
-              {img ? (
-                <PictureImg
-                  className="cat-rail__thumb"
-                  src={img}
-                  webpSrc={webp}
-                  sizes="48px"
-                  alt=""
-                  width={48}
-                  height={48}
-                  loading="lazy"
-                  decoding="async"
-                  style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }}
-                />
-              ) : (
-                <span
-                  className="cat-rail__thumb"
-                  aria-hidden="true"
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    background: tintFromId(cat.id),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '0.9rem',
-                    color: 'var(--color-dark)',
-                  }}
-                >
-                  {initial}
-                </span>
-              )}
-              <span className="cat-rail__label">
-                {cat.name}
-              </span>
-              {(counts[cat.id] ?? 0) > 0 && (
-                <span style={{ fontSize: 10, opacity: 0.7 }}>{counts[cat.id]}</span>
-              )}
-              {subs.length > 0 && !active && (
-                <span className="cat-rail__more" aria-hidden="true" data-testid="cat-rail-more">▾</span>
-              )}
-            </button>
-            {/* Owner, 2026-09-03: "too congested". Sub-categories unfold only
-                under the category in view, as spaced pills, so the rail is
-                one entry per category until you are inside one. */}
-            {subs.length > 0 && active && (
-              <div className="cat-rail__subs" role="presentation">
-                {subs.map((sub) => {
-                  const subActive = activeSubcategoryId === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={subActive}
-                      aria-label={(counts[sub.id] ?? 0) > 0 ? `${sub.name}, ${counts[sub.id]} item${counts[sub.id] === 1 ? '' : 's'}` : undefined}
-                      className={`cat-rail__sub${subActive ? ' is-active' : ''}`}
-                      data-testid="cat-rail-sub"
-                      data-parent-category-id={cat.id}
-                      onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
-                    >
-                      <span className="cat-rail__sub-label">{sub.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              <button
+                ref={active && activeSubcategoryId == null ? activeRef : undefined}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-label={(counts[cat.id] ?? 0) > 0 ? `${cat.name}, ${counts[cat.id]} item${counts[cat.id] === 1 ? '' : 's'}` : undefined}
+                className={`cat-rail__item${active ? ' is-active' : ''}`}
+                onClick={() => onSelect(cat.id)}
+              >
+                <RailThumb category={cat} size={48} className="cat-rail__thumb" />
+                <span className="cat-rail__label">{cat.name}</span>
+              </button>
+              {subs.map((sub) => {
+                const subActive = activeSubcategoryId === sub.id;
+                const count = counts[sub.id] ?? 0;
+                return (
+                  <button
+                    key={sub.id}
+                    ref={subActive ? activeRef : undefined}
+                    type="button"
+                    role="tab"
+                    aria-selected={subActive}
+                    aria-label={count > 0 ? `${sub.name}, ${count} item${count === 1 ? '' : 's'}` : undefined}
+                    className={`cat-rail__item cat-rail__sub${subActive ? ' is-active' : ''}`}
+                    data-testid="cat-rail-sub"
+                    data-parent-category-id={cat.id}
+                    onClick={() => onSelectSubcategory?.(sub.id, cat.id)}
+                  >
+                    <RailThumb category={sub} size={36} className="cat-rail__thumb cat-rail__thumb--sub" />
+                    <span className="cat-rail__label cat-rail__sub-label">{sub.name}</span>
+                  </button>
+                );
+              })}
             </div>
           );
         })}
@@ -211,49 +189,23 @@ export function CategoryRail({
             type="button"
             role="tab"
             aria-selected={cateringActive}
+            aria-label={cateringCount > 0 ? `Events, ${cateringCount} package${cateringCount === 1 ? '' : 's'}` : undefined}
             ref={cateringActive ? activeRef : undefined}
             className={`cat-rail__item cat-rail__item--events${cateringActive ? ' is-active' : ''}`}
             data-testid="cat-rail-events"
             onClick={onCateringClick}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              padding: '0.5rem 0.35rem',
-              marginTop: 6,
-              border: 'none',
-              background: cateringActive ? 'var(--color-primary-light)' : 'transparent',
-              borderLeft: cateringActive ? '3px solid var(--color-primary)' : '3px solid transparent',
-              borderTop: '1px solid var(--color-border, #E8E0D8)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              color: cateringActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              width: '100%',
-              fontWeight: 700,
-              fontSize: 11,
-            }}
           >
             <span
               className="cat-rail__thumb"
               aria-hidden="true"
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: 'hsl(32 55% 88%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-dark)',
+                width: 48, height: 48, borderRadius: 12, background: 'hsl(32 55% 88%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-dark)',
               }}
             >
               <PartyPopper size={18} strokeWidth={2.25} />
             </span>
             <span className="cat-rail__label">Events</span>
-            {cateringCount > 0 && (
-              <span style={{ fontSize: 10, opacity: 0.7 }}>{cateringCount}</span>
-            )}
           </button>
         )}
       </div>
