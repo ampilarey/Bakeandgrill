@@ -6,7 +6,7 @@ import { useLongPress } from "../hooks/useLongPress";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import { z } from "../theme";
 import {
-  autoTabKey, fitCategoryPills, flattenTabs, moveInList, newTabId, pillWidth, tabKey,
+  autoTabKey, fitPillRow, flattenTabs, moveInList, newTabId, tabKey,
   type QuickScope, type ScopedQuickTab,
 } from "../utils/quickTabs";
 import { QuickKeyPrompt, type QuickKeyAction } from "./QuickKeyPrompt";
@@ -300,6 +300,7 @@ function isFixedSpecialItem(item: Item): boolean {
   return !!item.special && !isPercentDiscountItem(item);
 }
 
+/** The sub-category row, which is short and may still scroll. */
 const pillRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: 6,
@@ -308,6 +309,66 @@ const pillRowStyle: React.CSSProperties = {
   flexShrink: 0,
   scrollbarWidth: 'thin',
 };
+
+/**
+ * The main strip. Owner, 2026-09-03: "keep fixed to the screen." It fits the
+ * width instead of scrolling sideways, so a tab is never off-screen with
+ * nothing to say so — what does not fit sits behind More.
+ */
+const stripRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  alignItems: 'center',
+  overflow: 'hidden',
+  paddingBottom: 4,
+  flexShrink: 0,
+};
+
+/** The pills between the pinned "All items" and "More". */
+const stripMiddleStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 6,
+  flex: 1,
+  minWidth: 0,
+  overflow: 'hidden',
+};
+
+/** One pill on the strip, wherever it ends up: on the row or behind More. */
+type StripPill = {
+  key: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  caret?: boolean;
+  muted?: boolean;
+  /** Set for a cashier's quick tab, which is drawn and held differently. */
+  quick?: { shared: boolean; onLongPress?: () => void; hint?: string };
+};
+
+function renderStripPill(p: StripPill, afterClick?: () => void) {
+  const onClick = afterClick ? () => { p.onClick(); afterClick(); } : p.onClick;
+
+  return p.quick ? (
+    <QuickTabPill
+      key={p.key}
+      label={p.label}
+      active={p.active}
+      shared={p.quick.shared}
+      onClick={onClick}
+      onLongPress={p.quick.onLongPress}
+      hint={p.quick.hint}
+    />
+  ) : (
+    <CategoryPill
+      key={p.key}
+      label={p.label}
+      active={p.active}
+      onClick={onClick}
+      caret={p.caret}
+      muted={p.muted}
+    />
+  );
+}
 
 function CategoryPill({
   label,
@@ -344,6 +405,9 @@ function CategoryPill({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
+        // The strip is clipped, not scrolled, so a pill must keep its size
+        // rather than squeeze its label (owner, 2026-09-03).
+        flexShrink: 0,
         minHeight: subtle || muted ? 30 : 36,
         boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
         transition: 'background 0.12s, box-shadow 0.12s',
@@ -404,6 +468,7 @@ function QuickTabPill({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 4,
+        flexShrink: 0,
         minHeight: 36,
         boxShadow: active ? '0 1px 3px rgba(212,129,58,0.35)' : 'none',
         transition: 'background 0.12s, box-shadow 0.12s',
@@ -847,86 +912,113 @@ export function MenuGrid({
 
       {/* Category + sale filters in one row (avoids duplicate "All items"). */}
       {(topLevelCategories.length > 0 || discountCount > 0 || specialCount > 0 || cateringCount > 0 || quickEnabled) && (() => {
-        // The cashier's own tabs come first: they built them. Popular-now
-        // follows, drawn from what sells at this hour. Then the categories,
-        // as many as fit, and More for the rest.
+        // Owner, 2026-09-03: the strip fits the screen instead of scrolling
+        // sideways — "All items" pinned at the left, "More" pinned at the
+        // right, and as much as fits in between. Anything that does not fit
+        // is behind More, so nothing is off-screen with no sign of it.
+        //
+        // Order is by how often a hand reaches for it: the cashier's own
+        // tabs, what is selling now, the categories, then the sale filters.
+        // "+ Tab" is a setup action, not a filter, so it always lives in
+        // More however much room there is.
         const canAddOwnTab = quickEnabled && myTabs.length < MAX_QUICK_TABS;
         const quickLabel = (t: ScopedQuickTab) => `★ ${t.name}${t.items.length > 0 ? ` (${t.items.length})` : ''}`;
-        const fixedLabels = [
-          ...allTabs.map(quickLabel),
-          ...(canAddOwnTab ? ['+ Tab'] : []),
-          ...(popularCount > 0 ? [`🔥 Now (${popularCount})`] : []),
-          'All items',
-          ...(discountCount > 0 ? [`% Off (${discountCount})`] : []),
-          ...(specialCount > 0 ? [`Specials (${specialCount})`] : []),
-          ...(cateringCount > 0 ? [`Events & Catering (${cateringCount})`] : []),
-        ];
-        // The More pill is as wide as its own label at the largest count it
-        // could show, so the row never has to scroll to reach it.
-        const visibleCount = fitCategoryPills(
-          pillRowWidth,
-          fixedLabels,
-          topLevelCategories.map((c) => c.name),
-          { moreWidth: pillWidth(`More (${topLevelCategories.length})`) },
-        );
-        let visibleCats = topLevelCategories.slice(0, visibleCount);
-        let hiddenCats = topLevelCategories.slice(visibleCount);
-        // The selected category always has a pill of its own, even if it
-        // would otherwise be behind More — it swaps in for the last one.
-        const activeHidden = hiddenCats.find((c) => c.id === activeTopLevelId);
-        if (activeHidden && visibleCats.length > 0) {
-          const bumped = visibleCats[visibleCats.length - 1];
-          visibleCats = [...visibleCats.slice(0, -1), activeHidden];
-          hiddenCats = [bumped, ...hiddenCats.filter((c) => c.id !== activeHidden.id)];
-        }
 
-        return (
-        <>
-        <div ref={pillRowRef} style={pillRowStyle} data-testid="pos-pill-row">
-          {allTabs.map((tab, index) => (
-            <QuickTabPill
-              key={tabKey(tab.scope, tab.id)}
-              label={quickLabel(tab)}
-              active={saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id)}
-              shared={tab.scope === 'shared'}
-              onClick={() => {
-                if (saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id)) {
-                  setActiveTabKey(null);
-                  setSaleFilter('all');
-                } else {
-                  openTab(tab);
-                }
-              }}
-              onLongPress={
+        const strip: StripPill[] = [
+          ...allTabs.map((tab, index) => ({
+            key: tabKey(tab.scope, tab.id),
+            label: quickLabel(tab),
+            active: saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id),
+            onClick: () => {
+              if (saleFilter === 'quick' && activeTabKey === tabKey(tab.scope, tab.id)) {
+                setActiveTabKey(null);
+                setSaleFilter('all');
+              } else {
+                openTab(tab);
+              }
+            },
+            quick: {
+              shared: tab.scope === 'shared',
+              onLongPress:
                 tab.scope === 'mine' || canManageSharedQuickKeys
                   ? () => setTabPrompt({
                     mode: 'edit', tab,
                     index: tabsOf(tab.scope).findIndex((t) => t.id === tab.id),
                     count: tabsOf(tab.scope).length,
                   })
-                  : undefined
-              }
-              hint={index === 0 && allTabs.length === 1 ? 'Hold to rename or move' : undefined}
-            />
-          ))}
-          {canAddOwnTab && (
-            <CategoryPill
-              label="+ Tab"
-              active={false}
-              subtle
-              onClick={() => setTabPrompt({ mode: 'new', scope: 'mine' })}
-            />
-          )}
-          {popularCount > 0 && (
-            <CategoryPill
-              label={`🔥 Now (${popularCount})`}
-              active={saleFilter === 'popular'}
-              onClick={() => {
-                setSelectedCategoryId(null);
-                setSaleFilter((f) => (f === 'popular' ? 'all' : 'popular'));
-              }}
-            />
-          )}
+                  : undefined,
+              hint: index === 0 && allTabs.length === 1 ? 'Hold to rename or move' : undefined,
+            },
+          })),
+          ...(popularCount > 0 ? [{
+            key: 'popular',
+            label: `🔥 Now (${popularCount})`,
+            active: saleFilter === 'popular',
+            onClick: () => {
+              setSelectedCategoryId(null);
+              setSaleFilter((f) => (f === 'popular' ? 'all' : 'popular'));
+            },
+          }] : []),
+          ...topLevelCategories.map((cat) => ({
+            key: `cat-${cat.id}`,
+            label: cat.name,
+            active: activeTopLevelId === cat.id && saleFilter === 'all',
+            onClick: () => {
+              setSelectedCategoryId(cat.id);
+              setSaleFilter('all');
+            },
+            caret: (childrenByParent.get(cat.id)?.length ?? 0) > 0,
+          })),
+          ...(discountCount > 0 ? [{
+            key: 'discount',
+            label: `% Off (${discountCount})`,
+            active: saleFilter === 'discount',
+            onClick: () => {
+              setSelectedCategoryId(null);
+              setSaleFilter((f) => (f === 'discount' ? 'all' : 'discount'));
+            },
+          }] : []),
+          ...(specialCount > 0 ? [{
+            key: 'special',
+            label: `Specials (${specialCount})`,
+            active: saleFilter === 'special',
+            onClick: () => {
+              setSelectedCategoryId(null);
+              setSaleFilter((f) => (f === 'special' ? 'all' : 'special'));
+            },
+          }] : []),
+          ...(cateringCount > 0 ? [{
+            key: 'catering',
+            label: `Events & Catering (${cateringCount})`,
+            active: saleFilter === 'catering',
+            muted: true,
+            onClick: () => {
+              // Clear the category so the list is catering ∧ current channel
+              // across the whole menu.
+              setSelectedCategoryId(null);
+              setSaleFilter((f) => (f === 'catering' ? 'all' : 'catering'));
+            },
+          }] : []),
+        ];
+
+        const fit = fitPillRow(pillRowWidth, 'All items', strip.map((p) => p.label), {
+          moreLabel: `More (${strip.length})`,
+        });
+        let visible = fit.visible.map((i) => strip[i]);
+        let hidden = fit.hidden.map((i) => strip[i]);
+        // Whatever is switched on keeps a pill of its own rather than hiding
+        // behind More: it swaps in for the last one that fits.
+        const activeHidden = hidden.find((p) => p.active);
+        if (activeHidden && visible.length > 0) {
+          const bumped = visible[visible.length - 1];
+          visible = [...visible.slice(0, -1), activeHidden];
+          hidden = [bumped, ...hidden.filter((p) => p.key !== activeHidden.key)];
+        }
+        const showMore = hidden.length > 0 || canAddOwnTab;
+
+        return (
+        <>
+        <div ref={pillRowRef} style={stripRowStyle} data-testid="pos-pill-row">
           <CategoryPill
             label="All items"
             active={selectedCategoryId == null && saleFilter === 'all'}
@@ -935,61 +1027,19 @@ export function MenuGrid({
               setSaleFilter('all');
             }}
           />
-          {visibleCats.map((cat) => (
+          <div style={stripMiddleStyle}>
+            {visible.map((p) => renderStripPill(p))}
+          </div>
+          {showMore && (
             <CategoryPill
-              key={cat.id}
-              label={cat.name}
-              active={activeTopLevelId === cat.id && saleFilter === 'all'}
-              onClick={() => {
-                setSelectedCategoryId(cat.id);
-                setSaleFilter('all');
-              }}
-              caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
-            />
-          ))}
-          {hiddenCats.length > 0 && (
-            <CategoryPill
-              label={`More (${hiddenCats.length})`}
+              label={hidden.length > 0 ? `More (${hidden.length})` : 'More'}
               active={moreOpen}
               onClick={() => setMoreOpen((o) => !o)}
               caret
             />
           )}
-          {discountCount > 0 && (
-            <CategoryPill
-              label={`% Off (${discountCount})`}
-              active={saleFilter === 'discount'}
-              onClick={() => {
-                setSelectedCategoryId(null);
-                setSaleFilter((f) => (f === 'discount' ? 'all' : 'discount'));
-              }}
-            />
-          )}
-          {specialCount > 0 && (
-            <CategoryPill
-              label={`Specials (${specialCount})`}
-              active={saleFilter === 'special'}
-              onClick={() => {
-                setSelectedCategoryId(null);
-                setSaleFilter((f) => (f === 'special' ? 'all' : 'special'));
-              }}
-            />
-          )}
-          {cateringCount > 0 && (
-            <CategoryPill
-              label={`Events & Catering (${cateringCount})`}
-              active={saleFilter === 'catering'}
-              muted
-              onClick={() => {
-                // Distinct end-of-strip tab: clear category so the list is
-                // catering∧current-channel items from the whole menu.
-                setSelectedCategoryId(null);
-                setSaleFilter((f) => (f === 'catering' ? 'all' : 'catering'));
-              }}
-            />
-          )}
         </div>
-        {moreOpen && hiddenCats.length > 0 && (
+        {moreOpen && showMore && (
           <div
             role="group"
             aria-label="More categories"
@@ -1000,19 +1050,18 @@ export function MenuGrid({
               background: C.bg, border: `1px solid ${C.border}`,
             }}
           >
-            {hiddenCats.map((cat) => (
+            {hidden.map((p) => renderStripPill(p, () => setMoreOpen(false)))}
+            {canAddOwnTab && (
               <CategoryPill
-                key={cat.id}
-                label={cat.name}
-                active={activeTopLevelId === cat.id && saleFilter === 'all'}
+                label="+ Tab"
+                active={false}
+                subtle
                 onClick={() => {
-                  setSelectedCategoryId(cat.id);
-                  setSaleFilter('all');
                   setMoreOpen(false);
+                  setTabPrompt({ mode: 'new', scope: 'mine' });
                 }}
-                caret={(childrenByParent.get(cat.id)?.length ?? 0) > 0}
               />
-            ))}
+            )}
           </div>
         )}
         </>

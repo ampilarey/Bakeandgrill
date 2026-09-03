@@ -9,10 +9,12 @@
  *
  *   - each Quick tab is a pill in front of the categories, own tabs first
  *   - a tab with hours opens itself when they start
- *   - hold a tab pill to rename, set hours, move or delete; "+ Tab" adds one
+ *   - hold a tab pill to rename, set hours, move or delete; "+ Tab", in More,
+ *     adds one
  *   - hold a tile to put it on a tab, move it, or take it off; a tap rings up
  *   - "🔥 Now" lists what sells at this hour, only when the server sent a list
- *   - categories that do not fit the row go behind More
+ *   - the strip fits the screen: "All items" pinned left, "More" pinned
+ *     right, and whatever is over the line behind More
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -106,8 +108,11 @@ describe("Quick tabs in the strip", () => {
     renderGrid({ quickLayout: { shared: [tab("s1", "House", [tea.id])], mine: [tab("m1", "Morning", [bajiya.id, gulha.id]), tab("m2", "Regulars", [])] } });
 
     expect(pillLabels()).toEqual(["★ Morning (2)", "★ Regulars", "★ House (1)"]);
+    // "All items" is pinned at the left edge; the tabs come first of the rest,
+    // ahead of the categories.
     const all = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(all.indexOf("★ Morning (2)")).toBeLessThan(all.indexOf("All items"));
+    expect(all[0]).toBe("All items");
+    expect(all.indexOf("★ Morning (2)")).toBeLessThan(all.indexOf("Food"));
     expect(screen.getByRole("button", { name: "★ House (1)" })).toHaveAttribute("data-shared", "true");
   });
 
@@ -207,7 +212,8 @@ describe("Editing a tab", () => {
   it("+ Tab creates a tab of my own and opens it", () => {
     const { onUpdateQuickLayout } = renderGrid({ quickLayout: { shared: [], mine: [] } });
 
-    fireEvent.click(pill(/\+ Tab/));
+    fireEvent.click(pill(/^More/));
+    fireEvent.click(within(screen.getByTestId("pos-more-categories")).getByRole("button", { name: /\+ Tab/ }));
     const prompt = screen.getByTestId("quick-tab-prompt");
     fireEvent.change(within(prompt).getByLabelText("Name"), { target: { value: "Tea time" } });
     fireEvent.click(within(prompt).getByRole("button", { name: "Create tab" }));
@@ -219,7 +225,8 @@ describe("Editing a tab", () => {
     vi.useRealTimers();
     const { onCopyQuickLayout, loadQuickLayoutSources } = renderGrid({ quickLayout: { shared: [], mine: [] } });
 
-    fireEvent.click(pill(/\+ Tab/));
+    fireEvent.click(pill(/^More/));
+    fireEvent.click(within(screen.getByTestId("pos-more-categories")).getByRole("button", { name: /\+ Tab/ }));
     const copy = await screen.findByTestId("quick-tab-copy");
     expect(loadQuickLayoutSources).toHaveBeenCalled();
     fireEvent.click(within(copy).getByRole("button", { name: /Copy Hassan’s tabs/ }));
@@ -304,10 +311,32 @@ describe("Popular-now tab", () => {
   });
 });
 
-describe("More categories", () => {
-  it("shows every category when the row width is unknown", () => {
+/**
+ * Owner, 2026-09-03: "keep fixed to the screen — left side All, right side
+ * More, in between tabs to fit the screen. + Tab also in More."
+ */
+describe("More", () => {
+  it("hides nothing when the row width is unknown, and counts what it holds", () => {
     renderGrid();
-    expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Drinks" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Food" })).toBeInTheDocument();
+    // Nothing is over the line, so More carries no count — it is only the
+    // home of "+ Tab".
+    expect(pill(/^More/)).toHaveTextContent(/^More/);
+    expect(pill(/^More/)).not.toHaveTextContent(/\(/);
+  });
+
+  it("keeps + Tab inside More however much room there is", () => {
+    renderGrid();
+    expect(screen.queryByRole("button", { name: /\+ Tab/ })).toBeNull();
+
+    fireEvent.click(pill(/^More/));
+    const more = screen.getByTestId("pos-more-categories");
+    expect(within(more).getByRole("button", { name: /\+ Tab/ })).toBeInTheDocument();
+  });
+
+  it("has no More at all on a till without Quick tabs and with room to spare", () => {
+    renderGrid({ quickLayout: undefined, onUpdateQuickLayout: undefined });
+    expect(screen.queryByRole("button", { name: /^More/ })).toBeNull();
   });
 });

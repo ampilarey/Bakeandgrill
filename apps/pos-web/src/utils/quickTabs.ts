@@ -68,39 +68,53 @@ export function moveInList<T>(list: T[], from: number, delta: -1 | 1): T[] {
 }
 
 /**
- * How many category pills fit on one row beside the fixed pills, leaving
- * room for a "More" pill when not all of them do.
+ * Which pills fit on one line, between a pill pinned at the left and "More"
+ * pinned at the right.
  *
- * Owner, 2026-09-02: "show all other actual categories when clicked more if
- * there is no space". Widths are estimates from label length, which is what
- * a row of same-style pills comes to within a few pixels; the alternative,
- * measuring after render, costs a second layout pass on every menu change.
+ * Owner, 2026-09-03: "keep fixed to the screen — left side All, right side
+ * More, in between tabs to fit the screen." The strip used to scroll
+ * sideways, so a tab could be off-screen with nothing to say so; now
+ * everything that does not fit is reachable in one place.
  *
- * Returns how many categories to show. `rowWidth` 0 or less means the
- * width is unknown (first paint, tests), and everything is shown.
+ * Widths are estimated from label length, as {@see pillWidth} explains, so a
+ * safety margin is held back: over-estimating costs an empty gap, while
+ * under-estimating would clip a pill with no way to scroll to it.
+ *
+ * `rowWidth` 0 or less means the width is not known yet (first paint, tests)
+ * and everything is shown.
  */
-export function fitCategoryPills(
+export function fitPillRow(
   rowWidth: number,
-  fixedLabels: string[],
-  categoryLabels: string[],
-  opts: { gap?: number; moreWidth?: number } = {},
-): number {
-  if (rowWidth <= 0 || categoryLabels.length === 0) return categoryLabels.length;
+  pinnedLabel: string,
+  labels: string[],
+  opts: { gap?: number; moreLabel?: string; safety?: number } = {},
+): { visible: number[]; hidden: number[] } {
+  const all = labels.map((_, i) => i);
+  if (rowWidth <= 0) return { visible: all, hidden: [] };
+
   const gap = opts.gap ?? 6;
-  const more = opts.moreWidth ?? 92;
+  const room = rowWidth - (opts.safety ?? 10);
+  const widths = labels.map(pillWidth);
+  let used = pillWidth(pinnedLabel);
 
-  let used = fixedLabels.reduce((w, label) => w + pillWidth(label) + gap, 0);
-  const widths = categoryLabels.map(pillWidth);
-  const total = widths.reduce((w, x) => w + x + gap, 0);
-  if (used + total - gap <= rowWidth) return categoryLabels.length;
-
-  let count = 0;
-  for (const w of widths) {
-    if (used + w + gap + more > rowWidth) break;
-    used += w + gap;
-    count += 1;
+  if (used + widths.reduce((w, x) => w + gap + x, 0) <= room) {
+    return { visible: all, hidden: [] };
   }
-  return count;
+
+  const more = pillWidth(opts.moreLabel ?? `More (${labels.length})`);
+  const visible: number[] = [];
+  const hidden: number[] = [];
+  for (let i = 0; i < labels.length; i += 1) {
+    // Once one pill is over the line the rest follow it, so the strip keeps
+    // its order instead of pulling a short label forward past a long one.
+    if (hidden.length === 0 && used + gap + widths[i] + gap + more <= room) {
+      used += gap + widths[i];
+      visible.push(i);
+    } else {
+      hidden.push(i);
+    }
+  }
+  return { visible, hidden };
 }
 
 /** 13px bold text at roughly 7.4px a character, 16px padding each side, 1px border each side. */

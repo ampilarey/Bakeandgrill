@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoTabKey, fitCategoryPills, flattenTabs, moveInList, newTabId, tabOpenAt } from "./quickTabs";
+import { autoTabKey, fitPillRow, flattenTabs, moveInList, newTabId, pillWidth, tabOpenAt } from "./quickTabs";
 
 const tab = (id: string, from: string | null = null, to: string | null = null) =>
   ({ id, name: id, items: [], from, to });
@@ -54,27 +54,41 @@ describe("newTabId / moveInList", () => {
   });
 });
 
-describe("fitCategoryPills", () => {
-  const cats = ["Drinks", "Hedhika", "Breakfast", "Grill", "Desserts", "Events & Catering"];
+/**
+ * Owner, 2026-09-03: "keep fixed to the screen — left side All, right side
+ * More, in between tabs to fit the screen."
+ */
+describe("fitPillRow", () => {
+  const pills = ["Drinks", "Hedhika", "Breakfast", "Grill", "Desserts", "Events & Catering"];
 
   it("shows everything when the width is unknown", () => {
-    expect(fitCategoryPills(0, ["All items"], cats)).toBe(cats.length);
+    expect(fitPillRow(0, "All items", pills).visible).toHaveLength(pills.length);
+    expect(fitPillRow(0, "All items", pills).hidden).toEqual([]);
   });
 
   it("shows everything when it all fits", () => {
-    expect(fitCategoryPills(2000, ["All items"], cats)).toBe(cats.length);
+    expect(fitPillRow(2000, "All items", pills).hidden).toEqual([]);
   });
 
-  it("keeps room for the More pill once something has to hide", () => {
-    // Enough for All items and two or three categories, not six.
-    const n = fitCategoryPills(420, ["All items"], cats);
-    expect(n).toBeGreaterThan(0);
-    expect(n).toBeLessThan(cats.length);
+  it("keeps room for the pinned pills once something has to hide", () => {
+    const { visible, hidden } = fitPillRow(420, "All items", pills);
+    expect(visible.length).toBeGreaterThan(0);
+    expect(hidden.length).toBeGreaterThan(0);
+    // Nothing is lost and nothing is listed twice.
+    expect([...visible, ...hidden].sort((a, b) => a - b)).toEqual(pills.map((_, i) => i));
   });
 
-  it("gives the fixed pills their room first", () => {
-    const withTabs = fitCategoryPills(420, ["★ Morning", "★ Tea time", "🔥 Now (8)", "All items"], cats);
-    const without = fitCategoryPills(420, ["All items"], cats);
-    expect(withTabs).toBeLessThan(without);
+  it("keeps the strip in order — a short label never jumps a long one", () => {
+    const { visible, hidden } = fitPillRow(420, "All items", ["Grill", "A very long category name here", "Tea"]);
+    expect(visible).toEqual([0]);
+    expect(hidden).toEqual([1, 2]);
+  });
+
+  it("holds back a safety margin so a pill is never clipped", () => {
+    // A width that fits the estimate exactly must still not fill the row.
+    const one = [pills[0]];
+    const exact = pillWidth("All items") + 6 + pillWidth(one[0]);
+    expect(fitPillRow(exact, "All items", one).hidden).toHaveLength(1);
+    expect(fitPillRow(exact + 20, "All items", one).hidden).toHaveLength(0);
   });
 });
