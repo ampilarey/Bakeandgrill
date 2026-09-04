@@ -62,6 +62,11 @@ html, body, #root {
 .pos-shell {
   height: 100vh;
   height: 100dvh;
+  /* The measured height wins: iOS resolves dvh against the large viewport on a
+   * fresh load and only corrects on a scroll, which laid the shell out taller
+   * than the screen and put the taps a row out of step with the paint.
+   * See posViewportHeight.ts — dvh above stays the fallback. */
+  height: var(--pos-vh, 100dvh);
   overflow: hidden;
   box-sizing: border-box;
   padding-bottom: var(--pos-safe-bottom);
@@ -787,6 +792,8 @@ html, body, #root {
     width: 100%;
     height: 100dvh;
     max-height: 100dvh;
+    height: var(--pos-vh, 100dvh);
+    max-height: var(--pos-vh, 100dvh);
     border-radius: 0;
     display: flex;
     flex-direction: column;
@@ -2160,6 +2167,8 @@ html, body, #root {
     max-width: none;
     height: 100dvh;
     max-height: 100dvh;
+    height: var(--pos-vh, 100dvh);
+    max-height: var(--pos-vh, 100dvh);
     border-radius: 0;
     margin: 0;
   }
@@ -2367,6 +2376,8 @@ html, body, #root {
     max-width: none;
     height: 100dvh;
     max-height: 100dvh;
+    height: var(--pos-vh, 100dvh);
+    max-height: var(--pos-vh, 100dvh);
     border-radius: 0;
     margin: 0;
   }
@@ -2414,6 +2425,8 @@ html, body, #root {
     max-width: none;
     height: 100dvh;
     max-height: 100dvh;
+    height: var(--pos-vh, 100dvh);
+    max-height: var(--pos-vh, 100dvh);
     border-radius: 0;
     margin: 0;
     display: grid;

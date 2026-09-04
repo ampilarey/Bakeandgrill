@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './ErrorBoundary';
+import { startPosViewportHeight } from './posViewportHeight';
 import '@shared/styles/fonts.css';
 import './index.css';
 
@@ -16,6 +17,10 @@ if (sentryDsn) {
     });
   });
 }
+
+// Before first paint: iOS reports the wrong dvh on a fresh load, which is
+// what puts the Charge bar in the wrong place and the taps one row out.
+startPosViewportHeight();
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Root element #root not found in DOM');
