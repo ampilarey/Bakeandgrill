@@ -654,7 +654,14 @@ export function ChargeOverlay({
       + `NOW        tender ${box(".pos-charge-tenders")} · notes ${box(".pos-charge-quick-grid")} `
       + `· bar ${box("[data-testid=\"charge-tender-anomaly\"]")}\n`
       + `under it now "${underFinger}" · viewport ${window.innerWidth}×${window.innerHeight} `
-      + `· scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)}`,
+      + `· column scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)}\n`
+      // The page-level numbers, never captured before this. If the page or
+      // the visual viewport is offset from the layout viewport, this is where
+      // it shows — and it is the one place the earlier readouts never looked.
+      + `PAGE       scrollY ${Math.round(window.scrollY)} · vv top ${Math.round(window.visualViewport?.offsetTop ?? -1)} `
+      + `· vv h ${Math.round(window.visualViewport?.height ?? -1)} · inner h ${window.innerHeight} `
+      + `· --pos-vh ${document.documentElement.style.getPropertyValue("--pos-vh") || "unset"} `
+      + `· focus ${document.activeElement?.tagName.toLowerCase() ?? "none"}`,
     );
   }, [method]);
 
@@ -797,8 +804,22 @@ export function ChargeOverlay({
               {method === "cash" && !fullyCovered && isPhoneCharge && (
                 <div className="pos-charge-received-card">
                   <p className="pos-charge-received-label">Received</p>
+                  {/*
+                    * No autoFocus on the phone. This field is driven by the
+                    * numpad below it and shows no keyboard (inputmode="none"),
+                    * so focus bought nothing but the orange ring — and on iOS
+                    * a programmatic focus() on an input inside a fixed overlay
+                    * scrolls the visual viewport to "bring it into view",
+                    * keyboard or not. After a reload, with the toolbar up and
+                    * the page holding that much slack, that scroll is real;
+                    * the overlay is then painted against one viewport and
+                    * hit-tested against the other, by the amount scrolled,
+                    * until a finger scroll makes Safari reconcile them. Owner,
+                    * 2026-09-04: "if I don't bring the bar down same issue".
+                    * The iPad keeps its autoFocus in the tender column below:
+                    * no toolbar, no slack, and a keyboard user may be on it.
+                    */}
                   <CashInput
-                    autoFocus
                     value={received}
                     onChange={(v) => {
                       setSelectedNotes([]);

@@ -48,9 +48,23 @@ export function useFocusTrap(
     // Initial focus on the first focusable element. If a child
     // already auto-focused itself (autoFocus prop), leave it
     // alone — overriding fights the React render.
+    //
+    // Except a text field on a touch screen. iOS answers a programmatic
+    // focus() on an input inside a fixed dialog by scrolling the visual
+    // viewport to bring it into view — with no keyboard coming, since the
+    // POS fields are inputmode="none" — and the dialog is then painted
+    // against one viewport and hit-tested against the other until the
+    // cashier scrolls by hand. A keyboard user on a tablet loses nothing:
+    // the first Tab still lands inside the dialog, because the trap below
+    // wraps Tab from "nothing focused" onto the first item.
     if (!root.contains(document.activeElement)) {
       const first = focusable()[0];
-      first?.focus();
+      const isField = first instanceof HTMLInputElement
+        || first instanceof HTMLTextAreaElement
+        || first instanceof HTMLSelectElement;
+      const touch = typeof window.matchMedia === "function"
+        && window.matchMedia("(pointer: coarse)").matches;
+      if (first && !(isField && touch)) first.focus();
     }
 
     const onKey = (e: KeyboardEvent) => {
