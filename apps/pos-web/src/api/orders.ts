@@ -480,6 +480,12 @@ export async function splitOpenTicket(
 export async function fetchReceipts(params: {
   q?: string;
   date?: string;
+  /** Business-day range (Y-m-d, inclusive). Use instead of `date` when
+   *  looking back over more than one day — the POS refund picker's
+   *  "last 7 / 30 days / custom" scopes. Bounds are Maldives business
+   *  days server-side, same as `date`. */
+  date_from?: string;
+  date_to?: string;
   current_shift?: boolean;
   held_only?: boolean;
   /** Held OR fired-but-unpaid. Legacy — kept for callers that

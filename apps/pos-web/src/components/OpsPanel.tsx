@@ -804,6 +804,160 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
   );
 }
 
+/**
+ * The invoice behind the order being refunded.
+ *
+ * Owner, 2026-09-04: "need option to see invoice details, in pos, operation,
+ * refund." Refunding blind meant trusting the customer's account of what they
+ * bought; the lines, the money breakdown and what has already been refunded
+ * are what let a cashier check it.
+ *
+ * Everything here comes from the row the picker already loaded — the receipts
+ * list eager-loads items, payments and refunds — so opening this costs no
+ * request and works with a dropped connection.
+ */
+function InvoiceDetails({ order }: {
+  order: {
+    order_number: string;
+    created_at: string;
+    customer_name: string | null;
+    cashier_name: string | null;
+    type: string | null;
+    total: number;
+    subtotal: number;
+    discount: number;
+    tax: number;
+    serviceCharge: number;
+    serviceChargeLabel: string | null;
+    packagingFee: number;
+    deliveryFee: number;
+    items: Array<{
+      id: number; name: string; variant: string | null; notes: string | null;
+      quantity: number; unitPrice: number; lineTotal: number;
+    }>;
+    payments: Array<{ id: number; method: string; amount: number }>;
+    refundedLaar: number;
+    pendingRefundLaar: number;
+  };
+}) {
+  const mvr = (n: number) => `MVR ${n.toFixed(2)}`;
+  const when = (() => {
+    try {
+      return new Date(order.created_at).toLocaleString(undefined, {
+        day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+      });
+    } catch {
+      return order.created_at;
+    }
+  })();
+  const remaining = Math.max(
+    0,
+    Math.round(order.total * 100) - order.refundedLaar - order.pendingRefundLaar,
+  ) / 100;
+
+  const Line = ({ label, value, strong = false, tone }: {
+    label: string; value: string; strong?: boolean; tone?: string;
+  }) => (
+    <div style={{
+      display: "flex", justifyContent: "space-between", gap: 12,
+      padding: "3px 0", fontSize: strong ? 13 : 12,
+      fontWeight: strong ? 800 : 500, color: tone ?? (strong ? C.text : C.muted),
+    }}>
+      <span>{label}</span>
+      <span style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div
+      data-testid="refund-invoice"
+      style={{
+        marginTop: 8, padding: "10px 12px", borderRadius: 8,
+        background: "#fff", border: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>
+        Invoice #{order.order_number}
+      </div>
+      <div style={{ fontSize: 11, color: C.subtle, marginBottom: 8 }}>
+        {when}
+        {order.type ? ` · ${order.type.replace(/_/g, " ")}` : ""}
+        {order.customer_name ? ` · ${order.customer_name}` : ""}
+        {order.cashier_name ? ` · rung by ${order.cashier_name}` : ""}
+      </div>
+
+      {order.items.length === 0 ? (
+        <div style={{ fontSize: 12, color: C.muted, paddingBottom: 6 }}>
+          No line items recorded on this order.
+        </div>
+      ) : (
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 6 }}>
+          {order.items.map((it) => (
+            <div key={it.id} style={{ display: "flex", gap: 10, padding: "4px 0" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
+                  {it.quantity} × {it.name}
+                  {it.variant ? <span style={{ fontWeight: 500, color: C.muted }}> · {it.variant}</span> : null}
+                </div>
+                <div style={{ fontSize: 11, color: C.subtle }}>
+                  {mvr(it.unitPrice)} each
+                  {it.notes ? ` · ${it.notes}` : ""}
+                </div>
+              </div>
+              <div style={{
+                fontSize: 12, fontWeight: 700, color: C.text,
+                whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums",
+              }}>
+                {mvr(it.lineTotal)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 6, paddingTop: 6 }}>
+        <Line label="Subtotal" value={mvr(order.subtotal)} />
+        {order.discount > 0 && <Line label="Discount" value={`− ${mvr(order.discount)}`} />}
+        {order.tax > 0 && <Line label="GST" value={mvr(order.tax)} />}
+        {order.serviceCharge > 0 && (
+          <Line label={order.serviceChargeLabel || "Service charge"} value={mvr(order.serviceCharge)} />
+        )}
+        {order.packagingFee > 0 && <Line label="Packaging" value={mvr(order.packagingFee)} />}
+        {order.deliveryFee > 0 && <Line label="Delivery" value={mvr(order.deliveryFee)} />}
+        <Line label="Total" value={mvr(order.total)} strong />
+      </div>
+
+      {order.payments.length > 0 && (
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 6, paddingTop: 6 }}>
+          {order.payments.map((p) => (
+            <Line
+              key={p.id}
+              label={`Paid · ${p.method.replace(/_/g, " ")}`}
+              value={mvr(p.amount)}
+            />
+          ))}
+        </div>
+      )}
+
+      {(order.refundedLaar > 0 || order.pendingRefundLaar > 0) && (
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 6, paddingTop: 6 }}>
+          {order.refundedLaar > 0 && (
+            <Line label="Already refunded" value={`− ${mvr(order.refundedLaar / 100)}`} tone={C.warn} />
+          )}
+          {order.pendingRefundLaar > 0 && (
+            <Line
+              label="Refund awaiting approval"
+              value={`− ${mvr(order.pendingRefundLaar / 100)}`}
+              tone={C.warn}
+            />
+          )}
+          <Line label="Still refundable" value={mvr(remaining)} strong tone={remaining > 0 ? C.text : C.danger} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean }) {
   const statusOptions = [
     { value: "", label: "All statuses" },
@@ -831,6 +985,33 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
     created_at: string;
     customer_name: string | null;
     payment_status?: string | null;
+    /* The invoice itself. All of this already travels with each row of the
+     * receipts list — items, payments and refunds are eager-loaded there — so
+     * showing the invoice costs no extra request. Owner, 2026-09-04: "need
+     * option to see invoice details". */
+    cashier_name: string | null;
+    type: string | null;
+    subtotal: number;
+    discount: number;
+    tax: number;
+    serviceCharge: number;
+    serviceChargeLabel: string | null;
+    packagingFee: number;
+    deliveryFee: number;
+    items: Array<{
+      id: number;
+      name: string;
+      variant: string | null;
+      notes: string | null;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+    }>;
+    payments: Array<{ id: number; method: string; amount: number }>;
+    /** Already refunded — anything pending, approved or processed. Money the
+     *  customer has been promised, so it must not be promised twice. */
+    refundedLaar: number;
+    pendingRefundLaar: number;
   }>>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
@@ -853,6 +1034,43 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
   const [orderScope, setOrderScope] = useState<"mine" | "all">(canApprove ? "all" : "mine");
   const mineOnly = !canApprove || orderScope === "mine";
 
+  /*
+   * How far back the picker looks.
+   *
+   * Owner, 2026-09-04: "now see the same day invoice only, add option to see
+   * his older sales also." A complaint often arrives a day or two after the
+   * sale, and until now the only way to refund one of those was to type the
+   * internal order ID, which nobody has to hand.
+   *
+   * Today stays the default because it is the common case and the shortest
+   * list. The server takes a business-day range, so these are whole local
+   * days, not a rolling 24 hours.
+   */
+  const [dateScope, setDateScope] = useState<"today" | "7d" | "30d" | "custom">("today");
+  const [customFrom, setCustomFrom] = useState(localDateYmd());
+  const [customTo, setCustomTo] = useState(localDateYmd());
+
+  const dateParams = useMemo(() => {
+    const today = localDateYmd();
+    const daysAgo = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return localDateYmd(d);
+    };
+    if (dateScope === "today") return { date: today };
+    if (dateScope === "7d") return { date_from: daysAgo(6), date_to: today };
+    if (dateScope === "30d") return { date_from: daysAgo(29), date_to: today };
+    // A backwards custom range would return nothing and read as "no sales",
+    // so swap the ends rather than showing an empty list.
+    const from = customFrom <= customTo ? customFrom : customTo;
+    const to = customFrom <= customTo ? customTo : customFrom;
+    return { date_from: from, date_to: to };
+  }, [dateScope, customFrom, customTo]);
+
+  /** The order behind the picked row, kept so the invoice can be shown. */
+  const [pickedOrder, setPickedOrder] = useState<(typeof orderCandidates)[number] | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedOrderQuery(orderQuery.trim()), 250);
     return () => window.clearTimeout(id);
@@ -865,23 +1083,58 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
     void (async () => {
       try {
         const res = await fetchReceipts({
-          date: localDateYmd(),
+          ...dateParams,
           ...(debouncedOrderQuery ? { q: debouncedOrderQuery } : {}),
           ...(mineOnly ? { created_by_me: true } : {}),
-          per_page: 25,
+          // A day's sales fit in 25; a month's do not. The search box is what
+          // finds one further back than this.
+          per_page: dateScope === "today" ? 25 : 100,
           slim: true,
         });
         if (cancelled) return;
+        const laari = (v: unknown) => Math.round((Number(v) || 0) * 100);
         const rows = (res.data ?? [])
           .filter((r) => r.payment_status !== "unpaid")
-          .map((r) => ({
-            id: r.id,
-            order_number: r.order_number,
-            total: Number(r.total) || 0,
-            created_at: r.created_at,
-            customer_name: r.customer?.name ?? null,
-            payment_status: r.payment_status ?? null,
-          }));
+          .map((r) => {
+            const refunds = r.refunds ?? [];
+            const sumWhere = (statuses: string[]) => refunds
+              .filter((x) => statuses.includes(String(x.status)))
+              .reduce((sum, x) => sum + laari(x.amount), 0);
+            return {
+              id: r.id,
+              order_number: r.order_number,
+              total: Number(r.total) || 0,
+              created_at: r.created_at,
+              customer_name: r.customer?.name ?? null,
+              payment_status: r.payment_status ?? null,
+              cashier_name: r.user?.name ?? null,
+              type: r.type ?? null,
+              subtotal: Number(r.subtotal) || 0,
+              discount: Number(r.discount_amount) || 0,
+              tax: Number(r.tax_amount) || 0,
+              serviceCharge: Number(r.service_charge_amount) || 0,
+              serviceChargeLabel: r.service_charge_label ?? null,
+              packagingFee: Number(r.packaging_fee) || 0,
+              deliveryFee: Number(r.delivery_fee) || 0,
+              items: (r.items ?? []).map((it) => ({
+                id: it.id,
+                name: it.item_name,
+                variant: it.variant_name ?? null,
+                notes: it.notes ?? null,
+                quantity: Number(it.quantity) || 0,
+                unitPrice: Number(it.unit_price) || 0,
+                lineTotal: Number(it.total_price) || 0,
+              })),
+              payments: (r.payments ?? [])
+                .filter((p) => !p.status || ["completed", "paid", "success"].includes(String(p.status)))
+                .map((p) => ({ id: p.id, method: String(p.method), amount: Number(p.amount) || 0 })),
+              // Approved and processed are money gone; pending is money already
+              // promised to the customer and awaiting an authoriser. Neither may
+              // be offered twice, so both count against what is left.
+              refundedLaar: sumWhere(["approved", "processed"]),
+              pendingRefundLaar: sumWhere(["pending"]),
+            };
+          });
         setOrderCandidates(rows);
       } catch (e) {
         if (!cancelled) {
@@ -895,12 +1148,21 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
     return () => {
       cancelled = true;
     };
-  }, [debouncedOrderQuery, mineOnly]);
+  }, [debouncedOrderQuery, mineOnly, dateParams, dateScope]);
 
   const pickOrder = (row: (typeof orderCandidates)[number]) => {
     ops.setRefundOrderId(String(row.id));
-    ops.setRefundAmount(row.total > 0 ? row.total.toFixed(2) : "");
+    // Prefill what is still refundable, not the whole ticket: a second refund
+    // on a part-refunded order would be rejected by the server's cap, and the
+    // cashier would have no way to see why from this screen.
+    const remaining = Math.max(
+      0,
+      Math.round(row.total * 100) - row.refundedLaar - row.pendingRefundLaar,
+    ) / 100;
+    ops.setRefundAmount(remaining > 0 ? remaining.toFixed(2) : "");
     setPickedOrderLabel(`#${row.order_number}`);
+    setPickedOrder(row);
+    setShowInvoice(false);
     ops.setOpsMessage("");
   };
 
@@ -908,6 +1170,8 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
     ops.setRefundOrderId("");
     ops.setRefundAmount("");
     setPickedOrderLabel(null);
+    setPickedOrder(null);
+    setShowInvoice(false);
   };
 
   const handleRefundIntent = () => {
@@ -956,17 +1220,14 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
         title="Request refund"
         help={
           canApprove
-            ? "Pick a sale from today’s list — every till, or just yours. Search by order #, customer, or phone. Amount is in MVR. Walk-in phone is only used when the order has no stored number."
-            : "Pick one of your own sales from today’s list — no need to type the order number. Amount is in MVR. Walk-in phone is only used when the order has no stored number."
+            ? "Pick a sale from the list — every till, or just yours, today or further back. Search by order #, customer, or phone. Tap View invoice to check the lines before requesting. Amount is in MVR."
+            : "Pick one of your own sales from the list — today or further back, no need to type the order number. Tap View invoice to check the lines before requesting. Amount is in MVR."
         }
       >
         {pickedOrderLabel && ops.refundOrderId ? (
           <div
             data-testid="refund-picked-order"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
               marginBottom: 10,
               padding: "10px 12px",
               borderRadius: 8,
@@ -974,6 +1235,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
               border: "1px solid #86EFAC",
             }}
           >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>
                 {pickedOrderLabel}
@@ -999,6 +1261,35 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
             >
               ×
             </button>
+            </div>
+            {pickedOrder && (
+              <>
+                <button
+                  type="button"
+                  data-testid="refund-invoice-toggle"
+                  onClick={() => setShowInvoice((v) => !v)}
+                  aria-expanded={showInvoice}
+                  style={{
+                    marginTop: 8,
+                    minHeight: 40,
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: `1px solid ${C.border}`,
+                    background: "#fff",
+                    color: C.text,
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    touchAction: "manipulation",
+                  }}
+                >
+                  {showInvoice ? "Hide invoice" : "View invoice"}
+                </button>
+                {showInvoice && <InvoiceDetails order={pickedOrder} />}
+              </>
+            )}
           </div>
         ) : (
           <div style={{ marginBottom: 10 }}>
@@ -1008,7 +1299,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
                 aria-label="Whose sales to show"
                 style={{ display: "flex", gap: 6, marginBottom: 8 }}
               >
-                {([["all", "All sales today"], ["mine", "My sales"]] as const).map(([scope, label]) => {
+                {([["all", "All sales"], ["mine", "My sales"]] as const).map(([scope, label]) => {
                   const active = orderScope === scope;
                   return (
                     <button
@@ -1037,10 +1328,74 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
                 })}
               </div>
             )}
+            <div
+              role="group"
+              aria-label="How far back to look"
+              style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}
+            >
+              {([
+                ["today", "Today"],
+                ["7d", "Last 7 days"],
+                ["30d", "Last 30 days"],
+                ["custom", "Pick dates"],
+              ] as const).map(([scope, label]) => {
+                const active = dateScope === scope;
+                return (
+                  <button
+                    key={scope}
+                    type="button"
+                    onClick={() => setDateScope(scope)}
+                    aria-pressed={active}
+                    style={{
+                      flex: "1 1 auto",
+                      minHeight: 40,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${active ? C.accent : C.border}`,
+                      background: active ? "#FFF7ED" : "#fff",
+                      color: active ? C.accentDark : C.text,
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {dateScope === "custom" && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                <label style={{ flex: 1, fontSize: 11, color: C.muted }}>
+                  From
+                  <input
+                    type="date"
+                    value={customFrom}
+                    max={localDateYmd()}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    aria-label="Sales from date"
+                    style={{ ...fieldStyle, width: "100%", marginTop: 2 }}
+                  />
+                </label>
+                <label style={{ flex: 1, fontSize: 11, color: C.muted }}>
+                  To
+                  <input
+                    type="date"
+                    value={customTo}
+                    max={localDateYmd()}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    aria-label="Sales to date"
+                    style={{ ...fieldStyle, width: "100%", marginTop: 2 }}
+                  />
+                </label>
+              </div>
+            )}
             <input
               value={orderQuery}
               onChange={(e) => setOrderQuery(e.target.value)}
-              placeholder={mineOnly ? "Search my sales (number, name, phone)…" : "Search today’s orders (number, name, phone)…"}
+              placeholder={mineOnly ? "Search my sales (number, name, phone)…" : "Search orders (number, name, phone)…"}
               aria-label="Search orders for refund"
               style={{ ...fieldStyle, width: "100%", marginBottom: 8 }}
             />
@@ -1064,23 +1419,33 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
                 <div style={{ padding: 12, fontSize: 12, color: C.muted }}>
                   {mineOnly
                     ? (debouncedOrderQuery
-                      ? "None of your paid sales today match."
-                      : "You have no paid sales today yet.")
-                    : "No matching paid orders today."}
-                  {canApprove && mineOnly && !debouncedOrderQuery ? " Try “All sales today”." : ""}
+                      ? "None of your paid sales match."
+                      : dateScope === "today"
+                        ? "You have no paid sales today yet."
+                        : "You have no paid sales in this period.")
+                    : "No matching paid orders."}
+                  {dateScope === "today" ? " Try a wider date range." : ""}
+                  {canApprove && mineOnly && !debouncedOrderQuery ? " Or “All sales”." : ""}
                 </div>
               )}
               {!ordersLoading && orderCandidates.map((row) => {
                 const time = (() => {
                   try {
-                    return new Date(row.created_at).toLocaleTimeString(undefined, {
+                    const d = new Date(row.created_at);
+                    const clock = d.toLocaleTimeString(undefined, {
                       hour: "numeric",
                       minute: "2-digit",
                     });
+                    // Once the list spans more than one day, the time alone
+                    // stops identifying a sale — the date has to be on the row.
+                    if (dateScope === "today") return clock;
+                    const day = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+                    return `${day} · ${clock}`;
                   } catch {
                     return "";
                   }
                 })();
+                const alreadyRefunded = row.refundedLaar + row.pendingRefundLaar;
                 return (
                   <button
                     key={row.id}
@@ -1112,6 +1477,12 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
                       <div style={{ fontSize: 11, color: C.subtle }}>
                         {time}
                         {row.payment_status === "partial" ? " · partial" : ""}
+                        {alreadyRefunded > 0 ? (
+                          <span style={{ color: C.warn, fontWeight: 700 }}>
+                            {` · refunded MVR ${(alreadyRefunded / 100).toFixed(2)}`}
+                          </span>
+                        ) : null}
+                        {canApprove && row.cashier_name ? ` · ${row.cashier_name}` : ""}
                       </div>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: "nowrap" }}>
