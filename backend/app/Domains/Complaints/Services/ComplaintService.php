@@ -43,7 +43,7 @@ class ComplaintService
      */
     public function create(array $data): Complaint
     {
-        if (! empty($data['idempotency_key'])) {
+        if (!empty($data['idempotency_key'])) {
             $existing = Complaint::query()->where('idempotency_key', $data['idempotency_key'])->first();
             if ($existing) {
                 return $existing;
@@ -53,7 +53,7 @@ class ComplaintService
         $receipt = $data['receipt'] ?? null;
         $invoice = $data['invoice'] ?? null;
         $order = $data['order'] ?? $receipt?->order ?? $invoice?->order;
-        if ($order && ! $order->relationLoaded('customer')) {
+        if ($order && !$order->relationLoaded('customer')) {
             $order->loadMissing('customer');
         }
 
@@ -85,7 +85,7 @@ class ComplaintService
                 'idempotency_key' => $data['idempotency_key'] ?? null,
             ]);
 
-            $complaint->reference_number = 'C-'.$complaint->id;
+            $complaint->reference_number = 'C-' . $complaint->id;
             $complaint->save();
 
             foreach ($data['items'] ?? [] as $row) {
@@ -124,7 +124,7 @@ class ComplaintService
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param array<string, mixed> $data
      * @return list<string>
      */
     private function normalizeCategories(array $data): array
@@ -133,7 +133,7 @@ class ComplaintService
         if ($raw === null && isset($data['category'])) {
             $raw = [$data['category']];
         }
-        if (! is_array($raw)) {
+        if (!is_array($raw)) {
             throw ValidationException::withMessages([
                 'categories' => 'Select at least one category.',
             ]);
@@ -141,7 +141,7 @@ class ComplaintService
 
         $categories = [];
         foreach ($raw as $c) {
-            if (! is_string($c)) {
+            if (!is_string($c)) {
                 continue;
             }
             $c = trim($c);
@@ -158,7 +158,7 @@ class ComplaintService
         }
         if (count($categories) > Complaint::MAX_CATEGORIES) {
             throw ValidationException::withMessages([
-                'categories' => 'Choose at most '.Complaint::MAX_CATEGORIES.' categories.',
+                'categories' => 'Choose at most ' . Complaint::MAX_CATEGORIES . ' categories.',
             ]);
         }
 
@@ -166,12 +166,12 @@ class ComplaintService
     }
 
     /**
-     * @param  array<string, mixed>  $data
-     * @return array{0: ?string, 1: ?string}  [disk, path]
+     * @param array<string, mixed> $data
+     * @return array{0: ?string, 1: ?string} [disk, path]
      */
     private function resolvePhoto(array $data): array
     {
-        if (! empty($data['photo_path']) && is_string($data['photo_path'])) {
+        if (!empty($data['photo_path']) && is_string($data['photo_path'])) {
             return [
                 isset($data['photo_disk']) && is_string($data['photo_disk'])
                     ? $data['photo_disk']
@@ -220,12 +220,12 @@ class ComplaintService
                 ? $comments
                 : "Receipt rating: {$rating}/5",
             'receipt_feedback_id' => $feedback->id,
-            'idempotency_key' => 'receipt-feedback:'.$feedback->id,
+            'idempotency_key' => 'receipt-feedback:' . $feedback->id,
         ]);
     }
 
     /**
-     * @param  list<int>  $orderItemIds
+     * @param list<int> $orderItemIds
      * @return list<array{order_item_id: int, item_name: string, quantity: float|int, unit_price_laar: int, line_total_laar: int}>
      */
     public function snapshotOrderItems(Order $order, array $orderItemIds): array
@@ -266,7 +266,7 @@ class ComplaintService
         ?string $internalNote = null,
         ?string $customerReply = null,
     ): Complaint {
-        if (! in_array($toStatus, Complaint::STATUSES, true)) {
+        if (!in_array($toStatus, Complaint::STATUSES, true)) {
             throw ValidationException::withMessages(['status' => 'Invalid status.']);
         }
 
@@ -280,8 +280,10 @@ class ComplaintService
 
         $from = $complaint->status;
         $note = is_string($internalNote) ? trim($internalNote) : '';
+        $reopening = !$closing && in_array($from, Complaint::CLOSED_STATUSES, true);
+        $event = null;
 
-        DB::transaction(function () use ($complaint, $from, $toStatus, $actor, $note, $reply, $closing) {
+        DB::transaction(function () use ($complaint, $from, $toStatus, $actor, $note, $reply, $closing, $reopening, &$event) {
             if ($note !== '') {
                 $complaint->internal_note = $note;
             }
@@ -290,10 +292,21 @@ class ComplaintService
                 $complaint->resolved_at = now();
                 $complaint->resolved_by = $actor->id;
             }
+            if ($reopening) {
+                /*
+                 * The customer rang back: it was not fixed. A complaint that is
+                 * open and still stamped resolved reads as done to every list
+                 * and report that looks at those columns, so the stamp comes
+                 * off. `customer_reply` stays — it is what we last told them,
+                 * and they are holding the SMS that says it.
+                 */
+                $complaint->resolved_at = null;
+                $complaint->resolved_by = null;
+            }
             $complaint->status = $toStatus;
             $complaint->save();
 
-            ComplaintStatusHistory::create([
+            $event = ComplaintStatusHistory::create([
                 'complaint_id' => $complaint->id,
                 'from_status' => $from,
                 'to_status' => $toStatus,
@@ -303,9 +316,15 @@ class ComplaintService
             ]);
         });
 
-        if ($toStatus === Complaint::STATUS_RESOLVED) {
+        // Any close, not only "resolved": closing as not actionable demands a
+        // customer reply just the same, and collecting one without sending it
+        // leaves the customer hearing nothing.
+        if ($closing) {
             try {
-                $this->notifications->notifyResolved($complaint->fresh(['order.customer', 'customer']));
+                $this->notifications->notifyResolved(
+                    $complaint->fresh(['order.customer', 'customer']),
+                    $event?->id,
+                );
             } catch (\Throwable) {
                 // keep closed even if SMS fails
             }
@@ -341,11 +360,42 @@ class ComplaintService
                 'from_status' => $complaint->status,
                 'to_status' => $complaint->status,
                 'changed_by_user_id' => $actor->id,
-                'internal_note' => 'Linked refund #'.$refund->id.' for audit',
+                'internal_note' => 'Linked refund #' . $refund->id . ' for audit',
             ]);
         });
 
         return $complaint->fresh(['refund', 'statusHistories', 'items']);
+    }
+
+    /**
+     * A linked refund was rejected, so nothing is on its way after all.
+     *
+     * Linking clears `needs_refund_review` because somebody has looked and
+     * money is coming. If that refund is then refused, the complaint would sit
+     * with the flag down over a customer who was told they would be paid —
+     * invisible to the one list that exists to catch exactly this. So it goes
+     * back in front of a manager, with the reason on the record.
+     */
+    public function onRefundRejected(Refund $refund): void
+    {
+        $complaints = Complaint::query()->where('refund_id', $refund->id)->get();
+
+        foreach ($complaints as $complaint) {
+            DB::transaction(function () use ($complaint, $refund) {
+                $complaint->needs_refund_review = true;
+                $complaint->save();
+
+                ComplaintStatusHistory::create([
+                    'complaint_id' => $complaint->id,
+                    'from_status' => $complaint->status,
+                    'to_status' => $complaint->status,
+                    'changed_by_user_id' => $refund->approved_by,
+                    'internal_note' => 'Linked refund #' . $refund->id . ' was rejected'
+                        . ($refund->rejection_reason ? ': ' . $refund->rejection_reason : '')
+                        . '. Refund review reopened.',
+                ]);
+            });
+        }
     }
 
     public function addContactLog(
@@ -354,7 +404,7 @@ class ComplaintService
         string $note,
         User $actor,
     ): ComplaintContactLog {
-        if (! in_array($channel, ComplaintContactLog::CHANNELS, true)) {
+        if (!in_array($channel, ComplaintContactLog::CHANNELS, true)) {
             throw ValidationException::withMessages(['channel' => 'Invalid channel.']);
         }
         $note = trim($note);

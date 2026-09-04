@@ -30,10 +30,22 @@ class ComplaintNotificationService
         $this->notifyCustomerAcknowledged($complaint);
     }
 
-    public function notifyResolved(Complaint $complaint): void
+    /**
+     * The customer hears how it ended — however it ended.
+     *
+     * Closing a complaint demands a reply to the customer whether the answer
+     * is "we have refunded it" or "the music is set by the mall". Sending one
+     * and not the other would leave the manager believing they had answered
+     * while the customer heard nothing at all.
+     *
+     * `$eventId` is the status-history row for this closing, so a complaint
+     * that is reopened and closed again with a different answer sends that
+     * answer instead of being deduped against the first one.
+     */
+    public function notifyResolved(Complaint $complaint, ?int $eventId = null): void
     {
         $complaint->loadMissing(['order.customer', 'customer']);
-        $this->notifyCustomerResolved($complaint);
+        $this->notifyCustomerResolved($complaint, $eventId);
     }
 
     public function notifyOwner(Complaint $complaint): void
@@ -85,7 +97,7 @@ class ComplaintNotificationService
                     type: 'owner_complaint_received',
                     referenceType: 'complaint',
                     referenceId: (string) $complaint->id,
-                    idempotencyKey: 'complaint-owner:'.$complaint->id.':'.$owner->id,
+                    idempotencyKey: 'complaint-owner:' . $complaint->id . ':' . $owner->id,
                 ));
                 $status = (string) ($log->status ?? '');
                 if (in_array($status, ['sent', 'demo', 'queued'], true)) {
@@ -98,7 +110,7 @@ class ComplaintNotificationService
                 }
             } catch (\Throwable $e) {
                 $anyFailed = true;
-                $details[] = "owner {$owner->id}: ".$e->getMessage();
+                $details[] = "owner {$owner->id}: " . $e->getMessage();
                 Log::warning('complaint.owner_sms_failed', [
                     'complaint_id' => $complaint->id,
                     'owner_id' => $owner->id,
@@ -115,7 +127,7 @@ class ComplaintNotificationService
                     : Complaint::OWNER_ALERT_SENT,
                 'owner_alert_detail' => $details === [] ? null : implode('; ', $details),
             ]);
-        } elseif ($details !== [] && ! $anyFailed) {
+        } elseif ($details !== [] && !$anyFailed) {
             $complaint->update([
                 'owner_alert_status' => Complaint::OWNER_ALERT_SUPPRESSED,
                 'owner_alert_detail' => implode('; ', $details),
@@ -135,24 +147,30 @@ class ComplaintNotificationService
             'customer_complaint_acknowledged',
             'customer_complaint_acknowledged',
             "Bake & Grill: we received your concern ({$complaint->reference_number}). We will look into it.",
-            'complaint-ack:'.$complaint->id,
+            'complaint-ack:' . $complaint->id,
             ['reference' => $complaint->reference_number],
         );
     }
 
-    public function notifyCustomerResolved(Complaint $complaint): void
+    public function notifyCustomerResolved(Complaint $complaint, ?int $eventId = null): void
     {
         $reply = is_string($complaint->customer_reply) ? trim($complaint->customer_reply) : '';
-        $default = $reply !== ''
-            ? "Bake & Grill ({$complaint->reference_number}): {$reply}"
-            : "Bake & Grill: your concern {$complaint->reference_number} has been resolved. Thank you for telling us.";
+        // The reply is what the manager wrote to this customer, so it is the
+        // message. The fallbacks only stand in for an empty reply, which the
+        // close path refuses — and "resolved" would be a lie on a complaint
+        // closed as not actionable.
+        $default = match (true) {
+            $reply !== '' => "Bake & Grill ({$complaint->reference_number}): {$reply}",
+            $complaint->status === Complaint::STATUS_NOT_ACTIONABLE => "Bake & Grill: we have closed your concern {$complaint->reference_number}. Thank you for telling us.",
+            default => "Bake & Grill: your concern {$complaint->reference_number} has been resolved. Thank you for telling us.",
+        };
 
         $this->sendCustomerMessage(
             $complaint,
             'customer_complaint_resolved',
             'customer_complaint_resolved',
             $default,
-            'complaint-resolved:'.$complaint->id,
+            'complaint-resolved:' . $complaint->id . ($eventId !== null ? ':' . $eventId : ''),
             [
                 'reference' => $complaint->reference_number,
                 'customer_reply' => $reply,
@@ -232,7 +250,7 @@ class ComplaintNotificationService
         $tpl = SmsTemplate::query()->where('slug', $slug)->first();
         $body = is_string($tpl?->body) && trim($tpl->body) !== '' ? $tpl->body : $fallback;
         foreach ($vars as $key => $value) {
-            $body = str_replace('{{'.$key.'}}', (string) $value, $body);
+            $body = str_replace('{{' . $key . '}}', (string) $value, $body);
         }
 
         return $body;

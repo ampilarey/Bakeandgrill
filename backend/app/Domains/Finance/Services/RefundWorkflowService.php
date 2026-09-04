@@ -20,6 +20,7 @@ use App\Services\StockManagementService;
 use App\Services\StockReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Two-step refunds: request (pending) → approve (money moves) / reject.
@@ -51,7 +52,7 @@ class RefundWorkflowService
     /**
      * Resolve the refund phone without ever mutating Order/Customer records.
      *
-     * @param  array{refund_phone?: string|null}  $validated
+     * @param array{refund_phone?: string|null} $validated
      * @return array{phone: string, phone_added_at_refund: bool}
      */
     public function resolveRefundPhoneForRequest(Order $order, array $validated): array
@@ -125,7 +126,7 @@ class RefundWorkflowService
     }
 
     /**
-     * @param  array{amount: float, reason_category: string, reason: string, cash_refund_override?: bool, refund_phone?: string|null}  $validated
+     * @param array{amount: float, reason_category: string, reason: string, cash_refund_override?: bool, refund_phone?: string|null} $validated
      * @return array{refund: Refund, order: Order, breakdown: array<string, mixed>, auto_approved: bool, phone_flags: array<string, mixed>}
      */
     public function request(Order $order, User $requester, array $validated, int $shiftId, ?Request $request = null): array
@@ -136,7 +137,7 @@ class RefundWorkflowService
         $category = (string) $validated['reason_category'];
         $reason = trim((string) $validated['reason']);
 
-        if (! in_array($category, self::REASON_CATEGORIES, true)) {
+        if (!in_array($category, self::REASON_CATEGORIES, true)) {
             abort(422, 'Invalid refund reason category.');
         }
         if ($reason === '') {
@@ -152,7 +153,15 @@ class RefundWorkflowService
         $phoneResolution = $this->resolveRefundPhoneForRequest($order, $validated);
 
         [$refund, $breakdown] = DB::transaction(function () use (
-            $order, $requester, $amount, $amountLaar, $cashOverride, $category, $reason, $phoneResolution, $shiftId
+            $order,
+            $requester,
+            $amount,
+            $amountLaar,
+            $cashOverride,
+            $category,
+            $reason,
+            $phoneResolution,
+            $shiftId
         ) {
             $locked = Order::with(['items.item', 'items.variant', 'customer'])
                 ->lockForUpdate()
@@ -274,9 +283,9 @@ class RefundWorkflowService
 
     /**
      * @param int|null $drawerShiftId The shift whose till the cash actually
-     *        leaves — the approver's open shift, not the requester's. Null
-     *        keeps the requesting shift (owner one-shot approve at request
-     *        time, and any caller with no shift context).
+     *                                leaves — the approver's open shift, not the requester's. Null
+     *                                keeps the requesting shift (owner one-shot approve at request
+     *                                time, and any caller with no shift context).
      */
     public function approve(
         Refund $refund,
@@ -291,14 +300,14 @@ class RefundWorkflowService
             abort(422, 'Only pending refunds can be approved.');
         }
 
-        if (! $allowSelf && (int) $refund->user_id === (int) $approver->id && ! $this->isOwner($approver)) {
+        if (!$allowSelf && (int) $refund->user_id === (int) $approver->id && !$this->isOwner($approver)) {
             abort(422, 'You cannot approve a refund you requested. Another authoriser must approve it.');
         }
 
         $isOwner = $this->isOwner($approver);
         $override = $ownerOverrideWithoutOtp && $isOwner;
 
-        if (! $override) {
+        if (!$override) {
             if ($isOwner && ($otpCode === null || trim($otpCode) === '') && $allowSelf) {
                 // Owner one-shot from request() already sets override=true.
                 $override = true;
@@ -325,7 +334,7 @@ class RefundWorkflowService
                     if (isset($state['attempts'])) {
                         $updates['otp_attempts'] = $state['attempts'];
                     }
-                    if (! empty($state['expired']) || ! empty($state['failed'])) {
+                    if (!empty($state['expired']) || !empty($state['failed'])) {
                         $updates['otp_code_hash'] = null;
                         $updates['otp_expires_at'] = null;
                     }
@@ -376,11 +385,11 @@ class RefundWorkflowService
 
             $transitions = app(OrderStatusTransitionService::class);
             if ($isFullRefund) {
-                if (! in_array($order->status, ['cancelled', 'refunded'], true)) {
+                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
                     $transitions->transition($order, 'refunded');
                 }
             } elseif ($amountLaar > 0) {
-                if (! in_array($order->status, ['cancelled', 'refunded'], true)) {
+                if (!in_array($order->status, ['cancelled', 'refunded'], true)) {
                     $transitions->transition($order, 'partially_refunded');
                 }
             }
@@ -502,11 +511,11 @@ class RefundWorkflowService
 
             $transitions = app(OrderStatusTransitionService::class);
             if ($isFullRefund) {
-                if (! in_array($locked->status, ['cancelled', 'refunded'], true)) {
+                if (!in_array($locked->status, ['cancelled', 'refunded'], true)) {
                     $transitions->transition($locked, 'refunded');
                 }
             } else {
-                if (! in_array($locked->status, ['cancelled', 'refunded'], true)) {
+                if (!in_array($locked->status, ['cancelled', 'refunded'], true)) {
                     $transitions->transition($locked, 'partially_refunded');
                 }
             }
@@ -573,7 +582,7 @@ class RefundWorkflowService
             abort(422, 'Rejection reason is required.');
         }
 
-        if ((int) $refund->user_id === (int) $approver->id && ! $this->isOwner($approver)) {
+        if ((int) $refund->user_id === (int) $approver->id && !$this->isOwner($approver)) {
             abort(422, 'You cannot reject a refund you requested. Another authoriser must decide.');
         }
 
@@ -593,6 +602,22 @@ class RefundWorkflowService
         });
 
         $fresh = $refund->fresh(['order', 'user', 'approver']);
+
+        /*
+         * A complaint linked to this refund stopped asking for a refund review
+         * when it was linked. Nothing is being paid now, so it starts asking
+         * again. Never at the cost of the rejection itself: the money decision
+         * is made and recorded either way.
+         */
+        try {
+            app(\App\Domains\Complaints\Services\ComplaintService::class)->onRefundRejected($fresh);
+        } catch (\Throwable $e) {
+            Log::warning('refund.complaint_reopen_failed', [
+                'refund_id' => $fresh->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         app(AuditLogService::class)->log(
             'refund.rejected',
             'Refund',
@@ -673,7 +698,7 @@ class RefundWorkflowService
         ?int $actorId,
     ): void {
         $amountLaar = (int) round((float) $refund->amount * 100);
-        if (! $isFullRefund && ($amountLaar <= 0 || $thisRefundRatio <= 0)) {
+        if (!$isFullRefund && ($amountLaar <= 0 || $thisRefundRatio <= 0)) {
             return;
         }
 
@@ -683,7 +708,7 @@ class RefundWorkflowService
 
         foreach ($order->items as $orderItem) {
             $item = $orderItem->item;
-            if (! $item) {
+            if (!$item) {
                 continue;
             }
 
@@ -698,14 +723,14 @@ class RefundWorkflowService
             $variant = $orderItem->variant;
             if ($variant && $variant->track_stock) {
                 if ($stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
-                    $key = 'refund:order:'.$order->id.':variant:'.$orderItem->id
-                        .($isFullRefund ? '' : ':partial:'.$refund->id);
+                    $key = 'refund:order:' . $order->id . ':variant:' . $orderItem->id
+                        . ($isFullRefund ? '' : ':partial:' . $refund->id);
                     $stockService->restoreVariantStock($variant, $restoreQty, $key, $order->id, $actorId);
                 }
             } elseif ($item->track_stock && $item->availability_type === 'stock_based') {
                 if ($stockService->wasPreparedStockDeductedForLine($order->id, $orderItem->id)) {
-                    $key = 'refund:order:'.$order->id.':item:'.$orderItem->id
-                        .($isFullRefund ? '' : ':partial:'.$refund->id);
+                    $key = 'refund:order:' . $order->id . ':item:' . $orderItem->id
+                        . ($isFullRefund ? '' : ':partial:' . $refund->id);
                     $stockService->restorePreparedStock($item, $restoreQty, $key, $order->id, $actorId);
                 }
             }
