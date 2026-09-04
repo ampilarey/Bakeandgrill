@@ -1034,6 +1034,22 @@ html, body, #root {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
+    /*
+     * No rubber-band inside the payment column.
+     *
+     * The device's own diagnostic, 2026-09-04: the finger went down on
+     * "div.pos-charge-tender" — the container, empty space — at 369,348 on a
+     * 440×956 viewport, and 71ms later the tender was Credit. At rest that
+     * point is the middle of the 10 note chip and Credit sits at y233. For the
+     * press to land on nothing and the release to land on Credit, the content
+     * has to move DOWN by about 115px between the two: an iOS overscroll
+     * bounce, dragging at the top of a column that exactly fills its space
+     * (measured 669 in 669, so any drag bounces).
+     *
+     * `contain` keeps the bounce out of this column. The page behind it is
+     * already fixed, so nothing else wanted the gesture.
+     */
+    overscroll-behavior: contain;
   }
   /* Air between the tender row and the quick amounts: they are one tap
    * apart, and hitting Transfer when you meant a note swaps the whole

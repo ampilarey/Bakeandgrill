@@ -536,7 +536,7 @@ export function ChargeOverlay({
    * Observation only — it changes no behaviour. Remove it once the report
    * comes back.
    */
-  const lastPress = useRef<{ x: number; y: number; on: string; at: number } | null>(null);
+  const lastPress = useRef<{ x: number; y: number; on: string; at: number; scroll: number } | null>(null);
   const prevMethod = useRef(method);
   const [anomaly, setAnomaly] = useState<string | null>(null);
 
@@ -567,6 +567,7 @@ export function ChargeOverlay({
       + `at ${p ? `${Math.round(p.x)},${Math.round(p.y)}` : "?"} `
       + `(now under that point: "${underFinger}") · `
       + `viewport ${window.innerWidth}×${window.innerHeight} · `
+      + `scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)} · `
       + `:has() ${hasSupport ? "yes" : "NO"} · ${Math.round(performance.now() - (p?.at ?? 0))}ms`,
     );
   }, [method]);
@@ -579,11 +580,13 @@ export function ChargeOverlay({
       aria-modal="true"
       aria-label="Charge"
       onPointerDownCapture={(e) => {
+        const col = document.querySelector(".pos-charge-tender");
         lastPress.current = {
           x: e.clientX,
           y: e.clientY,
           on: describeTarget(e.target as Element),
           at: performance.now(),
+          scroll: col ? Math.round(col.scrollTop) : -1,
         };
       }}
       style={{
@@ -744,7 +747,9 @@ export function ChargeOverlay({
           {/* RIGHT: tender + amount entry */}
           <div className="pos-charge-tender" style={{
             padding: 20, display: "flex", flexDirection: "column", gap: 14,
-            background: "#F8FAFC", overflow: "auto",
+            // overscrollBehavior: no iOS bounce inside the payment column —
+            // see the note on .pos-charge-tender in index.css.
+            background: "#F8FAFC", overflow: "auto", overscrollBehavior: "contain",
           }}>
             <div>
               <p style={tinyLabel}>Tender</p>
