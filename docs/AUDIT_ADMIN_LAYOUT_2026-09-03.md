@@ -4,7 +4,9 @@
 **Asked:** "Many pages in admin panel doesn't follow standard layout. Can u audit
 each and every page, sub page, pop ups in admin panel desktop and mobile"
 **Scope:** every page, sub-page, tab and overlay in `apps/admin-dashboard`, at
-desktop and phone widths. Read-only — nothing in this document has been changed.
+desktop and phone widths. Audited read-only; **A1 and A4 were fixed on
+2026-09-04** on the owner's go-ahead — each says so under its own heading. The
+rest stand as written.
 
 **Counted:** 114 page and sub-page files across 73 routes, 11 overlay surfaces,
 23 tabbed pages, 5,819 lines of `index.css`.
@@ -44,23 +46,59 @@ body, in the dialogs, and in colour.
 
 ## Findings
 
-| | Finding | Severity |
-|---|---|---|
-| A1 | 41 hardcoded text colours are invisible in dark mode | **High** |
-| A2 | 164 distinct hex colours against a 10-token palette | **High** |
-| A3 | Ten of eleven overlays are missing dialog behaviour | **Medium** |
-| A4 | `ConfirmDialog` — 20 pages, no Escape, no scroll cap | **Medium** |
-| A5 | Two component libraries; the deprecated one is the popular one | **Medium** |
-| A6 | 23 tabbed pages, 5 tab shapes, 2 users of the shared component | **Medium** |
-| A7 | `ui/Modal` is silently unstyled — and unused | Low |
-| A8 | The z-index scale is decorative | Low |
-| A9 | 20 grids stay two columns on a 390px phone | Low |
-| A10 | Four pages render no breadcrumb | Low |
-| A11 | `TestChecklistPage` overrides the shell width | Informational |
+| | Finding | Severity | Status |
+|---|---|---|---|
+| A1 | 41 hardcoded text colours are invisible in dark mode | **High** | **FIXED 2026-09-04** |
+| A2 | 164 distinct hex colours against a 10-token palette | **High** | Partly — see A1 |
+| A3 | Ten of eleven overlays are missing dialog behaviour | **Medium** | Open (A4 done) |
+| A4 | `ConfirmDialog` — 20 pages, no Escape, no scroll cap | **Medium** | **FIXED 2026-09-04** |
+| A5 | Two component libraries; the deprecated one is the popular one | **Medium** | Open |
+| A6 | 23 tabbed pages, 5 tab shapes, 2 users of the shared component | **Medium** | Open |
+| A7 | `ui/Modal` is silently unstyled — and unused | Low | Open |
+| A8 | The z-index scale is decorative | Low | Open |
+| A9 | 20 grids stay two columns on a 390px phone | Low | Open |
+| A10 | Four pages render no breadcrumb | Low | Open |
+| A11 | `TestChecklistPage` overrides the shell width | Informational | Open |
 
 ---
 
-### A1 — 41 hardcoded text colours are invisible in dark mode (high)
+### A1 — 41 hardcoded text colours are invisible in dark mode (high) — **FIXED**
+
+**Fixed 2026-09-04.** All 41 replaced with the token that carries the same role,
+plus the two the heuristic had missed (`MediaLibraryPage:260`,
+`MediaPicker:235`) — 42 in all, each read in context first rather than
+find-and-replaced. Measured again in Chromium against the rebuilt stylesheet:
+
+| | Before (dark) | After (dark) |
+|---|---|---|
+| Body text and headings | 1.01 – 1.70 : 1 | **14.68 : 1** |
+| Supporting text | 2.19 – 2.79 : 1 | **8.77 : 1** |
+| Warning text | 2.40 : 1 | **12.18 : 1** |
+| Danger text | 1.75 : 1 | **9.25 : 1** |
+
+Light mode is unchanged in role and still passes: 18.21:1 for body text,
+6.36–7.09:1 for the supporting and status shades. Everything now clears WCAG
+AA's 4.5:1 in **both** themes, where before four of those rows were invisible in
+one of them.
+
+Four new shades needed no new tokens after all — `#3D2B1F` and its relatives
+were standing in for `--color-text`, the browns below it for
+`--color-text-secondary`, and the orange and red for `--color-warning-strong`
+and `--color-danger-strong`, which already flip correctly.
+
+The one place left alone is `SeoSnippetPreview` — it mocks a Google search
+result and its own code says "must not follow admin theme". It sets its own
+light card, so its blue, green and grey stay self-consistent in both themes.
+That is correct, and the same reasoning as the QR plate and the toggle knob.
+
+The ESLint baseline went from **529 entries across 85 files to 445 across 78**.
+It was pruned rather than regenerated: regenerating would have absorbed 51
+violations that were previously visible warnings, so the rule can only ever
+shrink from here.
+
+---
+
+#### The finding as first written
 
 Dark mode is a real, shipped feature: a toggle in `AppShell.tsx:160`, persisted
 to `localStorage.bg_theme`, with a pre-paint bootstrap in `public/theme-init.js`
@@ -196,7 +234,29 @@ None of this is a layout break you can see in a screenshot. It is what the
 panel feels like to use with a keyboard, and on a phone where scroll-behind is
 the difference between a sheet and a floating rectangle.
 
-### A4 — `ConfirmDialog`: 20 pages, no Escape, nothing capping its height (medium)
+### A4 — `ConfirmDialog`: 20 pages, no Escape, nothing capping its height (medium) — **FIXED**
+
+**Fixed 2026-09-04.** The five behaviours `Modal` already had were pulled out
+into a `useDialogChrome` hook, and both dialogs now use it — so there is one
+implementation of "what a dialog owes you" rather than one good one and one
+that had none of it. `ConfirmDialog` gained Escape, a focus trap, focus
+restore, a body scroll lock and a portal to `document.body`.
+
+Two decisions worth recording:
+
+- **Focus starts on Cancel**, not Confirm. When the question is "delete this?",
+  the safe option should be the one a stray Enter or Space lands on.
+- **The buttons sit outside the scroll region.** The panel is a flex column
+  capped at `min(85dvh, 640px)`; the message scrolls, the actions never move.
+  That is what stops a long question stranding someone mid-delete on a phone.
+
+Nine tests pin it — Escape, scroll lock and its release, the portal, the
+initial focus, Tab and Shift+Tab wrapping, the ARIA wiring, the height cap with
+the actions outside it, and the backdrop closing only on the backdrop.
+
+---
+
+#### The finding as first written
 
 `useConfirmDialog` is used by 20 pages — it is how the panel asks "are you
 sure" before a delete. `SharedUI.tsx:660`:
@@ -412,8 +472,9 @@ once four new tokens exist for the shades that have none (`#3D2B1F`, `#8B7355`,
 A6 is the most visible on a normal working day and is mechanical — 21 tab strips
 onto one component.
 
-A3 and A4 are the ones a keyboard or a phone finds, not the eye. `ConfirmDialog`
-is worth doing first: 20 pages, and the missing `maxHeight` can strand someone
-mid-delete on a phone.
+A3 is the one a keyboard or a phone finds, not the eye. `ConfirmDialog` (A4) is
+done; the rest of the overlay table still is not, and `Customer360Drawer` — with
+none of the five — is the one to take next. `useDialogChrome` now exists for it
+to use.
 
 A7 is five minutes and stops a future page inheriting a broken dialog.

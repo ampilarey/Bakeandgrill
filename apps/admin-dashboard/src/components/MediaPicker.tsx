@@ -232,7 +232,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
                     <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden', background: '#EDE8E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {thumbNode(asset)}
                     </div>
-                    <div style={{ padding: '4px 6px', fontSize: 10, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ padding: '4px 6px', fontSize: 10, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
                     </div>
                   </button>

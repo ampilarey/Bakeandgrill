@@ -486,7 +486,7 @@ export function CateringDetailPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Quote summary</h3>
-            <div style={{ fontSize: 14, color: '#5C4E3E', lineHeight: 1.7 }}>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
               <div>Subtotal: MVR {tax ? mvr(tax.subtotal_laar) : '—'}</div>
               {(tax?.packaging_fee_laar ?? 0) > 0 && (
                 <div data-testid="quote-packaging-fee">
@@ -561,7 +561,7 @@ export function CateringDetailPage() {
 
           <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 16 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>Status timeline</h3>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#5C4E3E' }}>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--color-text-secondary)' }}>
               {timeline.map((t) => (
                 <li key={t.label} style={{ marginBottom: 6 }}>
                   <strong>{t.label}</strong>

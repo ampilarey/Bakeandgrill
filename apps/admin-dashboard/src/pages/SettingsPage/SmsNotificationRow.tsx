@@ -73,7 +73,7 @@ export function SmsNotificationRow({
   const editor = template ? (
     <div style={{ borderTop: toggleDisabled ? 'none' : '1px solid #F3EDE6', paddingTop: toggleDisabled ? 0 : 12 }}>
       {templateLabel && (
-        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#6B5A4E' }}>
+        <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
           Message: {templateLabel}
         </p>
       )}
@@ -142,7 +142,7 @@ export function SmsNotificationRow({
           background: '#F9FAFB',
           borderRadius: 8,
           fontSize: 12,
-          color: '#374151',
+          color: 'var(--color-text)',
           whiteSpace: 'pre-wrap',
         }}>
           {preview}
@@ -179,7 +179,7 @@ export function SmsNotificationRow({
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>{emoji}</span>
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#3D2B1F' }}>{label}</p>
+            <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>{label}</p>
             <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}>{desc}</p>
           </div>
         </div>

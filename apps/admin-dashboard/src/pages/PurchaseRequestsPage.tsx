@@ -316,7 +316,7 @@ export default function PurchaseRequestsPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>Auto-expense on verify</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Auto-expense on verify</span>
             <Toggle
               checked={autoExpense}
               disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}

@@ -339,7 +339,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
                 {ROLE_OPTIONS.map((r) => <option key={r.slug} value={r.slug}>{r.label}</option>)}
               </select>
               {selectedRole === 'owner' && (
-                <p style={{ margin: 0, fontSize: 13, color: '#6B5E4E', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                   Owners always have full access. Permission checks are bypassed for the owner role — these toggles are shown for reference only and cannot be changed.
                 </p>
               )}
@@ -391,7 +391,7 @@ export function PermissionsSettings({ initialUserId }: { initialUserId?: number 
                 {staff.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.role})</option>)}
               </select>
               {selectedUserId && selectedUserRole && (
-                <p style={{ margin: 0, fontSize: 13, color: '#6B5E4E' }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-secondary)' }}>
                   Role: <strong>{selectedUserRole}</strong>. Use inherit / force allow / force deny to override role defaults for this person.
                 </p>
               )}

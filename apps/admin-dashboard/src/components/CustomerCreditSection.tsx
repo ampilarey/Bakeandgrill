@@ -493,7 +493,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--color-danger-bg)', borderRadius: 10, padding: 12, border: '1px solid #FCA5A5' }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 12, color: 'var(--color-danger-strong)' }}>Write off (bad debt adjustment)</p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#7F1D1D' }}>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--color-danger-strong)' }}>
                     Reduces the customer's credit balance as an adjustment. No cash movement is recorded.
                     Max: MVR {credit.balance_mvr.toFixed(2)}.
                   </p>

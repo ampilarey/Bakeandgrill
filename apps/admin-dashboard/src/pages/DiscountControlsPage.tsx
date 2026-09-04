@@ -588,11 +588,11 @@ export function DiscountControlsPage() {
               Read-only from Roles & Permissions. Change grants under{' '}
               <Link to="/settings/permissions" style={{ color: 'var(--color-primary)' }}>Roles & Permissions</Link>.
             </p>
-            <p style={{ margin: '0 0 8px', fontSize: 13, color: '#3D2B1F' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 13, color: 'var(--color-text)' }}>
               <strong>promotions.discounts:</strong>{' '}
               {rolesWithDiscounts.length ? rolesWithDiscounts.join(', ') : 'None'}
             </p>
-            <p style={{ margin: 0, fontSize: 13, color: '#3D2B1F' }}>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text)' }}>
               <strong>promotions.discount_override:</strong>{' '}
               {rolesWithOverride.length ? rolesWithOverride.join(', ') : 'None'}
             </p>

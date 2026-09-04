@@ -318,7 +318,7 @@ function DeliveryCard({
         </Link>
         <Badge label={(order.status ?? '').replace(/_/g, ' ')} color={statColor(order.status ?? '')} />
       </div>
-      <p style={{ fontSize: 14, color: '#374151', marginBottom: 4 }}>
+      <p style={{ fontSize: 14, color: 'var(--color-text)', marginBottom: 4 }}>
         {order.delivery_address_line1 ?? '—'}
       </p>
       {order.delivery_island && (
@@ -424,7 +424,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         onChange={(e) => void handleChange(e.target.value)}
         style={{
           width: '100%', padding: '6px 10px', borderRadius: 8,
-          border: '1.5px solid #e5e7eb', fontSize: 13, color: '#374151',
+          border: '1.5px solid #e5e7eb', fontSize: 13, color: 'var(--color-text)',
           background: saving ? '#f9fafb' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
@@ -600,7 +600,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
             onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '') }))}
             style={inputStyle}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} />
             Active
           </label>

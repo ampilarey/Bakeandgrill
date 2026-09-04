@@ -126,7 +126,7 @@ function PermissionGuard({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
         <div style={{ fontSize: 48 }}>🔒</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1408', margin: 0 }}>Access Denied</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Access Denied</h2>
         <p style={{ color: '#8B7355', margin: 0 }}>You don't have permission to view this page.</p>
       </div>
     );

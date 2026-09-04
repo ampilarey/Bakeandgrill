@@ -75,7 +75,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
           margin: '0 0 4px',
           fontSize: 13,
           fontWeight: 800,
-          color: '#3D2B1F',
+          color: 'var(--color-text)',
           lineHeight: 1.25,
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -99,7 +99,7 @@ function MenuCardLivePreview({ form }: { form: ItemForm }) {
       >
         {previewDetail}
       </p>
-      <p data-testid="menu-card-preview-price" style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#3D2B1F' }}>
+      <p data-testid="menu-card-preview-price" style={{ margin: 0, fontSize: 13, fontWeight: 800, color: 'var(--color-text)' }}>
         {note ? <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', marginRight: 4 }}>{note}</span> : null}
         {priceLabel}
       </p>

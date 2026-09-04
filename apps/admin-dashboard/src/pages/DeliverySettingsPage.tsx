@@ -346,7 +346,7 @@ export default function DeliverySettingsPage() {
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
           <button type="button" style={S.btnSecondary} onClick={addZoneRow}>+ Add zone</button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4A3728', cursor: 'pointer', minHeight: 44 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer', minHeight: 44 }}>
             <input
               type="checkbox"
               checked={restrictZones}
@@ -400,7 +400,7 @@ export default function DeliverySettingsPage() {
         marginBottom: '1.25rem',
       }}>
         <p style={{ ...S.sectionTitle, marginBottom: 8 }}>Operations alerts</p>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#3D2B1F' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--color-text)' }}>
           <button
             type="button"
             style={S.toggleTrack(opsAlerts?.delivery_delay_alert_sms ?? false)}

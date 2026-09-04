@@ -252,11 +252,14 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: BtnVariant;
   small?: boolean;
   children: ReactNode;
+  /** React 19 passes ref as an ordinary prop — ConfirmDialog focuses Cancel with it. */
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
-export function Btn({ variant = 'primary', small, children, style, ...rest }: BtnProps) {
+export function Btn({ variant = 'primary', small, children, style, ref, ...rest }: BtnProps) {
   return (
     <button
+      ref={ref}
       {...rest}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
@@ -350,45 +353,37 @@ export function ModalActions({ children }: { children: ReactNode }) {
 // ─── Modal ────────────────────────────────────────────────────────────────────
 const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-function isModalActionsElement(node: ReactNode): node is ReactElement<{ children?: ReactNode }> {
-  return isValidElement(node) && node.type === ModalActions;
-}
-
-export function Modal({
-  title, onClose, children, footer, maxWidth = 440,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-  /** Optional sticky footer. If omitted, a trailing ModalActions child is lifted into the footer. */
-  footer?: ReactNode;
-  maxWidth?: number;
-}) {
-  const uid = useId();
-  const titleId = `modal-title-${uid}`;
-  const panelRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
+/**
+ * The five things a dialog owes the person using it: Escape closes it, Tab
+ * cannot walk out of it, focus comes back where it started, the page behind
+ * does not scroll, and it is announced as a dialog.
+ *
+ * Extracted 2026-09-04 from Modal, which had all five, so ConfirmDialog — used
+ * by 20 pages to ask before a delete — could stop having none of them.
+ *
+ * @param panelRef   the dialog panel, whose focusables the trap cycles
+ * @param firstFocus what to focus on open (a close button, or the safe action)
+ */
+function useDialogChrome(
+  onClose: () => void,
+  panelRef: React.RefObject<HTMLElement | null>,
+  firstFocus?: React.RefObject<HTMLElement | null>,
+) {
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  const childArr = Children.toArray(children);
-  const last = childArr[childArr.length - 1];
-  const lastIsActions = footer == null && isModalActionsElement(last);
-  const bodyChildren = lastIsActions ? childArr.slice(0, -1) : children;
-  const footerNode = footer ?? (lastIsActions ? last : null);
-
-  // Body scroll lock + focus management (same pattern as ContentEditorSheet).
   useEffect(() => {
     previouslyFocused.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    window.setTimeout(() => closeRef.current?.focus(), 0);
+    window.setTimeout(() => firstFocus?.current?.focus(), 0);
 
-    const panel = panelRef.current;
-    const els = () =>
-      panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL)) : [];
+    const els = () => {
+      const panel = panelRef.current;
+      return panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL)) : [];
+    };
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onCloseRef.current(); return; }
@@ -408,7 +403,35 @@ export function Modal({
         window.setTimeout(() => target.focus(), 0);
       }
     };
-  }, []);
+  }, [panelRef, firstFocus]);
+}
+
+function isModalActionsElement(node: ReactNode): node is ReactElement<{ children?: ReactNode }> {
+  return isValidElement(node) && node.type === ModalActions;
+}
+
+export function Modal({
+  title, onClose, children, footer, maxWidth = 440,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  /** Optional sticky footer. If omitted, a trailing ModalActions child is lifted into the footer. */
+  footer?: ReactNode;
+  maxWidth?: number;
+}) {
+  const uid = useId();
+  const titleId = `modal-title-${uid}`;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  const childArr = Children.toArray(children);
+  const last = childArr[childArr.length - 1];
+  const lastIsActions = footer == null && isModalActionsElement(last);
+  const bodyChildren = lastIsActions ? childArr.slice(0, -1) : children;
+  const footerNode = footer ?? (lastIsActions ? last : null);
+
+  useDialogChrome(onClose, panelRef, closeRef);
 
   if (typeof document === 'undefined') return null;
 
@@ -658,37 +681,73 @@ export function useConfirmDialog() {
 }
 
 export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; close: () => void }) {
+  if (!state.open) return null;
+
+  // Keyed on the message so each new question mounts a fresh dialog — the
+  // hooks below must not carry the previous question's focus or scroll state.
+  return <ConfirmDialogPanel key={state.message} state={state} close={close} />;
+}
+
+function ConfirmDialogPanel({ state, close }: { state: ConfirmDialogState; close: () => void }) {
   const uid = useId();
   const titleId = `cdlg-title-${uid}`;
-  if (!state.open) return null;
-  return (
+  const descId = `cdlg-desc-${uid}`;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // Focus starts on Cancel, not Confirm: the safe option should be the one a
+  // stray Enter or Space lands on when the question is "delete this?".
+  useDialogChrome(close, panelRef, cancelRef);
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      aria-describedby={descId}
+      data-testid="confirm-dialog"
       style={{
-        position: 'fixed', inset: 0, zIndex: 60,
+        // Above Modal (50) and the customer drawer (56); the toast still clears it.
+        position: 'fixed', inset: 0, zIndex: 'calc(var(--z-modal) + 10)' as unknown as number,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,0.45)',
+        background: 'rgba(0,0,0,0.45)', padding: 16,
       }}
-      onClick={close}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
     >
       <div
-        className="modal-container"
+        ref={panelRef}
         style={{
-          background: 'var(--color-surface)', borderRadius: 14, padding: '1.75rem',
-          maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          background: 'var(--color-surface)', borderRadius: 14,
+          maxWidth: 400, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          // A long question on a phone in landscape used to push Cancel and
+          // Confirm off the bottom with nothing to scroll. The buttons are
+          // outside the scroll region now, so they are always reachable.
+          maxHeight: 'min(85dvh, 640px)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
-        <h3 id={titleId} style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>
-          {state.title ?? 'Confirm'}
-        </h3>
-        <p style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
+        <div style={{ padding: '1.75rem 1.75rem 0' }}>
+          <h3 id={titleId} style={{ fontWeight: 700, fontSize: 17, margin: '0 0 8px', color: 'var(--color-text)' }}>
+            {state.title ?? 'Confirm'}
+          </h3>
+        </div>
+        <p
+          id={descId}
+          style={{
+            fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5,
+            margin: 0, padding: '0 1.75rem 1.25rem',
+            flex: '1 1 auto', minHeight: 0, overflowY: 'auto',
+          }}
+        >
           {state.message}
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Btn variant="secondary" onClick={close}>Cancel</Btn>
+        <div style={{
+          display: 'flex', gap: 10, justifyContent: 'flex-end', flexShrink: 0,
+          padding: '0 1.75rem 1.75rem',
+        }}>
+          <Btn ref={cancelRef} variant="secondary" onClick={close}>Cancel</Btn>
           <Btn
             variant={state.danger ? 'danger' : 'primary'}
             onClick={() => { state.onConfirm(); close(); }}
@@ -697,6 +756,7 @@ export function ConfirmDialog({ state, close }: { state: ConfirmDialogState; clo
           </Btn>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

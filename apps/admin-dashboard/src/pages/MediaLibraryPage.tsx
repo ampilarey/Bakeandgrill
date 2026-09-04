@@ -257,7 +257,7 @@ function AssetCard({
           <AssetThumb asset={asset} />
         </div>
         <div style={{ padding: '6px 8px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#3D2B1F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {asset.title || asset.url.split('/').pop() || `#${asset.id}`}
           </div>
           <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{fmtBytes(asset.file_size)}</div>
@@ -1402,7 +1402,7 @@ export function MediaLibraryPage() {
               }}
             >
               <Upload size={22} style={{ color: 'var(--color-text-muted)', marginBottom: 6 }} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
                 {uploading ? (uploadStatus || 'Uploading…') : 'Drop files here or click to browse'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>

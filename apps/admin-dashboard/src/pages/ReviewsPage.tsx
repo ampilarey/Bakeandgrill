@@ -111,7 +111,7 @@ export default function ReviewsPage() {
                 <td style={{ ...TD, maxWidth: 260 }}>
                   {review.comment ? (
                     <div>
-                      <span style={{ fontSize: 13, color: '#3D2B1F', wordBreak: 'break-word' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text)', wordBreak: 'break-word' }}>
                         {expandedId === review.id ? review.comment : (review.comment.length > 100 ? review.comment.slice(0, 100) + '…' : review.comment)}
                       </span>
                       {review.comment.length > 100 && (

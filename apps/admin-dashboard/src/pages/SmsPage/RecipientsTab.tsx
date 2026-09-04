@@ -406,7 +406,7 @@ export function RecipientsTab() {
                       </td>
                       <td style={{ ...TD, fontFamily: 'monospace' }}>
                         {m.phone ? (
-                          <span style={{ color: '#1e293b' }}>{m.phone}</span>
+                          <span style={{ color: 'var(--color-text)' }}>{m.phone}</span>
                         ) : (
                           <button onClick={() => setPhoneModal(m)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,

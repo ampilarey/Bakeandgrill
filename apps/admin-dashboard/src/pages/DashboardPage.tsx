@@ -1023,7 +1023,7 @@ export function DashboardPage() {
           {spendRestock && spendRestock.dueSoonItems.length > 0 && (
             <Card style={{ marginBottom: 12, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#9a3412' }}>Restock due soon</p>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--color-warning-strong)' }}>Restock due soon</p>
                 <button
                   type="button"
                   onClick={() => navigate('/forecasts?section=restock')}

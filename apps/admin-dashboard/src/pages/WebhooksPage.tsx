@@ -114,15 +114,15 @@ function WebhookForm({
   return (
     <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Name</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', marginBottom: 4 }}>Name</p>
         <Input value={name} onChange={setName} placeholder="My Integration" />
       </div>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 4 }}>Endpoint URL</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', marginBottom: 4 }}>Endpoint URL</p>
         <Input value={url} onChange={setUrl} placeholder="https://…" />
       </div>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Events</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', marginBottom: 6 }}>Events</p>
         <div style={{
           border: '1px solid var(--color-border)', borderRadius: 8, padding: '8px 12px',
           maxHeight: 220, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px',

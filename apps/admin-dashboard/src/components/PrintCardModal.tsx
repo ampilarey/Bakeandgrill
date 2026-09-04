@@ -155,7 +155,7 @@ export function PrintCardModal({
         {/* Controls */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Card Size</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Card Size</label>
             <Select
               value={String(sizeIdx)}
               onChange={(v) => setSizeIdx(Number(v))}
@@ -164,7 +164,7 @@ export function PrintCardModal({
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3 }}>{size.description}</div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>Copies</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Copies</label>
             <Select
               value={String(copies)}
               onChange={(v) => setCopies(Number(v))}
@@ -175,7 +175,7 @@ export function PrintCardModal({
 
         {/* Preview */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>Preview</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Preview</div>
           <div
             style={{
               background: '#F5F0EB',

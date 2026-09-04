@@ -1356,7 +1356,7 @@ export function ForecastPage() {
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit', color: '#374151',
+                        fontFamily: 'inherit', color: 'var(--color-text)',
                       }}
                     >
                       {snoozingId === -1 ? '…' : `Wake (${selectedWakeable.length})`}
@@ -1439,7 +1439,7 @@ export function ForecastPage() {
                   )}
                   <label style={{
                     display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
-                    fontSize: 12, fontWeight: 600, color: '#9a3412', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600, color: 'var(--color-warning-strong)', cursor: 'pointer',
                   }}>
                     <input
                       type="checkbox"
@@ -2033,7 +2033,7 @@ export function ForecastPage() {
                   <tbody>
                     {invForecast.items.slice(0, 30).map(item => (
                       <tr key={item.id} style={{ borderBottom: '1px solid var(--color-bg)' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{item.name}</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--color-text)' }}>{item.name}</td>
                         <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>{item.category ?? '—'}</td>
                         <td style={{ padding: '8px 12px' }}>{parseFloat(String(item.current_stock ?? 0)).toFixed(2)} {item.unit}</td>
                         <td style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>{parseFloat(String(item.daily_usage_rate ?? 0)).toFixed(3)}/day</td>

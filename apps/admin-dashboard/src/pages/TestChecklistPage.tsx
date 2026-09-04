@@ -745,7 +745,7 @@ export default function TestChecklistPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 18 }}>{section.icon}</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{section.title}</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{section.title}</span>
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999,

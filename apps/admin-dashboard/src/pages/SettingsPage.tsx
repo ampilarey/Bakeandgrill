@@ -240,7 +240,7 @@ function NotificationsSettings() {
 
   const renderSection = (title: string, subtitle: string, configs: NotifConfig[]) => (
     <div style={{ marginBottom: 28 }}>
-      <h3 style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', margin: '0 0 4px' }}>{title}</h3>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>{title}</h3>
       <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>{subtitle}</p>
       {loading ? (
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Loading…</p>
@@ -275,7 +275,7 @@ function NotificationsSettings() {
       )}
 
       <div style={{ marginBottom: 28 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#3D2B1F', margin: '0 0 4px' }}>Staff alerts</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px' }}>Staff alerts</h3>
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 14px' }}>
           Internal SMS for ops — not customer order status messages.
         </p>
@@ -321,7 +321,7 @@ function NotificationsSettings() {
               }} />
             </button>
             <span>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#3D2B1F' }}>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
                 Inventory reorder SMS
               </span>
               <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>

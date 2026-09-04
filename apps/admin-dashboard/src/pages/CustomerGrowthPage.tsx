@@ -460,7 +460,7 @@ export function CustomerGrowthPage() {
 
       {tab === 'corporate' && (
         <Card>
-          <p style={{ margin: 0, fontSize: 14, color: '#5C4E3E', lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
             Office &amp; event catering requests now live under{' '}
             <Link to="/catering" style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Catering</Link>
             {' '}in the sidebar (inquiry → quote → confirm pipeline).

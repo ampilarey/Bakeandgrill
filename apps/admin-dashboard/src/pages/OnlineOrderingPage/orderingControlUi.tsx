@@ -380,7 +380,7 @@ export function MasterSwitchRow({
         <span style={S.toggleThumb(on)} />
       </button>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#3D2B1F' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
           {toggling ? 'Updating…' : on ? titleOn : titleOff}
         </div>
         <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2, lineHeight: 1.45 }}>
@@ -581,7 +581,7 @@ export function ScheduleEditor({
               >
                 <span style={S.toggleThumb(day.enabled)} />
               </button>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#3D2B1F' }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{label}</span>
               {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
             </div>
 

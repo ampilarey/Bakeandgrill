@@ -1946,7 +1946,7 @@ export function SignagePage() {
                             </div>
                           </div>
                           {d.queued_command?.type && (
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#9A3412' }}>
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-warning-strong)' }}>
                               Queued: {d.queued_command.type}
                             </div>
                           )}
