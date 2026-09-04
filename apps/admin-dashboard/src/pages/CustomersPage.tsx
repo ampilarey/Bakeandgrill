@@ -324,7 +324,7 @@ export function CustomersPage() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <span style={{ fontSize: 13, color: '#8B7355' }}>{meta.total} total</span>
+          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{meta.total} total</span>
         </div>
       </Card>
 
@@ -362,7 +362,7 @@ export function CustomersPage() {
               >
                 <td style={TD}>
                   <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{c.name ?? '—'}</div>
-                  {c.email && <div style={{ fontSize: 11, color: '#8B7355' }}>{c.email}</div>}
+                  {c.email && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{c.email}</div>}
                 </td>
                 <td style={TD}>{c.phone}</td>
                 <td style={TD}>
@@ -458,7 +458,7 @@ export function CustomersPage() {
                 {/* Info grid */}
                 {!editing ? (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {([
                         ['Phone', detail.customer.phone],
                         ['Email', detail.customer.email ?? '—'],
@@ -543,7 +543,7 @@ export function CustomersPage() {
                       {(detail.orders ?? []).map((o) => (
                         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '10px 12px', background: '#FAF7F3', borderRadius: 10, border: '1px solid #F0EAE3' }}>
                           <Link to={`/orders?order=${o.id}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>#{o.order_number}</Link>
-                          <span style={{ color: '#8B7355', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
+                          <span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{o.type?.replace('_', ' ')}</span>
                           <Badge color={['completed', 'paid'].includes(o.status) ? 'green' : o.status === 'cancelled' ? 'red' : 'gray'}>{o.status}</Badge>
                           <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(o.total)).toFixed(2)}</span>
                           <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{fmtDate(o.created_at)}</span>
@@ -609,7 +609,7 @@ export function CustomersPage() {
                 >
                   <span>
                     <strong>{c.name ?? '—'}</strong>
-                    <span style={{ display: 'block', fontSize: 12, color: '#8B7355' }}>{c.phone}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-secondary)' }}>{c.phone}</span>
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{c.orders_count} orders</span>
                 </button>

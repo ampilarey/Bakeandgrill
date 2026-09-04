@@ -7,7 +7,7 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, useConfirmDialog,
-} from '../components/Layout';
+} from '../components/SharedUI';
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'delivered') return <Badge label="delivered" color="green" />;

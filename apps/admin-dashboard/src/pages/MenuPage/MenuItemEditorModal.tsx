@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import type { MenuCategory, MenuGroupRow } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
-import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/Layout';
+import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/SharedUI';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {

@@ -599,7 +599,7 @@ export default function OnlineOrderingPage() {
 
       {section === 'channels' && (<>
       {loading && !status && (
-        <p style={{ color: '#9C8575', fontSize: 14, marginBottom: 16 }}>Loading online channel…</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginBottom: 16 }}>Loading online channel…</p>
       )}
       {error && (
         <div className="oc-card" style={S.card}>
@@ -611,7 +611,7 @@ export default function OnlineOrderingPage() {
       )}
       {status && (<>
       <p style={{ ...S.sectionTitle, marginTop: 0 }}>Today — master</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-6px 0 12px' }}>
         Kill switch for all same-day online orders. Each order type below also needs this on.
       </p>
       <ModeGateCard
@@ -664,11 +664,11 @@ export default function OnlineOrderingPage() {
       />
 
       <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Today — by order type</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-6px 0 12px' }}>
         Independent on/off and schedule for pickup, delivery, and eat here today.
       </p>
       {(!featureGates || !deliveryStatus) && (
-        <p style={{ color: '#9C8575', fontSize: 13 }}>Loading order types…</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading order types…</p>
       )}
       {featureGates?.pickup_ordering && (
         <FeatureGateCard
@@ -735,7 +735,7 @@ export default function OnlineOrderingPage() {
 
       {section === 'features' && (<>
       <p style={{ ...S.sectionTitle, marginTop: 0 }}>Tomorrow — master</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-6px 0 12px' }}>
         Kill switch for all tomorrow orders. Each order type below also needs this on.
       </p>
       <div className="oc-card" style={S.card} data-testid="order-for-tomorrow-cutoff">
@@ -773,7 +773,7 @@ export default function OnlineOrderingPage() {
       </div>
 
       {!featureGates && (
-        <p style={{ color: '#9C8575', fontSize: 13 }}>Loading features…</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading features…</p>
       )}
       {featureGates?.order_for_tomorrow && (
         <FeatureGateCard
@@ -787,7 +787,7 @@ export default function OnlineOrderingPage() {
       )}
 
       <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Tomorrow — by order type</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-6px 0 12px' }}>
         Independent on/off and schedule for pickup, delivery, and eat here tomorrow.
       </p>
       {featureGates &&
@@ -807,7 +807,7 @@ export default function OnlineOrderingPage() {
           ))}
 
       <p style={{ ...S.sectionTitle, marginTop: '1rem' }}>Other features</p>
-      <p style={{ fontSize: 12, color: '#9C8575', margin: '-6px 0 12px' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-6px 0 12px' }}>
         Tap a feature to edit its weekly schedule or force it open.
       </p>
       {featureGates &&
@@ -979,7 +979,7 @@ export default function OnlineOrderingPage() {
             <button type="button" style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 10px', minHeight: 36 }} onClick={() => setCateringSchedule((prev) => withAllDays(prev, false))}>All closed</button>
           </div>
         </div>
-        <p style={{ fontSize: 12, color: '#9C8575', marginBottom: 14 }}>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 14 }}>
           Optional. Leave cleared for always-open when the master switch is ON. Independent from online ordering hours.
         </p>
         <ScheduleEditor

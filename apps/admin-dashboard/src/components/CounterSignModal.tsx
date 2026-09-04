@@ -3,7 +3,7 @@
    its colours have to be literal. */
 import { useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Modal, ModalActions, Btn } from './Layout';
+import { Modal, ModalActions, Btn } from './SharedUI';
 
 /**
  * A printable "show your code" sign for the counter.

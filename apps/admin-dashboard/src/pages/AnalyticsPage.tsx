@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { getAnalytics } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard,
-  TableCard, TD, TH,
-} from '../components/Layout';
+  Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TableCard, TD, TH,
+} from '../components/SharedUI';
 
 type PeakHour     = { hour: number; label: string; count: number; avg_total: number };
 type RetentionRow = { week: string; new: number; returning: number; total_customers: number };

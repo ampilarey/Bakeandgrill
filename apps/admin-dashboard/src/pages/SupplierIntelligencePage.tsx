@@ -7,7 +7,9 @@ import {
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
   type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
 } from '../api';
-import { Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH } from '../components/Layout';
+import {
+  Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
+} from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 

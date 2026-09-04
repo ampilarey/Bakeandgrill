@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import type { SnoozeUntil } from '../../api';
-import { Btn, Input } from '../../components/Layout';
+import { Btn, Input } from '../../components/SharedUI';
 
 export type ItemSnoozeControlsProps = {
   canManage: boolean;

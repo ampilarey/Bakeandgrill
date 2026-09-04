@@ -219,7 +219,7 @@ export default function DiscountCardsPage() {
               <tr key={b.id}>
                 <td style={TD}>
                   <div style={{ fontWeight: 700 }}>{b.name}</div>
-                  <div style={{ fontSize: 12, color: '#8B7355' }}>#{b.id}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>#{b.id}</div>
                 </td>
                 <td style={TD}>{formatDiscount(b.type, b.discount_value)}</td>
                 <td style={TD}>{b.quantity}</td>
@@ -240,7 +240,7 @@ export default function DiscountCardsPage() {
         <Modal title="Issue discount cards" onClose={() => setIssueOpen(false)}>
           <div style={{ display: 'grid', gap: 12 }}>
             <Input label="Name" value={name} onChange={setName} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <label>
                 <span style={label}>Type</span>
                 <select
@@ -259,11 +259,11 @@ export default function DiscountCardsPage() {
                 onChange={setDiscountValue}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <Input label="Quantity (1–50)" type="number" value={quantity} onChange={setQuantity} />
               <Input label="Uses per card" type="number" value={maxUses} onChange={setMaxUses} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <Input label="Valid from (optional)" type="date" value={startsAt} onChange={setStartsAt} />
               <Input label="Expires (optional)" type="date" value={expiresAt} onChange={setExpiresAt} />
             </div>
@@ -280,7 +280,7 @@ export default function DiscountCardsPage() {
 
       {issuedCodes.length > 0 && (
         <Modal title="Cards issued — save these codes" onClose={() => setIssuedCodes([])} maxWidth={520}>
-          <p style={{ fontSize: 13, color: '#8B7355', marginTop: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 0 }}>
             Each code works like a promo at online checkout or POS. Print or copy them now.
           </p>
           <div style={{ display: 'grid', gap: 8, maxHeight: 280, overflow: 'auto' }}>
@@ -325,7 +325,7 @@ export default function DiscountCardsPage() {
           {detailLoading && <p>Loading…</p>}
           {!detailLoading && (
             <>
-              <p style={{ fontSize: 13, color: '#8B7355', marginTop: 0 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 0 }}>
                 {formatDiscount(detailBatch.type, detailBatch.discount_value)}
                 {detailBatch.expires_at ? ` · expires ${new Date(detailBatch.expires_at).toLocaleDateString()}` : ''}
                 {detailBatch.min_order_laar > 0 ? ` · min MVR ${(detailBatch.min_order_laar / 100).toFixed(0)}` : ''}
@@ -339,7 +339,7 @@ export default function DiscountCardsPage() {
                   }}>
                     <div>
                       <div style={{ fontFamily: 'monospace', fontWeight: 700 }}>{c.code}</div>
-                      <div style={{ fontSize: 12, color: '#8B7355' }}>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                         {c.redemptions_count}/{c.max_uses ?? '∞'} uses
                       </div>
                     </div>
@@ -390,7 +390,7 @@ const label: React.CSSProperties = {
   display: 'block',
   fontSize: 12,
   fontWeight: 700,
-  color: '#8B7355',
+  color: 'var(--color-text-secondary)',
   marginBottom: 4,
 };
 

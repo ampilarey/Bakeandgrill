@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
             {this.state.chunkError ? 'Page update available' : 'Something went wrong'}
           </h1>
-          <p style={{ color: '#6B7280', marginBottom: '1.5rem', maxWidth: 420 }}>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', maxWidth: 420 }}>
             {this.state.chunkError
               ? 'The admin app was updated while this tab was open. Reload to fetch the latest version.'
               : (this.state.message || 'An unexpected error occurred. Please refresh the page.')}
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </button>
             <button
               onClick={this.state.chunkError ? this.hardReload : () => window.location.reload()}
-              style={{ background: 'transparent', color: '#6B7280', border: '1px solid #D1D5DB', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'transparent', color: 'var(--color-text-secondary)', border: '1px solid #D1D5DB', borderRadius: 8, padding: '0.6rem 1.4rem', fontWeight: 600, cursor: 'pointer' }}
             >
               Reload page
             </button>

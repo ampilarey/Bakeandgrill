@@ -37,7 +37,7 @@ const sectionTitleStyle: CSSProperties = {
   margin: '0 0 4px',
   fontSize: 15,
   fontWeight: 700,
-  color: '#3D2B1F',
+  color: 'var(--color-text)',
 };
 
 const sectionHintStyle: CSSProperties = {

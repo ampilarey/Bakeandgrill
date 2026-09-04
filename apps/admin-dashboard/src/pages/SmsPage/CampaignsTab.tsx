@@ -3,7 +3,9 @@ import {
   fetchSmsCampaigns, previewSmsCampaign, createSmsCampaign,
   sendSmsCampaign, cancelSmsCampaign, type SmsCampaign,
 } from '../../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../../components/Layout';
+import {
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog,
+} from '../../components/SharedUI';
 import { smsCharCount } from '../../utils/smsCharCount';
 
 type PreviewResult = {

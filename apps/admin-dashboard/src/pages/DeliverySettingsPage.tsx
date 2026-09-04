@@ -158,7 +158,7 @@ export default function DeliverySettingsPage() {
         <div className="ordering-page">
           <PageHeader section="Manage" title="Ordering Control Center" />
           <OrderingControlTabs />
-          <p style={{ color: '#9C8575', fontSize: 14 }}>Loading…</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Loading…</p>
         </div>
       </PageShell>
     );
@@ -243,7 +243,7 @@ export default function DeliverySettingsPage() {
 
       <div className="oc-card" style={S.card}>
         <div style={S.sectionTitle}>Zones &amp; Fees</div>
-        <p style={{ fontSize: 12, color: '#9C8575', marginTop: -8, marginBottom: 16, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: -8, marginBottom: 16, lineHeight: 1.5 }}>
           Per-island delivery fees and free-delivery threshold. Online cart progress uses the threshold automatically.
           {feeSettings?.source === 'config' && (
             <span> Currently showing config defaults until you save.</span>
@@ -329,7 +329,7 @@ export default function DeliverySettingsPage() {
                   onChange={(e) => updateZoneRow(idx, 'fee', e.target.value)}
                   style={S.input}
                 />
-                <span style={{ fontSize: 12, color: '#9C8575', flexShrink: 0 }}>MVR</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', flexShrink: 0 }}>MVR</span>
                 <button
                   type="button"
                   className="icon-button"
@@ -413,7 +413,7 @@ export default function DeliverySettingsPage() {
           </button>
           SMS business phone when delivery orders pass estimated ready time
         </label>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#9C8575', lineHeight: 1.5 }}>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
           Uses the business phone from Website Settings. Runs hourly via scheduler; also appears in System Health alert inbox.
         </p>
       </div>
@@ -422,7 +422,7 @@ export default function DeliverySettingsPage() {
         padding: '12px 16px', background: 'var(--color-warning-bg)',
         border: '1px solid rgba(212,129,58,0.3)', borderRadius: 10,
       }}>
-        <p style={{ margin: 0, fontSize: 12, color: '#9C8575', lineHeight: 1.6 }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           When delivery is off or outside schedule, the order app shows an amber <strong>Pickup only</strong> pill at checkout.
           Customers can still place takeaway orders normally.
         </p>

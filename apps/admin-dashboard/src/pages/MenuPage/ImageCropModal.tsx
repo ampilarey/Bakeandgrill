@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import Cropper, { type Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import { RotateCcw, RotateCw } from 'lucide-react';
-import { Btn } from '../../components/Layout';
+import { Btn } from '../../components/SharedUI';
 import { useDialogChrome } from '../../components/SharedUI';
 import { getCroppedMenuImage, MENU_IMAGE_ASPECT, MENU_IMAGE_HEIGHT, MENU_IMAGE_WIDTH } from './cropImage';
 

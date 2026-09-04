@@ -43,7 +43,8 @@ function ModalPanel({ onClose, title, size = 'md', children, footer }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 overlay-enter"
+      className="modal-backdrop fixed inset-0 flex items-center justify-center p-4 overlay-enter"
+      style={{ zIndex: 'var(--z-dialog-over)' as unknown as number }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'ui-modal-title' : undefined}
@@ -55,10 +56,12 @@ function ModalPanel({ onClose, title, size = 'md', children, footer }: Props) {
         aria-hidden="true"
       />
       {/*
-        Panel — `modal-container` is the hook our global mobile @media
-        rule targets so the dialog snaps to a full-width bottom sheet
-        on phones instead of staying centered with leftover margin
-        that pushed the content offscreen.
+        Panel — `modal-container` is the hook our global mobile @media rule
+        targets so the dialog snaps to a full-width bottom sheet on phones.
+        That rule is scoped `.modal-backdrop .modal-container`, and until
+        2026-09-04 this component rendered no backdrop, so it got none of it:
+        no max-height, no bottom sheet, and a long dialog ran off the bottom
+        of a phone with nothing to scroll (audit A7).
       */}
       <div ref={panelRef} className={['modal-container relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
         {title && (

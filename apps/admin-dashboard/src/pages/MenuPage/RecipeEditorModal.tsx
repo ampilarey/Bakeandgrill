@@ -3,7 +3,7 @@ import {
   fetchInventoryItems, saveItemRecipe,
   type InventoryItem, type ItemWithRecipe,
 } from '../../api';
-import { Btn, Modal, ModalActions, Spinner } from '../../components/Layout';
+import { Btn, Modal, ModalActions, Spinner } from '../../components/SharedUI';
 
 interface Row {
   key: string;

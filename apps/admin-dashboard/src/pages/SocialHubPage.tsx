@@ -10,7 +10,7 @@ import {
 } from '../api';
 import {
   Badge, Btn, Card, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
-} from '../components/Layout';
+} from '../components/SharedUI';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -78,6 +78,7 @@ export function SocialHubPage() {
   return (
     <PageShell>
       <PageHeader
+        section="Customers & Marketing"
         title="Social Hub"
         subtitle="Post to the business's Facebook, Instagram and Telegram"
         action={canCompose ? <Btn onClick={() => setComposing(true)}>+ New post</Btn> : undefined}

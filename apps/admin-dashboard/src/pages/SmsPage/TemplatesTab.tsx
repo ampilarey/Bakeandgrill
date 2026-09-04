@@ -4,7 +4,7 @@ import {
   fetchSmsTemplates, createSmsTemplate, updateSmsTemplate, deleteSmsTemplate,
   previewSmsTemplateById, type SmsTemplate,
 } from '../../api';
-import { Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner } from '../../components/Layout';
+import { Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner } from '../../components/SharedUI';
 import { smsCharCount } from '../../utils/smsCharCount';
 
 type TemplateForm = {

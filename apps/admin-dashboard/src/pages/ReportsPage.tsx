@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Btn, ErrorMsg, PageHeader, PageShell, Spinner } from '../components/Layout';
+import { Btn, ErrorMsg, PageHeader, PageShell, Spinner } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { ReportsTabPanels } from './ReportsPage/ReportsTabPanels';

@@ -237,5 +237,5 @@ const secondaryBtn: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   background: 'var(--color-surface)',
-  color: '#3D2B1F',
+  color: 'var(--color-text)',
 };

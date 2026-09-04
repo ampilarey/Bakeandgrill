@@ -139,7 +139,7 @@ function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pic
       className="media-picker-backdrop"
       style={{
         /* Above ContentEditorSheet layers (50+) so library/crop stay usable inside sheets */
-        position: 'fixed', inset: 0, zIndex: 70,
+        position: 'fixed', inset: 0, zIndex: 'var(--z-picker)' as unknown as number,
         background: 'rgba(28,20,8,0.45)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', padding: 16,
       }}

@@ -8,9 +8,8 @@ import {
 import { usePageTitle } from '../hooks/usePageTitle';
 import { CounterSignModal } from '../components/CounterSignModal';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions,
-  PageHeader, PageShell, Spinner, TableCard, TD, TH,
-} from '../components/Layout';
+  Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
+} from '../components/SharedUI';
 import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
 

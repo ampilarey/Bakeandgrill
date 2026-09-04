@@ -820,7 +820,7 @@ export default function PurchaseRequestsPage() {
             onChange={(e) => setPromoteUnit(e.target.value)}
             style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Reorder point (optional)</label>
               <input

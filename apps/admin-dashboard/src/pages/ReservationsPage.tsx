@@ -4,7 +4,9 @@ import {
   getReservationSettings, updateReservationSettings,
   type AdminReservation, type ReservationSettings,
 } from '../api';
-import { Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD, TH } from '../components/Layout';
+import {
+  Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD, TH,
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLOR: Record<string, string> = {

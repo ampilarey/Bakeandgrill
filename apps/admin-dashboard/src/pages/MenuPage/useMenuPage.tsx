@@ -9,7 +9,7 @@ import {
   type MenuCategory, type MenuItem, type BarcodeLabel, type ItemWithRecipe,
   type MenuGroupRow, type SnoozeUntil,
 } from '../../api';
-import { useConfirmDialog } from '../../components/Layout';
+import { useConfirmDialog } from '../../components/SharedUI';
 import { useCurrentUserPermissions } from '../../hooks/usePermissions';
 import { emptyItemForm, formToPayload, itemToForm, type ItemForm } from './menuItemForm';
 

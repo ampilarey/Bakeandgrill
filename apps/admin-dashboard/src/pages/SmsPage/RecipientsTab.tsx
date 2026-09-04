@@ -8,7 +8,9 @@ import {
   type StaffNotificationPref,
   type SmsContact,
 } from '../../api';
-import { Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH } from '../../components/Layout';
+import {
+  Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH,
+} from '../../components/SharedUI';
 
 const ORDER_TYPES = [
   { value: 'online_pickup', label: 'Online Pickup' },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Globe, ShoppingBag, Users, Wallet } from 'lucide-react';
 import { fetchSiteStats, type SiteStats } from '../api';
-import { SectionLabel, StatCard } from './Layout';
+import { SectionLabel, StatCard } from './SharedUI';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 

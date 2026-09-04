@@ -654,15 +654,15 @@ export default function TestChecklistPage() {
       />
 
       {/* Progress bar */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 14, padding: '16px 20px', border: '1px solid #E5E7EB', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ background: 'var(--color-surface)', borderRadius: 14, padding: '16px 20px', border: '1px solid var(--color-border)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ height: 10, background: '#F3F4F6', borderRadius: 999, overflow: 'hidden' }}>
+          <div style={{ height: 10, background: 'var(--color-bg)', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{
               height: '100%', width: `${pct}%`, background: pctColor,
               borderRadius: 999, transition: 'width 0.4s ease',
             }} />
           </div>
-          <p style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>{done} of {total} checks passed</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 6 }}>{done} of {total} checks passed</p>
         </div>
         <div style={{ textAlign: 'right', minWidth: 60 }}>
           <div style={{ fontSize: 28, fontWeight: 800, color: pctColor, lineHeight: 1 }}>{pct}%</div>
@@ -740,7 +740,7 @@ export default function TestChecklistPage() {
               <div style={{
                 padding: '12px 16px',
                 background: allDone ? '#ECFDF5' : '#F9FAFB',
-                borderBottom: '1px solid #E5E7EB',
+                borderBottom: '1px solid var(--color-border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Modal, ModalActions, Btn, Select } from './Layout';
+import { Modal, ModalActions, Btn, Select } from './SharedUI';
 
 export type PrintCardData = {
   type: 'gift_card' | 'promo' | 'discount_card';

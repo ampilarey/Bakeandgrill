@@ -153,6 +153,7 @@ export function BusinessDetailsPage() {
     <PageShell>
       <div data-testid="business-details-page" className="business-details-page" style={pageStyle}>
         <PageHeader
+          section="System"
           title="Business Details"
           subtitle="Shared operational business record"
           action={(

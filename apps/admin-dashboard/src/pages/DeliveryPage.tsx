@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchOrders, getDriverSettlementReport, type Order, type DriverSettlementReport, adminRequest } from '../api';
-import { Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog } from '../components/Layout';
+import {
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Modal, PageHeader, PageShell, Spinner, StatCard, statColor, useConfirmDialog,
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { today, daysAgo } from '../utils/dateHelpers';
 
@@ -160,7 +162,7 @@ export function DeliveryPage() {
             {lastPage > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24 }}>
                 <Btn variant="secondary" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Prev</Btn>
-                <span style={{ lineHeight: '36px', fontSize: 13, color: '#6b7280' }}>Page {page} / {lastPage}</span>
+                <span style={{ lineHeight: '36px', fontSize: 13, color: 'var(--color-text-secondary)' }}>Page {page} / {lastPage}</span>
                 <Btn variant="secondary" disabled={page >= lastPage} onClick={() => setPage(p => p + 1)}>Next →</Btn>
               </div>
             )}
@@ -424,7 +426,7 @@ function QuickAssignDriver({ order, drivers, onAssigned }: { order: Order; drive
         onChange={(e) => void handleChange(e.target.value)}
         style={{
           width: '100%', padding: '6px 10px', borderRadius: 8,
-          border: '1.5px solid #e5e7eb', fontSize: 13, color: 'var(--color-text)',
+          border: '1.5px solid var(--color-border)', fontSize: 13, color: 'var(--color-text)',
           background: saving ? '#f9fafb' : 'var(--color-surface)', cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
@@ -467,14 +469,14 @@ function AssignDriverInline({
   };
 
   return (
-    <div style={{ marginTop: 16, background: 'var(--color-bg)', borderRadius: 10, padding: 14, border: '1.5px solid #e5e7eb' }}>
+    <div style={{ marginTop: 16, background: 'var(--color-bg)', borderRadius: 10, padding: 14, border: '1.5px solid var(--color-border)' }}>
       <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Assign Driver</p>
       {err && <p style={{ color: 'var(--color-danger-strong)', fontSize: 12, marginBottom: 6 }}>{err}</p>}
       <div style={{ display: 'flex', gap: 8 }}>
         <select
           value={driverId}
           onChange={(e) => setDriverId(e.target.value)}
-          style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'inherit' }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
         >
           <option value="">— Unassigned —</option>
           {drivers.filter((d) => d.is_active).map((d) => (
@@ -553,7 +555,7 @@ function DriversPanel({ drivers, onRefresh }: { drivers: Driver[]; onRefresh: ()
 
   const inputStyle: React.CSSProperties = {
     flex: 1, padding: '9px 12px', borderRadius: 8,
-    border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'inherit', minWidth: 120,
+    border: '1.5px solid var(--color-border)', fontSize: 14, fontFamily: 'inherit', minWidth: 120,
   };
 
   return (

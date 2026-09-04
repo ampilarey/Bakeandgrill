@@ -721,7 +721,7 @@ function ConfirmDialogPanel({ state, close }: { state: ConfirmDialogState; close
       data-testid="confirm-dialog"
       style={{
         // Above Modal (50) and the customer drawer (56); the toast still clears it.
-        position: 'fixed', inset: 0, zIndex: 'calc(var(--z-modal) + 10)' as unknown as number,
+        position: 'fixed', inset: 0, zIndex: 'var(--z-dialog-over)' as unknown as number,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.45)', padding: 16,
       }}

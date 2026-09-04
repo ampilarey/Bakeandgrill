@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Card, ResponsiveTable, StatCard } from '../../components/Layout';
+import { Card, ResponsiveTable, StatCard } from '../../components/SharedUI';
 import { paymentMethodLabel } from '../../lib/paymentMethods';
 import {
   BarCell, DISCOUNT_TYPE_LABELS, mvr, ORDER_TYPE_LABELS, PaymentCommissionBlock,

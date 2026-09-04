@@ -208,7 +208,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Mobile or email
               </label>
               <input
@@ -224,7 +224,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
 
             {loginMode === 'password' ? (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -251,7 +251,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
             </div>
             ) : (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 PIN
               </label>
               <input
@@ -303,7 +303,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
           <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
             Two-Factor Code
           </h2>
-          <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
+          <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 14, margin: '0 0 24px' }}>
             {useRecovery
               ? 'Enter one of the recovery codes you saved when you set this up.'
               : 'Open your authenticator app and enter the 6-digit code.'}
@@ -372,7 +372,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
           <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
             Reset Password
           </h2>
-          <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
+          <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 14, margin: '0 0 24px' }}>
             Enter your mobile number — we'll send a 6-digit code.
           </p>
 
@@ -411,7 +411,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
         <h2 style={{ textAlign: 'center', margin: '0 0 8px', fontSize: 20, color: 'var(--color-text)', fontWeight: 700 }}>
           Set New Password
         </h2>
-        <p style={{ textAlign: 'center', color: '#8B7355', fontSize: 14, margin: '0 0 24px' }}>
+        <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 14, margin: '0 0 24px' }}>
           Enter the 6-digit code sent to <strong>{resetPhone}</strong>
         </p>
 
@@ -422,15 +422,15 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
         ) : (
           <form onSubmit={handleResetVerify} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OTP Code</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OTP Code</label>
               <input type="text" inputMode="numeric" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code" autoFocus style={{ ...INPUT, letterSpacing: '0.3em', textAlign: 'center', fontSize: 20 }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Password</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>New Password</label>
               <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Min 8 characters" style={INPUT} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#8B7355', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>
               <input type="password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} placeholder="Repeat new password" style={INPUT} />
             </div>
 

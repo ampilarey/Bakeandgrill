@@ -1,5 +1,5 @@
 import type { MenuCategory } from '../../api';
-import { Badge, Btn, Card } from '../../components/Layout';
+import { Badge, Btn, Card } from '../../components/SharedUI';
 
 type CategoryListProps = {
   categories: MenuCategory[];

@@ -214,7 +214,7 @@ export function CustomerCreditSection({ customerId }: Props) {
           </div>
 
           {credit.approved_by_name && (
-            <p style={{ margin: 0, fontSize: 11, color: '#8B7355' }}>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-secondary)' }}>
               Approved by {credit.approved_by_name}
               {credit.approved_at ? ` · ${new Date(credit.approved_at).toLocaleDateString()}` : ''}
             </p>

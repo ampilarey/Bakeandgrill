@@ -6,7 +6,7 @@ import {
   fetchStaffNotificationLogs, resendStaffNotification,
   type StaffNotificationLog,
 } from '../../api';
-import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH } from '../../components/Layout';
+import { Badge, Btn, EmptyState, Spinner, StatCard, TableCard, TD, TH } from '../../components/SharedUI';
 import { isAutomationEnabled } from './automationSettings';
 
 type EventConfig = {

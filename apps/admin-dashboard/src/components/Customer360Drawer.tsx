@@ -152,14 +152,14 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
    */
   return createPortal(
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 55 }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 'var(--z-drawer)' as unknown as number }} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Customer 360"
         style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 56,
+          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 'var(--z-drawer)' as unknown as number,
           width: 'min(520px, 100vw)', background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}

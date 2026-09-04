@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { MenuCategory, MenuGroupRow } from '../../api';
-import { Btn } from '../../components/Layout';
+import { Btn } from '../../components/SharedUI';
 import {
   COLUMN_GROUPS,
   GRID_COLUMNS,

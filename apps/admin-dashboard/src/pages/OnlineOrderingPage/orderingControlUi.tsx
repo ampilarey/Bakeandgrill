@@ -125,7 +125,7 @@ export const S = {
   } as CSSProperties,
   reasonNote: {
     fontSize: 12,
-    color: '#9C8575',
+    color: 'var(--color-text-muted)',
     marginTop: 6,
   },
   toggleTrack: (on: boolean): CSSProperties => ({
@@ -278,7 +278,7 @@ function StatusChipButton({ chip, groupLabel }: { chip: StatusChip; groupLabel?:
     ? {
         ...S.statusClosed,
         background: '#F5F0EB',
-        color: '#9C8575',
+        color: 'var(--color-text-muted)',
         border: '1px solid var(--color-border)',
         cursor: chip.onClick ? 'pointer' : 'default',
       }
@@ -383,7 +383,7 @@ export function MasterSwitchRow({
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
           {toggling ? 'Updating…' : on ? titleOn : titleOff}
         </div>
-        <div style={{ fontSize: 12, color: '#9C8575', marginTop: 2, lineHeight: 1.45 }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.45 }}>
           {on ? helpOn : helpOff}
         </div>
       </div>
@@ -426,7 +426,7 @@ export function Collapsible({
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{title}</span>
         <ChevronDown
           size={16}
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', color: '#9C8575', flexShrink: 0 }}
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', color: 'var(--color-text-muted)', flexShrink: 0 }}
         />
       </button>
       {open ? <div style={{ paddingBottom: 6 }}>{children}</div> : null}
@@ -582,7 +582,7 @@ export function ScheduleEditor({
                 <span style={S.toggleThumb(day.enabled)} />
               </button>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{label}</span>
-              {!day.enabled && <span style={{ fontSize: 12, color: '#9C8575' }}>Closed all day</span>}
+              {!day.enabled && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Closed all day</span>}
             </div>
 
             {day.enabled && (

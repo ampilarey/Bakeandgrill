@@ -7,7 +7,9 @@ import {
   createCreditNote, updateInvoice, createInvoice,
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
-import { Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, statColor, useConfirmDialog } from '../components/Layout';
+import {
+  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, statColor, useConfirmDialog,
+} from '../components/SharedUI';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';

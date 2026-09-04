@@ -140,7 +140,7 @@ export function ModeGateCard({
             style={{
               transform: expanded ? 'rotate(180deg)' : 'none',
               transition: 'transform 0.15s',
-              color: '#9C8575',
+              color: 'var(--color-text-muted)',
               flexShrink: 0,
             }}
           />

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { fetchPosStaffOptions, fetchShiftHistory, fetchDevices } from '../../api';
-import { Btn, Card, DateInput } from '../../components/Layout';
+import { Btn, Card, DateInput } from '../../components/SharedUI';
 import { daysAgo, tabNeedsDate, today, type Tab } from './reportsShared';
 
 export function useReportsFilters(tab: Tab) {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBreakEvenSeed, type BreakEvenSeed } from '../api';
-import { Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard } from '../components/Layout';
+import {
+  Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard,
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { mvr } from '../utils/fmt';
 import { today, daysAgo } from '../utils/dateHelpers';

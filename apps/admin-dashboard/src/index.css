@@ -1312,13 +1312,36 @@ a { text-decoration: none; color: inherit; }
   align-items: center;
 }
 
-/* Z-index scale (prevents modal/sidebar conflicts) */
+/*
+ * Z-index scale.
+ *
+ * Layout audit A8, 2026-09-03: the scale existed and almost nothing used it.
+ * Nine surfaces carried hardcoded numbers — 55, 56, 60, 70, 200, 1200, 9999 —
+ * and `--z-toast: 60` was referenced by nothing at all while the toast
+ * provider used 9999. Nothing was broken, but only by arithmetic luck across
+ * nine independent guesses, and the next overlay was as likely to land at 45
+ * as at 5000.
+ *
+ * So the scale now describes what is actually on screen, in the order things
+ * genuinely stack. Gaps of ten leave room to slot something in without
+ * renumbering.
+ */
 :root {
   --z-sidebar:  30;
   --z-overlay:  40;
   --z-dropdown: 45;
   --z-modal:    50;
-  --z-toast:    60;
+  /* A drawer covers the page but sits under a dialog opened from inside it. */
+  --z-drawer:   55;
+  /* Confirmations and pickers opened from a dialog, so above one. */
+  --z-dialog-over: 60;
+  --z-picker:   70;
+  /* Docked previews that must clear a drawer but not a dialog. */
+  --z-dock:     200;
+  /* The camera sheet covers everything except a toast. */
+  --z-scan:     1200;
+  /* Toasts are the last word; nothing may cover them. */
+  --z-toast:    9999;
 }
 
 /* SharedUI Modal — flex column: fixed header + scroll body + sticky footer */
@@ -5489,7 +5512,7 @@ work area is a single column that
 .qe-savebar {
   position: sticky;
   bottom: 0;
-  z-index: var(--z-overlay, 20);
+  z-index: var(--z-overlay);
   margin-top: 14px;
   padding: 10px 14px;
   border-radius: 10px;

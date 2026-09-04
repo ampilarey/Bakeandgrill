@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Crop, Images, Upload } from 'lucide-react';
 import { uploadMenuImage } from '../../api';
-import { Input } from '../../components/Layout';
+import { Input } from '../../components/SharedUI';
 import { MediaPicker } from '../../components/MediaPicker';
 import { findMediaByUrl, type MediaAsset } from '../../api/media';
 import {

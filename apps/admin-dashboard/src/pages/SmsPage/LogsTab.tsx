@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { fetchSmsLogs, fetchSmsLogStats, type SmsLog } from '../../api';
-import { Badge, Btn, EmptyState, Select, Spinner, StatCard, TableCard, TD, TH, statColor } from '../../components/Layout';
+import {
+  Badge, Btn, EmptyState, Select, Spinner, StatCard, TableCard, TD, TH, statColor,
+} from '../../components/SharedUI';
 
 export function LogsTab() {
   const [logs, setLogs] = useState<SmsLog[]>([]);

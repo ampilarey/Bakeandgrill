@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
 import { fetchMenuGroups, fetchAdminItems } from '../api/menu';
-import { Badge, Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor } from '../components/Layout';
+import {
+  Badge, Btn, Card, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, statColor,
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSse } from '../hooks/useSse';
 import { playChime, playLateAlert } from '../utils/audio';
@@ -325,7 +327,7 @@ function TicketHeader({
             {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
             {item.variant_name ? ` – ${item.variant_name}` : ''}
             {item.modifiers && item.modifiers.length > 0 && (
-              <span style={{ color: '#6b7280', fontSize: 11, display: 'block', marginLeft: 16 }}>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, display: 'block', marginLeft: 16 }}>
                 + {item.modifiers.map((m) => m.modifier_name).join(', ')}
               </span>
             )}

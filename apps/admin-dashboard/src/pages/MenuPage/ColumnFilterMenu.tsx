@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Btn } from '../../components/Layout';
+import { Btn } from '../../components/SharedUI';
 
 /**
  * A spreadsheet's autofilter, on one column.

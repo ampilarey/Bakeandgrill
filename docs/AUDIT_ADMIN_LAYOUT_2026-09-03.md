@@ -49,15 +49,15 @@ body, in the dialogs, and in colour.
 | | Finding | Severity | Status |
 |---|---|---|---|
 | A1 | 41 hardcoded text colours are invisible in dark mode | **High** | **FIXED 2026-09-04** |
-| A2 | 164 distinct hex colours against a 10-token palette | **High** | Partly — see A1 |
+| A2 | 164 distinct hex colours against a 10-token palette | **High** | Partly — A1 + the near-duplicates and cold greys, 2026-09-04 |
 | A3 | Ten of eleven overlays are missing dialog behaviour | **Medium** | **FIXED 2026-09-04** |
 | A4 | `ConfirmDialog` — 20 pages, no Escape, no scroll cap | **Medium** | **FIXED 2026-09-04** |
-| A5 | Two component libraries; the deprecated one is the popular one | **Medium** | Open |
-| A6 | 23 tabbed pages, 5 tab shapes, 2 users of the shared component | **Medium** | Open |
-| A7 | `ui/Modal` is silently unstyled — and unused | Low | **Premise wrong** — it IS used; behaviour fixed under A3, styling folded into A5 |
-| A8 | The z-index scale is decorative | Low | Open |
-| A9 | 20 grids stay two columns on a 390px phone | Low | Open |
-| A10 | Four pages render no breadcrumb | Low | Open |
+| A5 | Two component libraries; the deprecated one is the popular one | **Medium** | **Half done 2026-09-04** — deprecated barrel deleted; `ui` vs `SharedUI` still two |
+| A6 | 23 tabbed pages, 5 tab shapes, 2 users of the shared component | **Medium** | Open — deliberately, see the section |
+| A7 | `ui/Modal` is silently unstyled — and unused | Low | **Premise wrong; both halves FIXED 2026-09-04** |
+| A8 | The z-index scale is decorative | Low | **FIXED 2026-09-04** |
+| A9 | 20 grids stay two columns on a 390px phone | Low | **Judged 2026-09-04** — 6 collapsed, the rest kept deliberately |
+| A10 | Four pages render no breadcrumb | Low | **FIXED 2026-09-04** |
 | A11 | `TestChecklistPage` overrides the shell width | Informational | Open |
 
 ---
@@ -203,6 +203,19 @@ secondary text is a slightly different brown from page to page.
 The ESLint rule that would stop this exists and is wired into `npm run lint`. It
 only guards *new* literals; the 529 in the baseline are the backlog.
 
+**Partly cleared, 2026-09-04.** Sixty literals across eighteen files were
+mapped to tokens — the near-duplicate browns the finding names (`#3D2B1F`,
+`#8B7355`, `#9C8575`) and the cold Tailwind greys mixed into a warm palette
+(`#374151`, `#6b7280`, `#111827`, `#9ca3af`, `#4b5563`, `#e5e7eb`, `#f3f4f6`).
+
+Only exact, single-purpose replacements were made: a `color:` a couple of
+points off a text token, a `1px solid` border, a panel background. The point is
+not tidiness — a hardcoded hex cannot flip for dark mode, which is the A1 fault
+in the colours A1 did not reach.
+
+What remains is the long tail: one-off accents, chart series, brand colours in
+previews. Those need a decision each rather than a mapping table.
+
 ### A3 — Ten of eleven overlays are missing dialog behaviour (medium) — **FIXED**
 
 A dialog needs five things: Escape to close, a focus trap, focus restored on
@@ -290,7 +303,21 @@ message on a phone in landscape grows past the viewport and pushes **Cancel and
 Confirm off the bottom of the screen, with nothing to scroll** — the same shape
 of fault as the POS Charge column fixed on 2026-09-02.
 
-### A5 — Two component libraries, and the deprecated one is the popular one (medium)
+### A5 — Two component libraries, and the deprecated one is the popular one (medium) — **HALF DONE**
+
+**2026-09-04.** The deprecated barrel is gone. All 50 files importing from
+`components/Layout` now import from where the symbol actually lives —
+`SharedUI` for the primitives, `AppShell` for the shell — and `Layout.tsx` is
+deleted. That was the mechanical half: the same symbols, one import path, 967
+tests and tsc to prove it.
+
+The remaining half is a judgement, not a rewrite: `SharedUI` and `ui` both
+export `Card`, `Badge`, `Input` and `Modal`, and picking a winner means
+deciding which look is the house style and restyling whatever loses. That is a
+design decision to take deliberately, not a find-and-replace to land at the end
+of a long session. `ui/Modal`'s actual trap — see A7 — is fixed either way.
+
+Original finding follows.
 
 `components/SharedUI.tsx` and `components/ui/*` both export `Card`, `Button`/
 `Btn`, `Badge`, `Input`, `Modal`. `components/Layout.tsx` is a re-export of
@@ -316,7 +343,17 @@ already differ from the rest of the panel in their imports.
 
 The `@deprecated` marker points the wrong way: it is on the alias 47 files use.
 
-### A6 — 23 tabbed pages, five tab shapes, two users of the shared component (medium)
+### A6 — 23 tabbed pages, five tab shapes, two users of the shared component (medium) — **OPEN, deliberately**
+
+Left open on 2026-09-04. Unlike the other items in this audit, there is no
+single correct target: five tab shapes exist because the pages differ — a
+two-tab toggle, a scrolling row of nine, and a settings sidebar are not the
+same control wearing different clothes. Converging them means deciding what
+each page's navigation should be, page by page, and that is design work rather
+than cleanup. Doing it mechanically would make 23 pages consistent and several
+of them worse.
+
+Original finding follows.
 
 `components/ui/Tabs.tsx` exports `Tabs` / `TabList` / `Tab` / `TabPanel`. Two
 pages use it: `GstPage` and `KitchenProductionPage`. The other 21 hand-roll a
@@ -376,7 +413,18 @@ the first page that uses it will get a dialog that runs off the bottom of a
 phone. Either delete it or give it the `modal-backdrop` class and the four
 missing behaviours.
 
-### A8 — The z-index scale is decorative (low)
+### A8 — The z-index scale is decorative (low) — **FIXED**
+
+**Fixed 2026-09-04.** The scale now describes what is actually on screen, in
+the order things genuinely stack, with gaps of ten so the next surface can slot
+in without renumbering: sidebar 30, overlay 40, dropdown 45, modal 50, drawer
+55, dialog-over 60, picker 70, dock 200, scan 1200, toast 9999. Every hardcoded
+number listed below now reads its layer from the scale, `--z-toast` matches the
+toast provider it is named for, and the `var(--z-overlay, 20)` fallback is
+gone — a fallback that disagreed with the real value would have put that
+element under the sidebar if it ever fired.
+
+Original finding follows.
 
 `index.css:1317` defines the scale: sidebar 30, overlay 40, dropdown 45, modal
 50, toast 60. What is actually on screen:
@@ -403,7 +451,21 @@ and the toast at 9999 happens to clear every dialog. But that is arithmetic
 luck across nine hardcoded numbers, not a rule, and the next overlay is as
 likely to land at 45 as at 5000.
 
-### A9 — 20 grids stay two columns on a 390px phone (low)
+### A9 — 20 grids stay two columns on a 390px phone (low) — **JUDGED**
+
+**2026-09-04, and not a blanket fix.** Six were collapsed — the ones whose
+fields carry text a 180px column truncates: selects, an email, free text
+(`DiscountCardsPage` ×3, `PurchaseRequestsPage`, `CustomersPage`,
+`ShoppingListsPage`).
+
+The rest were read and deliberately left. `MediaLibraryPage`'s Width × Height
+and `SignageDesigner`'s X% × Y% are short numeric pairs: at 390px each still
+gets ~180px, which is ample for a number, and side-by-side is what makes the
+pair readable as a pair. `WebhooksPage` already carried the attribute, so the
+count of 20 was one high. Collapsing everything would have been the easy change
+and the wrong one.
+
+Original finding follows.
 
 Of 81 fixed multi-column inline grids (`1fr 1fr`, `repeat(N, 1fr)`), **61 carry
 a phone rule** — `.form-grid-2` or `[data-responsive-grid]`, both of which
@@ -421,7 +483,19 @@ Most are two form fields side by side, which at 390px gives roughly 180px each �
 cramped rather than broken. Adding `data-responsive-grid` to the 20 is a
 one-attribute fix each.
 
-### A10 — Four pages render no breadcrumb (low)
+### A10 — Four pages render no breadcrumb (low) — **FIXED**
+
+**Fixed 2026-09-04.** All four now pass `section` to `PageHeader`, taken from
+the nav group each page actually sits in: Business Details → System,
+Complaints → Analyze, TV Signage and Social Hub → Customers & Marketing. The
+content no longer jumps ~20px when navigating between them and their
+neighbours.
+
+The thirteen pages with no `subtitle` are left alone: a subtitle is a sentence
+about the page, and inventing one for each would be writing copy rather than
+fixing a layout.
+
+Original finding follows.
 
 61 of 65 pages pass `section` to `PageHeader` and show "Section › Page" above
 the title. These four do not:

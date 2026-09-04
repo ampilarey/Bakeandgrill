@@ -4,9 +4,8 @@ import { RotateCcw, RefreshCw } from 'lucide-react';
 import { fetchPrintJobs, retryPrintJob, type PrintJob } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select,
-  StatCard, TableCard, TD, TH, statColor,
-} from '../components/Layout';
+  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select, StatCard, TableCard, TD, TH, statColor,
+} from '../components/SharedUI';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'warning',

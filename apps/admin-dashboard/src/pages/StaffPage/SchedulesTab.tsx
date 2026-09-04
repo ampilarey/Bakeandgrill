@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { fetchSchedules, createSchedule, updateSchedule, deleteSchedule, type StaffMember, type StaffSchedule } from '../../api';
-import { Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, Spinner, TableCard, useConfirmDialog } from '../../components/Layout';
+import {
+  Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, Spinner, TableCard, useConfirmDialog,
+} from '../../components/SharedUI';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 

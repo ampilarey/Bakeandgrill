@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell } from '../components/Layout';
+import { PageHeader, PageShell } from '../components/SharedUI';
 import { LogsTab } from './SmsPage/LogsTab';
 import { CampaignsTab } from './SmsPage/CampaignsTab';
 import { PromotionsTab } from './SmsPage/PromotionsTab';

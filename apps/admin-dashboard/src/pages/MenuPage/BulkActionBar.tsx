@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { MenuCategory, MenuGroupRow } from '../../api';
-import { Btn } from '../../components/Layout';
+import { Btn } from '../../components/SharedUI';
 import type { BulkAction, PriceMode, RoundMode } from './bulkEdit';
 import { PACKAGING_MODES, SPICE_LEVELS, TAX_CODES, categoryOptions, menuGroupOptions } from './gridColumns';
 

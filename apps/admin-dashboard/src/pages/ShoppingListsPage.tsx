@@ -96,7 +96,7 @@ export default function ShoppingListsPage() {
           <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }} />
           <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 6 }}>First item</label>
           <input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Cooking oil" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box', minHeight: 44 }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <input value={qty} onChange={(e) => setQty(e.target.value)} type="number" min="0.001" step="any" style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
             <input value={unit} onChange={(e) => setUnit(e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', minHeight: 44 }} />
           </div>

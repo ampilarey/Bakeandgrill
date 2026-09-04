@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { MenuCategory } from '../api';
 import {
   Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner,
-} from '../components/Layout';
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { CategoryList } from './MenuPage/CategoryList';
 import { Field, FormTextarea, ImageUploadField } from './MenuPage/menuFormPrimitives';

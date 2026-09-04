@@ -28,7 +28,9 @@ import {
   type Order,
   type Shift,
 } from '../api';
-import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TD, TH, TableCard } from '../components/Layout';
+import {
+  Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard, TD, TH, TableCard,
+} from '../components/SharedUI';
 import { SiteStatsSection } from '../components/SiteStatsSection';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';

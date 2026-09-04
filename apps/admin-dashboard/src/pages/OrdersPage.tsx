@@ -15,10 +15,8 @@ import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  Badge, Btn, Card, EmptyState, TableStateBar,
-  PageHeader, PageShell, Select, Spinner, statColor,
-  ConfirmDialog, useConfirmDialog, Modal,
-} from '../components/Layout';
+  Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal,
+} from '../components/SharedUI';
 import { downloadCSV } from '../utils/csvExport';
 
 const REFUNDABLE_STATUSES = new Set([

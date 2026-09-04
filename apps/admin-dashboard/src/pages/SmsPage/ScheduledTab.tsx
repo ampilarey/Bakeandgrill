@@ -6,7 +6,9 @@ import {
   fetchSmsContacts, fetchSmsContactGroups, fetchSmsTemplates,
   type SmsScheduledMessage, type SmsContact, type SmsContactGroup, type SmsTemplate,
 } from '../../api';
-import { Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH } from '../../components/Layout';
+import {
+  Badge, Btn, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH,
+} from '../../components/SharedUI';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABEL: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };

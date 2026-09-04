@@ -17,7 +17,7 @@ import {
   type PaymentCommissionSummary, type UsageVarianceReport,
 } from '../../api';
 import { localISO, today, daysAgo } from '../../utils/dateHelpers';
-import { ResponsiveTable } from '../../components/Layout';
+import { ResponsiveTable } from '../../components/SharedUI';
 
 // Re-export for report tab modules that import from here.
 export { localISO, today, daysAgo };

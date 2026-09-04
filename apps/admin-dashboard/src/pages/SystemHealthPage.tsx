@@ -10,7 +10,7 @@ import {
   type CloneLiveToTestStatus,
   type SystemHealthDetailed,
 } from '../api';
-import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard } from '../components/Layout';
+import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 

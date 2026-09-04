@@ -4,7 +4,7 @@ import {
   bulkRowErrors, bulkUpdateItems, fetchAdminItems,
   type BulkItemFields, type BulkRowErrors,
 } from '../../api';
-import { Btn, Card, EmptyState, Spinner } from '../../components/Layout';
+import { Btn, Card, EmptyState, Spinner } from '../../components/SharedUI';
 import { BulkActionBar } from './BulkActionBar';
 import { GridToolbar } from './GridToolbar';
 import {

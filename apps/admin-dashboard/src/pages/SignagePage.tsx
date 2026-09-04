@@ -823,6 +823,7 @@ export function SignagePage() {
     <div data-testid="signage-studio" className="signage-studio">
     <PageShell>
       <PageHeader
+        section="Customers & Marketing"
         title="TV Signage"
         subtitle="Digital menu boards, playlists, campaigns & emergency overrides"
       />

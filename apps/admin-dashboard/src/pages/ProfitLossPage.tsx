@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getProfitAndLoss, getCashFlow, getDailySummary, type PnLReport } from '../api';
-import { Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH } from '../components/Layout';
+import {
+  Btn, Card, DateInput, ErrorMsg, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH,
+} from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 import { today, daysAgo, monthStart } from '../utils/dateHelpers';

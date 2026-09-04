@@ -6,7 +6,9 @@ import {
   generateRestockPurchaseRequest, updateInventoryItem, resolveReorderAlert,
   type ItemForecast, type RestockPlan, type RestockPlanItem,
 } from '../api';
-import { Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard } from '../components/Layout';
+import {
+  Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard,
+} from '../components/SharedUI';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -1370,7 +1372,7 @@ export function ForecastPage() {
                       style={{
                         padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)',
                         background: 'var(--color-surface)', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit', color: '#6B7280',
+                        fontFamily: 'inherit', color: 'var(--color-text-secondary)',
                       }}
                     >
                       {snoozingId === -1 ? '…' : `Exclude (${selectedExcludable.length})`}
@@ -1569,7 +1571,7 @@ export function ForecastPage() {
                                   onClick={() => void setRestockExcluded(item, false)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: 'var(--color-text)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1595,7 +1597,7 @@ export function ForecastPage() {
                                   onClick={() => void clearRestockSnooze(item)}
                                   style={{
                                     fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+                                    border: '1px solid #D1D5DB', background: '#fff', color: 'var(--color-text)',
                                     borderRadius: 6, padding: '2px 6px',
                                   }}
                                 >
@@ -1629,7 +1631,7 @@ export function ForecastPage() {
                                 title="Hide permanently from Restock Plan (no alerts/SMS)"
                                 style={{
                                   fontSize: 10, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
-                                  border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: '#6B7280',
+                                  border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-secondary)',
                                   borderRadius: 6, padding: '2px 6px',
                                 }}
                               >

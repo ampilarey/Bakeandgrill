@@ -7,9 +7,8 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input,
-  PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
-} from '../components/Layout';
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, PageHeader, PageShell, ScrollX, Select, Spinner, TableCard, TD, TH, useConfirmDialog,
+} from '../components/SharedUI';
 import { CustomerSearch } from '../components/CustomerSearch';
 import { downloadCSV } from '../utils/csvExport';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
