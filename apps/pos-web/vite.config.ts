@@ -66,6 +66,36 @@ export default defineConfig({
               expiration: { maxEntries: 2, maxAgeSeconds: 60 * 10 },
             },
           },
+          {
+            /*
+             * Owner-uploaded media — the currency note photos above all.
+             *
+             * Owner, 2026-09-04: "still iphone pos is getting stuck right after
+             * updating. But ipad is ok" … "only on 1st charge".
+             *
+             * The BUNDLED note photos are precached (see includeAssets), but an
+             * owner who uploads their own in Admin → Currency Photos gets
+             * /storage/ URLs instead, and nothing cached those. A service-worker
+             * update drops the old precache and re-downloads 1.4MB, and the very
+             * next Charge screen asks the same saturated connection for five
+             * uncached photos. That is the stall — first Charge only, because
+             * afterwards the browser has them; and not on the iPad, which has
+             * the cache headroom and usually the wifi.
+             *
+             * CacheFirst in a runtime cache of its own: it is not revisioned by
+             * the precache, so it SURVIVES an update. Photos change when someone
+             * uploads a new one, which is rare and worth a month's staleness
+             * against a till that stops during a payment.
+             */
+            urlPattern: ({ url, request }) =>
+              request.destination === 'image' && /\/storage\//.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pos-media-v1',
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
       },
       devOptions: {

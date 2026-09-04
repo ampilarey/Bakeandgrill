@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { itemsForCategory } from "../utils/categoryTree";
 import { ApiRequestError } from "@shared/api";
 import type { StaffLoginResponse } from "@shared/types";
-import { fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
+import { fetchCurrencyImages, getApiBaseUrl, fetchTables, setAuthToken, staffLogin, staffPasswordLogin, selfRegisterDevice, selfDeviceStatus, fetchPosQuickNotes, pingAuth, fetchMe, fetchActiveOrdersBadgeSample, fetchCustomerSummary, updateOrderCustomer, fetchCustomerAddresses, previewDeliveryFeeMvr, fetchPublicSiteSettings, fetchKitchenHandoverSettings, recordCountAttempt, DEFAULT_POS_SMS_NOTIFICATIONS, DEFAULT_POS_DISCOUNT_CONTROLS, type PosCustomer, type PosCustomerAddress, type PosSmsNotifications, type PosDiscountControls, type KitchenHandoverSettings } from "../api";
 import { ticketStage } from "../utils/openTicketUtils";
 import { ticketAgeAnchor, ticketAgeLevel } from "../utils/ticketAging";
 import { countPendingOfflineOrders, getOfflineOrderSyncCounts, initOfflineDb, cacheStaffSessionFromUser, ensureCachedStaffSession } from "../offline/db";
@@ -526,6 +526,41 @@ export function usePosApp() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refreshOpenTickets, shift.current?.id, isLoggedIn]);
+
+  /**
+   * Warm the note photos before anyone reaches the Charge screen.
+   *
+   * Owner, 2026-09-04: "still iphone pos is getting stuck right after
+   * updating. But ipad is ok" … "only on 1st charge". The Charge screen asks
+   * for the owner-uploaded note photos the moment it opens, so on a cold cache
+   * the cashier is the one waiting for them — with a customer in front of
+   * them and, right after a service-worker update, the precache still pulling
+   * 1.4MB down the same connection.
+   *
+   * Fetching them on login moves that wait to a moment when nobody is
+   * standing at the counter. Deliberately last in the queue: the menu, the
+   * shift and /auth/me all matter more, so this waits eight seconds and then
+   * asks quietly. Failure is fine — Charge falls back to the bundled photos,
+   * which are precached.
+   */
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const handle = window.setTimeout(() => {
+      void fetchCurrencyImages()
+        .then((images) => {
+          for (const path of Object.values(images)) {
+            if (!path) continue;
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = /^https?:\/\//.test(path)
+              ? path
+              : new URL(path, getApiBaseUrl()).toString();
+          }
+        })
+        .catch(() => undefined);
+    }, 8000);
+    return () => window.clearTimeout(handle);
+  }, [isLoggedIn]);
 
   // Sync role from /auth/me — deferred so menu + shift win the network on login.
   // staffLogin already caches role/permissions; this refreshes them quietly.
