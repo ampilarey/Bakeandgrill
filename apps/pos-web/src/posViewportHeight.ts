@@ -29,8 +29,14 @@ const VAR = "--pos-vh";
 
 function currentHeight(): number {
   const vv = window.visualViewport;
-  // Round down: a fractional pixel over the real height brings the scrollbar
-  // and the toolbar dance back.
+  // `visualViewport.height` is the honest number: in a browser with a toolbar
+  // it excludes the toolbar, which `innerHeight` does not.
+  //
+  // Deliberately NOT max() of the three readings. That would fix a short
+  // launch reading but break the toolbar case, where the larger number is the
+  // lie and the shell would end up taller than the screen — pushing Charge
+  // below the fold, which is worse than what we are fixing. The correction for
+  // a bad launch reading is the schedule below, not a bigger number.
   return Math.floor(vv?.height ?? window.innerHeight);
 }
 
@@ -39,13 +45,50 @@ function apply(): void {
   if (h > 0) document.documentElement.style.setProperty(VAR, `${h}px`);
 }
 
+/**
+ * Do what the cashier does by hand.
+ *
+ * Owner: "I have to scroll to bring it to normal position. When I bring to
+ * normal position its working perfectly." A scroll is what makes WebKit
+ * recompute the layout and, with it, the hit map. So do it for them — one
+ * pixel down and back on every scroller, which is invisible but counts.
+ *
+ * Only during the first seconds after load, before anyone is using the till,
+ * so it can never tug the list out from under a finger.
+ */
+function nudgeScrollers(): void {
+  const shell = document.querySelector(".pos-shell");
+  if (!shell) return;
+  const scrollers: Element[] = [shell, ...shell.querySelectorAll("*")].filter((el) => {
+    const s = getComputedStyle(el as Element);
+    return /auto|scroll/.test(s.overflowY) && (el as HTMLElement).scrollHeight > (el as HTMLElement).clientHeight;
+  });
+  for (const el of scrollers) {
+    const node = el as HTMLElement;
+    const top = node.scrollTop;
+    node.scrollTop = top + 1;
+    node.scrollTop = top;
+  }
+}
+
 export function startPosViewportHeight(): () => void {
   apply();
 
-  // The load itself is when iOS lies, so re-measure once the first frames are
-  // through rather than trusting the value we got during boot.
+  /*
+   * Keep asking for the first few seconds.
+   *
+   * Owner, 2026-09-04: "still happens same. if the change bar is upper same."
+   * The first version took one reading at boot and two shortly after, then
+   * waited for an event. In a standalone launch — added to the home screen,
+   * no browser toolbar — those events never fire, so a short reading taken
+   * during launch was simply pinned there. That is worse than the `dvh` it
+   * replaced, which at least corrected on a scroll. Hence the schedule below
+   * and the max() above: whatever iOS settles on within three seconds wins,
+   * without needing an event that standalone never sends.
+   */
   const raf = requestAnimationFrame(apply);
-  const settle = window.setTimeout(apply, 300);
+  const timers = [60, 150, 300, 600, 1000, 1600, 2400, 3200]
+    .map((ms) => window.setTimeout(() => { apply(); nudgeScrollers(); }, ms));
 
   const vv = window.visualViewport;
   vv?.addEventListener("resize", apply);
@@ -58,7 +101,7 @@ export function startPosViewportHeight(): () => void {
 
   return () => {
     cancelAnimationFrame(raf);
-    window.clearTimeout(settle);
+    timers.forEach((t) => window.clearTimeout(t));
     vv?.removeEventListener("resize", apply);
     vv?.removeEventListener("scroll", apply);
     window.removeEventListener("resize", apply);
