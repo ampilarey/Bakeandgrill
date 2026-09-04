@@ -443,6 +443,8 @@ const TRANSLATIONS: Translations = {
   "checkout.aria_gift": "Gift card code",
   "checkout.gift_balance": "Available: MVR {amount} — click Apply to use it",
   "checkout.gift_balance_held": "Available: MVR {available} ({held} held on other orders) — click Apply to use it",
+  "checkout.gift_link_hint": "You can paste the whole link from your gift card SMS instead of typing the code.",
+  "checkout.gift_scan_close": "Close",
 
   "gift.hub_title": "Gift cards",
   "gift.hub_intro": "Buy a gift card for someone special, or check a code’s balance anytime.",

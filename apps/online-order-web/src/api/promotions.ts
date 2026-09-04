@@ -122,6 +122,19 @@ export async function checkGiftCardBalance(
   });
 }
 
+/**
+ * Exchange the token in a gift-card SMS link for the code itself.
+ *
+ * The link is what the customer actually has — the code inside it is long
+ * enough that transcribing it is where people give up — and this is the same
+ * public endpoint the link opens when tapped.
+ */
+export async function fetchGiftCardByViewToken(
+  token: string,
+): Promise<{ code: string; masked_code: string }> {
+  return request(`/gift-cards/view/${encodeURIComponent(token)}`);
+}
+
 export async function purchaseGiftCard(data: {
   amount: number;
   recipient_phone?: string | null;

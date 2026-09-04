@@ -1,3 +1,4 @@
+import { giftCardTokenFromLink, normalizeGiftCardInput } from '../utils/giftCardInput';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, getOrderDay, setOrderDay, type SalesChannel } from "../api/menu";
@@ -18,6 +19,7 @@ import {
   initiateOnlinePayment,
   completeZeroBalanceOrder,
   checkGiftCardBalance,
+  fetchGiftCardByViewToken,
   applyGiftCard,
   removeGiftCard,
   getMyReferralCode,
@@ -791,11 +793,31 @@ export function useCheckout() {
   };
 
   // ── Gift Card ──────────────────────────────────────────────────────────────
+  /**
+   * Accept the SMS link as well as the code.
+   *
+   * A gift card is delivered as a link, and the code inside it is long enough
+   * that transcribing it is where people give up. Pasting the whole link now
+   * works: the token is exchanged for the code by the same public endpoint the
+   * link itself opens. A scan lands here too, since a scanned card may encode
+   * either the code or the link.
+   */
+  const resolveGiftCardInput = async (raw: string): Promise<string> => {
+    const token = giftCardTokenFromLink(raw);
+    if (token === null) return normalizeGiftCardInput(raw);
+    const card = await fetchGiftCardByViewToken(token);
+
+    return normalizeGiftCardInput(card.code);
+  };
+
   const handleCheckGiftCard = async () => {
     if (!giftCardCode.trim()) return;
     setGiftCardError(""); setGiftCardBalance(null); setGiftCardHeld(0); setGiftCardLoading(true);
     try {
-      const res = await checkGiftCardBalance(giftCardCode.trim().toUpperCase());
+      const code = await resolveGiftCardInput(giftCardCode);
+      // Show what was resolved, so a pasted link becomes a visible code.
+      if (code !== giftCardCode) setGiftCardCode(code);
+      const res = await checkGiftCardBalance(code);
       const available = Number(res.available_balance ?? res.current_balance);
       const held = Number(res.held_balance ?? 0);
       setGiftCardHeld(held);

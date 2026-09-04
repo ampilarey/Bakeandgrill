@@ -1,3 +1,4 @@
+import { canScanGiftCard, useGiftCardScan } from '../hooks/useGiftCardScan';
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
   fetchOrderingEligibility, type OrderingEligibility,
@@ -222,6 +223,17 @@ export function CheckoutPage() {
     friendReferralLoading,
     handleApplyFriendReferral, handleRemoveFriendReferral,
   } = useCheckout();
+
+  /*
+   * Scanning is offered only where the browser can actually do it — Chrome and
+   * Android WebView have BarcodeDetector built in, iOS Safari does not. No
+   * scanning library is shipped: this is the customer app, and a decoder is a
+   * large download for everyone to give a few people a shortcut. Typing and
+   * pasting the SMS link work on every device.
+   */
+  const [scanSupported] = useState(() => canScanGiftCard());
+  const giftScan = useGiftCardScan((value) => { setGiftCardCode(value); });
+
 
   const showDeliveryDestination = shouldShowDeliveryDestination(orderType, delivery.address_line1);
   const destinationLabel = resolveDestinationLabel(selectedAddressId, savedAddresses, addressLabel);
@@ -930,6 +942,17 @@ export function CheckoutPage() {
                 style={{ flex: 1, padding: '9px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 'var(--text-base)', fontFamily: 'monospace', textTransform: 'uppercase', minWidth: 0 }}
                 aria-label={t('checkout.aria_gift')}
               />
+              {scanSupported && (
+                <button
+                  type="button"
+                  data-testid="gift-card-scan"
+                  aria-label="Scan gift card"
+                  onClick={() => giftScan.setOpen(true)}
+                  style={{ ...S.secondaryBtn, minWidth: 48, padding: '9px 12px' }}
+                >
+                  📷
+                </button>
+              )}
               <button
                 style={{ ...S.secondaryBtn, whiteSpace: 'nowrap' }}
                 onClick={giftCardBalance !== null ? () => void handleApplyGiftCard() : () => void handleCheckGiftCard()}
@@ -948,6 +971,44 @@ export function CheckoutPage() {
               </p>
             )}
             {giftCardError && <p className="field-error" style={{ marginTop: 0 }}>{giftCardError}</p>}
+            {/* A card arrives as an SMS link, so say that the link works —
+                otherwise people transcribe a long code by hand. */}
+            {giftCardBalance === null && !giftCardError && (
+              <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                {t('checkout.gift_link_hint')}
+              </p>
+            )}
+            {giftScan.open && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Scan gift card"
+                data-testid="gift-card-scanner"
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(15,23,42,0.85)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16,
+                }}
+              >
+                <video
+                  ref={giftScan.videoRef}
+                  muted
+                  playsInline
+                  style={{ width: 'min(420px, 100%)', borderRadius: 14, background: '#000' }}
+                />
+                {giftScan.error && (
+                  <p style={{ color: '#fff', fontSize: 'var(--text-sm)', textAlign: 'center', maxWidth: 360 }}>
+                    {giftScan.error}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={giftScan.close}
+                  style={{ ...S.secondaryBtn, marginTop: 12, minHeight: 48, minWidth: 160 }}
+                >
+                  {t('checkout.gift_scan_close')}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
