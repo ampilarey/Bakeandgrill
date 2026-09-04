@@ -277,11 +277,48 @@ export function ChargeOverlay({
     setBreakdownOpen(false);
   }, [total, method]);
 
+  /**
+   * Keep the method on something the cashier is allowed to use — but never at
+   * the cost of a count already on the counter.
+   *
+   * Owner, 2026-09-04: "In charge, when I click 10 it goes to card. And gets
+   * stuck for a while. But when I restart it's ok." Earlier: "when the payment
+   * was 3 and I click the 100 note it enters as 10", "it changes to transfer
+   * and freez". The tap was never the fault. `allowedTenders` is derived from
+   * staff permissions, and `/auth/me` refreshes those on a timer after login
+   * and again on unlock. If a refresh comes back without `payments.cash` —
+   * a slow phone, a partial response, a re-auth — cash left the list while the
+   * Charge screen was open. This effect then moved the tender to the first one
+   * remaining (Card), and the `[total, method]` effect below wiped Received
+   * and every note already tapped in. From behind the counter that reads as
+   * "I pressed 10 and it jumped to Card and lost my count".
+   *
+   * So: a payment in progress is never interrupted. If money has been counted,
+   * the cashier stays where they are and finishes; a permissions blip can wait
+   * until the next sale. Nothing is bypassed — the server checks the tender
+   * again on confirm, which is the check that actually matters.
+   */
+  const counting = received !== "" || selectedNotes.length > 0;
   useEffect(() => {
     if (method === "house_account" || method === "wallet") return;
     if (baseMethods.includes(method)) return;
-    if (baseMethods.length > 0) setMethod(baseMethods[0]);
-  }, [method, baseMethods]);
+    if (baseMethods.length === 0) return;
+    if (counting) return;
+    setMethod(baseMethods[0]);
+  }, [method, baseMethods, counting]);
+
+  /**
+   * What the tender row shows. If the active method has just been dropped from
+   * the allowed list mid-count, it stays on screen and stays selected — a row
+   * that silently loses the button the cashier is standing on is worse than
+   * one that briefly shows a tender the next refresh may take away.
+   */
+  type BaseMethod = (typeof baseMethods)[number];
+  const visibleMethods = useMemo<readonly BaseMethod[]>(() => {
+    if (method === "house_account" || method === "wallet") return baseMethods;
+    const active = method as BaseMethod;
+    return baseMethods.includes(active) ? baseMethods : [active, ...baseMethods];
+  }, [baseMethods, method]);
 
   // Esc closes; useful for keyboard-driven counters.
   // Guarded by `submitting` so a stray Escape mid-payment can't
@@ -609,10 +646,10 @@ export function ChargeOverlay({
                 className="pos-charge-tenders"
                 style={{
                 display: "grid",
-                gridTemplateColumns: `repeat(${Math.max(baseMethods.length, 1)}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${Math.max(visibleMethods.length, 1)}, minmax(0, 1fr))`,
                 gap: 8,
               }}>
-                {baseMethods.map((m) => (
+                {visibleMethods.map((m) => (
                   <button
                     key={m}
                     type="button"
