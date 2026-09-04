@@ -11,6 +11,8 @@ use App\Models\PurchaseRequestItemQuote;
 use App\Models\SiteSetting;
 use App\Models\Supplier;
 use App\Models\User;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -276,7 +278,7 @@ final class PurchaseRequestService
                 'supplier_id' => $data['supplier_id'] ?? $item->supplier_id,
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
-                'bought_at' => now(),
+                'bought_at' => $this->boughtAt($data),
             ]);
 
             if ($quote) {
@@ -383,6 +385,24 @@ final class PurchaseRequestService
     }
 
     /**
+     * When the buying actually happened.
+     *
+     * The buying list used to stamp `now()` with no way to say otherwise, so a
+     * Saturday shop run entered on Monday was filed as Monday's — wrong in the
+     * spend reports and, once it was verified, wrong in the stock ledger too
+     * (2026-09-04). An explicit `bought_at` is honoured; the window it has to
+     * fall inside is enforced by `BackdatePolicy` at the controller.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function boughtAt(array $data): CarbonInterface
+    {
+        $given = $data['bought_at'] ?? null;
+
+        return $given === null ? now() : Carbon::parse((string) $given);
+    }
+
+    /**
      * Savings vs historical cheapest (laari), else vs the highest other quote on the line.
      */
     private function quoteSavingsLaar(
@@ -443,7 +463,7 @@ final class PurchaseRequestService
                 'supplier_id' => $data['supplier_id'] ?? $item->supplier_id,
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
-                'bought_at' => now(),
+                'bought_at' => $this->boughtAt($data),
             ]);
 
             $pr = $item->purchaseRequest;
@@ -463,6 +483,7 @@ final class PurchaseRequestService
             $item->update([
                 'status' => 'not_available',
                 'buyer_notes' => $notes ?? $item->buyer_notes,
+                // Nothing was bought, so this only records when it was checked.
                 'bought_at' => now(),
             ]);
 

@@ -160,6 +160,13 @@ class PurchaseWorkflowController extends Controller
                         'reference_type' => 'purchase',
                         'reference_id' => $purchase->id,
                         'notes' => 'Partial receiving',
+                        // The delivery date, matching what the price point is
+                        // stamped with just below.
+                        'occurred_at' => StockMovement::occurredAtFor(
+                            $validated['actual_delivery_date']
+                                ?? $purchase->actual_delivery_date
+                                ?? $purchase->purchase_date,
+                        ),
                     ]);
 
                     if ($purchase->supplier_id) {

@@ -228,6 +228,40 @@ this cost", which is a different thing from zero.
 
 ---
 
+## Follow-up: backdating, 2026-09-04
+
+Asked the next day: "Can i add an item i bought backdated?" It half worked. A
+purchase order already carried its own `purchase_date` and honoured it; the
+buying list did not, and neither did the ledger underneath both of them.
+
+| | Finding | Outcome |
+|---|---|---|
+| B1 | A second backdated purchase entered the same day died on a duplicate PO number | The sequence counts what was entered today, not what is dated today |
+| B2 | The buying list stamped `now()` with no way to say otherwise | Optional **Bought on** date, defaulting to today |
+| B3 | The expense it raised was dated today, not the day of the buying | Dated from the earliest line's `bought_at` |
+| B4 | The stock ledger had no date of its own, so every report saw a backdated receipt as today's | New `stock_movements.occurred_at`; Usage Variance reads it |
+| B5 | Nothing stopped a purchase being dated in the future | One window for both doors: no forward dates, 90 days back |
+
+**B1 was the sharp one.** `generatePurchaseNumber()` built `PO-<today>-<seq>`
+where the sequence counted purchases *dated* today. A backdated purchase never
+advanced that counter, so the next purchase — backdated or not — was handed a
+number already taken, and `purchase_number` is unique. The insert failed and
+nothing saved. One backdated entry therefore poisoned the numbering for the rest
+of the day.
+
+**B4 is the one with reach.** `occurred_at` is when it happened; `created_at`
+stays when it was written down. They agree for everything entered as it happens,
+which is why the backfill is a straight copy, and rows written before the column
+existed hold null and fall back to `created_at`. Without it, backdating a
+delivery into last month left last month's Usage Variance still showing the
+stock as missing while this month showed a phantom receipt — the report added
+the day before would have quietly lied about exactly the case it exists for.
+
+The window lives in `BackdatePolicy` — 90 days, overridable by the
+`purchase_backdate_max_days` setting, and forward-dating is refused outright.
+
+---
+
 ## Checked and correct
 
 - Both receipt paths are idempotent and lock the row before touching stock or cost.

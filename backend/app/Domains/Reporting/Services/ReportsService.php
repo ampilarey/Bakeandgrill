@@ -1042,7 +1042,9 @@ class ReportsService
             ->selectRaw("SUM(CASE WHEN stock_movements.reference_type = 'stock_count' THEN stock_movements.quantity ELSE 0 END) as counted_variance")
             ->selectRaw("SUM(CASE WHEN stock_movements.type = 'adjustment' AND (stock_movements.reference_type <> 'stock_count' OR stock_movements.reference_type IS NULL) THEN stock_movements.quantity ELSE 0 END) as manual_adjustments")
             ->selectRaw("COUNT(CASE WHEN stock_movements.reference_type = 'stock_count' THEN 1 END) as counts")
-            ->whereBetween('stock_movements.created_at', [$from, $to])
+            // By when it happened, not when it was typed in: a delivery entered
+            // late still belongs to the week it arrived (2026-09-04).
+            ->occurredBetween($from, $to)
             ->whereNotNull('stock_movements.inventory_item_id')
             ->groupBy('stock_movements.inventory_item_id')
             ->get();

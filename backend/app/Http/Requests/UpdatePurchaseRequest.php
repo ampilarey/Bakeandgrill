@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domains\Inventory\Services\BackdatePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePurchaseRequest extends FormRequest
@@ -13,12 +14,17 @@ class UpdatePurchaseRequest extends FormRequest
         return true;
     }
 
+    public function messages(): array
+    {
+        return BackdatePolicy::messages('purchase_date');
+    }
+
     public function rules(): array
     {
         return [
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
-            'purchase_date' => 'nullable|date',
+            'purchase_date' => BackdatePolicy::rules(required: false),
             'supplier_tin' => 'nullable|string|max:30',
             'supplier_invoice_no' => 'nullable|string|max:64',
             'supplier_invoice_date' => 'nullable|date',

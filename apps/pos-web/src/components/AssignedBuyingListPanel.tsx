@@ -19,10 +19,19 @@ type ItemDraft = {
   unitCostMvr: string;
   shopName: string;
   notes: string;
+  /** The day it was bought. Defaults to today; a past date catches up a late entry. */
+  boughtOn: string;
 };
 
+/** Today as YYYY-MM-DD in the device's own timezone, not UTC. */
+function todayIso(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
 function emptyDraft(): ItemDraft {
-  return { actualQty: "", unitCostMvr: "", shopName: "", notes: "" };
+  return { actualQty: "", unitCostMvr: "", shopName: "", notes: "", boughtOn: todayIso() };
 }
 
 export function AssignedBuyingListPanel({ onClose }: Props) {
@@ -85,6 +94,8 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
         actual_unit_cost_laar: mvrToLaar(d.unitCostMvr),
         supplier_name_text: d.shopName.trim() || undefined,
         buyer_notes: d.notes.trim() || undefined,
+        // Only sent when it isn't today, so the normal case posts nothing extra.
+        bought_at: d.boughtOn && d.boughtOn !== todayIso() ? d.boughtOn : undefined,
       };
       if (action === "bought") await markPurchaseRequestItemBought(requestId, item.id, payload);
       else if (action === "partial") await markPurchaseRequestItemPartial(requestId, item.id, payload);
@@ -153,6 +164,17 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                       </button>
                     )}
                     <input placeholder="Shop name" value={d.shopName} onChange={(e) => setDraft(item, { shopName: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
+                    <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: palette.panelMuted }}>
+                      Bought on
+                      <input
+                        type="date"
+                        data-testid={`bought-on-${item.id}`}
+                        value={d.boughtOn}
+                        max={todayIso()}
+                        onChange={(e) => setDraft(item, { boughtOn: e.target.value })}
+                        style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}`, fontFamily: "inherit" }}
+                      />
+                    </label>
                   </div>
                   <textarea placeholder="Buyer note" value={d.notes} onChange={(e) => setDraft(item, { notes: e.target.value })} rows={2} style={{ width: "100%", padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}`, boxSizing: "border-box", marginBottom: space.s }} />
                   <label style={{ fontSize: type.bodySm.fontSize, display: "block", marginBottom: space.s }}>

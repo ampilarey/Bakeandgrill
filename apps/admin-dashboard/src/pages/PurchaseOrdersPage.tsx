@@ -667,8 +667,17 @@ export function PurchaseOrdersPage() {
             {manualSuppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase date *</label>
-          <input type="date" value={manualPoForm.purchase_date} onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          {/* Backdating a delivery is allowed and files it under the day it
+              arrived. Forward-dating never is — the server refuses it too. */}
+          <input type="date" value={manualPoForm.purchase_date} max={today()}
+            data-testid="manual-po-purchase-date"
+            onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 4, boxSizing: 'border-box' }} />
+          {manualPoForm.purchase_date && manualPoForm.purchase_date < today() && (
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+              Backdated — stock, cost and the supplier price will all be filed under this date.
+            </p>
+          )}
           <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Line items</p>
           {manualPoForm.lines.map((line, idx) => (
             <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 12, marginBottom: 10 }}>

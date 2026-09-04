@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Domains\Inventory\Services\BackdatePolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePurchaseRequestItemQuoteRequest;
 use App\Models\PurchaseRequest;
@@ -201,7 +202,9 @@ class PurchaseRequestController extends Controller
             'supplier_name_text' => ['nullable', 'string', 'max:255'],
             'buyer_notes' => ['nullable', 'string', 'max:1000'],
             'from_quote_id' => ['nullable', 'integer', 'exists:purchase_request_item_quotes,id'],
-        ]);
+            // Catching up on a shop run from a previous day. Omitted means now.
+            'bought_at' => BackdatePolicy::rules(required: false),
+        ], BackdatePolicy::messages('bought_at'));
         /** @var User $user */
         $user = $request->user();
         $item = $this->service->markBought($item, $user, $validated, $request);
@@ -219,7 +222,8 @@ class PurchaseRequestController extends Controller
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name_text' => ['nullable', 'string', 'max:255'],
             'buyer_notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+            'bought_at' => BackdatePolicy::rules(required: false),
+        ], BackdatePolicy::messages('bought_at'));
         /** @var User $user */
         $user = $request->user();
         $item = $this->service->markPartial($item, $user, $validated, $request);

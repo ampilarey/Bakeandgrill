@@ -20,6 +20,7 @@ use App\Models\SupplierPriceHistory;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PurchaseController extends Controller
 {
@@ -202,14 +203,40 @@ class PurchaseController extends Controller
         return response()->json(['purchase' => $purchase], 201);
     }
 
+    /**
+     * The next PO number for today.
+     *
+     * The sequence counts what was *entered* today, not what is dated today.
+     * Counting by `purchase_date` looked equivalent until the day someone
+     * backdated a delivery: a purchase dated last week never advanced today's
+     * counter, so the next purchase — backdated or not — was handed a number
+     * that was already taken, and `purchase_number` is unique, so it died on
+     * the insert instead of saving (2026-09-04).
+     *
+     * The trailing uniqueness loop covers the rest: a number claimed by an
+     * older code path, or a row created between the count and the insert.
+     */
     private function generatePurchaseNumber(): string
     {
-        // Lock the latest record to prevent duplicate number generation under concurrency
         $date = now()->format('Ymd');
-        $count = Purchase::whereDate('purchase_date', now()->toDateString())->lockForUpdate()->get(['id'])->count() + 1;
-        $sequence = str_pad((string) $count, 4, '0', STR_PAD_LEFT);
 
-        return "PO-{$date}-{$sequence}";
+        // Lock the day's rows so two concurrent creates cannot read the same count.
+        $count = Purchase::whereDate('created_at', now()->toDateString())
+            ->lockForUpdate()
+            ->get(['id'])
+            ->count();
+
+        for ($attempt = 1; $attempt <= 50; $attempt++) {
+            $sequence = str_pad((string) ($count + $attempt), 4, '0', STR_PAD_LEFT);
+            $candidate = "PO-{$date}-{$sequence}";
+            if (!Purchase::where('purchase_number', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        // Fifty taken in a row means something is badly out of step; a unique
+        // suffix is better than throwing away the purchase being entered.
+        return "PO-{$date}-" . strtoupper(Str::random(6));
     }
 
     private function createFromPayload(array $validated, Request $request): Purchase
@@ -300,6 +327,9 @@ class PurchaseController extends Controller
                             'reference_type' => 'purchase',
                             'reference_id' => $purchase->id,
                             'notes' => $validated['notes'] ?? null,
+                            // The day the goods actually arrived, so a delivery
+                            // entered late still counts in the week it landed.
+                            'occurred_at' => StockMovement::occurredAtFor($purchase->purchase_date),
                         ]);
 
                         // S7: inside the guard. A retried create used to leave a

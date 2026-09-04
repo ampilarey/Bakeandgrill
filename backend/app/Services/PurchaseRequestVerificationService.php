@@ -15,6 +15,7 @@ use App\Models\SiteSetting;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -209,7 +210,9 @@ final class PurchaseRequestVerificationService
                 'description' => 'Purchase request ' . $pr->request_no . ($pr->title ? ': ' . $pr->title : ''),
                 'amount_laar' => $amountLaar,
                 'amount' => $amountLaar / 100,
-                'expense_date' => now()->toDateString(),
+                // The day the money left, not the day the paperwork caught up.
+                // Falls back to today when no line records when it was bought.
+                'expense_date' => $this->purchaseDateFor($pr),
                 'status' => 'pending',
                 'receipt_path' => $receiptPath,
                 'notes' => $pr->notes,
@@ -392,6 +395,9 @@ final class PurchaseRequestVerificationService
             'notes' => $costRecorded
                 ? 'Verified from purchase request item #' . $item->id
                 : 'Verified from purchase request item #' . $item->id . ' — no price recorded, item cost left unchanged',
+            // The day the runner bought it, not the day it was verified. A
+            // shop run verified on Monday still belongs to Saturday.
+            'occurred_at' => StockMovement::occurredAtFor($item->bought_at),
         ]);
 
         if ($item->supplier_id && $newCost > 0) {
@@ -401,8 +407,28 @@ final class PurchaseRequestVerificationService
                 'purchase_id' => null,
                 'unit_price' => $newCost,
                 'unit' => $invItem->unit,
-                'recorded_at' => now()->toDateString(),
+                // Dated when it was bought, so the 90-day "cheapest supplier"
+                // window measures the price from the day it was actually paid.
+                'recorded_at' => ($item->bought_at ?? now())->toDateString(),
             ]);
         }
+    }
+
+    /**
+     * The day a request's buying happened, for the expense it raises.
+     *
+     * The earliest line wins: a runner who bought over two days should have the
+     * expense sit on the first, which is when the money started leaving. Falls
+     * back to today when no line ever recorded a date.
+     */
+    private function purchaseDateFor(PurchaseRequest $pr): string
+    {
+        $earliest = $pr->items()
+            ->whereNotNull('bought_at')
+            ->min('bought_at');
+
+        return $earliest !== null
+            ? Carbon::parse((string) $earliest)->toDateString()
+            : now()->toDateString();
     }
 }

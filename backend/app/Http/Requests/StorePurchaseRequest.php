@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Domains\Inventory\Services\BackdatePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePurchaseRequest extends FormRequest
@@ -13,6 +14,11 @@ class StorePurchaseRequest extends FormRequest
         return true;
     }
 
+    public function messages(): array
+    {
+        return BackdatePolicy::messages('purchase_date');
+    }
+
     public function rules(): array
     {
         return [
@@ -20,7 +26,8 @@ class StorePurchaseRequest extends FormRequest
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
-            'purchase_date' => 'required|date',
+            // Backdating is allowed within a window; forward-dating never is.
+            'purchase_date' => BackdatePolicy::rules(),
             'supplier_tin' => 'nullable|string|max:30',
             'supplier_invoice_no' => 'nullable|string|max:64',
             'supplier_invoice_date' => 'nullable|date',
