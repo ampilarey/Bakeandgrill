@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { registerSW } from "virtual:pwa-register";
 import { POS_BUILD_INFO } from "../posBuildInfo";
-import { purgePosCachesAndReload } from "../posHardReload";
+import { purgePosCachesAndReload, softReloadPos } from "../posHardReload";
 import {
   isNewerPosBuild,
   isPosUpdateBlocked,
@@ -188,11 +188,28 @@ export function usePosAppUpdate(blockers: PosUpdateBlockers, enabled = true): Po
     setBannerVisible(false);
   }, [serverBuild, swWaiting]);
 
+  /**
+   * Reload onto the newest build.
+   *
+   * Only tears the caches down when there is genuinely something newer to
+   * fetch — a version mismatch, or a service worker sitting in `waiting`.
+   * Otherwise it is a plain reload onto the bundle already installed.
+   *
+   * Owner, 2026-09-04: "after each time when I update **or when I click update
+   * app even though there is no new update** … get stuck for about 30
+   * seconds". The purge used to run every time, so tapping Update on an
+   * up-to-date till threw away the whole bundle and every photo and pulled it
+   * all back over the phone connection for no reason at all.
+   */
   const runHardReload = useCallback(async (): Promise<void> => {
     applyingRef.current = true;
     setApplying(true);
+    if (!versionMismatch && !swWaiting) {
+      softReloadPos();
+      return;
+    }
     await purgePosCachesAndReload();
-  }, []);
+  }, [versionMismatch, swWaiting]);
 
   const applyUpdate = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
     if (updateBlocked) {

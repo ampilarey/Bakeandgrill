@@ -524,6 +524,38 @@ export function ChargeOverlay({
   useFocusTrap(trapRef, true);
 
   /**
+   * Make iOS rebuild its hit map for this screen.
+   *
+   * Owner, 2026-09-04: "click below row notes, upper row note is clicked. And
+   * when i click upper row note transfer or credit". A consistent one-row
+   * offset — and the device's own diagnostic confirms it: a press at y341,
+   * visually in the first note row, reported its target as a tender button,
+   * which sits at y233. Sixty-eight pixels high, exactly one note row, with
+   * `scroll 0→0` so nothing had moved.
+   *
+   * The paint is right — the screenshots show a correct screen. It is the
+   * touch map that is stale, left over from a layout measured before the note
+   * chips took their height. WebKit does not always re-run hit-testing after a
+   * late reflow, and a cold start is when the reflow is latest.
+   *
+   * A one-pixel scroll and back forces the recompute. Done on open and again
+   * once the photos have had time to land, since that is the reflow that
+   * strands it.
+   */
+  useEffect(() => {
+    const nudge = () => {
+      const col = document.querySelector<HTMLElement>(".pos-charge-tender");
+      if (!col) return;
+      const top = col.scrollTop;
+      col.scrollTop = top + 1;
+      col.scrollTop = top;
+    };
+    const raf = requestAnimationFrame(nudge);
+    const later = window.setTimeout(nudge, 600);
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(later); };
+  }, []);
+
+  /**
    * Tell us what actually happened on the device.
    *
    * The tender jumping to Credit on the iPhone has survived five fixes, every
