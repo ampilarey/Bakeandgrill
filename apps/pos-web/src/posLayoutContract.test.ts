@@ -102,30 +102,39 @@ describe('POS layout contract', () => {
     );
   });
 
-  it('sizes the phone charge sheet from its overlay, not from a viewport number', () => {
+  it('keeps Charge a popup on a phone, not a screen-filling sheet', () => {
     /*
-     * Owner, 2026-09-04: "I think the previous issue is with the charge page
-     * layout." The sheet asked for `height: 100dvh`, then for the measured
-     * `--pos-vh`. On a fresh iOS launch both resolve against the large
-     * viewport — the screen as it would be with no toolbar — so the sheet was
-     * laid out taller than the screen it was painted on and everything in it
-     * sat at an offset the hit map did not share. A finger on the second row
-     * of notes landed on the first; one on the first landed on the tender row,
-     * which is Credit.
+     * Owner, 2026-09-04, after ten attempts at the full-screen version: "Can u
+     * make the charge page on mobile a popup".
      *
-     * The overlay around it is already `position: fixed; inset: 0` with
-     * `align-items: stretch`, so with no height of its own the sheet is
-     * exactly that box — measured by the engine, and re-measured whenever the
-     * engine re-measures. Nothing here may reintroduce a number.
+     * A card centred in a box it never fills is sized by its own content, so
+     * its internal layout no longer depends on the viewport height iOS
+     * reports — and on a fresh launch iOS reports the large-viewport height,
+     * the screen as it would be with no toolbar. The full-screen sheet asked
+     * for `100dvh`, then for the measured `--pos-vh`, and came out taller than
+     * the screen it was painted on.
      */
-    const decls = phoneRule('.pos-charge').replace(/\/\*[\s\S]*?\*\//g, '');
+    const overlay = phoneRule('.pos-charge-overlay');
+    expect(overlay).toMatch(/align-items:\s*center/);
+    expect(overlay).toMatch(/padding:/);
 
-    expect(decls).not.toMatch(/height:/);
-    expect(decls).toMatch(/width:\s*100%/);
-    // The cap comes from the base rule (the one that centres the sheet on a
-    // wide till) and is a percentage of the fixed overlay, not of the viewport.
-    const base = css.slice(css.indexOf('\n.pos-charge {\n  margin: auto;'));
-    expect(base.slice(0, base.indexOf('}'))).toMatch(/max-height:\s*100%/);
+    const decls = phoneRule('.pos-charge').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(decls).toMatch(/margin:\s*auto/);
+    expect(decls).toMatch(/max-width:\s*\d+px/);
+    expect(decls).toMatch(/border-radius:\s*(?!0)/);
+
+    // No number for the engine to resolve: no height, and the only cap is a
+    // percentage of the fixed overlay.
+    expect(decls).not.toMatch(/(?<!-)height:/);
+    expect(decls).toMatch(/max-height:\s*100%/);
+    expect(decls).not.toMatch(/dvh|vh|--pos-vh/);
+  });
+
+  it('adds the home-indicator inset once on the charge popup', () => {
+    // The overlay keeps the card clear of the screen edge, so the footer
+    // inside it must not add the inset again — that put a white band under
+    // the buttons, inside the card.
+    expect(phoneRule('.pos-charge-footer')).not.toMatch(/safe-area-inset-bottom/);
   });
 
   it('leaves exactly one scroller on the phone charge sheet', () => {

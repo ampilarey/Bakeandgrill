@@ -779,40 +779,47 @@ html, body, #root {
     padding-bottom: 0;
   }
 
-  /* Charge overlay — full-screen phone layout: try to fit without
-   * scrolling (Received | Subtotal row, compact tenders + quick notes). */
+  /*
+   * Charge on a phone is a popup, not a full-screen page.
+   *
+   * Owner, 2026-09-04, after ten attempts at the edge-to-edge version: "Can u
+   * make the charge page on mobile a popup".
+   *
+   * What this is verified to do: the card is sized by its own content inside a
+   * box it never fills, so it no longer depends on iOS agreeing with itself
+   * about how tall the viewport is. Measured at 440x956, 390x844, 390x664,
+   * 375x559, 360x640 and 320x568, and with `--pos-vh` forced to 844 and to 500
+   * on a 664 screen: every element inside the card stays at the same offset.
+   * The full-screen version could not say that.
+   *
+   * What it is NOT verified to do: fix the mis-tap. That fault has outlived
+   * ten attempts and its cause is still unknown, so nobody should read this
+   * rule as the fix. It is the owner's chosen shape for the screen and it
+   * removes the last thing on it that depended on a number iOS gets wrong.
+   *
+   * Nothing here resolves a viewport unit. `max-height: 100%` is a percentage
+   * of the fixed overlay, which the engine has already measured.
+   */
   .pos-charge-overlay {
-    align-items: stretch;
-    background: #0F172A;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding:
+      max(12px, env(safe-area-inset-top, 0px))
+      max(12px, env(safe-area-inset-right, 0px))
+      max(12px, env(safe-area-inset-bottom, 0px))
+      max(12px, env(safe-area-inset-left, 0px));
   }
   .pos-charge {
-    margin: 0;
+    margin: auto;
     padding: 0;
-    max-width: none;
     width: 100%;
-    /*
-     * No height, and no max-height either — the base rule's `max-height: 100%`
-     * is what applies, and 100% of a `position: fixed; inset: 0` parent is a
-     * real box rather than a number iOS has to resolve.
-     *
-     * Owner, 2026-09-04: "I think the previous issue is with the charge page
-     * layout." He is right, and this is the line. The sheet asked for
-     * `100dvh`, then for the measured `--pos-vh` — the same numbers that were
-     * wrong on the shell, and wrong here for the same reason: on a fresh
-     * launch WebKit resolves them against the large viewport, so the sheet
-     * comes out taller than the screen it is painted on. The Charge bar sits
-     * high, the rows below the fold are laid out at offsets nothing on screen
-     * agrees with, and a finger meant for the second row of notes lands on the
-     * first — or on the tender row, which is Credit.
-     *
-     * The overlay around this sheet is already `position: fixed; inset: 0`
-     * (see ChargeOverlay.tsx) with `align-items: stretch`, so with no height
-     * of its own the sheet is exactly the overlay: one screen, measured by the
-     * engine, corrected whenever the engine corrects. That is why the shell
-     * fix could not help here — this sheet is a separate fixed box and never
-     * inherited it.
-     */
-    border-radius: 0;
+    /* Wide enough for five tenders and three note chips a row; on anything
+     * narrower than this the card simply takes the width it is given. */
+    max-width: 460px;
+    max-height: 100%;
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.45);
     display: flex;
     flex-direction: column;
   }
@@ -1127,11 +1134,14 @@ html, body, #root {
   }
   .pos-charge-footer {
     flex-shrink: 0;
+    /* No home-indicator inset here any more: the card is a popup and the
+     * overlay around it already keeps clear of the screen edge. Adding it
+     * again put a white band inside the card, under the buttons. */
     padding: 8px 10px !important;
-    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
     border-top: 1px solid #E2E8F0;
     background: #fff;
     box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    border-radius: 0 0 18px 18px;
   }
   .pos-charge-footer-actions {
     gap: 8px !important;
