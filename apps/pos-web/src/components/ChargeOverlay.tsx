@@ -298,20 +298,23 @@ export function ChargeOverlay({
    * until the next sale. Nothing is bypassed — the server checks the tender
    * again on confirm, which is the check that actually matters.
    */
-  /**
-   * Never strand the cashier on a tender that has just gone dead.
+  /*
+   * There was a guard here that put the cashier back on cash whenever the
+   * tender was Credit and `creditEligible` was false, on the theory that a
+   * failed credit lookup should not strand them on a tender they cannot use.
    *
-   * Tapping Credit fetches the customer's live credit summary. If that call
-   * fails or times out, eligibility drops to false — and the cashier is left
-   * on the Credit tender with Confirm disabled and no obvious way out, which
-   * reads as the till having frozen. Put them back on cash so they can take
-   * the money and move on.
+   * It broke the Credit button outright (owner, 2026-09-04: "now credit button
+   * not working"). Eligibility is not known at the moment of the tap — the
+   * button sets the tender AND fires the summary fetch, so on that first
+   * render `creditEligible` is still false and the guard bounced it straight
+   * back to cash. Nothing appeared to happen at all.
+   *
+   * It was written for a freeze that turned out to be uncached note photos, so
+   * it was never needed. Anything put here in future has to tell "we have not
+   * asked yet" apart from "we asked and the answer is no"; the component
+   * cannot currently see that difference, which is the whole reason the guard
+   * was wrong.
    */
-  useEffect(() => {
-    if (method !== "house_account" || creditEligible) return;
-    if (!baseMethods.includes("cash")) return;
-    setMethod("cash");
-  }, [method, creditEligible, baseMethods]);
 
   const counting = received !== "" || selectedNotes.length > 0;
   useEffect(() => {
