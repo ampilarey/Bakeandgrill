@@ -31,11 +31,36 @@ describe('POS layout contract', () => {
   it('pins the shell to exactly one screen', () => {
     const shell = block('.pos-shell');
 
-    // dvh is what makes it right on a phone, where the address bar changes
-    // how much screen there is; vh is the fallback for browsers without it.
-    expect(shell).toMatch(/height:\s*100dvh/);
-    expect(shell).toMatch(/height:\s*100vh/);
+    // The requirement is unchanged from 2026-09-01 — one screen, never
+    // taller, so the inner scrollers always have a ceiling and the Charge
+    // button cannot ride off the bottom. The MECHANISM changed on 2026-09-04.
+    //
+    // It used to be `height: 100dvh` with `100vh` behind it. Both are numbers
+    // iOS has to resolve, and on a fresh launch it resolves them against the
+    // large viewport — the screen as it would be with the toolbar hidden. The
+    // shell came out taller than what the cashier could see, and until they
+    // scrolled, the paint and the touch map disagreed by about a row. Owner:
+    // "sometimes the charge button is little upper. I have to scroll to bring
+    // it to normal position."
+    //
+    // `position: fixed` with `inset: 0` asks for no number: WebKit lays the
+    // shell against the visual viewport and moves it when that moves. It
+    // satisfies the original rule more strictly than a height ever did, which
+    // is why this assertion was changed rather than the CSS reverted.
+    expect(shell).toMatch(/position:\s*fixed/);
+    expect(shell).toMatch(/inset:\s*0/);
+    // Any height would beat `bottom: 0` and put a resolved number back in
+    // charge of the layout.
+    expect(shell).not.toMatch(/\bheight:/);
     expect(shell).not.toMatch(/min-height:/);
+  });
+
+  it('stops the document behind the shell from scrolling', () => {
+    // `html, body, #root { height: 100% }` resolves against the initial
+    // containing block, which on iOS is the large viewport — so the document
+    // was taller than the screen and could scroll by the toolbar's height,
+    // starting the shell offset. Locked, there is no such scroll.
+    expect(block('html, body, #root')).toMatch(/overflow:\s*hidden/);
   });
 
   it('stops the page itself scrolling', () => {

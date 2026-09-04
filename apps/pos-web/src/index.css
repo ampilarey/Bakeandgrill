@@ -18,6 +18,25 @@
 
 html, body, #root {
   height: 100%;
+  /*
+   * The document itself never scrolls — the shell owns every scroller.
+   *
+   * Owner, 2026-09-04: "the problem is with the layout specifically mobile pos
+   * layout", after "sometimes the charge button is little upper. I have to
+   * scroll to bring it to normal position."
+   *
+   * `height: 100%` here resolves against the initial containing block, which
+   * on iOS is the LARGE viewport — the screen as it would be with the toolbar
+   * hidden. So the document was taller than what the cashier could see, the
+   * page could scroll by that difference, and the shell inside it started
+   * offset. That is the Charge bar sitting high, and it is why one scroll put
+   * everything right: the scroll was settling the page, not the shell.
+   *
+   * Locking it here means there is no such scroll to be in the wrong place.
+   */
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: relative;
   margin: 0;
   background: #F8FAFC;
   color: #0F172A;
@@ -60,13 +79,22 @@ html, body, #root {
  * The vh line is the fallback for browsers without dvh; dvh is what makes it
  * right on a phone, where the address bar changes how much screen there is. */
 .pos-shell {
-  height: 100vh;
-  height: 100dvh;
-  /* The measured height wins: iOS resolves dvh against the large viewport on a
-   * fresh load and only corrects on a scroll, which laid the shell out taller
-   * than the screen and put the taps a row out of step with the paint.
-   * See posViewportHeight.ts — dvh above stays the fallback. */
-  height: var(--pos-vh, 100dvh);
+  /*
+   * Pinned to the visible viewport rather than sized to a computed height.
+   *
+   * Every height unit here — 100vh, 100dvh, and the measured --pos-vh I tried
+   * before it — is a NUMBER that iOS has to resolve, and on a fresh launch it
+   * resolves them against a screen the cashier cannot see. `position: fixed`
+   * with `inset: 0` asks for no number at all: WebKit lays the shell against
+   * the visual viewport and moves it when that moves, which is the one thing
+   * it does reliably.
+   *
+   * No height declaration at all: with top and bottom both pinned, any height
+   * would win over `bottom: 0` and put us straight back into resolving a
+   * number.
+   */
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   box-sizing: border-box;
   padding-bottom: var(--pos-safe-bottom);

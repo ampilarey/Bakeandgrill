@@ -83,16 +83,18 @@ describe("POS viewport height", () => {
 describe("the stylesheet uses it", () => {
   const css = readFileSync(join(__dirname, "..", "index.css"), "utf8");
 
-  it("sizes .pos-shell from the measured value, keeping dvh as the fallback", () => {
+  it("no longer sizes the shell from any number at all", () => {
+    // Superseded on 2026-09-04. `--pos-vh` was my attempt to replace a bad
+    // number with a better one; the shell now uses `position: fixed; inset: 0`
+    // and needs no number. See posLayoutContract.test.ts.
     const rule = css.match(/\.pos-shell \{[^}]*\}/)?.[0] ?? "";
     expect(rule, ".pos-shell rule not found").not.toBe("");
-    expect(rule).toMatch(/height: var\(--pos-vh, 100dvh\)/);
-    // The fallbacks stay for anything that never runs the measurement.
-    expect(rule).toMatch(/height: 100vh/);
+    expect(rule).not.toMatch(/\bheight:/);
   });
 
-  it("the measured value comes last so it wins", () => {
-    const rule = css.match(/\.pos-shell \{[^}]*\}/)?.[0] ?? "";
-    expect(rule.lastIndexOf("var(--pos-vh")).toBeGreaterThan(rule.lastIndexOf("height: 100dvh;"));
+  it("still sizes the full-screen sheets from it", () => {
+    // Those are ordinary boxes inside the shell rather than the shell itself,
+    // so they do still need a height, and the measured one beats dvh.
+    expect(css).toMatch(/max-height: var\(--pos-vh, 100dvh\)/);
   });
 });
