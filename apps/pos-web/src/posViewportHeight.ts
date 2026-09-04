@@ -96,33 +96,6 @@ function apply(): void {
  */
 export function remeasurePosViewport(): void {
   apply();
-  nudgeScrollers();
-}
-
-/**
- * Do what the cashier does by hand.
- *
- * Owner: "I have to scroll to bring it to normal position. When I bring to
- * normal position its working perfectly." A scroll is what makes WebKit
- * recompute the layout and, with it, the hit map. So do it for them — one
- * pixel down and back on every scroller, which is invisible but counts.
- *
- * Only during the first seconds after load, before anyone is using the till,
- * so it can never tug the list out from under a finger.
- */
-function nudgeScrollers(): void {
-  const shell = document.querySelector(".pos-shell");
-  if (!shell) return;
-  const scrollers: Element[] = [shell, ...shell.querySelectorAll("*")].filter((el) => {
-    const s = getComputedStyle(el as Element);
-    return /auto|scroll/.test(s.overflowY) && (el as HTMLElement).scrollHeight > (el as HTMLElement).clientHeight;
-  });
-  for (const el of scrollers) {
-    const node = el as HTMLElement;
-    const top = node.scrollTop;
-    node.scrollTop = top + 1;
-    node.scrollTop = top;
-  }
 }
 
 export function startPosViewportHeight(): () => void {
@@ -147,7 +120,7 @@ export function startPosViewportHeight(): () => void {
    */
   const raf = requestAnimationFrame(apply);
   const timers = [60, 150, 300, 600, 1000, 1600, 2400, 3200]
-    .map((ms) => window.setTimeout(() => { apply(); nudgeScrollers(); }, ms));
+    .map((ms) => window.setTimeout(apply, ms));
 
   const vv = window.visualViewport;
   vv?.addEventListener("resize", apply);

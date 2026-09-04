@@ -669,10 +669,20 @@ html, body, #root {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    /*
+     * Anchored to the bottom of the VISIBLE screen, not of the layout
+     * viewport. For a fixed element `100%` here is the layout viewport height
+     * — the screen as it would be with Safari's toolbar hidden — and
+     * `--pos-vh` is the visible height, so the difference is exactly what the
+     * toolbar is covering. With the toolbar up, `bottom: 0` put this sheet
+     * behind it by that amount; with it collapsed, or on an installed app,
+     * the two are equal and this is `bottom: 0`. Same fault as the Charge
+     * overlay, 2026-09-04; see the note there.
+     */
+    bottom: calc(100% - var(--pos-vh, 100dvh));
     z-index: 800;
     width: 100%;
-    max-height: min(85dvh, 720px);
+    max-height: min(calc(var(--pos-vh, 100dvh) * 0.85), 720px);
     border-radius: 16px 16px 0 0;
     padding-bottom: var(--pos-safe-bottom);
     box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);
@@ -1211,9 +1221,11 @@ html, body, #root {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Bottom of the visible screen, not of the layout viewport — see the note
+   * on .pos-cart--sheet. */
+  bottom: calc(100% - var(--pos-vh, 100dvh));
   z-index: 800;
-  max-height: min(92dvh, 720px);
+  max-height: min(calc(var(--pos-vh, 100dvh) * 0.92), 720px);
   border-radius: 16px 16px 0 0 !important;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.18);

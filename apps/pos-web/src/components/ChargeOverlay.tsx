@@ -262,8 +262,7 @@ export function ChargeOverlay({
    * it took while launching. This does it for him at the one moment it costs
    * money — a stale reading is harmless on the menu and expensive here.
    *
-   * Cheap and invisible: a property write only when the number actually moved,
-   * and a one-pixel scroll on any scroller that has room to move.
+   * Cheap and invisible: a property write, and only when the number moved.
    */
   useEffect(() => {
     remeasurePosViewport();
@@ -564,106 +563,17 @@ export function ChargeOverlay({
   const trapRef = useRef<HTMLDivElement>(null);
   useFocusTrap(trapRef, true);
 
-  /**
-   * Make iOS rebuild its hit map for this screen.
-   *
-   * Owner, 2026-09-04: "click below row notes, upper row note is clicked. And
-   * when i click upper row note transfer or credit". A consistent one-row
-   * offset — and the device's own diagnostic confirms it: a press at y341,
-   * visually in the first note row, reported its target as a tender button,
-   * which sits at y233. Sixty-eight pixels high, exactly one note row, with
-   * `scroll 0→0` so nothing had moved.
-   *
-   * The paint is right — the screenshots show a correct screen. It is the
-   * touch map that is stale, left over from a layout measured before the note
-   * chips took their height. WebKit does not always re-run hit-testing after a
-   * late reflow, and a cold start is when the reflow is latest.
-   *
-   * A one-pixel scroll and back forces the recompute. Done on open and again
-   * once the photos have had time to land, since that is the reflow that
-   * strands it.
+  /*
+   * Nothing else runs on open. Two things used to: a one-pixel scroll of the
+   * tender column to "rebuild the hit map", and a recorder that captured every
+   * press and showed a red bar when the tender flipped without Credit being
+   * pressed. Both were removed on 2026-09-04 once the fault was found — a
+   * programmatic focus() on the Received field scrolling the visual viewport
+   * under a fixed overlay (see the note on that field). The recorder's own
+   * bar, while it was a child of the card, pushed every row down 45px and
+   * amplified the very fault it was measuring. Do not put instrumentation in
+   * this card's flow.
    */
-  useEffect(() => {
-    const nudge = () => {
-      const col = document.querySelector<HTMLElement>(".pos-charge-tender");
-      if (!col) return;
-      const top = col.scrollTop;
-      col.scrollTop = top + 1;
-      col.scrollTop = top;
-    };
-    const raf = requestAnimationFrame(nudge);
-    const later = window.setTimeout(nudge, 600);
-    return () => { cancelAnimationFrame(raf); window.clearTimeout(later); };
-  }, []);
-
-  /**
-   * Tell us what actually happened on the device.
-   *
-   * The tender jumping to Credit on the iPhone has survived five fixes, every
-   * one of them inferred from measurements in a headless Chromium that is not
-   * the browser at fault. Every measurement says the layout is sound; the till
-   * says otherwise. So rather than guess a sixth time, this records the finger
-   * and shows what it found the moment the tender moves without the Credit
-   * button being the thing pressed.
-   *
-   * Observation only — it changes no behaviour. Remove it once the report
-   * comes back.
-   */
-  const lastPress = useRef<{ x: number; y: number; on: string; at: number; scroll: number; geom: string } | null>(null);
-  const prevMethod = useRef(method);
-  const [anomaly, setAnomaly] = useState<string | null>(null);
-
-  const describeTarget = (el: Element | null): string => {
-    if (!el) return "nothing";
-    const btn = el.closest("button");
-    if (!btn) return `${el.tagName.toLowerCase()}.${(el.className || "").toString().slice(0, 30)}`;
-    return btn.getAttribute("data-testid")
-      ?? (btn.className || "").toString().split(" ").find((c) => c.startsWith("pos-charge"))
-      ?? (btn.textContent || "?").trim().slice(0, 20);
-  };
-
-  useEffect(() => {
-    const was = prevMethod.current;
-    prevMethod.current = method;
-    if (method !== "house_account" || was === "house_account") return;
-
-    const p = lastPress.current;
-    const pressedCredit = p != null && /credit/i.test(p.on);
-    if (pressedCredit) return;
-
-    // The tender is Credit but the finger was not on the Credit button.
-    const underFinger = p && typeof document.elementFromPoint === "function"
-      ? describeTarget(document.elementFromPoint(p.x, p.y))
-      : "n/a";
-
-    // The device's OWN geometry, captured at the press. Every theory so far
-    // has been argued from a rendering in a different browser; this is the
-    // only way to know where these boxes actually are on the till.
-    const box = (sel: string) => {
-      const el = document.querySelector(sel);
-      if (!el) return "-";
-      const r = el.getBoundingClientRect();
-      return `${Math.round(r.top)}-${Math.round(r.bottom)}`;
-    };
-    const geom = p?.geom ?? "not captured";
-
-    setAnomaly(
-      `press ${p ? `${Math.round(p.x)},${Math.round(p.y)}` : "?"} on "${p?.on ?? "nothing"}" `
-      + `→ Credit in ${Math.round(performance.now() - (p?.at ?? 0))}ms\n`
-      + `AT PRESS   ${geom}\n`
-      + `NOW        tender ${box(".pos-charge-tenders")} · notes ${box(".pos-charge-quick-grid")} `
-      + `· bar ${box("[data-testid=\"charge-tender-anomaly\"]")}\n`
-      + `under it now "${underFinger}" · viewport ${window.innerWidth}×${window.innerHeight} `
-      + `· column scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)}\n`
-      // The page-level numbers, never captured before this. If the page or
-      // the visual viewport is offset from the layout viewport, this is where
-      // it shows — and it is the one place the earlier readouts never looked.
-      + `PAGE       scrollY ${Math.round(window.scrollY)} · vv top ${Math.round(window.visualViewport?.offsetTop ?? -1)} `
-      + `· vv h ${Math.round(window.visualViewport?.height ?? -1)} · inner h ${window.innerHeight} `
-      + `· --pos-vh ${document.documentElement.style.getPropertyValue("--pos-vh") || "unset"} `
-      + `· focus ${document.activeElement?.tagName.toLowerCase() ?? "none"}`,
-    );
-  }, [method]);
 
   return (
     <div
@@ -672,26 +582,6 @@ export function ChargeOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Charge"
-      onPointerDownCapture={(e) => {
-        const col = document.querySelector(".pos-charge-tender");
-        lastPress.current = {
-          x: e.clientX,
-          y: e.clientY,
-          on: describeTarget(e.target as Element),
-          at: performance.now(),
-          scroll: col ? Math.round(col.scrollTop) : -1,
-          geom: (() => {
-            const r = (sel: string) => {
-              const el = document.querySelector(sel);
-              if (!el) return "-";
-              const b = el.getBoundingClientRect();
-              return `${Math.round(b.top)}-${Math.round(b.bottom)}`;
-            };
-            return `tender ${r(".pos-charge-tenders")} · notes ${r(".pos-charge-quick-grid")}`
-              + ` · bar ${r("[data-testid=\"charge-tender-anomaly\"]")}`;
-          })(),
-        };
-      }}
       style={{
         /*
          * Top-anchored, and as tall as the screen ACTUALLY is.
@@ -726,42 +616,6 @@ export function ChargeOverlay({
         background: "rgba(15,23,42,0.65)",
       }}
     >
-      {/*
-        * Diagnostic — see the recorder above. Screenshot it and it says what
-        * the finger actually hit.
-        *
-        * It sits OUTSIDE the card, pinned to the bottom of the screen, and it
-        * must stay outside. Measured on 2026-09-04 at 440x956 — the till's own
-        * viewport — with this bar as the card's first child, as it was for
-        * five days: the header, the tender row, the note rows and the footer
-        * were all pushed down 45px, against a note-row pitch of 70px. So from
-        * the moment the bar appeared, a finger aimed where a chip had always
-        * been landed 45px high — in the row above. The bar is shown BECAUSE
-        * the tender flipped, so every tap after the first fault was displaced
-        * for the rest of the session, and a restart cleared it. That is the
-        * owner's report almost word for word ("click below row notes, upper
-        * row note is clicked... when I restart its ok"), and it was my own
-        * instrumentation doing it.
-        *
-        * `position: fixed` also keeps it out of the overlay's flex flow, where
-        * a second child would sit beside the card and squash it.
-        */}
-      {anomaly && (
-        <div
-          data-testid="charge-tender-anomaly"
-          onClick={() => setAnomaly(null)}
-          style={{
-            position: "fixed", left: 0, right: 0, bottom: 0, zIndex: z.overlay + 1,
-            background: "#7F1D1D", color: "#fff", padding: "8px 12px",
-            paddingBottom: "max(8px, env(safe-area-inset-bottom, 0px))",
-            fontSize: 11, lineHeight: 1.35, wordBreak: "break-word", whiteSpace: "pre-wrap",
-            cursor: "pointer",
-          }}
-        >
-          <strong>Please screenshot this and send it over — tap to dismiss</strong>
-          <br />{anomaly}
-        </div>
-      )}
       <div className="pos-charge" style={{
         background: "#fff",
         overflow: "hidden",
