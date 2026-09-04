@@ -351,7 +351,7 @@ export function ModalActions({ children }: { children: ReactNode }) {
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
-const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+export const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 /**
  * The five things a dialog owes the person using it: Escape closes it, Tab
@@ -361,19 +361,30 @@ const FOCUSABLE_SEL = 'a[href],button:not([disabled]),input:not([disabled]),sele
  * Extracted 2026-09-04 from Modal, which had all five, so ConfirmDialog — used
  * by 20 pages to ask before a delete — could stop having none of them.
  *
+ * Exported the same day for the other nine overlays in the layout audit (A3).
+ * Anything that covers the page should call this rather than re-implement a
+ * subset of it — the audit found five different subsets.
+ *
  * @param panelRef   the dialog panel, whose focusables the trap cycles
  * @param firstFocus what to focus on open (a close button, or the safe action)
+ * @param active     false leaves the page alone entirely. For a panel that is
+ *                   only a dialog at some widths — MediaLibraryPage's detail
+ *                   drawer is a full-screen sheet on a phone and a sticky
+ *                   sidebar on a desktop, and trapping focus in a sidebar
+ *                   would be a bug, not a fix.
  */
-function useDialogChrome(
+export function useDialogChrome(
   onClose: () => void,
   panelRef: React.RefObject<HTMLElement | null>,
   firstFocus?: React.RefObject<HTMLElement | null>,
+  active = true,
 ) {
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
   useEffect(() => {
+    if (!active) return;
     previouslyFocused.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prevOverflow = document.body.style.overflow;
@@ -403,7 +414,7 @@ function useDialogChrome(
         window.setTimeout(() => target.focus(), 0);
       }
     };
-  }, [panelRef, firstFocus]);
+  }, [panelRef, firstFocus, active]);
 }
 
 function isModalActionsElement(node: ReactNode): node is ReactElement<{ children?: ReactNode }> {

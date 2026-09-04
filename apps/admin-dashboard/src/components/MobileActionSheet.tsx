@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { FOCUSABLE_SEL } from './SharedUI';
 import { X } from 'lucide-react';
 
 export type MobileActionSheetProps = {
@@ -28,6 +29,7 @@ export function MobileActionSheet({
 }: MobileActionSheetProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -43,7 +45,13 @@ export function MobileActionSheet({
     };
     document.addEventListener('keydown', onKey);
     window.setTimeout(() => closeRef.current?.focus(), 0);
+    // The page behind a sheet must not scroll with it (audit A3). Not the
+    // shared hook, because this sheet stacks — a nested one must stop Escape
+    // propagating rather than closing every layer.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
+      document.body.style.overflow = prevOverflow;
       document.removeEventListener('keydown', onKey);
       const target = previouslyFocused.current;
       if (target && typeof target.focus === 'function') {
@@ -67,6 +75,18 @@ export function MobileActionSheet({
         onClick={onClose}
       />
       <div
+        ref={panelRef}
+        onKeyDown={(e) => {
+          if (e.key !== 'Tab') return;
+          const focusable = Array.from(
+            panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SEL) ?? [],
+          );
+          if (!focusable.length) { e.preventDefault(); return; }
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }}
         className="hub-mobile-action-sheet"
         role="menu"
         aria-labelledby={titleId}

@@ -18,7 +18,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useToast } from '../components/ui';
-import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner } from '../components/SharedUI';
+import { Btn, EmptyState, Modal, PageHeader, PageShell, Spinner, useDialogChrome } from '../components/SharedUI';
 import { VideoStudioModal } from '../components/VideoStudioModal';
 import {
   buildRotateParams,
@@ -881,6 +881,15 @@ export function MediaLibraryPage() {
     setUsageOpen(false);
   };
 
+  /*
+   * A dialog only when it covers the page. On a desktop this same panel is a
+   * sticky sidebar beside the grid, and trapping focus or locking the page
+   * scroll there would be a bug rather than a fix — hence the `active` flag
+   * (audit A3).
+   */
+  const detailRef = useRef<HTMLElement>(null);
+  useDialogChrome(() => closeDetail(), detailRef, undefined, isMobile && !!selected);
+
   const closeDetail = () => {
     setSelected(null);
     setEditOp(null);
@@ -1544,8 +1553,12 @@ export function MediaLibraryPage() {
               />
             )}
           <aside
+            ref={detailRef}
             data-testid="detail-drawer"
             data-mobile-overlay={isMobile ? 'true' : undefined}
+            role={isMobile ? 'dialog' : undefined}
+            aria-modal={isMobile ? true : undefined}
+            aria-label={isMobile ? 'Asset details' : undefined}
             style={isMobile ? {
               position: 'fixed', inset: 0, zIndex: 'var(--z-modal)' as unknown as number,
               width: '100%', maxWidth: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch',

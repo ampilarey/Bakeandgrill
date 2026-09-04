@@ -50,11 +50,11 @@ body, in the dialogs, and in colour.
 |---|---|---|---|
 | A1 | 41 hardcoded text colours are invisible in dark mode | **High** | **FIXED 2026-09-04** |
 | A2 | 164 distinct hex colours against a 10-token palette | **High** | Partly — see A1 |
-| A3 | Ten of eleven overlays are missing dialog behaviour | **Medium** | Open (A4 done) |
+| A3 | Ten of eleven overlays are missing dialog behaviour | **Medium** | **FIXED 2026-09-04** |
 | A4 | `ConfirmDialog` — 20 pages, no Escape, no scroll cap | **Medium** | **FIXED 2026-09-04** |
 | A5 | Two component libraries; the deprecated one is the popular one | **Medium** | Open |
 | A6 | 23 tabbed pages, 5 tab shapes, 2 users of the shared component | **Medium** | Open |
-| A7 | `ui/Modal` is silently unstyled — and unused | Low | Open |
+| A7 | `ui/Modal` is silently unstyled — and unused | Low | **Premise wrong** — it IS used; behaviour fixed under A3, styling folded into A5 |
 | A8 | The z-index scale is decorative | Low | Open |
 | A9 | 20 grids stay two columns on a 390px phone | Low | Open |
 | A10 | Four pages render no breadcrumb | Low | Open |
@@ -203,7 +203,7 @@ secondary text is a slightly different brown from page to page.
 The ESLint rule that would stop this exists and is wired into `npm run lint`. It
 only guards *new* literals; the 529 in the baseline are the backlog.
 
-### A3 — Ten of eleven overlays are missing dialog behaviour (medium)
+### A3 — Ten of eleven overlays are missing dialog behaviour (medium) — **FIXED**
 
 A dialog needs five things: Escape to close, a focus trap, focus restored on
 close, the body scroll locked behind it, and a portal to `document.body` so
@@ -213,19 +213,35 @@ does all five and is the one to copy.
 | Overlay | Esc | Scroll lock | Focus trap | Portal | `aria-modal` |
 |---|:--:|:--:|:--:|:--:|:--:|
 | `SharedUI.Modal` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `ContentItemEditor` | ✅ | ✅ | — | ✅ | ✅ |
-| `MobileSectionSheet` | ✅ | ✅ | — | — | ✅ |
-| `MobileActionSheet` | ✅ | — | — | ✅ | — |
-| `ScanSheet` | ✅ | — | — | — | ✅ |
-| `ui/Modal` | ✅ | — | — | — | ✅ |
-| `MenuPage/ImageCropModal` | — | — | — | ✅ | ✅ |
-| `MediaPicker` | — | — | — | — | ✅ |
-| `SharedUI.ConfirmDialog` | — | — | — | — | ✅ |
-| `MediaLibraryPage` (inline overlay) | — | — | — | — | — |
-| `ServiceAvailabilityPage` (inline overlay) | — | — | — | — | — |
-| `Customer360Drawer` | — | — | — | — | — |
+| `ContentItemEditor` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MobileSectionSheet` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MobileActionSheet` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `ScanSheet` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `ui/Modal` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MenuPage/ImageCropModal` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MediaPicker` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `SharedUI.ConfirmDialog` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MediaLibraryPage` detail drawer | ✅¹ | ✅¹ | ✅¹ | n/a | ✅¹ |
+| `Customer360Drawer` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-**`Customer360Drawer` has none of them.** It is the full customer record — the
+¹ On a phone, where the drawer covers the page. On a desktop the same panel is
+a sticky sidebar beside the grid, and trapping focus or locking the page scroll
+in a sidebar would be a bug rather than a fix — `useDialogChrome` takes an
+`active` flag for exactly this.
+
+`ServiceAvailabilityPage` was listed here as an inline overlay and is not one:
+its dialogs are `SharedUI.Modal`, and its only other `position: fixed` element
+is a `role="status"` toast. Nothing to fix; the row is withdrawn.
+
+**Fixed 2026-09-04.** `useDialogChrome` — the hook the A4 work pulled out of
+`Modal` — was exported and applied to every row above, replacing five different
+hand-rolled subsets. Two sheets that stack (`ContentItemEditor`,
+`MobileActionSheet`) keep their own Escape handling, because a nested sheet has
+to stop Escape propagating rather than close every layer above it; they take
+the scroll lock and the focus trap. Gated overlays were split into a gate and a
+panel so the hook can run unconditionally.
+
+**`Customer360Drawer` had none of them.** It is the full customer record — the
 drawer someone opens mid-conversation at the counter. Escape does not close it,
 the page scrolls behind it on a phone, tab walks out of it into the page
 underneath, and it is not announced as a dialog.
@@ -328,7 +344,15 @@ not divergence, it is a copy that will not receive the next fix.
 `TimeClockPage:98` hardcodes the tray background as `#F5F0EB`, so that one tab
 strip also stays light in dark mode (see A1/A2).
 
-### A7 — `ui/Modal` gets none of the modal styling, and nothing uses it (low)
+### A7 — `ui/Modal` gets none of the modal styling, and nothing uses it (low) — **CORRECTED**
+
+**The premise is wrong, found 2026-09-04 while fixing A3.** `VideoStudioModal`
+imports `Modal` from the `components/ui` barrel rather than by path, which is
+what this finding's search missed. Deleting it, as proposed below, breaks the
+video studio. It was given the full dialog behaviour under A3 instead, and the
+styling half of this finding is folded into A5.
+
+Original finding follows.
 
 `components/ui/Modal.tsx` renders `<div class="modal-container">` inside
 `<div class="fixed inset-0 z-[60] …">`. Its own comment says:

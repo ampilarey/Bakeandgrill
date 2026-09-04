@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, FileText, Film, Folder, Image, Images, Music, Search, X } from 'lucide-react';
 import {
   getMedia, getMediaCollections,
   type MediaAsset, type MediaCollection, type MediaType,
 } from '../api';
-import { Spinner } from './SharedUI';
+import { Spinner, useDialogChrome } from './SharedUI';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,21 @@ function thumbNode(asset: MediaAsset) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function MediaPicker({ open, onClose, onPick, mediaType, collection, title = 'Pick from Library' }: MediaPickerProps) {
+/*
+ * Gate and panel are separate so the panel can call `useDialogChrome`
+ * unconditionally. The audit (A3) found this one announced itself as a dialog
+ * and did nothing else a dialog does.
+ */
+export function MediaPicker(props: MediaPickerProps) {
+  if (!props.open) return null;
+
+  return <MediaPickerPanel {...props} />;
+}
+
+function MediaPickerPanel({ onClose, onPick, mediaType, collection, title = 'Pick from Library' }: MediaPickerProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogChrome(onClose, panelRef);
+
   const [activeType, setActiveType] = useState<MediaType | ''>(mediaType ?? '');
   const [activeCollection, setActiveCollection] = useState(collection ?? '');
   const [search, setSearch] = useState('');
@@ -102,7 +117,6 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
   useEffect(() => { setActiveType(mediaType ?? ''); }, [mediaType]);
   useEffect(() => { setActiveCollection(collection ?? ''); }, [collection]);
 
-  if (!open) return null;
 
   const handlePick = () => {
     if (highlighted) {
@@ -115,8 +129,9 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
     ? (highlighted.title || highlighted.url.split('/').pop() || `#${highlighted.id}`)
     : '';
 
-  return (
+  return createPortal(
     <div
+      ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -322,6 +337,7 @@ export function MediaPicker({ open, onClose, onPick, mediaType, collection, titl
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

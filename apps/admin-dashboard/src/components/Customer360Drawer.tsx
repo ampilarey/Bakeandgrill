@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
   fetchCustomerGrowthSummary, fetchCustomerActivity,
@@ -6,7 +7,7 @@ import {
   updateAdminCustomer,
   type CustomerGrowthSummary, type CustomerActivityEvent,
 } from '../api';
-import { Badge, Btn, ErrorMsg, Input, Spinner } from './SharedUI';
+import { Badge, Btn, ErrorMsg, Input, Spinner, useDialogChrome } from './SharedUI';
 import { CustomerCreditSection } from './CustomerCreditSection';
 import { CustomerDepositSection } from './CustomerDepositSection';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -68,6 +69,10 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
   };
 
   useEffect(() => { void reload(); }, [customerId]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useDialogChrome(onClose, panelRef, closeRef);
 
   const profile = summary?.profile as {
     name?: string;
@@ -137,20 +142,34 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
     }
   };
 
-  return (
+  /*
+   * This is the full customer record, opened mid-conversation at the counter,
+   * and the layout audit (A3, 2026-09-03) found it had none of the five things
+   * a dialog owes: Escape did nothing, the page scrolled behind it on a phone,
+   * Tab walked out into the page underneath, focus never came back, and screen
+   * readers were not told it was a dialog. `useDialogChrome` is the same one
+   * Modal and ConfirmDialog use.
+   */
+  return createPortal(
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(28,20,8,0.35)', zIndex: 55 }} />
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 56,
-        width: 'min(520px, 100vw)', background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Customer 360"
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 56,
+          width: 'min(520px, 100vw)', background: 'var(--color-surface)', boxShadow: '-8px 0 32px rgba(0,0,0,0.12)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}
+      >
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0EAE3', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: 'var(--color-text)' }}>Customer 360</p>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>{profile?.name ?? profile?.phone ?? `#${customerId}`}</p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-text-muted)' }}>✕</button>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="Close customer 360" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-text-muted)' }}>✕</button>
         </div>
 
         {loading ? (
@@ -303,7 +322,8 @@ export function Customer360Drawer({ customerId, onClose }: Props) {
           </div>
         ) : null}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
 

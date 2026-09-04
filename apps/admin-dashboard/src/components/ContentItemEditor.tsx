@@ -7,6 +7,7 @@ import {
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { FOCUSABLE_SEL } from './SharedUI';
 
 export type ContentItemEditorProps = {
   open: boolean;
@@ -52,6 +53,7 @@ export function ContentItemEditor({
 }: ContentItemEditorProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const narrow = useIsMobile();
   const mode = presentation === 'auto' ? (narrow ? 'fullscreen' : 'drawer') : presentation;
@@ -91,8 +93,24 @@ export function ContentItemEditor({
         onCloseRef.current();
       }
     };
+    // Tab must not walk out of the editor into the page underneath (audit A3).
+    // Not the shared hook: this editor stacks, and a nested one has to stop
+    // Escape propagating rather than closing every layer above it.
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SEL));
+      if (!focusable.length) { e.preventDefault(); return; }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onTab);
     return () => {
+      document.removeEventListener('keydown', onTab);
       document.body.style.overflow = prevOverflow;
       document.removeEventListener('keydown', onKey);
       const target = previouslyFocused.current;
@@ -123,6 +141,7 @@ export function ContentItemEditor({
         />
       ) : null}
       <div
+        ref={panelRef}
         className={`content-editor-sheet content-item-editor content-item-editor--${mode}`}
         data-testid={testId}
         role="dialog"

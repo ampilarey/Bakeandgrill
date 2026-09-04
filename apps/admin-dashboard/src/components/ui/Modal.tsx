@@ -1,5 +1,7 @@
-import { useEffect, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useDialogChrome } from '../SharedUI';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -19,17 +21,27 @@ interface Props {
   footer?: ReactNode;
 }
 
-export function Modal({ open, onClose, title, size = 'md', children, footer }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
+/*
+ * Gate and panel are separate so the panel can call `useDialogChrome`
+ * unconditionally.
+ *
+ * The layout audit (A7, 2026-09-03) recorded this component as unused and
+ * proposed deleting it. That is wrong: VideoStudioModal imports `Modal` from
+ * the `ui` barrel rather than by path, which is what the audit's search
+ * missed. So it is fixed rather than removed — it had Escape and the aria and
+ * none of the other three (A3).
+ */
+export function Modal(props: Props) {
+  if (!props.open) return null;
 
-  if (!open) return null;
+  return <ModalPanel {...props} />;
+}
 
-  return (
+function ModalPanel({ onClose, title, size = 'md', children, footer }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogChrome(onClose, panelRef);
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 overlay-enter"
       role="dialog"
@@ -48,7 +60,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
         on phones instead of staying centered with leftover margin
         that pushed the content offscreen.
       */}
-      <div className={['modal-container relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
+      <div ref={panelRef} className={['modal-container relative w-full bg-white rounded-[14px] shadow-[0_8px_24px_rgba(28,20,8,0.15)] animate-fade-in', sizeStyles[size]].join(' ')}>
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
             <h2 id="ui-modal-title" className="text-base font-bold text-[var(--color-text)]">{title}</h2>
@@ -68,6 +80,7 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }: P
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

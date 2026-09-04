@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, UserCircle, X } from 'lucide-react';
 import type { StaffUser } from '../api';
@@ -9,6 +10,7 @@ import {
   type NavGroup,
 } from './navConfig';
 import { rememberSectionPath } from './SectionBar';
+import { useDialogChrome } from './SharedUI';
 
 interface MobileSectionSheetProps {
   section: NavGroup;
@@ -19,8 +21,18 @@ interface MobileSectionSheetProps {
   lowStockCount?: number;
 }
 
-export function MobileSectionSheet({
-  section, user, open, onClose, onLogout, lowStockCount = 0,
+/*
+ * The gate is separate so the panel below can call `useDialogChrome`
+ * unconditionally — a hook cannot sit after an `if (!open) return null`.
+ */
+export function MobileSectionSheet(props: MobileSectionSheetProps) {
+  if (!props.open) return null;
+
+  return <SectionSheetPanel {...props} />;
+}
+
+function SectionSheetPanel({
+  section, user, onClose, onLogout, lowStockCount = 0,
 }: MobileSectionSheetProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,26 +41,13 @@ export function MobileSectionSheet({
 
   const visible = section.items.filter((item) => canNavItem(user, item));
 
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+  // Was a hand-rolled Escape handler and scroll lock; the shared hook adds the
+  // focus trap and focus restore this sheet did not have (audit A3).
+  useDialogChrome(onClose, panelRef, closeRef);
 
   const SectionIcon = section.icon;
 
-  return (
+  return createPortal(
     <div className="admin-mobile-drawer-overlay">
       <div className="admin-mobile-drawer-backdrop overlay-enter" onClick={onClose} />
       <div
@@ -129,6 +128,7 @@ export function MobileSectionSheet({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
