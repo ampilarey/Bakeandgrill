@@ -809,42 +809,32 @@ html, body, #root {
     gap: 6px !important;
   }
   /*
-   * Credit is NOT in this row on phones.
+   * Credit joins this row on phones; iPad keeps it on the row below.
    *
-   * Owner, over several weeks: "when I click 10 it goes to card", "it changes
-   * to transfer and freez", "still tender jump to credit … and freez for a
-   * while", "it's not happening always, sometimes".
+   * Reverted to this on the owner's instruction, 2026-09-04: "still iphone pos
+   * is getting stuck right after updating. But ipad is ok. Pls change the phone
+   * pos layout change page to previous layout."
    *
-   * Measured at 390px on 2026-09-04: with Credit squeezed in as a fifth chip,
-   * its box sat at y233–273 x311–380 and the note chip below it at y301–361
-   * x261–380 — twenty-eight pixels apart, sharing a right edge. A thumb landing
-   * high on that note hits Credit, which switches the tender and fires a
-   * customer-credit fetch. Nothing overlapped and nothing shifted; the gap
-   * itself was the fault.
-   *
-   * "Sometimes" was the bill: the chip in that cell is the second-smallest
-   * note offered, so the trap is the 10 under MVR 50, the 20 to MVR 100, and
-   * the 50 above it. Small bills only, which is why it never looked
-   * reproducible.
-   *
-   * So Credit goes back to its own row underneath, where the iPad has always
-   * had it. It is the one tender on that row that costs money to press by
-   * accident, and no gap is wide enough to make that safe on a touch screen.
+   * For the record, since it will look wrong to the next reader. Measured at
+   * 390px, Credit sits at y233–273 x311–380 with a note chip at y301–361
+   * x261–380 — 28px apart, sharing a right edge — and Credit both switches the
+   * tender and fires a customer-credit fetch. That is a real hazard and the
+   * reason it was moved. It is back because the owner watched the floor after
+   * the change and judged it worse, which outranks the measurement.
    */
-  .pos-charge-credit-inline {
-    display: none !important;
+  /* When Credit joins the row, squeeze five equal chips. */
+  .pos-charge-tenders:has(.pos-charge-credit-inline) {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
-  .pos-charge-credit-row-btn {
+  .pos-charge-credit-inline {
     display: inline-flex !important;
   }
-  /* Its own row: Credit, and Deposit when the customer has one. */
-  .pos-charge-extra-tenders {
-    margin-top: 10px !important;
+  .pos-charge-credit-row-btn {
+    display: none !important;
   }
-  /* Breathing room between the tenders and the note photos, so a high thumb
-   * on the top row of notes lands on nothing rather than on a tender. */
-  .pos-charge-quick-amounts {
-    margin-top: 14px !important;
+  /* Secondary row only needed for wallet once Credit is inline. */
+  .pos-charge-extra-tenders:not(:has(.pos-charge-wallet-btn)) {
+    display: none !important;
   }
   .pos-charge-tender-btn {
     display: inline-flex !important;
