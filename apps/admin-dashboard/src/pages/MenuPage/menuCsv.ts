@@ -29,6 +29,18 @@ export const CSV_COLUMNS = [
   'name_dv',
   'category',
   'category_id',
+  // "Also show in" — the secondary sections a dish appears under.
+  //
+  // Owner, 2026-09-04: the file carried the home category but not these, so
+  // exporting the menu, editing it in a spreadsheet and importing it back
+  // produced a file that could not restore what it had shown.
+  //
+  // Two columns, the same split the home category already uses: `also_in` is
+  // names, for reading, and is ignored on import; `also_in_ids` is what gets
+  // written. Semicolons separate them, because a comma would need quoting in
+  // every row of a CSV.
+  'also_in',
+  'also_in_ids',
   'price',
   'cost',
   'sku',
@@ -75,9 +87,17 @@ function boolCell(value: unknown): string {
 }
 
 /** Item rows, each followed by its sizes. */
-export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
+export function itemsToCsv(
+  items: MenuItem[],
+  canSeeCost: boolean,
+  categories: MenuCategory[] = [],
+): string {
   const columns = CSV_COLUMNS.filter((c) => canSeeCost || c !== 'cost');
   const lines: string[] = [columns.join(',')];
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  // A category the current filter did not load still has an id worth keeping,
+  // so an unknown one is written as the id rather than dropped.
+  const alsoInNames = (ids: number[]) => ids.map((id) => categoryName.get(id) ?? `#${id}`).join('; ');
 
   const push = (row: Partial<Record<CsvColumn, unknown>>) => {
     lines.push(columns.map((c) => escapeCell(row[c])).join(','));
@@ -92,6 +112,8 @@ export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
       name_dv: item.name_dv ?? '',
       category: item.category?.name ?? '',
       category_id: item.category_id ?? '',
+      also_in: alsoInNames(item.extra_category_ids ?? []),
+      also_in_ids: (item.extra_category_ids ?? []).join(';'),
       price: Number(item.base_price ?? 0).toFixed(2),
       cost: item.cost === null || item.cost === undefined ? '' : Number(item.cost).toFixed(2),
       sku: item.sku ?? '',
@@ -114,6 +136,9 @@ export function itemsToCsv(items: MenuItem[], canSeeCost: boolean): string {
         name_dv: v.name_dv ?? '',
         category: item.category?.name ?? '',
         category_id: '',
+        // Placements belong to the dish, not to one of its sizes.
+        also_in: '',
+        also_in_ids: '',
         price: Number(v.price ?? 0).toFixed(2),
         cost: v.cost === null || v.cost === undefined ? '' : Number(v.cost).toFixed(2),
         sku: v.sku ?? '',
@@ -203,6 +228,9 @@ const ITEM_COLUMN_FIELDS: Partial<Record<CsvColumn, keyof BulkItemFields>> = {
   name: 'name',
   name_dv: 'name_dv',
   category_id: 'category_id',
+  // `also_in` is the readable half and is deliberately not here: two columns
+  // writing one field would make "which one wins" a question.
+  also_in_ids: 'extra_category_ids',
   price: 'base_price',
   cost: 'cost',
   sku: 'sku',
@@ -253,6 +281,20 @@ function cellToValue(column: string, raw: string, forVariant: boolean): unknown 
     case 'category_id': {
       const n = num(raw);
       return n === null ? undefined : Math.round(n);
+    }
+    case 'also_in_ids': {
+      // Sizes have no placements of their own; a value on a size row is a
+      // mistake in the file, not an instruction.
+      if (forVariant) return undefined;
+      const ids = text(raw)
+        .split(/[;,]/)
+        .map((part) => Number(part.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.round(n));
+
+      // An emptied cell clears the placements, which is the only way a
+      // spreadsheet can say "no longer in that section".
+      return Array.from(new Set(ids)).sort((a, b) => a - b);
     }
     case 'track_stock':
     case 'available':
@@ -352,6 +394,16 @@ function currentValue(target: Record<string, unknown>, field: string): unknown {
 }
 
 function sameCell(current: unknown, value: unknown): boolean {
+  // Placement lists: order is not meaning, so a reordered column is not an
+  // edit. Compared before the blank check, since an empty list is a real
+  // value here ("no longer in any extra section") rather than an empty cell.
+  if (Array.isArray(value) || Array.isArray(current)) {
+    const ids = (v: unknown) => (Array.isArray(v) ? v.map(Number).sort((a, b) => a - b) : []);
+    const a = ids(current);
+    const b = ids(value);
+
+    return a.length === b.length && a.every((n, i) => n === b[i]);
+  }
   if (typeof value === 'boolean' || typeof current === 'boolean') {
     return !!current === !!value;
   }

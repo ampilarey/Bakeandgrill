@@ -346,6 +346,8 @@ export type BulkItemFields = Partial<{
   base_price: number;
   cost: number | null;
   category_id: number | null;
+  /** "Also show in" placements. A pivot server-side, synced whole. */
+  extra_category_ids: number[];
   menu_group_id: number | null;
   sort_order: number | null;
   tax_code: string;

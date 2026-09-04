@@ -373,7 +373,7 @@ export function QuickEditGrid({
 
   const exportCsv = () => {
     // Exports what is on screen, so a filter is also a way to scope the file.
-    const blob = new Blob([itemsToCsv(rows, canSeeCost)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([itemsToCsv(rows, canSeeCost, categories)], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

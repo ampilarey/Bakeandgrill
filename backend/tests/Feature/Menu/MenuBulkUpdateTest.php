@@ -259,6 +259,87 @@ class MenuBulkUpdateTest extends TestCase
         }
     }
 
+    /*
+     * "Also show in" through the grid and the spreadsheet.
+     *
+     * Owner, 2026-09-04: the CSV carried the home category but not the extra
+     * placements, so exporting the menu, editing it and importing it back gave
+     * a file that could never restore what it had shown. The column is only
+     * worth adding if the bulk endpoint behind it can write the pivot.
+     */
+    public function test_it_syncs_the_also_show_in_categories(): void
+    {
+        $this->actAsOwner();
+        $item = $this->item();
+        $evening = $this->makeCategory();
+        $snacks = $this->makeCategory();
+
+        $this->bulk([
+            ['id' => $item->id, 'fields' => ['extra_category_ids' => [$evening->id, $snacks->id]]],
+        ])->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$evening->id, $snacks->id],
+            $item->fresh()->extraCategoryIds(),
+        );
+    }
+
+    public function test_the_home_category_is_never_kept_as_an_extra(): void
+    {
+        // Listing it twice would put the same card in one section twice.
+        $this->actAsOwner();
+        $item = $this->item();
+        $evening = $this->makeCategory();
+
+        $this->bulk([
+            ['id' => $item->id, 'fields' => ['extra_category_ids' => [$item->category_id, $evening->id]]],
+        ])->assertOk();
+
+        $this->assertSame([$evening->id], $item->fresh()->extraCategoryIds());
+    }
+
+    public function test_an_empty_list_clears_the_placements(): void
+    {
+        $this->actAsOwner();
+        $item = $this->item();
+        $evening = $this->makeCategory();
+        $item->extraCategories()->sync([$evening->id]);
+
+        $this->bulk([
+            ['id' => $item->id, 'fields' => ['extra_category_ids' => []]],
+        ])->assertOk();
+
+        $this->assertSame([], $item->fresh()->extraCategoryIds());
+    }
+
+    public function test_reordering_the_list_is_not_a_change(): void
+    {
+        // A spreadsheet column can come back in any order; that is not an edit.
+        $this->actAsOwner();
+        $item = $this->item();
+        $a = $this->makeCategory();
+        $b = $this->makeCategory();
+        $item->extraCategories()->sync([$a->id, $b->id]);
+
+        $res = $this->bulk([
+            ['id' => $item->id, 'fields' => ['extra_category_ids' => [$b->id, $a->id]]],
+        ])->assertOk();
+
+        $this->assertSame(0, $res->json('updated'));
+    }
+
+    public function test_it_refuses_a_category_that_does_not_exist(): void
+    {
+        $this->actAsOwner();
+        $item = $this->item();
+
+        $this->bulk([
+            ['id' => $item->id, 'fields' => ['extra_category_ids' => [999999]]],
+        ])->assertStatus(422);
+
+        $this->assertSame([], $item->fresh()->extraCategoryIds());
+    }
+
     public function test_it_needs_the_menu_manage_permission(): void
     {
         Sanctum::actingAs($this->makeStaff('staff'), ['staff']);

@@ -63,6 +63,11 @@ class MenuBulkUpdateService
             'base_price' => 'numeric|min:0|max:1000000',
             'cost' => 'nullable|numeric|min:0|max:1000000',
             'category_id' => 'nullable|integer|exists:categories,id',
+            // "Also show in" — a pivot, not a column, so it is synced rather
+            // than set. See normalizeExtraCategories(). Reachable here because
+            // a spreadsheet round-trip that silently dropped it would look
+            // like the export had never carried it.
+            'extra_category_ids' => 'array|max:20',
             'menu_group_id' => 'nullable|integer|exists:menu_groups,id',
             'sort_order' => 'nullable|integer|min:0|max:100000',
             'tax_code' => 'string|in:standard_8,zero_rated,exempt,out_of_scope',
@@ -196,6 +201,9 @@ class MenuBulkUpdateService
                     }
                 }
             }
+            if (isset($rules['extra_category_ids'])) {
+                $rules['extra_category_ids.*'] = 'integer|exists:categories,id';
+            }
             $rules['name'] = 'required|string|max:255';
             $rules['base_price'] = 'required|numeric|min:0|max:1000000';
 
@@ -324,6 +332,11 @@ class MenuBulkUpdateService
                     }
                 }
             }
+            // An array field's elements need their own rule; `fieldRules()` is
+            // keyed by field name and cannot express one.
+            if (isset($rules['extra_category_ids'])) {
+                $rules['extra_category_ids.*'] = 'integer|exists:categories,id';
+            }
 
             if ($rules !== []) {
                 $validator = Validator::make($fields, $rules);
@@ -427,6 +440,15 @@ class MenuBulkUpdateService
                 $before = [];
                 $after = [];
 
+                // Pulled out before the attribute loop: this one is a pivot,
+                // and setAttribute() on it would try to save a column that
+                // does not exist.
+                $extra = null;
+                if (array_key_exists('extra_category_ids', $fields)) {
+                    $extra = $fields['extra_category_ids'];
+                    unset($fields['extra_category_ids']);
+                }
+
                 foreach ($fields as $field => $value) {
                     $current = $item->getAttribute($field);
                     // Compare loosely: a price arrives as "12.50" from a text
@@ -440,13 +462,31 @@ class MenuBulkUpdateService
                     $item->setAttribute($field, $value);
                 }
 
+                // After the attribute loop, so a row that moves an item to a new
+                // home category in the same edit is compared against the new
+                // home rather than the old one.
+                if ($extra !== null) {
+                    $want = $this->normalizeExtraCategories($extra, (int) $item->category_id);
+                    $current = $item->extraCategoryIds();
+                    sort($current);
+                    if ($current !== $want) {
+                        $item->extraCategories()->sync($want);
+                        $before['extra_category_ids'] = $current;
+                        $after['extra_category_ids'] = $want;
+                    }
+                }
+
                 if ($after === []) {
                     $unchanged++;
 
                     continue;
                 }
 
-                $item->save();
+                // A row whose only change was its secondary categories has
+                // nothing dirty on the model itself.
+                if ($item->isDirty()) {
+                    $item->save();
+                }
                 $touched[] = ['id' => $item->id, 'name' => $item->name, 'old' => $before, 'new' => $after];
             }
 
@@ -500,7 +540,17 @@ class MenuBulkUpdateService
                 if (($fields['track_stock'] ?? false)) {
                     $fields['availability_type'] = 'stock_based';
                 }
+                $extra = null;
+                if (array_key_exists('extra_category_ids', $fields)) {
+                    $extra = $fields['extra_category_ids'];
+                    unset($fields['extra_category_ids']);
+                }
                 $item = Item::create($fields);
+                if ($extra !== null) {
+                    $item->extraCategories()->sync(
+                        $this->normalizeExtraCategories($extra, (int) $item->category_id),
+                    );
+                }
                 // Without channel rows the item is invisible everywhere —
                 // see ItemChannelSeeder.
                 $this->channels->seed($item);
@@ -565,6 +615,27 @@ class MenuBulkUpdateService
      * @param array<string, mixed> $fields
      * @return array<string, mixed>
      */
+    /**
+     * Clean an incoming "also show in" list.
+     *
+     * The home category is never one of the extras — listing it twice would
+     * put the same card in one section twice — and the list is sorted so a
+     * reordered spreadsheet column does not read as a change.
+     *
+     * @return list<int>
+     */
+    private function normalizeExtraCategories(mixed $raw, int $homeCategoryId): array
+    {
+        $ids = array_values(array_unique(array_map(
+            static fn ($id) => (int) $id,
+            is_array($raw) ? $raw : [],
+        )));
+        $ids = array_values(array_filter($ids, static fn (int $id) => $id > 0 && $id !== $homeCategoryId));
+        sort($ids);
+
+        return $ids;
+    }
+
     private function derive(array $fields, Item $item): array
     {
         // tax_rate is derived from tax_code, never sent directly — otherwise
