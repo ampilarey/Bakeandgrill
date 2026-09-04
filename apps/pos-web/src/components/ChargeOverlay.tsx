@@ -298,6 +298,21 @@ export function ChargeOverlay({
    * until the next sale. Nothing is bypassed — the server checks the tender
    * again on confirm, which is the check that actually matters.
    */
+  /**
+   * Never strand the cashier on a tender that has just gone dead.
+   *
+   * Tapping Credit fetches the customer's live credit summary. If that call
+   * fails or times out, eligibility drops to false — and the cashier is left
+   * on the Credit tender with Confirm disabled and no obvious way out, which
+   * reads as the till having frozen. Put them back on cash so they can take
+   * the money and move on.
+   */
+  useEffect(() => {
+    if (method !== "house_account" || creditEligible) return;
+    if (!baseMethods.includes("cash")) return;
+    setMethod("cash");
+  }, [method, creditEligible, baseMethods]);
+
   const counting = received !== "" || selectedNotes.length > 0;
   useEffect(() => {
     if (method === "house_account" || method === "wallet") return;

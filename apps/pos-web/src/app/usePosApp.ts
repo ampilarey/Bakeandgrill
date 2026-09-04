@@ -755,7 +755,16 @@ export function usePosApp() {
       return;
     }
     try {
-      const summary = await fetchCustomerSummary(customer.id);
+      // Bounded: this runs on a tender tap, and a till waiting on a phone with
+      // no signal looks frozen to the cashier. Six seconds, then fall through
+      // to the catch below and let them carry on with another tender
+      // (2026-09-04 — reported as "freez for a while … restart is ok").
+      const summary = await Promise.race([
+        fetchCustomerSummary(customer.id),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error('credit-summary-timeout')), 6000),
+        ),
+      ]);
       const credit = summary.credit;
       if (canUseCredit) {
         setChargeCreditEligible(Boolean(credit?.can_charge));
