@@ -836,6 +836,23 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
   const [ordersError, setOrdersError] = useState("");
   const [pickedOrderLabel, setPickedOrderLabel] = useState<string | null>(null);
 
+  /*
+   * Whose sales the picker lists.
+   *
+   * Owner, 2026-09-04: "to write the order number is v difficult... cashier
+   * sees his only orders in refund, but admin sees all orders, so easily can
+   * pick the order."
+   *
+   * A cashier who can only request sees the sales they rang themselves — a
+   * short list they can recognise by time and amount, which is the point. An
+   * authoriser opens on every sale of the day, since the order they are
+   * refunding is usually somebody else's, and can narrow to their own. The
+   * server filters on the order's user_id, the cashier who rang it, so a
+   * requester cannot widen this from the client.
+   */
+  const [orderScope, setOrderScope] = useState<"mine" | "all">(canApprove ? "all" : "mine");
+  const mineOnly = !canApprove || orderScope === "mine";
+
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedOrderQuery(orderQuery.trim()), 250);
     return () => window.clearTimeout(id);
@@ -850,6 +867,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
         const res = await fetchReceipts({
           date: localDateYmd(),
           ...(debouncedOrderQuery ? { q: debouncedOrderQuery } : {}),
+          ...(mineOnly ? { created_by_me: true } : {}),
           per_page: 25,
           slim: true,
         });
@@ -877,7 +895,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
     return () => {
       cancelled = true;
     };
-  }, [debouncedOrderQuery]);
+  }, [debouncedOrderQuery, mineOnly]);
 
   const pickOrder = (row: (typeof orderCandidates)[number]) => {
     ops.setRefundOrderId(String(row.id));
@@ -936,7 +954,11 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
 
       <FormCard
         title="Request refund"
-        help="Pick a sale from today’s list (search by order #, customer, or phone). Amount is in MVR. Walk-in phone is only used when the order has no stored number."
+        help={
+          canApprove
+            ? "Pick a sale from today’s list — every till, or just yours. Search by order #, customer, or phone. Amount is in MVR. Walk-in phone is only used when the order has no stored number."
+            : "Pick one of your own sales from today’s list — no need to type the order number. Amount is in MVR. Walk-in phone is only used when the order has no stored number."
+        }
       >
         {pickedOrderLabel && ops.refundOrderId ? (
           <div
@@ -980,10 +1002,45 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
           </div>
         ) : (
           <div style={{ marginBottom: 10 }}>
+            {canApprove && (
+              <div
+                role="group"
+                aria-label="Whose sales to show"
+                style={{ display: "flex", gap: 6, marginBottom: 8 }}
+              >
+                {([["all", "All sales today"], ["mine", "My sales"]] as const).map(([scope, label]) => {
+                  const active = orderScope === scope;
+                  return (
+                    <button
+                      key={scope}
+                      type="button"
+                      onClick={() => setOrderScope(scope)}
+                      aria-pressed={active}
+                      style={{
+                        flex: 1,
+                        minHeight: 40,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${active ? C.rail : C.border}`,
+                        background: active ? C.rail : "#fff",
+                        color: active ? "#fff" : C.text,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        touchAction: "manipulation",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <input
               value={orderQuery}
               onChange={(e) => setOrderQuery(e.target.value)}
-              placeholder="Search today’s orders (number, name, phone)…"
+              placeholder={mineOnly ? "Search my sales (number, name, phone)…" : "Search today’s orders (number, name, phone)…"}
               aria-label="Search orders for refund"
               style={{ ...fieldStyle, width: "100%", marginBottom: 8 }}
             />
@@ -992,7 +1049,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
               style={{
                 border: `1px solid ${C.border}`,
                 borderRadius: 8,
-                maxHeight: 200,
+                maxHeight: 280,
                 overflowY: "auto",
                 background: "#F8FAFC",
               }}
@@ -1005,7 +1062,12 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
               )}
               {!ordersLoading && !ordersError && orderCandidates.length === 0 && (
                 <div style={{ padding: 12, fontSize: 12, color: C.muted }}>
-                  No matching paid orders today.
+                  {mineOnly
+                    ? (debouncedOrderQuery
+                      ? "None of your paid sales today match."
+                      : "You have no paid sales today yet.")
+                    : "No matching paid orders today."}
+                  {canApprove && mineOnly && !debouncedOrderQuery ? " Try “All sales today”." : ""}
                 </div>
               )}
               {!ordersLoading && orderCandidates.map((row) => {
@@ -1027,9 +1089,11 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
                     style={{
                       display: "flex",
                       width: "100%",
+                      minHeight: 48,
                       alignItems: "center",
                       gap: 10,
                       padding: "10px 12px",
+                      touchAction: "manipulation",
                       border: "none",
                       borderBottom: `1px solid ${C.border}`,
                       background: "transparent",

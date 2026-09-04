@@ -140,3 +140,63 @@ describe("OpsPanel refund order picker", () => {
     expect(setRefundAmount).toHaveBeenCalledWith("85.50");
   });
 });
+
+/**
+ * Whose sales the picker lists.
+ *
+ * Owner, 2026-09-04: "to write the order number is v difficult... cashier
+ * sees his only orders in refund, but admin sees all orders, so easily can
+ * pick the order."
+ */
+describe("OpsPanel refund order picker — scope", () => {
+  const receipts = () => api.fetchReceipts as unknown as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    receipts().mockResolvedValue({ data: [] });
+  });
+
+  it("a cashier who can only request sees just their own sales", async () => {
+    const user = userEvent.setup();
+    render(<OpsPanel {...makeOps()} permissions={{ refunds: true, shiftOpen: true }} />);
+
+    await user.click(screen.getByRole("button", { name: /Refunds/i }));
+    await waitFor(() => expect(receipts()).toHaveBeenCalled());
+
+    expect(receipts().mock.calls[0][0]).toMatchObject({ created_by_me: true });
+    // No way to widen it from here.
+    expect(screen.queryByRole("group", { name: /whose sales/i })).toBeNull();
+  });
+
+  it("an authoriser opens on every sale of the day and can narrow to their own", async () => {
+    const user = userEvent.setup();
+    render(
+      <OpsPanel
+        {...makeOps()}
+        permissions={{ refunds: true, refundApprove: true, shiftOpen: true }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Refunds/i }));
+    await waitFor(() => expect(receipts()).toHaveBeenCalled());
+
+    expect(receipts().mock.calls[0][0]).not.toHaveProperty("created_by_me");
+
+    await user.click(screen.getByRole("button", { name: /My sales/i }));
+    await waitFor(() => expect(receipts()).toHaveBeenCalledTimes(2));
+    expect(receipts().mock.calls[1][0]).toMatchObject({ created_by_me: true });
+
+    await user.click(screen.getByRole("button", { name: /All sales today/i }));
+    await waitFor(() => expect(receipts()).toHaveBeenCalledTimes(3));
+    expect(receipts().mock.calls[2][0]).not.toHaveProperty("created_by_me");
+  });
+
+  it("tells a cashier with no sales yet why the list is empty", async () => {
+    const user = userEvent.setup();
+    render(<OpsPanel {...makeOps()} permissions={{ refunds: true, shiftOpen: true }} />);
+
+    await user.click(screen.getByRole("button", { name: /Refunds/i }));
+
+    expect(await screen.findByText(/You have no paid sales today yet/i)).toBeTruthy();
+  });
+});
