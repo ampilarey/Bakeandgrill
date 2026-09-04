@@ -30,6 +30,27 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     });
     Route::post('/inventory', [InventoryController::class, 'store'])->middleware('permission:inventory.manage');
     Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount'])->middleware('permission:inventory.manage');
+
+    /*
+     * Stocktake sessions — open, count blind, submit, review, post.
+     *
+     * Declared before the /inventory/{id} wildcard above would otherwise
+     * shadow them. Counting and posting are separate permissions on purpose:
+     * the person who counted does not accept their own variance.
+     */
+    Route::middleware('permission:inventory.stock_count')->group(function () {
+        Route::get('/stock-counts/active', [App\Http\Controllers\Api\StockCountSessionController::class, 'active']);
+        Route::get('/stock-counts', [App\Http\Controllers\Api\StockCountSessionController::class, 'index']);
+        Route::get('/stock-counts/{id}', [App\Http\Controllers\Api\StockCountSessionController::class, 'show'])->whereNumber('id');
+        Route::post('/stock-counts', [App\Http\Controllers\Api\StockCountSessionController::class, 'store']);
+        Route::post('/stock-counts/{id}/counts', [App\Http\Controllers\Api\StockCountSessionController::class, 'saveCounts'])->whereNumber('id');
+        Route::post('/stock-counts/{id}/submit', [App\Http\Controllers\Api\StockCountSessionController::class, 'submit'])->whereNumber('id');
+        Route::post('/stock-counts/{id}/cancel', [App\Http\Controllers\Api\StockCountSessionController::class, 'cancel'])->whereNumber('id');
+    });
+    Route::middleware('permission:inventory.stock_count.post')->group(function () {
+        Route::post('/stock-counts/{id}/post', [App\Http\Controllers\Api\StockCountSessionController::class, 'post'])->whereNumber('id');
+        Route::post('/stock-counts/{id}/reopen', [App\Http\Controllers\Api\StockCountSessionController::class, 'reopen'])->whereNumber('id');
+    });
     Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
     Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
     Route::post('/inventory/reorder-alerts/{id}/resolve', [InventoryController::class, 'resolveReorderAlert'])

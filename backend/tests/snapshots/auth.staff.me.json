@@ -44,6 +44,8 @@
             "integrations.xero",
             "inventory.categories",
             "inventory.manage",
+            "inventory.stock_count",
+            "inventory.stock_count.post",
             "inventory.view",
             "kds.bump_order",
             "kds.manage_availability",

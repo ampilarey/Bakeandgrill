@@ -89,6 +89,10 @@ export function usePosApp() {
   const canApplyDiscount = hasPosPermission(staffPermissions, "promotions.discounts");
   const canUseRewards = canApplyDiscount || hasPosPermission(staffPermissions, "loyalty.redeem");
   const canApproveRefund = hasPosPermission(staffPermissions, "orders.refund");
+  // Counting is a floor job; accepting the variance is not. Two permissions,
+  // because the person who counted must not be the one who signs it off.
+  const canStockCount = hasPosPermission(staffPermissions, "inventory.stock_count");
+  const canPostStockCount = hasPosPermission(staffPermissions, "inventory.stock_count.post");
   const canRequestRefund = hasPosPermission(staffPermissions, "orders.refund_request")
     || canApproveRefund;
   const canRefund = canRequestRefund;
@@ -1297,7 +1301,7 @@ export function usePosApp() {
     canCashInOut, canLockScreen,
     canOpsInventory, canOpsPreparedStock,
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
-    canUseRewards, canRefund, canRequestRefund, canApproveRefund, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
+    canUseRewards, canRefund, canRequestRefund, canApproveRefund, canStockCount, canPostStockCount, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
     canBuyAssigned, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, cartSide, setCartSide, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,

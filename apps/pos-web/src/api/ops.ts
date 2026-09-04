@@ -259,3 +259,88 @@ export async function sendSmsPromotion(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+// ── Stock count sessions ─────────────────────────────────────────────────────
+//
+// A stocktake is a session, not a form. The expected quantity is snapshotted
+// when the sheet opens and is NOT in these payloads while it is open — that is
+// the point of counting blind, and it is enforced server-side, so there is
+// nothing here to accidentally render.
+
+export type StockCountStatus = "open" | "submitted" | "posted" | "cancelled";
+
+export type StockCountSession = {
+  id: number;
+  reference: string;
+  status: StockCountStatus;
+  note: string | null;
+  opened_at: string;
+  submitted_at: string | null;
+  posted_at: string | null;
+  opener?: { id: number; name: string } | null;
+  submitter?: { id: number; name: string } | null;
+  category?: { id: number; name: string } | null;
+};
+
+export type StockCountLine = {
+  id: number;
+  inventory_item_id: number;
+  name: string | null;
+  unit: string | null;
+  sku: string | null;
+  counted_qty: number | null;
+  note: string | null;
+  counted_at: string | null;
+  /** Review-only: absent entirely while the sheet is open. */
+  snapshot_qty?: number;
+  variance?: number | null;
+  variance_value_mvr?: number | null;
+  needs_reason?: boolean;
+};
+
+export type StockCountPayload = {
+  session: StockCountSession | null;
+  lines?: StockCountLine[];
+  can_review?: boolean;
+  variance_value_mvr?: number | null;
+};
+
+export async function fetchActiveStockCount(): Promise<StockCountPayload> {
+  return request("/stock-counts/active");
+}
+
+export async function openStockCount(payload: {
+  inventory_category_id?: number | null;
+  note?: string;
+}): Promise<StockCountPayload> {
+  return request("/stock-counts", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function saveStockCounts(
+  sessionId: number,
+  entries: Array<{ line_id: number; counted_qty: number | null; note?: string }>,
+): Promise<StockCountPayload> {
+  return request(`/stock-counts/${sessionId}/counts`, {
+    method: "POST",
+    body: JSON.stringify({ entries }),
+  });
+}
+
+export async function submitStockCount(sessionId: number): Promise<StockCountPayload> {
+  return request(`/stock-counts/${sessionId}/submit`, { method: "POST" });
+}
+
+export async function postStockCount(sessionId: number): Promise<StockCountPayload> {
+  return request(`/stock-counts/${sessionId}/post`, { method: "POST" });
+}
+
+export async function reopenStockCount(sessionId: number, note?: string): Promise<StockCountPayload> {
+  return request(`/stock-counts/${sessionId}/reopen`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function cancelStockCount(sessionId: number): Promise<StockCountPayload> {
+  return request(`/stock-counts/${sessionId}/cancel`, { method: "POST" });
+}

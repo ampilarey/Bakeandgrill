@@ -72,6 +72,9 @@ final class PermissionCatalog
         // history is manager territory; grant per-user when trusted.
         // Manage implies view so inventory.manage-only roles can list stock.
         'inventory.view' => ['inventory.manage'],
+        // Anyone trusted to adjust stock by hand can certainly count it. The
+        // reverse is not true, which is why posting is not implied here.
+        'inventory.stock_count' => ['inventory.manage'],
         'suppliers.view' => ['suppliers.view'],
         'kds.view' => ['orders.view'],
         'kds.start_order' => ['orders.manage'],
@@ -181,6 +184,8 @@ final class PermissionCatalog
             ['group' => 'Inventory', 'slug' => 'inventory.view', 'name' => 'View inventory'],
             ['group' => 'Inventory', 'slug' => 'inventory.manage', 'name' => 'Manage inventory'],
             ['group' => 'Inventory', 'slug' => 'inventory.categories', 'name' => 'Manage inventory categories'],
+            ['group' => 'Inventory', 'slug' => 'inventory.stock_count', 'name' => 'Run a stock count', 'description' => 'Open a counting sheet and enter counts — the expected figures stay hidden and nothing moves'],
+            ['group' => 'Inventory', 'slug' => 'inventory.stock_count.post', 'name' => 'Review and post a stock count', 'description' => 'See the variances and accept them — stock moves on posting, and not by the person who counted'],
             ['group' => 'Suppliers', 'slug' => 'suppliers.view', 'name' => 'View suppliers'],
             ['group' => 'Suppliers', 'slug' => 'suppliers.manage', 'name' => 'Manage suppliers'],
             ['group' => 'Suppliers', 'slug' => 'suppliers.purchases', 'name' => 'Manage purchases'],
@@ -401,6 +406,8 @@ final class PermissionCatalog
             'integrations.sms',
             'inventory.categories',
             'inventory.manage',
+            'inventory.stock_count',
+            'inventory.stock_count.post',
             'inventory.view',
             'kds.bump_order',
             'kds.manage_availability',
@@ -581,7 +588,7 @@ final class PermissionCatalog
             // reports.view / reports.basic intentionally omitted — owner/manager
             // defaults only; grant per-user when a cashier needs POS/Admin reports.
             'dashboard.view',
-            'inventory.view', 'suppliers.view', 'delivery.view', 'reservations.view',
+            'inventory.view', 'inventory.stock_count', 'suppliers.view', 'delivery.view', 'reservations.view',
             'menu.view',
             ...self::purchaseRequestsStaffSlugs(),
             ...self::kitchenReceivingStaffSlugs(),

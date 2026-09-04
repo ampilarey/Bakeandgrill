@@ -129,6 +129,7 @@ export function PosShellLayout() {
     canViewActiveOrders, canViewReceipts, canViewShiftHistory, canViewReports, canManageExpenses,
     canAccessOps, canVoidOrders, canManageEvents, canTradeDispatch, canTradeReconcile,
     canManageOrderStatus, canSendBill, canSendPayLink, canRequestRefund, canApproveRefund, canCreatePurchaseRequest,
+    canStockCount, canPostStockCount,
     canLockScreen, canPayCash,
     canPayCard, canPaySplit, canUseCredit, canUseWallet, canApplyDiscount, canUseRewards,
     canOpsInventory, canOpsPreparedStock,
@@ -870,6 +871,8 @@ export function PosShellLayout() {
                 preparedStock: canOpsPreparedStock,
                 refunds: canRequestRefund,
                 refundApprove: canApproveRefund,
+                stockCount: canStockCount,
+                stockCountPost: canPostStockCount,
                 shiftOpen,
               }}
               onRequestItem={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}

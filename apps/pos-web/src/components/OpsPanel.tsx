@@ -13,9 +13,10 @@ import type { Item } from "../types";
 import type { useOps } from "../hooks/useOps";
 import { localDateYmd } from "../utils/localDate";
 import { RefundConfirmModal } from "./RefundConfirmModal";
+import { StockCountTab } from "./StockCountTab";
 
 type OpsState = ReturnType<typeof useOps>;
-type Tab = "inventory" | "prepared" | "availability" | "refunds";
+type Tab = "inventory" | "prepared" | "availability" | "stockcount" | "refunds";
 
 const C = {
   bg: "#F5F6F8",
@@ -38,6 +39,8 @@ type OpsPermissions = {
   preparedStock?: boolean;
   refunds?: boolean;
   refundApprove?: boolean;
+  stockCount?: boolean;
+  stockCountPost?: boolean;
   shiftOpen?: boolean;
 };
 
@@ -62,11 +65,13 @@ export function OpsPanel(props: OpsState & {
   const showInv = permissions ? !!permissions.inventory : true;
   const showPrepared = permissions ? !!permissions.preparedStock : false;
   const showRefunds = (permissions ? !!permissions.refunds : true) && !!permissions?.shiftOpen;
+  const showStockCount = permissions ? !!permissions.stockCount : false;
 
   const tabs: Array<{ id: Tab; label: string; icon: string; badge?: string }> = [
     ...(showInv ? [{ id: "inventory" as Tab, label: "Inventory", icon: "📦", badge: lowStockCount > 0 ? String(lowStockCount) : undefined }] : []),
     ...(showPrepared ? [{ id: "prepared" as Tab, label: "Menu stock", icon: "🥐" }] : []),
     ...(showPrepared ? [{ id: "availability" as Tab, label: "Sold out today", icon: "🚫" }] : []),
+    ...(showStockCount ? [{ id: "stockcount" as Tab, label: "Stock count", icon: "🧾" }] : []),
     ...(showRefunds ? [{ id: "refunds" as Tab, label: "Refunds", icon: "↩️" }] : []),
   ];
 
@@ -138,6 +143,9 @@ export function OpsPanel(props: OpsState & {
         {activeTab === "prepared"   && <PreparedStockTab setOpsMessage={ops.setOpsMessage} />}
         {activeTab === "availability" && (
           <AvailabilityTab setOpsMessage={ops.setOpsMessage} onMenuRefresh={onMenuRefresh} />
+        )}
+        {activeTab === "stockcount" && (
+          <StockCountTab setOpsMessage={ops.setOpsMessage} />
         )}
         {activeTab === "refunds"    && <RefundsTab ops={ops} canApprove={!!permissions?.refundApprove} />}
       </div>
