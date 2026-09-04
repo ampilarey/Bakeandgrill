@@ -164,6 +164,13 @@ if (routes_domain_section_is('orders', 'tables') && !routes_domain_loaded('order
     Route::post('/tables/{id}/close', [App\Http\Controllers\Api\TableController::class, 'close'])->middleware('permission:orders.manage');
     Route::post('/tables/merge', [App\Http\Controllers\Api\TableController::class, 'merge'])->middleware('permission:orders.manage');
     Route::post('/tables/{id}/split', [App\Http\Controllers\Api\TableController::class, 'split'])->middleware('permission:orders.manage');
+
+    // The QR on the table. Reading one is orders.view (a manager checking the
+    // floor); rotating one invalidates a printed card, so it is orders.manage.
+    Route::get('/tables/{id}/qr', [App\Http\Controllers\Api\TableController::class, 'qr'])
+        ->middleware('permission:orders.view')->whereNumber('id');
+    Route::post('/tables/{id}/qr/rotate', [App\Http\Controllers\Api\TableController::class, 'rotateQr'])
+        ->middleware('permission:orders.manage')->whereNumber('id');
 }
 
 if (routes_domain_section_is('orders', 'delivery') && !routes_domain_loaded('orders.delivery')) {

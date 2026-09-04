@@ -181,6 +181,31 @@ export async function updateTable(id: number, data: Partial<{ name: string; capa
   return req(`/tables/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+/**
+ * The QR for one table: the URL it encodes, and the token behind it.
+ *
+ * The token is minted on first ask, so a table created before the QR feature
+ * gets one the moment somebody opens its card.
+ */
+export interface TableQr {
+  table: { id: number; name: string; location: string | null };
+  token: string;
+  url: string;
+}
+
+export async function fetchTableQr(id: number): Promise<TableQr> {
+  return req(`/tables/${id}/qr`);
+}
+
+/**
+ * A new token for one table. Whatever is printed on that table stops working
+ * immediately — which is the point, when a card is photographed or walks off —
+ * and the rest of the floor is undisturbed.
+ */
+export async function rotateTableQr(id: number): Promise<TableQr> {
+  return req(`/tables/${id}/qr/rotate`, { method: 'POST' });
+}
+
 export async function openTable(id: number): Promise<{ table: RestaurantTable }> {
   return req(`/tables/${id}/open`, { method: 'POST' });
 }

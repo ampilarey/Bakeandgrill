@@ -34,12 +34,58 @@ class RestaurantTable extends Model
         'location',
         'notes',
         'is_active',
+        'qr_token',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * The token behind this table's QR code, minting one if it has none.
+     *
+     * Not the table id: a QR that read `?table=4` would invite `?table=5`,
+     * letting someone send their order — and the kitchen chit — to another
+     * party's table, and letting anyone print the whole floor by counting.
+     */
+    public function ensureQrToken(): string
+    {
+        if (is_string($this->qr_token) && $this->qr_token !== '') {
+            return $this->qr_token;
+        }
+
+        $token = static::mintQrToken();
+        $this->forceFill(['qr_token' => $token])->save();
+
+        return $token;
+    }
+
+    /** A new token for this table, invalidating whatever is printed today. */
+    public function rotateQrToken(): string
+    {
+        $token = static::mintQrToken();
+        $this->forceFill(['qr_token' => $token])->save();
+
+        return $token;
+    }
+
+    public static function mintQrToken(): string
+    {
+        do {
+            $token = strtolower(\Illuminate\Support\Str::random(24));
+        } while (static::query()->where('qr_token', $token)->exists());
+
+        return $token;
+    }
+
+    /** What the QR encodes: the ordering app, scoped to this table. */
+    public function qrUrl(): string
+    {
+        $base = rtrim((string) config('app.order_app_url', config('app.url')), '/');
+
+        return $base . '/?table=' . $this->ensureQrToken();
+    }
 
     /**
      * @return Builder<Order>

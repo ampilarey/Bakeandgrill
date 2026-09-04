@@ -19,11 +19,73 @@ use App\Models\OrderItem;
 use App\Models\RestaurantTable;
 use App\Services\AuditLogService;
 use App\Services\OrderCreationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TableController extends Controller
 {
+    /**
+     * The QR for one table: the URL it encodes, and the token behind it.
+     *
+     * Staff-only. The token is what makes a scan trustworthy, so it is not a
+     * public lookup — see `qrLookup` for the customer half, which takes a token
+     * and answers only with a table name.
+     */
+    public function qr(string $id): JsonResponse
+    {
+        $table = RestaurantTable::query()->findOrFail((int) $id);
+
+        return response()->json([
+            'table' => ['id' => $table->id, 'name' => $table->name, 'location' => $table->location],
+            'token' => $table->ensureQrToken(),
+            'url' => $table->qrUrl(),
+        ]);
+    }
+
+    /**
+     * Mint a new token, invalidating whatever is printed on that table today.
+     *
+     * The reason this exists: a card is photographed, or walks off. Rotating
+     * one table does not disturb the rest of the floor.
+     */
+    public function rotateQr(string $id): JsonResponse
+    {
+        $table = RestaurantTable::query()->findOrFail((int) $id);
+        $table->rotateQrToken();
+
+        return response()->json([
+            'table' => ['id' => $table->id, 'name' => $table->name],
+            'token' => $table->qr_token,
+            'url' => $table->qrUrl(),
+        ]);
+    }
+
+    /**
+     * Customer side of a scan: which table is this?
+     *
+     * Public, because the person holding the phone has not logged in yet. It
+     * answers with a name and nothing else — no ids to iterate, no occupancy,
+     * no open check — so a guessed token reveals nothing worth guessing for.
+     */
+    public function qrLookup(string $token): JsonResponse
+    {
+        $table = RestaurantTable::query()
+            ->where('qr_token', $token)
+            ->where('is_active', true)
+            ->first();
+
+        if ($table === null) {
+            return response()->json([
+                'message' => 'That table code is not in use. Ask a member of staff.',
+            ], 404);
+        }
+
+        return response()->json([
+            'table' => ['name' => $table->name, 'location' => $table->location],
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = RestaurantTable::query();

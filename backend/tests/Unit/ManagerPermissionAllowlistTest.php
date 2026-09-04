@@ -54,6 +54,21 @@ class ManagerPermissionAllowlistTest extends TestCase
         'integrations.sms',
         'inventory.categories',
         'inventory.manage',
+        /*
+         * Added 2026-09-04 as a decision, not to make a mismatch go away.
+         *
+         * The stock-count workflow only works if a second person can accept
+         * the count, and on a normal shift that person is the manager —
+         * requiring the owner for every stocktake would mean nobody counts.
+         *
+         * It widens nothing in practice: a manager already holds
+         * `inventory.manage` and can adjust any stock figure directly, with a
+         * reason. A blind count, valued against frozen costs and posted by
+         * someone other than the counter, is strictly more controlled than
+         * what they can do today.
+         */
+        'inventory.stock_count',
+        'inventory.stock_count.post',
         'inventory.view',
         'kds.bump_order',
         'kds.manage_availability',

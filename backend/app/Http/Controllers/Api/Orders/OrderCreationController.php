@@ -12,6 +12,7 @@ use App\Http\Requests\StoreOrderBatchRequest;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\RestaurantTable;
 use App\Services\AuditLogService;
 use App\Services\OnlineOrderingGateService;
 use App\Services\OrderCreationService;
@@ -327,11 +328,59 @@ class OrderCreationController extends Controller
         $payload['customer_id'] = $customer->id;
         $payload['type'] = $payload['type'] ?? 'online_pickup';
 
+        /*
+         * Scanned the QR on the table.
+         *
+         * The token decides the table — never a client-supplied id — so a
+         * customer cannot send their order, or the kitchen chit, to somebody
+         * else's table. An unknown or rotated token is refused rather than
+         * quietly falling back to a table-less order, because a chit that
+         * silently loses its table is worse than one that is not accepted.
+         */
+        $seatedTable = null;
+        if (!empty($payload['table_token'])) {
+            $seatedTable = RestaurantTable::query()
+                ->where('qr_token', $payload['table_token'])
+                ->where('is_active', true)
+                ->first();
+            if ($seatedTable === null) {
+                return response()->json([
+                    'message' => 'That table code is not in use. Ask a member of staff.',
+                ], 422);
+            }
+            /*
+             * One open check per table is an existing invariant — the creation
+             * service refuses a second, which is what stops a walk-in being
+             * seated on top of somebody else's bill. It holds here too, so the
+             * message has to make sense to a guest rather than to a cashier:
+             * the previous round is still unpaid, and paying it frees the
+             * table for the next one.
+             */
+            if (RestaurantTable::findActiveOrder($seatedTable->id) !== null) {
+                return response()->json([
+                    'message' => 'There is already an order running on this table. '
+                        . 'Finish paying for it, then order the next round.',
+                ], 422);
+            }
+
+            $payload['type'] = 'dine_in';
+            $payload['restaurant_table_id'] = $seatedTable->id;
+            // Already seated: there is no arrival time to keep, and a stale one
+            // would show the kitchen a future slot for a table that is waiting.
+            unset($payload['pickup_slot_at']);
+        }
+        unset($payload['table_token']);
+
         if ($payload['type'] === 'dine_in') {
             // Kill switch + optional per-day schedule + force-open override.
+            // A seated (QR) order is not a pre-order and has its own switch, so
+            // closing pre-orders for the evening does not also stop the people
+            // already sitting in the room from ordering.
             app(\App\Services\FeatureGateService::class)->assertOpen(
-                'dine_in_preorder',
-                'Dine-in ordering is not available right now.',
+                $seatedTable !== null ? 'table_qr_ordering' : 'dine_in_preorder',
+                $seatedTable !== null
+                    ? 'Ordering from the table is not available right now.'
+                    : 'Dine-in ordering is not available right now.',
             );
             // Tomorrow eat-here requires its own gate (default off).
             if (($payload['collect_on'] ?? null) === 'tomorrow' || !empty($payload['fulfil_date'])) {
@@ -380,7 +429,28 @@ class OrderCreationController extends Controller
                 ->assertSlotAvailable($payload['pickup_slot_at']);
         }
 
-        if ($payload['type'] === 'dine_in') {
+        if ($seatedTable !== null) {
+            /*
+             * Already sitting down, so there is nothing to reserve.
+             *
+             * The prepaid path below books a table for a future arrival. This
+             * guest is at the table now: the order is attached to it and the
+             * seat is marked occupied, and that is all.
+             *
+             * Deliberately not `claimForOrder()`, which refuses a table that
+             * already has an open check. A second and third round from the same
+             * table is the normal case here — each is paid in the app as it is
+             * ordered — and refusing them would make the QR work once per
+             * sitting.
+             */
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($payload, $seatedTable) {
+                $created = app(OrderCreationService::class)->createFromPayload($payload, null);
+                RestaurantTable::markOccupied($seatedTable->id);
+
+                return $created;
+            });
+            $order->load('table');
+        } elseif ($payload['type'] === 'dine_in') {
             // Order + table hold succeed or fail together: a paid dine-in
             // order without a guaranteed table must never exist.
             $order = \Illuminate\Support\Facades\DB::transaction(function () use ($payload, $customer) {

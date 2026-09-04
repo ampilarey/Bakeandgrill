@@ -218,6 +218,7 @@ export function CheckoutPage() {
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardHeld, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
+    tableSession,
     myReferralCode,
     friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
     friendReferralLoading,
@@ -916,6 +917,29 @@ export function CheckoutPage() {
           </>
         )}
       </div>
+
+      {tableSession.name && (
+        <div
+          data-testid="table-session-banner"
+          style={{
+            padding: '10px 12px', borderRadius: 10, marginBottom: 12,
+            background: 'var(--color-success-bg, #F0FDF4)',
+            border: '1px solid var(--color-success, #10B981)',
+            fontSize: 'var(--text-sm)', fontWeight: 700,
+          }}
+        >
+          🍽️ Ordering for {tableSession.name} — we will bring it to your table.
+        </div>
+      )}
+      {tableSession.error && (
+        <div
+          data-testid="table-session-error"
+          className="field-error"
+          style={{ marginBottom: 12 }}
+        >
+          {tableSession.error}
+        </div>
+      )}
 
       {/* Gift Card */}
       <div>

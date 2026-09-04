@@ -103,6 +103,15 @@ export async function createCustomerOrder(
     fulfil_date?: string;
     /** Prepaid dine-in: how many people are coming. */
     party_size?: number;
+    /**
+     * The token from the QR on the table, when the customer scanned one.
+     *
+     * The server resolves it to a table; a table id from here is ignored, so
+     * an order cannot be aimed at somebody else's table. Its presence also
+     * means no arrival time and no party size are needed — the guests are
+     * already sitting down.
+     */
+    table_token?: string;
     reward_claims?: Array<{ promotion_id: number; item_id: number }>;
   },
 ): Promise<{ order: Order }> {
@@ -198,4 +207,16 @@ export async function completeZeroBalanceOrder(orderId: number): Promise<{ order
   return request<{ order: OrderDetail }>(ENDPOINTS.ORDER_COMPLETE_ZERO_BALANCE(orderId), {
     method: 'POST',
   });
+}
+
+/**
+ * Which table is this QR?
+ *
+ * Public — the phone that just scanned has not logged in. The reply is a name
+ * and nothing else, so a guessed token reveals nothing worth guessing for.
+ */
+export async function lookupTableByQr(
+  token: string,
+): Promise<{ table: { name: string; location: string | null } }> {
+  return request(`/tables/qr/${encodeURIComponent(token)}`);
 }

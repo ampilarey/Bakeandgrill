@@ -33,6 +33,17 @@ class FeatureGateService
             'description' => 'Customers order and pay online, get a reserved table, and eat in. Schedule limits when new eat-here orders are accepted.',
             'default_enabled' => false,
         ],
+        /*
+         * Its own switch, separate from the pre-order above: someone who has
+         * scanned the card on their table is already in the room, so closing
+         * pre-orders for the evening must not also stop them ordering. On by
+         * default — a table with no QR card printed cannot use it anyway.
+         */
+        'table_qr_ordering' => [
+            'label' => 'Order from the table (QR)',
+            'description' => 'Guests already seated can scan the QR on their table and order from their phone. Independent of eat-here pre-orders.',
+            'default_enabled' => true,
+        ],
         'reservations' => [
             'label' => 'Table reservations',
             'description' => 'Customers can book a table online. Turn off to stop accepting new bookings (existing bookings are unaffected).',

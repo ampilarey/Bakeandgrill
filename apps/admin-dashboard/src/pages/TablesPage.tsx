@@ -4,11 +4,12 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
+import { TableQrModal, TableQrSheetModal } from '../components/TableQrModal';
 import {
   fetchTables, createTable, updateTable,
   type RestaurantTable,
 } from '../api';
-import { LayoutGrid, Map } from 'lucide-react';
+import { LayoutGrid, Map, QrCode } from 'lucide-react';
 
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
@@ -90,6 +91,10 @@ export default function TablesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
+  /** The QR card for one table, and the whole-floor sheet. */
+  const [qrTable, setQrTable] = useState<RestaurantTable | null>(null);
+  const [qrSheet, setQrSheet] = useState(false);
+
   const load = async () => {
     setLoading(true); setError('');
     try {
@@ -168,6 +173,9 @@ export default function TablesPage() {
                 </button>
               ))}
             </div>
+            <Btn variant="secondary" onClick={() => setQrSheet(true)} disabled={tables.length === 0}>
+              <QrCode size={14} /> QR Codes
+            </Btn>
             <Btn onClick={() => openModal()}>+ Add Table</Btn>
           </div>
         }
@@ -175,7 +183,9 @@ export default function TablesPage() {
 
       <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
         Configure seating layout here. Open, close, merge, and split run on the{' '}
-        <strong style={{ color: 'var(--color-text)' }}>POS</strong>.
+        <strong style={{ color: 'var(--color-text)' }}>POS</strong>. Each table also has a{' '}
+        <strong style={{ color: 'var(--color-text)' }}>QR card</strong> guests scan to order from
+        their seat — print them from <em>QR Codes</em>, or one at a time from a table.
       </p>
 
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
@@ -204,6 +214,7 @@ export default function TablesPage() {
               <OrderPeek table={t} />
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                 <Btn small variant="secondary" onClick={() => openModal(t)}>Edit</Btn>
+                <Btn small variant="secondary" onClick={() => setQrTable(t)}>QR</Btn>
               </div>
             </div>
           ))}
@@ -279,13 +290,18 @@ export default function TablesPage() {
                           #{t.current_order_number}
                         </Link>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => openModal(t)}
-                        style={{ fontSize: 10, padding: '2px 7px', marginTop: 4, border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
-                      >
-                        Edit
-                      </button>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                        {([['Edit', () => openModal(t)], ['QR', () => setQrTable(t)]] as const).map(([label, act]) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={act}
+                            style={{ fontSize: 10, padding: '2px 7px', border: '1px solid var(--color-border)', borderRadius: 6, background: 'var(--color-surface)', color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
@@ -318,6 +334,9 @@ export default function TablesPage() {
           </ModalActions>
         </Modal>
       )}
+
+      {qrTable && <TableQrModal table={qrTable} onClose={() => setQrTable(null)} />}
+      {qrSheet && <TableQrSheetModal tables={tables} onClose={() => setQrSheet(false)} />}
     </div>
 
     </PageShell>

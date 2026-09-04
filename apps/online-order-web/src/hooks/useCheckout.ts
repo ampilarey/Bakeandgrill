@@ -1,4 +1,5 @@
 import { giftCardTokenFromLink, normalizeGiftCardInput } from '../utils/giftCardInput';
+import { useTableSession } from './useTableSession';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchItems, fetchDeliveryFeePreview, fetchCheckoutFeesPreview, fetchGstBootstrap, getOrderDay, setOrderDay, type SalesChannel } from "../api/menu";
@@ -792,6 +793,9 @@ export function useCheckout() {
     }
   };
 
+  /** Set when the customer arrived by scanning the QR on their table. */
+  const tableSession = useTableSession();
+
   // ── Gift Card ──────────────────────────────────────────────────────────────
   /**
    * Accept the SMS link as well as the code.
@@ -1069,6 +1073,30 @@ export function useCheckout() {
             reward_claims: rewardClaimsFromCart(cart),
           });
           orderId = res.order.id;
+        } else if (tableSession.token) {
+          /*
+           * Scanned the QR on the table.
+           *
+           * No arrival time and no party size: the guests are already sitting
+           * down, so both are questions with no answer. The token decides which
+           * table — never an id from here — so an order cannot be sent to
+           * somebody else's table.
+           */
+          const res = await createCustomerOrder({
+            items: cart.map((item) => ({
+              item_id: item.id,
+              quantity: item.quantity,
+              variant_id: (item as CartItem & { variantId?: number | null }).variantId ?? undefined,
+              modifiers: item.modifiers?.map((m) => ({ modifier_id: m.id })),
+              children: childrenFromCartItem(item),
+            })),
+            type: "dine_in",
+            table_token: tableSession.token,
+            customer_notes: notes || undefined,
+            collect_on: "today",
+            reward_claims: rewardClaimsFromCart(cart),
+          });
+          orderId = res.order.id;
         } else if (orderType === "dine_in") {
           // Prepaid dine-in: pay now, table held, pickup_slot_at = arrival time.
           const res = await createCustomerOrder({
@@ -1327,6 +1355,7 @@ export function useCheckout() {
     giftCardCode, setGiftCardCode, giftCardApplied, giftCardError, giftCardLoading,
     giftCardBalance, giftCardHeld, giftCardDelta,
     handleCheckGiftCard, handleApplyGiftCard, handleRemoveGiftCard,
+    tableSession,
     myReferralCode,
     friendReferralCode, setFriendReferralCode, friendReferralApplied, friendReferralError,
     friendReferralLoading,

@@ -70,6 +70,15 @@ if (routes_domain_section_is('marketing', 'public') && !routes_domain_loaded('ma
         ->middleware('throttle:30,1')
         ->where('token', '[A-Za-z0-9]{32,64}');
 
+    /*
+     * Public: which table is this QR? Answers with a name and nothing else, so
+     * a guessed token reveals nothing worth guessing for. Throttled because it
+     * is the one endpoint a scanner could be pointed at in bulk.
+     */
+    Route::get('/tables/qr/{token}', [App\Http\Controllers\Api\TableController::class, 'qrLookup'])
+        ->middleware('throttle:30,1')
+        ->where('token', '[A-Za-z0-9]{24}');
+
     // Customer: referral management + gift card on orders
     Route::middleware(['auth:sanctum', 'customer.token'])->group(function () {
         Route::get('/customer/referral-code', [App\Http\Controllers\Api\ReferralController::class, 'myCode']);
