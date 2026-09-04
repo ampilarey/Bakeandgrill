@@ -804,8 +804,21 @@ html, body, #root {
     flex-direction: column;
   }
   .pos-charge-tenders {
-    /* Cash / Card / Transfer / QR — one equal-width row on phones. */
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    /*
+     * The column count comes from the component, which knows how many tenders
+     * it is rendering — Credit included. It used to be stated here as
+     * `repeat(4)` with a `:has(.pos-charge-credit-inline)` rule bumping it to
+     * five.
+     *
+     * `:has()` needs Safari 15.4. On an older iPhone that rule is ignored, so
+     * the grid stayed at four columns while Credit was still displayed —
+     * measured on 2026-09-04, it wrapped onto a SECOND ROW at y279–319,
+     * directly above the amount chips, where the iPad had it neatly in the row
+     * at y233–273. That is the whole iPad-is-fine, iPhone-is-not split the
+     * owner reported, and it is why a tap meant for an amount hit Credit.
+     *
+     * No `!important` here: the inline value has to win.
+     */
     gap: 6px !important;
   }
   /*
@@ -822,18 +835,16 @@ html, body, #root {
    * reason it was moved. It is back because the owner watched the floor after
    * the change and judged it worse, which outranks the measurement.
    */
-  /* When Credit joins the row, squeeze five equal chips. */
-  .pos-charge-tenders:has(.pos-charge-credit-inline) {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  }
   .pos-charge-credit-inline {
     display: inline-flex !important;
   }
   .pos-charge-credit-row-btn {
     display: none !important;
   }
-  /* Secondary row only needed for wallet once Credit is inline. */
-  .pos-charge-extra-tenders:not(:has(.pos-charge-wallet-btn)) {
+  /* Secondary row only needed for wallet once Credit is inline. The flag is
+   * set by the component: `:has()` here was ignored on older Safari, leaving
+   * this row on screen above the amount chips (2026-09-04). */
+  .pos-charge-extra-tenders:not(.has-wallet) {
     display: none !important;
   }
   .pos-charge-tender-btn {
@@ -903,7 +914,7 @@ html, body, #root {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     align-items: stretch;
   }
-  .pos-charge-summary-top.has-received:not(:has(.pos-charge-breakdown)) {
+  .pos-charge-summary-top.has-received.is-solo {
     grid-template-columns: 1fr;
   }
   .pos-charge-received-card {

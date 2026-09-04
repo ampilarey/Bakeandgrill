@@ -338,6 +338,18 @@ export function ChargeOverlay({
     return baseMethods.includes(active) ? baseMethods : [active, ...baseMethods];
   }, [baseMethods, method]);
 
+  /**
+   * How many chips are actually in the tender row.
+   *
+   * The inline Credit chip is rendered whenever credit is on the table, but
+   * the stylesheet only *shows* it on phones — a `display: none` child takes
+   * no grid cell, so it must only be counted when it is visible. Getting this
+   * wrong in either direction leaves a blank column or wraps a chip onto a
+   * second row over the amount buttons.
+   */
+  const inlineCreditVisible = (creditEligible || canPayCredit) && !isOffline && isPhoneCharge;
+  const tenderColumnCount = visibleMethods.length + (inlineCreditVisible ? 1 : 0);
+
   // Esc closes; useful for keyboard-driven counters.
   // Guarded by `submitting` so a stray Escape mid-payment can't
   // tear down the overlay while handleCharge is still in flight —
@@ -554,7 +566,14 @@ export function ChargeOverlay({
           }}>
             {/* On phones: Received | Subtotal/GST share one row. iPad/desktop
                 hide the received card here and keep it in the tender column. */}
-            <div className={`pos-charge-summary-top${method === "cash" && !fullyCovered && isPhoneCharge ? " has-received" : ""}`}>
+            <div className={[
+              "pos-charge-summary-top",
+              method === "cash" && !fullyCovered && isPhoneCharge ? "has-received" : "",
+              // No breakdown means the Received card gets the full width.
+              // This was `:not(:has(.pos-charge-breakdown))` in CSS, which
+              // older Safari ignores — same trap as the tender row.
+              showBreakdown ? "" : "is-solo",
+            ].filter(Boolean).join(" ")}>
               {method === "cash" && !fullyCovered && isPhoneCharge && (
                 <div className="pos-charge-received-card">
                   <p className="pos-charge-received-label">Received</p>
@@ -664,7 +683,11 @@ export function ChargeOverlay({
                 className="pos-charge-tenders"
                 style={{
                 display: "grid",
-                gridTemplateColumns: `repeat(${Math.max(visibleMethods.length, 1)}, minmax(0, 1fr))`,
+                // Counts the inline Credit chip on phones, where the CSS shows
+                // it. This used to be a `:has()` rule, which older Safari
+                // ignores — the grid stayed at four columns and Credit wrapped
+                // onto a second row on top of the amount chips (2026-09-04).
+                gridTemplateColumns: `repeat(${Math.max(tenderColumnCount, 1)}, minmax(0, 1fr))`,
                 gap: 8,
               }}>
                 {visibleMethods.map((m) => (
@@ -714,7 +737,10 @@ export function ChargeOverlay({
                 )}
               </div>
               {((creditEligible || canPayCredit) || walletEligible) && !isOffline && (
-                <div className="pos-charge-extra-tenders" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <div
+                  className={`pos-charge-extra-tenders${walletEligible ? " has-wallet" : ""}`}
+                  style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}
+                >
                   {(creditEligible || canPayCredit) && (
                     <button
                       type="button"
