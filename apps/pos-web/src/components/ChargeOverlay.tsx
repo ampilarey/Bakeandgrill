@@ -568,7 +568,7 @@ export function ChargeOverlay({
    * Observation only — it changes no behaviour. Remove it once the report
    * comes back.
    */
-  const lastPress = useRef<{ x: number; y: number; on: string; at: number; scroll: number } | null>(null);
+  const lastPress = useRef<{ x: number; y: number; on: string; at: number; scroll: number; geom: string } | null>(null);
   const prevMethod = useRef(method);
   const [anomaly, setAnomaly] = useState<string | null>(null);
 
@@ -591,16 +591,27 @@ export function ChargeOverlay({
     if (pressedCredit) return;
 
     // The tender is Credit but the finger was not on the Credit button.
-    const hasSupport = typeof CSS !== "undefined" && typeof CSS.supports === "function"
-      ? CSS.supports("selector(:has(*))") : false;
     const underFinger = p ? describeTarget(document.elementFromPoint(p.x, p.y)) : "n/a";
+
+    // The device's OWN geometry, captured at the press. Every theory so far
+    // has been argued from a rendering in a different browser; this is the
+    // only way to know where these boxes actually are on the till.
+    const box = (sel: string) => {
+      const el = document.querySelector(sel);
+      if (!el) return "-";
+      const r = el.getBoundingClientRect();
+      return `${Math.round(r.top)}-${Math.round(r.bottom)}`;
+    };
+    const geom = p?.geom ?? "not captured";
+
     setAnomaly(
-      `tender→Credit but finger was on "${p?.on ?? "nothing"}" `
-      + `at ${p ? `${Math.round(p.x)},${Math.round(p.y)}` : "?"} `
-      + `(now under that point: "${underFinger}") · `
-      + `viewport ${window.innerWidth}×${window.innerHeight} · `
-      + `scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)} · `
-      + `:has() ${hasSupport ? "yes" : "NO"} · ${Math.round(performance.now() - (p?.at ?? 0))}ms`,
+      `press ${p ? `${Math.round(p.x)},${Math.round(p.y)}` : "?"} on "${p?.on ?? "nothing"}" `
+      + `→ Credit in ${Math.round(performance.now() - (p?.at ?? 0))}ms\n`
+      + `AT PRESS   ${geom}\n`
+      + `NOW        tender ${box(".pos-charge-tenders")} · notes ${box(".pos-charge-quick-grid")} `
+      + `· bar ${box("[data-testid=\"charge-tender-anomaly\"]")}\n`
+      + `under it now "${underFinger}" · viewport ${window.innerWidth}×${window.innerHeight} `
+      + `· scroll ${p?.scroll ?? "?"}→${Math.round(document.querySelector(".pos-charge-tender")?.scrollTop ?? -1)}`,
     );
   }, [method]);
 
@@ -619,6 +630,16 @@ export function ChargeOverlay({
           on: describeTarget(e.target as Element),
           at: performance.now(),
           scroll: col ? Math.round(col.scrollTop) : -1,
+          geom: (() => {
+            const r = (sel: string) => {
+              const el = document.querySelector(sel);
+              if (!el) return "-";
+              const b = el.getBoundingClientRect();
+              return `${Math.round(b.top)}-${Math.round(b.bottom)}`;
+            };
+            return `tender ${r(".pos-charge-tenders")} · notes ${r(".pos-charge-quick-grid")}`
+              + ` · bar ${r("[data-testid=\"charge-tender-anomaly\"]")}`;
+          })(),
         };
       }}
       style={{
@@ -638,7 +659,7 @@ export function ChargeOverlay({
             onClick={() => setAnomaly(null)}
             style={{
               background: "#7F1D1D", color: "#fff", padding: "8px 12px",
-              fontSize: 11, lineHeight: 1.35, wordBreak: "break-word",
+              fontSize: 11, lineHeight: 1.35, wordBreak: "break-word", whiteSpace: "pre-wrap",
               cursor: "pointer", flexShrink: 0,
             }}
           >
