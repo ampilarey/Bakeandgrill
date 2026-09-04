@@ -27,22 +27,76 @@
  */
 const VAR = "--pos-vh";
 
-function currentHeight(): number {
-  const vv = window.visualViewport;
-  // `visualViewport.height` is the honest number: in a browser with a toolbar
-  // it excludes the toolbar, which `innerHeight` does not.
-  //
-  // Deliberately NOT max() of the three readings. That would fix a short
-  // launch reading but break the toolbar case, where the larger number is the
-  // lie and the shell would end up taller than the screen — pushing Charge
-  // below the fold, which is worse than what we are fixing. The correction for
-  // a bad launch reading is the schedule below, not a bigger number.
-  return Math.floor(vv?.height ?? window.innerHeight);
+/**
+ * Installed to the home screen, or running in a browser tab?
+ *
+ * This is the difference that decides which reading to trust, and getting it
+ * wrong in either direction breaks a different screen. In a browser there is a
+ * toolbar, so the smallest reading is the honest one. Installed, there is no
+ * toolbar at all — nothing can be covering the screen — so a reading smaller
+ * than the others is simply a bad one, taken before iOS had settled.
+ */
+function isStandalone(): boolean {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  if (nav.standalone === true) return true;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches;
 }
+
+function currentHeight(): number {
+  const vv = window.visualViewport?.height;
+  const inner = window.innerHeight;
+  const client = document.documentElement?.clientHeight ?? 0;
+
+  /*
+   * Owner, 2026-09-04, on the installed POS: "After updating charge footer is
+   * little upper if i didn't bring it down by scrolling down and click charge
+   * same previous issue."
+   *
+   * The footer sitting high with a band under it is the shell laid out SHORT,
+   * and a scroll bringing it down is this function running again on the
+   * visualViewport scroll event and getting a bigger number the second time.
+   * So the first number was wrong and it stayed wrong until he touched the
+   * screen — through every retry on the schedule below, because those retries
+   * kept asking the same source and getting the same stale answer.
+   *
+   * An earlier version of this comment said max() was deliberately avoided,
+   * and in a browser it still is: there the larger reading is the toolbar
+   * lying, and a shell taller than the screen pushes Charge below the fold,
+   * which is worse. But the till is installed to the home screen. There is no
+   * toolbar for the big number to be lying about, so on that surface the
+   * largest of the three readings is the screen and the small one is the
+   * launch artefact. Split by surface rather than picking one for both.
+   */
+  if (isStandalone()) {
+    return Math.floor(Math.max(vv ?? 0, inner || 0, client || 0));
+  }
+  return Math.floor(vv ?? inner);
+}
+
+let published = 0;
 
 function apply(): void {
   const h = currentHeight();
-  if (h > 0) document.documentElement.style.setProperty(VAR, `${h}px`);
+  // Only write when it actually moved: this now runs on every touch, and
+  // re-setting the same value would invalidate style on each one.
+  if (h > 0 && h !== published) {
+    published = h;
+    document.documentElement.style.setProperty(VAR, `${h}px`);
+  }
+}
+
+/**
+ * Re-measure now, and do the cashier's scroll.
+ *
+ * Exported for the moment it matters most — the Charge screen opening. That is
+ * the one place where a stale height has been costing real taps, and it can be
+ * seconds after launch, long past the schedule below.
+ */
+export function remeasurePosViewport(): void {
+  apply();
+  nudgeScrollers();
 }
 
 /**
@@ -72,6 +126,9 @@ function nudgeScrollers(): void {
 }
 
 export function startPosViewportHeight(): () => void {
+  // Forget any value from a previous run so the first reading is always
+  // written, even when it happens to match.
+  published = 0;
   apply();
 
   /*
@@ -82,8 +139,10 @@ export function startPosViewportHeight(): () => void {
    * waited for an event. In a standalone launch — added to the home screen,
    * no browser toolbar — those events never fire, so a short reading taken
    * during launch was simply pinned there. That is worse than the `dvh` it
-   * replaced, which at least corrected on a scroll. Hence the schedule below
-   * and the max() above: whatever iOS settles on within three seconds wins,
+   * replaced, which at least corrected on a scroll. Hence the schedule below,
+   * the standalone max() above, and the touch listener: whatever iOS settles
+   * on within three seconds wins, and the first finger on the glass corrects
+   * it if three seconds were not enough,
    * without needing an event that standalone never sends.
    */
   const raf = requestAnimationFrame(apply);
@@ -98,6 +157,22 @@ export function startPosViewportHeight(): () => void {
   window.addEventListener("orientationchange", apply);
   // Back from the app switcher / restored from the page cache.
   window.addEventListener("pageshow", apply);
+  window.addEventListener("visibilitychange", apply);
+
+  /*
+   * Re-measure on the first touch of every interaction.
+   *
+   * Owner, 2026-09-04: "if i didn't bring it down by scrolling down". His
+   * scroll is not fixing the layout, it is making this function run again and
+   * get a number the launch reading did not have. A touch is the earliest
+   * moment we can do that for him — before the tap it starts is delivered, so
+   * the geometry the tap is tested against is the corrected one.
+   *
+   * Passive and capture: this must never delay or swallow a press on a till.
+   */
+  const opts = { capture: true, passive: true } as const;
+  document.addEventListener("touchstart", apply, opts);
+  document.addEventListener("pointerdown", apply, opts);
 
   return () => {
     cancelAnimationFrame(raf);
@@ -107,5 +182,8 @@ export function startPosViewportHeight(): () => void {
     window.removeEventListener("resize", apply);
     window.removeEventListener("orientationchange", apply);
     window.removeEventListener("pageshow", apply);
+    window.removeEventListener("visibilitychange", apply);
+    document.removeEventListener("touchstart", apply, opts);
+    document.removeEventListener("pointerdown", apply, opts);
   };
 }

@@ -3,6 +3,7 @@ import { CashInput } from "./CashInput";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { fetchCurrencyImages, getApiBaseUrl } from "../api";
 import { currencyAssetForLaari } from "../utils/cashDenominations";
+import { remeasurePosViewport } from "../posViewportHeight";
 import { z } from "../theme";
 
 export type ChargeMethod = "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
@@ -249,6 +250,30 @@ export function ChargeOverlay({
       return false;
     }
   });
+
+  /*
+   * Re-measure the viewport as this screen opens, and again over the next
+   * second.
+   *
+   * Owner, 2026-09-04: "After updating charge footer is little upper if i
+   * didn't bring it down by scrolling down and click charge same previous
+   * issue." The scroll he does by hand is what makes iOS hand out a corrected
+   * viewport height; without it the till is still laid out against the reading
+   * it took while launching. This does it for him at the one moment it costs
+   * money — a stale reading is harmless on the menu and expensive here.
+   *
+   * Cheap and invisible: a property write only when the number actually moved,
+   * and a one-pixel scroll on any scroller that has room to move.
+   */
+  useEffect(() => {
+    remeasurePosViewport();
+    const raf = requestAnimationFrame(remeasurePosViewport);
+    const timers = [80, 250, 600, 1000].map((ms) => window.setTimeout(remeasurePosViewport, ms));
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
 
   // Same source as Close shift — Admin → Currency Photos.
   useEffect(() => {
