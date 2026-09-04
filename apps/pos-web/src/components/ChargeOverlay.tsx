@@ -523,6 +523,54 @@ export function ChargeOverlay({
   const trapRef = useRef<HTMLDivElement>(null);
   useFocusTrap(trapRef, true);
 
+  /**
+   * Tell us what actually happened on the device.
+   *
+   * The tender jumping to Credit on the iPhone has survived five fixes, every
+   * one of them inferred from measurements in a headless Chromium that is not
+   * the browser at fault. Every measurement says the layout is sound; the till
+   * says otherwise. So rather than guess a sixth time, this records the finger
+   * and shows what it found the moment the tender moves without the Credit
+   * button being the thing pressed.
+   *
+   * Observation only — it changes no behaviour. Remove it once the report
+   * comes back.
+   */
+  const lastPress = useRef<{ x: number; y: number; on: string; at: number } | null>(null);
+  const prevMethod = useRef(method);
+  const [anomaly, setAnomaly] = useState<string | null>(null);
+
+  const describeTarget = (el: Element | null): string => {
+    if (!el) return "nothing";
+    const btn = el.closest("button");
+    if (!btn) return `${el.tagName.toLowerCase()}.${(el.className || "").toString().slice(0, 30)}`;
+    return btn.getAttribute("data-testid")
+      ?? (btn.className || "").toString().split(" ").find((c) => c.startsWith("pos-charge"))
+      ?? (btn.textContent || "?").trim().slice(0, 20);
+  };
+
+  useEffect(() => {
+    const was = prevMethod.current;
+    prevMethod.current = method;
+    if (method !== "house_account" || was === "house_account") return;
+
+    const p = lastPress.current;
+    const pressedCredit = p != null && /credit/i.test(p.on);
+    if (pressedCredit) return;
+
+    // The tender is Credit but the finger was not on the Credit button.
+    const hasSupport = typeof CSS !== "undefined" && typeof CSS.supports === "function"
+      ? CSS.supports("selector(:has(*))") : false;
+    const underFinger = p ? describeTarget(document.elementFromPoint(p.x, p.y)) : "n/a";
+    setAnomaly(
+      `tender→Credit but finger was on "${p?.on ?? "nothing"}" `
+      + `at ${p ? `${Math.round(p.x)},${Math.round(p.y)}` : "?"} `
+      + `(now under that point: "${underFinger}") · `
+      + `viewport ${window.innerWidth}×${window.innerHeight} · `
+      + `:has() ${hasSupport ? "yes" : "NO"} · ${Math.round(performance.now() - (p?.at ?? 0))}ms`,
+    );
+  }, [method]);
+
   return (
     <div
       ref={trapRef}
@@ -530,6 +578,14 @@ export function ChargeOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Charge"
+      onPointerDownCapture={(e) => {
+        lastPress.current = {
+          x: e.clientX,
+          y: e.clientY,
+          on: describeTarget(e.target as Element),
+          at: performance.now(),
+        };
+      }}
       style={{
         position: "fixed", inset: 0, zIndex: z.overlay,
         background: "rgba(15,23,42,0.65)",
@@ -539,6 +595,22 @@ export function ChargeOverlay({
         background: "#fff",
         overflow: "hidden",
       }}>
+        {/* Diagnostic — see the recorder above. Screenshot this and it tells us
+            what the finger actually hit. Remove once the cause is known. */}
+        {anomaly && (
+          <div
+            data-testid="charge-tender-anomaly"
+            onClick={() => setAnomaly(null)}
+            style={{
+              background: "#7F1D1D", color: "#fff", padding: "8px 12px",
+              fontSize: 11, lineHeight: 1.35, wordBreak: "break-word",
+              cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <strong>Please screenshot this and send it over — tap to dismiss</strong>
+            <br />{anomaly}
+          </div>
+        )}
         {/* Header */}
         <div className="pos-charge-header" style={{
           padding: "14px 18px",
