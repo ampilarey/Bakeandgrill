@@ -200,7 +200,15 @@ export function Overlay({
       aria-modal="true"
       className={className}
       style={{
-        position: "fixed", inset: 0, zIndex,
+        // Top-anchored and sized to the visible screen, not `inset: 0`. iOS
+        // resolves the bottom of a fixed element against the layout viewport —
+        // the screen as it would be with no browser toolbar — so with the
+        // toolbar up this box ran past the bottom of the glass and everything
+        // centred in it sat low, with the buttons behind the toolbar. Same
+        // fault as the Charge overlay; see the note there.
+        position: "fixed", top: 0, left: 0, right: 0,
+        height: "var(--pos-vh, 100dvh)",
+        zIndex,
         background: "rgba(15,23,42,0.55)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px))",

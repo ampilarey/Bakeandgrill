@@ -686,7 +686,36 @@ export function ChargeOverlay({
         };
       }}
       style={{
-        position: "fixed", inset: 0, zIndex: z.overlay,
+        /*
+         * Top-anchored, and as tall as the screen ACTUALLY is.
+         *
+         * Owner, 2026-09-04: "When i update the pos mobile the charge box is
+         * little upper. When I scrolled down it come down and keep down. If
+         * its down no issue is charge page. But if I don't bring the bar down
+         * same issue."
+         *
+         * That is Safari's toolbar, and it is the whole fault. While the
+         * toolbar is up the visible screen is short; scrolling collapses it,
+         * the screen grows, and it stays grown — which is why one scroll fixes
+         * the till for the rest of the session.
+         *
+         * `inset: 0` looks like "the screen" and is not. iOS resolves the
+         * bottom of a fixed element against the LAYOUT viewport, which is the
+         * screen as it would be with no toolbar. Modelled at 440x956 with the
+         * toolbar covering 112px: the overlay box came out y0-956, so the card
+         * centred at y478 when the visible centre was y422 — 56px low, against
+         * a 70px note-row pitch — and the Confirm row was already behind the
+         * toolbar. One row out, which is the report.
+         *
+         * `--pos-vh` is `visualViewport.height`: the screen minus whatever the
+         * toolbar is taking, re-measured on every touch. Anchoring to the top
+         * and giving it that height means the box is the visible screen in
+         * both states, so the card is centred where the cashier sees centre.
+         * `100dvh` stays as the fallback before the measurement runs.
+         */
+        position: "fixed", top: 0, left: 0, right: 0,
+        height: "var(--pos-vh, 100dvh)",
+        zIndex: z.overlay,
         background: "rgba(15,23,42,0.65)",
       }}
     >
