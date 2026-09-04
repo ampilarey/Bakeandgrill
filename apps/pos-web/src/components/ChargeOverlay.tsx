@@ -632,7 +632,9 @@ export function ChargeOverlay({
     if (pressedCredit) return;
 
     // The tender is Credit but the finger was not on the Credit button.
-    const underFinger = p ? describeTarget(document.elementFromPoint(p.x, p.y)) : "n/a";
+    const underFinger = p && typeof document.elementFromPoint === "function"
+      ? describeTarget(document.elementFromPoint(p.x, p.y))
+      : "n/a";
 
     // The device's OWN geometry, captured at the press. Every theory so far
     // has been argued from a rendering in a different browser; this is the
@@ -688,26 +690,46 @@ export function ChargeOverlay({
         background: "rgba(15,23,42,0.65)",
       }}
     >
+      {/*
+        * Diagnostic — see the recorder above. Screenshot it and it says what
+        * the finger actually hit.
+        *
+        * It sits OUTSIDE the card, pinned to the bottom of the screen, and it
+        * must stay outside. Measured on 2026-09-04 at 440x956 — the till's own
+        * viewport — with this bar as the card's first child, as it was for
+        * five days: the header, the tender row, the note rows and the footer
+        * were all pushed down 45px, against a note-row pitch of 70px. So from
+        * the moment the bar appeared, a finger aimed where a chip had always
+        * been landed 45px high — in the row above. The bar is shown BECAUSE
+        * the tender flipped, so every tap after the first fault was displaced
+        * for the rest of the session, and a restart cleared it. That is the
+        * owner's report almost word for word ("click below row notes, upper
+        * row note is clicked... when I restart its ok"), and it was my own
+        * instrumentation doing it.
+        *
+        * `position: fixed` also keeps it out of the overlay's flex flow, where
+        * a second child would sit beside the card and squash it.
+        */}
+      {anomaly && (
+        <div
+          data-testid="charge-tender-anomaly"
+          onClick={() => setAnomaly(null)}
+          style={{
+            position: "fixed", left: 0, right: 0, bottom: 0, zIndex: z.overlay + 1,
+            background: "#7F1D1D", color: "#fff", padding: "8px 12px",
+            paddingBottom: "max(8px, env(safe-area-inset-bottom, 0px))",
+            fontSize: 11, lineHeight: 1.35, wordBreak: "break-word", whiteSpace: "pre-wrap",
+            cursor: "pointer",
+          }}
+        >
+          <strong>Please screenshot this and send it over — tap to dismiss</strong>
+          <br />{anomaly}
+        </div>
+      )}
       <div className="pos-charge" style={{
         background: "#fff",
         overflow: "hidden",
       }}>
-        {/* Diagnostic — see the recorder above. Screenshot this and it tells us
-            what the finger actually hit. Remove once the cause is known. */}
-        {anomaly && (
-          <div
-            data-testid="charge-tender-anomaly"
-            onClick={() => setAnomaly(null)}
-            style={{
-              background: "#7F1D1D", color: "#fff", padding: "8px 12px",
-              fontSize: 11, lineHeight: 1.35, wordBreak: "break-word", whiteSpace: "pre-wrap",
-              cursor: "pointer", flexShrink: 0,
-            }}
-          >
-            <strong>Please screenshot this and send it over — tap to dismiss</strong>
-            <br />{anomaly}
-          </div>
-        )}
         {/* Header */}
         <div className="pos-charge-header" style={{
           padding: "14px 18px",
