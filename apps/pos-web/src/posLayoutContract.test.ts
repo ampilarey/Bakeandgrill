@@ -27,40 +27,25 @@ function block(selector: string): string {
   return css.slice(start + 1, css.indexOf('}', start));
 }
 
+/** The same, for a rule inside the ≤840px (phone / portrait tablet) block. */
+function phoneRule(selector: string): string {
+  const phone = css.slice(css.indexOf('@media (max-width: 840px)'));
+  const at = phone.indexOf(`  ${selector} {`);
+  expect(at, `${selector} not found in the 840px block`).toBeGreaterThan(-1);
+  const start = phone.indexOf('{', at);
+
+  return phone.slice(start + 1, phone.indexOf('}', start));
+}
+
 describe('POS layout contract', () => {
   it('pins the shell to exactly one screen', () => {
     const shell = block('.pos-shell');
 
-    // The requirement is unchanged from 2026-09-01 — one screen, never
-    // taller, so the inner scrollers always have a ceiling and the Charge
-    // button cannot ride off the bottom. The MECHANISM changed on 2026-09-04.
-    //
-    // It used to be `height: 100dvh` with `100vh` behind it. Both are numbers
-    // iOS has to resolve, and on a fresh launch it resolves them against the
-    // large viewport — the screen as it would be with the toolbar hidden. The
-    // shell came out taller than what the cashier could see, and until they
-    // scrolled, the paint and the touch map disagreed by about a row. Owner:
-    // "sometimes the charge button is little upper. I have to scroll to bring
-    // it to normal position."
-    //
-    // `position: fixed` with `inset: 0` asks for no number: WebKit lays the
-    // shell against the visual viewport and moves it when that moves. It
-    // satisfies the original rule more strictly than a height ever did, which
-    // is why this assertion was changed rather than the CSS reverted.
-    expect(shell).toMatch(/position:\s*fixed/);
-    expect(shell).toMatch(/inset:\s*0/);
-    // Any height would beat `bottom: 0` and put a resolved number back in
-    // charge of the layout.
-    expect(shell).not.toMatch(/\bheight:/);
+    // dvh is what makes it right on a phone, where the address bar changes
+    // how much screen there is; vh is the fallback for browsers without it.
+    expect(shell).toMatch(/height:\s*100dvh/);
+    expect(shell).toMatch(/height:\s*100vh/);
     expect(shell).not.toMatch(/min-height:/);
-  });
-
-  it('stops the document behind the shell from scrolling', () => {
-    // `html, body, #root { height: 100% }` resolves against the initial
-    // containing block, which on iOS is the large viewport — so the document
-    // was taller than the screen and could scroll by the toolbar's height,
-    // starting the shell offset. Locked, there is no such scroll.
-    expect(block('html, body, #root')).toMatch(/overflow:\s*hidden/);
   });
 
   it('stops the page itself scrolling', () => {
@@ -115,6 +100,42 @@ describe('POS layout contract', () => {
     expect(css).toMatch(
       /--pos-safe-bottom:\s*calc\(env\(safe-area-inset-bottom,\s*0px\)\s*\/\s*2\)/,
     );
+  });
+
+  it('sizes the phone charge sheet from its overlay, not from a viewport number', () => {
+    /*
+     * Owner, 2026-09-04: "I think the previous issue is with the charge page
+     * layout." The sheet asked for `height: 100dvh`, then for the measured
+     * `--pos-vh`. On a fresh iOS launch both resolve against the large
+     * viewport — the screen as it would be with no toolbar — so the sheet was
+     * laid out taller than the screen it was painted on and everything in it
+     * sat at an offset the hit map did not share. A finger on the second row
+     * of notes landed on the first; one on the first landed on the tender row,
+     * which is Credit.
+     *
+     * The overlay around it is already `position: fixed; inset: 0` with
+     * `align-items: stretch`, so with no height of its own the sheet is
+     * exactly that box — measured by the engine, and re-measured whenever the
+     * engine re-measures. Nothing here may reintroduce a number.
+     */
+    const decls = phoneRule('.pos-charge').replace(/\/\*[\s\S]*?\*\//g, '');
+
+    expect(decls).not.toMatch(/height:/);
+    expect(decls).toMatch(/width:\s*100%/);
+    // The cap comes from the base rule (the one that centres the sheet on a
+    // wide till) and is a percentage of the fixed overlay, not of the viewport.
+    const base = css.slice(css.indexOf('\n.pos-charge {\n  margin: auto;'));
+    expect(base.slice(0, base.indexOf('}'))).toMatch(/max-height:\s*100%/);
+  });
+
+  it('leaves exactly one scroller on the phone charge sheet', () => {
+    // The tender column is the scroller. The body around it used to scroll
+    // too — two nested momentum scrollers, and the outer one could take the
+    // tender row a few pixels out from under a finger between the press and
+    // the release.
+    expect(phoneRule('.pos-charge-grid')).toMatch(/overflow:\s*hidden/);
+    expect(phoneRule('.pos-charge-grid')).not.toMatch(/overflow-y:\s*auto/);
+    expect(phoneRule('.pos-charge-tender')).toMatch(/overflow-y:\s*auto/);
   });
 
   it('keeps the Charge button a comfortable target on a phone', () => {

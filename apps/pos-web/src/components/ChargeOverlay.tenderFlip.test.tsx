@@ -83,3 +83,54 @@ describe("ChargeOverlay — tender pulled out from under the cashier", () => {
     expect(screen.queryByTestId("charge-quick-note-10")).toBeTruthy();
   });
 });
+
+/**
+ * Harm reduction, 2026-09-04.
+ *
+ * The mis-tap on the phone has outlived nine attempts to find its cause. What
+ * can be fixed without knowing the cause is what it costs when it happens.
+ *
+ * Owner: "when i click upper row note transfer or credit is deleted and get
+ * stuck". Landing on the wrong row used to wipe the count as well as the
+ * tender, so a single stray tap meant counting the drawer again with a queue
+ * waiting. It should cost one tap to undo.
+ */
+describe("ChargeOverlay — a mis-tapped tender costs one tap, not the count", () => {
+  const base = {
+    total: 35,
+    submitting: false,
+    onClose: () => undefined,
+    allowedTenders: { cash: true, card: true, qr: true, digital_wallet: true, split: true },
+  };
+
+  it("keeps the counted notes when the tender is switched and switched back", () => {
+    render(<ChargeOverlay {...base} onConfirm={vi.fn(async () => undefined)} />);
+
+    fireEvent.click(screen.getByTestId("charge-quick-note-10"));
+    fireEvent.click(screen.getByTestId("charge-quick-note-20"));
+    expect(screen.getByTestId("charge-quick-note-10").getAttribute("aria-pressed")).toBe("true");
+
+    // The stray tap: Card instead of a note.
+    fireEvent.click(screen.getByRole("button", { name: "Card" }));
+    // And the cashier taps straight back onto Cash.
+    fireEvent.click(screen.getByRole("button", { name: "Cash" }));
+
+    expect(screen.getByTestId("charge-quick-note-10").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("charge-quick-note-20").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("still clears the count when the sale itself changes", () => {
+    // The one case that must keep clearing: a different total is a different
+    // sale, and last order's count must never stand in for this one's.
+    const { rerender } = render(
+      <ChargeOverlay {...base} onConfirm={vi.fn(async () => undefined)} />,
+    );
+
+    fireEvent.click(screen.getByTestId("charge-quick-note-10"));
+    expect(screen.getByTestId("charge-quick-note-10").getAttribute("aria-pressed")).toBe("true");
+
+    rerender(<ChargeOverlay {...base} total={60} onConfirm={vi.fn(async () => undefined)} />);
+
+    expect(screen.getByTestId("charge-quick-note-10").getAttribute("aria-pressed")).toBe("false");
+  });
+});

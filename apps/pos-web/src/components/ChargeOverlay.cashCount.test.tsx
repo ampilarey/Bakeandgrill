@@ -76,8 +76,28 @@ describe("ChargeOverlay — cash must be counted", () => {
     expect(onConfirm).toHaveBeenCalledWith([{ method: "card", amount: 120 }]);
   });
 
-  it("asks again when the cashier switches back to cash", async () => {
-    // Otherwise a count entered for one tender would carry into another.
+  it("keeps the count when the cashier comes straight back to cash", async () => {
+    /*
+     * This used to assert the opposite — a switch away from cash and back
+     * cleared the count and locked Confirm again, so that "a count entered for
+     * one tender would [not] carry into another".
+     *
+     * Changed deliberately on 2026-09-04, and it is worth saying why, because
+     * it softens a rule the owner asked for on 2026-09-01.
+     *
+     * The gate exists because Received used to arrive pre-filled with the
+     * order total, so a card sale could be rung as cash without anyone saying
+     * what came in. That is untouched: nothing pre-fills, and Confirm still
+     * opens only on a deliberate EXACT / note / typed amount.
+     *
+     * What changed is the cost of a stray tap. The phone POS has been landing
+     * taps a row high for a week — owner: "when i click upper row note
+     * transfer or credit is deleted" — and clearing on every tender change
+     * meant one wrong tap threw away a count that was made seconds earlier,
+     * for this same sale, with a queue waiting. The count belongs to the sale,
+     * not to the tender: it survives a switch, and it is still cleared the
+     * moment the total changes (see ChargeOverlay.tenderFlip.test.tsx).
+     */
     const user = userEvent.setup();
     renderCharge();
 
@@ -87,6 +107,6 @@ describe("ChargeOverlay — cash must be counted", () => {
     await user.click(screen.getByRole("button", { name: /^Card$/i }));
     await user.click(screen.getByRole("button", { name: /^Cash$/i }));
 
-    expect(confirmButton()).toBeDisabled();
+    expect(confirmButton()).not.toBeDisabled();
   });
 });

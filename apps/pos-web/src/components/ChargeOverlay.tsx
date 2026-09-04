@@ -268,14 +268,30 @@ export function ChargeOverlay({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  // Clear the received amount whenever the total or method changes — a stale
-  // figure from a prior order must never stand in for a fresh count, and
-  // switching to cash from another method has to ask again.
+  /*
+   * A new total is a new sale, and the count on screen belongs to the old one.
+   * That much has to be cleared: a stale figure must never stand in for a
+   * fresh count.
+   *
+   * A tender switch used to clear it as well, and that is the part that hurt.
+   * Owner, 2026-09-04: "when i click the pay, and click below row notes, upper
+   * row note is clicked. And when i click upper row note transfer or credit is
+   * deleted." Whatever is moving that tap — after a week it is still not
+   * proven — the cost of it landing on the wrong row is that the cashier loses
+   * every note they had tapped in and starts the count again, mid-queue.
+   *
+   * The money does not belong to the tender, it belongs to the sale. So a
+   * tender switch now leaves the count alone: tapping Credit by accident and
+   * tapping Cash again puts the cashier back exactly where they were, one tap.
+   * `received` and the note chips are only ever read on the cash path (see
+   * `confirm` and `enough`), so carrying them across a switch changes nothing
+   * about what gets settled.
+   */
   useEffect(() => {
     setReceived("");
     setSelectedNotes([]);
     setBreakdownOpen(false);
-  }, [total, method]);
+  }, [total]);
 
   /**
    * Keep the method on something the cashier is allowed to use — but never at

@@ -18,25 +18,6 @@
 
 html, body, #root {
   height: 100%;
-  /*
-   * The document itself never scrolls — the shell owns every scroller.
-   *
-   * Owner, 2026-09-04: "the problem is with the layout specifically mobile pos
-   * layout", after "sometimes the charge button is little upper. I have to
-   * scroll to bring it to normal position."
-   *
-   * `height: 100%` here resolves against the initial containing block, which
-   * on iOS is the LARGE viewport — the screen as it would be with the toolbar
-   * hidden. So the document was taller than what the cashier could see, the
-   * page could scroll by that difference, and the shell inside it started
-   * offset. That is the Charge bar sitting high, and it is why one scroll put
-   * everything right: the scroll was settling the page, not the shell.
-   *
-   * Locking it here means there is no such scroll to be in the wrong place.
-   */
-  overflow: hidden;
-  overscroll-behavior: none;
-  position: relative;
   margin: 0;
   background: #F8FAFC;
   color: #0F172A;
@@ -79,22 +60,13 @@ html, body, #root {
  * The vh line is the fallback for browsers without dvh; dvh is what makes it
  * right on a phone, where the address bar changes how much screen there is. */
 .pos-shell {
-  /*
-   * Pinned to the visible viewport rather than sized to a computed height.
-   *
-   * Every height unit here — 100vh, 100dvh, and the measured --pos-vh I tried
-   * before it — is a NUMBER that iOS has to resolve, and on a fresh launch it
-   * resolves them against a screen the cashier cannot see. `position: fixed`
-   * with `inset: 0` asks for no number at all: WebKit lays the shell against
-   * the visual viewport and moves it when that moves, which is the one thing
-   * it does reliably.
-   *
-   * No height declaration at all: with top and bottom both pinned, any height
-   * would win over `bottom: 0` and put us straight back into resolving a
-   * number.
-   */
-  position: fixed;
-  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  /* The measured height wins: iOS resolves dvh against the large viewport on a
+   * fresh load and only corrects on a scroll, which laid the shell out taller
+   * than the screen and put the taps a row out of step with the paint.
+   * See posViewportHeight.ts — dvh above stays the fallback. */
+  height: var(--pos-vh, 100dvh);
   overflow: hidden;
   box-sizing: border-box;
   padding-bottom: var(--pos-safe-bottom);
@@ -818,10 +790,28 @@ html, body, #root {
     padding: 0;
     max-width: none;
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
-    height: var(--pos-vh, 100dvh);
-    max-height: var(--pos-vh, 100dvh);
+    /*
+     * No height, and no max-height either — the base rule's `max-height: 100%`
+     * is what applies, and 100% of a `position: fixed; inset: 0` parent is a
+     * real box rather than a number iOS has to resolve.
+     *
+     * Owner, 2026-09-04: "I think the previous issue is with the charge page
+     * layout." He is right, and this is the line. The sheet asked for
+     * `100dvh`, then for the measured `--pos-vh` — the same numbers that were
+     * wrong on the shell, and wrong here for the same reason: on a fresh
+     * launch WebKit resolves them against the large viewport, so the sheet
+     * comes out taller than the screen it is painted on. The Charge bar sits
+     * high, the rows below the fold are laid out at offsets nothing on screen
+     * agrees with, and a finger meant for the second row of notes lands on the
+     * first — or on the tender row, which is Credit.
+     *
+     * The overlay around this sheet is already `position: fixed; inset: 0`
+     * (see ChargeOverlay.tsx) with `align-items: stretch`, so with no height
+     * of its own the sheet is exactly the overlay: one screen, measured by the
+     * engine, corrected whenever the engine corrects. That is why the shell
+     * fix could not help here — this sheet is a separate fixed box and never
+     * inherited it.
+     */
     border-radius: 0;
     display: flex;
     flex-direction: column;
@@ -833,8 +823,17 @@ html, body, #root {
     padding: 0;
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    /*
+     * One scroller on this screen, and it is the tender column below.
+     *
+     * This box used to scroll as well, so the sheet had two nested momentum
+     * scrollers. With the sheet now exactly one screen there is nothing here
+     * to scroll: the summary above is `flex-shrink: 0` at its natural height
+     * and the tender column takes the rest. Leaving `auto` on would mean the
+     * whole body could still be scrolled a few pixels out from under a finger
+     * — the offset we have been chasing — for no layout benefit.
+     */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
   }
@@ -2193,10 +2192,11 @@ html, body, #root {
   .close-shift-sheet {
     width: 100%;
     max-width: none;
-    height: 100dvh;
-    max-height: 100dvh;
-    height: var(--pos-vh, 100dvh);
-    max-height: var(--pos-vh, 100dvh);
+    /* Stretched by the overlay above (fixed, inset 0, align-items: stretch)
+     * rather than sized from a viewport number — same reason as the charge
+     * sheet, see `.pos-charge` in the 840px block. `100%` here is the
+     * overlay's own box, which the engine has already measured. */
+    max-height: 100%;
     border-radius: 0;
     margin: 0;
   }
@@ -2402,10 +2402,11 @@ html, body, #root {
   .close-shift-sheet {
     width: 100%;
     max-width: none;
-    height: 100dvh;
-    max-height: 100dvh;
-    height: var(--pos-vh, 100dvh);
-    max-height: var(--pos-vh, 100dvh);
+    /* Stretched by the overlay above (fixed, inset 0, align-items: stretch)
+     * rather than sized from a viewport number — same reason as the charge
+     * sheet, see `.pos-charge` in the 840px block. `100%` here is the
+     * overlay's own box, which the engine has already measured. */
+    max-height: 100%;
     border-radius: 0;
     margin: 0;
   }
@@ -2451,10 +2452,11 @@ html, body, #root {
   .close-shift-sheet {
     width: 100%;
     max-width: none;
-    height: 100dvh;
-    max-height: 100dvh;
-    height: var(--pos-vh, 100dvh);
-    max-height: var(--pos-vh, 100dvh);
+    /* Stretched by the overlay above (fixed, inset 0, align-items: stretch)
+     * rather than sized from a viewport number — same reason as the charge
+     * sheet, see `.pos-charge` in the 840px block. `100%` here is the
+     * overlay's own box, which the engine has already measured. */
+    max-height: 100%;
     border-radius: 0;
     margin: 0;
     display: grid;
