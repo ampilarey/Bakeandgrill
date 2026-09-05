@@ -287,6 +287,82 @@
         .style-wall .cat { font-size: 1.4rem; margin-top: 22px; }
         .style-wall .row { margin-bottom: 9px; }
 
+@unless ($forPdf)
+        /*
+         * On a phone. Owner, 2026-09-06: "Still print mobile view need
+         * enhancements."
+         *
+         * This is a page laid out for A4 that people also read on a phone —
+         * to check a price, or to send the PDF on. At 390px the short list's
+         * two columns collided (a long dish name cannot wrap when its row is
+         * `nowrap`, so it ran straight through the next column), the masthead
+         * filled half the screen before any food, and the wall layout pushed
+         * the page sideways.
+         *
+         * Deliberately `@media screen` *and* skipped entirely for the PDF:
+         * dompdf treats the document as screen media and does not evaluate
+         * width conditions, so a mobile block left in the stylesheet would
+         * quietly reformat every PDF.
+         */
+        @media screen and (max-width: 700px) {
+            body { padding-bottom: 1.5rem; }
+
+            .toolbar {
+                gap: 6px;
+                padding: 8px 10px;
+            }
+
+            /* The buttons say what they are; the word "Layout" is a row of
+               screen a phone cannot spare. */
+            .toolbar__label { display: none; }
+            .toolbar__spacer { margin-left: 0; }
+
+            .toolbar a,
+            .toolbar button {
+                font-size: 0.78rem;
+                padding: 0.35rem 0.6rem;
+                border-radius: 6px;
+            }
+
+            .sheet {
+                margin: 8px;
+                padding: 18px 16px;
+                border-radius: 6px;
+            }
+
+            /* One column. Two on a 390px screen is a collision, not a layout. */
+            .style-short .body { column-count: 1; }
+
+            .masthead__logo { width: 52px; height: 52px; }
+            .masthead h1 { font-size: 1.35rem; letter-spacing: 0.04em; }
+            .masthead__tagline { font-size: 0.75rem; }
+            .rule-mark { margin: 6px 0 2px; }
+            .rule-line { margin-bottom: 10px; }
+
+            /* A long name wraps rather than shoving the page sideways. The
+               leader dots go with it — a broken line of dots is worse than
+               none, and the price still sits at the right margin. */
+            .row td.row__name { white-space: normal; }
+            .row__dots { display: none; }
+
+            .style-short .row,
+            .style-full .row { font-size: 0.95rem; }
+
+            .style-wall { font-size: 1.05rem; }
+            .style-wall .masthead h1 { font-size: 1.5rem; }
+            .style-wall .cat { font-size: 1.1rem; }
+
+            .cat { font-size: 0.9rem; letter-spacing: 0.06em; }
+
+            /* Address above, QR below, both readable. Stacking releases the
+               QR cell's width, so cap it — a code the width of the screen is
+               no easier to scan than one you can cover with a thumb. */
+            .foot, .foot tbody, .foot tr, .foot td { display: block; width: auto; }
+            .foot__qr { text-align: left; padding-top: 10px; }
+            .foot__qr img { width: 88px; height: 88px; }
+        }
+@endunless
+
         @media print {
             body { background: #fff; padding: 0; }
             .no-print { display: none !important; }

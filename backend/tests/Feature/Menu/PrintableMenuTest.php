@@ -311,6 +311,63 @@ class PrintableMenuTest extends TestCase
         );
     }
 
+    public function test_the_sheet_reflows_for_a_phone(): void
+    {
+        /*
+         * Owner, 2026-09-06: "Still print mobile view need enhancements." At
+         * 390px the short list's two columns collided — a long dish name
+         * cannot wrap when its row is `nowrap`, so it ran straight through the
+         * next column — and the wall layout pushed the page sideways.
+         */
+        $this->dish('Mas Huni', 35);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+
+        $this->assertStringContainsString('@media screen and (max-width: 700px)', $html);
+        $this->assertStringContainsString('.style-short .body { column-count: 1; }', $html);
+    }
+
+    public function test_the_phone_rules_never_reach_the_pdf(): void
+    {
+        /*
+         * The reason the block is cut out in Blade rather than left to the
+         * media query: dompdf treats the document as screen media and does not
+         * evaluate width conditions, so a mobile block that reached it would
+         * quietly reformat every PDF anyone was sent.
+         */
+        $this->dish('Mas Huni', 35);
+
+        $rendered = view('menu-print', array_merge(
+            $this->printViewData(),
+            ['forPdf' => true],
+        ))->render();
+
+        $this->assertStringNotContainsString('max-width: 700px', $rendered);
+        $this->assertStringNotContainsString('column-count: 1', $rendered);
+    }
+
+    public function test_the_desktop_sheet_keeps_its_two_columns(): void
+    {
+        // The phone rules must narrow the page, not replace the layout.
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print?style=short')
+            ->assertOk()
+            ->assertSee('.style-short .body { column-count: 2; column-gap: 9mm; }', false);
+    }
+
+    /** @return array<string, mixed> */
+    private function printViewData(): array
+    {
+        // Whatever the controller hands the view, so this cannot pass by
+        // rendering something the page never renders.
+        $response = $this->get('/menu/print');
+        $data = $response->original->getData();
+        unset($data['forPdf']);
+
+        return $data;
+    }
+
     public function test_cost_price_never_reaches_the_paper(): void
     {
         // The page is public. Anything the kitchen pays must stay off it.
