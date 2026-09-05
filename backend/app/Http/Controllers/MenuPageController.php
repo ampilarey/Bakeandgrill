@@ -48,6 +48,9 @@ use Illuminate\Support\Facades\DB;
  */
 class MenuPageController extends Controller
 {
+    /** Print layouts, in the order the toolbar offers them. */
+    private const PRINT_STYLES = ['short', 'full', 'wall'];
+
     public function index(): View
     {
         $items = $this->sellableItems();
@@ -73,6 +76,91 @@ class MenuPageController extends Controller
             // the layout defines in its own @php block is not in scope here.
             'menuLocale' => $this->menuLocale(),
         ]);
+    }
+
+    /**
+     * The menu on paper.
+     *
+     * Owner, 2026-09-05: "make a print option. Make different options. Short
+     * version, details ect."
+     *
+     * Three layouts off one page, chosen by `?style=`: a dense two-column
+     * price list, a full menu with descriptions and every size, and a
+     * large-type sheet meant to be read from across a counter. The toolbar
+     * that switches between them is `.no-print`, so what comes out of the
+     * printer is the menu and nothing else.
+     *
+     * Deliberately different from `/menu` in one respect: this lists every
+     * *active* item, including ones marked sold out today. A printed sheet
+     * outlives today — dropping tonight's 86'd dish would quietly reprint the
+     * menu without it, and re-listing it tomorrow means printing again.
+     */
+    public function print(Request $request): View
+    {
+        $style = (string) $request->query('style', 'short');
+        if (!in_array($style, self::PRINT_STYLES, true)) {
+            $style = 'short';
+        }
+
+        $items = Item::query()
+            ->with(['variants', 'category', 'extraCategories'])
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $categories = $this->activeCategories();
+
+        return view('menu-print', [
+            'printStyle' => $style,
+            'printStyles' => self::PRINT_STYLES,
+            'showDhivehi' => $request->boolean('dv'),
+            'menuCategories' => $this->groupByParent($items, $categories),
+            'menuItemCount' => $items->count(),
+            'menuPriceByItemId' => $this->effectivePrices($items),
+            'menuVariantPricesByItemId' => $this->variantPrices($items),
+            'menuLocale' => $this->menuLocale(),
+            'printedAt' => now(),
+        ]);
+    }
+
+    /**
+     * Every size, named, with its own effective price.
+     *
+     * `effectivePriceFor` answers "from" — the cheapest size — which is right
+     * for a card on a phone and useless on a price list, where somebody has to
+     * read off what a Large costs. The money itself comes from
+     * `effectiveVariantPrices`, the same helper the single-item page uses, so
+     * a discounted size cannot print at one price here and another there.
+     *
+     * @param Collection<int, Item> $items
+     * @return array<int, list<array{name: string, price: float, was: ?float}>>
+     */
+    private function variantPrices(Collection $items): array
+    {
+        $out = [];
+
+        foreach ($items as $item) {
+            if (!$item->has_variants || !$item->relationLoaded('variants')) {
+                continue;
+            }
+
+            $priced = $this->effectiveVariantPrices($item);
+
+            $rows = [];
+            foreach ($item->variants->where('is_active', true)->sortBy('sort_order') as $variant) {
+                if (!isset($priced[$variant->id])) {
+                    continue;
+                }
+                $rows[] = ['name' => (string) $variant->name] + $priced[$variant->id];
+            }
+
+            if ($rows !== []) {
+                $out[$item->id] = $rows;
+            }
+        }
+
+        return $out;
     }
 
     /**

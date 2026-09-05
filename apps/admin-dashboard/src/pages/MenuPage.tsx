@@ -235,11 +235,23 @@ export function MenuPage() {
         title="Menu Management"
         subtitle="Categories, items, prices and availability"
         action={
-          m.canManage
-            ? (m.view === 'categories'
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/*
+              * The menu on paper (owner, 2026-09-05). Opens the website's own
+              * print sheet, which is where the three layouts live — one copy
+              * of that page rather than a second one built in the admin.
+              */}
+            <Btn
+              variant="secondary"
+              onClick={() => window.open('/menu/print', '_blank', 'noopener')}
+              title="Print or save the menu — short list, with details, or large type"
+            >
+              <span aria-hidden="true">🖨</span> Print menu
+            </Btn>
+            {m.canManage && (m.view === 'categories'
               ? <Btn onClick={() => m.setCreatingCat(true)}>+ New Category</Btn>
-              : <Btn onClick={() => m.setCreatingItem(true)}>+ New Item</Btn>)
-            : undefined
+              : <Btn onClick={() => m.setCreatingItem(true)}>+ New Item</Btn>)}
+          </div>
         }
       />
 

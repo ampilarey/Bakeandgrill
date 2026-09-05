@@ -206,6 +206,8 @@ html.js .menu-filters {
     font: inherit; font-size: 0.8rem; font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
+    /* The print entry point is a link, not a button. */
+    text-decoration: none;
 }
 .menu-tool:hover { border-color: var(--amber); color: var(--amber); }
 .menu-tool.is-on { background: var(--amber-light); border-color: var(--amber); color: var(--amber); }
@@ -918,6 +920,14 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                         title="Swap the category rail to the other side">
                     <span class="menu-rail-side__icon" aria-hidden="true">⇆</span>
                 </button>
+                {{-- The menu on paper (owner, 2026-09-05). A link rather than a
+                     window.print() here: /menu is a page with a rail, chips and
+                     a pinned toolbar, and printing it directly would put all of
+                     that on the paper. --}}
+                <a href="{{ route('menu.print') }}" class="menu-tool" data-testid="menu-print-link"
+                   title="Print or save the menu">
+                    <span aria-hidden="true">🖨</span> Print
+                </a>
             </div>
 
             {{-- Sort and filters scroll away with the page on a phone; only the

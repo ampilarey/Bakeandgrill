@@ -61,6 +61,13 @@ Route::get('/admin/preview/website/home', [App\Http\Controllers\ContentWebsitePr
 Route::get('/menu', [App\Http\Controllers\MenuPageController::class, 'index'])
     ->middleware(['content.locale', 'service.banner'])
     ->name('menu');
+// The menu on paper (owner, 2026-09-05). Three layouts off one page; the
+// toolbar that picks between them is .no-print. Public like /menu itself —
+// it shows prices and dishes, nothing a customer could not already read —
+// and noindex, because a print sheet is not a page for Google.
+Route::get('/menu/print', [App\Http\Controllers\MenuPageController::class, 'print'])
+    ->middleware(['content.locale'])
+    ->name('menu.print');
 // Own Blade document — not 58 hidden dialogs, and not in the sitemap
 // (per-item URLs are deferred; see docs/IMPROVEMENT_PLAN.md).
 Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'show'])
