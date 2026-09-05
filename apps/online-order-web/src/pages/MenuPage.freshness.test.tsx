@@ -33,6 +33,7 @@ vi.mock('../api', async () => {
     available_now: true,
     unavailable_reason: null,
     is_catering: false,
+    is_new: id === 54,
     is_combo: false,
     allow_pre_order: false,
     tomorrow_remaining: null,
@@ -136,8 +137,8 @@ vi.mock('../components/OrderModeSheet', () => ({ OrderModeSheet: () => null }));
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 
 vi.mock('../components/menu/ProductCard', () => ({
-  ProductCard: ({ item }: { item: { name: string } }) => (
-    <div data-testid="product-card-stub">{item.name}</div>
+  ProductCard: ({ item, isNew }: { item: { name: string }; isNew?: boolean }) => (
+    <div data-testid="product-card-stub" data-is-new={isNew ? 'true' : 'false'}>{item.name}</div>
   ),
 }));
 
@@ -236,5 +237,22 @@ describe('an open menu does not go stale', () => {
 
     expect(screen.getAllByTestId('product-card-stub').length).toBeGreaterThan(0);
     await waitFor(() => expect(renderedNames().sort()).toEqual(['Bondibai', 'Valhomas (Hanakuri)']));
+  });
+});
+
+describe('new dishes are marked', () => {
+  it('passes the server\u2019s verdict to the card', async () => {
+    // Owner, 2026-09-05: "In blade menu new items are marked. But on order
+    // app its not showing." The card has always had the badge; nothing passed
+    // it, so every dish rendered as if it were old.
+    calls.n = 1;
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    await waitFor(() => expect(screen.getAllByTestId('product-card-stub').length).toBeGreaterThan(1));
+
+    const marks = Object.fromEntries(
+      screen.getAllByTestId('product-card-stub').map((n) => [n.textContent, n.getAttribute('data-is-new')]),
+    );
+    expect(marks['Valhomas (Hanakuri)']).toBe('true');
+    expect(marks['Bondibai']).toBe('false');
   });
 });

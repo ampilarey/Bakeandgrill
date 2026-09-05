@@ -221,7 +221,18 @@ class ItemController extends Controller
         }
 
         // Admin gets full data; public / POS get stripped response + availability metadata
-        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap) {
+        /*
+         * Which dishes wear the NEW badge. Owner, 2026-09-05: "In blade menu
+         * new items are marked. But on order app its not showing." The rule
+         * used to live inside MenuPageController, so only the website could
+         * apply it. Both surfaces now read the same service, so both mark the
+         * same dishes.
+         */
+        $newItemIds = (!$isAdmin || $isPosView)
+            ? app(\App\Domains\Catalog\Services\NewMenuItemService::class)->newItemIds()
+            : [];
+
+        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $includeCost = $canSeeCost && !$isPosView;
@@ -293,6 +304,8 @@ class ItemController extends Controller
                         'valid_until' => $r->valid_until?->toIso8601String(),
                     ])->values()->all()
                     : null,
+                // Recently added, same rule and same cap as the website menu.
+                'is_new' => $includeAvailability ? isset($newItemIds[$item->id]) : null,
                 // Display flag only — does NOT make the item orderable by itself
                 // (see KitchenMenuResolver::ORDERING_CHANNELS / CATERING-EVENTS-PLAN §2).
                 'is_catering' => $item->relationLoaded('channelAvailabilities')

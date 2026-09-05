@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\Catalog\Services\NewMenuItemService;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
@@ -47,8 +48,6 @@ use Illuminate\Support\Facades\DB;
  */
 class MenuPageController extends Controller
 {
-    private const NEW_ITEMS_CAP = 12;
-
     public function index(): View
     {
         $items = $this->sellableItems();
@@ -59,15 +58,13 @@ class MenuPageController extends Controller
         $specialsByItemId = $this->indexSpecialsByItem($pricing->activeSpecialsForDisplay());
         $offers = collect(app(OffersService::class)->activeOffers());
 
-        $newDays = max(1, min(365, (int) content('menu_new_days', '30')));
-
         return view('menu', [
             'menuCategories' => $groups,
             'menuItemCount' => $items->count(),
             'menuOffers' => $offers,
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuPriceByItemId' => $this->effectivePrices($items),
-            'menuNewItemIds' => $this->newItemIds($items, $newDays),
+            'menuNewItemIds' => app(NewMenuItemService::class)->newItemIds(),
             'menuPhotos' => $this->displayPhotos($items),
             'menuDietaryFilters' => $this->dietaryFilters($items),
             'favouriteIds' => $this->favouriteItemIds(),
@@ -326,23 +323,6 @@ class MenuPageController extends Controller
         }
 
         return $byItem;
-    }
-
-    /**
-     * @param Collection<int, Item> $items
-     * @return array<int, true>
-     */
-    private function newItemIds(Collection $items, int $newDays): array
-    {
-        $cutoff = now()->subDays($newDays);
-        $ids = $items
-            ->filter(fn (Item $item) => $item->created_at !== null && $item->created_at->gte($cutoff))
-            ->sortByDesc(fn (Item $item) => $item->created_at?->timestamp ?? 0)
-            ->take(self::NEW_ITEMS_CAP)
-            ->pluck('id')
-            ->all();
-
-        return array_fill_keys($ids, true);
     }
 
     /**

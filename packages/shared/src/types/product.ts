@@ -151,6 +151,11 @@ export type MenuItem = {
   sales_30d?: number;
   /** ISO datetime — used by the dine-in view “New items” section. */
   created_at?: string | null;
+  /**
+   * Recently added, decided by the server so the website menu and the order
+   * app mark the same dishes (NewMenuItemService).
+   */
+  is_new?: boolean | null;
   /** Owner-ticked: item can be ordered for tomorrow collection. */
   allow_pre_order?: boolean;
   /**

@@ -940,6 +940,9 @@ export function MenuPage() {
         item={item}
         layout={viewMode}
         orderDay={day}
+        // The card has carried this badge all along with nothing passing it,
+        // so the website menu marked new dishes and the order app did not.
+        isNew={item.is_new === true}
         onSelectItem={(it, qty) => handleSelectItem(it, qty)}
         onAddToCart={(it, qty, variant, packagingOptionId) => {
           addItem(it, qty, [], variant ?? null, packagingOptionId);
