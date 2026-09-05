@@ -9,6 +9,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { ScanSheet } from '../components/ScanSheet';
 import { countScannedItem } from '../utils/receivingScan';
 import { today } from '../utils/dateHelpers';
+import { mvr } from '../utils/fmt';
 
 type ManualPoLine = {
   selection: InventoryItemSelection | null;
@@ -17,6 +18,26 @@ type ManualPoLine = {
 };
 
 const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0' });
+
+/**
+ * What a line costs, or null when it is not yet a real line.
+ *
+ * Null rather than zero on purpose: a line with no item picked, or a
+ * half-typed number, is unknown rather than free, and showing MVR 0.00 for it
+ * would quietly understate the order total sitting right below.
+ */
+function manualLineTotal(line: ManualPoLine): number | null {
+  if (!line.selection) return null;
+  const qty = parseFloat(line.quantity);
+  const cost = parseFloat(line.unit_cost);
+  if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(cost) || cost < 0) return null;
+  return qty * cost;
+}
+
+const lineLabelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
+  color: 'var(--color-text-secondary)', marginBottom: 4,
+};
 
 const STATUS_COLOR: Record<string, string> = {
   draft:    'gray',
@@ -95,6 +116,10 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   });
   const [manualPoSaving, setManualPoSaving] = useState(false);
   const [manualPoError, setManualPoError] = useState('');
+
+  // Totals for the manual PO card, recomputed as you type.
+  const manualPoTotal = manualPoForm.lines.reduce((sum, l) => sum + (manualLineTotal(l) ?? 0), 0);
+  const manualPoIncompleteLines = manualPoForm.lines.filter((l) => manualLineTotal(l) === null).length;
 
   const openManualPo = async () => {
     setManualPoError('');
@@ -736,13 +761,39 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 }}
                 placeholder="Search inventory item…"
               />
+              {/* Labels above the boxes, not placeholders inside them: a
+                  placeholder is gone the moment you type, so a filled-in line
+                  used to be two unlabelled numbers. The quantity carries the
+                  item's unit, so "4" reads as 4 kg rather than 4 of something. */}
               <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                <input type="number" min="0.001" step="any" placeholder="Qty" value={line.quantity}
-                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
-                <input type="number" min="0" step="0.01" placeholder="Unit cost" value={line.unit_cost}
-                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
-                  style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }} />
+                <div>
+                  <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>
+                    Quantity{line.selection ? ` (${line.selection.item.unit})` : ''}
+                  </label>
+                  <input id={`manual-po-qty-${idx}`} type="number" min="0.001" step="any"
+                    aria-label={`Quantity for item ${idx + 1}`}
+                    value={line.quantity}
+                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label htmlFor={`manual-po-cost-${idx}`} style={lineLabelStyle}>
+                    Unit cost (MVR{line.selection ? ` per ${line.selection.item.unit}` : ''})
+                  </label>
+                  <input id={`manual-po-cost-${idx}`} type="number" min="0" step="0.01"
+                    aria-label={`Unit cost for item ${idx + 1}`}
+                    value={line.unit_cost}
+                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              {/* What this line costs, so a slip in either box is visible here
+                  rather than in the total after the order is already saved. */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 12 }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>Line total</span>
+                <span data-testid={`manual-po-line-total-${idx}`} style={{ fontWeight: 700, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
+                  {manualLineTotal(line) === null ? '—' : mvr(manualLineTotal(line))}
+                </span>
               </div>
             </div>
           ))}
@@ -752,6 +803,24 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
           <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
+          {/* The number to check against the receipt in your hand, before you
+              save rather than after. Incomplete lines are left out and said so. */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8,
+            borderTop: '2px solid var(--color-border)', paddingTop: 12, marginBottom: 16,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Order total</div>
+              {manualPoIncompleteLines > 0 && (
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  {manualPoIncompleteLines} line{manualPoIncompleteLines === 1 ? '' : 's'} not counted yet
+                </div>
+              )}
+            </div>
+            <div data-testid="manual-po-order-total" style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
+              {mvr(manualPoTotal)}
+            </div>
+          </div>
           <ModalActions>
             <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
             <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
