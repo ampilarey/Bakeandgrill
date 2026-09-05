@@ -46,6 +46,17 @@ import { formatTomorrowDateLabel } from '../utils/collectOn';
 import { consumePendingPlatterReorder } from '../utils/applyReorderToCart';
 import { itemSortPrice } from '../utils/money';
 const MENU_VIEW_KEY = 'bg-menu-view';
+
+/**
+ * How stale an open menu is allowed to get before it refetches itself. Two
+ * minutes is short enough that a sold-out dish stops being orderable while the
+ * customer is still deciding, and long enough that flicking between apps is not
+ * a request per tap.
+ */
+const MENU_MAX_AGE_MS = 2 * 60 * 1000;
+/** How often an open, visible tab checks whether it has gone stale. */
+const MENU_REFRESH_TICK_MS = 60 * 1000;
+
 type MenuViewMode = 'grid' | 'list';
 
 function readMenuView(): MenuViewMode {
@@ -255,6 +266,8 @@ export function MenuPage() {
   };
 
   const cartRef = useRef(cart);
+  /** When the menu data on screen was last fetched — see the refresh effect. */
+  const loadedAtRef = useRef(0);
   const isProgrammaticScroll = useRef(false);
   const programmaticScrollTimerRef = useRef<number | null>(null);
   const sectionVisibilityRef = useRef<Map<number, { id: number; ratio: number; top: number }>>(new Map());
@@ -291,8 +304,14 @@ export function MenuPage() {
     cartRef.current = cart;
   }, [cart]);
 
-  const loadMenu = () => {
-    setLoading(true);
+  /**
+   * @param silent Refresh in place, with no spinner. A background refresh must
+   *               not blank the grid the customer is reading or throw away
+   *               their scroll position; it just swaps the data underneath.
+   */
+  const loadMenu = (silent = false) => {
+    if (!silent) setLoading(true);
+    loadedAtRef.current = Date.now();
     Promise.all([
       fetchCategories(),
       fetchItems(),
@@ -348,9 +367,37 @@ export function MenuPage() {
           }
         }
       })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (!silent) setError((e as Error).message); })
+      .finally(() => { if (!silent) setLoading(false); });
   };
+
+  /*
+   * Owner, 2026-09-05: an item added at 15:51 was still missing from the app
+   * at 20:20, while the API had been serving it for four and a half hours.
+   * The menu was fetched once on mount and never again, so a tab or installed
+   * app left open showed whatever the menu was when it opened — for as long
+   * as it stayed open.
+   *
+   * That is worse for customers than for the owner: it is how somebody adds a
+   * dish that sold out two hours ago and finds out at the counter. So refresh
+   * when the page comes back into view, and cap how stale an open tab can get.
+   */
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - loadedAtRef.current < MENU_MAX_AGE_MS) return;
+      loadMenu(true);
+    };
+    const onVisible = () => refreshIfStale();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    const timer = window.setInterval(refreshIfStale, MENU_REFRESH_TICK_MS);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     loadMenu();
