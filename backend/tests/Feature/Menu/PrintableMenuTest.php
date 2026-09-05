@@ -368,6 +368,57 @@ class PrintableMenuTest extends TestCase
         return $data;
     }
 
+    public function test_no_button_relies_on_an_inline_handler(): void
+    {
+        /*
+         * The Print button did nothing on the live site. The site's CSP is
+         * `script-src \'self\' \'nonce-…\'` with no `unsafe-inline`, so the
+         * `onclick` it carried was refused by the browser. Every check I ran
+         * opened the page from a file:// URL, which has no CSP, so it worked
+         * every time and was broken the whole time.
+         */
+        $this->dish('Mas Huni', 35);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('onclick=', $html);
+        $this->assertMatchesRegularExpression('/<script nonce="[^"]+"/', $html);
+    }
+
+    public function test_the_share_button_is_hidden_until_the_browser_can_share(): void
+    {
+        // A button that does nothing is worse than no button; the PDF link
+        // beside it works everywhere.
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')
+            ->assertOk()
+            ->assertSee('data-testid="menu-print-share" hidden', false);
+    }
+
+    public function test_the_share_sheet_and_the_download_agree_on_the_filename(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $expected = 'menu-' . now()->format('Y-m-d') . '.pdf';
+
+        $this->get('/menu/print')->assertOk()->assertSee($expected, false);
+        $this->assertStringContainsString(
+            $expected,
+            (string) $this->get('/menu/print.pdf')->assertOk()->headers->get('content-disposition'),
+        );
+    }
+
+    public function test_the_pdf_carries_no_script_at_all(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $this->assertStringNotContainsString(
+            'menuShare',
+            $this->get('/menu/print.pdf')->assertOk()->getContent(),
+        );
+    }
+
     public function test_cost_price_never_reaches_the_paper(): void
     {
         // The page is public. Anything the kitchen pays must stay off it.

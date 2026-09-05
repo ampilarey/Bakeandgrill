@@ -96,6 +96,14 @@
             color: #fff;
         }
 
+        .toolbar__share {
+            border-color: #1c1408;
+            background: #1c1408;
+            color: #fff;
+        }
+
+        .toolbar__share[disabled] { opacity: 0.6; }
+
         .sheet {
             max-width: 210mm;
             margin: 1.25rem auto;
@@ -399,12 +407,85 @@
            class="{{ $showDhivehi ? 'is-on' : '' }}">ދިވެހި</a>
 
         <span class="toolbar__spacer"></span>
-        <a class="toolbar__pdf" data-testid="menu-print-pdf"
+
+        {{-- Hidden until the browser says it can share a file, so nobody taps
+             a button that does nothing. The PDF link beside it always works. --}}
+        <button type="button" class="toolbar__share" id="menuShare"
+                data-testid="menu-print-share" hidden>
+            ↗ Share
+        </button>
+
+        <a class="toolbar__pdf" data-testid="menu-print-pdf" id="menuPdfLink"
            href="{{ route('menu.print.pdf', ['style' => $printStyle] + ($showDhivehi ? ['dv' => 1] : [])) }}">
             ⬇ PDF
         </a>
-        <button type="button" class="toolbar__print" onclick="window.print()">🖨 Print</button>
+        <button type="button" class="toolbar__print" id="menuPrintBtn"
+                data-testid="menu-print-button">🖨 Print</button>
     </div>
+
+    {{--
+      A nonced script, not an `onclick`. The site's CSP is
+      `script-src 'self' 'nonce-…'` with no `unsafe-inline`, so the inline
+      handler this used to carry was refused by the browser and the Print
+      button did nothing on the live site. It worked every time I opened the
+      page from a file:// URL, which has no CSP — which is exactly why that
+      slipped through.
+    --}}
+    <script nonce="{{ csp_nonce() }}">
+        (function () {
+            var printBtn = document.getElementById('menuPrintBtn');
+            if (printBtn) {
+                printBtn.addEventListener('click', function () { window.print(); });
+            }
+
+            var shareBtn = document.getElementById('menuShare');
+            var pdfLink = document.getElementById('menuPdfLink');
+            if (!shareBtn || !pdfLink || !navigator.canShare) return;
+
+            var filename = @json($pdfFilename);
+            var title = @json($brand . ' menu');
+
+            // Probe with an empty file of the right type: `canShare` answers
+            // for the *kind* of thing, and asking before fetching means the
+            // button never appears on a browser that would refuse it.
+            var probe;
+            try {
+                probe = new File([new Blob([], { type: 'application/pdf' })], filename, { type: 'application/pdf' });
+            } catch (e) {
+                return;
+            }
+            if (!navigator.canShare({ files: [probe] })) return;
+
+            shareBtn.hidden = false;
+
+            shareBtn.addEventListener('click', function () {
+                var original = shareBtn.textContent;
+                shareBtn.disabled = true;
+                shareBtn.textContent = 'Preparing…';
+
+                fetch(pdfLink.href)
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('pdf');
+                        return res.blob();
+                    })
+                    .then(function (blob) {
+                        var file = new File([blob], filename, { type: 'application/pdf' });
+                        return navigator.share({ files: [file], title: title });
+                    })
+                    .catch(function (err) {
+                        // A cancelled share sheet is not a failure; anything
+                        // else falls back to the plain download rather than
+                        // leaving somebody with nothing.
+                        if (err && err.name === 'AbortError') return;
+                        window.location.href = pdfLink.href;
+                    })
+                    .then(function () {
+                        shareBtn.disabled = false;
+                        shareBtn.textContent = original;
+                    });
+            });
+        })();
+    </script>
 @endunless
 
 <div class="sheet">

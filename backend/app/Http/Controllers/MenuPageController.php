@@ -131,11 +131,9 @@ class MenuPageController extends Controller
         $data = $this->printData($items, $this->activeCategories(), $style, $request->boolean('dv'));
         $data['forPdf'] = true;
 
-        $name = Str::slug((string) ($data['brand'] ?: 'menu')) ?: 'menu';
-
         return Pdf::loadView('menu-print', $data)
             ->setPaper('a4')
-            ->download(sprintf('%s-menu-%s.pdf', $name, now()->format('Y-m-d')));
+            ->download($data['pdfFilename']);
     }
 
     /**
@@ -163,6 +161,13 @@ class MenuPageController extends Controller
             // snapshot; this is the copy that is never out of date.
             'menuQr' => QrSvg::dataUri(route('menu'), 180),
             'menuUrl' => preg_replace('#^https?://#', '', route('menu')),
+            // Named here so the page's share sheet and the download agree on
+            // what the file is called.
+            'pdfFilename' => sprintf(
+                '%s-menu-%s.pdf',
+                Str::slug($brand) ?: 'menu',
+                now()->format('Y-m-d'),
+            ),
             'menuCategories' => $this->groupByParent($items, $categories),
             'menuItemCount' => $items->count(),
             'menuPriceByItemId' => $this->effectivePrices($items),
