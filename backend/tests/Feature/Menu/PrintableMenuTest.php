@@ -186,6 +186,30 @@ class PrintableMenuTest extends TestCase
             ->assertSee('Nothing on the menu to print yet.');
     }
 
+    public function test_an_item_whose_category_is_switched_off_still_prints(): void
+    {
+        /*
+         * The 500 on the live site. `groupByParent` puts items with no *active*
+         * category into a bucket whose `category` is null — the website menu
+         * heads that "More" — and the print sheet read `->name` off it. Every
+         * test here had given its items a live category, so nothing caught it.
+         */
+        $retired = Category::create(['name' => 'Old Section', 'is_active' => false]);
+        $this->dish('Orphan Dish', 20, ['category_id' => $retired->id]);
+
+        $this->get('/menu/print')
+            ->assertOk()
+            ->assertSee('Orphan Dish')
+            ->assertSee('More');
+    }
+
+    public function test_an_item_with_no_category_at_all_still_prints(): void
+    {
+        $this->dish('Uncategorised Dish', 20, ['category_id' => null]);
+
+        $this->get('/menu/print')->assertOk()->assertSee('Uncategorised Dish');
+    }
+
     public function test_cost_price_never_reaches_the_paper(): void
     {
         // The page is public. Anything the kitchen pays must stay off it.

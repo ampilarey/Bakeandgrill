@@ -291,10 +291,20 @@
     @else
         <div class="body">
             @foreach ($menuCategories as $group)
-                @php $parent = $group['category']; @endphp
+                @php
+                    /*
+                     * `groupByParent` ends with a bucket for items whose
+                     * category is switched off or missing, and that bucket's
+                     * category is null. The website menu heads it "More"; this
+                     * reads `->name` off it and returned a 500 on the live site
+                     * the first time somebody opened the page.
+                     */
+                    $parent = $group['category'];
+                    $heading = $parent?->name ?: 'More';
+                @endphp
 
                 @if ($group['items']->isNotEmpty() || collect($group['subcategories'])->isNotEmpty())
-                    <h2 class="cat">{{ $parent->name }}</h2>
+                    <h2 class="cat">{{ $heading }}</h2>
                 @endif
 
                 @foreach ($group['items'] as $item)
