@@ -43,6 +43,13 @@ describe('App route coverage', () => {
       'wholesale/deliveries/:id',
       // Delivery tab of Ordering Control — aliased to /online-ordering in NAV_PATH_ALIASES
       'delivery-settings',
+      // Purchasing audit, 2026-09-05: old purchasing paths redirect into the
+      // /purchasing hub (in nav) or the Inventory waste tab.
+      'purchase-requests',
+      'purchase-orders',
+      'shopping-lists',
+      'supplier-intelligence',
+      'waste-logs',
     ]);
 
     const routes = appRoutePaths(src);

@@ -28,11 +28,9 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/menu', permission: 'menu.manage' },
   { to: '/specials', permission: 'menu.manage' },
   { to: '/inventory', permission: 'inventory.view' },
-  { to: '/purchase-requests', permission: 'purchase_requests.view_all' },
-  { to: '/shopping-lists', permission: 'purchase_requests.create' },
-  { to: '/purchase-orders', permission: 'suppliers.purchases' },
-  { to: '/supplier-intelligence', permission: 'suppliers.view' },
-  { to: '/waste-logs', permission: 'inventory.manage' },
+  // Purchasing audit, 2026-09-05: five entries became one hub whose tabs are
+  // each gated on the permission the old page carried.
+  { to: '/purchasing', permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'] },
   { to: '/reservations', permission: 'reservations.manage' },
   { to: '/online-ordering', permission: 'settings.update' },
   { to: '/wholesale', permission: 'trade.view' },
@@ -73,7 +71,6 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/settings/notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/settings/charges', permission: 'settings.update' },
   { to: '/settings/credit', permission: 'settings.update' },
-  { to: '/settings/stock', permission: 'settings.update' },
   { to: '/settings/currency', permission: 'website.manage' },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },

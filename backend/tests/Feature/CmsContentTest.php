@@ -288,13 +288,23 @@ class CmsContentTest extends TestCase
     // Auth guards — settings update
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function test_legacy_site_settings_write_routes_are_retired(): void
+    public function test_website_copy_cannot_be_written_through_site_settings(): void
     {
+        /*
+         * The retirement of 2026-08-14 was about website copy: it lives behind
+         * the Content Resolver and must not be edited through a generic
+         * settings write. The verb is back (2026-09-05 — five settings screens
+         * had been saving into a 405 for three weeks), but the point stands:
+         * a CMS key is refused by name, and nothing is written.
+         */
         Sanctum::actingAs($this->ownerUser(), ['*']);
+        SiteSetting::set('announcement_text', 'original banner');
 
-        // GET /site-settings remains; write verbs are gone (405 Method Not Allowed).
         $this->putJson('/api/site-settings', ['settings' => ['announcement_text' => 'updated banner']])
-            ->assertMethodNotAllowed();
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['settings']);
+        $this->assertSame('original banner', SiteSetting::get('announcement_text'));
+
         $this->postJson('/api/site-settings/upload', ['key' => 'logo'])
             ->assertNotFound();
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
@@ -20,8 +20,8 @@ function mvr(n: number) {
   return `MVR ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default function WasteLogsPage() {
-  usePageTitle('Waste Tracking');
+export default function WasteLogsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? 'Inventory · Waste' : 'Waste Tracking');
 
   const [tab, setTab] = useState<Tab>('logs');
 
@@ -125,29 +125,33 @@ export default function WasteLogsPage() {
     finally { setSaving(false); }
   };
 
+  const Shell = embedded ? Fragment : PageShell;
+  const headerActions = (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {tab === 'logs' && logs.length > 0 && (
+        <Btn variant="secondary" onClick={() => downloadCSV('waste-logs', logs.map(l => ({
+          Date: l.created_at?.slice(0, 10) ?? '',
+          Item: l.item?.name ?? l.inventory_item?.name ?? '',
+          Qty: l.quantity, Unit: l.unit ?? '',
+          Reason: l.reason,
+          'Cost (MVR)': l.cost_estimate ?? '',
+          Notes: l.notes ?? '',
+        })))}>
+          Export CSV
+        </Btn>
+      )}
+      <Btn onClick={() => { resetLogForm(); setLogOpen(true); }}>+ Log Waste</Btn>
+    </div>
+  );
+
   return (
-    <PageShell>
+    <Shell>
     <div>
-      <PageHeader section="Manage"
-        title="Waste Tracking"
-        action={
-          <div style={{ display: 'flex', gap: 8 }}>
-            {tab === 'logs' && logs.length > 0 && (
-              <Btn variant="secondary" onClick={() => downloadCSV('waste-logs', logs.map(l => ({
-                Date: l.created_at?.slice(0, 10) ?? '',
-                Item: l.item?.name ?? l.inventory_item?.name ?? '',
-                Qty: l.quantity, Unit: l.unit ?? '',
-                Reason: l.reason,
-                'Cost (MVR)': l.cost_estimate ?? '',
-                Notes: l.notes ?? '',
-              })))}>
-                Export CSV
-              </Btn>
-            )}
-            <Btn onClick={() => { resetLogForm(); setLogOpen(true); }}>+ Log Waste</Btn>
-          </div>
-        }
-      />
+      {embedded ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>{headerActions}</div>
+      ) : (
+        <PageHeader section="Manage" title="Waste Tracking" action={headerActions} />
+      )}
       {error && <p style={{ color: 'var(--color-danger)', marginBottom: 16 }}>{error}</p>}
 
       {/* Tabs */}
@@ -467,6 +471,6 @@ export default function WasteLogsPage() {
       )}
     </div>
 
-    </PageShell>
+    </Shell>
   );
 }

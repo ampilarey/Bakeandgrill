@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getSupplierPerformance, rateSupplier,
@@ -28,8 +28,8 @@ type ScoreField = 'quality_score' | 'delivery_score' | 'accuracy_score' | 'price
 
 type DrillDown = { supplierId: number; supplierName: string };
 
-export function SupplierIntelligencePage() {
-  usePageTitle('Supplier Intelligence');
+export function SupplierIntelligencePage({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? 'Purchasing · Suppliers' : 'Supplier Intelligence');
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -210,21 +210,28 @@ export function SupplierIntelligencePage() {
     </div>
   );
 
+  const Shell = embedded ? Fragment : PageShell;
+  const headerActions = (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItem(null); setCompareData(null); }}>
+        ⚖ Price Compare
+      </Btn>
+      <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
+    </div>
+  );
+
   return (
-    <PageShell>
+    <Shell>
     <>
-      <PageHeader section="Manage"
-        title="Supplier Intelligence"
-        subtitle="Ratings, performance and price comparison"
-        action={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant="secondary" onClick={() => { setShowCompare(true); setCompareItem(null); setCompareData(null); }}>
-              ⚖ Price Compare
-            </Btn>
-            <Btn onClick={load} variant="secondary">↻ Refresh</Btn>
-          </div>
-        }
-      />
+      {embedded ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>{headerActions}</div>
+      ) : (
+        <PageHeader section="Manage"
+          title="Supplier Intelligence"
+          subtitle="Ratings, performance and price comparison"
+          action={headerActions}
+        />
+      )}
       {error && <ErrorMsg message={error} />}
 
       {/* ── Suppliers directory ── */}
@@ -493,7 +500,7 @@ export function SupplierIntelligencePage() {
                           <td style={TD}>
                             {ph.purchase_id ? (
                               <Link
-                                to={`/purchase-orders?search=${encodeURIComponent(ph.purchase_number || String(ph.purchase_id))}`}
+                                to={`/purchasing/orders?search=${encodeURIComponent(ph.purchase_number || String(ph.purchase_id))}`}
                                 style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                               >
                                 {ph.purchase_number || `PO #${ph.purchase_id}`}
@@ -564,6 +571,6 @@ export function SupplierIntelligencePage() {
       )}
     </>
 
-    </PageShell>
+    </Shell>
   );
 }

@@ -984,7 +984,7 @@ export function ForecastPage() {
         `Created ${res.request.request_no} with ${res.request.items_count} item${res.request.items_count === 1 ? '' : 's'}`
         + (res.warning ? ` · ${res.warning}` : ''),
       );
-      navigate(`/purchase-requests?open=${res.request.id}`);
+      navigate(`/purchasing/requests?open=${res.request.id}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1046,7 +1046,7 @@ export function ForecastPage() {
               {createdPoNumbers.map((num, i) => (
                 <span key={num}>
                   {i > 0 ? ' · ' : ''}
-                  <Link to={`/purchase-orders?search=${encodeURIComponent(num)}`} style={{ color: '#047857' }}>
+                  <Link to={`/purchasing/orders?search=${encodeURIComponent(num)}`} style={{ color: '#047857' }}>
                     {num}
                   </Link>
                 </span>
@@ -1054,7 +1054,7 @@ export function ForecastPage() {
             </div>
           )}
           <div style={{ marginTop: 6, fontWeight: 500 }}>
-            <Link to="/purchase-orders" style={{ color: '#047857' }}>All purchase orders →</Link>
+            <Link to="/purchasing/orders" style={{ color: '#047857' }}>All purchase orders →</Link>
             {' · '}
             <Link to="/inventory" style={{ color: '#047857' }}>Inventory →</Link>
           </div>
@@ -1276,7 +1276,7 @@ export function ForecastPage() {
                         : `Create draft POs (${selectedRestockItems.length})`}
                     </Btn>
                   )}
-                  <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
+                  <Link to="/purchasing/orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                     Open Purchase Orders →
                   </Link>
                 </div>
@@ -1642,7 +1642,7 @@ export function ForecastPage() {
                           {!item.excluded && item.open_purchase && (
                             <div style={{ marginTop: 4 }}>
                               <Link
-                                to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase.purchase_number)}`}
+                                to={`/purchasing/orders?search=${encodeURIComponent(item.open_purchase.purchase_number)}`}
                                 style={{
                                   fontSize: 11, fontWeight: 700, color: 'var(--color-warning-strong)', textDecoration: 'none',
                                   background: 'var(--color-warning-bg)', padding: '2px 6px', borderRadius: 6,

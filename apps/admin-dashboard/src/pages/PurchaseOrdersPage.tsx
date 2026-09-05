@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier } from '../api';
 import {
@@ -39,8 +39,12 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export function PurchaseOrdersPage() {
-  usePageTitle('Purchase Orders');
+/**
+ * `embedded`: rendered as a tab of Purchasing, which already draws the page
+ * shell and header. Nothing else changes — same state, same actions.
+ */
+export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? 'Purchasing · Purchase orders' : 'Purchase Orders');
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchases, setPurchases]         = useState<Purchase[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -335,10 +339,12 @@ export function PurchaseOrdersPage() {
     finally { setUploadingReceipt(false); }
   };
 
+  const Shell = embedded ? Fragment : PageShell;
+
   return (
-    <PageShell>
+    <Shell>
     <>
-      <PageHeader section="Manage" title="Purchase Orders" subtitle="Manage procurement workflow" />
+      {!embedded && <PageHeader section="Manage" title="Purchase Orders" subtitle="Manage procurement workflow" />}
       {toast && (
         <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}
@@ -804,6 +810,6 @@ export function PurchaseOrdersPage() {
       )}
     </>
 
-    </PageShell>
+    </Shell>
   );
 }

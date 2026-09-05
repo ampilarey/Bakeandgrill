@@ -966,7 +966,7 @@ export function DashboardPage() {
               <button type="button" onClick={() => navigate('/forecasts?section=restock')} style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Restock Plan →</button>
               <button type="button" onClick={() => navigate('/reports?tab=Spend%20Hub')} style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Spend Hub →</button>
               {poSuggestCount > 0 && (
-                <button type="button" onClick={() => navigate('/purchase-orders')} style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => navigate('/purchasing/orders')} style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {poSuggestCount} PO suggestions →
                 </button>
               )}
@@ -1044,7 +1044,7 @@ export function DashboardPage() {
                         <>
                           {' · '}
                           <Link
-                            to={`/purchase-orders?search=${encodeURIComponent(item.open_purchase)}`}
+                            to={`/purchasing/orders?search=${encodeURIComponent(item.open_purchase)}`}
                             style={{ color: 'var(--color-warning-strong)', fontWeight: 700, textDecoration: 'none' }}
                           >
                             On {item.open_purchase}

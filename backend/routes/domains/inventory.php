@@ -88,6 +88,13 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt'])->whereNumber('id');
     });
 
+    // Every switch that governs buying, on one screen (Purchasing → Settings).
+    // Owner-level: these decide who approves what and when money moves.
+    Route::middleware('permission:settings.update')->group(function () {
+        Route::get('/purchasing/settings', [App\Http\Controllers\Api\PurchasingSettingsController::class, 'show']);
+        Route::patch('/purchasing/settings', [App\Http\Controllers\Api\PurchasingSettingsController::class, 'update']);
+    });
+
     // Purchase Requests — operational buying tasks (staff request, manager verify)
     Route::post('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'store'])
         ->middleware('permission:purchase_requests.create');

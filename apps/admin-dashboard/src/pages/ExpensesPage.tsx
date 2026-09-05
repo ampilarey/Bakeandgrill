@@ -3,10 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   getExpenses, getExpense, getExpenseCategories, storeExpense, updateExpense, deleteExpense, getExpenseSummary,
   uploadExpenseReceipt, approveExpense, pushExpenseToXero,
-  getPurchaseAutoExpenseSettings, updatePurchaseAutoExpenseSettings,
   type Expense, type ExpenseCategory,
 } from '../api';
-import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
@@ -123,8 +121,6 @@ export function ExpensesPage() {
   const [receiptExpenseId, setReceiptExpenseId] = useState<number | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [autoNonStock, setAutoNonStock] = useState(false);
-  const [autoNonStockSaving, setAutoNonStockSaving] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -233,28 +229,6 @@ export function ExpensesPage() {
   };
 
   useEffect(() => { void load(); }, [from, to, debouncedSearch]);
-
-  useEffect(() => {
-    void getPurchaseAutoExpenseSettings()
-      .then((res) => setAutoNonStock(!!res.settings?.auto_expense_non_stock_purchases))
-      .catch(() => { /* optional setting — ignore if unavailable */ });
-  }, []);
-
-  const handleAutoNonStockToggle = async (checked: boolean) => {
-    setAutoNonStockSaving(true);
-    setError('');
-    try {
-      const res = await updatePurchaseAutoExpenseSettings({ auto_expense_non_stock_purchases: checked });
-      setAutoNonStock(!!res.settings.auto_expense_non_stock_purchases);
-      showToast(checked
-        ? 'Auto-expense for non-stock PO lines is ON (pending approval).'
-        : 'Auto-expense for non-stock PO lines is OFF.');
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setAutoNonStockSaving(false);
-    }
-  };
 
   const handleAdd = async () => {
     const catId  = parseInt(form.expense_category_id, 10);
@@ -376,30 +350,14 @@ export function ExpensesPage() {
       />
       <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.45 }}>
         Use Expenses for non-stock operating costs (utilities, rent, packaging, services). Stock purchases belong in{' '}
-        <Link to="/purchase-orders" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Purchase Orders</Link>
+        <Link to="/purchasing/orders" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Purchase orders</Link>
         {' '}so they flow into inventory and COGS — linking a PO here is optional reference only, not a second cost entry.
+        {' '}Whether a non-stock PO line books an expense by itself is a switch under{' '}
+        <Link to="/purchasing/settings" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Purchasing → Settings</Link>.
         {' '}See{' '}
         <Link to="/reports?tab=Spend%20Hub" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Reports → Spend Hub</Link>
         {' '}for purchases + expenses together.
       </p>
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-        background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16,
-      }}>
-        <div style={{ flex: '1 1 240px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Auto-expense non-stock PO lines</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
-            Off by default. When on, receiving PO lines without an inventory item creates a pending expense
-            linked to that PO. Stock/inventory lines are never auto-expensed.
-          </div>
-        </div>
-        <Toggle
-          checked={autoNonStock}
-          disabled={autoNonStockSaving}
-          onChange={handleAutoNonStockToggle}
-          label={autoNonStock ? 'On' : 'Off'}
-        />
-      </div>
       {toast && (
         <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-strong)', padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>
           {toast}
@@ -471,7 +429,7 @@ export function ExpensesPage() {
                       <td style={TD}>
                         {exp.purchase?.purchase_number || exp.purchase_id ? (
                           <Link
-                            to={`/purchase-orders?search=${encodeURIComponent(exp.purchase?.purchase_number || String(exp.purchase_id))}`}
+                            to={`/purchasing/orders?search=${encodeURIComponent(exp.purchase?.purchase_number || String(exp.purchase_id))}`}
                             style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                             title="Open purchase order"
                           >
@@ -579,7 +537,7 @@ export function ExpensesPage() {
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 Linked PO:{' '}
                 <Link
-                  to={`/purchase-orders?search=${encodeURIComponent(editingExpense.purchase.purchase_number)}`}
+                  to={`/purchasing/orders?search=${encodeURIComponent(editingExpense.purchase.purchase_number)}`}
                   style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                 >
                   {editingExpense.purchase.purchase_number}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
@@ -21,6 +21,14 @@ import {
   type StockMovementRow, type Supplier,
 } from '../api';
 
+// Waste used to be its own sidebar entry. It is a stock question — what left
+// the shelf without being sold — so it lives here now (purchasing audit,
+// 2026-09-05). Lazy so the Inventory bundle does not carry it until opened.
+const WasteLogsPage = lazy(() => import('./WasteLogsPage'));
+
+type InventoryTab = 'stock' | 'prepared' | 'categories' | 'conversions' | 'stock-count' | 'waste';
+const INVENTORY_TABS: readonly InventoryTab[] = ['stock', 'prepared', 'categories', 'conversions', 'stock-count', 'waste'];
+
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
   select: { width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
@@ -39,7 +47,13 @@ export default function InventoryPage() {
   const canManage = can('inventory.manage');
   const canPrepared = can('menu.prepared_stock') || canManage;
   const canCategories = can('inventory.categories') || canManage;
-  const [tab, setTab] = useState<'stock' | 'prepared' | 'categories' | 'conversions' | 'stock-count'>('stock');
+  // `?tab=` opens a tab directly (the old /waste-logs URL redirects to
+  // /inventory?tab=waste); switching tabs afterwards is local state only.
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<InventoryTab>(() => {
+    const t = searchParams.get('tab');
+    return t && (INVENTORY_TABS as readonly string[]).includes(t) ? (t as InventoryTab) : 'stock';
+  });
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -422,6 +436,7 @@ export default function InventoryPage() {
           <>
             <button style={S.tab(tab === 'conversions')} onClick={() => setTab('conversions')}>Unit Conversions</button>
             <button style={S.tab(tab === 'stock-count')} onClick={() => setTab('stock-count')}>Stock Count</button>
+            <button style={S.tab(tab === 'waste')} onClick={() => setTab('waste')}>Waste</button>
           </>
         )}
       </div>
@@ -1049,7 +1064,7 @@ export default function InventoryPage() {
                           <td style={TD}>
                             {h.purchase_id ? (
                               <Link
-                                to={`/purchase-orders?search=${encodeURIComponent(h.purchase_number || String(h.purchase_id))}`}
+                                to={`/purchasing/orders?search=${encodeURIComponent(h.purchase_number || String(h.purchase_id))}`}
                                 style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                               >
                                 {h.purchase_number || `PO #${h.purchase_id}`}
@@ -1069,6 +1084,13 @@ export default function InventoryPage() {
             </>
           )}
         </Modal>
+      )}
+
+      {/* ── Waste Tab ── */}
+      {tab === 'waste' && canManage && (
+        <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>
+          <WasteLogsPage embedded />
+        </Suspense>
       )}
     </div>
 

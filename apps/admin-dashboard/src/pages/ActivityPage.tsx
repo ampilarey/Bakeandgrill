@@ -23,7 +23,7 @@ function auditRecordPath(modelType: string, modelId: number | null | undefined):
     case 'Expense':
       return `/expenses?expense=${modelId}`;
     case 'Purchase':
-      return `/purchase-orders?search=${modelId}`;
+      return `/purchasing/orders?search=${modelId}`;
     case 'Customer':
       return `/customers?customer=${modelId}`;
     default:

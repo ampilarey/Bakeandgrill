@@ -9,6 +9,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { can as userCan, getDefaultNavPath, canAny as userCanAny } from './components/navConfig';
 import { clearCurrentUserPermissionCache, primeCurrentUserPermissionCache } from './hooks/usePermissions';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { PURCHASING_PAGE_PERMISSIONS } from './pages/PurchasingPage';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazyWithRetry(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
@@ -28,12 +29,9 @@ const ExpensesPage            = lazyWithRetry(() => import('./pages/ExpensesPage
 const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
 const BreakEvenPage           = lazyWithRetry(() => import('./pages/BreakEvenPage').then((m) => ({ default: m.BreakEvenPage })));
-const SupplierIntelligencePage = lazyWithRetry(() => import('./pages/SupplierIntelligencePage').then((m) => ({ default: m.SupplierIntelligencePage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
-const PurchaseOrdersPage      = lazyWithRetry(() => import('./pages/PurchaseOrdersPage').then((m) => ({ default: m.PurchaseOrdersPage })));
-const PurchaseRequestsPage    = lazyWithRetry(() => import('./pages/PurchaseRequestsPage'));
-const ShoppingListsPage       = lazyWithRetry(() => import('./pages/ShoppingListsPage'));
+const PurchasingPage          = lazyWithRetry(() => import('./pages/PurchasingPage').then((m) => ({ default: m.PurchasingPage })));
 const KitchenProductionPage   = lazyWithRetry(() => import('./pages/KitchenProductionPage'));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -48,7 +46,6 @@ const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
 const ComplaintsPage          = lazyWithRetry(() => import('./pages/ComplaintsPage'));
-const WasteLogsPage           = lazyWithRetry(() => import('./pages/WasteLogsPage'));
 const CustomersPage           = lazyWithRetry(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 const CustomerGrowthPage      = lazyWithRetry(() => import('./pages/CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
 const CateringPage            = lazyWithRetry(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
@@ -92,6 +89,21 @@ function PageFallback() {
       Loading…
     </div>
   );
+}
+
+/**
+ * Redirect an old path to its new home, keeping the query string. The
+ * purchasing pages moved under /purchasing (audit 2026-09-05) and links from
+ * the dashboard, invoices and forecasts carry `?search=PO-…` or `?open=…`.
+ * A plain <Navigate to="/x"> would drop those.
+ */
+function MovedTo({ to }: { to: string }) {
+  const { search, hash } = useLocation();
+  const [path, fixedQuery] = to.split('?');
+  const query = fixedQuery
+    ? `?${fixedQuery}${search ? `&${search.slice(1)}` : ''}`
+    : search;
+  return <Navigate to={`${path}${query}${hash}`} replace />;
 }
 
 function AuthGuard({
@@ -339,11 +351,7 @@ export default function App() {
                     <GstPage />
                   </PermissionGuard>
                 } />
-                <Route path="supplier-intelligence" element={
-                  <PermissionGuard user={user} permission="suppliers.view">
-                    <SupplierIntelligencePage />
-                  </PermissionGuard>
-                } />
+                <Route path="supplier-intelligence" element={<MovedTo to="/purchasing/suppliers" />} />
                 <Route path="forecasts" element={
                   <PermissionGuard user={user} permission="reports.financial">
                     <ForecastPage />
@@ -354,21 +362,16 @@ export default function App() {
                     <ProcurementReportPage />
                   </PermissionGuard>
                 } />
-                <Route path="purchase-orders" element={
-                  <PermissionGuard user={user} permission="suppliers.purchases">
-                    <PurchaseOrdersPage />
+                {/* Purchasing hub — audit 2026-09-05: five sidebar entries became one
+                    page with tabs. The old paths redirect to their tab. */}
+                <Route path="purchasing/*" element={
+                  <PermissionGuard user={user} permissions={PURCHASING_PAGE_PERMISSIONS}>
+                    <PurchasingPage />
                   </PermissionGuard>
                 } />
-                <Route path="purchase-requests" element={
-                  <PermissionGuard user={user} permission="purchase_requests.view_all">
-                    <PurchaseRequestsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="shopping-lists" element={
-                  <PermissionGuard user={user} permission="purchase_requests.create">
-                    <ShoppingListsPage />
-                  </PermissionGuard>
-                } />
+                <Route path="purchase-orders" element={<MovedTo to="/purchasing/orders" />} />
+                <Route path="purchase-requests" element={<MovedTo to="/purchasing/requests" />} />
+                <Route path="shopping-lists" element={<MovedTo to="/purchasing/lists" />} />
                 <Route path="kitchen-production" element={
                   <PermissionGuard user={user} permission="kitchen.production.view_all">
                     <KitchenProductionPage />
@@ -485,11 +488,8 @@ export default function App() {
                     <ComplaintsPage />
                   </PermissionGuard>
                 } />
-                <Route path="waste-logs" element={
-                  <PermissionGuard user={user} permission="inventory.manage">
-                    <WasteLogsPage />
-                  </PermissionGuard>
-                } />
+                {/* Waste is a tab of Inventory now. */}
+                <Route path="waste-logs" element={<MovedTo to="/inventory?tab=waste" />} />
                 <Route path="customers/growth" element={
                   <PermissionGuard user={user} permission="customers.manage">
                     <CustomerGrowthPage />

@@ -12,7 +12,7 @@ function auditTargetPath(modelType: string, modelId: number | null | undefined):
     case 'Order': return `/orders?order=${modelId}`;
     case 'Invoice': return `/invoices?invoice=${modelId}`;
     case 'Expense': return `/expenses?expense=${modelId}`;
-    case 'Purchase': return `/purchase-orders?search=${modelId}`;
+    case 'Purchase': return `/purchasing/orders?search=${modelId}`;
     case 'Customer': return `/customers?customer=${modelId}`;
     default: return null;
   }
@@ -327,9 +327,9 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
             <StatCard label="Waste logs" value={String(spendHub.totals.waste_count ?? 0)} accent="var(--color-text-muted)" />
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-            <Link to="/purchase-orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Purchase Orders →</Link>
+            <Link to="/purchasing/orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Purchase Orders →</Link>
             <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Expenses →</Link>
-            <Link to="/waste-logs" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Waste Tracking →</Link>
+            <Link to="/inventory?tab=waste" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Waste Tracking →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>
             <Card>

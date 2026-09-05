@@ -3,11 +3,11 @@ import {
   UtensilsCrossed, Package, Tag, CalendarDays,
   BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
   Users, LogOut,
-  Heart, MessageSquare, BarChart2, Factory, Webhook,
-  Gift, Star, Target, RotateCcw, Trash2, CreditCard,
+  Heart, MessageSquare, BarChart2, Webhook,
+  Gift, Star, Target, RotateCcw, CreditCard,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
-  ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, ClipboardPen, Utensils,
+  ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
   AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, HandCoins, FileText, LineChart,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
@@ -75,12 +75,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.manage',      description: 'Categories & items' },
       { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
-      { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels' },
-      { to: '/purchase-requests',     icon: ClipboardPen,  label: 'Purchase Requests', permission: 'purchase_requests.view_all', description: 'Staff buying tasks' },
-      { to: '/shopping-lists',        icon: ClipboardPen,  label: 'Shopping Lists', permission: 'purchase_requests.create', description: 'Recurring staple lists → PRs' },
-      { to: '/purchase-orders',       icon: Package,       label: 'Purchase Orders', permission: 'suppliers.purchases', description: 'Supplier orders' },
-      { to: '/supplier-intelligence', icon: Factory,       label: 'Suppliers',       permission: 'suppliers.view',      description: 'Supplier performance' },
-      { to: '/waste-logs',            icon: Trash2,        label: 'Waste Tracking',  permission: 'inventory.manage',    description: 'Log waste & shrinkage' },
+      { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels, counts, waste' },
+      // Purchasing audit, 2026-09-05: requests, orders, shopping lists, suppliers
+      // and every buying switch are tabs of one page. Old paths redirect.
+      { to: '/purchasing',            icon: Package,       label: 'Purchasing',      permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'], description: 'Requests, orders, suppliers & buying settings' },
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
       { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
@@ -148,7 +146,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
       { to: '/settings/charges', icon: Percent, label: 'Charges & Fees', permission: 'settings.update', description: 'Service charge and payment commission' },
       { to: '/settings/credit', icon: HandCoins, label: 'Credit Accounts', permission: 'settings.update', description: 'Approval ceiling, payment terms, open or closed' },
-      { to: '/settings/stock', icon: Boxes, label: 'Stock Corrections', permission: 'settings.update', description: 'When a stock difference has to say why' },
       { to: '/settings/currency', icon: Banknote, label: 'Currency Photos', permission: 'website.manage', description: 'Note & coin photos for the POS cash count' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
@@ -216,6 +213,14 @@ export function getAllNavItems(_includeDevItems = true): NavItem[] {
  */
 export const NAV_PATH_ALIASES: Record<string, string> = {
   '/delivery-settings': '/online-ordering',
+  // Old purchasing paths still resolve to the hub for highlighting until the
+  // redirect in App.tsx has fired.
+  '/purchase-requests': '/purchasing',
+  '/purchase-orders': '/purchasing',
+  '/shopping-lists': '/purchasing',
+  '/supplier-intelligence': '/purchasing',
+  '/waste-logs': '/inventory',
+  '/settings/stock': '/purchasing',
 };
 
 function resolveNavPath(pathname: string): string {

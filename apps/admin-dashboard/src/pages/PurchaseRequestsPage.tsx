@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -8,7 +8,6 @@ import {
 } from '../components/SharedUI';
 import { useToast } from '../components/ui';
 import { fetchStaff } from '../api';
-import { getExpenseCategories, type ExpenseCategory } from '../api/finance';
 import {
   approvePurchaseRequest,
   assignPurchaseRequest,
@@ -18,14 +17,14 @@ import {
   createPurchaseRequest,
   fetchPurchaseRequests,
   getPurchaseRequest,
-  getPurchaseRequestAutoExpenseSettings,
+
   laarToMvr,
   mergePurchaseRequests,
   promotePurchaseRequestItemToInventory,
   rejectPurchaseRequest,
   fetchPurchaseRequestReconciliation,
   updatePurchaseRequest,
-  updatePurchaseRequestAutoExpenseSettings,
+
   verifyAllPurchaseRequestItems,
   verifyPurchaseRequestItem,
   fetchPurchaseRequestItemQuotes,
@@ -36,7 +35,6 @@ import {
   type PurchaseRequestItem,
   type PurchaseRequestItemQuote,
 } from '../api/procurement';
-import { Toggle } from '../components/ui';
 
 const TABS = [
   { id: 'pending', label: 'Pending', statuses: 'requested' },
@@ -66,8 +64,12 @@ const PRIORITY_COLOR: Record<string, string> = {
   urgent: 'red',
 };
 
-export default function PurchaseRequestsPage() {
-  usePageTitle('Purchase Requests');
+/**
+ * `embedded`: rendered as the Requests tab of Purchasing, which already draws
+ * the page shell and header. The queue itself is unchanged.
+ */
+export default function PurchaseRequestsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? 'Purchasing · Requests' : 'Purchase Requests');
   const { can } = useCurrentUserPermissions();
   const toast = useToast();
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
@@ -98,14 +100,6 @@ export default function PurchaseRequestsPage() {
   const [promoteUnit, setPromoteUnit] = useState('pcs');
   const [promoteRop, setPromoteRop] = useState('');
   const [promoteRoq, setPromoteRoq] = useState('');
-  const [autoExpense, setAutoExpense] = useState(false);
-  const [autoExpenseSaving, setAutoExpenseSaving] = useState(false);
-  const [defaultExpenseCategoryId, setDefaultExpenseCategoryId] = useState<number | null>(null);
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
-  const [autoOnLowStock, setAutoOnLowStock] = useState(false);
-  const [autoApproveMvr, setAutoApproveMvr] = useState('0');
-  const [showPriceHints, setShowPriceHints] = useState(true);
-  const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [recon, setRecon] = useState<Awaited<ReturnType<typeof fetchPurchaseRequestReconciliation>> | null>(null);
   const [showRecon, setShowRecon] = useState(false);
 
@@ -135,50 +129,7 @@ export default function PurchaseRequestsPage() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    void getPurchaseRequestAutoExpenseSettings()
-      .then((res) => {
-        setAutoExpense(!!res.settings?.auto_expense);
-        setDefaultExpenseCategoryId(res.settings?.default_expense_category_id ?? null);
-        setAutoOnLowStock(!!res.settings?.auto_on_low_stock);
-        setAutoApproveMvr(String(res.settings?.auto_approve_under_mvr ?? 0));
-        setShowPriceHints(res.settings?.show_price_hints !== false);
-        setRecurringEnabled(!!res.settings?.recurring_lists_enabled);
-      })
-      .catch(() => {});
-    void getExpenseCategories()
-      .then((res) => setExpenseCategories(res.categories ?? []))
-      .catch(() => {});
-  }, []);
 
-  const saveAutoExpenseSettings = async (next: {
-    auto_expense?: boolean;
-    default_expense_category_id?: number | null;
-    show_price_hints?: boolean;
-    auto_on_low_stock?: boolean;
-    auto_approve_under_mvr?: number | null;
-    recurring_lists_enabled?: boolean;
-  }) => {
-    if (!can('purchase_requests.convert_to_expense')) {
-      toast.error('You need convert-to-expense permission to change this setting.');
-      return;
-    }
-    setAutoExpenseSaving(true);
-    try {
-      const res = await updatePurchaseRequestAutoExpenseSettings(next);
-      setAutoExpense(!!res.settings.auto_expense);
-      setDefaultExpenseCategoryId(res.settings.default_expense_category_id ?? null);
-      setAutoOnLowStock(!!res.settings.auto_on_low_stock);
-      setAutoApproveMvr(String(res.settings.auto_approve_under_mvr ?? 0));
-      setShowPriceHints(res.settings.show_price_hints !== false);
-      setRecurringEnabled(!!res.settings.recurring_lists_enabled);
-      toast.success('Expense settings saved.');
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setAutoExpenseSaving(false);
-    }
-  };
 
   const openDetail = async (id: number) => {
     setDetailLoading(true);
@@ -272,22 +223,26 @@ export default function PurchaseRequestsPage() {
     });
   };
 
+  const headerActions = (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {can('purchase_requests.create') && (
+        <Btn onClick={() => setShowCreate(true)}>New request</Btn>
+      )}
+      {can('purchase_requests.merge') && tab === 'pending' && selectedIds.length >= 2 && (
+        <Btn variant="secondary" onClick={handleMerge}>Merge selected ({selectedIds.length})</Btn>
+      )}
+    </div>
+  );
+  const Shell = embedded ? Fragment : PageShell;
+
   return (
-    <PageShell>
+    <Shell>
     <div>
-      <PageHeader section="Manage"
-        title="Purchase Requests"
-        action={(
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {can('purchase_requests.create') && (
-              <Btn onClick={() => setShowCreate(true)}>New request</Btn>
-            )}
-            {can('purchase_requests.merge') && tab === 'pending' && selectedIds.length >= 2 && (
-              <Btn variant="secondary" onClick={handleMerge}>Merge selected ({selectedIds.length})</Btn>
-            )}
-          </div>
-        )}
-      />
+      {embedded ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>{headerActions}</div>
+      ) : (
+        <PageHeader section="Manage" title="Purchase Requests" action={headerActions} />
+      )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {TABS.map((t) => (
@@ -302,88 +257,10 @@ export default function PurchaseRequestsPage() {
       </div>
 
       {can('purchase_requests.view_all') && (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 16,
-            alignItems: 'center',
-            marginBottom: 16,
-            padding: '12px 14px',
-            background: '#Faf7f2',
-            borderRadius: 10,
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Auto-expense on verify</span>
-            <Toggle
-              checked={autoExpense}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onChange={(checked) => void saveAutoExpenseSettings({ auto_expense: checked })}
-              label={autoExpense ? 'On' : 'Off'}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 220px' }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>Default category</label>
-            <select
-              value={defaultExpenseCategoryId ?? ''}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onChange={(e) => {
-                const val = e.target.value ? Number(e.target.value) : null;
-                void saveAutoExpenseSettings({ default_expense_category_id: val });
-              }}
-              style={{ flex: 1, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
-            >
-              <option value="">First category (fallback)</option>
-              {expenseCategories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Creates a pending expense only — never auto-posts to GST/ledger.
-          </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Auto low-stock PR</span>
-            <Toggle
-              checked={autoOnLowStock}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onChange={(checked) => void saveAutoExpenseSettings({ auto_on_low_stock: checked })}
-              label={autoOnLowStock ? 'On' : 'Off'}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Price hints</span>
-            <Toggle
-              checked={showPriceHints}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onChange={(checked) => void saveAutoExpenseSettings({ show_price_hints: checked })}
-              label={showPriceHints ? 'On' : 'Off'}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Recurring lists</span>
-            <Toggle
-              checked={recurringEnabled}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onChange={(checked) => void saveAutoExpenseSettings({ recurring_lists_enabled: checked })}
-              label={recurringEnabled ? 'On' : 'Off'}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Auto-approve under MVR</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={autoApproveMvr}
-              disabled={autoExpenseSaving || !can('purchase_requests.convert_to_expense')}
-              onBlur={() => void saveAutoExpenseSettings({ auto_approve_under_mvr: Number(autoApproveMvr) || 0 })}
-              onChange={(e) => setAutoApproveMvr(e.target.value)}
-              style={{ width: 96, minHeight: 44, padding: '0 10px', borderRadius: 8, border: '1px solid var(--color-border)' }}
-            />
-          </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+          {/* The switches that used to sit here live on Purchasing → Settings,
+              with the rest of the buying rules — this queue is for working
+              requests, not configuring them. */}
           <Btn
             variant="secondary"
             onClick={() => {
@@ -393,9 +270,14 @@ export default function PurchaseRequestsPage() {
           >
             Buyer reconciliation
           </Btn>
-          <Link to="/shopping-lists" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
+          <Link to="/purchasing/lists" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
             Shopping lists →
           </Link>
+          {can('settings.update') && (
+            <Link to="/purchasing/settings" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
+              Buying settings →
+            </Link>
+          )}
         </div>
       )}
 
@@ -705,7 +587,7 @@ export default function PurchaseRequestsPage() {
                     <span>
                       Linked PO:{' '}
                       <Link
-                        to={`/purchase-orders?search=${encodeURIComponent(detail.purchase?.purchase_number || String(detail.purchase_id))}`}
+                        to={`/purchasing/orders?search=${encodeURIComponent(detail.purchase?.purchase_number || String(detail.purchase_id))}`}
                         style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}
                       >
                         {detail.purchase?.purchase_number || `PO #${detail.purchase_id}`}
@@ -901,7 +783,7 @@ export default function PurchaseRequestsPage() {
       <ConfirmDialog state={dlg} close={closeDlg} />
     </div>
 
-    </PageShell>
+    </Shell>
   );
 }
 

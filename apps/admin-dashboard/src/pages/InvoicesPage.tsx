@@ -452,7 +452,7 @@ export function InvoicesPage() {
                       </Link>
                     ) : inv.purchase_id ? (
                       <Link
-                        to={`/purchase-orders?search=${encodeURIComponent(inv.purchase?.purchase_number || String(inv.purchase_id))}`}
+                        to={`/purchasing/orders?search=${encodeURIComponent(inv.purchase?.purchase_number || String(inv.purchase_id))}`}
                         style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}
                       >
                         {inv.purchase?.purchase_number || `PO #${inv.purchase_id}`}

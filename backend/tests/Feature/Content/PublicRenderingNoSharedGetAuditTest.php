@@ -37,6 +37,7 @@ class PublicRenderingNoSharedGetAuditTest extends TestCase
             'EventOrderController.php',
             'FeatureGateController.php',
             'OnlineOrderingController.php',
+            'PurchasingSettingsController.php', // staff-only buying switches, nothing renders to customers
             'Signage/SignageAdminController.php',
             'SmsControlCenterController.php',
             // Content domain ops helpers
@@ -47,19 +48,19 @@ class PublicRenderingNoSharedGetAuditTest extends TestCase
 
         $violations = [];
         foreach ($roots as $root) {
-            if (! is_dir($root)) {
+            if (!is_dir($root)) {
                 continue;
             }
             $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root));
             foreach ($iterator as $file) {
-                if (! $file->isFile()) {
+                if (!$file->isFile()) {
                     continue;
                 }
                 $path = $file->getPathname();
-                if (! str_ends_with($path, '.php') && ! str_ends_with($path, '.blade.php')) {
+                if (!str_ends_with($path, '.php') && !str_ends_with($path, '.blade.php')) {
                     continue;
                 }
-                $rel = str_replace(base_path().'/', '', $path);
+                $rel = str_replace(base_path() . '/', '', $path);
                 $base = basename($path);
                 foreach ($allowedOperational as $allow) {
                     if (str_ends_with($rel, $allow) || $base === $allow) {
@@ -75,6 +76,6 @@ class PublicRenderingNoSharedGetAuditTest extends TestCase
             }
         }
 
-        $this->assertSame([], $violations, "Customer-facing paths still call SiteSetting::get():\n".implode("\n", $violations));
+        $this->assertSame([], $violations, "Customer-facing paths still call SiteSetting::get():\n" . implode("\n", $violations));
     }
 }

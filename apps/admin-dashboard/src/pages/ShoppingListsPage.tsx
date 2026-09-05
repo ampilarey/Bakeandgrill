@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PageHeader, PageShell, TableCard, TH, TD, Btn, Modal, ModalActions, TableSkeleton } from '../components/SharedUI';
@@ -10,8 +10,8 @@ import {
   type RecurringShoppingList,
 } from '../api/procurement';
 
-export default function ShoppingListsPage() {
-  usePageTitle('Shopping Lists');
+export default function ShoppingListsPage({ embedded = false }: { embedded?: boolean } = {}) {
+  usePageTitle(embedded ? 'Purchasing · Shopping lists' : 'Shopping Lists');
   const { can } = useCurrentUserPermissions();
   const toast = useToast();
   const [lists, setLists] = useState<RecurringShoppingList[]>([]);
@@ -41,15 +41,23 @@ export default function ShoppingListsPage() {
     return <div style={{ padding: 24 }}>You need purchase request create permission to manage shopping lists.</div>;
   }
 
+  const Shell = embedded ? Fragment : PageShell;
+
   return (
-    <PageShell>
+    <Shell>
     <div>
-      <PageHeader section="Manage"
-        title="Recurring shopping lists"
-        action={<Btn onClick={() => setShowCreate(true)}>New list</Btn>}
-      />
+      {embedded ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <Btn onClick={() => setShowCreate(true)}>New list</Btn>
+        </div>
+      ) : (
+        <PageHeader section="Manage"
+          title="Recurring shopping lists"
+          action={<Btn onClick={() => setShowCreate(true)}>New list</Btn>}
+        />
+      )}
       <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: -8, marginBottom: 16 }}>
-        Enable “Recurring lists” on Purchase Requests, then the daily scheduler creates a PR when a list is due.
+        Turn on “Recurring shopping lists” under Purchasing → Settings, then the daily scheduler raises a request when a list is due.
       </p>
       <TableCard stickyHead>
         {loading ? <TableSkeleton rows={4} cols={5} /> : (
@@ -132,6 +140,6 @@ export default function ShoppingListsPage() {
       )}
     </div>
 
-    </PageShell>
+    </Shell>
   );
 }

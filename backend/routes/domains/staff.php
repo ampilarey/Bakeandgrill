@@ -227,6 +227,14 @@ if (routes_domain_section_is('staff', 'admin') && !routes_domain_loaded('staff.a
     });
 
     // ─── Site Settings ──────────────────────────────────────────────────────────
+    // The write is gated wider than the read on purpose: the screens that save
+    // through it (Stock Corrections, Credit Accounts, Ordering Control, SMS
+    // switches) are settings.update pages, and a manager holding that alone
+    // must be able to press Save. What may be written is the controller's
+    // allowlist, not the permission.
+    Route::middleware(['auth:sanctum', 'staff.token', 'permission.any:settings.update,website.manage'])->group(function () {
+        Route::put('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'update']);
+    });
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:website.manage'])->group(function () {
         Route::get('/site-settings', [App\Http\Controllers\Api\SiteSettingsController::class, 'index']);
 

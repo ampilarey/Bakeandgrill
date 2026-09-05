@@ -24,6 +24,7 @@ export * from './sms-module';
 export * from './pos-admin';
 export * from './system';
 export * from './procurement';
+export * from './purchasing';
 export * from './kitchen-production';
 export * from './serviceAvailability';
 export * from './media';
