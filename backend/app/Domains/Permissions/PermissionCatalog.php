@@ -75,6 +75,11 @@ final class PermissionCatalog
         // Anyone trusted to adjust stock by hand can certainly count it. The
         // reverse is not true, which is why posting is not implied here.
         'inventory.stock_count' => ['inventory.manage'],
+        // Receiving a delivery is the floor-level half of verifying one, so
+        // anyone trusted to verify can receive. The reverse is not true:
+        // receiving is confirming a box arrived, verifying is signing off the
+        // whole request and what it cost.
+        'purchase_requests.receive' => ['purchase_requests.verify'],
         'suppliers.view' => ['suppliers.view'],
         'kds.view' => ['orders.view'],
         'kds.start_order' => ['orders.manage'],
@@ -285,6 +290,7 @@ final class PermissionCatalog
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.assign', 'name' => 'Assign buyers'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.buy', 'name' => 'Mark items bought (when assigned)'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.verify', 'name' => 'Verify received items'],
+            ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.receive', 'name' => 'Accept a delivery'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.cancel', 'name' => 'Cancel purchase requests'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.reject', 'name' => 'Reject purchase requests'],
             ['group' => 'Purchase Requests', 'slug' => 'purchase_requests.merge', 'name' => 'Merge duplicate requests'],
@@ -485,6 +491,10 @@ final class PermissionCatalog
             'purchase_requests.convert_to_purchase',
             'purchase_requests.create',
             'purchase_requests.merge',
+            // Managers hold `verify`, which satisfies this by alias — it is
+            // listed explicitly so the allowlist records a decision rather
+            // than leaving it to the alias table.
+            'purchase_requests.receive',
             'purchase_requests.reject',
             'purchase_requests.verify',
             'purchase_requests.view_all',
@@ -565,6 +575,11 @@ final class PermissionCatalog
             'purchase_requests.create',
             'purchase_requests.view_own',
             'purchase_requests.buy',
+            // Owner, 2026-09-05: the box arrives at the back door and the
+            // person standing there is a cook or a cashier, not a manager.
+            // Accepting it is guarded by who bought it, not by rank — see
+            // PurchaseRequestVerificationService.
+            'purchase_requests.receive',
         ];
     }
 

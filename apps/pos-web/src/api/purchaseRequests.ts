@@ -90,6 +90,45 @@ export async function createPurchaseRequest(payload: {
   });
 }
 
+/**
+ * One line waiting at the back door.
+ *
+ * Flat lines rather than requests, because the person accepting is looking at
+ * a box, not at paperwork. `can_receive` is the server's answer, not the
+ * screen's guess: whoever bought a line cannot accept it.
+ */
+export type ToReceiveItem = {
+  id: number;
+  request_id: number;
+  request_no: string | null;
+  name: string;
+  qty: number;
+  unit: string;
+  shop: string | null;
+  bought_at: string | null;
+  bought_by: string | null;
+  partial: boolean;
+  requested_by: string | null;
+  priority: string | null;
+  can_receive: boolean;
+  blocked_reason: string | null;
+};
+
+export async function fetchItemsToReceive(): Promise<{ items: ToReceiveItem[] }> {
+  return request("/purchase-requests/to-receive");
+}
+
+export async function receivePurchaseRequestItem(
+  requestId: number,
+  itemId: number,
+  payload: { verified_notes?: string } = {},
+): Promise<unknown> {
+  return request(`/purchase-requests/${requestId}/items/${itemId}/verify-received`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchMyPurchaseRequests(): Promise<{ data: PosPurchaseRequest[] }> {
   return request("/purchase-requests/my");
 }

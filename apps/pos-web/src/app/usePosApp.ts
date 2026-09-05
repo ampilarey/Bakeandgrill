@@ -115,6 +115,9 @@ export function usePosApp() {
   const canCreatePurchaseRequest = hasPosPermission(staffPermissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasPosPermission(staffPermissions, "purchase_requests.view_own");
   const canBuyAssigned = hasPosPermission(staffPermissions, "purchase_requests.buy");
+  // Accepting a delivery. Floor and kitchen hold it directly; managers hold it
+  // through purchase_requests.verify, which satisfies it.
+  const canReceiveDeliveries = hasPosPermission(staffPermissions, "purchase_requests.receive");
   const canKitchenReceive = hasPosPermission(staffPermissions, "kitchen.receiving.view");
   const canManageEvents = hasPosPermission(staffPermissions, "events.manage");
   const [kitchenHandoverSettings, setKitchenHandoverSettings] = useState<KitchenHandoverSettings | null>(null);
@@ -197,7 +200,7 @@ export function usePosApp() {
   // Modals/overlays
   const [showSendBill, setShowSendBill] = useState(false);
   const [showRequestItemModal, setShowRequestItemModal] = useState(false);
-  const [kitchenPane, setKitchenPane] = useState<"home" | "my_requests" | "buying_list">("home");
+  const [kitchenPane, setKitchenPane] = useState<"home" | "my_requests" | "buying_list" | "to_receive">("home");
   const [showCharge, setShowCharge] = useState(false);
   const [chargeCreditAvailable, setChargeCreditAvailable] = useState(0);
   const [chargeCreditEligible, setChargeCreditEligible] = useState(false);
@@ -1240,6 +1243,7 @@ export function usePosApp() {
     if (canCreatePurchaseRequest) main.push({ id: "request_item", label: "Request items", icon: "🛒", group: "main" });
     if (canViewOwnPurchaseRequests) main.push({ id: "my_requests", label: "My requests", icon: "📋", group: "main" });
     if (canBuyAssigned) main.push({ id: "buying_list", label: "Buying list", icon: "✅", group: "main" });
+    if (canReceiveDeliveries) main.push({ id: "to_receive", label: "To receive", icon: "📥", group: "main" });
     if (canKitchenReceive && shiftOpen) main.push({ id: "kitchen_receiving", label: "Kitchen receive", icon: "🍳", group: "main" });
     if (canTradeDispatch) main.push({ id: "wholesale_dispatch", label: "Send to shop", icon: "📦", group: "main" });
     if (canTradeReconcile) main.push({ id: "wholesale_reconcile", label: "Shop returns", icon: "↩️", group: "main" });
@@ -1261,7 +1265,7 @@ export function usePosApp() {
     return [...main, ...user];
   }, [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports, canAccessOps,
-    canManageExpenses, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
+    canManageExpenses, canCreatePurchaseRequest, canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
     canLockScreen, canOpenShift, canCloseShift, shiftOpen, openTicketsCount, openTicketsCritical,
   ]);
@@ -1278,13 +1282,14 @@ export function usePosApp() {
     expenses: canManageExpenses,
     my_requests: canViewOwnPurchaseRequests,
     buying_list: canBuyAssigned,
+    to_receive: canReceiveDeliveries,
     kitchen_receiving: canKitchenReceive && shiftOpen,
     wholesale_dispatch: canTradeDispatch,
     wholesale_reconcile: canTradeReconcile,
   }), [
     canRingSales, canViewReceipts, canViewActiveOrders, canViewShiftHistory, canViewReports,
     canAccessOps, canManageExpenses, canOpenShift, canCloseShift, shiftOpen,
-    canViewOwnPurchaseRequests, canBuyAssigned, canKitchenReceive,
+    canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, canKitchenReceive,
     canTradeDispatch, canTradeReconcile,
   ]);
 
@@ -1303,7 +1308,7 @@ export function usePosApp() {
     canUseCredit, canUseWallet, canPayCash, canPayCard, canPaySplit, canApplyDiscount,
     canUseRewards, canRefund, canRequestRefund, canApproveRefund, canStockCount, canPostStockCount, canSendBill, canSendPayLink, canManageOrderStatus, canTimeClock,
     canViewKds, canAccessOps, canKitchenOnly, canCreatePurchaseRequest, canViewOwnPurchaseRequests,
-    canBuyAssigned, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, cartSide, setCartSide, deviceId,
+    canBuyAssigned, canReceiveDeliveries, canKitchenReceive, canTradeDispatch, canTradeReconcile, canManageEvents, kitchenHandoverSettings, idleLockMinutes, setIdleLockMinutes, cartSide, setCartSide, deviceId,
     deviceDbId, authError, showTimeClock, setShowTimeClock, isLocked, pane, setPane,
     drawerOpen, setDrawerOpen, showPreferences, setShowPreferences, connectivity, isOnline,
     isReachable, offlineQueueCount, offlinePendingCount, offlinePendingTotals,

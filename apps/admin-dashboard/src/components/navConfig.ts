@@ -341,6 +341,8 @@ export const PERM_ALIASES: Record<string, string[]> = {
   // history (owner, 2026-09-01; mirrors PermissionCatalog::SATISFIED_BY).
   'inventory.view': ['inventory.manage'],
   'inventory.stock_count': ['inventory.manage'],
+  // Anyone who can verify a request can certainly accept one delivered line.
+  'purchase_requests.receive': ['purchase_requests.verify'],
   'suppliers.view': ['suppliers.view'],
   'kds.view': ['orders.view'],
   'kds.start_order': ['orders.manage'],

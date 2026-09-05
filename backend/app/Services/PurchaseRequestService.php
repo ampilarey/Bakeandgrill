@@ -279,6 +279,10 @@ final class PurchaseRequestService
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
                 'bought_at' => $this->boughtAt($data),
+                // Who spent the money, so the delivery cannot be accepted by
+                // the same person. The assignee is the wrong name to use —
+                // anyone with view_all can buy without being assigned.
+                'bought_by' => $user->id,
             ]);
 
             if ($quote) {
@@ -464,6 +468,10 @@ final class PurchaseRequestService
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
                 'bought_at' => $this->boughtAt($data),
+                // Who spent the money, so the delivery cannot be accepted by
+                // the same person. The assignee is the wrong name to use —
+                // anyone with view_all can buy without being assigned.
+                'bought_by' => $user->id,
             ]);
 
             $pr = $item->purchaseRequest;

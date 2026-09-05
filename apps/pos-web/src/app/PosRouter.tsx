@@ -14,6 +14,9 @@ import { PosShellLayout } from './PosShellLayout';
 const MyPurchaseRequestsPanel = lazy(() =>
   import('../components/MyPurchaseRequestsPanel').then((m) => ({ default: m.MyPurchaseRequestsPanel })),
 );
+const ToReceivePanel = lazy(() =>
+  import("../components/ToReceivePanel").then((m) => ({ default: m.ToReceivePanel })),
+);
 const AssignedBuyingListPanel = lazy(() =>
   import('../components/AssignedBuyingListPanel').then((m) => ({ default: m.AssignedBuyingListPanel })),
 );
@@ -25,7 +28,7 @@ export function PosRouter() {
     deviceId, authError, handleLogin, handlePasswordLogin, canTimeClock, isLocked, cashierName, handleUnlock,
     handleLogout, canLockScreen, lockScreen, canKitchenOnly, kitchenPane, setKitchenPane,
     showRequestItemModal, setShowRequestItemModal, canCreatePurchaseRequest,
-    canViewOwnPurchaseRequests, canBuyAssigned, shift, canEnterPosShell, showOpenShift,
+    canViewOwnPurchaseRequests, canBuyAssigned, canReceiveDeliveries, shift, canEnterPosShell, showOpenShift,
     setShowOpenShift, handleOpenShift, openShiftBusy, canOpenShift, isReachable,
     offlineGate, setOfflineGate, menu, canRingSales, connectivity,
   } = app;
@@ -91,6 +94,13 @@ export function PosRouter() {
         </Suspense>
       );
     }
+    if (kitchenPane === "to_receive") {
+      return (
+        <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+          <ToReceivePanel onClose={() => setKitchenPane("home")} />
+        </Suspense>
+      );
+    }
     return (
       <>
         <KitchenStaffLanding
@@ -100,6 +110,7 @@ export function PosRouter() {
           onRequestItems={canCreatePurchaseRequest ? () => setShowRequestItemModal(true) : undefined}
           onMyRequests={canViewOwnPurchaseRequests ? () => setKitchenPane("my_requests") : undefined}
           onBuyingList={canBuyAssigned ? () => setKitchenPane("buying_list") : undefined}
+          onToReceive={canReceiveDeliveries ? () => setKitchenPane("to_receive") : undefined}
         />
         {showRequestItemModal && (
           <RequestItemModal onClose={() => setShowRequestItemModal(false)} />

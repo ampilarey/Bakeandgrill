@@ -126,6 +126,7 @@
             "purchase_requests.convert_to_purchase",
             "purchase_requests.create",
             "purchase_requests.merge",
+            "purchase_requests.receive",
             "purchase_requests.reject",
             "purchase_requests.verify",
             "purchase_requests.view_all",

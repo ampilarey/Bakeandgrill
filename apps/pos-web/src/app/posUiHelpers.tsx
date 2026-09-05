@@ -13,6 +13,7 @@ export function paneTitle(p: Pane): string {
     case "expenses": return "Expenses";
     case "my_requests": return "My Requests";
     case "buying_list": return "Buying List";
+    case "to_receive": return "To Receive";
     case "kitchen_receiving": return "Kitchen Receive";
     default: return "POS";
   }

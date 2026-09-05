@@ -72,6 +72,9 @@ const OfflineSyncPanel = lazy(() =>
 const MyPurchaseRequestsPanel = lazy(() =>
   import('../components/MyPurchaseRequestsPanel').then((m) => ({ default: m.MyPurchaseRequestsPanel })),
 );
+const ToReceivePanel = lazy(() =>
+  import('../components/ToReceivePanel').then((m) => ({ default: m.ToReceivePanel })),
+);
 const AssignedBuyingListPanel = lazy(() =>
   import('../components/AssignedBuyingListPanel').then((m) => ({ default: m.AssignedBuyingListPanel })),
 );
@@ -894,6 +897,15 @@ export function PosShellLayout() {
           <Suspense fallback={<PaneFallback />}>
             <AssignedBuyingListPanel
               onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
+            />
+          </Suspense>
+        )}
+
+        {pane === 'to_receive' && (
+          <Suspense fallback={<PaneFallback />}>
+            <ToReceivePanel
+              onClose={() => setPane(canRingSales && shiftOpen ? "sales" : canAccessOps ? "ops" : "shift_history")}
+              onReceived={() => void refreshAll()}
             />
           </Suspense>
         )}

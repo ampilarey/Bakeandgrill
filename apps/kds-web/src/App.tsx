@@ -70,7 +70,7 @@ function App() {
   const [stationFilter, setStationFilter] = useState<number | "all">("all");
   const [menuGroups, setMenuGroups] = useState<KdsMenuGroup[]>([]);
   const [eightySixing, setEightySixing] = useState<number | null>(null);
-  const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying">(null);
+  const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying" | "receive">(null);
   const [viewMode, setViewMode] = useState<"board" | "production">("board");
   const [activity, setActivity] = useState<KdsActivityRow[]>([]);
 
@@ -229,6 +229,9 @@ function App() {
   const canCreatePurchaseRequest = hasKdsPermission(permissions, "purchase_requests.create");
   const canViewOwnPurchaseRequests = hasKdsPermission(permissions, "purchase_requests.view_own");
   const canBuyAssigned = hasKdsPermission(permissions, "purchase_requests.buy");
+  // The delivery arrives at the kitchen door, so the cook standing there can
+  // take it in. Whoever bought it still cannot — the server decides that.
+  const canReceiveDeliveries = hasKdsPermission(permissions, "purchase_requests.receive");
   const canProduce = hasKdsPermission(permissions, "kitchen.production.create");
   const canPreparedStock = hasKdsPermission(permissions, "kitchen.production.create");
 
@@ -711,6 +714,11 @@ function App() {
           {canBuyAssigned && (
             <button type="button" onClick={() => setPrOverlay("buying")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
               Buying list
+            </button>
+          )}
+          {canReceiveDeliveries && (
+            <button type="button" onClick={() => setPrOverlay("receive")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
+              To receive
             </button>
           )}
           {canProduce && (

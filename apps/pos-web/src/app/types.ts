@@ -10,6 +10,7 @@ export type Pane =
   | "expenses"
   | "my_requests"
   | "buying_list"
+  | "to_receive"
   | "kitchen_receiving"
   | "wholesale_dispatch"
   | "wholesale_reconcile";

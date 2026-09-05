@@ -146,6 +146,11 @@ class ManagerPermissionAllowlistTest extends TestCase
         'purchase_requests.convert_to_purchase',
         'purchase_requests.create',
         'purchase_requests.merge',
+        // Accepting a delivery (2026-09-05, intentional): moved to the floor so
+        // the cook or cashier at the back door can take the box in. Managers
+        // already had it through `verify`; this records the decision. The real
+        // guard is not rank — the service refuses whoever bought the line.
+        'purchase_requests.receive',
         'purchase_requests.reject',
         'purchase_requests.verify',
         'purchase_requests.view_all',

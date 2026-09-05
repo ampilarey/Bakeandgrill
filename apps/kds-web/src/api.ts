@@ -248,12 +248,69 @@ function prHeaders(token: string) {
   return authHeaders(token);
 }
 
+/**
+ * One line of the list the kitchen picks from — same catalogue the POS uses,
+ * and the same reason it is not `/inventory`: kitchen staff can raise a
+ * request and hold no inventory.view.
+ */
+export type KdsCatalogItem = {
+  id: number;
+  name: string;
+  unit: string;
+  category_id: number | null;
+  category: string | null;
+  current_stock: number;
+  reorder_point: number | null;
+  suggested_qty: number | null;
+};
+
+export async function fetchRequestCatalog(token: string): Promise<{
+  items: KdsCatalogItem[];
+  categories: Array<{ id: number; name: string }>;
+}> {
+  return request('/purchase-requests/catalog', { headers: prHeaders(token) });
+}
+
+/** One line waiting at the back door. */
+export type KdsToReceiveItem = {
+  id: number;
+  request_id: number;
+  request_no: string | null;
+  name: string;
+  qty: number;
+  unit: string;
+  shop: string | null;
+  bought_by: string | null;
+  partial: boolean;
+  requested_by: string | null;
+  can_receive: boolean;
+  blocked_reason: string | null;
+};
+
+export async function fetchItemsToReceive(token: string): Promise<{ items: KdsToReceiveItem[] }> {
+  return request('/purchase-requests/to-receive', { headers: prHeaders(token) });
+}
+
+export async function receivePurchaseRequestItem(
+  token: string,
+  requestId: number,
+  itemId: number,
+  payload: { verified_notes?: string } = {},
+): Promise<unknown> {
+  return request(`/purchase-requests/${requestId}/items/${itemId}/verify-received`, {
+    method: 'POST',
+    headers: prHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function createPurchaseRequest(
   token: string,
   payload: {
     source: "kds" | "pos" | "admin";
     priority?: string;
     items: Array<{
+      inventory_item_id?: number;
       free_text_name?: string;
       category?: string;
       requested_qty: number;

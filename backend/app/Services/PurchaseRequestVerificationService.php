@@ -43,6 +43,8 @@ final class PurchaseRequestVerificationService
             throw ValidationException::withMessages(['request' => ['Request is closed.']]);
         }
 
+        $this->assertNotOwnPurchase($item, $user);
+
         return DB::transaction(function () use ($item, $user, $data, $request, $pr) {
             $inventoryId = $data['inventory_item_id'] ?? $item->inventory_item_id;
             $warnings = [];
@@ -341,6 +343,35 @@ final class PurchaseRequestVerificationService
         }
 
         return ExpenseCategory::query()->orderBy('id')->first();
+    }
+
+    /**
+     * The person who bought it does not confirm it arrived.
+     *
+     * Accepting a delivery is what raises the stock and lands the cost, so one
+     * person doing both ends of it is the whole of the control gone: buy four
+     * crates, accept six, and nothing in the system disagrees. The same
+     * separation guards refunds ("You cannot reject a refund you requested")
+     * and stock counts, and the same exception applies — an owner working a
+     * one-person shift has nobody else to ask, and blocking them would only
+     * mean the delivery never gets entered.
+     *
+     * A line bought before `bought_by` existed has no name to compare, so it
+     * passes: refusing on a fact nobody recorded would strand old deliveries.
+     */
+    private function assertNotOwnPurchase(PurchaseRequestItem $item, User $user): void
+    {
+        if ($item->bought_by === null || (int) $item->bought_by !== (int) $user->id) {
+            return;
+        }
+
+        if (($user->role?->slug ?? '') === 'owner') {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'receive' => ['You bought this one, so somebody else has to accept it.'],
+        ]);
     }
 
     private function applyStockIn(PurchaseRequestItem $item, int $inventoryItemId, User $user, Request $request): void

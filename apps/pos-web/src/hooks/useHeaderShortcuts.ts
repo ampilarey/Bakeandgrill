@@ -13,7 +13,7 @@ export const MAX_HEADER_SHORTCUTS = 4;
 /** Panes a shortcut may point at — every destination the drawer can reach. */
 const PANES: readonly Pane[] = [
   "sales", "receipts", "shift", "open_tickets", "events", "shift_history",
-  "sales_report", "ops", "expenses", "my_requests", "buying_list",
+  "sales_report", "ops", "expenses", "my_requests", "buying_list", "to_receive",
   "kitchen_receiving", "wholesale_dispatch", "wholesale_reconcile",
 ];
 

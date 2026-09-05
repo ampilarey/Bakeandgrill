@@ -96,6 +96,10 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     // inventory.view, so gating this on that would hide the list from them.
     Route::get('/purchase-requests/catalog', [App\Http\Controllers\Api\PurchaseRequestController::class, 'catalog'])
         ->middleware('permission:purchase_requests.create');
+    // Everything bought and not yet accepted — the delivery list both POS and
+    // KDS show, so nobody has to hunt through their own requests to find it.
+    Route::get('/purchase-requests/to-receive', [App\Http\Controllers\Api\PurchaseRequestController::class, 'toReceive'])
+        ->middleware('permission:purchase_requests.receive');
     Route::get('/purchase-requests/my', [App\Http\Controllers\Api\PurchaseRequestController::class, 'my'])
         ->middleware('permission:purchase_requests.view_own');
     Route::get('/purchase-requests/assigned-to-me', [App\Http\Controllers\Api\PurchaseRequestController::class, 'assignedToMe'])
@@ -138,8 +142,12 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission:purchase_requests.buy');
     Route::post('/purchase-requests/{id}/items/{itemId}/mark-not-available', [App\Http\Controllers\Api\PurchaseRequestController::class, 'markNotAvailable'])
         ->middleware('permission:purchase_requests.buy');
+    // Accepting one delivered line is floor work — the box arrives at the back
+    // door and a cook or a cashier is standing there. `verify` satisfies
+    // `receive`, so managers are unaffected. Who may accept is only half the
+    // guard: the service also refuses the person who bought it.
     Route::post('/purchase-requests/{id}/items/{itemId}/verify-received', [App\Http\Controllers\Api\PurchaseRequestController::class, 'verifyItem'])
-        ->middleware('permission:purchase_requests.verify');
+        ->middleware('permission:purchase_requests.receive');
     Route::post('/purchase-requests/{id}/items/{itemId}/promote-to-inventory', [App\Http\Controllers\Api\PurchaseRequestController::class, 'promoteToInventory'])
         ->middleware('permission:inventory.manage');
 

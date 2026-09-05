@@ -1,5 +1,5 @@
 {
-  "description": "Shared PermissionCatalog::SATISFIED_BY ↔ admin PERM_ALIASES parity. Both sides must match this object exactly (keys and alias lists, including order). Never add a one-sided alias.",
+  "description": "Shared PermissionCatalog::SATISFIED_BY \u2194 admin PERM_ALIASES parity. Both sides must match this object exactly (keys and alias lists, including order). Never add a one-sided alias.",
   "repo_relative_path": "fixtures/permission_satisfied_by_parity.json",
   "satisfied_by": {
     "devices.approve": [
@@ -168,6 +168,9 @@
     ],
     "inventory.stock_count": [
       "inventory.manage"
+    ],
+    "purchase_requests.receive": [
+      "purchase_requests.verify"
     ],
     "suppliers.view": [
       "suppliers.view"

@@ -21,7 +21,7 @@ class PurchaseRequestItem extends Model
         'purchase_request_id', 'inventory_item_id', 'menu_item_id', 'free_text_name',
         'category', 'requested_qty', 'requested_unit', 'approved_qty', 'actual_qty',
         'actual_unit', 'estimated_unit_cost_laar', 'actual_unit_cost_laar', 'actual_total_laar',
-        'supplier_id', 'supplier_name_text', 'status', 'reason', 'notes',
+        'supplier_id', 'supplier_name_text', 'bought_by', 'status', 'reason', 'notes',
         'buyer_notes', 'verified_notes', 'bought_at', 'received_at',
     ];
 
@@ -54,6 +54,12 @@ class PurchaseRequestItem extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    /** Who spent the money, so the delivery is not accepted by the same person. */
+    public function buyer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'bought_by');
     }
 
     public function attachments(): HasMany

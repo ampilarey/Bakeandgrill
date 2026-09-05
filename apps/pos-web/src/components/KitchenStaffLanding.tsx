@@ -9,6 +9,7 @@ type Props = {
   onRequestItems?: () => void;
   onMyRequests?: () => void;
   onBuyingList?: () => void;
+  onToReceive?: () => void;
 };
 
 const defaultKdsUrl =
@@ -22,6 +23,7 @@ export function KitchenStaffLanding({
   onRequestItems,
   onMyRequests,
   onBuyingList,
+  onToReceive,
 }: Props) {
   const actionBtn: CSSProperties = {
     display: "block",
@@ -96,6 +98,11 @@ export function KitchenStaffLanding({
         {onBuyingList && (
           <button type="button" onClick={onBuyingList} style={{ ...actionBtn, background: "#fff", color: palette.panelInk, border: `1px solid ${palette.border}` }}>
             Buying list
+          </button>
+        )}
+        {onToReceive && (
+          <button type="button" onClick={onToReceive} style={{ ...actionBtn, background: "#fff", color: palette.panelInk, border: `1px solid ${palette.border}` }}>
+            To receive
           </button>
         )}
         <div style={{ display: "flex", gap: space.s, justifyContent: "center", flexWrap: "wrap" }}>

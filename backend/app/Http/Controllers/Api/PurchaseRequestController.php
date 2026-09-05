@@ -113,6 +113,58 @@ class PurchaseRequestController extends Controller
         ]);
     }
 
+    /**
+     * Bought, not yet in the building — the delivery list.
+     *
+     * Flat lines rather than requests, because the person at the back door is
+     * looking at a box, not at paperwork: they want "2 crates of milk from
+     * Fahi Store", not "request PR-118, item 3 of 5".
+     *
+     * `can_receive` is decided here rather than in the app, so the rule lives
+     * in one place: whoever bought a line cannot accept it, owners excepted.
+     * The screen greys the button and says who they are waiting for; the
+     * service refuses it again on the way in.
+     */
+    public function toReceive(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $isOwner = ($user->role?->slug ?? '') === 'owner';
+
+        $items = PurchaseRequestItem::query()
+            ->with(['purchaseRequest:id,request_no,priority,requested_by', 'purchaseRequest.requester:id,name', 'inventoryItem:id,name,unit', 'buyer:id,name'])
+            ->whereIn('status', ['bought', 'partially_bought'])
+            ->whereHas('purchaseRequest', fn ($q) => $q->whereNotIn('status', PurchaseRequest::TERMINAL_STATUSES))
+            ->orderBy('bought_at')
+            ->limit(200)
+            ->get();
+
+        return response()->json([
+            'items' => $items->map(function (PurchaseRequestItem $item) use ($user, $isOwner) {
+                $mine = $item->bought_by !== null && (int) $item->bought_by === (int) $user->id;
+
+                return [
+                    'id' => $item->id,
+                    'request_id' => $item->purchase_request_id,
+                    'request_no' => $item->purchaseRequest?->request_no,
+                    'name' => $item->inventoryItem?->name ?? $item->free_text_name ?? 'Item',
+                    'qty' => (float) ($item->actual_qty ?? $item->approved_qty ?? $item->requested_qty),
+                    'unit' => $item->actual_unit ?? $item->inventoryItem?->unit ?? $item->requested_unit,
+                    'shop' => $item->supplier_name_text ?? $item->supplier?->name,
+                    'bought_at' => $item->bought_at?->toIso8601String(),
+                    'bought_by' => $item->buyer?->name,
+                    'partial' => $item->status === 'partially_bought',
+                    'requested_by' => $item->purchaseRequest?->requester?->name,
+                    'priority' => $item->purchaseRequest?->priority,
+                    'can_receive' => $isOwner || !$mine,
+                    'blocked_reason' => (!$isOwner && $mine)
+                        ? 'You bought this one — somebody else has to accept it.'
+                        : null,
+                ];
+            })->all(),
+        ]);
+    }
+
     public function my(Request $request): JsonResponse
     {
         $user = $request->user();
