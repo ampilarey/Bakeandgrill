@@ -135,6 +135,73 @@ export default function InventoryPage() {
     finally { setPackSaving(false); }
   };
 
+  /*
+   * Editing an item. Everything about a SKU was fixed at creation until now:
+   * a typo in the name, or a unit set to kg when the thing is counted in
+   * pieces, meant abandoning the item and making another one.
+   *
+   * Two fields are deliberately not here. Stock on hand changes through
+   * Adjust Stock, so every movement leaves a trail; typing over it would let
+   * stock change with no record of who or why. Unit cost is the weighted
+   * average your purchases built, so it is theirs to set, not a free-text box.
+   */
+  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '', unit: '', sku: '', barcode: '', inventory_category_id: '', preferred_supplier_id: '',
+    reorder_point: '', lead_days: '', cover_days: '', storage_location: '', notes: '',
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const openEdit = (item: InventoryItem) => {
+    setEditItem(item);
+    setEditError('');
+    setEditForm({
+      name: item.name ?? '',
+      unit: item.unit ?? '',
+      sku: item.sku ?? '',
+      barcode: item.barcode ?? '',
+      inventory_category_id: item.category?.id ? String(item.category.id) : '',
+      preferred_supplier_id: item.preferred_supplier_id != null ? String(item.preferred_supplier_id) : '',
+      reorder_point: item.reorder_level != null ? String(item.reorder_level) : '',
+      lead_days: item.lead_days != null ? String(item.lead_days) : '',
+      cover_days: item.cover_days != null ? String(item.cover_days) : '',
+      storage_location: item.storage_location ?? '',
+      notes: item.notes ?? '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editItem) return;
+    const name = editForm.name.trim();
+    const unit = editForm.unit.trim();
+    if (!name) { setEditError('Name is required.'); return; }
+    if (!unit) { setEditError('Unit is required — what you count this in.'); return; }
+
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const num = (v: string) => (v.trim() === '' ? null : Number(v));
+      await updateInventoryItem(editItem.id, {
+        name,
+        unit,
+        sku: editForm.sku.trim() || null,
+        barcode: editForm.barcode.trim() || null,
+        inventory_category_id: editForm.inventory_category_id ? Number(editForm.inventory_category_id) : null,
+        preferred_supplier_id: editForm.preferred_supplier_id ? Number(editForm.preferred_supplier_id) : null,
+        reorder_point: num(editForm.reorder_point),
+        lead_days: num(editForm.lead_days),
+        cover_days: num(editForm.cover_days),
+        storage_location: editForm.storage_location.trim() || null,
+        notes: editForm.notes.trim() || null,
+      });
+      setEditItem(null);
+      void loadItems();
+      void loadLowStock();
+    } catch (e) { setEditError((e as Error).message); }
+    finally { setEditSaving(false); }
+  };
+
   const [ledgerItem, setLedgerItem] = useState<InventoryItem | null>(null);
   const [ledgerRows, setLedgerRows] = useState<StockMovementRow[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
@@ -631,6 +698,9 @@ export default function InventoryPage() {
                               🛒
                             </Btn>
                           )}
+                          {canManage && (
+                            <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>
+                          )}
                           <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
                           {canManage && (
@@ -758,6 +828,94 @@ export default function InventoryPage() {
           <ModalActions>
             <Btn variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Btn>
             <Btn onClick={handleAdjust} disabled={adjSaving}>{adjSaving ? 'Saving…' : 'Save Adjustment'}</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* ── Edit an item ── */}
+      {editItem && (
+        <Modal title={`Edit — ${editItem.name}`} onClose={() => setEditItem(null)} maxWidth={520}>
+          {editError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{editError}</p>}
+          <div style={{ display: 'grid', gap: 12 }}>
+            <label>
+              <span style={S.label}>Name *</span>
+              <input style={S.input} value={editForm.name} aria-label="Item name"
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Unit *</span>
+              <input style={S.input} value={editForm.unit} aria-label="Item unit" placeholder="kg, L, piece…"
+                onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))} />
+              {/* Changing the unit does not convert the number already on the
+                  shelf, so 5 kg becomes 5 piece and the count is now a lie.
+                  Said plainly rather than blocked: sometimes it is the fix. */}
+              {editForm.unit.trim().toLowerCase() !== (editItem.unit ?? '').trim().toLowerCase()
+                && editItem.quantity_on_hand > 0 && (
+                <p style={{ fontSize: 12, color: 'var(--color-warning)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                  This item has {editItem.quantity_on_hand} {editItem.unit} on hand. Changing the unit
+                  re-labels that number, it does not convert it — you will want a stock count after.
+                </p>
+              )}
+            </label>
+            <label>
+              <span style={S.label}>SKU</span>
+              <input style={S.input} value={editForm.sku} aria-label="SKU"
+                onChange={(e) => setEditForm((f) => ({ ...f, sku: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Barcode</span>
+              <input style={S.input} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
+                onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Category</span>
+              <select style={S.select} value={editForm.inventory_category_id} aria-label="Category"
+                onChange={(e) => setEditForm((f) => ({ ...f, inventory_category_id: e.target.value }))}>
+                <option value="">No category</option>
+                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={S.label}>Preferred supplier</span>
+              <select style={S.select} value={editForm.preferred_supplier_id} aria-label="Preferred supplier"
+                onChange={(e) => setEditForm((f) => ({ ...f, preferred_supplier_id: e.target.value }))}>
+                <option value="">None</option>
+                {suppliers.map((sup) => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span style={S.label}>Reorder point</span>
+              <input type="number" min="0" step="any" style={S.input} value={editForm.reorder_point} aria-label="Reorder point"
+                onChange={(e) => setEditForm((f) => ({ ...f, reorder_point: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Supplier lead days</span>
+              <input type="number" min="0" max="30" step="1" style={S.input} value={editForm.lead_days} aria-label="Lead days"
+                onChange={(e) => setEditForm((f) => ({ ...f, lead_days: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Cover days (order horizon)</span>
+              <input type="number" min="1" max="90" step="1" style={S.input} value={editForm.cover_days} aria-label="Cover days"
+                onChange={(e) => setEditForm((f) => ({ ...f, cover_days: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Storage location</span>
+              <input style={S.input} value={editForm.storage_location} aria-label="Storage location"
+                onChange={(e) => setEditForm((f) => ({ ...f, storage_location: e.target.value }))} />
+            </label>
+            <label>
+              <span style={S.label}>Notes</span>
+              <input style={S.input} value={editForm.notes} aria-label="Notes"
+                onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
+            </label>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '12px 0 0', lineHeight: 1.45 }}>
+            Stock on hand is changed through Adjust Stock, so every movement is recorded.
+            Unit cost is the average your purchases have paid.
+          </p>
+          <ModalActions>
+            <Btn variant="secondary" onClick={() => setEditItem(null)}>Cancel</Btn>
+            <Btn disabled={editSaving} onClick={() => void saveEdit()}>{editSaving ? 'Saving…' : 'Save changes'}</Btn>
           </ModalActions>
         </Modal>
       )}

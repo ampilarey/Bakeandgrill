@@ -31,6 +31,13 @@ export interface InventoryItem {
   requestable: boolean;
   last_counted_at: string | null;
   created_at: string;
+  /* Setup fields, editable from Inventory. Present on the list payload
+     because the backend paginates whole models. */
+  lead_days: number | null;
+  cover_days: number | null;
+  storage_location: string | null;
+  notes: string | null;
+  preferred_supplier_id: number | null;
 }
 
 export interface InventoryCategory {
@@ -55,6 +62,11 @@ type BackendInventoryRow = {
   requestable?: boolean;
   last_counted_at?: string | null;
   created_at: string;
+  lead_days?: number | string | null;
+  cover_days?: number | string | null;
+  storage_location?: string | null;
+  notes?: string | null;
+  preferred_supplier_id?: number | string | null;
 };
 
 function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
@@ -74,6 +86,11 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     requestable: row.requestable ?? true,
     last_counted_at: row.last_counted_at ?? null,
     created_at: row.created_at,
+    lead_days: row.lead_days != null ? Number(row.lead_days) : null,
+    cover_days: row.cover_days != null ? Number(row.cover_days) : null,
+    storage_location: row.storage_location ?? null,
+    notes: row.notes ?? null,
+    preferred_supplier_id: row.preferred_supplier_id != null ? Number(row.preferred_supplier_id) : null,
   };
 }
 
