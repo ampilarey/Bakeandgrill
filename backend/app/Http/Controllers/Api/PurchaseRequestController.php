@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Inventory\Services\BackdatePolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePurchaseRequestItemQuoteRequest;
+use App\Models\InventoryCategory;
+use App\Models\InventoryItem;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestAttachment;
 use App\Models\PurchaseRequestItem;
@@ -50,6 +52,64 @@ class PurchaseRequestController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'total' => $paginator->total(),
             ],
+        ]);
+    }
+
+    /**
+     * The list a cashier or a cook picks from, so nobody types an item name.
+     *
+     * Deliberately its own endpoint rather than `/inventory`, for two reasons.
+     * Kitchen staff can raise a request but do not hold `inventory.view`, so
+     * reading the inventory list would shut out exactly the people this is
+     * for; and a requester needs far less than that list carries. Name, unit,
+     * category and what is on the shelf is the whole job — no unit cost, no
+     * supplier, no reorder economics. The buyer sees prices later, on the
+     * screen where prices are the point.
+     */
+    public function catalog(Request $request): JsonResponse
+    {
+        $request->validate([
+            'search' => 'sometimes|nullable|string|max:100',
+            'category_id' => 'sometimes|nullable|integer',
+        ]);
+
+        $search = trim((string) $request->query('search', ''));
+
+        $items = InventoryItem::query()
+            ->with('category:id,name')
+            ->where('is_active', true)
+            ->where('requestable', true)
+            ->when($request->filled('category_id'), fn ($q) => $q->where('inventory_category_id', (int) $request->query('category_id')))
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($w) use ($search) {
+                    $w->where('name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('barcode', $search);
+                });
+            })
+            ->orderBy('name')
+            ->limit(400)
+            ->get();
+
+        return response()->json([
+            'items' => $items->map(fn (InventoryItem $item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'unit' => $item->unit,
+                'category_id' => $item->inventory_category_id,
+                'category' => $item->category?->name,
+                'current_stock' => (float) $item->current_stock,
+                // "Do we need it?" is the question a requester is answering, so
+                // the reorder point rides along to answer it for them.
+                'reorder_point' => $item->reorder_point !== null ? (float) $item->reorder_point : null,
+                'suggested_qty' => $item->reorder_quantity !== null ? (float) $item->reorder_quantity : null,
+            ])->all(),
+            'categories' => InventoryCategory::query()
+                ->whereIn('id', $items->pluck('inventory_category_id')->filter()->unique())
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])
+                ->all(),
         ]);
     }
 

@@ -740,6 +740,8 @@ export interface Purchase {
   purchase_number: string;
   supplier_id: number;
   supplier?: { id: number; name: string; tin?: string | null } | null;
+  /** Typed shop, for a purchase from somewhere with no supplier record. */
+  supplier_name_text?: string | null;
   status: string;
   total: number;
   subtotal?: number;
@@ -817,7 +819,14 @@ export async function createPurchaseFromSuggest(data: {
 }
 
 export async function createPurchase(data: {
-  supplier_id: number;
+  /** A supplier on file. Omit it and name the shop instead. */
+  supplier_id?: number;
+  /**
+   * Where it was bought, when that is not a supplier on file — the corner
+   * shop, the cash-and-carry. Either one identifies the seller; requiring a
+   * supplier record for a one-off leaves you with a register full of them.
+   */
+  supplier_name_text?: string;
   purchase_date: string;
   notes?: string;
   items: { inventory_item_id: number; name: string; quantity: number; unit_cost: number }[];

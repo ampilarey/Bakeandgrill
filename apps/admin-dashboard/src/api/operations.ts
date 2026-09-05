@@ -27,6 +27,8 @@ export interface InventoryItem {
   cost_per_unit: number | null;
   category: { id: number; name: string } | null;
   is_active: boolean;
+  /** Whether the floor may ask for this item from the POS request list. */
+  requestable: boolean;
   last_counted_at: string | null;
   created_at: string;
 }
@@ -50,6 +52,7 @@ type BackendInventoryRow = {
   category?: { id: number; name: string } | null;
   inventory_category_id?: number | null;
   is_active: boolean;
+  requestable?: boolean;
   last_counted_at?: string | null;
   created_at: string;
 };
@@ -66,6 +69,9 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     cost_per_unit: row.unit_cost != null ? Number(row.unit_cost) : null,
     category: row.category ?? null,
     is_active: row.is_active,
+    // Absent on older payloads; an item nobody has ruled out is requestable,
+    // which is also the column default.
+    requestable: row.requestable ?? true,
     last_counted_at: row.last_counted_at ?? null,
     created_at: row.created_at,
   };
@@ -642,6 +648,7 @@ export async function updateInventoryItem(
     storage_location: string | null;
     notes: string | null;
     is_active: boolean;
+    requestable: boolean;
   }>,
 ): Promise<{ item: InventoryItem }> {
   const res = await req<{ item: BackendInventoryRow }>(`/inventory/${id}`, {

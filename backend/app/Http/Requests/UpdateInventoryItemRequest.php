@@ -33,6 +33,8 @@ class UpdateInventoryItemRequest extends FormRequest
             'last_purchase_price' => 'nullable|numeric|min:0',
             'expiry_date' => 'nullable|date',
             'is_active' => 'nullable|boolean',
+            // Whether the floor may ask for this item from the POS request list.
+            'requestable' => 'nullable|boolean',
             'inventory_category_id' => 'nullable|integer|exists:inventory_categories,id',
             'preferred_supplier_id' => 'nullable|integer|exists:suppliers,id',
             'storage_location' => 'nullable|string|max:120',

@@ -15,7 +15,7 @@ import {
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
-  fetchInventoryItemDetail, fetchSuppliers,
+  fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
   type StockMovementRow, type Supplier,
@@ -69,6 +69,29 @@ export default function InventoryPage() {
   const [ledgerError, setLedgerError] = useState('');
   const debounceTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const pendingAdj = useRef<Record<number, number>>({});
+
+  /**
+   * Take an item on or off the list the floor can request from.
+   *
+   * Not everything in inventory belongs there — a sack bought by the pallet is
+   * not something the counter orders. Optimistic, because it is a one-bit
+   * change nobody waits for; on failure the row snaps back and says why.
+   */
+  const [togglingRequestable, setTogglingRequestable] = useState<Record<number, boolean>>({});
+
+  const toggleRequestable = async (item: InventoryItem) => {
+    const next = !item.requestable;
+    setTogglingRequestable((s) => ({ ...s, [item.id]: true }));
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, requestable: next } : i)));
+    try {
+      await updateInventoryItem(item.id, { requestable: next });
+    } catch (e) {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, requestable: item.requestable } : i)));
+      setError((e as Error).message);
+    } finally {
+      setTogglingRequestable((s) => ({ ...s, [item.id]: false }));
+    }
+  };
 
   const quickAdjust = (item: InventoryItem, delta: number) => {
     pendingAdj.current[item.id] = (pendingAdj.current[item.id] ?? 0) + delta;
@@ -520,6 +543,20 @@ export default function InventoryPage() {
                           </>
                           ) : (
                             <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>{item.quantity_on_hand}</span>
+                          )}
+                          {canManage && (
+                            <Btn
+                              small
+                              variant="secondary"
+                              disabled={togglingRequestable[item.id]}
+                              onClick={() => void toggleRequestable(item)}
+                              title={item.requestable
+                                ? 'On the staff request list — click to take it off'
+                                : 'Off the staff request list — click to put it back'}
+                              style={{ opacity: item.requestable ? 1 : 0.45 }}
+                            >
+                              🛒
+                            </Btn>
                           )}
                           <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>

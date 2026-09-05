@@ -13,6 +13,8 @@ class Purchase extends Model
     protected $fillable = [
         'purchase_number',
         'supplier_id',
+        // Free-typed shop, for a purchase from somewhere with no supplier record.
+        'supplier_name_text',
         'supplier_tin',
         'supplier_invoice_no',
         'supplier_invoice_date',

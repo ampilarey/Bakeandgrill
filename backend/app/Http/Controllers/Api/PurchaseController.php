@@ -257,6 +257,7 @@ class PurchaseController extends Controller
             $purchase = Purchase::create(array_merge([
                 'purchase_number' => $this->generatePurchaseNumber(),
                 'supplier_id' => $validated['supplier_id'] ?? null,
+                'supplier_name_text' => $validated['supplier_name_text'] ?? null,
                 'user_id' => $request->user()?->id,
                 'status' => $status,
                 'subtotal' => 0,

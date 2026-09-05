@@ -24,6 +24,9 @@ class StorePurchaseRequest extends FormRequest
         return [
             // Optional for POS walk-in receive; admin POs usually set a supplier.
             'supplier_id' => 'nullable|integer|exists:suppliers,id',
+            // Where it was bought, when that is not a supplier on file — the
+            // corner shop, the cash-and-carry. Either identifies the seller.
+            'supplier_name_text' => 'nullable|string|max:255',
             'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
             // Backdating is allowed within a window; forward-dating never is.

@@ -41,6 +41,41 @@ export type PurchaseRequestLineInput = {
   notes?: string;
 };
 
+/**
+ * One line of the list staff pick from.
+ *
+ * No price: a requester is not a buyer, and this list is readable by every
+ * cashier and cook. What is on the shelf and what it should be is what they
+ * need to decide whether to ask.
+ */
+export type RequestCatalogItem = {
+  id: number;
+  name: string;
+  unit: string;
+  category_id: number | null;
+  category: string | null;
+  current_stock: number;
+  reorder_point: number | null;
+  suggested_qty: number | null;
+};
+
+export type RequestCatalog = {
+  items: RequestCatalogItem[];
+  categories: Array<{ id: number; name: string }>;
+};
+
+/**
+ * The whole requestable list in one call.
+ *
+ * Deliberately not paged and not search-on-the-server by default: a shop's
+ * inventory is hundreds of rows, not thousands, and one fetch means the
+ * picker filters instantly under a thumb and keeps working when the wifi at
+ * the back of the kitchen does not.
+ */
+export async function fetchRequestCatalog(): Promise<RequestCatalog> {
+  return request("/purchase-requests/catalog");
+}
+
 export async function createPurchaseRequest(payload: {
   source: "pos" | "kds" | "admin";
   title?: string;

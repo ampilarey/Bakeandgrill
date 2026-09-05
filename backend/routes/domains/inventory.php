@@ -91,6 +91,11 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
     // Purchase Requests — operational buying tasks (staff request, manager verify)
     Route::post('/purchase-requests', [App\Http\Controllers\Api\PurchaseRequestController::class, 'store'])
         ->middleware('permission:purchase_requests.create');
+    // The list staff pick from. Same permission as raising a request, because
+    // it is part of raising one — kitchen staff can request but hold no
+    // inventory.view, so gating this on that would hide the list from them.
+    Route::get('/purchase-requests/catalog', [App\Http\Controllers\Api\PurchaseRequestController::class, 'catalog'])
+        ->middleware('permission:purchase_requests.create');
     Route::get('/purchase-requests/my', [App\Http\Controllers\Api\PurchaseRequestController::class, 'my'])
         ->middleware('permission:purchase_requests.view_own');
     Route::get('/purchase-requests/assigned-to-me', [App\Http\Controllers\Api\PurchaseRequestController::class, 'assignedToMe'])

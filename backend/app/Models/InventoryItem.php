@@ -13,7 +13,7 @@ class InventoryItem extends Model
     protected $fillable = [
         'name', 'sku', 'barcode', 'unit', 'current_stock', 'reorder_point', 'reorder_quantity',
         'lead_days', 'cover_days', 'restock_snoozed_until', 'restock_excluded',
-        'unit_cost', 'last_purchase_price', 'expiry_date', 'is_active',
+        'unit_cost', 'last_purchase_price', 'expiry_date', 'is_active', 'requestable',
         'inventory_category_id', 'preferred_supplier_id', 'storage_location', 'notes',
     ];
 
@@ -22,6 +22,7 @@ class InventoryItem extends Model
         'restock_snoozed_until' => 'date',
         'restock_excluded' => 'boolean',
         'is_active' => 'boolean',
+        'requestable' => 'boolean',
         'current_stock' => 'float',
         'unit_cost' => 'decimal:4',
         'reorder_point' => 'float',
