@@ -874,106 +874,64 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 }}
                 placeholder="Search inventory item…"
               />
-              {/* How it is bought. Shown for every picked item, not only ones
-                  that already have packs: an empty picker is what tells you
-                  the feature exists and offers to set it up here and now. */}
-              {line.selection && (
-                <div style={{ marginTop: 8 }}>
-                  <label htmlFor={`manual-po-pack-${idx}`} style={lineLabelStyle}>Bought as</label>
-                  <select
-                    id={`manual-po-pack-${idx}`}
-                    aria-label={`Pack for item ${idx + 1}`}
-                    value={line.packId}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setManualPoForm((f) => ({
-                        ...f,
-                        lines: f.lines.map((l, i) => i === idx
-                          ? v === '__new'
-                            // Opening the form must not leave "+ Add a pack
-                            // size" selected, or the line would price as loose
-                            // while the box says otherwise.
-                            ? { ...l, packId: '', newPack: { name: '', qty: '' } }
-                            : { ...l, packId: v, newPack: null }
-                          : l),
-                      }));
-                    }}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                  >
-                    <option value="">Loose — by the {line.selection.item.unit}</option>
-                    {line.packs.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} — {Number(p.base_units)} {line.selection?.item.unit}
-                      </option>
-                    ))}
-                    {canManageStock && <option value="__new">+ Add a pack size…</option>}
-                  </select>
-
-                  {line.newPack && (
-                    <div style={{
-                      marginTop: 8, padding: 10, borderRadius: 10,
-                      border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
-                    }}>
-                      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
-                        A case of eggs, a sack of flour. Say what it is called and how
-                        many {line.selection.item.unit} are inside one.
-                      </p>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input
-                          aria-label={`New pack name for item ${idx + 1}`}
-                          placeholder="Case"
-                          value={line.newPack.name}
-                          onChange={(e) => setManualPoForm((f) => ({
-                            ...f,
-                            lines: f.lines.map((l, i) => i === idx && l.newPack
-                              ? { ...l, newPack: { ...l.newPack, name: e.target.value } } : l),
-                          }))}
-                          style={{ flex: '1 1 110px', minWidth: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                        />
-                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>=</span>
-                        <input
-                          aria-label={`New pack size for item ${idx + 1}`}
-                          type="number"
-                          min="0.000001"
-                          step="any"
-                          placeholder="210"
-                          value={line.newPack.qty}
-                          onChange={(e) => setManualPoForm((f) => ({
-                            ...f,
-                            lines: f.lines.map((l, i) => i === idx && l.newPack
-                              ? { ...l, newPack: { ...l.newPack, qty: e.target.value } } : l),
-                          }))}
-                          style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                        />
-                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{line.selection.item.unit}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save pack</Btn>
-                        <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
-                          ...f,
-                          lines: f.lines.map((l, i) => i === idx ? { ...l, newPack: null } : l),
-                        }))}>Cancel</Btn>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
               {/* Labels above the boxes, not placeholders inside them: a
                   placeholder is gone the moment you type, so a filled-in line
                   used to be two unlabelled numbers. The quantity carries the
                   item's unit, so "4" reads as 4 kg rather than 4 of something. */}
               <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <div>
-                  <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>
-                    {linePack(line)
-                      ? `Quantity (${linePack(line)!.name.toLowerCase()})`
-                      : `Quantity${line.selection ? ` (${line.selection.item.unit})` : ''}`}
-                  </label>
-                  <input id={`manual-po-qty-${idx}`} type="number" min="0.001" step="any"
-                    aria-label={`Quantity for item ${idx + 1}`}
-                    value={line.quantity}
-                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>Quantity</label>
+                  {/* Quantity and the unit it is counted in, together. The unit
+                      box is always on screen — greyed until an item is picked,
+                      since only the item knows what it is sold in — so the
+                      option is visible rather than something to go hunting for. */}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input id={`manual-po-qty-${idx}`} type="number" min="0.000001" step="any"
+                      aria-label={`Quantity for item ${idx + 1}`}
+                      value={line.quantity}
+                      onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
+                      style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    <select
+                      id={`manual-po-pack-${idx}`}
+                      aria-label={`Unit for item ${idx + 1}`}
+                      disabled={!line.selection}
+                      value={line.packId}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => i === idx
+                            ? v === '__new'
+                              // Opening the form must not leave "+ Add a pack
+                              // size" selected, or the line would price as loose
+                              // while the box says otherwise.
+                              ? { ...l, packId: '', newPack: { name: '', qty: '' } }
+                              : { ...l, packId: v, newPack: null }
+                            : l),
+                        }));
+                      }}
+                      style={{
+                        width: 108, flexShrink: 0, padding: '8px 6px', borderRadius: 10,
+                        border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit',
+                        background: 'var(--color-surface)', color: 'var(--color-text)',
+                        opacity: line.selection ? 1 : 0.55,
+                      }}
+                    >
+                      {line.selection ? (
+                        <>
+                          <option value="">{line.selection.item.unit}</option>
+                          {line.packs.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({Number(p.base_units)})
+                            </option>
+                          ))}
+                          {canManageStock && <option value="__new">+ Add unit…</option>}
+                        </>
+                      ) : (
+                        <option value="">unit</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label htmlFor={`manual-po-cost-${idx}`} style={lineLabelStyle}>
@@ -988,6 +946,54 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
+              {line.selection && line.newPack && (
+                <div style={{
+                  marginTop: 8, padding: 10, borderRadius: 10,
+                  border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
+                }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
+                    A case of eggs, a sack of flour. Say what it is called and how
+                    many {line.selection.item.unit} are inside one.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input
+                      aria-label={`New pack name for item ${idx + 1}`}
+                      placeholder="Case"
+                      value={line.newPack.name}
+                      onChange={(e) => setManualPoForm((f) => ({
+                        ...f,
+                        lines: f.lines.map((l, i) => i === idx && l.newPack
+                          ? { ...l, newPack: { ...l.newPack, name: e.target.value } } : l),
+                      }))}
+                      style={{ flex: '1 1 110px', minWidth: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>=</span>
+                    <input
+                      aria-label={`New pack size for item ${idx + 1}`}
+                      type="number"
+                      min="0.000001"
+                      step="any"
+                      placeholder="210"
+                      value={line.newPack.qty}
+                      onChange={(e) => setManualPoForm((f) => ({
+                        ...f,
+                        lines: f.lines.map((l, i) => i === idx && l.newPack
+                          ? { ...l, newPack: { ...l.newPack, qty: e.target.value } } : l),
+                      }))}
+                      style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{line.selection.item.unit}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save pack</Btn>
+                    <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, newPack: null } : l),
+                    }))}>Cancel</Btn>
+                  </div>
+                </div>
+              )}
+
               {/* What this line puts on the shelf and what one of them costs.
                   The number the owner asked for: buy a case, see the price of
                   an egg, before saving rather than after. */}
