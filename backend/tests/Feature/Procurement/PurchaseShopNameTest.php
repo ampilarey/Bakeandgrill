@@ -13,13 +13,20 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Buying from a shop that is not a supplier on file.
+ * Buying from the shop on the corner.
  *
  * Owner, 2026-09-05: entering a purchase means recording "shop name, items,
  * price, quantity". Most buying is not a standing account — it is somebody
- * walking to the corner shop for two crates and a bag of ice. Forcing a
- * supplier record for each of those leaves you with a register full of
- * one-purchase suppliers, or a purchase nobody bothers to enter.
+ * walking to the corner shop for two crates and a bag of ice. Typing the name
+ * is still the whole interaction, and nobody fills in a supplier form.
+ *
+ * What changed later the same day, at the owner's word ("no need both, keep one
+ * only"): the typed name now *becomes* a supplier rather than sitting beside
+ * one. The two earlier tests here asserted the opposite — that a typed name
+ * left `supplier_id` null, and that a chosen supplier left the text null — so
+ * they assert the new rule instead. That was the whole defect: everything which
+ * compares prices joins the supplier table, so a name with no record behind it
+ * was invisible to all of it and its price was never recorded at all.
  */
 class PurchaseShopNameTest extends TestCase
 {
@@ -50,7 +57,7 @@ class PurchaseShopNameTest extends TestCase
         ], $overrides);
     }
 
-    public function test_a_purchase_can_name_the_shop_instead_of_a_supplier_record(): void
+    public function test_naming_a_shop_creates_the_supplier_behind_it(): void
     {
         Sanctum::actingAs($this->makeOwner(), ['staff']);
 
@@ -60,12 +67,17 @@ class PurchaseShopNameTest extends TestCase
 
         $purchase = Purchase::query()->firstOrFail();
         $this->assertSame('Fahi Store', $purchase->supplier_name_text);
-        $this->assertNull($purchase->supplier_id);
+
+        // The name is now a record, so this purchase can be compared on price
+        // with every other. Typing it was still all anybody did.
+        $supplier = Supplier::where('name', 'Fahi Store')->firstOrFail();
+        $this->assertSame($supplier->id, (int) $purchase->supplier_id);
     }
 
-    public function test_a_registered_supplier_still_works_and_is_unaffected(): void
+    public function test_a_registered_supplier_still_works_and_keeps_its_name(): void
     {
-        // The typed shop is an alternative, not a replacement.
+        // Picking a supplier off the list is just a faster way of typing its
+        // name, so the row ends up in the same shape either way.
         $supplier = Supplier::create(['name' => 'Island Wholesale', 'is_active' => true]);
         Sanctum::actingAs($this->makeOwner(), ['staff']);
 
@@ -75,7 +87,9 @@ class PurchaseShopNameTest extends TestCase
 
         $purchase = Purchase::query()->firstOrFail();
         $this->assertSame($supplier->id, (int) $purchase->supplier_id);
-        $this->assertNull($purchase->supplier_name_text);
+        $this->assertSame('Island Wholesale', $purchase->supplier_name_text);
+        // No second row for a supplier that already existed.
+        $this->assertSame(1, Supplier::count());
     }
 
     public function test_a_purchase_with_neither_is_still_allowed(): void

@@ -163,7 +163,7 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                         Use cheapest
                       </button>
                     )}
-                    <input placeholder="Shop name" value={d.shopName} onChange={(e) => setDraft(item, { shopName: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
+                    <input placeholder="Bought from" aria-label="Bought from" value={d.shopName} onChange={(e) => setDraft(item, { shopName: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
                     <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: palette.panelMuted }}>
                       Bought on
                       <input

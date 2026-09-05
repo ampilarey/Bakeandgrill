@@ -831,7 +831,7 @@ function QuotesExpander({
   const addQuote = async () => {
     const mvr = Number(priceMvr);
     if (!shop.trim() || !Number.isFinite(mvr) || mvr < 0) {
-      toast.error('Enter shop name and a valid unit price (MVR)');
+      toast.error('Say who you are buying from, and a valid unit price (MVR)');
       return;
     }
     setBusy(true);
@@ -938,7 +938,8 @@ function QuotesExpander({
               <input
                 value={shop}
                 onChange={(e) => setShop(e.target.value)}
-                placeholder="Shop name"
+                placeholder="Bought from"
+                aria-label="Bought from"
                 style={{ flex: 1, minWidth: 100, height: 36, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 8px', fontFamily: 'inherit' }}
               />
               <input

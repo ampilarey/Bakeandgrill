@@ -18,10 +18,6 @@ type ManualPoLine = {
 
 const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0' });
 
-/* Label on a primary-filled chip. A fixed pairing rather than a themed token:
-   the fill is --color-primary in both themes, so the text stays white in both. */
-const ON_PRIMARY = '#fff';
-
 const STATUS_COLOR: Record<string, string> = {
   draft:    'gray',
   ordered:  'blue',
@@ -90,9 +86,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const [showManualPo, setShowManualPo] = useState(false);
   const [manualSuppliers, setManualSuppliers] = useState<Supplier[]>([]);
   const [manualPoForm, setManualPoForm] = useState({
+    // One seller field. Type a name; picking an existing one off the list is
+    // just a faster way to type it. The server turns the name into a supplier.
     supplier_name_text: '',
-    seller_mode: 'supplier' as 'supplier' | 'shop',
-    supplier_id: '',
     purchase_date: today(),
     notes: '',
     lines: [blankManualLine()] as ManualPoLine[],
@@ -103,9 +99,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const openManualPo = async () => {
     setManualPoError('');
     setManualPoForm({
-      supplier_id: '',
       supplier_name_text: '',
-      seller_mode: 'supplier',
       purchase_date: today(),
       notes: '',
       lines: [blankManualLine()],
@@ -118,10 +112,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   };
 
   const handleCreateManualPo = async () => {
-    const usingShop = manualPoForm.seller_mode === 'shop';
-    const shopName = manualPoForm.supplier_name_text.trim();
-    if (usingShop ? !shopName : !manualPoForm.supplier_id) {
-      setManualPoError(usingShop ? 'Type the shop name.' : 'Select a supplier.');
+    const sellerName = manualPoForm.supplier_name_text.trim();
+    if (!sellerName) {
+      setManualPoError('Say who you bought from.');
       return;
     }
     const lines = manualPoForm.lines
@@ -143,11 +136,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     setManualPoSaving(true); setManualPoError('');
     try {
       await createPurchase({
-        // One or the other identifies the seller — never both, or the record
-        // would name two different sellers for one purchase.
-        ...(usingShop
-          ? { supplier_name_text: shopName }
-          : { supplier_id: Number(manualPoForm.supplier_id) }),
+        // Just the name. The server finds the supplier with this name or
+        // creates it, so a shop you buy from once still gets a price record.
+        supplier_name_text: sellerName,
         purchase_date: manualPoForm.purchase_date,
         notes: manualPoForm.notes || undefined,
         items: lines,
@@ -685,48 +676,30 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {showManualPo && (
         <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={560}>
           {manualPoError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
-          {/* Bought from whom. A supplier on file, or — far more often — a shop
-              you walked to. Requiring a supplier record for a one-off purchase
-              leaves a register full of one-purchase suppliers, or a purchase
-              nobody bothers to enter at all. */}
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Bought from *</label>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            {([['supplier', 'A supplier'], ['shop', 'A shop']] as const).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setManualPoForm((f) => ({ ...f, seller_mode: mode }))}
-                style={{
-                  padding: '6px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 12, fontWeight: 700, border: '1.5px solid var(--color-border)',
-                  background: manualPoForm.seller_mode === mode ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: manualPoForm.seller_mode === mode ? ON_PRIMARY : 'var(--color-text-secondary)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {manualPoForm.seller_mode === 'supplier' ? (
-            <select
-              value={manualPoForm.supplier_id}
-              aria-label="Supplier"
-              onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_id: e.target.value }))}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12 }}
-            >
-              <option value="">Select supplier…</option>
-              {manualSuppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          ) : (
-            <input
-              type="text"
-              aria-label="Shop name"
-              placeholder="e.g. Fahi Store, Agora"
-              value={manualPoForm.supplier_name_text}
-              onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_name_text: e.target.value }))}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }}
-            />
-          )}
+          {/* Bought from whom. One field: a supplier you deal with and the shop
+              you walked to are the same kind of thing, so there is no longer a
+              toggle between them. Type a name and the server finds that
+              supplier or creates it, which is what puts the price you paid into
+              the comparison. Suggestions are the names already on file. */}
+          <label htmlFor="manual-po-seller" style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Bought from *</label>
+          <input
+            id="manual-po-seller"
+            type="text"
+            list="manual-po-seller-options"
+            aria-label="Bought from"
+            autoComplete="off"
+            placeholder="Supplier or shop name"
+            value={manualPoForm.supplier_name_text}
+            onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_name_text: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 4, boxSizing: 'border-box' }}
+          />
+          <datalist id="manual-po-seller-options">
+            {manualSuppliers.map((s) => <option key={s.id} value={s.name} />)}
+          </datalist>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+            A name you have not used before is added to your suppliers, so what you pay there
+            starts building a price history.
+          </p>
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase date *</label>
           {/* Backdating a delivery is allowed and files it under the day it
               arrived. Forward-dating never is — the server refuses it too. */}

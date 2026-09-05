@@ -19,7 +19,10 @@ use Illuminate\Validation\ValidationException;
 
 final class PurchaseRequestService
 {
-    public function __construct(private readonly AuditLogService $audit) {}
+    public function __construct(
+        private readonly AuditLogService $audit,
+        private readonly SupplierResolver $suppliers,
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -252,6 +255,19 @@ final class PurchaseRequestService
                 }
             }
 
+            // One seller. A typed shop name becomes a supplier record here, so
+            // the line always has somebody to hang a price on — without that,
+            // the price paid is never written to price history and the shop is
+            // invisible to every comparison the system makes.
+            $seller = $this->suppliers->resolve(
+                isset($data['supplier_id']) ? (int) $data['supplier_id'] : null,
+                $data['supplier_name_text'] ?? null,
+            );
+            if ($seller !== null) {
+                $data['supplier_id'] = $seller->id;
+                $data['supplier_name_text'] = $seller->name;
+            }
+
             $qty = (float) ($data['actual_qty'] ?? $item->approved_qty ?? $item->requested_qty);
             $unitCostLaar = isset($data['actual_unit_cost_laar']) ? (int) $data['actual_unit_cost_laar'] : null;
             $totalLaar = $unitCostLaar !== null ? (int) round($qty * $unitCostLaar) : null;
@@ -333,13 +349,20 @@ final class PurchaseRequestService
         }
 
         if (empty($data['supplier_id']) && empty($data['supplier_name_text'])) {
-            throw ValidationException::withMessages(['supplier_name_text' => ['Provide a supplier or shop name.']]);
+            throw ValidationException::withMessages(['supplier_name_text' => ['Say who you are buying from.']]);
         }
+
+        // The name on a quote becomes a supplier too, so quotes from the shop
+        // on the corner sit in the same price comparison as everybody else's.
+        $seller = $this->suppliers->resolve(
+            isset($data['supplier_id']) ? (int) $data['supplier_id'] : null,
+            $data['supplier_name_text'] ?? null,
+        );
 
         $quote = PurchaseRequestItemQuote::create([
             'purchase_request_item_id' => $item->id,
-            'supplier_id' => $data['supplier_id'] ?? null,
-            'supplier_name_text' => $data['supplier_name_text'] ?? null,
+            'supplier_id' => $seller?->id,
+            'supplier_name_text' => $seller?->name,
             'unit_price_laar' => (int) $data['unit_price_laar'],
             'unit' => $data['unit'] ?? $item->requested_unit,
             'note' => $data['note'] ?? null,
@@ -457,6 +480,17 @@ final class PurchaseRequestService
 
             $unitCostLaar = isset($data['actual_unit_cost_laar']) ? (int) $data['actual_unit_cost_laar'] : null;
             $totalLaar = $unitCostLaar !== null ? (int) round($qty * $unitCostLaar) : null;
+
+            // Same rule as a full buy: the name becomes a supplier, so half a
+            // delivery from the corner shop still records who sold it.
+            $seller = $this->suppliers->resolve(
+                isset($data['supplier_id']) ? (int) $data['supplier_id'] : null,
+                $data['supplier_name_text'] ?? null,
+            );
+            if ($seller !== null) {
+                $data['supplier_id'] = $seller->id;
+                $data['supplier_name_text'] = $seller->name;
+            }
 
             $item->update([
                 'status' => 'partially_bought',

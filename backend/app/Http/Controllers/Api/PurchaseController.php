@@ -18,6 +18,7 @@ use App\Models\PurchaseReceipt;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
 use App\Services\AuditLogService;
+use App\Services\SupplierResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -241,6 +242,17 @@ class PurchaseController extends Controller
 
     private function createFromPayload(array $validated, Request $request): Purchase
     {
+        // One seller. A typed shop name becomes a supplier record, so every
+        // purchase has somebody to hang its prices on — the price-history write
+        // further down is guarded on `supplier_id`, and a purchase without one
+        // used to record no price at all.
+        $seller = app(SupplierResolver::class)->resolve(
+            isset($validated['supplier_id']) ? (int) $validated['supplier_id'] : null,
+            $validated['supplier_name_text'] ?? null,
+        );
+        $validated['supplier_id'] = $seller?->id;
+        $validated['supplier_name_text'] = $seller?->name;
+
         return DB::transaction(function () use ($validated, $request) {
             $gstFields = array_intersect_key($validated, array_flip([
                 'supplier_tin', 'supplier_invoice_no', 'supplier_invoice_date',

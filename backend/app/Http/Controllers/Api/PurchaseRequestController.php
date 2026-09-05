@@ -150,7 +150,8 @@ class PurchaseRequestController extends Controller
                     'name' => $item->inventoryItem?->name ?? $item->free_text_name ?? 'Item',
                     'qty' => (float) ($item->actual_qty ?? $item->approved_qty ?? $item->requested_qty),
                     'unit' => $item->actual_unit ?? $item->inventoryItem?->unit ?? $item->requested_unit,
-                    'shop' => $item->supplier_name_text ?? $item->supplier?->name,
+                    // The supplier record is the seller; the text is its copy.
+                    'shop' => $item->supplier?->name ?? $item->supplier_name_text,
                     'bought_at' => $item->bought_at?->toIso8601String(),
                     'bought_by' => $item->buyer?->name,
                     'partial' => $item->status === 'partially_bought',
