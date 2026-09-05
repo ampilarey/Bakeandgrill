@@ -76,16 +76,19 @@ describe('Create Manual Purchase Order card', () => {
     granted = ['inventory.manage', 'suppliers.purchases'];
   });
 
-  it('shows the unit box before any item is picked, greyed until it can offer one', async () => {
-    // The owner opened this card three times and reported no unit option,
-    // because the picker only rendered after an item was chosen. It is now on
-    // screen from the moment the form opens.
+  it('lets you type the unit, with nothing picked and nothing disabled', async () => {
+    /*
+     * Four rounds of this. It was a dropdown that only came alive after an
+     * item was chosen, so the owner tapped it, nothing happened, and they
+     * reported — correctly — that they could not enter the unit. It is a text
+     * box now, enabled from the moment the form opens.
+     */
     await openCard();
 
     const unit = screen.getByLabelText('Unit for item 1');
-    expect(unit).toBeInTheDocument();
-    expect(unit).toBeDisabled();
-    expect(within(unit).getByRole('option', { hidden: true })).toHaveTextContent('unit');
+    expect(unit).toBeEnabled();
+    fireEvent.change(unit, { target: { value: 'case' } });
+    expect(unit).toHaveValue('case');
   });
 
   it('labels both number boxes, so a filled-in line is still readable', async () => {
@@ -106,9 +109,8 @@ describe('Create Manual Purchase Order card', () => {
 
     fireEvent.click(screen.getByText('pick-flour'));
 
-    // The unit box comes alive and reads kg, so "4" is unambiguously 4 kg.
-    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toBeEnabled());
-    expect(screen.getByRole('option', { name: 'kg' })).toBeInTheDocument();
+    // The box hints the item's own unit, so "4" is unambiguously 4 kg.
+    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toHaveAttribute('placeholder', 'kg'));
     expect(screen.getByText('Unit cost (MVR per kg)')).toBeInTheDocument();
   });
 
@@ -190,53 +192,53 @@ describe('Create Manual Purchase Order card', () => {
 
     await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(flour.id));
     const picker = await screen.findByLabelText('Unit for item 1');
-    expect(picker).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'kg' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '+ Add unit…' })).toBeInTheDocument();
-    // Still priced by the loose unit until a pack is actually chosen.
+    expect(picker).toBeEnabled();
+    // Empty means the item's own unit, which is what the placeholder says.
     expect(picker).toHaveValue('');
+    expect(picker).toHaveAttribute('placeholder', 'kg');
   });
 
-  it('defines a pack from the line itself and selects it', async () => {
-    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 42, name: 'Case', base_units: 210 } });
+  it('asks what a new unit holds, then prices by it', async () => {
+    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 42, name: 'case', base_units: 210 } });
     await openCard();
     fireEvent.click(screen.getByText('pick-flour'));
 
-    const picker = await screen.findByLabelText('Unit for item 1');
-    fireEvent.change(picker, { target: { value: '__new' } });
+    // Type a word this item has never been bought by.
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'case' } });
 
-    fireEvent.change(await screen.findByLabelText('New pack name for item 1'), { target: { value: 'Case' } });
-    fireEvent.change(screen.getByLabelText('New pack size for item 1'), { target: { value: '210' } });
+    const size = await screen.findByLabelText('Size of one case for item 1');
+    fireEvent.change(size, { target: { value: '210' } });
 
     getPurchaseUnits.mockResolvedValue({
-      base_unit: 'kg', purchase_units: [{ id: 42, name: 'Case', base_units: 210 }],
+      base_unit: 'kg', purchase_units: [{ id: 42, name: 'case', base_units: 210 }],
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save pack' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(flour.id, { name: 'Case', base_units: 210 }));
-    // Chosen straight away, so you carry on typing rather than picking it.
-    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toHaveValue('42'));
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(flour.id, { name: 'case', base_units: 210 }));
+    // The word now resolves, so the prompt goes and the line prices by it.
+    await waitFor(() => expect(screen.queryByLabelText('Size of one case for item 1')).not.toBeInTheDocument());
     expect(screen.getByText('Price per case (MVR)')).toBeInTheDocument();
   });
 
-  it('refuses a pack with no size rather than creating a meaningless one', async () => {
+  it('will not save a purchase with a unit nobody can convert', async () => {
     await openCard();
+    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
     fireEvent.click(screen.getByText('pick-flour'));
-    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: '__new' } });
-    fireEvent.change(await screen.findByLabelText('New pack name for item 1'), { target: { value: 'Case' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save pack' }));
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'case' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
 
-    expect(await screen.findByText(/Say how many kg are in one Case/)).toBeInTheDocument();
-    expect(createPurchaseUnit).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Say how many kg are in one case/)).toBeInTheDocument();
+    expect(createPurchase).not.toHaveBeenCalled();
   });
 
-  it('does not offer to create packs to someone who cannot manage stock', async () => {
+  it('tells someone who cannot manage stock to get the unit set up', async () => {
     granted = ['suppliers.purchases'];
     await openCard();
     fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'case' } });
 
-    await screen.findByLabelText('Unit for item 1');
-    expect(screen.queryByRole('option', { name: '+ Add unit…' })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Someone who manages stock needs to set that up/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Size of one case for item 1')).not.toBeInTheDocument();
   });
 
   it('lets you buy by the case and works out the price of one egg', async () => {
@@ -251,11 +253,11 @@ describe('Create Manual Purchase Order card', () => {
     fireEvent.click(screen.getByText('pick-flour'));
 
     const picker = await screen.findByLabelText('Unit for item 1');
-    fireEvent.change(picker, { target: { value: '9' } });
+    fireEvent.change(picker, { target: { value: 'Case' } });
 
-    // The cost box now says what it is per, and the unit box holds the pack.
+    // The cost box now says what it is per, and the unit box holds the word.
     expect(await screen.findByText('Price per case (MVR)')).toBeInTheDocument();
-    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('9');
+    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('Case');
 
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '415' } });
@@ -279,7 +281,7 @@ describe('Create Manual Purchase Order card', () => {
 
     fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
     fireEvent.click(screen.getByText('pick-flour'));
-    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: '9' } });
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'Case' } });
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '415' } });
     fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
@@ -298,7 +300,7 @@ describe('Create Manual Purchase Order card', () => {
     });
     await openCard();
     fireEvent.click(screen.getByText('pick-flour'));
-    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: '9' } });
+    fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'Case' } });
     await screen.findByText('Price per case (MVR)');
 
     getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [] });
@@ -343,9 +345,8 @@ describe('Create Manual Purchase Order card', () => {
     await waitFor(() => expect(createInventoryItem).toHaveBeenCalledWith({
       name: 'Egg', unit: 'piece', current_stock: 0, is_active: true,
     }));
-    // Selected, so the unit box comes alive and you carry straight on.
-    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toBeEnabled());
-    expect(screen.getByRole('option', { name: 'piece' })).toBeInTheDocument();
+    // Selected, so the unit box now hints the new item's own unit.
+    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toHaveAttribute('placeholder', 'piece'));
   });
 
   it('will not create an item with no unit to count it in', async () => {

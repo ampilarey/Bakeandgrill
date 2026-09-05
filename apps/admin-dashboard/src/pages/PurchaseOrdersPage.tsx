@@ -16,8 +16,14 @@ type ManualPoLine = {
   selection: InventoryItemSelection | null;
   quantity: string;
   unit_cost: string;
-  /** '' means bought loose, in the item's own unit. */
-  packId: string;
+  /**
+   * The unit as typed: "kg", "case", "box". Empty means the item's own unit.
+   *
+   * Text rather than a chosen id because the owner's question was simply "is
+   * it case, box, kg" — you say what you bought it by, and the line works out
+   * whether that is the item's own unit or a pack of them.
+   */
+  unitText: string;
   /** Packs defined for the picked item, loaded when it is picked. */
   packs: InventoryPurchaseUnit[];
   /**
@@ -27,7 +33,8 @@ type ManualPoLine = {
    * while entering a purchase. The moment you need one is the moment you are
    * typing "1 case", so it can be created without leaving the order.
    */
-  newPack: { name: string; qty: string } | null;
+  /** How many base units are in the typed pack, while it is being defined. */
+  newPackQty: string;
   /**
    * An inline "the item is not on the list" form.
    *
@@ -39,13 +46,32 @@ type ManualPoLine = {
 };
 
 const blankManualLine = (): ManualPoLine => ({
-  selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [], newPack: null, newItem: null,
+  selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], newPackQty: '', newItem: null,
 });
 
-/** The pack chosen on a line, if any. */
+/** The pack the typed unit names, if the item has one by that name. */
 function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
-  if (!line.packId) return null;
-  return line.packs.find((p) => String(p.id) === line.packId) ?? null;
+  const typed = line.unitText.trim().toLowerCase();
+  if (!typed) return null;
+  return line.packs.find((p) => p.name.trim().toLowerCase() === typed) ?? null;
+}
+
+/** Buying in the item's own unit — nothing to convert. */
+function isBaseUnit(line: ManualPoLine): boolean {
+  const typed = line.unitText.trim().toLowerCase();
+  if (!typed) return true;
+  return typed === (line.selection?.item.unit ?? '').trim().toLowerCase();
+}
+
+/**
+ * A unit was typed that this item has never been bought by.
+ *
+ * "case" means nothing on its own; the line cannot price an egg until
+ * somebody says how many are in one. So the size is asked for right here
+ * rather than the purchase saving with a word nobody can convert.
+ */
+function needsPackSize(line: ManualPoLine): boolean {
+  return !!line.selection && !isBaseUnit(line) && linePack(line) === null;
 }
 
 /** How many of the item's own unit one of the chosen packs holds. */
@@ -90,7 +116,11 @@ function manualLineBase(line: ManualPoLine): { quantity: number; unitCost: numbe
 }
 
 /** Common units, offered as suggestions rather than imposed as a fixed list. */
-const UNIT_SUGGESTIONS = ['piece', 'kg', 'g', 'litre', 'ml', 'packet', 'bottle', 'box', 'dozen'];
+const UNIT_SUGGESTIONS = [
+  'piece', 'kg', 'g', 'litre', 'ml', 'dozen',
+  // Packs. Typing one of these against an item asks what it holds, once.
+  'case', 'box', 'tray', 'carton', 'sack', 'packet', 'bottle', 'bag',
+];
 
 const lineLabelStyle: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
@@ -228,23 +258,22 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const saveNewPack = async (idx: number) => {
     const line = manualPoForm.lines[idx];
     const item = line?.selection?.item;
-    if (!item || !line.newPack) return;
+    if (!item) return;
 
-    const name = line.newPack.name.trim();
-    const qty = parseFloat(line.newPack.qty);
-    if (!name) { setManualPoError('Give the pack a name, like Case or Tray.'); return; }
-    if (!Number.isFinite(qty) || qty <= 0) { setManualPoError(`Say how many ${item.unit} are in one ${name || 'pack'}.`); return; }
+    const name = line.unitText.trim();
+    const qty = parseFloat(line.newPackQty);
+    if (!name) { setManualPoError('Type the unit first, like case or box.'); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { setManualPoError(`Say how many ${item.unit} are in one ${name}.`); return; }
 
     setManualPoSaving(true);
     setManualPoError('');
     try {
-      const res = await createPurchaseUnit(item.id, { name, base_units: qty });
+      await createPurchaseUnit(item.id, { name, base_units: qty });
       const packs = (await getPurchaseUnits(item.id)).purchase_units;
+      // The typed word now matches a real pack, so the line prices itself.
       setManualPoForm((f) => ({
         ...f,
-        lines: f.lines.map((l, i) => i === idx
-          ? { ...l, packs, packId: String(res.purchase_unit.id), newPack: null }
-          : l),
+        lines: f.lines.map((l, i) => i === idx ? { ...l, packs, newPackQty: '' } : l),
       }));
     } catch (e) { setManualPoError((e as Error).message); }
     finally { setManualPoSaving(false); }
@@ -273,7 +302,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       setManualPoForm((f) => ({
         ...f,
         lines: f.lines.map((l, i) => i === idx
-          ? { ...l, selection: { id: item.id, label: item.name, item }, newItem: null, packs: [], packId: '' }
+          ? { ...l, selection: { id: item.id, label: item.name, item }, newItem: null, packs: [], unitText: '' }
           : l),
       }));
     } catch (e) { setManualPoError((e as Error).message); }
@@ -300,11 +329,23 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           // the stored figures cannot disagree with the preview above.
           quantity: qty,
           unit_cost: cost,
-          ...(l.packId ? { purchase_unit_id: Number(l.packId) } : {}),
+          ...(linePack(l) ? { purchase_unit_id: linePack(l)!.id } : {}),
         };
       })
       .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number }[];
     if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
+
+    // A word like "case" with no size behind it cannot be turned into stock or
+    // a price, so it is stopped here rather than saved as a guess.
+    const undefinedUnit = manualPoForm.lines.find((l) => l.selection && needsPackSize(l));
+    if (undefinedUnit) {
+      setManualPoError(
+        `Say how many ${undefinedUnit.selection!.item.unit} are in one ` +
+        `${undefinedUnit.unitText.trim().toLowerCase()}, or clear the unit box to buy by the ` +
+        `${undefinedUnit.selection!.item.unit}.`,
+      );
+      return;
+    }
     setManualPoSaving(true); setManualPoError('');
     try {
       await createPurchase({
@@ -908,9 +949,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       // A new item's packs are its own; keep neither the old
                       // choice nor the old list, or a case of eggs could end up
                       // multiplying a sack of flour.
-                      packId: '',
+                      unitText: '',
                       packs: [],
-                      newPack: null,
+                      newPackQty: '',
                       newItem: null,
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
                     } : l),
@@ -998,46 +1039,31 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       value={line.quantity}
                       onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
                       style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                    <select
+                    <input
                       id={`manual-po-pack-${idx}`}
                       aria-label={`Unit for item ${idx + 1}`}
-                      disabled={!line.selection}
-                      value={line.packId}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setManualPoForm((f) => ({
-                          ...f,
-                          lines: f.lines.map((l, i) => i === idx
-                            ? v === '__new'
-                              // Opening the form must not leave "+ Add a pack
-                              // size" selected, or the line would price as loose
-                              // while the box says otherwise.
-                              ? { ...l, packId: '', newPack: { name: '', qty: '' } }
-                              : { ...l, packId: v, newPack: null }
-                            : l),
-                        }));
-                      }}
+                      list={`manual-po-unit-options-${idx}`}
+                      autoComplete="off"
+                      placeholder={line.selection?.item.unit ?? 'kg, case…'}
+                      value={line.unitText}
+                      onChange={(e) => setManualPoForm((f) => ({
+                        ...f,
+                        lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value } : l),
+                      }))}
                       style={{
-                        width: 108, flexShrink: 0, padding: '8px 6px', borderRadius: 10,
+                        width: 104, flexShrink: 0, padding: '8px 10px', borderRadius: 10,
                         border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit',
-                        background: 'var(--color-surface)', color: 'var(--color-text)',
-                        opacity: line.selection ? 1 : 0.55,
+                        background: 'var(--color-surface)', color: 'var(--color-text)', boxSizing: 'border-box',
                       }}
-                    >
-                      {line.selection ? (
-                        <>
-                          <option value="">{line.selection.item.unit}</option>
-                          {line.packs.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({Number(p.base_units)})
-                            </option>
-                          ))}
-                          {canManageStock && <option value="__new">+ Add unit…</option>}
-                        </>
-                      ) : (
-                        <option value="">unit</option>
-                      )}
-                    </select>
+                    />
+                    <datalist id={`manual-po-unit-options-${idx}`}>
+                      {/* The item's own unit and any pack it has been bought
+                          by, then the common words. Suggestions only: type
+                          anything and the line will ask what it holds. */}
+                      {line.selection && <option value={line.selection.item.unit} />}
+                      {line.packs.map((pk) => <option key={pk.id} value={pk.name} />)}
+                      {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                    </datalist>
                   </div>
                 </div>
                 <div>
@@ -1053,54 +1079,45 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              {line.selection && line.newPack && (
+              {/* The typed unit is not one this item has been bought by, so
+                  it cannot be priced until somebody says what it holds. */}
+              {needsPackSize(line) && (
                 <div style={{
                   marginTop: 8, padding: 10, borderRadius: 10,
-                  border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
+                  border: '1.5px dashed var(--color-warning)', background: 'var(--color-bg)',
                 }}>
-                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
-                    A case of eggs, a sack of flour. Say what it is called and how
-                    many {line.selection.item.unit} are inside one.
-                  </p>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input
-                      aria-label={`New pack name for item ${idx + 1}`}
-                      placeholder="Case"
-                      value={line.newPack.name}
-                      onChange={(e) => setManualPoForm((f) => ({
-                        ...f,
-                        lines: f.lines.map((l, i) => i === idx && l.newPack
-                          ? { ...l, newPack: { ...l.newPack, name: e.target.value } } : l),
-                      }))}
-                      style={{ flex: '1 1 110px', minWidth: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>=</span>
-                    <input
-                      aria-label={`New pack size for item ${idx + 1}`}
-                      type="number"
-                      min="0.000001"
-                      step="any"
-                      placeholder="210"
-                      value={line.newPack.qty}
-                      onChange={(e) => setManualPoForm((f) => ({
-                        ...f,
-                        lines: f.lines.map((l, i) => i === idx && l.newPack
-                          ? { ...l, newPack: { ...l.newPack, qty: e.target.value } } : l),
-                      }))}
-                      style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{line.selection.item.unit}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save pack</Btn>
-                    <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => i === idx ? { ...l, newPack: null } : l),
-                    }))}>Cancel</Btn>
-                  </div>
+                  {canManageStock ? (
+                    <>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 13 }}>
+                        <span>1 {line.unitText.trim().toLowerCase()} =</span>
+                        <input
+                          aria-label={`Size of one ${line.unitText.trim().toLowerCase()} for item ${idx + 1}`}
+                          type="number"
+                          min="0.000001"
+                          step="any"
+                          placeholder="210"
+                          value={line.newPackQty}
+                          onChange={(e) => setManualPoForm((f) => ({
+                            ...f,
+                            lines: f.lines.map((l, i) => i === idx ? { ...l, newPackQty: e.target.value } : l),
+                          }))}
+                          style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                        />
+                        <span>{line.selection?.item.unit}</span>
+                        <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save</Btn>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                        Saved against this item, so next time you only have to type the word.
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                      This item has not been bought by the {line.unitText.trim().toLowerCase()} before.
+                      Someone who manages stock needs to set that up.
+                    </p>
+                  )}
                 </div>
               )}
-
               {/* What this line puts on the shelf and what one of them costs.
                   The number the owner asked for: buy a case, see the price of
                   an egg, before saving rather than after. */}
