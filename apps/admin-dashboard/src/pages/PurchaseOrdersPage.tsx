@@ -906,11 +906,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, blankManualLine()] }))} style={{ marginBottom: 12 }}>
             + Add line
           </Btn>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
-          <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
           {/* The number to check against the receipt in your hand, before you
-              save rather than after. Incomplete lines are left out and said so. */}
+              save rather than after. Incomplete lines are left out and said so.
+              Directly under the lines it sums, and above Notes: on a phone the
+              old spot below the notes box sat off-screen behind the footer,
+              which is no use for the one figure you are meant to check. */}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8,
             borderTop: '2px solid var(--color-border)', paddingTop: 12, marginBottom: 16,
@@ -927,6 +927,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               {mvr(manualPoTotal)}
             </div>
           </div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
+          <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
             <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
