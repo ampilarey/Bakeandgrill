@@ -244,13 +244,36 @@ export type FetchItemsResult = {
   deliveryFallback: boolean;
 };
 
+/** A guard against a bad `last_page`, not a limit anyone should reach. */
+const MAX_MENU_PAGES = 20;
+
 async function fetchItemsForChannel(ch: MenuListingChannel): Promise<MenuItem[]> {
   // Keep inactive items off the menu via the API's is_active filter.
   // Do NOT send available_only — snoozed / 86'd / sold-out items must stay
   // visible (dimmed) with available_now / unavailable_reason attached.
-  const qs = new URLSearchParams({ channel: ch });
-  const res = await request<{ data: MenuItem[] }>(`${ENDPOINTS.ITEMS}?${qs}`);
-  return (res.data ?? []).map((item) => ({
+  /*
+   * `view=customer` says which menu this is, rather than letting whoever is
+   * signed in decide. Owner, 2026-09-05: signed in with a staff account, this
+   * app was served the admin listing — paginated at 25 — and quietly showed a
+   * quarter of the menu.
+   *
+   * And the response is paginated whatever the size, so follow it. Reading only
+   * `data` worked while the menu fitted in one page and would have started
+   * dropping dishes the day it passed a hundred, with nothing to show for it.
+   */
+  const raw: MenuItem[] = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const qs = new URLSearchParams({ channel: ch, view: 'customer', page: String(page) });
+    const res = await request<{ data: MenuItem[]; last_page?: number }>(`${ENDPOINTS.ITEMS}?${qs}`);
+    raw.push(...(res.data ?? []));
+    lastPage = Number(res.last_page ?? 1) || 1;
+    page += 1;
+    // A malformed last_page must not spin: the menu is not thousands of pages.
+  } while (page <= lastPage && page <= MAX_MENU_PAGES);
+
+  return raw.map((item) => ({
     ...item,
     base_price: Number(item.base_price),
     packaging_fee: Number(item.packaging_fee ?? 0),

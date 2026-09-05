@@ -57,7 +57,25 @@ class ItemController extends Controller
      */
     public function index(Request $request, KitchenMenuResolver $kitchenMenuResolver, ItemAvailabilityService $availability, SpecialPricingService $specialPricing, EffectivePriceService $effectivePricing)
     {
-        $isAdmin = $request->user('sanctum') instanceof \App\Models\User
+        /*
+         * A customer surface asking for the customer menu gets the customer
+         * menu, whoever is holding the phone.
+         *
+         * Owner, 2026-09-05: an item was missing from the order app but present
+         * in a private window. The owner was signed in to the order app with
+         * their own staff account, so this check turned on admin mode for what
+         * is a customer app — and admin mode paginates at 25 instead of 100.
+         * The item was 46th in the menu, so it fell off page one, and the app,
+         * which reads only `data`, never saw it. Signing in must not change
+         * what is on the menu.
+         *
+         * `view=customer` only ever narrows what comes back, so honouring it
+         * from the client grants nothing.
+         */
+        $isCustomerView = $request->query('view') === 'customer';
+
+        $isAdmin = !$isCustomerView
+                   && $request->user('sanctum') instanceof \App\Models\User
                    && $request->user('sanctum')->tokenCan('staff');
         // Cost price, margin and profit are owner-only (recipes.manage). A menu
         // manager sees the item and its selling price but not what it costs to
