@@ -68,6 +68,11 @@ Route::get('/menu', [App\Http\Controllers\MenuPageController::class, 'index'])
 Route::get('/menu/print', [App\Http\Controllers\MenuPageController::class, 'print'])
     ->middleware(['content.locale'])
     ->name('menu.print');
+// The same sheet as a file to send somebody (owner, 2026-09-05). dompdf
+// renders the same view, so the PDF cannot drift from what the page shows.
+Route::get('/menu/print.pdf', [App\Http\Controllers\MenuPageController::class, 'printPdf'])
+    ->middleware(['content.locale'])
+    ->name('menu.print.pdf');
 // Own Blade document — not 58 hidden dialogs, and not in the sitemap
 // (per-item URLs are deferred; see docs/IMPROVEMENT_PLAN.md).
 Route::get('/menu/{item}', [App\Http\Controllers\MenuPageController::class, 'show'])

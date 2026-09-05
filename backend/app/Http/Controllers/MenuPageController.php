@@ -11,12 +11,16 @@ use App\Models\Item;
 use App\Services\EffectivePriceService;
 use App\Services\SpecialPricingService;
 use App\Support\ItemDisplayPhoto;
+use App\Support\QrSvg;
 use App\Support\SocialPreviewImage;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * The menu, rendered on the server.
@@ -102,26 +106,123 @@ class MenuPageController extends Controller
             $style = 'short';
         }
 
-        $items = Item::query()
-            ->with(['variants', 'category', 'extraCategories'])
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-
+        $items = $this->printableItems();
         $categories = $this->activeCategories();
 
-        return view('menu-print', [
+        return view('menu-print', $this->printData($items, $categories, $style, $request->boolean('dv')));
+    }
+
+    /**
+     * The same sheet as a PDF, for sending to somebody.
+     *
+     * Owner, 2026-09-05: "Add pdf share option." dompdf renders the same view,
+     * which is why the rows are tables rather than flexbox — one template that
+     * both a browser and dompdf lay out the same way, instead of a second copy
+     * to keep in step.
+     */
+    public function printPdf(Request $request): Response
+    {
+        $style = (string) $request->query('style', 'short');
+        if (!in_array($style, self::PRINT_STYLES, true)) {
+            $style = 'short';
+        }
+
+        $items = $this->printableItems();
+        $data = $this->printData($items, $this->activeCategories(), $style, $request->boolean('dv'));
+        $data['forPdf'] = true;
+
+        $name = Str::slug((string) ($data['brand'] ?: 'menu')) ?: 'menu';
+
+        return Pdf::loadView('menu-print', $data)
+            ->setPaper('a4')
+            ->download(sprintf('%s-menu-%s.pdf', $name, now()->format('Y-m-d')));
+    }
+
+    /**
+     * Everything both the screen sheet and the PDF need, built once.
+     *
+     * @param Collection<int, Item> $items
+     * @param Collection<int, Category> $categories
+     * @return array<string, mixed>
+     */
+    private function printData(Collection $items, Collection $categories, string $style, bool $showDhivehi): array
+    {
+        $brand = trim((string) (content('site_name', '') ?: config('app.name', 'Bake & Grill')));
+
+        return [
             'printStyle' => $style,
             'printStyles' => self::PRINT_STYLES,
-            'showDhivehi' => $request->boolean('dv'),
+            'showDhivehi' => $showDhivehi,
+            'forPdf' => false,
+            'brand' => $brand,
+            'brandLogo' => $this->brandLogoDataUri(),
+            'brandTagline' => trim((string) content('site_tagline', '')),
+            'brandAddress' => trim((string) content('business_address', '')),
+            'brandPhone' => trim((string) content('business_phone', '')),
+            // Scan the sheet, open the live menu. The printed prices are a
+            // snapshot; this is the copy that is never out of date.
+            'menuQr' => QrSvg::dataUri(route('menu'), 180),
+            'menuUrl' => preg_replace('#^https?://#', '', route('menu')),
             'menuCategories' => $this->groupByParent($items, $categories),
             'menuItemCount' => $items->count(),
             'menuPriceByItemId' => $this->effectivePrices($items),
             'menuVariantPricesByItemId' => $this->variantPrices($items),
             'menuLocale' => $this->menuLocale(),
             'printedAt' => now(),
-        ]);
+        ];
+    }
+
+    /**
+     * @return Collection<int, Item>
+     */
+    private function printableItems(): Collection
+    {
+        return Item::query()
+            ->with(['variants', 'category', 'extraCategories'])
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * The logo as a `data:` URI, or null when there is not one to be had.
+     *
+     * Read off disk rather than fetched: dompdf would otherwise have to make an
+     * HTTP request to our own site to build a PDF, which fails quietly behind a
+     * firewall and turns a menu into a broken image box. A remote logo URL is
+     * simply not embedded — the sheet keeps its wordmark and prints fine.
+     */
+    private function brandLogoDataUri(): ?string
+    {
+        $raw = trim((string) content('logo', '')) ?: '/logo.png';
+        $path = parse_url($raw, PHP_URL_PATH) ?: $raw;
+        $file = public_path(ltrim((string) $path, '/'));
+
+        if (!is_file($file) || !is_readable($file)) {
+            return null;
+        }
+
+        // A masthead logo is small; anything this large is a mistake upstream
+        // and would bloat every PDF we hand out.
+        if (filesize($file) > 2 * 1024 * 1024) {
+            return null;
+        }
+
+        $mime = match (strtolower(pathinfo($file, PATHINFO_EXTENSION))) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            default => null,
+        };
+
+        if ($mime === null) {
+            return null;
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($file));
     }
 
     /**

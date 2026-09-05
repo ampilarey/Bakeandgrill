@@ -58,6 +58,17 @@ class PrintableMenuTest extends TestCase
         return $item->fresh();
     }
 
+    private function setLogo(string $value): void
+    {
+        \App\Models\SiteSetting::updateOrCreate(['key' => 'logo'], [
+            'value' => $value,
+            'type' => 'text',
+            'group' => 'Branding',
+            'label' => 'logo',
+            'is_public' => true,
+        ]);
+    }
+
     public function test_the_print_page_lists_the_menu(): void
     {
         $this->dish('Mas Huni', 35);
@@ -208,6 +219,96 @@ class PrintableMenuTest extends TestCase
         $this->dish('Uncategorised Dish', 20, ['category_id' => null]);
 
         $this->get('/menu/print')->assertOk()->assertSee('Uncategorised Dish');
+    }
+
+    public function test_the_sheet_carries_the_brand_and_a_qr_to_the_live_menu(): void
+    {
+        // Owner, 2026-09-05: "Add logo. Make visual." The QR is the part that
+        // matters most: a printed price list ages, and this is the copy on it
+        // that never does.
+        $this->dish('Mas Huni', 35);
+
+        $res = $this->get('/menu/print')->assertOk();
+
+        $res->assertSee('<img class="masthead__logo"', false);
+        $res->assertSee('data:image/svg+xml;base64,', false);
+        $res->assertSee('prices may change');
+    }
+
+    public function test_a_missing_logo_file_does_not_break_the_sheet(): void
+    {
+        // The logo is read off disk so dompdf never has to fetch our own site
+        // to build a PDF. A path that is not there simply prints no logo.
+        $this->setLogo('/storage/gone.png');
+        $this->dish('Mas Huni', 35);
+
+        // The class name is also a CSS rule, so assert on the tag itself.
+        $this->get('/menu/print')->assertOk()->assertDontSee('<img class="masthead__logo"', false);
+    }
+
+    public function test_a_remote_logo_url_is_not_fetched(): void
+    {
+        // Embedding it would mean an HTTP request out of the box while
+        // rendering, which fails quietly behind a firewall and turns the
+        // masthead into a broken image.
+        $this->setLogo('https://example.com/logo.png');
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')->assertOk()->assertDontSee('example.com/logo.png');
+    }
+
+    public function test_the_page_offers_the_pdf(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print?style=full')
+            ->assertOk()
+            ->assertSee('menu/print.pdf?style=full', false);
+    }
+
+    public function test_the_pdf_downloads_and_is_a_pdf(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $res = $this->get('/menu/print.pdf');
+
+        $res->assertOk();
+        $this->assertSame('application/pdf', $res->headers->get('content-type'));
+        $this->assertStringContainsString('attachment', (string) $res->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF-', $res->getContent());
+    }
+
+    public function test_the_pdf_is_named_for_the_shop_and_the_day(): void
+    {
+        $this->dish('Mas Huni', 35);
+
+        $disposition = (string) $this->get('/menu/print.pdf')->assertOk()
+            ->headers->get('content-disposition');
+
+        $this->assertStringContainsString('-menu-' . now()->format('Y-m-d') . '.pdf', $disposition);
+    }
+
+    public function test_the_pdf_honours_the_layout_it_was_asked_for(): void
+    {
+        $this->dish('Mas Huni', 35, ['description' => 'Tuna, coconut and onion']);
+
+        $short = $this->get('/menu/print.pdf?style=short')->assertOk()->getContent();
+        $full = $this->get('/menu/print.pdf?style=full')->assertOk()->getContent();
+
+        // The detailed layout carries descriptions, so it is the larger file.
+        $this->assertGreaterThan(strlen($short), strlen($full));
+    }
+
+    public function test_the_pdf_carries_no_toolbar(): void
+    {
+        // Nobody can click "Print" inside a PDF, and a row of buttons across
+        // the top of a menu somebody was sent would look like a mistake.
+        $this->dish('Mas Huni', 35);
+
+        $this->assertStringNotContainsString(
+            'toolbar',
+            $this->get('/menu/print.pdf')->assertOk()->getContent(),
+        );
     }
 
     public function test_cost_price_never_reaches_the_paper(): void
