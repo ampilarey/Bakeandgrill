@@ -131,10 +131,6 @@ vi.mock('../components/ItemSheet', () => ({
   ItemSheet: () => null,
 }));
 
-vi.mock('../components/SearchOverlay', () => ({
-  SearchOverlay: () => null,
-}));
-
 describe('MenuPage declutter + pickup toast', () => {
   beforeEach(() => {
     showToast.mockClear();
@@ -248,7 +244,9 @@ describe('MenuPage declutter + pickup toast', () => {
     expect(screen.getByTestId('menu-controls')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'List' })).toBeInTheDocument();
-    expect(screen.getByTestId('menu-open-search')).toBeInTheDocument();
+    // Search is a box in this panel now, not a button that opened a
+    // full-screen overlay (owner, 2026-09-05).
+    expect(screen.getByTestId('menu-search-input')).toBeInTheDocument();
     expect(screen.getByTestId('menu-rail-side')).toBeInTheDocument();
     expect(screen.getByTestId('menu-controls-toggle')).toHaveAttribute('aria-expanded', 'true');
     expect(localStorage.getItem('bg-menu-controls-open')).toBe('1');

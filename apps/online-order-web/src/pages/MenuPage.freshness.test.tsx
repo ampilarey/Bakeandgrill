@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenuPage } from './MenuPage';
@@ -149,7 +149,6 @@ vi.mock('../components/menu/CategoryRail', () => ({
 vi.mock('../components/menu/FilterChipsRow', () => ({ FilterChipsRow: () => null }));
 vi.mock('../components/home/OffersRail', () => ({ OffersRail: () => null }));
 vi.mock('../components/ItemSheet', () => ({ ItemSheet: () => null }));
-vi.mock('../components/SearchOverlay', () => ({ SearchOverlay: () => null }));
 
 
 beforeEach(() => {
@@ -254,5 +253,64 @@ describe('new dishes are marked', () => {
     );
     expect(marks['Valhomas (Hanakuri)']).toBe('true');
     expect(marks['Bondibai']).toBe('false');
+  });
+});
+
+/** The search box lives inside the collapsible "Search & sort" panel. */
+async function openSearchPanel() {
+  await waitFor(() => expect(screen.getAllByTestId('product-card-stub').length).toBeGreaterThan(1));
+  if (!screen.queryByTestId('menu-search-input')) {
+    fireEvent.click(screen.getByRole('button', { name: /menu\.controls_toggle/i }));
+  }
+  return screen.findByTestId('menu-search-input');
+}
+
+describe('searching does not take over the screen', () => {
+  it('filters the menu in place and keeps the page around it', async () => {
+    // Owner, 2026-09-05: "when serach bar is clicked, page layout gose and new
+    // page like". Search used to be a button opening a full-screen overlay
+    // that hid the nav; now it is a box on the page.
+    calls.n = 1;
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    const input = await openSearchPanel();
+
+    fireEvent.change(input, { target: { value: 'valhomas' } });
+
+    await waitFor(() => expect(renderedNames()).toEqual(['Valhomas (Hanakuri)']));
+    // Still the menu page: its own controls are on screen, not replaced.
+    expect(screen.getByTestId('menu-search-input')).toBeTruthy();
+    expect(screen.getByTestId('category-rail')).toBeTruthy();
+  });
+
+  it('puts the whole menu back when the search is cleared', async () => {
+    calls.n = 1;
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    const input = await openSearchPanel();
+
+    fireEvent.change(input, { target: { value: 'valhomas' } });
+    await waitFor(() => expect(renderedNames()).toEqual(['Valhomas (Hanakuri)']));
+
+    fireEvent.click(screen.getByTestId('menu-search-clear'));
+
+    await waitFor(() => expect(renderedNames().sort()).toEqual(['Bondibai', 'Valhomas (Hanakuri)']));
+  });
+
+  it('offers nothing to clear until something is typed', async () => {
+    calls.n = 1;
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    await openSearchPanel();
+
+    expect(screen.queryByTestId('menu-search-clear')).toBeNull();
+  });
+
+  it('says so when nothing matches, on the menu page itself', async () => {
+    calls.n = 1;
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    const input = await openSearchPanel();
+
+    fireEvent.change(input, { target: { value: 'zzzzz' } });
+
+    await waitFor(() => expect(screen.queryAllByTestId('product-card-stub')).toHaveLength(0));
+    expect(screen.getByTestId('menu-search-input')).toBeTruthy();
   });
 });

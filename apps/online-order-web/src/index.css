@@ -3386,6 +3386,74 @@ textarea.field-input {
   opacity: 0.75;
 }
 
+/* Menu search — a box on the page, not a screen of its own.
+   Owner, 2026-09-05: tapping the old search button replaced the whole page,
+   so the menu, the rail and the nav all vanished behind a full-screen
+   overlay. The list filters underneath this instead. */
+.menu-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0 0.75rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.menu-search-row:focus-within {
+  border-color: var(--color-primary);
+}
+
+.menu-search-row__icon {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.menu-search-row__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-weight: 600;
+  /* 16px keeps iOS from zooming the page when the field takes focus. */
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+.menu-search-row__input::placeholder {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* The browser's own clear control would sit beside ours. */
+.menu-search-row__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.menu-search-row__clear {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-border-light, var(--color-border));
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .menu-view-row {
   display: flex;
   gap: 0.5rem;

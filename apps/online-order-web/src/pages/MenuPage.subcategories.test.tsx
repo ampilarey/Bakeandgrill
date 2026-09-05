@@ -148,7 +148,6 @@ vi.mock('../components/menu/CategoryRail', () => ({
 vi.mock('../components/menu/FilterChipsRow', () => ({ FilterChipsRow: () => null }));
 vi.mock('../components/home/OffersRail', () => ({ OffersRail: () => null }));
 vi.mock('../components/ItemSheet', () => ({ ItemSheet: () => null }));
-vi.mock('../components/SearchOverlay', () => ({ SearchOverlay: () => null }));
 
 describe('MenuPage subcategory sub-headers', () => {
   beforeEach(() => {

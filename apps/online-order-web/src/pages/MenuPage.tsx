@@ -16,7 +16,6 @@ import type { Variant } from '@shared/types';
 import { useAuth } from '../context/AuthContext';
 import { ProductCard } from '../components/menu/ProductCard';
 import { ItemSheet } from '../components/ItemSheet';
-import { SearchOverlay } from '../components/SearchOverlay';
 import { useCart } from '../context/CartContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useShellNav } from '../context/ShellNavContext';
@@ -209,7 +208,6 @@ export function MenuPage() {
   /** Pending manual day switch that would remove cart lines — asks first. */
   const [daySwitchConfirm, setDaySwitchConfirm] = useState<{ target: OrderDay; count: number } | null>(null);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [viewMode, setViewMode] = useState<MenuViewMode>(() => readMenuView());
 
@@ -1147,33 +1145,44 @@ export function MenuPage() {
 
         {controlsOpen && (
         <div id="menu-controls" data-testid="menu-controls">
-        <button
-          type="button"
-          data-testid="menu-open-search"
-          onClick={() => setSearchOpen(true)}
-          aria-label={t('menu.search_aria')}
-          style={{
-            width: '100%',
-            minHeight: 44,
-            margin: '0.5rem 0 0.25rem',
-            padding: '0 0.9rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            border: '1.5px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'var(--color-surface)',
-            color: searchQuery.trim() ? 'var(--color-text)' : 'var(--color-text-muted)',
-            fontFamily: 'inherit',
-            fontWeight: 600,
-            fontSize: '0.875rem',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <span aria-hidden="true">🔍</span>
-          {searchQuery.trim() ? `"${searchQuery.trim()}"` : t('menu.open_search')}
-        </button>
+        {/*
+          * Owner, 2026-09-05: "when serach bar is clicked, page layout gose
+          * and new page like". It used to be a button that opened a
+          * full-screen overlay over a portal, hiding the bottom nav — so
+          * tapping search threw away the menu, the category rail and the
+          * chrome, and looked like being taken somewhere else.
+          *
+          * It is a text box now, and the page filters underneath it. The menu
+          * already knew how to do this: `filteredItems` has always narrowed
+          * on `searchQuery`, and the grid already renders that list and its
+          * own empty state. The overlay was the only thing standing in front
+          * of it.
+          */}
+        <div className="menu-search-row">
+          <span className="menu-search-row__icon" aria-hidden="true">🔍</span>
+          <input
+            type="search"
+            data-testid="menu-search-input"
+            className="menu-search-row__input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('menu.search')}
+            aria-label={t('menu.search_aria')}
+            autoComplete="off"
+            enterKeyHint="search"
+          />
+          {searchQuery.trim() !== '' && (
+            <button
+              type="button"
+              data-testid="menu-search-clear"
+              className="menu-search-row__clear"
+              onClick={() => setSearchQuery('')}
+              aria-label={t('menu.clear_search')}
+            >
+              ×
+            </button>
+          )}
+        </div>
 
         <FilterChipsRow
           sortBy={sortBy}
@@ -1425,26 +1434,6 @@ export function MenuPage() {
         </main>
       </div>
 
-      <SearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        items={items}
-        orderDay={day}
-        categories={categories}
-        onSelectItem={(it, qty) => handleSelectItem(it, qty)}
-        onAddToCart={(it, qty, variant, packagingOptionId) => {
-          addItem(it, qty, [], variant ?? null, packagingOptionId);
-          showToast(variant ? `${it.name} (${variant.name}) added` : `${it.name} added to cart`);
-        }}
-        onSelectCategory={(categoryId) => {
-          setSearchQuery('');
-          handleSelectCategory(categoryId);
-        }}
-        favouriteIds={favouriteIds}
-        onToggleFavourite={handleToggleFavourite}
-      />
 
       {/* ── Back to top FAB ─────────────────────────────────────── */}
       <button
