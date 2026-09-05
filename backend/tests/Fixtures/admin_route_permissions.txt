@@ -39,8 +39,9 @@ backend/routes/domains/devices.php:49:kds.view
 backend/routes/domains/devices.php:51:orders.view
 backend/routes/domains/finance.php:100:inventory.categories
 backend/routes/domains/finance.php:106:inventory.manage
-backend/routes/domains/finance.php:113:reports.financial
 backend/routes/domains/finance.php:122:inventory.manage
+backend/routes/domains/finance.php:128:reports.financial
+backend/routes/domains/finance.php:137:inventory.manage
 backend/routes/domains/finance.php:16:finance.invoices
 backend/routes/domains/finance.php:32:finance.expenses
 backend/routes/domains/finance.php:49:reports.financial

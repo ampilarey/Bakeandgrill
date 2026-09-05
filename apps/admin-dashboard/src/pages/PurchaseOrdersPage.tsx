@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, type Purchase, type PurchaseSuggestions, type Supplier } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -15,9 +15,25 @@ type ManualPoLine = {
   selection: InventoryItemSelection | null;
   quantity: string;
   unit_cost: string;
+  /** '' means bought loose, in the item's own unit. */
+  packId: string;
+  /** Packs defined for the picked item, loaded when it is picked. */
+  packs: InventoryPurchaseUnit[];
 };
 
-const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0' });
+const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [] });
+
+/** The pack chosen on a line, if any. */
+function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
+  if (!line.packId) return null;
+  return line.packs.find((p) => String(p.id) === line.packId) ?? null;
+}
+
+/** How many of the item's own unit one of the chosen packs holds. */
+function packSize(line: ManualPoLine): number {
+  const pack = linePack(line);
+  return pack ? Number(pack.base_units) : 1;
+}
 
 /**
  * What a line costs, or null when it is not yet a real line.
@@ -25,6 +41,10 @@ const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', u
  * Null rather than zero on purpose: a line with no item picked, or a
  * half-typed number, is unknown rather than free, and showing MVR 0.00 for it
  * would quietly understate the order total sitting right below.
+ *
+ * The quantity counts packs when one is chosen, and the cost is the price of a
+ * pack, so this multiplication is the money either way. The conversion to the
+ * item's own unit is a separate question, answered by `manualLineBase`.
  */
 function manualLineTotal(line: ManualPoLine): number | null {
   if (!line.selection) return null;
@@ -32,6 +52,22 @@ function manualLineTotal(line: ManualPoLine): number | null {
   const cost = parseFloat(line.unit_cost);
   if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(cost) || cost < 0) return null;
   return qty * cost;
+}
+
+/**
+ * What the line puts on the shelf and what one of them costs.
+ *
+ * One case at MVR 415, with a case holding 210, is 210 pieces at MVR 1.976190.
+ * The per-unit figure is derived from the total rather than the other way
+ * round, matching the server, so the preview cannot promise a different price
+ * from the one that gets stored.
+ */
+function manualLineBase(line: ManualPoLine): { quantity: number; unitCost: number } | null {
+  const total = manualLineTotal(line);
+  if (total === null) return null;
+  const qty = parseFloat(line.quantity) * packSize(line);
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  return { quantity: qty, unitCost: total / qty };
 }
 
 const lineLabelStyle: React.CSSProperties = {
@@ -136,6 +172,27 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     } catch (e) { setManualPoError((e as Error).message); }
   };
 
+  /**
+   * Load the packs defined for a line's item.
+   *
+   * Quiet on failure: a missing pack list means the line falls back to the
+   * item's own unit, which is exactly how every line worked before packs
+   * existed. Blocking a purchase over it would be the wrong trade.
+   */
+  const loadPacksFor = async (idx: number, itemId: number) => {
+    try {
+      const res = await getPurchaseUnits(itemId);
+      setManualPoForm((f) => ({
+        ...f,
+        lines: f.lines.map((l, i) => (
+          i === idx && l.selection?.item.id === itemId ? { ...l, packs: res.purchase_units } : l
+        )),
+      }));
+    } catch {
+      /* buy it loose */
+    }
+  };
+
   const handleCreateManualPo = async () => {
     const sellerName = manualPoForm.supplier_name_text.trim();
     if (!sellerName) {
@@ -152,11 +209,14 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         return {
           inventory_item_id: item.id,
           name: item.name,
+          // In packs when one is chosen; the server does the conversion, so
+          // the stored figures cannot disagree with the preview above.
           quantity: qty,
           unit_cost: cost,
+          ...(l.packId ? { purchase_unit_id: Number(l.packId) } : {}),
         };
       })
-      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number }[];
+      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number }[];
     if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
     setManualPoSaving(true); setManualPoError('');
     try {
@@ -755,12 +815,42 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     lines: f.lines.map((l, i) => i === idx ? {
                       ...l,
                       selection: sel,
+                      // A new item's packs are its own; keep neither the old
+                      // choice nor the old list, or a case of eggs could end up
+                      // multiplying a sack of flour.
+                      packId: '',
+                      packs: [],
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
                     } : l),
                   }));
+                  if (sel) void loadPacksFor(idx, sel.item.id);
                 }}
                 placeholder="Search inventory item…"
               />
+              {/* How it is bought. Only shown once the item has packs defined,
+                  so a line for something you buy loose stays two boxes. */}
+              {line.packs.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <label htmlFor={`manual-po-pack-${idx}`} style={lineLabelStyle}>Bought as</label>
+                  <select
+                    id={`manual-po-pack-${idx}`}
+                    aria-label={`Pack for item ${idx + 1}`}
+                    value={line.packId}
+                    onChange={(e) => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, packId: e.target.value } : l),
+                    }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                  >
+                    <option value="">Loose ({line.selection?.item.unit})</option>
+                    {line.packs.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {Number(p.base_units)} {line.selection?.item.unit}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {/* Labels above the boxes, not placeholders inside them: a
                   placeholder is gone the moment you type, so a filled-in line
                   used to be two unlabelled numbers. The quantity carries the
@@ -768,7 +858,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <div>
                   <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>
-                    Quantity{line.selection ? ` (${line.selection.item.unit})` : ''}
+                    {linePack(line)
+                      ? `Quantity (${linePack(line)!.name.toLowerCase()})`
+                      : `Quantity${line.selection ? ` (${line.selection.item.unit})` : ''}`}
                   </label>
                   <input id={`manual-po-qty-${idx}`} type="number" min="0.001" step="any"
                     aria-label={`Quantity for item ${idx + 1}`}
@@ -778,7 +870,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 </div>
                 <div>
                   <label htmlFor={`manual-po-cost-${idx}`} style={lineLabelStyle}>
-                    Unit cost (MVR{line.selection ? ` per ${line.selection.item.unit}` : ''})
+                    {linePack(line)
+                      ? `Price per ${linePack(line)!.name.toLowerCase()} (MVR)`
+                      : `Unit cost (MVR${line.selection ? ` per ${line.selection.item.unit}` : ''})`}
                   </label>
                   <input id={`manual-po-cost-${idx}`} type="number" min="0" step="0.01"
                     aria-label={`Unit cost for item ${idx + 1}`}
@@ -787,6 +881,18 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
+              {/* What this line puts on the shelf and what one of them costs.
+                  The number the owner asked for: buy a case, see the price of
+                  an egg, before saving rather than after. */}
+              {linePack(line) && manualLineBase(line) !== null && (
+                <p data-testid={`manual-po-conversion-${idx}`} style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '8px 0 0', lineHeight: 1.45 }}>
+                  Adds <strong style={{ color: 'var(--color-text)' }}>
+                    {Number(manualLineBase(line)!.quantity.toFixed(3))} {line.selection?.item.unit}
+                  </strong>{' '}to stock, at <strong style={{ color: 'var(--color-text)' }}>
+                    MVR {manualLineBase(line)!.unitCost.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}
+                  </strong>{' '}per {line.selection?.item.unit}.
+                </p>
+              )}
               {/* What this line costs, so a slip in either box is visible here
                   rather than in the total after the order is already saved. */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 12 }}>

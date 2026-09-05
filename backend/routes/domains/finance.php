@@ -109,6 +109,21 @@ Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('unit
     Route::delete('/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'destroyConversion']);
 });
 
+/*
+ * The packs an item is bought in — a Tray of 30 eggs, a Case of 210.
+ *
+ * Reading them is what the buying screen needs to offer a pack picker, so
+ * whoever can raise a purchase order can list them. Defining them is stock
+ * setup, so that stays with inventory.manage.
+ */
+Route::middleware(['auth:sanctum', 'permission.any:inventory.manage,suppliers.purchases'])
+    ->get('/inventory/{itemId}/purchase-units', [App\Http\Controllers\Api\InventoryConfigController::class, 'indexPurchaseUnits']);
+
+Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->group(function () {
+    Route::post('/inventory/{itemId}/purchase-units', [App\Http\Controllers\Api\InventoryConfigController::class, 'storePurchaseUnit']);
+    Route::delete('/inventory/{itemId}/purchase-units/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'destroyPurchaseUnit']);
+});
+
 // ─── Forecasting ───────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('forecasts')->group(function () {
     Route::get('/revenue', [App\Http\Controllers\Api\ForecastController::class, 'revenueForecast']);

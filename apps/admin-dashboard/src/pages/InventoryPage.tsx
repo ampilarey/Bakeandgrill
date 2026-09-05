@@ -16,9 +16,11 @@ import {
   getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
+  getPurchaseUnits, createPurchaseUnit, deletePurchaseUnit,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
   type StockMovementRow, type Supplier,
+  type InventoryPurchaseUnit,
 } from '../api';
 
 // Waste used to be its own sidebar entry. It is a stock question — what left
@@ -77,6 +79,62 @@ export default function InventoryPage() {
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  /*
+   * Pack sizes: how an item is bought, as opposed to how it is counted. Eggs
+   * are counted in pieces and bought by the tray or the case. Defining them
+   * here is what lets a purchase say "1 case" and have the shelf gain 210.
+   */
+  const [packsItem, setPacksItem] = useState<InventoryItem | null>(null);
+  const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
+  const [packsLoading, setPacksLoading] = useState(false);
+  const [packsError, setPacksError] = useState('');
+  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '' });
+  const [packSaving, setPackSaving] = useState(false);
+
+  const openPacks = async (item: InventoryItem) => {
+    setPacksItem(item);
+    setPacks([]);
+    setPacksError('');
+    setPackForm({ name: '', qty: '', ofPackId: '' });
+    setPacksLoading(true);
+    try {
+      const res = await getPurchaseUnits(item.id);
+      setPacks(res.purchase_units);
+    } catch (e) { setPacksError((e as Error).message); }
+    finally { setPacksLoading(false); }
+  };
+
+  const savePack = async () => {
+    if (!packsItem) return;
+    const name = packForm.name.trim();
+    const qty = parseFloat(packForm.qty);
+    if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return; }
+    setPackSaving(true);
+    setPacksError('');
+    try {
+      await createPurchaseUnit(packsItem.id, packForm.ofPackId
+        // "A case is 7 trays" — how a box is actually described. The server
+        // resolves it to the base unit before storing.
+        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty }
+        : { name, base_units: qty });
+      const res = await getPurchaseUnits(packsItem.id);
+      setPacks(res.purchase_units);
+      setPackForm({ name: '', qty: '', ofPackId: '' });
+    } catch (e) { setPacksError((e as Error).message); }
+    finally { setPackSaving(false); }
+  };
+
+  const removePack = async (id: number) => {
+    if (!packsItem) return;
+    setPackSaving(true);
+    try {
+      await deletePurchaseUnit(packsItem.id, id);
+      setPacks((p) => p.filter((x) => x.id !== id));
+    } catch (e) { setPacksError((e as Error).message); }
+    finally { setPackSaving(false); }
+  };
+
   const [ledgerItem, setLedgerItem] = useState<InventoryItem | null>(null);
   const [ledgerRows, setLedgerRows] = useState<StockMovementRow[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
@@ -575,6 +633,9 @@ export default function InventoryPage() {
                           )}
                           <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
                           <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
+                          {canManage && (
+                            <Btn small variant="secondary" onClick={() => void openPacks(item)} title="Pack sizes — how you buy this">📦</Btn>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -697,6 +758,78 @@ export default function InventoryPage() {
           <ModalActions>
             <Btn variant="secondary" onClick={() => setAdjustItem(null)}>Cancel</Btn>
             <Btn onClick={handleAdjust} disabled={adjSaving}>{adjSaving ? 'Saving…' : 'Save Adjustment'}</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* ── Pack sizes: how you buy it ── */}
+      {packsItem && (
+        <Modal title={`Pack sizes — ${packsItem.name}`} onClose={() => setPacksItem(null)} maxWidth={520}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{packsItem.unit}</strong>.
+            Add the packs you actually buy, and a purchase order can say “1 case” while the shelf gains
+            the right number and the price per {packsItem.unit} works itself out.
+          </p>
+          {packsError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{packsError}</p>}
+
+          {packsLoading ? <TableSkeleton rows={2} cols={2} /> : packs.length === 0 ? (
+            <EmptyState message={`No packs yet — this is bought loose, by the ${packsItem.unit}.`} />
+          ) : (
+            <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+              {packs.map((p) => (
+                <div key={p.id} data-testid={`pack-row-${p.id}`} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                  border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 12px',
+                }}>
+                  <span style={{ fontSize: 13 }}>
+                    <strong>{p.name}</strong>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>
+                      {' '}= {Number(p.base_units)} {packsItem.unit}
+                    </span>
+                  </span>
+                  <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <input
+              aria-label="Pack name"
+              placeholder="Name, e.g. Tray or Case"
+              value={packForm.name}
+              onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
+              style={S.input}
+            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
+              <input
+                aria-label="Amount in the pack"
+                type="number"
+                min="0.000001"
+                step="any"
+                placeholder="30"
+                value={packForm.qty}
+                onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
+                style={{ ...S.input, width: 100 }}
+              />
+              {/* A case is 7 trays. Defining a big pack from a small one is how
+                  people describe a box, and beats multiplying it out by hand. */}
+              <select
+                aria-label="Measured in"
+                value={packForm.ofPackId}
+                onChange={(e) => setPackForm((f) => ({ ...f, ofPackId: e.target.value }))}
+                style={{ ...S.select, width: 'auto', minWidth: 130 }}
+              >
+                <option value="">{packsItem.unit}</option>
+                {packs.map((p) => <option key={p.id} value={p.id}>{p.name.toLowerCase()}</option>)}
+              </select>
+            </div>
+          </div>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setPacksItem(null)}>Close</Btn>
+            <Btn onClick={() => void savePack()} disabled={packSaving}>{packSaving ? 'Saving…' : 'Add pack'}</Btn>
           </ModalActions>
         </Modal>
       )}

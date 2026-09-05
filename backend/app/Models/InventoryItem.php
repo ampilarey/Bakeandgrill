@@ -45,4 +45,15 @@ class InventoryItem extends Model
     {
         return $this->belongsTo(Supplier::class, 'preferred_supplier_id');
     }
+
+    /**
+     * The packs this is bought in — a Tray of 30, a Case of 210.
+     *
+     * Smallest first, so a picker reads from the loose unit upwards rather
+     * than in whatever order somebody happened to add them.
+     */
+    public function purchaseUnits(): HasMany
+    {
+        return $this->hasMany(InventoryPurchaseUnit::class)->orderBy('base_units');
+    }
 }

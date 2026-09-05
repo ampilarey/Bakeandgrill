@@ -569,6 +569,40 @@ export async function deleteUnitConversion(id: number): Promise<void> {
   await req(`/unit-conversions/${id}`, { method: 'DELETE' });
 }
 
+// ── Purchase units: the packs an item is bought in ───────────────────────────
+
+/**
+ * A way an item is bought. `base_units` is how many of the item's own unit are
+ * inside one — an egg counted in pieces has a Tray of 30 and a Case of 210.
+ *
+ * Separate from unit conversions above, which are global by unit name and so
+ * can only hold one meaning for "case" across the whole shop.
+ */
+export interface InventoryPurchaseUnit {
+  id: number;
+  name: string;
+  base_units: number | string;
+}
+
+export async function getPurchaseUnits(itemId: number): Promise<{ base_unit: string; purchase_units: InventoryPurchaseUnit[] }> {
+  return req(`/inventory/${itemId}/purchase-units`);
+}
+
+/**
+ * Define a pack, either by how many base units it holds, or as a multiple of a
+ * pack already defined ("a case is 7 trays"), which is how people describe a box.
+ */
+export async function createPurchaseUnit(
+  itemId: number,
+  data: { name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number },
+): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
+  return req(`/inventory/${itemId}/purchase-units`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deletePurchaseUnit(itemId: number, id: number): Promise<void> {
+  await req(`/inventory/${itemId}/purchase-units/${id}`, { method: 'DELETE' });
+}
+
 // ── Inventory price history & cheapest supplier ───────────────────────────────
 
 export interface InventoryPriceHistoryEntry {

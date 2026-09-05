@@ -47,8 +47,13 @@ class StorePurchaseRequest extends FormRequest
             // Required so POS/admin immediate receives actually update stock.
             'items.*.inventory_item_id' => 'required|integer|exists:inventory_items,id',
             'items.*.name' => 'nullable|string|max:255',
-            'items.*.quantity' => 'required|numeric|min:0.001',
+            // With a pack, the quantity counts packs and the cost is per pack.
+            // Without one, both are in the item's own unit, as they always were.
+            'items.*.quantity' => 'required|numeric|min:0.000001',
             'items.*.unit_cost' => 'required|numeric|min:0',
+            // Checked against the line's own item in PurchasePackResolver: one
+            // item's pack applied to another would multiply the wrong stock.
+            'items.*.purchase_unit_id' => 'nullable|integer|exists:inventory_purchase_units,id',
         ];
     }
 }

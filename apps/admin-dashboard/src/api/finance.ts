@@ -822,14 +822,25 @@ export async function createPurchase(data: {
   /** A supplier on file. Omit it and name the shop instead. */
   supplier_id?: number;
   /**
-   * Where it was bought, when that is not a supplier on file — the corner
-   * shop, the cash-and-carry. Either one identifies the seller; requiring a
-   * supplier record for a one-off leaves you with a register full of them.
+   * Who sold it, as a name. The server finds that supplier or creates it, so
+   * the shop on the corner ends up comparable on price like everyone else.
    */
   supplier_name_text?: string;
   purchase_date: string;
   notes?: string;
-  items: { inventory_item_id: number; name: string; quantity: number; unit_cost: number }[];
+  /**
+   * With `purchase_unit_id`, `quantity` counts packs and `unit_cost` is the
+   * price of one pack: one case of eggs at MVR 415. The server converts to the
+   * item's own unit, so stock lands as 210 eggs at MVR 1.976190 each. Without
+   * it, both are already in the item's unit.
+   */
+  items: {
+    inventory_item_id: number;
+    name: string;
+    quantity: number;
+    unit_cost: number;
+    purchase_unit_id?: number;
+  }[];
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases', { method: 'POST', body: JSON.stringify(data) });
 }

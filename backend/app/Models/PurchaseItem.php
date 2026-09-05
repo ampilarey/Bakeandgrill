@@ -17,6 +17,11 @@ class PurchaseItem extends Model
         'receive_status',
         'unit_cost',
         'total_cost',
+        // What was on the box: "2 Case" of 210 each. A snapshot, so the order
+        // still reads the same after somebody edits the pack size.
+        'pack_name',
+        'pack_size',
+        'pack_quantity',
         'received_at',
     ];
 
@@ -25,8 +30,12 @@ class PurchaseItem extends Model
         'inventory_item_id' => 'integer',
         'quantity' => 'decimal:4',
         'received_quantity' => 'decimal:4',
-        'unit_cost' => 'decimal:2',
+        // Six decimals: a case of 210 eggs at MVR 415 is 1.976190 each, and
+        // rounding that to money restates the case as MVR 415.80.
+        'unit_cost' => 'decimal:6',
         'total_cost' => 'decimal:2',
+        'pack_size' => 'decimal:6',
+        'pack_quantity' => 'decimal:6',
         'received_at' => 'datetime',
     ];
 

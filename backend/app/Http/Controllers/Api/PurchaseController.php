@@ -18,6 +18,7 @@ use App\Models\PurchaseReceipt;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
 use App\Services\AuditLogService;
+use App\Services\PurchasePackResolver;
 use App\Services\SupplierResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -282,15 +283,28 @@ class PurchaseController extends Controller
             $subtotal = 0;
 
             foreach ($validated['items'] as $itemPayload) {
-                $lineTotal = (float) $itemPayload['quantity'] * (float) $itemPayload['unit_cost'];
-                $subtotal += $lineTotal;
-
                 $inventoryItem = null;
                 if (!empty($itemPayload['inventory_item_id'])) {
                     $inventoryItem = InventoryItem::lockForUpdate()->find($itemPayload['inventory_item_id']);
                 }
 
-                $newQty = (float) $itemPayload['quantity'];
+                /*
+                 * A line may be priced by the pack — one case of eggs rather
+                 * than 210 eggs. Everything below this point works in the
+                 * item's own unit, so the conversion happens once, here.
+                 * Without a pack the numbers pass straight through.
+                 */
+                $priced = app(PurchasePackResolver::class)->resolve(
+                    $inventoryItem,
+                    (float) $itemPayload['quantity'],
+                    (float) $itemPayload['unit_cost'],
+                    $itemPayload['purchase_unit_id'] ?? null,
+                );
+
+                $lineTotal = $priced['total'];
+                $subtotal += $lineTotal;
+
+                $newQty = $priced['quantity'];
                 $lineStockIn = $shouldStockIn && $inventoryItem !== null;
                 // Non-stock lines on a received PO are marked complete (no inventory movement).
                 $lineReceived = $lineStockIn || ($shouldStockIn && $inventoryItem === null);
@@ -298,8 +312,13 @@ class PurchaseController extends Controller
                     'purchase_id' => $purchase->id,
                     'inventory_item_id' => $inventoryItem?->id,
                     'quantity' => $newQty,
-                    'unit_cost' => $itemPayload['unit_cost'],
+                    'unit_cost' => $priced['unit_cost'],
                     'total_cost' => $lineTotal,
+                    // What was on the box, kept as typed so the order still
+                    // reads "2 Case" a year after somebody edits the pack size.
+                    'pack_name' => $priced['pack_name'],
+                    'pack_size' => $priced['pack_size'],
+                    'pack_quantity' => $priced['pack_quantity'],
                     'received_quantity' => $lineReceived ? $newQty : 0,
                     'receive_status' => $lineReceived ? 'complete' : 'pending',
                 ]);
@@ -307,7 +326,10 @@ class PurchaseController extends Controller
                 if ($lineStockIn) {
                     $oldStock = max(0, (float) ($inventoryItem->current_stock ?? 0));
                     $oldCost = (float) ($inventoryItem->unit_cost ?? 0);
-                    $newCost = (float) $itemPayload['unit_cost'];
+                    // Per unit of stock, never the pack price: averaging the
+                    // cost of a whole case into the cost of one egg would
+                    // multiply this item's value by the size of the box.
+                    $newCost = $priced['unit_cost'];
 
                     $idempotencyKey = 'purchase:' . $purchase->id . ':item:' . $purchaseItem->id;
                     if (!StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
@@ -336,7 +358,7 @@ class PurchaseController extends Controller
                             'type' => 'purchase',
                             'quantity' => $newQty,
                             'balance_after' => $inventoryItem->current_stock,
-                            'unit_cost' => $costRecorded ? $itemPayload['unit_cost'] : null,
+                            'unit_cost' => $costRecorded ? $newCost : null,
                             'reference_type' => 'purchase',
                             'reference_id' => $purchase->id,
                             'notes' => $validated['notes'] ?? null,
@@ -353,7 +375,10 @@ class PurchaseController extends Controller
                                 'supplier_id' => $purchase->supplier_id,
                                 'inventory_item_id' => $inventoryItem->id,
                                 'purchase_id' => $purchase->id,
-                                'unit_price' => $itemPayload['unit_cost'],
+                                // Comparable with every other price for this
+                                // item, so a case and a loose dozen rank against
+                                // each other on what one egg actually cost.
+                                'unit_price' => $newCost,
                                 'unit' => $inventoryItem->unit,
                                 'recorded_at' => $purchase->purchase_date ?? now()->toDateString(),
                             ]);

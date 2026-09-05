@@ -36,11 +36,14 @@ vi.mock('../components/ItemSearch', () => ({
   ),
 }));
 
+const getPurchaseUnits = vi.fn();
+const createPurchase = vi.fn();
 vi.mock('../api', () => ({
+  getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
+  createPurchase: (...a: unknown[]) => createPurchase(...a),
   fetchPurchases: vi.fn().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
   fetchSuppliers: vi.fn().mockResolvedValue({ data: [{ id: 1, name: 'Island Wholesale', is_active: true }] }),
   getPurchaseSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
-  createPurchase: vi.fn().mockResolvedValue({ purchase: { id: 1 } }),
   createPurchaseFromSuggest: vi.fn(),
   approvePurchase: vi.fn(),
   rejectPurchase: vi.fn(),
@@ -57,7 +60,12 @@ async function openCard() {
 }
 
 describe('Create Manual Purchase Order card', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Most items are bought loose; the pack tests override this.
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'piece', purchase_units: [] });
+    createPurchase.mockResolvedValue({ purchase: { id: 1 } });
+  });
 
   it('labels both number boxes, so a filled-in line is still readable', async () => {
     await openCard();
@@ -141,5 +149,88 @@ describe('Create Manual Purchase Order card', () => {
 
     const options = document.getElementById('manual-po-seller-options')!;
     expect(within(options as HTMLElement).getByRole('option', { hidden: true })).toHaveValue('Island Wholesale');
+  });
+
+  /*
+   * Packs. Owner, 2026-09-05: "when i buy 1 egg case, its 7 tray, each tray 30
+   * egg, so total 210 egg, automatically calculate unit price for each egg".
+   */
+
+  it('offers no pack picker for something bought loose', async () => {
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(flour.id));
+    expect(screen.queryByLabelText('Pack for item 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Quantity (kg)')).toBeInTheDocument();
+  });
+
+  it('lets you buy by the case and works out the price of one egg', async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg',
+      purchase_units: [
+        { id: 5, name: 'Tray', base_units: 30 },
+        { id: 9, name: 'Case', base_units: 210 },
+      ],
+    });
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    const picker = await screen.findByLabelText('Pack for item 1');
+    fireEvent.change(picker, { target: { value: '9' } });
+
+    // The boxes now say what they mean in pack terms.
+    expect(await screen.findByText('Quantity (case)')).toBeInTheDocument();
+    expect(screen.getByText('Price per case (MVR)')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '415' } });
+
+    // 210 on the shelf, and 415 / 210 = 1.97619 per egg.
+    const preview = await screen.findByTestId('manual-po-conversion-0');
+    expect(preview).toHaveTextContent('210 kg');
+    expect(preview).toHaveTextContent('MVR 1.9762');
+
+    // The money is the pack arithmetic, untouched by the division.
+    expect(screen.getByTestId('manual-po-line-total-0')).toHaveTextContent('MVR 415.00');
+    expect(screen.getByTestId('manual-po-order-total')).toHaveTextContent('MVR 415.00');
+  });
+
+  it('sends the pack to the server rather than converting behind its back', async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg',
+      purchase_units: [{ id: 9, name: 'Case', base_units: 210 }],
+    });
+    await openCard();
+
+    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Pack for item 1'), { target: { value: '9' } });
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '415' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    const payload = createPurchase.mock.calls[0][0] as { items: Record<string, unknown>[] };
+    // Packs and the pack price, exactly as typed. One authority for the maths.
+    expect(payload.items[0]).toMatchObject({ quantity: 2, unit_cost: 415, purchase_unit_id: 9 });
+  });
+
+  it('drops the chosen pack when the item changes', async () => {
+    // A case of eggs applied to a sack of flour would multiply the wrong stock.
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg',
+      purchase_units: [{ id: 9, name: 'Case', base_units: 210 }],
+    });
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Pack for item 1'), { target: { value: '9' } });
+    await screen.findByText('Quantity (case)');
+
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [] });
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    await waitFor(() => expect(screen.queryByLabelText('Pack for item 1')).not.toBeInTheDocument());
+    expect(screen.getByText('Quantity (kg)')).toBeInTheDocument();
   });
 });
