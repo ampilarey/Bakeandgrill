@@ -840,6 +840,12 @@ export async function createPurchase(data: {
     quantity: number;
     unit_cost: number;
     purchase_unit_id?: number;
+    /**
+     * Which brand this purchase was. Recorded against the line and carried
+     * into price history, so brands can be compared on price without the
+     * stock count being split between them.
+     */
+    brand?: string;
   }[];
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases', { method: 'POST', body: JSON.stringify(data) });

@@ -365,4 +365,60 @@ describe('Create Manual Purchase Order card', () => {
 
     expect(screen.queryByRole('button', { name: '+ Item not on the list' })).not.toBeInTheDocument();
   });
+
+  /*
+   * Brand. Owner: "egg has many brand i mean company logo. And different days
+   * different brands has different prices. So need to record i bought today
+   * egg brand a. Yesterday b".
+   */
+
+  it('records the brand on the line, suggesting ones bought before', async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg', purchase_units: [], brands: ['Brand A', 'Brand B'],
+    });
+    await openCard();
+    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    const brand = await screen.findByLabelText('Brand for item 1');
+    // Past brands are offered, not imposed.
+    const options = document.getElementById('manual-po-brand-options-0')!;
+    expect(options.querySelectorAll('option')).toHaveLength(2);
+
+    fireEvent.change(brand, { target: { value: 'Brand C' } });
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '2.1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    const payload = createPurchase.mock.calls[0][0] as { items: Record<string, unknown>[] };
+    expect(payload.items[0]).toMatchObject({ brand: 'Brand C' });
+  });
+
+  it('leaves brand off entirely when nothing was typed', async () => {
+    // Plenty of things have no brand worth recording.
+    await openCard();
+    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    fireEvent.click(screen.getByText('pick-flour'));
+    await screen.findByLabelText('Brand for item 1');
+    fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
+
+    await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    const payload = createPurchase.mock.calls[0][0] as { items: Record<string, unknown>[] };
+    expect(payload.items[0]).not.toHaveProperty('brand');
+  });
+
+  it('clears the brand and its suggestions when the item changes', async () => {
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [], brands: ['Brand A'] });
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Brand for item 1'), { target: { value: 'Brand A' } });
+
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [], brands: [] });
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    await waitFor(() => expect(screen.getByLabelText('Brand for item 1')).toHaveValue(''));
+  });
 });

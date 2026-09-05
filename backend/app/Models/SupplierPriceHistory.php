@@ -13,6 +13,9 @@ class SupplierPriceHistory extends Model
 
     protected $fillable = [
         'supplier_id', 'inventory_item_id', 'purchase_id', 'unit_price', 'unit', 'recorded_at',
+        // Carried from the purchase line, so "what does each brand cost" is
+        // answerable from the one table every price comparison already reads.
+        'brand',
     ];
 
     protected $casts = ['recorded_at' => 'date'];

@@ -43,10 +43,15 @@ type ManualPoLine = {
    * are all the inventory record needs; everything else has a sane default.
    */
   newItem: { name: string; unit: string } | null;
+  /** Which brand this purchase is, free text. */
+  brand: string;
+  /** Brands this item has been bought as before, offered as suggestions. */
+  brands: string[];
 };
 
 const blankManualLine = (): ManualPoLine => ({
-  selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], newPackQty: '', newItem: null,
+  selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], newPackQty: '',
+  newItem: null, brand: '', brands: [],
 });
 
 /** The pack the typed unit names, if the item has one by that name. */
@@ -240,7 +245,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       setManualPoForm((f) => ({
         ...f,
         lines: f.lines.map((l, i) => (
-          i === idx && l.selection?.item.id === itemId ? { ...l, packs: res.purchase_units } : l
+          i === idx && l.selection?.item.id === itemId
+            ? { ...l, packs: res.purchase_units, brands: res.brands ?? [] }
+            : l
         )),
       }));
     } catch {
@@ -302,7 +309,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       setManualPoForm((f) => ({
         ...f,
         lines: f.lines.map((l, i) => i === idx
-          ? { ...l, selection: { id: item.id, label: item.name, item }, newItem: null, packs: [], unitText: '' }
+          ? { ...l, selection: { id: item.id, label: item.name, item }, newItem: null, packs: [], unitText: '', brand: '', brands: [] }
           : l),
       }));
     } catch (e) { setManualPoError((e as Error).message); }
@@ -330,6 +337,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           quantity: qty,
           unit_cost: cost,
           ...(linePack(l) ? { purchase_unit_id: linePack(l)!.id } : {}),
+          ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
         };
       })
       .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number }[];
@@ -953,6 +961,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       packs: [],
                       newPackQty: '',
                       newItem: null,
+                      // Another item's brands are not this one's.
+                      brand: '',
+                      brands: [],
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
                     } : l),
                   }));
@@ -1020,6 +1031,31 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: null } : l),
                     }))}>Cancel</Btn>
                   </div>
+                </div>
+              )}
+              {/* Which brand this one was. Free text with the brands this item
+                  has been bought as before: an egg is an egg on the shelf, so
+                  the count stays one number, but the price moves brand to
+                  brand and that is worth a record. */}
+              {line.selection && (
+                <div style={{ marginTop: 8 }}>
+                  <label htmlFor={`manual-po-brand-${idx}`} style={lineLabelStyle}>Brand (optional)</label>
+                  <input
+                    id={`manual-po-brand-${idx}`}
+                    aria-label={`Brand for item ${idx + 1}`}
+                    list={`manual-po-brand-options-${idx}`}
+                    autoComplete="off"
+                    placeholder={line.brands[0] ? `e.g. ${line.brands[0]}` : 'Whose one is it'}
+                    value={line.brand}
+                    onChange={(e) => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, brand: e.target.value } : l),
+                    }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                  <datalist id={`manual-po-brand-options-${idx}`}>
+                    {line.brands.map((b) => <option key={b} value={b} />)}
+                  </datalist>
                 </div>
               )}
               {/* Labels above the boxes, not placeholders inside them: a

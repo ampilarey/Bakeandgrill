@@ -319,6 +319,9 @@ class PurchaseController extends Controller
                     'pack_name' => $priced['pack_name'],
                     'pack_size' => $priced['pack_size'],
                     'pack_quantity' => $priced['pack_quantity'],
+                    'brand' => isset($itemPayload['brand']) && trim((string) $itemPayload['brand']) !== ''
+                        ? trim((string) $itemPayload['brand'])
+                        : null,
                     'received_quantity' => $lineReceived ? $newQty : 0,
                     'receive_status' => $lineReceived ? 'complete' : 'pending',
                 ]);
@@ -380,6 +383,9 @@ class PurchaseController extends Controller
                                 // each other on what one egg actually cost.
                                 'unit_price' => $newCost,
                                 'unit' => $inventoryItem->unit,
+                                // So a price comparison can separate brands
+                                // rather than averaging them into one number.
+                                'brand' => $purchaseItem->brand,
                                 'recorded_at' => $purchase->purchase_date ?? now()->toDateString(),
                             ]);
                         }

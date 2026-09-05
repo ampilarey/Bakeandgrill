@@ -54,6 +54,9 @@ class StorePurchaseRequest extends FormRequest
             // Checked against the line's own item in PurchasePackResolver: one
             // item's pack applied to another would multiply the wrong stock.
             'items.*.purchase_unit_id' => 'nullable|integer|exists:inventory_purchase_units,id',
+            // Free text: brands come and go, and a register of them would be
+            // one more list to maintain for no gain.
+            'items.*.brand' => 'nullable|string|max:120',
         ];
     }
 }

@@ -601,7 +601,12 @@ export interface InventoryPurchaseUnit {
   base_units: number | string;
 }
 
-export async function getPurchaseUnits(itemId: number): Promise<{ base_unit: string; purchase_units: InventoryPurchaseUnit[] }> {
+export async function getPurchaseUnits(itemId: number): Promise<{
+  base_unit: string;
+  purchase_units: InventoryPurchaseUnit[];
+  /** Brands this item has been bought as, most recent first. */
+  brands?: string[];
+}> {
   return req(`/inventory/${itemId}/purchase-units`);
 }
 

@@ -9,6 +9,7 @@ use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\UnitConversion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -100,7 +101,31 @@ class InventoryConfigController extends Controller
         return response()->json([
             'base_unit' => $item->unit,
             'purchase_units' => $item->purchaseUnits()->get(['id', 'name', 'base_units']),
+            // Brands this item has actually been bought as, so the buying
+            // screen can suggest them rather than asking anybody to remember
+            // last week's spelling. Most recent first: what you bought last is
+            // the likeliest thing you are buying now.
+            'brands' => $this->recentBrands($itemId),
         ]);
+    }
+
+    /**
+     * Distinct brands bought for an item, newest first.
+     *
+     * @return list<string>
+     */
+    private function recentBrands(int $itemId, int $limit = 25): array
+    {
+        return DB::table('purchase_items')
+            ->where('inventory_item_id', $itemId)
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->selectRaw('brand, MAX(id) as last_id')
+            ->groupBy('brand')
+            ->orderByDesc('last_id')
+            ->limit($limit)
+            ->pluck('brand')
+            ->all();
     }
 
     public function storePurchaseUnit(Request $request, int $itemId)

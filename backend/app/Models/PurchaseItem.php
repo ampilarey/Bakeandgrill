@@ -22,6 +22,9 @@ class PurchaseItem extends Model
         'pack_name',
         'pack_size',
         'pack_quantity',
+        // Which brand this purchase was. The item is one thing on the shelf;
+        // the brand is a fact about the buying, and about the price.
+        'brand',
         'received_at',
     ];
 
