@@ -43,7 +43,9 @@ vi.mock('../components/ItemSearch', () => ({
 const getPurchaseUnits = vi.fn();
 const createPurchase = vi.fn();
 const createPurchaseUnit = vi.fn();
+const createInventoryItem = vi.fn();
 vi.mock('../api', () => ({
+  createInventoryItem: (...a: unknown[]) => createInventoryItem(...a),
   getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
   createPurchaseUnit: (...a: unknown[]) => createPurchaseUnit(...a),
   createPurchase: (...a: unknown[]) => createPurchase(...a),
@@ -308,5 +310,58 @@ describe('Create Manual Purchase Order card', () => {
     await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toHaveValue(''));
     expect(screen.getByText('Unit cost (MVR per kg)')).toBeInTheDocument();
     expect(screen.queryByTestId('manual-po-conversion-0')).not.toBeInTheDocument();
+  });
+
+  /*
+   * Owner: "everything should be able to add if not listed, supplier, name,
+   * unit ect". Supplier and unit already create inline; the item was the last
+   * thing that forced you to abandon the order and go to another page.
+   */
+
+  it('offers to add an item that is not on the list, without leaving the order', async () => {
+    await openCard();
+
+    const add = screen.getByRole('button', { name: '+ Item not on the list' });
+    expect(add).toBeInTheDocument();
+    fireEvent.click(add);
+
+    expect(screen.getByLabelText('New item name for item 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('New item unit for item 1')).toBeInTheDocument();
+  });
+
+  it('creates the item and selects it on the line', async () => {
+    createInventoryItem.mockResolvedValue({
+      item: { id: 55, name: 'Egg', unit: 'piece', cost_per_unit: null, sku: null, quantity_on_hand: 0, reorder_level: null, category: null },
+    });
+    await openCard();
+    fireEvent.click(screen.getByRole('button', { name: '+ Item not on the list' }));
+    fireEvent.change(screen.getByLabelText('New item name for item 1'), { target: { value: 'Egg' } });
+    fireEvent.change(screen.getByLabelText('New item unit for item 1'), { target: { value: 'piece' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    // Stock starts at zero: this very purchase is what puts the first on the shelf.
+    await waitFor(() => expect(createInventoryItem).toHaveBeenCalledWith({
+      name: 'Egg', unit: 'piece', current_stock: 0, is_active: true,
+    }));
+    // Selected, so the unit box comes alive and you carry straight on.
+    await waitFor(() => expect(screen.getByLabelText('Unit for item 1')).toBeEnabled());
+    expect(screen.getByRole('option', { name: 'piece' })).toBeInTheDocument();
+  });
+
+  it('will not create an item with no unit to count it in', async () => {
+    await openCard();
+    fireEvent.click(screen.getByRole('button', { name: '+ Item not on the list' }));
+    fireEvent.change(screen.getByLabelText('New item name for item 1'), { target: { value: 'Egg' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save item' }));
+
+    expect(await screen.findByText(/Say what it is counted in/)).toBeInTheDocument();
+    expect(createInventoryItem).not.toHaveBeenCalled();
+  });
+
+  it('hides item creation from someone who cannot manage stock', async () => {
+    granted = ['suppliers.purchases'];
+    await openCard();
+
+    expect(screen.queryByRole('button', { name: '+ Item not on the list' })).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -28,10 +28,18 @@ type ManualPoLine = {
    * typing "1 case", so it can be created without leaving the order.
    */
   newPack: { name: string; qty: string } | null;
+  /**
+   * An inline "the item is not on the list" form.
+   *
+   * Buying something for the first time should not mean abandoning a
+   * half-typed order to go and create the item on another page. Name and unit
+   * are all the inventory record needs; everything else has a sane default.
+   */
+  newItem: { name: string; unit: string } | null;
 };
 
 const blankManualLine = (): ManualPoLine => ({
-  selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [], newPack: null,
+  selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [], newPack: null, newItem: null,
 });
 
 /** The pack chosen on a line, if any. */
@@ -80,6 +88,9 @@ function manualLineBase(line: ManualPoLine): { quantity: number; unitCost: numbe
   if (!Number.isFinite(qty) || qty <= 0) return null;
   return { quantity: qty, unitCost: total / qty };
 }
+
+/** Common units, offered as suggestions rather than imposed as a fixed list. */
+const UNIT_SUGGESTIONS = ['piece', 'kg', 'g', 'litre', 'ml', 'packet', 'bottle', 'box', 'dozen'];
 
 const lineLabelStyle: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
@@ -233,6 +244,36 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         ...f,
         lines: f.lines.map((l, i) => i === idx
           ? { ...l, packs, packId: String(res.purchase_unit.id), newPack: null }
+          : l),
+      }));
+    } catch (e) { setManualPoError((e as Error).message); }
+    finally { setManualPoSaving(false); }
+  };
+
+  /**
+   * Create the inventory item from the line and select it.
+   *
+   * Only a name and the unit it is counted in: stock starts at zero and the
+   * purchase being entered is what puts the first of it on the shelf, so
+   * asking for an opening quantity here would double-count it.
+   */
+  const saveNewItem = async (idx: number) => {
+    const line = manualPoForm.lines[idx];
+    if (!line?.newItem) return;
+
+    const name = line.newItem.name.trim();
+    const unit = line.newItem.unit.trim();
+    if (!name) { setManualPoError('Give the item a name.'); return; }
+    if (!unit) { setManualPoError('Say what it is counted in, like piece or kg.'); return; }
+
+    setManualPoSaving(true);
+    setManualPoError('');
+    try {
+      const { item } = await createInventoryItem({ name, unit, current_stock: 0, is_active: true });
+      setManualPoForm((f) => ({
+        ...f,
+        lines: f.lines.map((l, i) => i === idx
+          ? { ...l, selection: { id: item.id, label: item.name, item }, newItem: null, packs: [], packId: '' }
           : l),
       }));
     } catch (e) { setManualPoError((e as Error).message); }
@@ -827,6 +868,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <datalist id="manual-po-seller-options">
             {manualSuppliers.map((s) => <option key={s.id} value={s.name} />)}
           </datalist>
+          <datalist id="manual-po-unit-suggestions">
+            {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+          </datalist>
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
             A name you have not used before is added to your suppliers, so what you pay there
             starts building a price history.
@@ -867,6 +911,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       packId: '',
                       packs: [],
                       newPack: null,
+                      newItem: null,
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
                     } : l),
                   }));
@@ -874,6 +919,68 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 }}
                 placeholder="Search inventory item…"
               />
+              {/* Not on the list? Add it here. Always on screen rather than
+                  hidden behind an empty search result, because a control you
+                  have to fail a search to discover is a control nobody finds. */}
+              {!line.selection && canManageStock && !line.newItem && (
+                <button
+                  type="button"
+                  onClick={() => setManualPoForm((f) => ({
+                    ...f,
+                    lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: { name: '', unit: '' } } : l),
+                  }))}
+                  style={{
+                    marginTop: 6, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
+                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: 'var(--color-primary)',
+                  }}
+                >
+                  + Item not on the list
+                </button>
+              )}
+              {line.newItem && (
+                <div style={{
+                  marginTop: 8, padding: 10, borderRadius: 10,
+                  border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
+                }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
+                    Adds it to your inventory so you can buy it now and track it from here on.
+                  </p>
+                  <input
+                    aria-label={`New item name for item ${idx + 1}`}
+                    placeholder="Item name, e.g. Egg"
+                    value={line.newItem.name}
+                    onChange={(e) => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx && l.newItem
+                        ? { ...l, newItem: { ...l.newItem, name: e.target.value } } : l),
+                    }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <input
+                    aria-label={`New item unit for item ${idx + 1}`}
+                    list="manual-po-unit-suggestions"
+                    placeholder="Counted in — piece, kg, litre…"
+                    value={line.newItem.unit}
+                    onChange={(e) => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx && l.newItem
+                        ? { ...l, newItem: { ...l.newItem, unit: e.target.value } } : l),
+                    }))}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                    The smallest unit you count on the shelf. Packs like a case or tray
+                    are added after, in the unit box below.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <Btn small onClick={() => void saveNewItem(idx)} disabled={manualPoSaving}>Save item</Btn>
+                    <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: null } : l),
+                    }))}>Cancel</Btn>
+                  </div>
+                </div>
+              )}
               {/* Labels above the boxes, not placeholders inside them: a
                   placeholder is gone the moment you type, so a filled-in line
                   used to be two unlabelled numbers. The quantity carries the
