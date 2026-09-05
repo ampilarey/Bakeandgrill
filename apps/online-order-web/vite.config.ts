@@ -23,18 +23,31 @@ function stampServiceWorkerVersion() {
     name: 'stamp-sw-version',
     apply: 'build' as const,
     writeBundle(_options: unknown, bundle: Record<string, unknown>) {
-      const swPath = path.resolve(__dirname, 'dist/sw.js');
-      if (!fs.existsSync(swPath)) return;
       const buildId = crypto
         .createHash('sha256')
         .update(Object.keys(bundle).sort().join('|'))
         .digest('hex')
         .slice(0, 12);
-      const src = fs.readFileSync(swPath, 'utf8');
-      if (!src.includes('__SW_BUILD_ID__')) {
-        throw new Error('sw.js no longer contains __SW_BUILD_ID__ — the cache version would stop tracking the build.');
+
+      // sw.js is required to carry the token; index.html carries it too so a
+      // device can say out loud which build it is actually running.
+      const stamped = [
+        ['dist/sw.js', true],
+        ['dist/index.html', false],
+        ['dist/reset.js', false],
+      ] as const;
+      for (const [file, required] of stamped) {
+        const full = path.resolve(__dirname, file);
+        if (!fs.existsSync(full)) {
+          if (required) throw new Error(`${file} missing at writeBundle — the cache version cannot be stamped.`);
+          continue;
+        }
+        const src = fs.readFileSync(full, 'utf8');
+        if (required && !src.includes('__SW_BUILD_ID__')) {
+          throw new Error('sw.js no longer contains __SW_BUILD_ID__ — the cache version would stop tracking the build.');
+        }
+        fs.writeFileSync(full, src.replace(/__SW_BUILD_ID__/g, buildId));
       }
-      fs.writeFileSync(swPath, src.replace(/__SW_BUILD_ID__/g, buildId));
     },
   };
 }

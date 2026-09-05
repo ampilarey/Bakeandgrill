@@ -389,12 +389,25 @@ export function MenuPage() {
       loadMenu(true);
     };
     const onVisible = () => refreshIfStale();
+    /*
+     * The case that actually bit: a phone restores the page from the
+     * back/forward cache rather than loading it, so the app resumes mid-life
+     * with hours-old data and no reload ever happens. `pageshow` with
+     * `persisted` is the only event that reliably fires for that, and the
+     * check must not be skipped by the freshness guard — a restored page is
+     * stale by definition, whatever the clock says.
+     */
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) loadMenu(true); else refreshIfStale();
+    };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
+    window.addEventListener('pageshow', onPageShow);
     const timer = window.setInterval(refreshIfStale, MENU_REFRESH_TICK_MS);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
       window.clearInterval(timer);
     };
   }, []);

@@ -199,6 +199,32 @@ describe('an open menu does not go stale', () => {
     expect(calls.n).toBe(after);
   });
 
+  it('refetches when the phone restores the page from the back/forward cache', async () => {
+    // The case that actually bit: iOS resumes the page instead of loading it,
+    // so no reload happens and the freshness clock is meaningless — the data
+    // is from whenever the page was frozen.
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    await waitFor(() => expect(renderedNames()).toEqual(['Bondibai']));
+
+    const restore = new Event('pageshow') as Event & { persisted?: boolean };
+    Object.defineProperty(restore, 'persisted', { value: true });
+    window.dispatchEvent(restore);
+
+    await waitFor(() => expect(renderedNames().sort()).toEqual(['Bondibai', 'Valhomas (Hanakuri)']));
+  });
+
+  it('does not refetch on a normal page load', async () => {
+    // pageshow also fires on an ordinary load, moments after the first fetch.
+    render(<MemoryRouter><MenuPage /></MemoryRouter>);
+    await waitFor(() => expect(renderedNames()).toEqual(['Bondibai']));
+    const after = calls.n;
+
+    window.dispatchEvent(new Event('pageshow'));
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls.n).toBe(after);
+  });
+
   it('keeps the grid on screen while it refreshes', async () => {
     // A background refresh that blanks the list to a spinner would throw away
     // the customer's place in it.
