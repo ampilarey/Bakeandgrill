@@ -13,7 +13,22 @@
  * caches are cleaned up on activation.
  */
 
-const CACHE_VERSION = 'bg-pwa-v72';
+/*
+ * Replaced at build time with a hash of the emitted bundle (see the
+ * stampServiceWorkerVersion plugin in vite.config.ts). It must not go back to
+ * a hand-edited constant: a worker whose bytes never change is a worker the
+ * browser never replaces, and its caches then outlive every deploy.
+ */
+const CACHE_VERSION = 'bg-pwa-__SW_BUILD_ID__';
+
+/**
+ * How old a cached menu response may be and still be served after a failed
+ * fetch. Past this, an unreachable network is reported as a failure rather
+ * than answered with an old menu — the app can retry and say so, where a menu
+ * from hours ago just quietly lies about what is on sale.
+ */
+const STALE_API_MS = 10 * 60 * 1000;
+const CACHED_AT_HEADER = 'x-bg-cached-at';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
@@ -103,9 +118,9 @@ self.addEventListener('fetch', (event) => {
     // 1. Cross-origin: let the browser handle it.
     if (url.origin !== self.location.origin) return;
 
-    // 2. Cacheable menu API — network first, cache fallback.
+    // 2. Cacheable menu API — network first, cache fallback for offline only.
     if (isApiRequest(url) && isCacheableApi(url)) {
-        event.respondWith(networkFirst(request, API_CACHE));
+        event.respondWith(menuNetworkFirst(request, API_CACHE));
         return;
     }
 
@@ -143,6 +158,53 @@ async function networkFirst(request, cacheName) {
     } catch (e) {
         const cached = await cache.match(request);
         if (cached) return cached;
+        throw e;
+    }
+}
+
+/** Re-wrap a response so we can tell later how old the cached copy is. */
+async function withCacheStamp(response) {
+    const body = await response.clone().blob();
+    const headers = new Headers(response.headers);
+    headers.set(CACHED_AT_HEADER, String(Date.now()));
+    return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+    });
+}
+
+function cachedAgeMs(response) {
+    const stamped = Number(response.headers.get(CACHED_AT_HEADER));
+    // An entry from before stamping existed has no age we can trust; treat it
+    // as ancient rather than assume it is current.
+    return Number.isFinite(stamped) && stamped > 0 ? Date.now() - stamped : Infinity;
+}
+
+/**
+ * The menu, and only ever as fresh as we can honestly claim.
+ *
+ * Owner, 2026-09-05: an item added at 15:51 was missing from the installed app
+ * at 20:20 while the API had served it all afternoon. A network-first cache
+ * that falls back on *any* failure will, on a phone, quietly answer from a copy
+ * made hours ago and look exactly like a working menu.
+ *
+ * So the fallback is now for being offline, not for being unlucky: a genuinely
+ * offline device still gets the last menu it saw, a momentary blip online is
+ * covered by a recent copy, and an old copy while online is not served at all —
+ * the app is told the fetch failed and can retry and say so.
+ */
+async function menuNetworkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    try {
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok) cache.put(request, await withCacheStamp(fresh));
+        return fresh;
+    } catch (e) {
+        const cached = await cache.match(request);
+        if (!cached) throw e;
+        if (self.navigator.onLine === false) return cached;
+        if (cachedAgeMs(cached) <= STALE_API_MS) return cached;
         throw e;
     }
 }
