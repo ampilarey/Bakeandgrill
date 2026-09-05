@@ -14,6 +14,10 @@ import { PurchaseOrdersPage } from '../pages/PurchaseOrdersPage';
  */
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
+let granted = ['inventory.manage', 'suppliers.purchases'];
+vi.mock('../hooks/usePermissions', () => ({
+  useCurrentUserPermissions: () => ({ can: (s: string) => granted.includes(s), loading: false, user: null }),
+}));
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
 
 const flour = {
@@ -38,8 +42,10 @@ vi.mock('../components/ItemSearch', () => ({
 
 const getPurchaseUnits = vi.fn();
 const createPurchase = vi.fn();
+const createPurchaseUnit = vi.fn();
 vi.mock('../api', () => ({
   getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
+  createPurchaseUnit: (...a: unknown[]) => createPurchaseUnit(...a),
   createPurchase: (...a: unknown[]) => createPurchase(...a),
   fetchPurchases: vi.fn().mockResolvedValue({ data: [], meta: { current_page: 1, last_page: 1, total: 0 } }),
   fetchSuppliers: vi.fn().mockResolvedValue({ data: [{ id: 1, name: 'Island Wholesale', is_active: true }] }),
@@ -65,6 +71,7 @@ describe('Create Manual Purchase Order card', () => {
     // Most items are bought loose; the pack tests override this.
     getPurchaseUnits.mockResolvedValue({ base_unit: 'piece', purchase_units: [] });
     createPurchase.mockResolvedValue({ purchase: { id: 1 } });
+    granted = ['inventory.manage', 'suppliers.purchases'];
   });
 
   it('labels both number boxes, so a filled-in line is still readable', async () => {
@@ -156,13 +163,65 @@ describe('Create Manual Purchase Order card', () => {
    * egg, so total 210 egg, automatically calculate unit price for each egg".
    */
 
-  it('offers no pack picker for something bought loose', async () => {
+  it('shows the pack picker on every picked item, so the feature is findable', async () => {
+    /*
+     * It used to appear only for items that already had packs, which meant the
+     * only way to discover packs at all was an unlabelled icon on another page.
+     * The owner could not find it twice running. An empty picker that offers to
+     * create one is the whole point.
+     */
     await openCard();
     fireEvent.click(screen.getByText('pick-flour'));
 
     await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(flour.id));
-    expect(screen.queryByLabelText('Pack for item 1')).not.toBeInTheDocument();
+    const picker = await screen.findByLabelText('Pack for item 1');
+    expect(picker).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Loose — by the kg' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '+ Add a pack size…' })).toBeInTheDocument();
+    // Still priced by the loose unit until a pack is actually chosen.
     expect(screen.getByText('Quantity (kg)')).toBeInTheDocument();
+  });
+
+  it('defines a pack from the line itself and selects it', async () => {
+    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 42, name: 'Case', base_units: 210 } });
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    const picker = await screen.findByLabelText('Pack for item 1');
+    fireEvent.change(picker, { target: { value: '__new' } });
+
+    fireEvent.change(await screen.findByLabelText('New pack name for item 1'), { target: { value: 'Case' } });
+    fireEvent.change(screen.getByLabelText('New pack size for item 1'), { target: { value: '210' } });
+
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'kg', purchase_units: [{ id: 42, name: 'Case', base_units: 210 }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save pack' }));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(flour.id, { name: 'Case', base_units: 210 }));
+    // Chosen straight away, so you carry on typing rather than picking it.
+    expect(await screen.findByText('Quantity (case)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pack for item 1')).toHaveValue('42');
+  });
+
+  it('refuses a pack with no size rather than creating a meaningless one', async () => {
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+    fireEvent.change(await screen.findByLabelText('Pack for item 1'), { target: { value: '__new' } });
+    fireEvent.change(await screen.findByLabelText('New pack name for item 1'), { target: { value: 'Case' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save pack' }));
+
+    expect(await screen.findByText(/Say how many kg are in one Case/)).toBeInTheDocument();
+    expect(createPurchaseUnit).not.toHaveBeenCalled();
+  });
+
+  it('does not offer to create packs to someone who cannot manage stock', async () => {
+    granted = ['suppliers.purchases'];
+    await openCard();
+    fireEvent.click(screen.getByText('pick-flour'));
+
+    await screen.findByLabelText('Pack for item 1');
+    expect(screen.queryByRole('option', { name: '+ Add a pack size…' })).not.toBeInTheDocument();
   });
 
   it('lets you buy by the case and works out the price of one egg', async () => {
@@ -230,7 +289,11 @@ describe('Create Manual Purchase Order card', () => {
     getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [] });
     fireEvent.click(screen.getByText('pick-flour'));
 
-    await waitFor(() => expect(screen.queryByLabelText('Pack for item 1')).not.toBeInTheDocument());
-    expect(screen.getByText('Quantity (kg)')).toBeInTheDocument();
+    // The picker stays (it always shows for a picked item) but the choice is
+    // gone, so the line prices by the loose unit again rather than by a pack
+    // that belonged to the item you just replaced.
+    await waitFor(() => expect(screen.getByText('Quantity (kg)')).toBeInTheDocument());
+    expect(screen.getByLabelText('Pack for item 1')).toHaveValue('');
+    expect(screen.queryByTestId('manual-po-conversion-0')).not.toBeInTheDocument();
   });
 });

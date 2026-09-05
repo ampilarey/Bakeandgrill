@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
+import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { ScanSheet } from '../components/ScanSheet';
 import { countScannedItem } from '../utils/receivingScan';
 import { today } from '../utils/dateHelpers';
@@ -19,9 +20,19 @@ type ManualPoLine = {
   packId: string;
   /** Packs defined for the picked item, loaded when it is picked. */
   packs: InventoryPurchaseUnit[];
+  /**
+   * An inline "define a pack" form, open on this line.
+   *
+   * Packs can also be managed from Inventory, but nobody goes looking there
+   * while entering a purchase. The moment you need one is the moment you are
+   * typing "1 case", so it can be created without leaving the order.
+   */
+  newPack: { name: string; qty: string } | null;
 };
 
-const blankManualLine = (): ManualPoLine => ({ selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [] });
+const blankManualLine = (): ManualPoLine => ({
+  selection: null, quantity: '1', unit_cost: '0', packId: '', packs: [], newPack: null,
+});
 
 /** The pack chosen on a line, if any. */
 function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
@@ -98,6 +109,9 @@ const STATUS_OPTIONS = [
  */
 export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } = {}) {
   usePageTitle(embedded ? 'Purchasing · Purchase orders' : 'Purchase Orders');
+  // Defining a pack is stock setup, so only offer it to whoever may do that.
+  const { can } = useCurrentUserPermissions();
+  const canManageStock = can('inventory.manage');
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchases, setPurchases]         = useState<Purchase[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -191,6 +205,38 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     } catch {
       /* buy it loose */
     }
+  };
+
+  /**
+   * Define a pack from the purchase line and select it straight away.
+   *
+   * The alternative was a trip to Inventory, an unlabelled icon and a dialog,
+   * which is why nobody found this. Saving here leaves you exactly where you
+   * were, with the new pack chosen and the quantity boxes already relabelled.
+   */
+  const saveNewPack = async (idx: number) => {
+    const line = manualPoForm.lines[idx];
+    const item = line?.selection?.item;
+    if (!item || !line.newPack) return;
+
+    const name = line.newPack.name.trim();
+    const qty = parseFloat(line.newPack.qty);
+    if (!name) { setManualPoError('Give the pack a name, like Case or Tray.'); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { setManualPoError(`Say how many ${item.unit} are in one ${name || 'pack'}.`); return; }
+
+    setManualPoSaving(true);
+    setManualPoError('');
+    try {
+      const res = await createPurchaseUnit(item.id, { name, base_units: qty });
+      const packs = (await getPurchaseUnits(item.id)).purchase_units;
+      setManualPoForm((f) => ({
+        ...f,
+        lines: f.lines.map((l, i) => i === idx
+          ? { ...l, packs, packId: String(res.purchase_unit.id), newPack: null }
+          : l),
+      }));
+    } catch (e) { setManualPoError((e as Error).message); }
+    finally { setManualPoSaving(false); }
   };
 
   const handleCreateManualPo = async () => {
@@ -820,6 +866,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       // multiplying a sack of flour.
                       packId: '',
                       packs: [],
+                      newPack: null,
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
                     } : l),
                   }));
@@ -827,28 +874,88 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 }}
                 placeholder="Search inventory item…"
               />
-              {/* How it is bought. Only shown once the item has packs defined,
-                  so a line for something you buy loose stays two boxes. */}
-              {line.packs.length > 0 && (
+              {/* How it is bought. Shown for every picked item, not only ones
+                  that already have packs: an empty picker is what tells you
+                  the feature exists and offers to set it up here and now. */}
+              {line.selection && (
                 <div style={{ marginTop: 8 }}>
                   <label htmlFor={`manual-po-pack-${idx}`} style={lineLabelStyle}>Bought as</label>
                   <select
                     id={`manual-po-pack-${idx}`}
                     aria-label={`Pack for item ${idx + 1}`}
                     value={line.packId}
-                    onChange={(e) => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => i === idx ? { ...l, packId: e.target.value } : l),
-                    }))}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setManualPoForm((f) => ({
+                        ...f,
+                        lines: f.lines.map((l, i) => i === idx
+                          ? v === '__new'
+                            // Opening the form must not leave "+ Add a pack
+                            // size" selected, or the line would price as loose
+                            // while the box says otherwise.
+                            ? { ...l, packId: '', newPack: { name: '', qty: '' } }
+                            : { ...l, packId: v, newPack: null }
+                          : l),
+                      }));
+                    }}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
                   >
-                    <option value="">Loose ({line.selection?.item.unit})</option>
+                    <option value="">Loose — by the {line.selection.item.unit}</option>
                     {line.packs.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name} — {Number(p.base_units)} {line.selection?.item.unit}
                       </option>
                     ))}
+                    {canManageStock && <option value="__new">+ Add a pack size…</option>}
                   </select>
+
+                  {line.newPack && (
+                    <div style={{
+                      marginTop: 8, padding: 10, borderRadius: 10,
+                      border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
+                    }}>
+                      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
+                        A case of eggs, a sack of flour. Say what it is called and how
+                        many {line.selection.item.unit} are inside one.
+                      </p>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                          aria-label={`New pack name for item ${idx + 1}`}
+                          placeholder="Case"
+                          value={line.newPack.name}
+                          onChange={(e) => setManualPoForm((f) => ({
+                            ...f,
+                            lines: f.lines.map((l, i) => i === idx && l.newPack
+                              ? { ...l, newPack: { ...l.newPack, name: e.target.value } } : l),
+                          }))}
+                          style={{ flex: '1 1 110px', minWidth: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>=</span>
+                        <input
+                          aria-label={`New pack size for item ${idx + 1}`}
+                          type="number"
+                          min="0.000001"
+                          step="any"
+                          placeholder="210"
+                          value={line.newPack.qty}
+                          onChange={(e) => setManualPoForm((f) => ({
+                            ...f,
+                            lines: f.lines.map((l, i) => i === idx && l.newPack
+                              ? { ...l, newPack: { ...l.newPack, qty: e.target.value } } : l),
+                          }))}
+                          style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{line.selection.item.unit}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save pack</Btn>
+                        <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => i === idx ? { ...l, newPack: null } : l),
+                        }))}>Cancel</Btn>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Labels above the boxes, not placeholders inside them: a
