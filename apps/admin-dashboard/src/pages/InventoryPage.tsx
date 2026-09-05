@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
@@ -46,6 +47,7 @@ const S = {
 export default function InventoryPage() {
   usePageTitle('Inventory');
   const { can } = useCurrentUserPermissions();
+  const isMobile = useIsMobile();
   const canManage = can('inventory.manage');
   const canPrepared = can('menu.prepared_stock') || canManage;
   const canCategories = can('inventory.categories') || canManage;
@@ -201,6 +203,79 @@ export default function InventoryPage() {
     } catch (e) { setEditError((e as Error).message); }
     finally { setEditSaving(false); }
   };
+
+  /**
+   * The ± stepper, shown on both the desktop row and the mobile card.
+   *
+   * Bigger targets on a phone: 28px is fine for a mouse and awkward for a
+   * thumb, so the same control is drawn at 40 there.
+   */
+  const stepper = (item: InventoryItem, isLow: boolean, big = false) => {
+    const size = big ? 40 : 28;
+    const btn = (dir: -1 | 1): React.CSSProperties => ({
+      width: size, height: size, borderRadius: big ? 10 : 7,
+      border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer',
+      fontSize: big ? 20 : 16, fontWeight: 700, lineHeight: 1,
+      color: dir === -1 ? 'var(--color-danger)' : 'var(--color-success)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    });
+    const busy = quickAdjusting[item.id];
+    return (
+      <>
+        <button
+          onClick={() => quickAdjust(item, -1)}
+          disabled={busy || item.quantity_on_hand <= 0}
+          title="Remove 1"
+          aria-label={`Remove one ${item.name}`}
+          style={{ ...btn(-1), opacity: (busy || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
+        >−</button>
+        <span style={{
+          minWidth: big ? 56 : 32, textAlign: 'center', fontWeight: 700,
+          fontSize: big ? 18 : 13, color: isLow ? 'var(--color-danger)' : 'var(--color-text)',
+        }}>
+          {busy ? '…' : item.quantity_on_hand}
+        </span>
+        <button
+          onClick={() => quickAdjust(item, 1)}
+          disabled={busy}
+          title="Add 1"
+          aria-label={`Add one ${item.name}`}
+          style={{ ...btn(1), opacity: busy ? 0.4 : 1 }}
+        >+</button>
+      </>
+    );
+  };
+
+  /** Everything you can do to an item, in one place for both layouts. */
+  const itemActions = (item: InventoryItem) => (
+    <>
+      {canManage && (
+        <Btn small variant="secondary" onClick={() => {
+          setAdjustItem(item);
+          setAdjForm({ type: 'add', quantity: '', reason: '' });
+          setAdjError('');
+        }} title="Full adjust dialog">⚙</Btn>
+      )}
+      {canManage && (
+        <Btn
+          small
+          variant="secondary"
+          disabled={togglingRequestable[item.id]}
+          onClick={() => void toggleRequestable(item)}
+          title={item.requestable
+            ? 'On the staff request list — click to take it off'
+            : 'Off the staff request list — click to put it back'}
+          style={{ opacity: item.requestable ? 1 : 0.45 }}
+        >
+          🛒
+        </Btn>
+      )}
+      {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>}
+      <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
+      <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
+      {canManage && <Btn small variant="secondary" onClick={() => void openPacks(item)} title="Pack sizes — how you buy this">📦</Btn>}
+    </>
+  );
 
   const [ledgerItem, setLedgerItem] = useState<InventoryItem | null>(null);
   const [ledgerRows, setLedgerRows] = useState<StockMovementRow[]>([]);
@@ -627,6 +702,66 @@ export default function InventoryPage() {
             )}
           </div>
 
+          {/* On a phone the seven-column table forces a sideways scroll and
+              the action cell squeezes six buttons into a thumb's width, so the
+              same rows are drawn as cards. Both layouts share `stepper` and
+              `itemActions`, so what you can do never depends on the screen. */}
+          {isMobile ? (
+            loading ? (
+              <TableSkeleton rows={5} cols={2} />
+            ) : items.length === 0 ? (
+              <EmptyState message="No inventory items found." />
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {items.map((item) => {
+                  const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
+                  return (
+                    <article
+                      key={item.id}
+                      data-testid={`inventory-card-${item.id}`}
+                      style={{
+                        border: '1px solid var(--color-border)',
+                        borderLeft: `4px solid ${isLow ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                        borderRadius: 12, padding: '12px 14px', background: 'var(--color-surface)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>{item.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                            {[item.sku, item.category?.name].filter(Boolean).join(' · ') || 'No SKU'}
+                          </div>
+                        </div>
+                        {isLow && <Badge color="red">Low</Badge>}
+                      </div>
+
+                      {/* The number people came to see, at a size they can read. */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 10, marginTop: 12,
+                        flexWrap: 'wrap',
+                      }}>
+                        {canManage ? stepper(item, isLow, true) : (
+                          <span style={{ fontSize: 18, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                            {item.quantity_on_hand}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                          {item.unit}
+                          {item.reorder_level != null && (
+                            <span style={{ color: 'var(--color-text-muted)' }}> · reorder at {item.reorder_level}</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
+                        {itemActions(item)}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )
+          ) : (
           <TableCard stickyHead>
             {loading ? (
               <TableSkeleton rows={8} cols={7} />
@@ -658,54 +793,10 @@ export default function InventoryPage() {
                       </td>
                       <td style={TD}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {canManage ? (
-                          <>
-                          <button
-                            onClick={() => quickAdjust(item, -1)}
-                            disabled={quickAdjusting[item.id] || item.quantity_on_hand <= 0}
-                            title="Remove 1"
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: (quickAdjusting[item.id] || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
-                          >−</button>
-                          <span style={{ minWidth: 32, textAlign: 'center', fontSize: 13, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                            {quickAdjusting[item.id] ? '…' : item.quantity_on_hand}
-                          </span>
-                          <button
-                            onClick={() => quickAdjust(item, 1)}
-                            disabled={quickAdjusting[item.id]}
-                            title="Add 1"
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--color-success)', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: quickAdjusting[item.id] ? 0.4 : 1 }}
-                          >+</button>
-                          <Btn small variant="secondary" onClick={() => {
-                            setAdjustItem(item);
-                            setAdjForm({ type: 'add', quantity: '', reason: '' });
-                            setAdjError('');
-                          }} title="Full adjust dialog">⚙</Btn>
-                          </>
-                          ) : (
+                          {canManage ? stepper(item, isLow) : (
                             <span style={{ fontSize: 13, fontWeight: 700, color: isLow ? 'var(--color-danger)' : 'var(--color-text)' }}>{item.quantity_on_hand}</span>
                           )}
-                          {canManage && (
-                            <Btn
-                              small
-                              variant="secondary"
-                              disabled={togglingRequestable[item.id]}
-                              onClick={() => void toggleRequestable(item)}
-                              title={item.requestable
-                                ? 'On the staff request list — click to take it off'
-                                : 'Off the staff request list — click to put it back'}
-                              style={{ opacity: item.requestable ? 1 : 0.45 }}
-                            >
-                              🛒
-                            </Btn>
-                          )}
-                          {canManage && (
-                            <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>
-                          )}
-                          <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
-                          <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
-                          {canManage && (
-                            <Btn small variant="secondary" onClick={() => void openPacks(item)} title="Pack sizes — how you buy this">📦</Btn>
-                          )}
+                          {itemActions(item)}
                         </div>
                       </td>
                     </tr>
@@ -715,6 +806,7 @@ export default function InventoryPage() {
             </table>
             )}
           </TableCard>
+          )}
         </>
       )}
 
