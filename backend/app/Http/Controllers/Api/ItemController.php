@@ -111,7 +111,23 @@ class ItemController extends Controller
                 'platterGroups.allowedItems.item.variants',
                 'photos',
             ]);
-            $kitchenMenuResolver->scopeItemsForChannel($query, $channel);
+            /*
+             * Owner, 2026-09-05: an item vanished from the order app while
+             * still showing on the website menu, and nothing said why. Items
+             * this channel has switched off are now listed and marked
+             * unavailable instead of disappearing — the customer sees the dish
+             * exists, and `available_now: false` stops it reaching a cart.
+             *
+             * Catering keeps the hard filter: it is a separate wizard, and
+             * every non-catering item greyed out inside it would be noise.
+             * So does a caller passing `available_only` — asking for what can
+             * be ordered and getting back what cannot would be a plain lie.
+             */
+            $kitchenMenuResolver->scopeItemsForChannel(
+                $query,
+                $channel,
+                keepDisabled: $channel !== 'catering' && !$request->has('available_only'),
+            );
         } elseif ($isPosView) {
             // POS register only needs sellable items for the active order
             // type — skip the admin payload (channel grid, cost, stock).

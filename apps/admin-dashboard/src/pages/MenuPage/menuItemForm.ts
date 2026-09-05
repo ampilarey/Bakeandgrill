@@ -110,12 +110,20 @@ export function emptyVariantRow(): VariantRow {
   return { _key: String(Date.now() + Math.random()), name: '', price: 0, cost: null, sku: null, track_stock: false, stock_qty: 0, low_stock_threshold: 5, consumption_factor: 1, is_active: true, sort_order: 0 };
 }
 
+/**
+ * A channel with no row is off, not on.
+ *
+ * `KitchenMenuResolver::isItemVisibleForChannel` returns false when the row is
+ * missing, so an editor that showed those boxes ticked was describing an item
+ * the customer could not order — the state behind the owner's 2026-09-05 report
+ * that the website menu had an item the order app did not. Ticking here is a
+ * claim about what customers can do, so it has to match what they can do.
+ */
 function channelsFromItem(item: MenuItem): Record<string, boolean> {
   const base: Record<string, boolean> = {
-    dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false,
+    dine_in: false, takeaway: false, online_pickup: false, delivery: false, catering: false,
   };
-  if (!item.channel_availabilities?.length) return base;
-  for (const r of item.channel_availabilities) {
+  for (const r of item.channel_availabilities ?? []) {
     if (r.channel in base) base[r.channel] = r.is_enabled;
   }
   return base;

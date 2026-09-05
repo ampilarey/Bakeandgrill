@@ -3,6 +3,7 @@ import type { AdminItemSort, MenuCategory, MenuGroupRow, MenuItem, SnoozeUntil }
 import { Badge, Btn, Card, EmptyState, Spinner } from '../../components/SharedUI';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { menuItemMarginLabel, menuItemMarginLevel, MENU_MARGIN_COLORS } from '../../utils/menuMargin';
+import { channelWarning } from './channelState';
 import { ItemSnoozeControls } from './ItemSnoozeControls';
 
 type MenuItemTableProps = {
@@ -83,6 +84,25 @@ function Thumb({ item, size }: { item: MenuItem; size: number }) {
 
 function CateringTag() {
   return <span className="menu-item-tag menu-item-tag--catering">Catering menu</span>;
+}
+
+/**
+ * An item switched off for a channel looks identical to one that is on, so the
+ * owner's only clue was a customer not finding the dish. The tag says it on the
+ * row instead (see channelState.ts for why catering is excluded).
+ */
+function ChannelTag({ item }: { item: MenuItem }) {
+  const warning = channelWarning(item);
+  if (!warning) return null;
+  return (
+    <span
+      className={`menu-item-tag menu-item-tag--channel-off${warning.severe ? ' is-severe' : ''}`}
+      data-testid={`menu-item-channel-tag-${item.id}`}
+      title={warning.title}
+    >
+      {warning.label}
+    </span>
+  );
 }
 
 function MarginTag({ item }: { item: MenuItem }) {
@@ -364,6 +384,7 @@ export function MenuItemTable({
                       <div className="menu-item-name">
                         {item.name}
                         {isCateringItem(item) && <CateringTag />}
+                        <ChannelTag item={item} />
                         {canSeeCost && <MarginTag item={item} />}
                       </div>
                       <div className="menu-item-meta">
@@ -410,6 +431,7 @@ export function MenuItemTable({
                               <div className="menu-item-name">
                                 {item.name}
                                 {isCateringItem(item) && <CateringTag />}
+                                <ChannelTag item={item} />
                                 {canSeeCost && <MarginTag item={item} />}
                               </div>
                               {item.sku && <div className="menu-item-sku">{item.sku}</div>}

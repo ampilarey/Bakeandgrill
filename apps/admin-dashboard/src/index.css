@@ -5283,6 +5283,19 @@ work area is a single column that
   background: var(--color-warning-bg);
   border-color: var(--color-primary-light);
 }
+/* Switched off for a channel: visible to customers, orderable nowhere. */
+.menu-item-tag--channel-off {
+  color: var(--color-warning-strong);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-strong);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.menu-item-tag--channel-off.is-severe {
+  color: var(--color-danger-strong);
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-strong);
+}
 .menu-item-price {
   font-weight: 700;
   color: var(--color-primary);

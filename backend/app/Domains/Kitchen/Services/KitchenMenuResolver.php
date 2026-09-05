@@ -202,16 +202,32 @@ final class KitchenMenuResolver
     /**
      * Apply channel + kitchen rules to a public items query builder.
      */
+    /**
+     * @param bool $keepDisabled Return items this channel has switched off
+     *                           instead of dropping them, so the menu can show
+     *                           them as unavailable rather than pretending they
+     *                           do not exist. `ItemAvailabilityService::check`
+     *                           already answers `channel_unavailable` for these,
+     *                           and order creation still refuses them, so the
+     *                           only thing this changes is whether a customer
+     *                           can see that the dish is a thing you sell.
+     */
     public function scopeItemsForChannel(
         \Illuminate\Database\Eloquent\Builder $query,
         string $channel,
         ?Carbon $at = null,
         bool $ignoreDeliveryGate = false,
+        bool $keepDisabled = false,
     ): void {
         $at ??= now();
 
         $activeIds = $this->activeMenuGroupIds();
 
+        /*
+         * Menu groups stay a hard filter even when disabled items are kept.
+         * A group that is not running is a menu that is not on — the breakfast
+         * list greyed out all evening is noise, not information.
+         */
         $query->where(function ($q) use ($activeIds) {
             $q->whereNull('items.menu_group_id');
             if ($activeIds !== []) {
@@ -219,19 +235,44 @@ final class KitchenMenuResolver
             }
         });
 
-        $query->whereExists(function ($sub) use ($channel, $at) {
-            $sub->select(DB::raw(1))
-                ->from('item_channel_availability as ica')
-                ->whereColumn('ica.item_id', 'items.id')
-                ->where('ica.channel', $channel)
-                ->where('ica.is_enabled', true)
-                ->where(function ($w) use ($at) {
-                    $w->whereNull('ica.valid_from')->orWhere('ica.valid_from', '<=', $at);
-                })
-                ->where(function ($w) use ($at) {
-                    $w->whereNull('ica.valid_until')->orWhere('ica.valid_until', '>=', $at);
+        if (!$keepDisabled) {
+            $query->whereExists(function ($sub) use ($channel, $at) {
+                $sub->select(DB::raw(1))
+                    ->from('item_channel_availability as ica')
+                    ->whereColumn('ica.item_id', 'items.id')
+                    ->where('ica.channel', $channel)
+                    ->where('ica.is_enabled', true)
+                    ->where(function ($w) use ($at) {
+                        $w->whereNull('ica.valid_from')->orWhere('ica.valid_from', '<=', $at);
+                    })
+                    ->where(function ($w) use ($at) {
+                        $w->whereNull('ica.valid_until')->orWhere('ica.valid_until', '>=', $at);
+                    });
+            });
+        } elseif (in_array($channel, self::ORDERING_CHANNELS, true)) {
+            /*
+             * One exception to keeping switched-off items: a catering-only
+             * product. "Buffet Package for 50" greyed out across the takeaway
+             * menu tells a customer nothing they can act on — it is not a dish
+             * this channel sells and forgot to enable, it belongs to the events
+             * wizard. Keep it out of the immediate menus as before.
+             */
+            $query->whereNot(function ($q) {
+                $q->whereExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('item_channel_availability as cat')
+                        ->whereColumn('cat.item_id', 'items.id')
+                        ->where('cat.channel', 'catering')
+                        ->where('cat.is_enabled', true);
+                })->whereNotExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('item_channel_availability as ord')
+                        ->whereColumn('ord.item_id', 'items.id')
+                        ->whereIn('ord.channel', self::ORDERING_CHANNELS)
+                        ->where('ord.is_enabled', true);
                 });
-        });
+            });
+        }
 
         if ($channel === 'delivery' && !$ignoreDeliveryGate && !$this->isDeliveryServiceAccepting()) {
             $query->whereRaw('1 = 0');
