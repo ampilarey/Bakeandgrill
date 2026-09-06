@@ -88,6 +88,10 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         Route::post('/purchases/import', [PurchaseController::class, 'import']);
         Route::get('/purchases/{id}', [PurchaseController::class, 'show'])->whereNumber('id');
         Route::patch('/purchases/{id}', [PurchaseController::class, 'update'])->whereNumber('id');
+        // Removing a purchase order is a soft delete guarded by
+        // PurchaseEditPolicy: only a draft, or a cancelled order that never
+        // received a thing.
+        Route::delete('/purchases/{id}', [PurchaseController::class, 'destroy'])->whereNumber('id');
         Route::post('/purchases/{id}/receipts', [PurchaseController::class, 'uploadReceipt'])->whereNumber('id');
     });
 

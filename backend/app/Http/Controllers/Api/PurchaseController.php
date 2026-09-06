@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstInputTaxValidator;
+use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportPurchaseRequest;
 use App\Http\Requests\StorePurchaseReceiptRequest;
@@ -48,9 +49,23 @@ class PurchaseController extends Controller
             });
         }
 
-        return response()->json([
-            'purchases' => $query->orderByDesc('purchase_date')->paginate(50),
-        ]);
+        $page = $query->orderByDesc('purchase_date')->paginate(50);
+
+        /*
+         * What may still be done to each order, decided server-side. The list
+         * used to work it out from the status alone, which is not enough — an
+         * "ordered" PO with one crate already in is not editable, and only the
+         * lines know that. Sending the answer also means the screen can say
+         * *why* a button is missing.
+         */
+        $policy = app(PurchaseEditPolicy::class);
+        $page->through(fn (Purchase $purchase) => tap($purchase, function ($p) use ($policy) {
+            foreach ($policy->summary($p) as $key => $value) {
+                $p->setAttribute($key, $value);
+            }
+        }));
+
+        return response()->json(['purchases' => $page]);
     }
 
     public function store(StorePurchaseRequest $request)
@@ -79,19 +94,162 @@ class PurchaseController extends Controller
         $purchase = Purchase::with(['supplier', 'items.inventoryItem'])
             ->findOrFail($id);
 
+        foreach (app(PurchaseEditPolicy::class)->summary($purchase) as $key => $value) {
+            $purchase->setAttribute($key, $value);
+        }
+
         return response()->json(['purchase' => $purchase]);
     }
 
     public function update(UpdatePurchaseRequest $request, $id)
     {
-        $purchase = Purchase::findOrFail($id);
+        $purchase = Purchase::with('items')->findOrFail($id);
         $validated = $request->validated();
-        $validator = app(GstInputTaxValidator::class);
-        $validated = $validator->normalizePurchase(array_merge($purchase->toArray(), $validated));
-        $validator->assertClaimable($validated, 'purchase');
-        $purchase->update($validated);
+        $lines = $validated['items'] ?? null;
+        unset($validated['items']);
 
-        return response()->json(['purchase' => $purchase]);
+        /*
+         * Owner, 2026-09-06: "how to cancel/delete or edit the po". The lines
+         * could not be touched at all — a wrong quantity or a wrong price meant
+         * cancelling and raising the order again.
+         *
+         * Guarded, because a received line has already produced a stock
+         * movement, a weighted-average cost change and a price-history row.
+         * Rewriting it underneath those would leave the ledger describing an
+         * order that never happened.
+         */
+        if ($lines !== null) {
+            $blocked = app(PurchaseEditPolicy::class)->whyCannotEdit($purchase);
+            if ($blocked !== null) {
+                return response()->json(['message' => $blocked], 422);
+            }
+        }
+
+        /*
+         * Claimability is judged on what the purchase *will* look like — the
+         * incoming fields over the stored ones — but only the incoming fields
+         * are written. Merging the row back into `update()` would restate
+         * every column with its own value, and hand the model its own `id` and
+         * timestamps while it is at it.
+         */
+        $gstValidator = app(GstInputTaxValidator::class);
+        $effective = $gstValidator->normalizePurchase(array_merge(
+            $purchase->attributesToArray(),
+            $validated,
+        ));
+        $gstValidator->assertClaimable($effective, 'purchase');
+
+        $changes = array_intersect_key($effective, $validated + ['gst_rate_bp' => null]);
+        $before = $purchase->only(['subtotal', 'total', 'status', 'purchase_date']);
+
+        DB::transaction(function () use ($purchase, $changes, $lines) {
+            $purchase->update($changes);
+
+            if ($lines !== null) {
+                $this->replaceLines($purchase, $lines);
+            }
+        });
+
+        if ($lines !== null) {
+            app(AuditLogService::class)->log(
+                'purchase.lines_edited',
+                'Purchase',
+                $purchase->id,
+                $before,
+                $purchase->fresh()->only(['subtotal', 'total', 'status', 'purchase_date']),
+                ['items' => count($lines)],
+                $request,
+            );
+        }
+
+        return response()->json(['purchase' => $purchase->fresh(['supplier', 'items.inventoryItem'])]);
+    }
+
+    /**
+     * Swap an unreceived order's lines for the ones just sent.
+     *
+     * Deleted and rewritten rather than diffed: the caller sends the order it
+     * wants, and matching rows up to spare a few writes would add a merge to
+     * get wrong. Nothing downstream holds a purchase_item id for an order that
+     * has received nothing — that is precisely what the policy above
+     * guarantees — so the old ids are free to go.
+     *
+     * @param list<array<string, mixed>> $lines
+     */
+    private function replaceLines(Purchase $purchase, array $lines): void
+    {
+        $purchase->items()->delete();
+
+        $subtotal = 0.0;
+        foreach ($lines as $line) {
+            $inventoryItem = InventoryItem::find($line['inventory_item_id']);
+
+            // The same conversion the order was created through, so a line
+            // edited into "2 cases" prices exactly as it would have on day one.
+            $priced = app(PurchasePackResolver::class)->resolve(
+                $inventoryItem,
+                (float) $line['quantity'],
+                (float) $line['unit_cost'],
+                $line['purchase_unit_id'] ?? null,
+            );
+
+            $subtotal += $priced['total'];
+
+            PurchaseItem::create([
+                'purchase_id' => $purchase->id,
+                'inventory_item_id' => $inventoryItem?->id,
+                'quantity' => $priced['quantity'],
+                'unit_cost' => $priced['unit_cost'],
+                'total_cost' => $priced['total'],
+                'pack_name' => $priced['pack_name'],
+                'pack_size' => $priced['pack_size'],
+                'pack_quantity' => $priced['pack_quantity'],
+                'brand' => isset($line['brand']) && trim((string) $line['brand']) !== ''
+                    ? trim((string) $line['brand'])
+                    : null,
+                // Nothing has arrived — the policy would not have let us here
+                // otherwise — so every line starts over as pending.
+                'received_quantity' => 0,
+                'receive_status' => 'pending',
+            ]);
+        }
+
+        $purchase->update([
+            'subtotal' => round($subtotal, 2),
+            'total' => round($subtotal + (float) ($purchase->tax_amount ?? 0), 2),
+        ]);
+    }
+
+    /**
+     * Take a purchase order off the list.
+     *
+     * Soft: the owner wants a mistake gone, an auditor wants to know a
+     * document with that number existed and who removed it. Only a draft
+     * nobody approved, or a cancelled order that never received a thing —
+     * anything stock arrived against is part of the record.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $purchase = Purchase::with('items')->findOrFail($id);
+
+        $blocked = app(PurchaseEditPolicy::class)->whyCannotDelete($purchase);
+        if ($blocked !== null) {
+            return response()->json(['message' => $blocked], 422);
+        }
+
+        app(AuditLogService::class)->log(
+            'purchase.deleted',
+            'Purchase',
+            $purchase->id,
+            $purchase->only(['purchase_number', 'status', 'subtotal', 'total', 'purchase_date']),
+            [],
+            ['items' => $purchase->items->count()],
+            $request,
+        );
+
+        $purchase->delete();
+
+        return response()->json(['message' => 'Purchase order deleted.']);
     }
 
     /**

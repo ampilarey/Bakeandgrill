@@ -92,7 +92,9 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('p
     Route::get('/suggest', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'autoSuggest']);
     Route::post('/from-suggest', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'createFromSuggest']);
     Route::post('/{id}/approve', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'approve'])->whereNumber('id');
+    // /reject is the old name for the same act, kept so nothing in flight breaks.
     Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject'])->whereNumber('id');
+    Route::post('/{id}/cancel', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'cancel'])->whereNumber('id');
     Route::post('/{id}/receive', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive'])->whereNumber('id');
 });
 

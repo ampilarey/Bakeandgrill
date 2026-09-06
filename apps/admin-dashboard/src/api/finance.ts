@@ -767,8 +767,26 @@ export interface Purchase {
     received_quantity: number;
     receive_status: string;
     unit_cost: number;
+    /** What was on the box: "2 Case" of 210 each, kept as it was typed. */
+    pack_name?: string | null;
+    pack_size?: number | null;
+    pack_quantity?: number | null;
+    brand?: string | null;
+    inventory_item_id?: number | null;
     inventory_item: { id: number; name: string; barcode?: string | null; sku?: string | null } | null;
   }[];
+  /*
+   * What may still be done to this order, decided server-side. The status
+   * alone is not enough — an "ordered" PO with one crate already in is not
+   * editable, and only the lines know that. The reasons are here so a missing
+   * button can say why rather than just be missing.
+   */
+  can_edit?: boolean;
+  can_cancel?: boolean;
+  can_delete?: boolean;
+  edit_blocked_reason?: string | null;
+  cancel_blocked_reason?: string | null;
+  delete_blocked_reason?: string | null;
 }
 
 export async function fetchPurchases(params?: { status?: string; page?: number; search?: string }): Promise<{
@@ -796,6 +814,36 @@ export async function getPurchase(id: number): Promise<{ purchase: Purchase }> {
 
 export async function updatePurchase(id: number, data: Record<string, unknown>): Promise<{ purchase: Purchase }> {
   return req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+/** One line of an order being edited. Quantity and cost are per pack when one is named. */
+export interface PurchaseLineEdit {
+  inventory_item_id: number;
+  quantity: number;
+  unit_cost: number;
+  purchase_unit_id?: number | null;
+  brand?: string | null;
+}
+
+/**
+ * Replace an order's lines. Refused once anything has been received — those
+ * lines have already produced stock movements and price history.
+ */
+export async function updatePurchaseLines(
+  id: number,
+  items: PurchaseLineEdit[],
+): Promise<{ purchase: Purchase }> {
+  return req(`/purchases/${id}`, { method: 'PATCH', body: JSON.stringify({ items }) });
+}
+
+/** Call off an order. Short-closes a part-delivered one; never touches stock. */
+export async function cancelPurchase(id: number, reason?: string): Promise<{ purchase: Purchase }> {
+  return req(`/purchases/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+/** Take it off the list. Soft, so the trail survives; drafts and cancelled only. */
+export async function deletePurchase(id: number): Promise<{ message: string }> {
+  return req(`/purchases/${id}`, { method: 'DELETE' });
 }
 
 export async function receivePurchase(id: number, data: {

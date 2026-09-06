@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Models\InventoryItem;
 use App\Models\Purchase;
@@ -49,24 +50,56 @@ class PurchaseWorkflowController extends Controller
         return response()->json(['purchase' => $purchase->fresh(['supplier', 'items'])]);
     }
 
+    /**
+     * @deprecated Use cancel(). Kept so any client still calling /reject works.
+     */
     public function reject(Request $request, int $id): JsonResponse
     {
-        $purchase = Purchase::findOrFail($id);
+        return $this->cancel($request, $id);
+    }
 
-        if (!in_array($purchase->status, ['draft', 'ordered'])) {
-            return response()->json(['message' => 'Only draft or ordered purchases can be rejected.'], 422);
+    /**
+     * Call off a purchase order.
+     *
+     * Owner, 2026-09-06: "how to cancel/delete or edit the po". This existed
+     * as "Reject", which is approval-workflow wording for a manager turning
+     * somebody down. The everyday reason is neither approval nor rejection —
+     * the supplier cannot deliver, or the order was a mistake — so it is
+     * called what it is.
+     *
+     * Allowed on a partly-received order too, which short-closes it: a
+     * supplier who cannot bring the rest is the ordinary case, and cancelling
+     * never touches what already came in.
+     */
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $purchase = Purchase::with('items')->findOrFail($id);
+
+        $blocked = app(PurchaseEditPolicy::class)->whyCannotCancel($purchase);
+        if ($blocked !== null) {
+            return response()->json(['message' => $blocked], 422);
         }
 
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+        $was = $purchase->status;
 
         $purchase->update([
             'status' => 'cancelled',
-            'notes' => ($purchase->notes ? $purchase->notes . "\n" : '') . 'Rejected: ' . ($validated['reason'] ?? 'No reason given'),
+            'notes' => ($purchase->notes ? $purchase->notes . "\n" : '')
+                . 'Cancelled: ' . ($validated['reason'] ?? 'No reason given'),
         ]);
 
-        $this->audit->log('purchase.rejected', 'Purchase', $id, [], [], [], $request);
+        $this->audit->log(
+            'purchase.cancelled',
+            'Purchase',
+            $id,
+            ['status' => $was],
+            ['status' => 'cancelled'],
+            ['reason' => $validated['reason'] ?? null],
+            $request,
+        );
 
-        return response()->json(['purchase' => $purchase->fresh()]);
+        return response()->json(['purchase' => $purchase->fresh(['supplier', 'items'])]);
     }
 
     // ──────────────────────────────────────────────────────────

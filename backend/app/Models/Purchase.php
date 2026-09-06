@@ -7,9 +7,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Purchase extends Model
 {
+    /*
+     * A deleted purchase order leaves every screen and stays in the table.
+     * The owner wants a mistake gone; an auditor wants to know a document
+     * with that number once existed. Both are right (owner, 2026-09-06).
+     */
+    use SoftDeletes;
+
     protected $fillable = [
         'purchase_number',
         'supplier_id',

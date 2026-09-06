@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, rejectPurchase, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
+import { approvePurchase, cancelPurchase, deletePurchase, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -487,9 +487,84 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     if (rejectId === null || !rejectReason.trim()) return;
     setActionLoading(true);
     try {
-      await rejectPurchase(rejectId, rejectReason);
+      await cancelPurchase(rejectId, rejectReason);
       setRejectId(null); setRejectReason('');
-      showToast('Purchase order rejected.');
+      showToast('Purchase order cancelled.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(false); }
+  };
+
+  /*
+   * Editing, cancelling and deleting an order. Owner, 2026-09-06: "how to
+   * cancel/delete or edit the po, admin must be able to do that." Cancelling
+   * was here under the name "Reject"; nothing edited a line, and nothing
+   * deleted anything at all.
+   *
+   * Which of the three a given order allows is the server's answer, not a
+   * guess from the status: an approved order with one crate already in is not
+   * editable, and only its lines know that.
+   */
+  const [editPo, setEditPo] = useState<Purchase | null>(null);
+  const [editLines, setEditLines] = useState<Array<{
+    inventory_item_id: string; name: string; quantity: string; unit_cost: string;
+    purchase_unit_id: string; brand: string;
+  }>>([]);
+  const [deletePo, setDeletePo] = useState<Purchase | null>(null);
+
+  const openEdit = (po: Purchase) => {
+    setEditPo(po);
+    setEditLines((po.items ?? []).map((line) => ({
+      inventory_item_id: String(line.inventory_item_id ?? line.inventory_item?.id ?? ''),
+      name: line.inventory_item?.name ?? `Item #${line.inventory_item_id ?? '?'}`,
+      // A line bought by the pack is edited by the pack, the way it was
+      // entered — showing 420 eggs where somebody typed "2 cases" would
+      // invite them to retype it wrong.
+      quantity: String(line.pack_quantity ?? line.quantity),
+      unit_cost: String(
+        line.pack_size && Number(line.pack_size) > 0
+          ? Number(line.unit_cost) * Number(line.pack_size)
+          : line.unit_cost,
+      ),
+      purchase_unit_id: '',
+      brand: line.brand ?? '',
+    })));
+  };
+
+  const handleSaveLines = async () => {
+    if (!editPo) return;
+    const lines = editLines
+      .filter((l) => l.inventory_item_id !== '' && parseFloat(l.quantity) > 0)
+      .map((l) => ({
+        inventory_item_id: Number(l.inventory_item_id),
+        quantity: parseFloat(l.quantity),
+        unit_cost: parseFloat(l.unit_cost) || 0,
+        ...(l.purchase_unit_id ? { purchase_unit_id: Number(l.purchase_unit_id) } : {}),
+        ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
+      }));
+
+    if (lines.length === 0) {
+      setError('An order needs at least one line. Cancel it instead of emptying it.');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await updatePurchaseLines(editPo.id, lines);
+      setEditPo(null);
+      showToast('Purchase order updated.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deletePo) return;
+    setActionLoading(true);
+    try {
+      await deletePurchase(deletePo.id);
+      setDeletePo(null);
+      showToast('Purchase order deleted.');
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setActionLoading(false); }
@@ -680,8 +755,28 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       {['ordered', 'partial'].includes(po.status) && (
                         <Btn small onClick={() => openDetail(po)}>Receive</Btn>
                       )}
-                      {['draft', 'ordered'].includes(po.status) && (
-                        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Reject</Btn>
+                      {/* Shown from the server's answer, not from the status:
+                          an approved order with one crate already in cannot be
+                          edited and only its lines know that. */}
+                      {po.can_edit && (
+                        <Btn small variant="secondary" onClick={() => openEdit(po)}>Edit</Btn>
+                      )}
+                      {po.can_cancel && (
+                        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
+                      )}
+                      {po.can_delete && (
+                        <Btn small variant="ghost" onClick={() => setDeletePo(po)}>Delete</Btn>
+                      )}
+                      {/* When nothing can be done, say why rather than leave a
+                          blank cell that reads as a bug. */}
+                      {!po.can_edit && !po.can_cancel && !po.can_delete
+                        && !['draft', 'ordered', 'partial'].includes(po.status) && (
+                        <span
+                          title={po.edit_blocked_reason ?? undefined}
+                          style={{ fontSize: 11, color: 'var(--color-text-muted)' }}
+                        >
+                          {po.status === 'received' ? 'Received — locked' : 'Closed'}
+                        </span>
                       )}
                     </div>
                   </td>
@@ -1210,24 +1305,103 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         </Modal>
       )}
 
-      {/* Reject modal */}
+      {/* Cancel modal. Was "Reject", which is approval-workflow wording for a
+          manager turning somebody down — the everyday reason is that the
+          supplier cannot deliver or the order was a mistake. */}
       {rejectId !== null && (
-        <Modal title="Reject Purchase Order" onClose={() => setRejectId(null)} maxWidth={420}>
+        <Modal title="Cancel Purchase Order" onClose={() => setRejectId(null)} maxWidth={420}>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-            Please provide a reason for rejecting this purchase order.
+            Say why, so the order still explains itself later. Anything already delivered
+            against it stays received — cancelling only closes what is left.
           </p>
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Reason *</label>
           <textarea
             rows={3}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="e.g. Price too high, wrong items, supplier issue…"
+            placeholder="e.g. Supplier out of stock, ordered twice, price too high…"
             style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 4 }}
           />
           <ModalActions>
-            <Btn variant="ghost" onClick={() => setRejectId(null)}>Cancel</Btn>
+            <Btn variant="ghost" onClick={() => setRejectId(null)}>Keep it</Btn>
             <Btn variant="danger" onClick={() => void handleReject()} disabled={actionLoading || !rejectReason.trim()}>
-              {actionLoading ? 'Rejecting…' : 'Reject Order'}
+              {actionLoading ? 'Cancelling…' : 'Cancel Order'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Edit the lines. Only reachable while nothing has been received — the
+          server refuses otherwise, and the button is not shown. */}
+      {editPo && (
+        <Modal title={`Edit ${editPo.purchase_number}`} onClose={() => setEditPo(null)} maxWidth={640}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
+            Nothing has arrived against this order yet, so its lines can still change.
+            Quantity and cost are per pack where a pack is named.
+          </p>
+          <div style={{ display: 'grid', gap: 8, marginBottom: 12 }} data-testid="po-edit-lines">
+            {editLines.map((line, idx) => (
+              <div
+                key={idx}
+                data-testid={`po-edit-line-${idx}`}
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr 90px 110px auto',
+                  gap: 8, alignItems: 'center',
+                  border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 10px',
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{line.name}</span>
+                <input
+                  aria-label={`Quantity for ${line.name}`}
+                  type="number" min="0" step="any" value={line.quantity}
+                  onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))}
+                  style={{ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' }}
+                />
+                <input
+                  aria-label={`Unit cost for ${line.name}`}
+                  type="number" min="0" step="any" value={line.unit_cost}
+                  onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, unit_cost: e.target.value } : r))}
+                  style={{ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' }}
+                />
+                <Btn
+                  small variant="ghost"
+                  onClick={() => setEditLines((rows) => rows.filter((_, i) => i !== idx))}
+                >
+                  Remove
+                </Btn>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 4px', lineHeight: 1.5 }}>
+            To add an item to this order, cancel it and raise a new one — an order is the
+            document you sent the supplier, and growing it after the fact is a different order.
+          </p>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setEditPo(null)}>Cancel</Btn>
+            <Btn onClick={() => void handleSaveLines()} disabled={actionLoading}>
+              {actionLoading ? 'Saving…' : 'Save changes'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* Delete confirm. Soft on the server, so this is not as final as it
+          reads — but it is final enough from every screen, and saying so is
+          better than a cheerful "removed!". */}
+      {deletePo && (
+        <Modal title={`Delete ${deletePo.purchase_number}?`} onClose={() => setDeletePo(null)} maxWidth={440}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8, lineHeight: 1.55 }}>
+            This takes the order off every list. Nothing was received against it, so no
+            stock or price is affected.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+            The record is kept for an audit, with your name and the time — it is hidden,
+            not shredded.
+          </p>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setDeletePo(null)}>Keep it</Btn>
+            <Btn variant="danger" onClick={() => void handleDelete()} disabled={actionLoading}>
+              {actionLoading ? 'Deleting…' : 'Delete order'}
             </Btn>
           </ModalActions>
         </Modal>
