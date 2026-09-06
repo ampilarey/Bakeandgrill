@@ -70,6 +70,22 @@ class InventoryController extends Controller
 
         return response()->json([
             'items' => $query->orderBy('name')->paginate(50),
+            /*
+             * Every unit already in use, so the item form can offer a list
+             * instead of an empty box. Owner, 2026-09-06: "cannot see unit
+             * list". Whatever this kitchen actually measures in beats any
+             * list I could guess, and the field still takes a typed one.
+             *
+             * Sent whole rather than per page: it is the vocabulary of the
+             * whole store, not of the fifty rows on screen.
+             */
+            'units' => InventoryItem::query()
+                ->whereNotNull('unit')
+                ->where('unit', '!=', '')
+                ->distinct()
+                ->orderBy('unit')
+                ->pluck('unit')
+                ->values(),
         ]);
     }
 

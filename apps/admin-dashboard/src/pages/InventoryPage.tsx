@@ -10,6 +10,7 @@ import {
 import { downloadCSV } from '../utils/csvExport';
 import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
+import { PickOrType } from '../components/PickOrType';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
@@ -17,7 +18,8 @@ import {
   getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
-  getPurchaseUnits, createPurchaseUnit, deletePurchaseUnit,
+  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit,
+  createSupplier,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type InventoryCostUsage, type PreparedStockRow,
   type StockMovementRow, type Supplier,
@@ -43,6 +45,30 @@ const S = {
     color: active ? '#fff' : 'var(--color-text-secondary)',
   }),
 };
+
+/*
+ * The units to offer. What the store already uses comes first, because that is
+ * the real vocabulary of this kitchen; the common ones fill in behind so a
+ * brand-new install is not staring at an empty list. Whatever is already on
+ * the item is always included, so opening the form never blanks the field.
+ */
+const COMMON_UNITS = [
+  'kg', 'g', 'L', 'ml', 'piece', 'pack', 'box', 'bottle', 'can', 'tin',
+  'dozen', 'tray', 'case', 'bag', 'sachet', 'bunch', 'roll',
+];
+
+export function unitOptions(known: string[], current: string): { value: string; label: string }[] {
+  const seen = new Set<string>();
+  const out: { value: string; label: string }[] = [];
+  for (const u of [current, ...known, ...COMMON_UNITS]) {
+    const unit = u.trim();
+    const key = unit.toLowerCase();
+    if (unit === '' || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ value: unit, label: unit });
+  }
+  return out;
+}
 
 export default function InventoryPage() {
   usePageTitle('Inventory');
@@ -91,6 +117,17 @@ export default function InventoryPage() {
   const [packsError, setPacksError] = useState('');
   const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '' });
   const [packSaving, setPackSaving] = useState(false);
+  /*
+   * A pack you can correct, not only add and delete. Owner, 2026-09-06: "no
+   * pack size edit option" — a typo in "500 ml tin" meant deleting the pack
+   * and with it the name a purchase order was already showing.
+   */
+  const [packEdit, setPackEdit] = useState<{ id: number; name: string; qty: string } | null>(null);
+  /*
+   * Every unit the store already uses, so Unit is a list to pick from rather
+   * than an empty box to guess at. Owner: "cannot see unit list."
+   */
+  const [knownUnits, setKnownUnits] = useState<string[]>([]);
 
   /*
    * Owner, 2026-09-06: "i dont see pack size". It lived behind an unlabelled
@@ -145,6 +182,46 @@ export default function InventoryPage() {
   };
 
   /*
+   * Correcting a pack changes what *future* orders convert to. Purchases keep
+   * their own copy of the pack they were entered with, so nothing already
+   * received moves — which is what makes this safe to offer.
+   */
+  const savePackEdit = async () => {
+    if (!editItem || !packEdit) return;
+    const name = packEdit.name.trim();
+    const qty = parseFloat(packEdit.qty);
+    if (!name) { setPacksError('A pack needs a name.'); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return; }
+    setPackSaving(true);
+    setPacksError('');
+    try {
+      await updatePurchaseUnit(editItem.id, packEdit.id, { name, base_units: qty });
+      const res = await getPurchaseUnits(editItem.id);
+      setPacks(res.purchase_units);
+      setPackEdit(null);
+      void loadItems();
+    } catch (e) { setPacksError((e as Error).message); }
+    finally { setPackSaving(false); }
+  };
+
+  /**
+   * Make a category from whatever was typed into the Category picker and
+   * return its id, so the item being edited can point straight at it.
+   */
+  const createCategoryInline = async (name: string): Promise<string | null> => {
+    const res = await createInventoryCategory({ name });
+    setCats((c) => [...c, res.category]);
+    return String(res.category.id);
+  };
+
+  /** The same for a supplier typed into the Preferred supplier picker. */
+  const createSupplierInline = async (name: string): Promise<string | null> => {
+    const res = await createSupplier({ name });
+    setSuppliers((sup) => [...sup, res.supplier]);
+    return String(res.supplier.id);
+  };
+
+  /*
    * Editing an item. Everything about a SKU was fixed at creation until now:
    * a typo in the name, or a unit set to kg when the thing is counted in
    * pieces, meant abandoning the item and making another one.
@@ -166,6 +243,13 @@ export default function InventoryPage() {
     setEditItem(item);
     setEditError('');
     void loadPacks(item.id);
+    /*
+     * Only "+ Add SKU" used to fetch these, so opening Edit showed an empty
+     * Category list — the item's own category included. Part of why the owner
+     * reported "no new catagory option": there was no category list at all.
+     */
+    if (cats.length === 0) void loadCats();
+    if (suppliers.length === 0) void loadSuppliers();
     setEditForm({
       name: item.name ?? '',
       unit: item.unit ?? '',
@@ -384,6 +468,7 @@ export default function InventoryPage() {
     try {
       const res = await fetchInventoryItems({ search: searchDebounced || undefined });
       setItems(res.data ?? []);
+      setKnownUnits(res.units ?? []);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -1021,10 +1106,19 @@ export default function InventoryPage() {
               <input style={S.input} value={editForm.name} aria-label="Item name"
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
             </label>
-            <label>
+            <div>
               <span style={S.label}>Unit *</span>
-              <input style={S.input} value={editForm.unit} aria-label="Item unit" placeholder="kg, L, piece…"
-                onChange={(e) => setEditForm((f) => ({ ...f, unit: e.target.value }))} />
+              {/* A list of what this kitchen already measures in, and still a
+                  box to type one that is new. Owner: "cannot see unit list". */}
+              <PickOrType
+                ariaLabel="Item unit"
+                options={unitOptions(knownUnits, editForm.unit)}
+                value={editForm.unit}
+                onChange={(v) => setEditForm((f) => ({ ...f, unit: v }))}
+                addLabel="＋ A unit that is not listed"
+                placeholder="sachet, tray, bottle…"
+                hint="Whatever you type here becomes this item's unit."
+              />
               {/* Changing the unit does not convert the number already on the
                   shelf, so 5 kg becomes 5 piece and the count is now a lie.
                   Said plainly rather than blocked: sometimes it is the fix. */}
@@ -1035,7 +1129,7 @@ export default function InventoryPage() {
                   re-labels that number, it does not convert it — you will want a stock count after.
                 </p>
               )}
-            </label>
+            </div>
 
             {/* ── Pack sizes: how you buy it ─────────────────────────────
                 Sits under Unit because that is the number it is measured
@@ -1056,6 +1150,10 @@ export default function InventoryPage() {
                 “2 tins” while the shelf gains the right number and the price per {editItem.unit} works
                 itself out. These save as you add them.
               </p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '-6px 0 12px', lineHeight: 1.5 }}>
+                Editing one only changes what future orders convert to — a purchase already
+                entered keeps the pack it was entered with, so nothing you have received moves.
+              </p>
               {packsError && (
                 <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{packsError}</p>
               )}
@@ -1070,15 +1168,60 @@ export default function InventoryPage() {
                     <div key={p.id} data-testid={`pack-row-${p.id}`} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                       border: '1px solid var(--color-border)', borderRadius: 10,
-                      padding: '8px 12px', background: 'var(--color-surface)',
+                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
                     }}>
-                      <span style={{ fontSize: 13 }}>
-                        <strong>{p.name}</strong>
-                        <span style={{ color: 'var(--color-text-secondary)' }}>
-                          {' '}= {Number(p.base_units)} {editItem.unit}
-                        </span>
-                      </span>
-                      <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
+                      {packEdit?.id === p.id ? (
+                        <>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
+                            <input
+                              aria-label={`Name of ${p.name}`}
+                              value={packEdit.name}
+                              onChange={(e) => setPackEdit((f) => (f ? { ...f, name: e.target.value } : f))}
+                              style={{ ...S.input, flex: '1 1 120px', width: 'auto' }}
+                            />
+                            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>=</span>
+                            <input
+                              aria-label={`Amount in ${p.name}`}
+                              type="number"
+                              min="0.000001"
+                              step="any"
+                              value={packEdit.qty}
+                              onChange={(e) => setPackEdit((f) => (f ? { ...f, qty: e.target.value } : f))}
+                              style={{ ...S.input, width: 90 }}
+                            />
+                            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{editItem.unit}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <Btn small disabled={packSaving} onClick={() => void savePackEdit()}>
+                              {packSaving ? 'Saving…' : 'Save'}
+                            </Btn>
+                            <Btn small variant="ghost" disabled={packSaving} onClick={() => setPackEdit(null)}>Cancel</Btn>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: 13 }}>
+                            <strong>{p.name}</strong>
+                            <span style={{ color: 'var(--color-text-secondary)' }}>
+                              {' '}= {Number(p.base_units)} {editItem.unit}
+                            </span>
+                          </span>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <Btn
+                              small
+                              variant="secondary"
+                              disabled={packSaving}
+                              onClick={() => {
+                                setPacksError('');
+                                setPackEdit({ id: p.id, name: p.name, qty: String(Number(p.base_units)) });
+                              }}
+                            >
+                              Edit
+                            </Btn>
+                            <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1132,22 +1275,37 @@ export default function InventoryPage() {
               <input style={S.input} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
                 onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
             </label>
-            <label>
+            <div>
               <span style={S.label}>Category</span>
-              <select style={S.select} value={editForm.inventory_category_id} aria-label="Category"
-                onChange={(e) => setEditForm((f) => ({ ...f, inventory_category_id: e.target.value }))}>
-                <option value="">No category</option>
-                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label>
+              <PickOrType
+                ariaLabel="Category"
+                options={cats.map((c) => ({ value: String(c.id), label: c.name }))}
+                // Until the list arrives, show the item's own category by name
+                // rather than the bare id its value happens to be.
+                unknownLabel={editItem.category?.name}
+                value={editForm.inventory_category_id}
+                onChange={(v) => setEditForm((f) => ({ ...f, inventory_category_id: v }))}
+                onCreate={createCategoryInline}
+                emptyLabel="No category"
+                addLabel="＋ Add a new category"
+                placeholder="Dry goods, Dairy…"
+                hint="This makes the category and files the item under it."
+              />
+            </div>
+            <div>
               <span style={S.label}>Preferred supplier</span>
-              <select style={S.select} value={editForm.preferred_supplier_id} aria-label="Preferred supplier"
-                onChange={(e) => setEditForm((f) => ({ ...f, preferred_supplier_id: e.target.value }))}>
-                <option value="">None</option>
-                {suppliers.map((sup) => <option key={sup.id} value={sup.id}>{sup.name}</option>)}
-              </select>
-            </label>
+              <PickOrType
+                ariaLabel="Preferred supplier"
+                options={suppliers.map((sup) => ({ value: String(sup.id), label: sup.name }))}
+                value={editForm.preferred_supplier_id}
+                onChange={(v) => setEditForm((f) => ({ ...f, preferred_supplier_id: v }))}
+                onCreate={createSupplierInline}
+                emptyLabel="None"
+                addLabel="＋ Add a new supplier"
+                placeholder="Shop or supplier name"
+                hint="Saved as a supplier you can buy from anywhere else too."
+              />
+            </div>
             <label>
               <span style={S.label}>Reorder point</span>
               <input type="number" min="0" step="any" style={S.input} value={editForm.reorder_point} aria-label="Reorder point"
@@ -1266,32 +1424,46 @@ export default function InventoryPage() {
                 onClose={() => setScanBarcode(false)}
               />
             )}
-            <label>
+            <div>
               <span style={S.label}>Category</span>
-              <select
-                style={S.select}
+              <PickOrType
+                ariaLabel="New item category"
+                options={cats.map((c) => ({ value: String(c.id), label: c.name }))}
                 value={createForm.inventory_category_id}
-                onChange={(e) => setCreateForm((f) => ({ ...f, inventory_category_id: e.target.value }))}
-              >
-                <option value="">No category</option>
-                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label>
+                onChange={(v) => setCreateForm((f) => ({ ...f, inventory_category_id: v }))}
+                onCreate={createCategoryInline}
+                emptyLabel="No category"
+                addLabel="＋ Add a new category"
+                placeholder="Dry goods, Dairy…"
+                hint="This makes the category and files the item under it."
+              />
+            </div>
+            <div>
               <span style={S.label}>Preferred supplier</span>
-              <select
-                style={S.select}
+              <PickOrType
+                ariaLabel="New item preferred supplier"
+                options={suppliers.map((sup) => ({ value: String(sup.id), label: sup.name }))}
                 value={createForm.preferred_supplier_id}
-                onChange={(e) => setCreateForm((f) => ({ ...f, preferred_supplier_id: e.target.value }))}
-              >
-                <option value="">None</option>
-                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
-            <label>
+                onChange={(v) => setCreateForm((f) => ({ ...f, preferred_supplier_id: v }))}
+                onCreate={createSupplierInline}
+                emptyLabel="None"
+                addLabel="＋ Add a new supplier"
+                placeholder="Shop or supplier name"
+                hint="Saved as a supplier you can buy from anywhere else too."
+              />
+            </div>
+            <div>
               <span style={S.label}>Unit *</span>
-              <input style={S.input} value={createForm.unit} onChange={(e) => setCreateForm((f) => ({ ...f, unit: e.target.value }))} placeholder="kg, L, pcs…" />
-            </label>
+              <PickOrType
+                ariaLabel="New item unit"
+                options={unitOptions(knownUnits, createForm.unit)}
+                value={createForm.unit}
+                onChange={(v) => setCreateForm((f) => ({ ...f, unit: v }))}
+                addLabel="＋ A unit that is not listed"
+                placeholder="sachet, tray, bottle…"
+                hint="Whatever you type here becomes this item's unit."
+              />
+            </div>
             <label>
               <span style={S.label}>Opening stock</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.current_stock} onChange={(e) => setCreateForm((f) => ({ ...f, current_stock: e.target.value }))} />

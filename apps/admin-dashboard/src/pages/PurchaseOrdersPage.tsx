@@ -6,6 +6,7 @@ import {
 } from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { ScanSheet } from '../components/ScanSheet';
 import { countScannedItem } from '../utils/receivingScan';
@@ -158,6 +159,14 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   // Defining a pack is stock setup, so only offer it to whoever may do that.
   const { can } = useCurrentUserPermissions();
   const canManageStock = can('inventory.manage');
+  /*
+   * Owner, 2026-09-06: "still i dont see po Del/edit option." They were there,
+   * in the eighth column of a table 802px wide inside a 356px scroller — the
+   * Edit button started 725px in, four columns past the right edge, with
+   * nothing to suggest the table scrolled sideways at all. On a phone the
+   * orders become cards, and the actions come with them.
+   */
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchases, setPurchases]         = useState<Purchase[]>([]);
   const [loading, setLoading]             = useState(true);
@@ -626,6 +635,43 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     finally { setUploadingReceipt(false); }
   };
 
+  /*
+   * What can be done to an order, in one place so the phone and the desk can
+   * never drift apart on it. Which of Edit / Cancel / Delete appears is the
+   * server's answer, never a guess from the status: an approved order with one
+   * crate already in cannot be edited, and only its lines know that.
+   */
+  const rowActions = (po: Purchase) => (
+    <>
+      {po.status === 'draft' && (
+        <Btn small onClick={() => void handleApprove(po.id)}>Approve</Btn>
+      )}
+      {['ordered', 'partial'].includes(po.status) && (
+        <Btn small onClick={() => openDetail(po)}>Receive</Btn>
+      )}
+      {po.can_edit && (
+        <Btn small variant="secondary" onClick={() => openEdit(po)}>Edit</Btn>
+      )}
+      {po.can_cancel && (
+        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
+      )}
+      {po.can_delete && (
+        <Btn small variant="ghost" onClick={() => setDeletePo(po)}>Delete</Btn>
+      )}
+      {/* When nothing can be done, say why rather than leave a blank space
+          that reads as a bug. */}
+      {!po.can_edit && !po.can_cancel && !po.can_delete
+        && !['draft', 'ordered', 'partial'].includes(po.status) && (
+        <span
+          title={po.edit_blocked_reason ?? undefined}
+          style={{ fontSize: 11, color: 'var(--color-text-muted)' }}
+        >
+          {po.status === 'received' ? 'Received — locked' : 'Closed'}
+        </span>
+      )}
+    </>
+  );
+
   const Shell = embedded ? Fragment : PageShell;
 
   return (
@@ -713,9 +759,43 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         </Card>
       )}
 
-      {/* Purchase Orders table */}
+      {/* Purchase Orders — cards on a phone, table on a desk */}
       {loading ? <Spinner /> : purchases.length === 0 ? (
         <Card><EmptyState message="No purchase orders found." /></Card>
+      ) : isMobile ? (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {purchases.map((po) => (
+            <Card key={po.id}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                <button
+                  onClick={() => openDetail(po)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, textAlign: 'left',
+                    cursor: 'pointer', fontWeight: 700, fontSize: 15,
+                    color: 'var(--color-primary)', fontFamily: 'inherit',
+                  }}
+                >
+                  {po.purchase_number}
+                </button>
+                <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                {po.supplier?.name ?? po.supplier_name_text ?? 'No supplier'}
+                {' · '}{po.items?.length ?? 0} item{(po.items?.length ?? 0) === 1 ? '' : 's'}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                {po.purchase_date}
+                {po.expected_delivery_date ? ` · due ${po.expected_delivery_date}` : ''}
+              </p>
+              <p style={{ margin: '8px 0 0', fontWeight: 700, fontSize: 16, color: 'var(--color-primary)' }}>
+                MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                {rowActions(po)}
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -749,35 +829,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   <td style={{ ...TD, color: 'var(--color-text-secondary)', textAlign: 'center' }}>{po.items?.length ?? 0}</td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {po.status === 'draft' && (
-                        <Btn small onClick={() => void handleApprove(po.id)}>Approve</Btn>
-                      )}
-                      {['ordered', 'partial'].includes(po.status) && (
-                        <Btn small onClick={() => openDetail(po)}>Receive</Btn>
-                      )}
-                      {/* Shown from the server's answer, not from the status:
-                          an approved order with one crate already in cannot be
-                          edited and only its lines know that. */}
-                      {po.can_edit && (
-                        <Btn small variant="secondary" onClick={() => openEdit(po)}>Edit</Btn>
-                      )}
-                      {po.can_cancel && (
-                        <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
-                      )}
-                      {po.can_delete && (
-                        <Btn small variant="ghost" onClick={() => setDeletePo(po)}>Delete</Btn>
-                      )}
-                      {/* When nothing can be done, say why rather than leave a
-                          blank cell that reads as a bug. */}
-                      {!po.can_edit && !po.can_cancel && !po.can_delete
-                        && !['draft', 'ordered', 'partial'].includes(po.status) && (
-                        <span
-                          title={po.edit_blocked_reason ?? undefined}
-                          style={{ fontSize: 11, color: 'var(--color-text-muted)' }}
-                        >
-                          {po.status === 'received' ? 'Received — locked' : 'Closed'}
-                        </span>
-                      )}
+                      {rowActions(po)}
                     </div>
                   </td>
                 </tr>

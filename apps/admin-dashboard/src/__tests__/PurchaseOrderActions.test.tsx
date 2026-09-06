@@ -22,6 +22,15 @@ vi.mock('../hooks/usePermissions', () => ({
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
 vi.mock('../components/ItemSearch', () => ({ ItemSearch: () => null }));
 
+/*
+ * Phone or desk. Owner, 2026-09-06: "still i dont see po Del/edit option" —
+ * the buttons were rendering all along, in the eighth column of a table 802px
+ * wide inside a 356px scroller, starting 725px past the right edge with
+ * nothing to suggest the table scrolled at all.
+ */
+let mobile = false;
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => mobile }));
+
 const line = {
   id: 55,
   quantity: 10,
@@ -105,6 +114,7 @@ async function rowFor(number: string) {
 describe('Purchase order actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mobile = false;
     fetchPurchases.mockResolvedValue({
       purchases: { data: [draft, received], current_page: 1, last_page: 1, total: 2 },
     });
@@ -221,5 +231,44 @@ describe('Purchase order actions', () => {
     fireEvent.click(await screen.findByText('Keep it'));
 
     expect(deletePurchase).not.toHaveBeenCalled();
+  });
+
+  describe('on a phone', () => {
+    beforeEach(() => { mobile = true; });
+
+    it('drops the table so the actions are on screen, not four columns to the right', async () => {
+      renderPage();
+      await screen.findByText('PO-0001');
+
+      // No table at all — the eight columns are the whole problem.
+      expect(document.querySelector('table')).toBeNull();
+      expect(screen.getByText('Edit')).toBeInTheDocument();
+      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      expect(screen.getByText('Delete')).toBeInTheDocument();
+    });
+
+    it('still says what an order is, not only what can be done to it', async () => {
+      renderPage();
+
+      expect(await screen.findByText('PO-0001')).toBeInTheDocument();
+      expect(screen.getAllByText(/Fahi Store/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText('MVR 50.00').length).toBeGreaterThan(0);
+    });
+
+    it('locks a received order here too', async () => {
+      renderPage();
+      await screen.findByText('PO-0002');
+
+      expect(screen.getByText('Received — locked')).toBeInTheDocument();
+    });
+
+    it('deletes from the card', async () => {
+      renderPage();
+      await screen.findByText('PO-0001');
+      fireEvent.click(screen.getByText('Delete'));
+      fireEvent.click(await screen.findByText('Delete order'));
+
+      await waitFor(() => expect(deletePurchase).toHaveBeenCalledWith(1));
+    });
   });
 });

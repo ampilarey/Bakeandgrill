@@ -186,6 +186,62 @@ class InventoryConfigController extends Controller
         return response()->json(['purchase_unit' => $unit], 201);
     }
 
+    /**
+     * Correct a pack that is already defined.
+     *
+     * Owner, 2026-09-06: "no pack size edit option". Adding and removing was
+     * the whole of it, so fixing a typo in "500 ml tin" meant deleting it and
+     * losing the name a purchase order might already be showing.
+     *
+     * Changing the amount changes what *future* orders convert to. Past
+     * purchases keep their own snapshot of the pack, so nothing already
+     * received moves — which is what makes this safe to offer at all.
+     */
+    public function updatePurchaseUnit(Request $request, int $itemId, int $id)
+    {
+        $item = InventoryItem::findOrFail($itemId);
+        $unit = $item->purchaseUnits()->findOrFail($id);
+
+        $v = $request->validate([
+            'name' => 'sometimes|string|max:40',
+            'base_units' => 'sometimes|numeric|min:0.000001',
+        ]);
+
+        if (isset($v['name'])) {
+            $name = trim($v['name']);
+            if ($name === '') {
+                return response()->json([
+                    'message' => 'A pack needs a name.',
+                    'errors' => ['name' => ['Give the pack a name.']],
+                ], 422);
+            }
+
+            // Two packs with one name would make the picker ambiguous and an
+            // old order impossible to trace back to the pack it meant.
+            $clash = $item->purchaseUnits()
+                ->whereKeyNot($unit->id)
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->exists();
+
+            if ($clash) {
+                return response()->json([
+                    'message' => 'This item already has a pack called that.',
+                    'errors' => ['name' => ['Another pack of this item uses that name.']],
+                ], 422);
+            }
+
+            $unit->name = $name;
+        }
+
+        if (isset($v['base_units'])) {
+            $unit->base_units = (float) $v['base_units'];
+        }
+
+        $unit->save();
+
+        return response()->json(['purchase_unit' => $unit->fresh()]);
+    }
+
     public function destroyPurchaseUnit(int $itemId, int $id)
     {
         $item = InventoryItem::findOrFail($itemId);

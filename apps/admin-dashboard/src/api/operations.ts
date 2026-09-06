@@ -102,7 +102,12 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
 
 export async function fetchInventoryItems(params?: {
   search?: string; category_id?: number; low_stock?: boolean; page?: number;
-}): Promise<{ data: InventoryItem[]; meta: { current_page: number; last_page: number; total: number } }> {
+}): Promise<{
+  data: InventoryItem[];
+  meta: { current_page: number; last_page: number; total: number };
+  /** Every unit already in use across the store, for the item form's list. */
+  units: string[];
+}> {
   const qs = new URLSearchParams();
   if (params?.search)      qs.set('search',      params.search);
   if (params?.category_id) qs.set('category_id', String(params.category_id));
@@ -115,6 +120,7 @@ export async function fetchInventoryItems(params?: {
       last_page: number;
       total: number;
     };
+    units?: string[];
   }>(`/inventory?${qs}`);
   return {
     data: (res.items?.data ?? []).map(mapInventoryRow),
@@ -123,6 +129,7 @@ export async function fetchInventoryItems(params?: {
       last_page:    res.items?.last_page ?? 1,
       total:        res.items?.total ?? 0,
     },
+    units: res.units ?? [],
   };
 }
 
@@ -625,6 +632,18 @@ export async function createPurchaseUnit(
   data: { name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number },
 ): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
   return req(`/inventory/${itemId}/purchase-units`, { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Correct a pack that is already defined — its name, its amount, or both. */
+export async function updatePurchaseUnit(
+  itemId: number,
+  id: number,
+  data: { name?: string; base_units?: number },
+): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
+  return req(`/inventory/${itemId}/purchase-units/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function deletePurchaseUnit(itemId: number, id: number): Promise<void> {

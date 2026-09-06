@@ -123,6 +123,7 @@ Route::middleware(['auth:sanctum', 'permission.any:inventory.manage,suppliers.pu
 
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->group(function () {
     Route::post('/inventory/{itemId}/purchase-units', [App\Http\Controllers\Api\InventoryConfigController::class, 'storePurchaseUnit']);
+    Route::patch('/inventory/{itemId}/purchase-units/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'updatePurchaseUnit']);
     Route::delete('/inventory/{itemId}/purchase-units/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'destroyPurchaseUnit']);
 });
 
