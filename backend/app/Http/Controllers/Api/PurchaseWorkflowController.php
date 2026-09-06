@@ -6,13 +6,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstLedgerPoster;
+use App\Domains\Gst\Services\GstPeriodService;
 use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Domains\Inventory\Services\RestockIntelligenceService;
+use App\Models\Expense;
 use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
 use App\Models\SupplierPriceHistory;
+use App\Models\TaxLedgerEntry;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -101,6 +104,162 @@ class PurchaseWorkflowController extends Controller
         );
 
         return response()->json(['purchase' => $purchase->fresh(['supplier', 'items'])]);
+    }
+
+    /**
+     * Undo a receipt: put the stock back and return the order to `ordered`.
+     *
+     * Owner, 2026-09-06: "how can admin del or edit PO?" Every order in the
+     * business was `received`, so the edit/cancel/delete policy answered no to
+     * all three and the admin had no move at all. The rule — a purchase that
+     * moved stock must not be quietly rewritten — was right; leaving it with no
+     * way out was not.
+     *
+     * This is the way out, and it is a reversal rather than an erasure. What
+     * the receipt did, it undoes, each part visibly:
+     *
+     *   - the stock comes back off with its own movements, so the shelf and
+     *     the movement history agree and the original receipt still shows;
+     *   - the price points that receipt wrote are removed, because a price
+     *     nobody paid should not steer the next comparison;
+     *   - the input GST comes off, unless its period is already filed, in
+     *     which case it stays and the caller is told so;
+     *   - the lines go back to pending and the order to `ordered`, where
+     *     editing, cancelling and deleting already work.
+     *
+     * Anything it could not put right is returned in `warnings` rather than
+     * being swallowed — an item that has since been used will go negative, and
+     * the honest answer is to say so and ask for a stock count.
+     */
+    public function undoReceipt(Request $request, int $id): JsonResponse
+    {
+        $purchase = Purchase::with('items.inventoryItem')->findOrFail($id);
+
+        $blocked = app(PurchaseEditPolicy::class)->whyCannotUndoReceipt($purchase);
+        if ($blocked !== null) {
+            return response()->json(['message' => $blocked], 422);
+        }
+
+        $validated = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $was = $purchase->status;
+        $warnings = [];
+
+        DB::transaction(function () use ($purchase, $request, $validated, &$warnings) {
+            foreach ($purchase->items()->lockForUpdate()->get() as $pItem) {
+                $received = (float) ($pItem->received_quantity ?? 0);
+
+                if ($received > 0 && $pItem->inventory_item_id) {
+                    $invItem = InventoryItem::lockForUpdate()->find($pItem->inventory_item_id);
+
+                    if ($invItem !== null) {
+                        // Keyed on what is being taken back, so a double-click
+                        // or a retried request cannot remove the stock twice.
+                        $key = 'purchase:' . $purchase->id . ':item:' . $pItem->id
+                            . ':undo:' . round($received, 4);
+
+                        if (!StockMovement::where('idempotency_key', $key)->exists()) {
+                            $before = (float) ($invItem->current_stock ?? 0);
+                            $after = $before - $received;
+
+                            if ($after < 0) {
+                                /*
+                                 * Some of it has already been cooked or sold.
+                                 * Taking it back off is still the truthful move
+                                 * — this order no longer claims to have
+                                 * delivered it — but the count is now wrong in
+                                 * a way only a physical count can settle.
+                                 */
+                                $warnings[] = sprintf(
+                                    '%s goes to %s %s: some of this delivery has already been used. Do a stock count.',
+                                    $invItem->name,
+                                    rtrim(rtrim(number_format($after, 3, '.', ''), '0'), '.'),
+                                    $invItem->unit,
+                                );
+                            }
+
+                            $invItem->current_stock = $after;
+                            $invItem->save();
+
+                            StockMovement::create([
+                                'idempotency_key' => $key,
+                                'inventory_item_id' => $invItem->id,
+                                'user_id' => $request->user()?->id,
+                                // An adjustment, not a negative purchase: this
+                                // is a correction somebody made, and it should
+                                // read as one in the movement history.
+                                'type' => 'adjustment',
+                                'quantity' => -$received,
+                                'balance_after' => $after,
+                                'unit_cost' => (float) $pItem->unit_cost,
+                                'reference_type' => 'purchase',
+                                'reference_id' => $purchase->id,
+                                'notes' => 'Receipt undone on ' . $purchase->purchase_number
+                                    . ': ' . $validated['reason'],
+                                'occurred_at' => StockMovement::occurredAtFor(now()),
+                            ]);
+                        }
+                    }
+                }
+
+                $pItem->received_quantity = 0;
+                $pItem->receive_status = 'pending';
+                $pItem->save();
+            }
+
+            /*
+             * The prices this receipt recorded. They are what the buying
+             * screen compares brands and shops on, and a price for a delivery
+             * that did not happen would quietly steer the next order.
+             */
+            SupplierPriceHistory::where('purchase_id', $purchase->id)->delete();
+
+            $purchase->status = 'ordered';
+            $purchase->actual_delivery_date = null;
+            $purchase->notes = ($purchase->notes ? $purchase->notes . "\n" : '')
+                . 'Receipt undone: ' . $validated['reason'];
+            $purchase->save();
+        });
+
+        /*
+         * Input tax was claimed on receipt, so it comes off with the receipt —
+         * unless the period is filed, when removing it would falsify a return
+         * already sent to MIRA. Then it stays, and the caller hears about it.
+         */
+        $entry = TaxLedgerEntry::where('source_type', 'purchase')
+            ->where('source_id', $purchase->id)
+            ->first();
+
+        if ($entry !== null) {
+            if (app(GstPeriodService::class)->isLocked((string) $entry->period_key)) {
+                $warnings[] = 'The GST for ' . $entry->period_key
+                    . ' is already filed, so the input tax on this order was left in place.'
+                    . ' Adjust it in the next return.';
+            } else {
+                $entry->delete();
+            }
+        }
+
+        // The auto-expense deliberately never deletes itself; say so rather
+        // than leaving money on the books with nothing to explain it.
+        if (Expense::where('purchase_id', $purchase->id)->exists()) {
+            $warnings[] = 'An expense was raised from this order. It is not removed automatically —'
+                . ' check the Expenses page.';
+        }
+
+        $this->audit->log(
+            'purchase.receipt_undone',
+            'Purchase',
+            $id,
+            ['status' => $was],
+            ['status' => 'ordered'],
+            ['reason' => $validated['reason'], 'warnings' => $warnings],
+            $request,
+        );
+
+        return response()->json([
+            'purchase' => $purchase->fresh(['supplier', 'items']),
+            'warnings' => $warnings,
+        ]);
     }
 
     // ──────────────────────────────────────────────────────────

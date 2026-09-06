@@ -96,6 +96,12 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.purchases'])->prefix('p
     Route::post('/{id}/reject', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'reject'])->whereNumber('id');
     Route::post('/{id}/cancel', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'cancel'])->whereNumber('id');
     Route::post('/{id}/receive', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'receive'])->whereNumber('id');
+    /*
+     * The way back out of a receipt. Same permission as cancelling and
+     * deleting: whoever may close an order out may correct one that was
+     * received in error, and the act is audited either way.
+     */
+    Route::post('/{id}/undo-receipt', [App\Http\Controllers\Api\PurchaseWorkflowController::class, 'undoReceipt'])->whereNumber('id');
 });
 
 // ─── Inventory Categories & Unit Conversions ───────────────────────────────

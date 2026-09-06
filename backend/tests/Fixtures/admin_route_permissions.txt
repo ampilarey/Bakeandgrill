@@ -37,11 +37,11 @@ backend/routes/domains/devices.php:39:devices.manage
 backend/routes/domains/devices.php:47:orders.view
 backend/routes/domains/devices.php:49:kds.view
 backend/routes/domains/devices.php:51:orders.view
-backend/routes/domains/finance.php:102:inventory.categories
-backend/routes/domains/finance.php:108:inventory.manage
-backend/routes/domains/finance.php:124:inventory.manage
-backend/routes/domains/finance.php:131:reports.financial
-backend/routes/domains/finance.php:140:inventory.manage
+backend/routes/domains/finance.php:108:inventory.categories
+backend/routes/domains/finance.php:114:inventory.manage
+backend/routes/domains/finance.php:130:inventory.manage
+backend/routes/domains/finance.php:137:reports.financial
+backend/routes/domains/finance.php:146:inventory.manage
 backend/routes/domains/finance.php:16:finance.invoices
 backend/routes/domains/finance.php:32:finance.expenses
 backend/routes/domains/finance.php:49:reports.financial

@@ -59,9 +59,11 @@ const draft = {
   can_edit: true,
   can_cancel: true,
   can_delete: true,
+  can_undo_receipt: false,
   edit_blocked_reason: null,
   cancel_blocked_reason: null,
   delete_blocked_reason: null,
+  undo_receipt_blocked_reason: 'Nothing has been received against this order, so there is nothing to undo.',
 };
 
 const received = {
@@ -73,21 +75,27 @@ const received = {
   can_edit: false,
   can_cancel: false,
   can_delete: false,
-  edit_blocked_reason: 'This order has been received. Its stock and prices are already recorded, so the lines cannot be changed — adjust the stock instead.',
-  cancel_blocked_reason: 'This order has been received in full. Cancelling it would not put the stock back.',
-  delete_blocked_reason: 'Stock arrived against this order, so it is part of the record and cannot be deleted.',
+  // A received order is not a dead end any more: the delivery can be undone,
+  // and then all three come back.
+  can_undo_receipt: true,
+  edit_blocked_reason: 'This order has been received. Its stock and prices are already recorded, so the lines cannot be changed — undo the receipt first if the delivery was wrong.',
+  cancel_blocked_reason: 'This order has been received in full. Cancelling it would not put the stock back — undo the receipt first, which does.',
+  delete_blocked_reason: 'Stock arrived against this order, so it is part of the record and cannot be deleted. Undo the receipt first if it never really arrived.',
+  undo_receipt_blocked_reason: null,
 };
 
 const fetchPurchases = vi.fn();
 const cancelPurchase = vi.fn();
 const deletePurchase = vi.fn();
 const updatePurchaseLines = vi.fn();
+const undoPurchaseReceipt = vi.fn();
 
 vi.mock('../api', () => ({
   fetchPurchases: (...a: unknown[]) => fetchPurchases(...a),
   cancelPurchase: (...a: unknown[]) => cancelPurchase(...a),
   deletePurchase: (...a: unknown[]) => deletePurchase(...a),
   updatePurchaseLines: (...a: unknown[]) => updatePurchaseLines(...a),
+  undoPurchaseReceipt: (...a: unknown[]) => undoPurchaseReceipt(...a),
   fetchSuppliers: vi.fn().mockResolvedValue({ data: [] }),
   getPurchaseSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
   createPurchaseFromSuggest: vi.fn(),
@@ -106,6 +114,16 @@ function renderPage() {
   render(<MemoryRouter><PurchaseOrdersPage /></MemoryRouter>);
 }
 
+/**
+ * The "Undo delivery" inside the confirm dialog, as opposed to the one on the
+ * row that opened it — they share a name on purpose, so the button you press
+ * is the thing you were promised.
+ */
+function confirmUndoButton() {
+  return [...document.querySelectorAll('button')]
+    .find((b) => b.textContent?.trim() === 'Undo delivery' && b.closest('[role="dialog"]'));
+}
+
 async function rowFor(number: string) {
   const cell = await screen.findByText(number);
   return cell.closest('tr') as HTMLElement;
@@ -121,6 +139,7 @@ describe('Purchase order actions', () => {
     updatePurchaseLines.mockResolvedValue({ purchase: draft });
     cancelPurchase.mockResolvedValue({ purchase: { ...draft, status: 'cancelled' } });
     deletePurchase.mockResolvedValue({ message: 'Purchase order deleted.' });
+    undoPurchaseReceipt.mockResolvedValue({ purchase: { ...received, status: 'ordered' }, warnings: [] });
   });
 
   it('offers all three on an order nothing has arrived against', async () => {
@@ -132,16 +151,65 @@ describe('Purchase order actions', () => {
     expect(within(row).getByText('Delete')).toBeInTheDocument();
   });
 
-  it('offers none of them on a received order, and says it is locked', async () => {
-    // The stock and the price history are already recorded; rewriting the
-    // lines underneath them would make the ledger lie.
+  it('offers a way out on a received order rather than a dead end', async () => {
+    /*
+     * The stock and the price history are already recorded, so the lines
+     * cannot be rewritten underneath them — but "Received — locked" and
+     * nothing else was every order this business has. Undoing the delivery
+     * reverses it properly, and then the other three come back.
+     */
     renderPage();
     const row = await rowFor('PO-0002');
 
     expect(within(row).queryByText('Edit')).toBeNull();
     expect(within(row).queryByText('Cancel')).toBeNull();
     expect(within(row).queryByText('Delete')).toBeNull();
-    expect(within(row).getByText('Received — locked')).toBeInTheDocument();
+    expect(within(row).queryByText('Received — locked')).toBeNull();
+    expect(within(row).getByText('Undo delivery')).toBeInTheDocument();
+  });
+
+  it('will not undo a delivery without a reason', async () => {
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0002')).getByText('Undo delivery'));
+    await screen.findByLabelText('Reason for undoing the delivery');
+
+    expect(confirmUndoButton()).toBeDisabled();
+  });
+
+  it('sends the reason and reverses the delivery', async () => {
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0002')).getByText('Undo delivery'));
+
+    fireEvent.change(await screen.findByLabelText('Reason for undoing the delivery'), {
+      target: { value: 'Counted into the wrong PO' },
+    });
+    fireEvent.click(confirmUndoButton()!);
+
+    await waitFor(() => expect(undoPurchaseReceipt).toHaveBeenCalledWith(2, 'Counted into the wrong PO'));
+  });
+
+  it('says plainly what the undo will do before it does it', async () => {
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0002')).getByText('Undo delivery'));
+
+    expect(await screen.findByText(/stock comes off the shelf/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is erased/i)).toBeInTheDocument();
+  });
+
+  it('holds anything it could not put right on screen', async () => {
+    // A stock count to do, or GST already filed — too important for a toast.
+    undoPurchaseReceipt.mockResolvedValue({
+      purchase: { ...received, status: 'ordered' },
+      warnings: ['Rice goes to -6 kg: some of this delivery has already been used. Do a stock count.'],
+    });
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0002')).getByText('Undo delivery'));
+    fireEvent.change(await screen.findByLabelText('Reason for undoing the delivery'), {
+      target: { value: 'Wrong order' },
+    });
+    fireEvent.click(confirmUndoButton()!);
+
+    expect(await screen.findByText(/Do a stock count/)).toBeInTheDocument();
   });
 
   it('sends the edited quantity and price back as the order', async () => {
@@ -255,11 +323,11 @@ describe('Purchase order actions', () => {
       expect(screen.getAllByText('MVR 50.00').length).toBeGreaterThan(0);
     });
 
-    it('locks a received order here too', async () => {
+    it('offers the same way out of a received order here too', async () => {
       renderPage();
       await screen.findByText('PO-0002');
 
-      expect(screen.getByText('Received — locked')).toBeInTheDocument();
+      expect(screen.getByText('Undo delivery')).toBeInTheDocument();
     });
 
     it('deletes from the card', async () => {

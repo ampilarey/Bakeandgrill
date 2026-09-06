@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, cancelPurchase, deletePurchase, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
+import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -520,6 +520,16 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     purchase_unit_id: string; brand: string;
   }>>([]);
   const [deletePo, setDeletePo] = useState<Purchase | null>(null);
+  /*
+   * Undoing a delivery. Owner, 2026-09-06: "how can admin del or edit PO?" —
+   * every order in the business was `received`, so Edit, Cancel and Delete
+   * were all refused and the row said "Received — locked" and nothing else.
+   * This is the way back: put the stock and the money where they were, and the
+   * order returns to `ordered` where the other three already work.
+   */
+  const [undoPo, setUndoPo] = useState<Purchase | null>(null);
+  const [undoReason, setUndoReason] = useState('');
+  const [undoWarnings, setUndoWarnings] = useState<string[]>([]);
 
   const openEdit = (po: Purchase) => {
     setEditPo(po);
@@ -574,6 +584,24 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       await deletePurchase(deletePo.id);
       setDeletePo(null);
       showToast('Purchase order deleted.');
+      void load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleUndoReceipt = async () => {
+    if (!undoPo || undoReason.trim() === '') return;
+    setActionLoading(true);
+    try {
+      const res = await undoPurchaseReceipt(undoPo.id, undoReason.trim());
+      setUndoPo(null);
+      setUndoReason('');
+      // Anything the reversal could not put right stays on screen until it is
+      // read — a stock count to do, or GST already filed.
+      setUndoWarnings(res.warnings ?? []);
+      if ((res.warnings ?? []).length === 0) {
+        showToast('Delivery undone. The order is back to Ordered.');
+      }
       void load();
     } catch (e) { setError((e as Error).message); }
     finally { setActionLoading(false); }
@@ -658,9 +686,21 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {po.can_delete && (
         <Btn small variant="ghost" onClick={() => setDeletePo(po)}>Delete</Btn>
       )}
-      {/* When nothing can be done, say why rather than leave a blank space
-          that reads as a bug. */}
-      {!po.can_edit && !po.can_cancel && !po.can_delete
+      {/* The way out of a received order. Offered whenever something came in,
+          because "this delivery never happened" is a thing that gets typed by
+          mistake and has to be correctable. */}
+      {po.can_undo_receipt && (
+        <Btn
+          small
+          variant="secondary"
+          onClick={() => { setUndoPo(po); setUndoReason(''); setUndoWarnings([]); }}
+        >
+          Undo delivery
+        </Btn>
+      )}
+      {/* When nothing at all can be done, say why rather than leave a blank
+          space that reads as a bug. */}
+      {!po.can_edit && !po.can_cancel && !po.can_delete && !po.can_undo_receipt
         && !['draft', 'ordered', 'partial'].includes(po.status) && (
         <span
           title={po.edit_blocked_reason ?? undefined}
@@ -1440,6 +1480,71 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       {/* Delete confirm. Soft on the server, so this is not as final as it
           reads — but it is final enough from every screen, and saying so is
           better than a cheerful "removed!". */}
+      {undoPo && (
+        <Modal
+          title={`Undo the delivery on ${undoPo.purchase_number}?`}
+          onClose={() => setUndoPo(null)}
+          maxWidth={460}
+        >
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8, lineHeight: 1.55 }}>
+            This puts everything the delivery did back: the stock comes off the shelf, the
+            prices it recorded are removed, and the input GST comes off with them.
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8, lineHeight: 1.55 }}>
+            The order goes back to <strong style={{ color: 'var(--color-text)' }}>Ordered</strong>, where
+            you can edit its lines, cancel it or delete it.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
+            Nothing is erased. The original delivery still shows in the stock history, and so
+            will this correction, with your name on it.
+          </p>
+          <label style={{ display: 'block', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Why is it being undone?
+            </span>
+            <input
+              value={undoReason}
+              onChange={(e) => setUndoReason(e.target.value)}
+              placeholder="Received against the wrong order"
+              aria-label="Reason for undoing the delivery"
+              style={{
+                width: '100%', minHeight: 44, padding: '0 12px', boxSizing: 'border-box',
+                border: '1.5px solid var(--color-border)', borderRadius: 10,
+                fontSize: 14, fontFamily: 'inherit',
+                background: 'var(--color-surface)', color: 'var(--color-text)',
+              }}
+            />
+          </label>
+          <ModalActions>
+            <Btn variant="ghost" onClick={() => setUndoPo(null)}>Leave it</Btn>
+            <Btn
+              variant="danger"
+              onClick={() => void handleUndoReceipt()}
+              disabled={actionLoading || undoReason.trim() === ''}
+            >
+              {actionLoading ? 'Undoing…' : 'Undo delivery'}
+            </Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
+      {/* What the reversal could not put right. Held on screen until it is
+          dismissed rather than flashed past in a toast. */}
+      {undoWarnings.length > 0 && (
+        <Modal
+          title={`Delivery undone — ${undoWarnings.length} thing${undoWarnings.length === 1 ? '' : 's'} to check`}
+          onClose={() => setUndoWarnings([])}
+          maxWidth={460}
+        >
+          <ul style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, paddingLeft: 20, margin: '0 0 16px' }}>
+            {undoWarnings.map((w) => <li key={w} style={{ marginBottom: 6 }}>{w}</li>)}
+          </ul>
+          <ModalActions>
+            <Btn onClick={() => setUndoWarnings([])}>Got it</Btn>
+          </ModalActions>
+        </Modal>
+      )}
+
       {deletePo && (
         <Modal title={`Delete ${deletePo.purchase_number}?`} onClose={() => setDeletePo(null)} maxWidth={440}>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8, lineHeight: 1.55 }}>

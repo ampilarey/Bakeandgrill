@@ -784,9 +784,11 @@ export interface Purchase {
   can_edit?: boolean;
   can_cancel?: boolean;
   can_delete?: boolean;
+  can_undo_receipt?: boolean;
   edit_blocked_reason?: string | null;
   cancel_blocked_reason?: string | null;
   delete_blocked_reason?: string | null;
+  undo_receipt_blocked_reason?: string | null;
 }
 
 export async function fetchPurchases(params?: { status?: string; page?: number; search?: string }): Promise<{
@@ -839,6 +841,22 @@ export async function updatePurchaseLines(
 /** Call off an order. Short-closes a part-delivered one; never touches stock. */
 export async function cancelPurchase(id: number, reason?: string): Promise<{ purchase: Purchase }> {
   return req(`/purchases/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) });
+}
+
+/**
+ * Put a delivery back: stock off the shelf, price points and input GST
+ * removed, order back to `ordered` where it can be edited, cancelled or
+ * deleted. Returns anything it could not put right — an item already used
+ * goes negative, and a filed GST period keeps its input tax.
+ */
+export async function undoPurchaseReceipt(
+  id: number,
+  reason: string,
+): Promise<{ purchase: Purchase; warnings: string[] }> {
+  return req(`/purchases/${id}/undo-receipt`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
 }
 
 /** Take it off the list. Soft, so the trail survives; drafts and cancelled only. */

@@ -46,12 +46,12 @@ final class PurchaseEditPolicy
     {
         if (in_array($purchase->status, self::FINAL_STATES, true)) {
             return $purchase->status === 'received'
-                ? 'This order has been received. Its stock and prices are already recorded, so the lines cannot be changed — adjust the stock instead.'
+                ? 'This order has been received. Its stock and prices are already recorded, so the lines cannot be changed — undo the receipt first if the delivery was wrong.'
                 : 'This order was cancelled. Raise a new one rather than editing it.';
         }
 
         if ($this->receivedAnything($purchase)) {
-            return 'Some of this order has already arrived, so the lines cannot be changed. Cancel what is left instead.';
+            return 'Some of this order has already arrived, so the lines cannot be changed. Cancel what is left, or undo the receipt to start again.';
         }
 
         return null;
@@ -71,7 +71,7 @@ final class PurchaseEditPolicy
         }
 
         if ($purchase->status === 'received') {
-            return 'This order has been received in full. Cancelling it would not put the stock back.';
+            return 'This order has been received in full. Cancelling it would not put the stock back — undo the receipt first, which does.';
         }
 
         return null;
@@ -91,7 +91,7 @@ final class PurchaseEditPolicy
     public function whyCannotDelete(Purchase $purchase): ?string
     {
         if ($this->receivedAnything($purchase)) {
-            return 'Stock arrived against this order, so it is part of the record and cannot be deleted.';
+            return 'Stock arrived against this order, so it is part of the record and cannot be deleted. Undo the receipt first if it never really arrived.';
         }
 
         if (!in_array($purchase->status, ['draft', 'cancelled'], true)) {
@@ -102,23 +102,50 @@ final class PurchaseEditPolicy
     }
 
     /**
-     * The three answers together, for a payload.
+     * May the receipt be undone, putting the order back to unreceived?
      *
-     * @return array{can_edit: bool, can_cancel: bool, can_delete: bool, edit_blocked_reason: ?string, cancel_blocked_reason: ?string, delete_blocked_reason: ?string}
+     * Owner, 2026-09-06: "how can admin del or edit PO?" — every order in the
+     * business was `received`, so all three answers above were "no" and the
+     * feature did nothing for anybody. The rule was right and the conclusion
+     * was useless: I locked the door and handed over no key.
+     *
+     * This is the key. Not a licence to rewrite history — the way out of a
+     * receipt that should not have happened is to *reverse* it, visibly: the
+     * stock goes back with its own movements, the price points and the input
+     * tax come off, and the order returns to `ordered` where editing,
+     * cancelling and deleting already work. Nothing is erased; the undo is
+     * itself a recorded event.
+     */
+    public function whyCannotUndoReceipt(Purchase $purchase): ?string
+    {
+        if (!$this->receivedAnything($purchase)) {
+            return 'Nothing has been received against this order, so there is nothing to undo.';
+        }
+
+        return null;
+    }
+
+    /**
+     * The four answers together, for a payload.
+     *
+     * @return array{can_edit: bool, can_cancel: bool, can_delete: bool, can_undo_receipt: bool, edit_blocked_reason: ?string, cancel_blocked_reason: ?string, delete_blocked_reason: ?string, undo_receipt_blocked_reason: ?string}
      */
     public function summary(Purchase $purchase): array
     {
         $edit = $this->whyCannotEdit($purchase);
         $cancel = $this->whyCannotCancel($purchase);
         $delete = $this->whyCannotDelete($purchase);
+        $undo = $this->whyCannotUndoReceipt($purchase);
 
         return [
             'can_edit' => $edit === null,
             'can_cancel' => $cancel === null,
             'can_delete' => $delete === null,
+            'can_undo_receipt' => $undo === null,
             'edit_blocked_reason' => $edit,
             'cancel_blocked_reason' => $cancel,
             'delete_blocked_reason' => $delete,
+            'undo_receipt_blocked_reason' => $undo,
         ];
     }
 
