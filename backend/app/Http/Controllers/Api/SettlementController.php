@@ -123,21 +123,30 @@ class SettlementController extends Controller
             ->flip();
         $fresh = array_values(array_filter($prepared, fn ($l) => !isset($existing[$l['fingerprint']])));
 
+        // In the card & QR account only POS settlements pay for takings.
+        // A credit the bank labelled otherwise (the owner topping the
+        // account up, a supplier refund) is stored but set aside.
+        $setAside = fn (array $l) => $account === SettlementChannels::CARD_QR && $l['kind'] !== null && $l['kind'] !== BankStatementLine::KIND_POS;
+        $counted = array_values(array_filter($fresh, fn ($l) => !$setAside($l)));
+
         $summary = [
             'account' => $account,
             'account_label' => SettlementChannels::accountLabel($account),
             'filename' => $file->getClientOriginalName(),
+            'format' => $parsed['format'],
             'columns' => $parsed['columns'],
             'credit_lines' => count($prepared),
             'new_lines' => count($fresh),
             'duplicate_lines' => count($prepared) - count($fresh),
             'debit_lines_skipped' => $parsed['debit_count'],
             'unreadable_lines' => $parsed['unreadable_count'],
-            'credit_total_laar' => array_sum(array_column($fresh, 'amount_laar')),
+            'set_aside_lines' => count($fresh) - count($counted),
+            'credit_total_laar' => array_sum(array_column($counted, 'amount_laar')),
             'date_from' => $fresh === [] ? null : min(array_column($fresh, 'txn_date')),
             'date_to' => $fresh === [] ? null : max(array_column($fresh, 'txn_date')),
             'preview' => array_slice(array_map(fn ($l) => [
-                'txn_date' => $l['txn_date'], 'description' => $l['description'], 'reference' => $l['reference'], 'amount_laar' => $l['amount_laar'],
+                'txn_date' => $l['txn_date'], 'for_date' => $l['for_date'], 'kind' => $l['kind'], 'description' => $l['description'],
+                'reference' => $l['reference'], 'amount_laar' => $l['amount_laar'], 'set_aside' => $setAside($l),
             ], $fresh), 0, 20),
         ];
 
@@ -145,32 +154,52 @@ class SettlementController extends Controller
             return response()->json(['dry_run' => true, 'summary' => $summary]);
         }
 
-        $import = DB::transaction(function () use ($account, $file, $fresh, $prepared, $request) {
+        $import = DB::transaction(function () use ($account, $file, $fresh, $prepared, $counted, $setAside, $request) {
             $import = BankStatementImport::create([
                 'account' => $account,
                 'filename' => $file->getClientOriginalName(),
                 'imported_by' => $request->user()?->id,
                 'line_count' => count($fresh),
                 'duplicate_count' => count($prepared) - count($fresh),
-                'credit_total_laar' => array_sum(array_column($fresh, 'amount_laar')),
+                'credit_total_laar' => array_sum(array_column($counted, 'amount_laar')),
             ]);
-            $auto = 0;
+            $rows = [];
             foreach ($fresh as $l) {
-                $row = BankStatementLine::create([
+                $rows[] = BankStatementLine::create([
                     'import_id' => $import->id,
                     'account' => $account,
                     'txn_date' => $l['txn_date'],
+                    'for_date' => $l['for_date'],
+                    'kind' => $l['kind'],
                     'description' => $l['description'],
                     'reference' => $l['reference'],
+                    'counterparty' => $l['counterparty'],
                     'amount_laar' => $l['amount_laar'],
                     'balance_laar' => $l['balance_laar'],
                     'fingerprint' => $l['fingerprint'],
+                    'match_status' => $setAside($l) ? BankStatementLine::MATCH_IGNORED : BankStatementLine::MATCH_UNMATCHED,
                 ]);
-                if ($account === SettlementChannels::TRANSFER && $this->ledger->autoMatchTransfer($row) === BankStatementLine::MATCH_AUTO) {
-                    $auto++;
+            }
+
+            // Exact matches first, across the whole file, so a wrong-amount
+            // transfer is only guessed at once every sale it could not have
+            // been for is already taken.
+            $auto = 0;
+            $mismatched = 0;
+            if ($account === SettlementChannels::TRANSFER) {
+                foreach ($rows as $row) {
+                    if ($this->ledger->autoMatchTransfer($row) === BankStatementLine::MATCH_AUTO) {
+                        $auto++;
+                    }
+                }
+                foreach ($rows as $row) {
+                    if ($row->matched_payment_id === null && $this->ledger->autoMatchTransfer($row, true) === BankStatementLine::MATCH_AUTO) {
+                        $mismatched++;
+                    }
                 }
             }
             $import->setAttribute('auto_matched', $auto);
+            $import->setAttribute('mismatched', $mismatched);
 
             return $import;
         });
@@ -181,7 +210,11 @@ class SettlementController extends Controller
 
         return response()->json([
             'dry_run' => false,
-            'summary' => $summary + ['import_id' => $import->id, 'auto_matched' => (int) $import->getAttribute('auto_matched')],
+            'summary' => $summary + [
+                'import_id' => $import->id,
+                'auto_matched' => (int) $import->getAttribute('auto_matched'),
+                'mismatched' => (int) $import->getAttribute('mismatched'),
+            ],
         ], 201);
     }
 

@@ -5,11 +5,14 @@
  * views of the same question:
  *
  *   Card & QR   one account, deposits a day or more later and sometimes in
- *               halves. Each deposit is applied to the oldest day still owed,
- *               so a day reads settled / partly / awaiting / overdue and the
- *               header says what the bank still owes.
+ *               halves. A BML POS credit names the sales day it settles and
+ *               is applied there; anything else goes to the oldest day still
+ *               owed. A day reads settled / partly / awaiting / overdue /
+ *               over (the bank paid more than the till took) and the header
+ *               says what the bank still owes.
  *   Transfers   the other account, one line per customer transfer, each
- *               ticked off against the payment it was for.
+ *               ticked off against the payment it was for — and flagged,
+ *               with the difference, when the customer sent the wrong amount.
  *   Cash        what the owner received each day against what the shifts
  *               counted less the float that stayed in the drawer.
  *   Statements  the uploaded files, with a dry run first so the owner sees
@@ -18,10 +21,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   deleteCashHandover, deleteStatementImport, fetchCardQrLedger, fetchCashHandovers, fetchSettlementSettings,
-  fetchStatementImports, fetchTransferSettlements, ignoreStatementLine, matchTransferLine, saveCashHandover,
-  unmatchTransferLine, updateSettlementSettings, uploadStatement,
+  fetchStatementImports, fetchTransferSettlements, ignoreStatementLine, matchTransferLine, restoreStatementLine,
+  saveCashHandover, unmatchTransferLine, updateSettlementSettings, uploadStatement,
   type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type SettlementAccount,
-  type SettlementSettings, type StatementImport, type TransfersView,
+  type SettlementSettings, type StatementImport, type TransferRow, type TransfersView,
 } from '../api';
 import {
   Badge, Btn, Card, DateInput, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, StatCard, TableCard,
@@ -49,8 +52,21 @@ const STATUS: Record<DayStatus | CashDay['status'], { label: string; color: stri
   partial: { label: 'Partly settled', color: 'orange' },
   awaiting: { label: 'Awaiting', color: 'blue' },
   overdue: { label: 'Overdue', color: 'red' },
+  over: { label: 'Bank paid more', color: 'orange' },
   differs: { label: 'Differs', color: 'red' },
 };
+
+const TRANSFER_STATUS: Record<TransferRow['status'], { label: string; color: string }> = {
+  verified: { label: 'In bank', color: 'green' },
+  short: { label: 'Short', color: 'red' },
+  over: { label: 'Over', color: 'orange' },
+  unverified: { label: 'Not seen', color: 'orange' },
+};
+
+/** A wrong-amount transfer is highlighted on its whole row. */
+const mismatchRow: React.CSSProperties = { background: 'var(--color-danger-bg)' };
+
+const signed = (laar: number) => `${laar > 0 ? '+' : '−'}${mvr(Math.abs(laar)).replace('MVR ', '')}`;
 
 function StatusBadge({ status }: { status: DayStatus | CashDay['status'] }) {
   const s = STATUS[status] ?? STATUS.none;
@@ -123,8 +139,15 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
 
   useEffect(() => { void load(); }, [load]);
 
+  const restore = async (id: number) => {
+    try { await restoreStatementLine(id); await load(); } catch (e) { onError((e as Error).message); }
+  };
+
   if (loading || !ledger) return <TableSkeleton rows={6} cols={6} />;
   const t = ledger.totals;
+  const depositedSub = t.over_days > 0
+    ? `${mvr(t.over_laar)} more than the till took on ${t.over_days} day${t.over_days === 1 ? '' : 's'}`
+    : t.excess_laar > 0 ? `${mvr(t.excess_laar)} not explained by any day` : 'all applied to takings';
 
   return (
     <>
@@ -134,7 +157,7 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
         <StatCard label="Overdue days" value={String(t.overdue_days)} accent={t.overdue_days > 0 ? 'var(--color-danger)' : 'var(--color-success)'}
           sub={`owed for more than ${ledger.settings.alert_days} days`} />
         <StatCard label="Expected in window" value={mvr(t.expected_laar)} sub="card + QR, net of commission" />
-        <StatCard label="Deposited in window" value={mvr(t.deposited_laar)} sub={t.excess_laar > 0 ? `${mvr(t.excess_laar)} not explained by any day` : 'all applied to takings'} accent={t.excess_laar > 0 ? 'var(--color-warning)' : undefined} />
+        <StatCard label="Deposited in window" value={mvr(t.deposited_laar)} sub={depositedSub} accent={t.excess_laar > 0 || t.over_days > 0 ? 'var(--color-warning)' : undefined} />
       </div>
 
       {!ledger.start && (
@@ -160,6 +183,7 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                 <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                   Expected {mvr(d.expected_laar)} · arrived {mvr(d.allocated_laar)}
                   {d.remaining_laar > 0 ? ` · still owed ${mvr(d.remaining_laar)}` : ''}
+                  {d.over_laar > 0 ? ` · ${mvr(d.over_laar)} more than the till took` : ''}
                 </div>
               </article>
             ))}
@@ -170,7 +194,7 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
               <thead><tr>{['Day', 'Takings', 'Commission', 'Expected', 'Arrived', 'Still owed', 'Status'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
                 {ledger.days.map((d) => (
-                  <tr key={d.date} data-testid={`ledger-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1 }}>
+                  <tr key={d.date} data-testid={`ledger-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1, ...(d.status === 'over' ? mismatchRow : {}) }}>
                     <td style={TD}>{d.date}{d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}</td>
                     <td style={TD}>{mvr(d.gross_laar)}</td>
                     <td style={TD}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
@@ -183,7 +207,9 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                         </div>
                       )}
                     </td>
-                    <td style={{ ...TD, color: d.remaining_laar > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{d.remaining_laar > 0 ? mvr(d.remaining_laar) : '—'}</td>
+                    <td style={{ ...TD, color: d.remaining_laar > 0 ? 'var(--color-danger)' : d.over_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+                      {d.remaining_laar > 0 ? mvr(d.remaining_laar) : d.over_laar > 0 ? `+${mvr(d.over_laar)}` : '—'}
+                    </td>
                     <td style={TD}><StatusBadge status={d.status} /></td>
                   </tr>
                 ))}
@@ -192,23 +218,45 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
           </TableCard>
         )
       ) : (
-        <TableCard>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['Deposit date', 'Description', 'Amount', 'Applied to', 'Unexplained'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
-            <tbody>
-              {ledger.deposits.length === 0 && <tr><td style={TD} colSpan={5}>No deposits in this window. Upload the card & QR account statement under Statements.</td></tr>}
-              {ledger.deposits.map((d) => (
-                <tr key={d.id}>
-                  <td style={TD}>{d.date}</td>
-                  <td style={TD}>{d.description ?? '—'}{d.reference ? <span style={{ color: 'var(--color-text-muted)' }}> · {d.reference}</span> : null}</td>
-                  <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.amount_laar)}</td>
-                  <td style={{ ...TD, fontSize: 12 }}>{d.applied_to.map((a) => `${a.date}: ${mvr(a.amount_laar)}`).join(' · ') || '—'}</td>
-                  <td style={{ ...TD, color: d.excess_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>{d.excess_laar > 0 ? mvr(d.excess_laar) : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableCard>
+        <>
+          <TableCard>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>{['Deposit date', 'For sales of', 'Description', 'Amount', 'Applied to', 'Unexplained'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody>
+                {ledger.deposits.length === 0 && <tr><td style={TD} colSpan={6}>No deposits in this window. Upload the card & QR account statement under Statements.</td></tr>}
+                {ledger.deposits.map((d) => (
+                  <tr key={d.id} data-testid={`deposit-${d.id}`}>
+                    <td style={TD}>{d.date}</td>
+                    <td style={TD}>{d.for_date ?? <span style={{ color: 'var(--color-text-muted)' }}>oldest open day</span>}</td>
+                    <td style={TD}>{d.description ?? '—'}{d.reference ? <span style={{ color: 'var(--color-text-muted)' }}> · {d.reference}</span> : null}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.amount_laar)}</td>
+                    <td style={{ ...TD, fontSize: 12 }}>{d.applied_to.map((a) => `${a.date}: ${mvr(a.amount_laar)}`).join(' · ') || '—'}</td>
+                    <td style={{ ...TD, color: d.excess_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>{d.excess_laar > 0 ? mvr(d.excess_laar) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableCard>
+
+          {ledger.set_aside.length > 0 && (
+            <Card>
+              <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13 }}>Other credits in this account — not counted</p>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                The bank did not label these as POS settlements (a top-up, a refund from a supplier). If one was a settlement after all, count it.
+              </p>
+              <div style={{ display: 'grid', gap: 6 }}>
+                {ledger.set_aside.map((l) => (
+                  <div key={l.id} data-testid={`set-aside-${l.id}`} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+                    <span style={{ minWidth: 90 }}>{l.date}</span>
+                    <span style={{ flex: 1, minWidth: 140 }}>{l.description ?? '—'}{l.reference ? ` · ${l.reference}` : ''}</span>
+                    <strong>{mvr(l.amount_laar)}</strong>
+                    <Btn small variant="ghost" onClick={() => void restore(l.id)}>Count it</Btn>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </>
       )}
     </>
   );
@@ -236,12 +284,15 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
 
   if (loading || !view) return <TableSkeleton rows={6} cols={5} />;
   const t = view.totals;
-  const unverified = view.payments.filter((p) => !p.verified);
+  const unverified = view.payments.filter((p) => p.status === 'unverified');
+  const mismatchNet = t.over_laar - t.short_laar;
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <StatCard label="Transfers" value={`${t.verified} / ${t.payments}`} sub="verified against the statement" accent={t.verified === t.payments ? 'var(--color-success)' : undefined} />
+        <StatCard label="Transfers" value={`${t.verified} / ${t.payments}`} sub="verified to the laari" accent={t.verified === t.payments ? 'var(--color-success)' : undefined} />
+        <StatCard label="Wrong amounts" value={String(t.mismatched)} accent={t.mismatched > 0 ? 'var(--color-danger)' : 'var(--color-success)'}
+          sub={t.mismatched > 0 ? `${mvr(t.short_laar)} short · ${mvr(t.over_laar)} over · net ${signed(mismatchNet)}` : 'every transfer seen matched its sale'} />
         <StatCard label="Not yet seen in bank" value={mvr(t.unverified_laar)} accent={t.unverified_laar > 0 ? 'var(--color-warning)' : 'var(--color-success)'} />
         <StatCard label="Bank lines unclaimed" value={String(t.unmatched_lines)} sub="credits no sale explains" accent={t.unmatched_lines > 0 ? 'var(--color-warning)' : undefined} />
       </div>
@@ -249,12 +300,12 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
       {view.unmatched_lines.length > 0 && (
         <Card>
           <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13 }}>Bank credits nobody has claimed</p>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>Match each to the transfer payment it was for, or set it aside if it was not a sale (interest, a supplier refund).</p>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--color-text-muted)' }}>Match each to the transfer payment it was for — the amount may differ if the customer sent the wrong sum — or set it aside if it was not a sale (interest, a supplier refund).</p>
           <div style={{ display: 'grid', gap: 6 }}>
             {view.unmatched_lines.map((l) => (
               <div key={l.id} data-testid={`unmatched-line-${l.id}`} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '6px 0', borderBottom: '1px solid var(--color-border-light)' }}>
-                <span style={{ minWidth: 90 }}>{l.date}</span>
-                <span style={{ flex: 1, minWidth: 140 }}>{l.description ?? '—'}{l.reference ? ` · ${l.reference}` : ''}</span>
+                <span style={{ minWidth: 90 }}>{l.for_date ?? l.date}{l.for_date && l.for_date !== l.date ? <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}> · posted {l.date}</span> : null}</span>
+                <span style={{ flex: 1, minWidth: 140 }}>{l.counterparty ?? l.description ?? '—'}{l.reference ? <span style={{ color: 'var(--color-text-muted)' }}> · {l.reference}</span> : null}</span>
                 <strong>{mvr(l.amount_laar)}</strong>
                 <Btn small onClick={() => setMatching(l.id)}>Match…</Btn>
                 <Btn small variant="ghost" onClick={() => void act(() => ignoreStatementLine(l.id))}>Not a sale</Btn>
@@ -268,34 +319,39 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
         {isMobile ? (
           <div style={{ display: 'grid', gap: 8 }}>
             {view.payments.map((p) => (
-              <article key={p.payment_id} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '10px 12px', background: 'var(--color-surface)' }}>
+              <article key={p.payment_id} data-testid={`transfer-${p.payment_id}`} style={{ border: '1px solid var(--color-border)', borderRadius: 12, padding: '10px 12px', background: 'var(--color-surface)', ...(p.difference_laar ? mismatchRow : {}) }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <strong>{mvr(p.amount_laar)}</strong>
-                  <Badge color={p.verified ? 'green' : 'orange'}>{p.verified ? 'In bank' : 'Not seen'}</Badge>
+                  <TransferBadge p={p} />
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
                   {p.at.slice(0, 10)} · {p.order_number ?? p.invoice_number ?? '—'}{p.customer ? ` · ${p.customer}` : ''}{p.reference ? ` · ref ${p.reference}` : ''}
                 </div>
+                {p.line && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Bank: {mvr(p.line.amount_laar)} from {p.line.counterparty ?? p.line.description ?? '—'} on {p.line.for_date ?? p.line.date}</div>}
               </article>
             ))}
           </div>
         ) : (
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>{['Paid', 'Order / invoice', 'Customer', 'Reference', 'Amount', 'Bank', ''].map((h, i) => <th key={i} style={TH}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Paid', 'Order / invoice', 'Customer', 'Reference', 'Amount', 'Bank received', 'Difference', 'Bank', ''].map((h, i) => <th key={i} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
-                {view.payments.length === 0 && <tr><td style={TD} colSpan={7}>No transfer payments in this window.</td></tr>}
+                {view.payments.length === 0 && <tr><td style={TD} colSpan={9}>No transfer payments in this window.</td></tr>}
                 {view.payments.map((p) => (
-                  <tr key={p.payment_id} data-testid={`transfer-${p.payment_id}`}>
+                  <tr key={p.payment_id} data-testid={`transfer-${p.payment_id}`} style={p.difference_laar ? mismatchRow : undefined}>
                     <td style={TD}>{p.at.slice(0, 10)}</td>
                     <td style={TD}>{p.order_number ?? p.invoice_number ?? '—'}</td>
                     <td style={TD}>{p.customer ?? '—'}</td>
                     <td style={TD}>{p.reference ?? '—'}</td>
                     <td style={{ ...TD, fontWeight: 600 }}>{mvr(p.amount_laar)}</td>
                     <td style={TD}>
-                      <Badge color={p.verified ? 'green' : 'orange'}>{p.verified ? 'In bank' : 'Not seen'}</Badge>
-                      {p.line && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.line.date} · {p.line.description ?? ''}{p.line.match_status === 'manual' ? ' · matched by hand' : ''}</div>}
+                      {p.line ? mvr(p.line.amount_laar) : '—'}
+                      {p.line && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.line.for_date ?? p.line.date} · {p.line.counterparty ?? p.line.description ?? ''}{p.line.match_status === 'manual' ? ' · matched by hand' : ''}</div>}
                     </td>
+                    <td style={{ ...TD, fontWeight: p.difference_laar ? 700 : 400, color: p.difference_laar ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                      {p.difference_laar ? signed(p.difference_laar) : '—'}
+                    </td>
+                    <td style={TD}><TransferBadge p={p} /></td>
                     <td style={TD}>{p.line && <Btn small variant="ghost" onClick={() => void act(() => unmatchTransferLine(p.line!.id))}>Unmatch</Btn>}</td>
                   </tr>
                 ))}
@@ -308,7 +364,7 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
       {matching !== null && (
         <Modal title="Which transfer was this for?" onClose={() => setMatching(null)}>
           {unverified.length === 0 ? (
-            <p style={{ fontSize: 13 }}>Every transfer in this window is already verified. Widen the dates, or set this line aside as not a sale.</p>
+            <p style={{ fontSize: 13 }}>Every transfer in this window is already accounted for. Widen the dates, or set this line aside as not a sale.</p>
           ) : (
             <div style={{ display: 'grid', gap: 6 }}>
               {unverified.map((p) => (
@@ -329,6 +385,12 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
       )}
     </>
   );
+}
+
+function TransferBadge({ p }: { p: TransferRow }) {
+  const s = TRANSFER_STATUS[p.status] ?? TRANSFER_STATUS.unverified;
+  const label = p.difference_laar ? `${s.label} by ${mvr(Math.abs(p.difference_laar)).replace('MVR ', '')}` : s.label;
+  return <Badge color={s.color}>{label}</Badge>;
 }
 
 // ── Cash ───────────────────────────────────────────────────────────────────
@@ -525,7 +587,7 @@ function StatementsTab({ onError }: { onError: (m: string) => void }) {
       <Card>
         <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14 }}>Upload a bank statement</p>
         <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-          CSV, XLS or XLSX as the bank exports it. Only credits are read. A file uploaded twice counts once. Check first, then confirm.
+          The BML CSV export as downloaded, or any CSV / XLS / XLSX with a header row. Only credits are read. A file uploaded twice counts once. Check first, then confirm.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600 }}>
@@ -554,14 +616,22 @@ function StatementsTab({ onError }: { onError: (m: string) => void }) {
               {summary.duplicate_lines > 0 ? ` ${summary.duplicate_lines} already on file.` : ''}
               {summary.debit_lines_skipped > 0 ? ` ${summary.debit_lines_skipped} debit line${summary.debit_lines_skipped === 1 ? '' : 's'} ignored.` : ''}
               {summary.unreadable_lines > 0 ? ` ${summary.unreadable_lines} line${summary.unreadable_lines === 1 ? '' : 's'} could not be read.` : ''}
+              {summary.set_aside_lines > 0 ? ` ${summary.set_aside_lines} credit${summary.set_aside_lines === 1 ? '' : 's'} not labelled POS set aside.` : ''}
               {summary.auto_matched != null ? ` ${summary.auto_matched} transfer${summary.auto_matched === 1 ? '' : 's'} matched automatically.` : ''}
+              {summary.mismatched ? ` ${summary.mismatched} sent the wrong amount — see Transfers.` : ''}
+              {summary.format === 'bml' ? ' BML export: each POS credit is applied to the sales day the bank names.' : ''}
             </p>
             {summary.preview.length > 0 && !summary.import_id && (
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10, fontSize: 12 }}>
-                <thead><tr>{['Date', 'Description', 'Amount'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Date', 'For', 'Description', 'Amount'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
                 <tbody>
                   {summary.preview.map((l, i) => (
-                    <tr key={i}><td style={TD}>{l.txn_date}</td><td style={TD}>{l.description ?? '—'}{l.reference ? ` · ${l.reference}` : ''}</td><td style={TD}>{mvr(l.amount_laar)}</td></tr>
+                    <tr key={i} style={{ opacity: l.set_aside ? 0.55 : 1 }}>
+                      <td style={TD}>{l.txn_date}</td>
+                      <td style={TD}>{l.for_date ?? '—'}</td>
+                      <td style={TD}>{l.description ?? '—'}{l.reference ? ` · ${l.reference}` : ''}{l.set_aside ? ' · set aside' : ''}</td>
+                      <td style={TD}>{mvr(l.amount_laar)}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>

@@ -69,7 +69,7 @@ class BankSettlementTest extends TestCase
         ]);
     }
 
-    private function line(string $account, float $amount, string $ymd, ?string $description = null): BankStatementLine
+    private function line(string $account, float $amount, string $ymd, ?string $description = null, ?string $forDate = null, ?string $kind = null): BankStatementLine
     {
         $import = \App\Models\BankStatementImport::firstOrCreate(['account' => $account, 'filename' => 'test.csv'], ['imported_by' => $this->owner->id]);
 
@@ -77,10 +77,38 @@ class BankSettlementTest extends TestCase
             'import_id' => $import->id,
             'account' => $account,
             'txn_date' => $ymd,
+            'for_date' => $forDate,
+            'kind' => $kind,
             'description' => $description,
             'amount_laar' => (int) round($amount * 100),
             'fingerprint' => hash('sha256', uniqid('', true)),
         ]);
+    }
+
+    /** One row of a BML CSV export: no header, eleven quoted columns, Excel-style ="…" wrapping. */
+    private function bmlRow(string $ymd, string $type, string $detail, string $party, string $col7, ?float $debit, ?float $credit, float $balance): string
+    {
+        static $n = 0;
+        $n++;
+        $slash = str_replace('-', '/', $ymd);
+        $cells = [
+            $slash, $slash, $type, '="BLAZ' . str_pad((string) $n, 12, '0', STR_PAD_LEFT) . '"', '="FT26' . str_pad((string) $n, 8, '0', STR_PAD_LEFT) . '\B26"',
+            $detail, '="' . $party . '"', $col7, $debit === null ? '' : number_format($debit, 2, '.', ''), $credit === null ? '' : number_format($credit, 2, '.', ''), number_format($balance, 2, '.', ''),
+        ];
+
+        return implode(',', array_map(fn ($c) => '"' . str_replace('"', '""', $c) . '"', $cells));
+    }
+
+    private function bmlPos(string $statementYmd, string $salesYmd, float $credit): string
+    {
+        return $this->bmlRow($statementYmd, 'POS Credit Transfer', '000000 65018311', '8633209960', str_replace('-', '', $salesYmd), null, $credit, 10000);
+    }
+
+    private function bmlTransfer(string $statementYmd, string $sentYmd, string $sender, ?float $credit, ?float $debit = null): string
+    {
+        $sent = Carbon::parse($sentYmd)->format('d-m-Y') . ' 13-16-13';
+
+        return $this->bmlRow($statementYmd, $credit !== null ? 'Transfer Credit' : 'Transfer Debit', $sent, $sender, 'Internet Banking', $debit, $credit, 10000);
     }
 
     // ── card & QR: oldest day first ──────────────────────────────────────────
@@ -114,6 +142,38 @@ class BankSettlementTest extends TestCase
         $this->assertSame(0, $ledger['totals']['outstanding_laar']);
         $this->assertSame(0, $ledger['totals']['excess_laar']);
         $this->assertNull($ledger['totals']['oldest_open_date']);
+    }
+
+    public function test_a_pos_credit_settles_the_day_the_bank_names_not_the_oldest_open_day(): void
+    {
+        // Owner, 2026-09-07: "1st day of the month will be from 2nd day
+        // deposit onwards" — a BML POS credit says which sales day it is for.
+        $this->payment('card', 100, $this->day(4), 0);
+        $this->payment('qr', 50, $this->day(3), 0);
+
+        // Day 3's takings arrived on day 1, labelled for day 3. Oldest-first
+        // would have put them against day 4; the label wins.
+        $this->line('card_qr', 50.00, $this->day(1), 'POS Credit Transfer', $this->day(3), 'pos');
+
+        $ledger = app(SettlementLedgerService::class)->cardQr($this->day(5), $this->day(0));
+        $byDate = collect($ledger['days'])->keyBy('date');
+        $this->assertSame('settled', $byDate[$this->day(3)]['status']);
+        $this->assertSame('overdue', $byDate[$this->day(4)]['status']);
+        $this->assertSame([['date' => $this->day(3), 'amount_laar' => 5000]], $ledger['deposits'][0]['applied_to']);
+
+        // The bank paid 130 for day 4 when the till only took 100: the
+        // difference is shown against that day, not spread or swallowed.
+        $this->line('card_qr', 130.00, $this->day(0), 'POS Credit Transfer', $this->day(4), 'pos');
+
+        $ledger = app(SettlementLedgerService::class)->cardQr($this->day(5), $this->day(0));
+        $day4 = collect($ledger['days'])->firstWhere('date', $this->day(4));
+        $this->assertSame('over', $day4['status']);
+        $this->assertSame(3000, $day4['over_laar']);
+        $this->assertSame(0, $day4['remaining_laar']);
+        $this->assertSame(1, $ledger['totals']['over_days']);
+        $this->assertSame(3000, $ledger['totals']['over_laar']);
+        $this->assertSame(0, $ledger['totals']['excess_laar']);
+        $this->assertSame(0, $ledger['totals']['outstanding_laar']);
     }
 
     public function test_a_day_still_owed_after_the_alert_window_is_overdue(): void
@@ -180,7 +240,11 @@ class BankSettlementTest extends TestCase
 
         $this->assertNull($parsed['error']);
         $this->assertCount(2, $parsed['lines']);
-        $this->assertSame(['txn_date' => '2026-09-02', 'description' => 'POS SETTLEMENT 01/09', 'reference' => 'S12345', 'amount_laar' => 123450, 'balance_laar' => 1000000], $parsed['lines'][0]);
+        $this->assertSame('generic', $parsed['format']);
+        $this->assertSame([
+            'txn_date' => '2026-09-02', 'for_date' => null, 'kind' => null, 'description' => 'POS SETTLEMENT 01/09', 'reference' => 'S12345',
+            'counterparty' => null, 'amount_laar' => 123450, 'balance_laar' => 1000000,
+        ], $parsed['lines'][0]);
         $this->assertSame(4500, $parsed['lines'][1]['amount_laar']);
         $this->assertSame(1, $parsed['debit_count']);
     }
@@ -203,6 +267,76 @@ class BankSettlementTest extends TestCase
         $this->assertCount(1, $parsed['lines']);
         $this->assertSame(90025, $parsed['lines'][0]['amount_laar']);
         $this->assertSame('2026-09-02', $parsed['lines'][0]['txn_date']);
+    }
+
+    public function test_the_parser_reads_a_bml_export_that_has_no_header_row(): void
+    {
+        $csv = implode("\n", [
+            $this->bmlPos('2026-08-09', '2026-08-06', 575.19),
+            $this->bmlPos('2026-08-09', '2026-08-06', 153.45),
+            $this->bmlRow('2026-08-09', 'Transfer Debit', '09-08-2026 06-00-15', 'MAUMOON ABDUL SAMAD', 'Internet Banking', 2000, null, 23504.86),
+            $this->bmlTransfer('2026-08-11', '2026-08-10', 'ASIF MOOSA IBRAHIM', 2000),
+            $this->bmlRow('2026-08-23', 'Credit Card Payment', '23-08-2026 08-20-16', 'Internet Banking', '', 447, null, 2000),
+            '',
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'stmt') . '.csv';
+        file_put_contents($path, $csv);
+
+        $parsed = app(BankStatementParser::class)->parse($path, 'bml.csv');
+
+        $this->assertNull($parsed['error']);
+        $this->assertSame('bml', $parsed['format']);
+        $this->assertCount(3, $parsed['lines']);
+        $this->assertSame(2, $parsed['debit_count']);
+        $this->assertSame(0, $parsed['unreadable_count']);
+
+        $pos = $parsed['lines'][0];
+        $this->assertSame('2026-08-09', $pos['txn_date']);
+        $this->assertSame('2026-08-06', $pos['for_date'], 'column 7 is the day the sales were made');
+        $this->assertSame('pos', $pos['kind']);
+        $this->assertSame(57519, $pos['amount_laar']);
+        $this->assertSame('POS Credit Transfer · terminal 000000 65018311', $pos['description']);
+        $this->assertMatchesRegularExpression('/^FT26\d{8}\\\\B26$/', $pos['reference'], 'the ="…" wrapper is stripped');
+
+        $transfer = $parsed['lines'][2];
+        $this->assertSame('2026-08-11', $transfer['txn_date']);
+        $this->assertSame('2026-08-10', $transfer['for_date'], 'column 5 is when the customer sent it');
+        $this->assertSame('transfer', $transfer['kind']);
+        $this->assertSame('ASIF MOOSA IBRAHIM', $transfer['counterparty']);
+        $this->assertSame(200000, $transfer['amount_laar']);
+    }
+
+    public function test_credits_that_are_not_pos_settlements_are_set_aside_in_the_card_account(): void
+    {
+        $this->payment('card', 100, $this->day(2), 0);
+        $csv = implode("\n", [
+            $this->bmlPos($this->day(1), $this->day(2), 100.00),
+            // The owner topping the account up from their own account.
+            $this->bmlTransfer($this->day(1), $this->day(1), 'ASIF MOOSA IBRAHIM', 2000),
+            '',
+        ]);
+        $file = UploadedFile::fake()->createWithContent('card.csv', $csv);
+
+        $res = $this->postJson('/api/settlements/statements', ['account' => 'card_qr', 'file' => $file])
+            ->assertCreated()
+            ->assertJsonPath('summary.format', 'bml')
+            ->assertJsonPath('summary.new_lines', 2)
+            ->assertJsonPath('summary.set_aside_lines', 1)
+            ->assertJsonPath('summary.credit_total_laar', 10000)
+            ->json('summary');
+        $this->assertTrue($res['preview'][1]['set_aside']);
+
+        $ledger = $this->getJson('/api/settlements/card-qr?from=' . $this->day(3) . '&to=' . $this->day(0))->assertOk()->json();
+        $this->assertSame('settled', collect($ledger['days'])->firstWhere('date', $this->day(2))['status']);
+        $this->assertSame(0, $ledger['totals']['excess_laar'], 'the top-up is not an unexplained deposit');
+        $this->assertCount(1, $ledger['set_aside']);
+        $this->assertSame(200000, $ledger['set_aside'][0]['amount_laar']);
+
+        // A person can say it was a settlement after all.
+        $this->postJson('/api/settlements/lines/' . $ledger['set_aside'][0]['id'] . '/restore')->assertOk();
+        $ledger = $this->getJson('/api/settlements/card-qr?from=' . $this->day(3) . '&to=' . $this->day(0))->assertOk()->json();
+        $this->assertCount(0, $ledger['set_aside']);
+        $this->assertSame('over', collect($ledger['days'])->firstWhere('date', $this->day(1))['status']);
     }
 
     public function test_uploading_a_statement_stores_credits_once_however_often_it_is_uploaded(): void
@@ -268,6 +402,63 @@ class BankSettlementTest extends TestCase
         $this->assertSame(1, $view['totals']['unmatched_lines']);
         $this->assertSame(14000, $view['totals']['unverified_laar'], 'the 80 without a matching reference and the two 30s');
         $this->assertTrue(collect($view['payments'])->firstWhere('payment_id', $a->id)['verified'] === false);
+    }
+
+    public function test_a_wrong_amount_transfer_is_linked_to_its_sale_and_the_difference_shown(): void
+    {
+        // Owner, 2026-09-07: "Some customers transfer wrong amounts. That
+        // should be tallied tracked. Add a way to highlight mismatches."
+        $azlifa = $this->payment('bank_transfer', 26, $this->day(1), 0);
+        $azlifa->order->update(['customer_id' => $this->makeCustomer(['name' => 'Azlifa Ahmed'])->id]);
+        $aiman = $this->payment('bank_transfer', 180, $this->day(1), 0);
+        $aiman->order->update(['customer_id' => $this->makeCustomer(['name' => 'Aiman Shareef'])->id]);
+        $maisham = $this->payment('bank_transfer', 71, $this->day(1), 0);
+        $maisham->order->update(['customer_id' => $this->makeCustomer(['name' => 'Fathimath Maisham'])->id]);
+
+        // Azlifa sent 20 for a 26 sale; Aiman sent exactly 180; Maisham sent
+        // 75, and the bank does not know the name on the sale.
+        $csv = implode("\n", [
+            $this->bmlTransfer($this->day(0), $this->day(1), 'AZLIFA AHMED', 20),
+            $this->bmlTransfer($this->day(0), $this->day(1), 'AIMAN SHAREEF', 180),
+            $this->bmlTransfer($this->day(0), $this->day(1), 'F MAISHAM HOUSEHOLD', 75),
+            $this->bmlTransfer($this->day(0), $this->day(1), 'I PROPERTY LLP', null, 64),
+            '',
+        ]);
+        $file = UploadedFile::fake()->createWithContent('transfer.csv', $csv);
+
+        $this->postJson('/api/settlements/statements', ['account' => 'transfer', 'file' => $file])
+            ->assertCreated()
+            ->assertJsonPath('summary.new_lines', 3)
+            ->assertJsonPath('summary.debit_lines_skipped', 1)
+            ->assertJsonPath('summary.auto_matched', 1)
+            ->assertJsonPath('summary.mismatched', 2);
+
+        $view = $this->getJson('/api/settlements/transfers?from=' . $this->day(2) . '&to=' . $this->day(0))->assertOk()->json();
+        $rows = collect($view['payments'])->keyBy('payment_id');
+        $this->assertSame('short', $rows[$azlifa->id]['status']);
+        $this->assertSame(-600, $rows[$azlifa->id]['difference_laar']);
+        $this->assertSame('AZLIFA AHMED', $rows[$azlifa->id]['line']['counterparty']);
+        $this->assertSame('verified', $rows[$aiman->id]['status']);
+        $this->assertSame(0, $rows[$aiman->id]['difference_laar']);
+        // Name did not match, but it was the only sale left that day and the only credit left for it.
+        $this->assertSame('over', $rows[$maisham->id]['status']);
+        $this->assertSame(400, $rows[$maisham->id]['difference_laar']);
+
+        $this->assertSame(1, $view['totals']['verified']);
+        $this->assertSame(2, $view['totals']['mismatched']);
+        $this->assertSame(600, $view['totals']['short_laar']);
+        $this->assertSame(400, $view['totals']['over_laar']);
+        $this->assertSame(0, $view['totals']['unverified_laar']);
+        $this->assertSame(0, $view['totals']['unmatched_lines']);
+    }
+
+    public function test_a_wrong_amount_credit_is_not_guessed_when_two_sales_could_claim_it(): void
+    {
+        $this->payment('bank_transfer', 26, $this->day(1), 0);
+        $this->payment('bank_transfer', 30, $this->day(1), 0);
+        $line = $this->line('transfer', 20.00, $this->day(0), 'Transfer Credit · SOMEONE', $this->day(1), 'transfer');
+
+        $this->assertSame('unmatched', app(SettlementLedgerService::class)->autoMatchTransfer($line, true));
     }
 
     public function test_a_person_can_match_a_line_by_hand_and_set_a_stray_credit_aside(): void

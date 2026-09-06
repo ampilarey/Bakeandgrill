@@ -19,12 +19,16 @@ use Carbon\CarbonImmutable;
  *
  * Owner, 2026-09-07: card and QR takings reach one account a day or more
  * later, sometimes half at a time; transfers reach another account line by
- * line; cash is counted and handed over. Nobody can tell from a statement
- * which day a deposit was for, so this does not try. Deposits are applied to
- * the oldest unsettled day first, and what is left is what the bank still
- * owes. A day is settled when its share has arrived, partly settled when
- * some has, awaiting while it is recent, and overdue once it is older than
- * the alert window with money still missing.
+ * line; cash is counted and handed over.
+ *
+ * A BML POS credit names the sales day it settles, so it is applied to that
+ * day exactly — all of it, even past what the till expected, because a day
+ * the bank paid more for than the till recorded is a finding, not noise.
+ * Deposits from files that do not say are applied to the oldest unsettled
+ * day first. What is left is what the bank still owes. A day is settled when
+ * its share has arrived, partly settled when some has, awaiting while it is
+ * recent, overdue once it is older than the alert window with money still
+ * missing, and over when the bank paid more than the till took.
  */
 final class SettlementLedgerService
 {
@@ -58,6 +62,9 @@ final class SettlementLedgerService
             ->where('match_status', '!=', BankStatementLine::MATCH_IGNORED)
             ->whereDate('txn_date', '>=', $ledgerFrom)
             ->whereDate('txn_date', '<=', $to)
+            // A credit the bank says was for a day before tracking began is
+            // not this ledger's business.
+            ->where(fn ($q) => $q->whereNull('for_date')->orWhereDate('for_date', '>=', $ledgerFrom))
             ->orderBy('txn_date')
             ->orderBy('id')
             ->get();
@@ -82,34 +89,49 @@ final class SettlementLedgerService
             $cursor = $cursor->addDay();
         }
 
-        // Oldest unsettled day first. A deposit cannot pay for a day after
-        // its own date.
         $depositRows = [];
         foreach ($deposits as $line) {
             $remaining = (int) $line->amount_laar;
             $applied = [];
-            foreach ($days as $ymd => &$day) {
-                if ($remaining <= 0) {
-                    break;
+            $for = $line->for_date?->toDateString();
+            $txn = $line->txn_date->toDateString();
+
+            if ($for !== null && isset($days[$for])) {
+                // The bank named the day. All of it goes there — a day paid
+                // more than the till took is exactly what the owner wants
+                // to see.
+                $days[$for]['allocated_laar'] += $remaining;
+                $days[$for]['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $remaining];
+                $applied[] = ['date' => $for, 'amount_laar' => $remaining];
+                $remaining = 0;
+            } else {
+                // Oldest unsettled day first. A deposit cannot pay for a day
+                // after its own date.
+                foreach ($days as $ymd => &$day) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+                    if ($ymd > $txn) {
+                        break;
+                    }
+                    $owed = $day['expected_laar'] - $day['allocated_laar'];
+                    if ($owed <= 0) {
+                        continue;
+                    }
+                    $take = min($owed, $remaining);
+                    $day['allocated_laar'] += $take;
+                    $day['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $take];
+                    $applied[] = ['date' => $ymd, 'amount_laar' => $take];
+                    $remaining -= $take;
                 }
-                if ($ymd > $line->txn_date->toDateString()) {
-                    break;
-                }
-                $owed = $day['expected_laar'] - $day['allocated_laar'];
-                if ($owed <= 0) {
-                    continue;
-                }
-                $take = min($owed, $remaining);
-                $day['allocated_laar'] += $take;
-                $day['deposits'][] = ['line_id' => $line->id, 'date' => $line->txn_date->toDateString(), 'amount_laar' => $take];
-                $applied[] = ['date' => $ymd, 'amount_laar' => $take];
-                $remaining -= $take;
+                unset($day);
             }
-            unset($day);
 
             $depositRows[] = [
                 'id' => $line->id,
-                'date' => $line->txn_date->toDateString(),
+                'date' => $txn,
+                'for_date' => $for,
+                'kind' => $line->kind,
                 'description' => $line->description,
                 'reference' => $line->reference,
                 'amount_laar' => (int) $line->amount_laar,
@@ -119,11 +141,15 @@ final class SettlementLedgerService
             ];
         }
 
-        $totals = ['expected_laar' => 0, 'deposited_laar' => 0, 'outstanding_laar' => 0, 'excess_laar' => 0, 'overdue_days' => 0, 'oldest_open_date' => null];
+        $totals = [
+            'expected_laar' => 0, 'deposited_laar' => 0, 'outstanding_laar' => 0, 'excess_laar' => 0, 'over_laar' => 0,
+            'overdue_days' => 0, 'over_days' => 0, 'oldest_open_date' => null,
+        ];
         foreach ($days as $ymd => &$day) {
             $remaining = $day['expected_laar'] - $day['allocated_laar'];
             $age = (int) CarbonImmutable::parse($ymd)->diffInDays(CarbonImmutable::parse($today), false);
             $day['remaining_laar'] = max(0, $remaining);
+            $day['over_laar'] = max(0, -$remaining);
             $day['age_days'] = max(0, $age);
             $day['status'] = $this->dayStatus($day['expected_laar'], $day['allocated_laar'], $remaining, $age, $tolerance, $alertDays);
             $totals['expected_laar'] += $day['expected_laar'];
@@ -134,12 +160,31 @@ final class SettlementLedgerService
             if ($day['status'] === 'overdue') {
                 $totals['overdue_days']++;
             }
+            if ($day['status'] === 'over') {
+                $totals['over_days']++;
+                $totals['over_laar'] += $day['over_laar'];
+            }
         }
         unset($day);
         foreach ($depositRows as $d) {
             $totals['deposited_laar'] += $d['amount_laar'];
             $totals['excess_laar'] += $d['excess_laar'];
         }
+
+        // Credits in this account that were not POS settlements (the owner
+        // topping it up, a refund from a supplier) — shown, never counted,
+        // unless someone restores one.
+        $setAside = BankStatementLine::query()
+            ->where('account', SettlementChannels::CARD_QR)
+            ->where('match_status', BankStatementLine::MATCH_IGNORED)
+            ->whereDate('txn_date', '>=', $from)
+            ->whereDate('txn_date', '<=', $to)
+            ->orderByDesc('txn_date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (BankStatementLine $l) => $this->lineRow($l))
+            ->values()
+            ->all();
 
         // Only the window the screen asked for, newest first.
         $visible = array_values(array_filter($days, fn ($d) => $d['date'] >= $from));
@@ -153,6 +198,7 @@ final class SettlementLedgerService
             'to' => $to,
             'days' => $visible,
             'deposits' => $visibleDeposits,
+            'set_aside' => $setAside,
             'totals' => $totals,
             'settings' => ['tolerance_laar' => $tolerance, 'alert_days' => $alertDays, 'start_date' => $start],
         ];
@@ -160,8 +206,11 @@ final class SettlementLedgerService
 
     private function dayStatus(int $expected, int $allocated, int $remaining, int $age, int $tolerance, int $alertDays): string
     {
-        if ($expected <= 0) {
+        if ($expected <= 0 && $allocated <= 0) {
             return 'none';
+        }
+        if ($remaining < -$tolerance) {
+            return 'over';
         }
         if ($remaining <= $tolerance) {
             return 'settled';
@@ -209,11 +258,13 @@ final class SettlementLedgerService
     private function earliestActivity(string $account): ?string
     {
         $line = BankStatementLine::query()->where('account', $account)->min('txn_date');
+        $for = BankStatementLine::query()->where('account', $account)->whereNotNull('for_date')->min('for_date');
         $methods = $account === SettlementChannels::CARD_QR ? SettlementChannels::CARD_QR_METHODS : SettlementChannels::TRANSFER_METHODS;
         $payment = Payment::query()->whereIn('method', $methods)->whereIn('status', SettlementChannels::SETTLED_STATUSES)->min('processed_at');
 
         $candidates = array_values(array_filter([
             $line ? Carbon::parse((string) $line)->toDateString() : null,
+            $for ? Carbon::parse((string) $for)->toDateString() : null,
             $payment ? Carbon::parse((string) $payment)->setTimezone(BusinessDay::timezone())->toDateString() : null,
         ]));
         sort($candidates);
@@ -224,7 +275,8 @@ final class SettlementLedgerService
     // ── Transfers ────────────────────────────────────────────────────────────
 
     /**
-     * Each transfer payment with the statement line that proved it, plus the
+     * Each transfer payment with the statement line that proved it — and,
+     * when the customer sent the wrong amount, by how much — plus the
      * statement lines nothing claims yet.
      */
     public function transfers(string $from, string $to): array
@@ -247,18 +299,25 @@ final class SettlementLedgerService
             ->keyBy('matched_payment_id');
 
         $rows = $payments->map(function (Payment $p) use ($matches) {
+            /** @var BankStatementLine|null $line */
             $line = $matches->get($p->id);
+            $amount = (int) ($p->amount_laar ?? round((float) $p->amount * 100));
+            $difference = $line ? (int) $line->amount_laar - $amount : null;
 
             return [
                 'payment_id' => $p->id,
                 'at' => Carbon::parse($p->processed_at ?? $p->created_at)->toIso8601String(),
-                'amount_laar' => (int) ($p->amount_laar ?? round((float) $p->amount * 100)),
+                'amount_laar' => $amount,
                 'reference' => $p->reference_number,
                 'order_number' => $p->order?->order_number,
                 'invoice_number' => $p->invoice?->invoice_number,
                 'customer' => $p->order?->customer?->name,
                 'method_label' => PaymentMethodLabel::for((string) $p->method),
-                'verified' => $line !== null,
+                // verified: the bank has it, to the laari. short / over: the
+                // customer sent the wrong amount. unverified: not seen yet.
+                'status' => $difference === null ? 'unverified' : ($difference === 0 ? 'verified' : ($difference < 0 ? 'short' : 'over')),
+                'verified' => $difference === 0,
+                'difference_laar' => $difference,
                 'line' => $line ? $this->lineRow($line) : null,
             ];
         })->values()->all();
@@ -273,54 +332,89 @@ final class SettlementLedgerService
             ->values()
             ->all();
 
+        $mismatched = array_values(array_filter($rows, fn ($r) => $r['status'] === 'short' || $r['status'] === 'over'));
+
         return [
             'payments' => $rows,
             'unmatched_lines' => $unmatched,
             'totals' => [
                 'payments' => count($rows),
                 'verified' => count(array_filter($rows, fn ($r) => $r['verified'])),
-                'unverified_laar' => array_sum(array_map(fn ($r) => $r['verified'] ? 0 : $r['amount_laar'], $rows)),
+                'unverified_laar' => array_sum(array_map(fn ($r) => $r['status'] === 'unverified' ? $r['amount_laar'] : 0, $rows)),
+                'mismatched' => count($mismatched),
+                'short_laar' => array_sum(array_map(fn ($r) => $r['status'] === 'short' ? -$r['difference_laar'] : 0, $mismatched)),
+                'over_laar' => array_sum(array_map(fn ($r) => $r['status'] === 'over' ? $r['difference_laar'] : 0, $mismatched)),
                 'unmatched_lines' => count($unmatched),
             ],
         ];
     }
 
     /**
-     * Pair a transfer-account line with the sale it paid for. Exactly one
-     * settled transfer of the same amount within five days is a sure thing;
-     * several are decided by the reference; anything else waits for a person.
+     * Pair a transfer-account line with the sale it paid for.
+     *
+     * Same amount: exactly one settled transfer within five days is a sure
+     * thing; several are narrowed to the day the customer sent it, then to
+     * the sender's name against the customer, then to the reference.
+     *
+     * Wrong amount ($allowMismatch, run after every exact match has been
+     * taken): the one transfer sale that day whose customer is the sender,
+     * or the only transfer sale that day when this is the only credit left
+     * for it. The line is linked so the difference is shown, not hidden.
+     *
+     * Anything else waits for a person.
      *
      * @return 'auto'|'unmatched'
      */
-    public function autoMatchTransfer(BankStatementLine $line): string
+    public function autoMatchTransfer(BankStatementLine $line, bool $allowMismatch = false): string
     {
         if ($line->account !== SettlementChannels::TRANSFER || $line->matched_payment_id) {
             return $line->match_status;
         }
 
-        $day = $line->txn_date;
-        $candidates = Payment::query()
+        $day = ($line->for_date ?? $line->txn_date)->toDateString();
+        [$dayStart, $dayEnd] = BusinessDay::bounds($day);
+        $at = \Illuminate\Support\Facades\DB::raw('COALESCE(processed_at, created_at)');
+        $open = Payment::query()
+            ->with(['order:id,customer_id', 'order.customer:id,name'])
             ->whereIn('method', SettlementChannels::TRANSFER_METHODS)
             ->whereIn('status', SettlementChannels::SETTLED_STATUSES)
+            ->where('amount', '>', 0)
+            ->whereNotIn('id', BankStatementLine::query()->whereNotNull('matched_payment_id')->select('matched_payment_id'));
+
+        $exact = (clone $open)
             ->whereRaw('COALESCE(amount_laar, ROUND(amount * 100)) = ?', [(int) $line->amount_laar])
-            ->whereBetween(\Illuminate\Support\Facades\DB::raw('COALESCE(processed_at, created_at)'), [
-                $day->copy()->subDays(5)->startOfDay(), $day->copy()->addDays(5)->endOfDay(),
-            ])
-            ->whereNotIn('id', BankStatementLine::query()->whereNotNull('matched_payment_id')->select('matched_payment_id'))
+            ->whereBetween($at, [$dayStart->copy()->subDays(5), $dayEnd->copy()->addDays(5)])
             ->get();
+        $onDay = fn (Payment $p) => Carbon::parse($p->processed_at ?? $p->created_at)->between($dayStart, $dayEnd);
 
         $pick = null;
-        if ($candidates->count() === 1) {
-            $pick = $candidates->first();
-        } elseif ($candidates->count() > 1) {
-            $hay = strtolower(($line->description ?? '') . ' ' . ($line->reference ?? ''));
-            $byRef = $candidates->filter(function (Payment $p) use ($hay) {
-                $ref = strtolower(trim((string) $p->reference_number));
+        if ($exact->count() === 1) {
+            $pick = $exact->first();
+        } elseif ($exact->count() > 1) {
+            $sameDay = $exact->filter($onDay);
+            if ($sameDay->count() === 1) {
+                $pick = $sameDay->first();
+            } else {
+                $pool = $sameDay->isNotEmpty() ? $sameDay : $exact;
+                $byName = $this->bySender($pool, $line);
+                if ($byName->count() === 1) {
+                    $pick = $byName->first();
+                } else {
+                    $byRef = $this->byReference($pool, $line);
+                    if ($byRef->count() === 1) {
+                        $pick = $byRef->first();
+                    }
+                }
+            }
+        }
 
-                return $ref !== '' && strlen($ref) >= 4 && str_contains($hay, $ref);
-            });
-            if ($byRef->count() === 1) {
-                $pick = $byRef->first();
+        if ($pick === null && $allowMismatch) {
+            $sameDay = (clone $open)->whereBetween($at, [$dayStart, $dayEnd])->get();
+            $byName = $this->bySender($sameDay, $line);
+            if ($byName->count() === 1) {
+                $pick = $byName->first();
+            } elseif ($sameDay->count() === 1 && !$this->otherCreditsForDay($line, $day)) {
+                $pick = $sameDay->first();
             }
         }
 
@@ -333,13 +427,61 @@ final class SettlementLedgerService
         return BankStatementLine::MATCH_AUTO;
     }
 
+    /** @param \Illuminate\Support\Collection<int, Payment> $pool */
+    private function bySender(\Illuminate\Support\Collection $pool, BankStatementLine $line): \Illuminate\Support\Collection
+    {
+        $sender = $this->nameKey($line->counterparty);
+        if ($sender === '') {
+            return collect();
+        }
+
+        return $pool->filter(function (Payment $p) use ($sender) {
+            $customer = $this->nameKey($p->order?->customer?->name);
+
+            return $customer !== '' && (str_contains($sender, $customer) || str_contains($customer, $sender));
+        });
+    }
+
+    /** @param \Illuminate\Support\Collection<int, Payment> $pool */
+    private function byReference(\Illuminate\Support\Collection $pool, BankStatementLine $line): \Illuminate\Support\Collection
+    {
+        $hay = strtolower(($line->description ?? '') . ' ' . ($line->reference ?? ''));
+
+        return $pool->filter(function (Payment $p) use ($hay) {
+            $ref = strtolower(trim((string) $p->reference_number));
+
+            return $ref !== '' && strlen($ref) >= 4 && str_contains($hay, $ref);
+        });
+    }
+
+    private function nameKey(?string $name): string
+    {
+        return preg_replace('/[^a-z]/', '', strtolower((string) $name)) ?? '';
+    }
+
+    /** Is any other unmatched credit in the transfer account for the same day? */
+    private function otherCreditsForDay(BankStatementLine $line, string $ymd): bool
+    {
+        return BankStatementLine::query()
+            ->where('account', SettlementChannels::TRANSFER)
+            ->where('match_status', BankStatementLine::MATCH_UNMATCHED)
+            ->where('id', '!=', $line->id)
+            ->where(fn ($q) => $q
+                ->where(fn ($q2) => $q2->whereNotNull('for_date')->whereDate('for_date', $ymd))
+                ->orWhere(fn ($q2) => $q2->whereNull('for_date')->whereDate('txn_date', $ymd)))
+            ->exists();
+    }
+
     private function lineRow(BankStatementLine $l): array
     {
         return [
             'id' => $l->id,
             'date' => $l->txn_date->toDateString(),
+            'for_date' => $l->for_date?->toDateString(),
+            'kind' => $l->kind,
             'description' => $l->description,
             'reference' => $l->reference,
+            'counterparty' => $l->counterparty,
             'amount_laar' => (int) $l->amount_laar,
             'match_status' => $l->match_status,
             'matched_payment_id' => $l->matched_payment_id,

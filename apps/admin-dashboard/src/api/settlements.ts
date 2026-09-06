@@ -10,7 +10,10 @@ import { req } from './client';
 
 export type SettlementAccount = 'card_qr' | 'transfer';
 
-export type DayStatus = 'none' | 'settled' | 'partial' | 'awaiting' | 'overdue';
+export type DayStatus = 'none' | 'settled' | 'partial' | 'awaiting' | 'overdue' | 'over';
+
+/** What the bank called the credit. Only POS credits settle card & QR takings. */
+export type LineKind = 'pos' | 'transfer' | 'other' | null;
 
 export type LedgerDay = {
   date: string;
@@ -20,6 +23,8 @@ export type LedgerDay = {
   payments: number;
   allocated_laar: number;
   remaining_laar: number;
+  /** The bank paid more for this day than the till took. */
+  over_laar: number;
   age_days: number;
   status: DayStatus;
   deposits: Array<{ line_id: number; date: string; amount_laar: number }>;
@@ -28,6 +33,9 @@ export type LedgerDay = {
 export type LedgerDeposit = {
   id: number;
   date: string;
+  /** The sales day the bank says this settles (BML POS credits). */
+  for_date: string | null;
+  kind: LineKind;
   description: string | null;
   reference: string | null;
   amount_laar: number;
@@ -42,12 +50,16 @@ export type CardQrLedger = {
   to: string;
   days: LedgerDay[];
   deposits: LedgerDeposit[];
+  /** Credits in the card & QR account that were not POS settlements — shown, not counted. */
+  set_aside: StatementLine[];
   totals: {
     expected_laar: number;
     deposited_laar: number;
     outstanding_laar: number;
     excess_laar: number;
+    over_laar: number;
     overdue_days: number;
+    over_days: number;
     oldest_open_date: string | null;
   };
   settings: { tolerance_laar: number; alert_days: number; start_date: string | null };
@@ -56,8 +68,12 @@ export type CardQrLedger = {
 export type StatementLine = {
   id: number;
   date: string;
+  /** When the customer sent it (transfers) or the sales day (POS). */
+  for_date: string | null;
+  kind: LineKind;
   description: string | null;
   reference: string | null;
+  counterparty: string | null;
   amount_laar: number;
   match_status: 'auto' | 'manual' | 'unmatched' | 'ignored';
   matched_payment_id: number | null;
@@ -72,14 +88,26 @@ export type TransferRow = {
   invoice_number: string | null;
   customer: string | null;
   method_label: string;
+  /** verified: in the bank to the laari. short / over: the customer sent the wrong amount. */
+  status: 'verified' | 'short' | 'over' | 'unverified';
   verified: boolean;
+  /** Bank amount minus sale amount; null until a line is matched. */
+  difference_laar: number | null;
   line: StatementLine | null;
 };
 
 export type TransfersView = {
   payments: TransferRow[];
   unmatched_lines: StatementLine[];
-  totals: { payments: number; verified: number; unverified_laar: number; unmatched_lines: number };
+  totals: {
+    payments: number;
+    verified: number;
+    unverified_laar: number;
+    mismatched: number;
+    short_laar: number;
+    over_laar: number;
+    unmatched_lines: number;
+  };
 };
 
 export type CashDay = {
@@ -119,18 +147,24 @@ export type ImportSummary = {
   account: SettlementAccount;
   account_label: string;
   filename: string;
+  format: 'bml' | 'generic' | string;
   columns: Record<string, number>;
   credit_lines: number;
   new_lines: number;
   duplicate_lines: number;
   debit_lines_skipped: number;
   unreadable_lines: number;
+  set_aside_lines: number;
   credit_total_laar: number;
   date_from: string | null;
   date_to: string | null;
-  preview: Array<{ txn_date: string; description: string | null; reference: string | null; amount_laar: number }>;
+  preview: Array<{
+    txn_date: string; for_date: string | null; kind: LineKind; description: string | null; reference: string | null;
+    amount_laar: number; set_aside: boolean;
+  }>;
   import_id?: number;
   auto_matched?: number;
+  mismatched?: number;
 };
 
 export type SettlementSettings = {
@@ -196,6 +230,10 @@ export async function unmatchTransferLine(lineId: number): Promise<{ line: Parti
 
 export async function ignoreStatementLine(lineId: number): Promise<{ line: Partial<StatementLine> }> {
   return req(`/settlements/lines/${lineId}/ignore`, { method: 'POST' });
+}
+
+export async function restoreStatementLine(lineId: number): Promise<{ line: Partial<StatementLine> }> {
+  return req(`/settlements/lines/${lineId}/restore`, { method: 'POST' });
 }
 
 export async function fetchSettlementSettings(): Promise<SettlementSettings> {
