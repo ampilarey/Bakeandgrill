@@ -85,7 +85,10 @@ class GstBackfillLedgerCommand extends Command
             });
 
         Purchase::query()
-            ->whereIn('status', ['received', 'partial'])
+            // Anything that took delivery, whatever the status ended up as —
+            // a short-closed order claimed input tax on what did arrive.
+            ->where(fn ($q) => $q->whereIn('status', ['received', 'partial'])
+                ->orWhereHas('items', fn ($i) => $i->where('received_quantity', '>', 0)))
             ->whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
             ->chunkById(100, function ($purchases) use ($poster, $dryRun, &$stats) {
                 foreach ($purchases as $purchase) {

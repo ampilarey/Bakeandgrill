@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Purchase;
+use App\Domains\Reporting\Support\PurchaseSpendQuery;
 use App\Models\Supplier;
 use App\Models\SupplierPerformanceCache;
 use App\Models\SupplierPriceHistory;
@@ -188,7 +188,14 @@ class SupplierIntelligenceController extends Controller
 
     private function refreshPerformanceCache(int $supplierId): SupplierPerformanceCache
     {
-        $purchases = Purchase::where('supplier_id', $supplierId)->selectRaw('COUNT(*) as cnt, SUM(total) as spend')->first();
+        // What this supplier was actually paid, not what was ordered from them:
+        // a draft is a plan and a cancelled order is a non-event, while a part
+        // delivery is worth exactly what came off the van.
+        $purchases = PurchaseSpendQuery::allLines()
+            ->where('purchases.supplier_id', $supplierId)
+            ->selectRaw('COUNT(DISTINCT purchases.id) as cnt')
+            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_INC_GST . ') as spend')
+            ->first();
 
         $ratings = SupplierRating::where('supplier_id', $supplierId)
             ->selectRaw('AVG(quality_score) as q, AVG(delivery_score) as d, AVG(accuracy_score) as a, AVG(price_score) as p')

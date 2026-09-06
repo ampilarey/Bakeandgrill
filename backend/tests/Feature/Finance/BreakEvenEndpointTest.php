@@ -12,6 +12,7 @@ use App\Models\Item;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,6 +71,37 @@ class BreakEvenEndpointTest extends TestCase
         return $order;
     }
 
+    /**
+     * A delivered purchase — header and the line that was received.
+     *
+     * COGS is measured off `received_quantity × unit_cost` rather than the
+     * order header, because a part delivery costs what arrived (see
+     * PurchaseSpendQuery). A header with no lines is worth nothing, so the
+     * fixture has to record the delivery it is claiming.
+     */
+    private function receivedPurchase(string $number, string $date, float $exGst): Purchase
+    {
+        $purchase = Purchase::create([
+            'purchase_number' => $number,
+            'purchase_date' => $date,
+            'status' => 'received',
+            'subtotal' => $exGst,
+            'tax_amount' => round($exGst * 0.08, 2),
+            'total' => round($exGst * 1.08, 2),
+        ]);
+
+        PurchaseItem::create([
+            'purchase_id' => $purchase->id,
+            'quantity' => 1,
+            'unit_cost' => $exGst,
+            'total_cost' => $exGst,
+            'received_quantity' => 1,
+            'receive_status' => 'complete',
+        ]);
+
+        return $purchase;
+    }
+
     public function test_the_seed_uses_revenue_net_of_output_gst(): void
     {
         // THE test. Two MVR 100 food orders bill MVR 216 including GST, but the
@@ -92,13 +124,7 @@ class BreakEvenEndpointTest extends TestCase
         // Input GST on purchases is reclaimable, so the real cost of stock is
         // the ex-tax subtotal, not the gross the supplier billed.
         $this->configureGst();
-        Purchase::create([
-            'purchase_number' => 'PO-BE-1', 'purchase_date' => '2026-08-05',
-            'status' => 'received',
-            'subtotal' => 500,
-            'tax_amount' => 40,
-            'total' => 540,
-        ]);
+        $this->receivedPurchase('PO-BE-1', '2026-08-05', 500);
 
         $estimate = app(BreakEvenService::class)->estimate(
             Carbon::parse('2026-08-01')->startOfDay(),
@@ -114,10 +140,7 @@ class BreakEvenEndpointTest extends TestCase
         // of rent over the same month → break-even ≈ 300 / 0.40 = 750/month.
         $this->configureGst();
         $this->paidOrder(1000, '2026-08-10');
-        Purchase::create([
-            'purchase_number' => 'PO-BE-2', 'purchase_date' => '2026-08-06', 'status' => 'received',
-            'subtotal' => 600, 'tax_amount' => 48, 'total' => 648,
-        ]);
+        $this->receivedPurchase('PO-BE-2', '2026-08-06', 600);
         $category = ExpenseCategory::create(['slug' => 'rent', 'name' => 'Rent', 'is_active' => true]);
         Expense::create([
             'expense_number' => 'EXP-BE-1',
@@ -175,10 +198,7 @@ class BreakEvenEndpointTest extends TestCase
         // estimate must say "not reachable", not emit a target.
         $this->configureGst();
         $this->paidOrder(100, '2026-08-10');
-        Purchase::create([
-            'purchase_number' => 'PO-BE-3', 'purchase_date' => '2026-08-06', 'status' => 'received',
-            'subtotal' => 150, 'tax_amount' => 12, 'total' => 162,
-        ]);
+        $this->receivedPurchase('PO-BE-3', '2026-08-06', 150);
 
         $estimate = app(BreakEvenService::class)->estimate(
             Carbon::parse('2026-08-01')->startOfDay(),

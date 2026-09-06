@@ -397,6 +397,7 @@ final class RestockIntelligenceService
         $rows = DB::table('purchase_items')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereIn('purchase_items.inventory_item_id', $itemIds)
+            ->whereNull('purchases.deleted_at')
             ->whereIn('purchases.status', ['draft', 'ordered', 'partial'])
             ->orderByDesc('purchases.id')
             ->select([
@@ -673,7 +674,10 @@ final class RestockIntelligenceService
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->whereNotNull('purchase_items.inventory_item_id')
             ->where('purchase_items.received_quantity', '>', 0)
-            ->whereIn('purchases.status', ['received', 'partial'])
+            // No status filter: the received quantity above is the delivery.
+            // A short-closed order still delivered what it delivered, and
+            // dropping it would skew how often we really buy this item.
+            ->whereNull('purchases.deleted_at')
             ->whereRaw(
                 'DATE(COALESCE(purchases.actual_delivery_date, purchases.purchase_date)) >= ?',
                 [$fromDate],

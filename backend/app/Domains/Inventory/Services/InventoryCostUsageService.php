@@ -146,6 +146,9 @@ final class InventoryCostUsageService
     {
         $query = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            // A join carries no global scope, so the soft delete has to be
+            // said out loud: a deleted order's money is gone from every screen.
+            ->whereNull('purchases.deleted_at')
             ->where('purchase_items.inventory_item_id', $item->id);
 
         if ($days > 0) {
@@ -169,6 +172,7 @@ final class InventoryCostUsageService
         $query = PurchaseItem::query()
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            ->whereNull('purchases.deleted_at')
             ->where('purchase_items.inventory_item_id', $item->id)
             ->where('purchase_items.unit_cost', '>', 0);
 

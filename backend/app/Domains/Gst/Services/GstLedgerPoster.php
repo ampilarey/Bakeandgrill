@@ -58,7 +58,7 @@ class GstLedgerPoster
      */
     public function postTradeInvoiceOnPayment(Payment $payment, ?int $userId = null): ?TaxLedgerEntry
     {
-        if (! $this->shouldPostOrderOnPayment()) {
+        if (!$this->shouldPostOrderOnPayment()) {
             return null;
         }
 
@@ -66,7 +66,7 @@ class GstLedgerPoster
             return null;
         }
 
-        if (! in_array((string) $payment->status, ['confirmed', 'paid', 'completed'], true)) {
+        if (!in_array((string) $payment->status, ['confirmed', 'paid', 'completed'], true)) {
             return null;
         }
 
@@ -74,7 +74,7 @@ class GstLedgerPoster
             ? $payment->invoice
             : Invoice::find($payment->invoice_id);
 
-        if ($invoice === null || $invoice->type !== 'sale' || ! $invoice->is_tax_invoice) {
+        if ($invoice === null || $invoice->type !== 'sale' || !$invoice->is_tax_invoice) {
             return null;
         }
 
@@ -275,7 +275,7 @@ class GstLedgerPoster
 
     public function postPurchaseInput(Purchase $purchase, ?int $userId = null): ?TaxLedgerEntry
     {
-        if (!in_array($purchase->status, ['received', 'partial'], true)) {
+        if (!$this->purchaseReceivedSomething($purchase)) {
             return null;
         }
 
@@ -504,6 +504,26 @@ class GstLedgerPoster
         ]);
 
         return $existing->fresh();
+    }
+
+    /**
+     * Did anything actually arrive against this order?
+     *
+     * Input tax is claimed on receipt, so this is the real gate. `received`
+     * and `partial` answer it for the common case, but a short-closed order —
+     * part delivered, the rest called off, so the status reads `cancelled` —
+     * still took delivery of goods it paid tax on. Reading the lines keeps a
+     * re-post or a backfill from quietly dropping that claim.
+     */
+    private function purchaseReceivedSomething(Purchase $purchase): bool
+    {
+        if (in_array($purchase->status, ['received', 'partial'], true)) {
+            return true;
+        }
+
+        return $purchase->relationLoaded('items')
+            ? $purchase->items->contains(fn ($line) => (float) $line->received_quantity > 0)
+            : $purchase->items()->where('received_quantity', '>', 0)->exists();
     }
 
     private function postNonClaimablePurchase(Purchase $purchase, ?int $userId): ?TaxLedgerEntry

@@ -380,8 +380,11 @@ class PurchaseController extends Controller
     {
         $date = now()->format('Ymd');
 
-        // Lock the day's rows so two concurrent creates cannot read the same count.
-        $count = Purchase::whereDate('created_at', now()->toDateString())
+        // Lock the day's rows so two concurrent creates cannot read the same
+        // count. `withTrashed` throughout: the unique index does not forget a
+        // deleted order's number, so neither can the generator.
+        $count = Purchase::withTrashed()
+            ->whereDate('created_at', now()->toDateString())
             ->lockForUpdate()
             ->get(['id'])
             ->count();
@@ -389,7 +392,7 @@ class PurchaseController extends Controller
         for ($attempt = 1; $attempt <= 50; $attempt++) {
             $sequence = str_pad((string) ($count + $attempt), 4, '0', STR_PAD_LEFT);
             $candidate = "PO-{$date}-{$sequence}";
-            if (!Purchase::where('purchase_number', $candidate)->exists()) {
+            if (!Purchase::withTrashed()->where('purchase_number', $candidate)->exists()) {
                 return $candidate;
             }
         }

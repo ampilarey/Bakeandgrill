@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Gst\Services\GstReportService;
 use App\Domains\Payments\Services\PaymentCommissionService;
 use App\Domains\Reporting\Services\BreakEvenService;
+use App\Domains\Reporting\Support\PurchaseSpendQuery;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\Expense;
@@ -50,10 +51,15 @@ class FinanceReportController extends Controller
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
 
-        // COGS: received purchases in the period (exclude draft/cancelled POs)
-        $cogs = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
-            ->whereIn('status', ['received', 'partial'])
-            ->sum('total');
+        /*
+         * COGS: the value of what actually arrived, not what was ordered.
+         *
+         * This summed `purchases.total` over `received`/`partial` orders,
+         * which counted a part delivery at its full ordered price and dropped
+         * a short-closed one to nothing (owner, 2026-09-06). See
+         * PurchaseSpendQuery.
+         */
+        $cogs = PurchaseSpendQuery::totalExGst($from->toDateString(), $to->toDateString());
 
         // Operating expenses (use date strings — SQLite stores expense_date with time)
         $opex = Expense::whereDate('expense_date', '>=', $from->toDateString())
@@ -170,13 +176,8 @@ class FinanceReportController extends Controller
             ->get()
             ->keyBy('date');
 
-        $purchaseByDay = Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
-            ->whereIn('status', ['received', 'partial'])
-            ->selectRaw('purchase_date as date, SUM(total) as amount')
-            ->groupBy('purchase_date')
-            ->orderBy('purchase_date')
-            ->get()
-            ->keyBy('date');
+        // What left the bank, on the day the goods came.
+        $purchaseByDay = PurchaseSpendQuery::byDayIncGst($from->toDateString(), $to->toDateString());
 
         // Build day-by-day series
         $days = [];
@@ -187,7 +188,7 @@ class FinanceReportController extends Controller
             $dateKey = $current->toDateString();
             $in = (float) ($inflows[$dateKey]->amount ?? 0);
             $expenses = (float) ($expenseByDay[$dateKey]->amount ?? 0);
-            $purchases = (float) ($purchaseByDay[$dateKey]->amount ?? 0);
+            $purchases = (float) ($purchaseByDay[$dateKey] ?? 0);
             $out = $expenses + $purchases;
             $net = $in - $out;
             $runningBalance += $net;
@@ -290,9 +291,8 @@ class FinanceReportController extends Controller
             ->all();
 
         $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
-        $purchases = (float) Purchase::whereDate('purchase_date', $date)
-            ->whereIn('status', ['received', 'partial'])
-            ->sum('total');
+        // What arrived that day, not what was ordered — see PurchaseSpendQuery.
+        $purchases = PurchaseSpendQuery::totalIncGst($date, $date);
         $wasteCost = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
@@ -369,24 +369,19 @@ class FinanceReportController extends Controller
         $fromDate = $from->toDateString();
         $toDate = $to->toDateString();
 
-        $purchasesTotal = (float) Purchase::query()
-            ->whereDate('purchase_date', '>=', $fromDate)
-            ->whereDate('purchase_date', '<=', $toDate)
-            ->whereIn('status', ['received', 'partial'])
-            ->sum('total');
+        $purchasesTotal = PurchaseSpendQuery::totalIncGst($fromDate, $toDate);
 
-        $poCount = (int) Purchase::query()
-            ->whereDate('purchase_date', '>=', $fromDate)
-            ->whereDate('purchase_date', '<=', $toDate)
-            ->whereIn('status', ['received', 'partial'])
-            ->count();
+        // Orders that actually delivered something, which is what the money
+        // beside it is made of. A draft nobody received is not a purchase yet.
+        $poCount = (int) PurchaseSpendQuery::lines($fromDate, $toDate)
+            ->distinct()
+            ->count('purchase_items.purchase_id');
 
-        $bySupplier = Purchase::query()
+        $bySupplier = PurchaseSpendQuery::lines($fromDate, $toDate)
             ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
-            ->whereDate('purchases.purchase_date', '>=', $fromDate)
-            ->whereDate('purchases.purchase_date', '<=', $toDate)
-            ->whereIn('purchases.status', ['received', 'partial'])
-            ->selectRaw('purchases.supplier_id, COALESCE(suppliers.name, ?) as supplier_name, COUNT(*) as po_count, SUM(purchases.total) as total', ['Unknown'])
+            ->selectRaw('purchases.supplier_id, COALESCE(suppliers.name, ?) as supplier_name', ['Unknown'])
+            ->selectRaw('COUNT(DISTINCT purchases.id) as po_count')
+            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_INC_GST . ') as total')
             ->groupBy('purchases.supplier_id', 'suppliers.name')
             ->orderByDesc('total')
             ->limit(25)
@@ -403,8 +398,13 @@ class FinanceReportController extends Controller
         $topItems = DB::table('purchase_items')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->leftJoin('inventory_items', 'inventory_items.id', '=', 'purchase_items.inventory_item_id')
-            ->whereRaw('DATE(purchases.purchase_date) BETWEEN ? AND ?', [$fromDate, $toDate])
-            ->whereIn('purchases.status', ['received', 'partial'])
+            ->whereRaw(
+                'DATE(COALESCE(purchases.actual_delivery_date, purchases.purchase_date)) BETWEEN ? AND ?',
+                [$fromDate, $toDate],
+            )
+            ->whereNull('purchases.deleted_at')
+            // No status filter: `received_quantity > 0` already says it
+            // arrived, and a short-closed order's receipts are still real.
             ->where('purchase_items.received_quantity', '>', 0)
             ->selectRaw('purchase_items.inventory_item_id')
             ->selectRaw('COALESCE(inventory_items.name, ?) as item_name', ['Unknown item'])
@@ -475,13 +475,7 @@ class FinanceReportController extends Controller
             ->groupByRaw('DATE(expense_date)')
             ->pluck('amount', 'date');
 
-        $purchaseByDay = Purchase::query()
-            ->whereDate('purchase_date', '>=', $fromDate)
-            ->whereDate('purchase_date', '<=', $toDate)
-            ->whereIn('status', ['received', 'partial'])
-            ->selectRaw('DATE(purchase_date) as date, SUM(total) as amount')
-            ->groupByRaw('DATE(purchase_date)')
-            ->pluck('amount', 'date');
+        $purchaseByDay = PurchaseSpendQuery::byDayIncGst($fromDate, $toDate);
 
         $wasteCost = (float) WasteLog::query()
             ->whereBetween('created_at', [$from, $to])

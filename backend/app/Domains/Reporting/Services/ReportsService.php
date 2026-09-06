@@ -1645,12 +1645,15 @@ class ReportsService
             ->whereNotNull('inventory_item_id')
             ->where('received_quantity', '>', 0)
             ->whereHas('purchase', function ($q) use ($fromDate, $toDate) {
-                $q->whereIn('status', ['received', 'partial'])
-                    // DATE() keeps timezone-safe comparison for date columns across drivers.
-                    ->whereRaw(
-                        'DATE(COALESCE(actual_delivery_date, purchase_date)) BETWEEN ? AND ?',
-                        [$fromDate, $toDate],
-                    );
+                // No status filter: `received_quantity > 0` above already says
+                // the goods arrived, and a short-closed order (status
+                // `cancelled`, part of it delivered and paid for) must keep the
+                // spend it really made. See PurchaseSpendQuery.
+                // DATE() keeps timezone-safe comparison for date columns across drivers.
+                $q->whereRaw(
+                    'DATE(COALESCE(actual_delivery_date, purchase_date)) BETWEEN ? AND ?',
+                    [$fromDate, $toDate],
+                );
             })
             ->get();
 

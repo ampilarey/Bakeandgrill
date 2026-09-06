@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PurchaseWorkflowController extends Controller
 {
@@ -459,8 +460,17 @@ class PurchaseWorkflowController extends Controller
     private function generatePO(): string
     {
         $date = now()->format('Ymd');
-        $count = Purchase::whereDate('purchase_date', now()->toDateString())->count() + 1;
+        // withTrashed: `purchase_number` is unique in the database, and a
+        // deleted order still holds its number there.
+        $count = Purchase::withTrashed()->whereDate('purchase_date', now()->toDateString())->count();
 
-        return 'PO-' . $date . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        for ($attempt = 1; $attempt <= 50; $attempt++) {
+            $candidate = 'PO-' . $date . '-' . str_pad((string) ($count + $attempt), 4, '0', STR_PAD_LEFT);
+            if (!Purchase::withTrashed()->where('purchase_number', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        return 'PO-' . $date . '-' . strtoupper(Str::random(6));
     }
 }

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Reporting\Services;
 
 use App\Domains\Reporting\Support\BreakEvenCalculator;
+use App\Domains\Reporting\Support\PurchaseSpendQuery;
 use App\Domains\Reporting\Support\ReportMoneySql;
 use App\Domains\Trade\Services\WholesaleChannelAggregator;
 use App\Models\Expense;
 use App\Models\Order;
-use App\Models\Purchase;
 use App\Models\Refund;
 use App\Models\WasteLog;
 use Carbon\Carbon;
@@ -83,9 +83,9 @@ class BreakEvenService
 
         // Variable cost = COGS at ex-tax purchase value (input GST is
         // reclaimable). Wholesale COGS is already ex-tax in the aggregator.
-        $purchaseCogsExGst = (float) Purchase::whereBetween('purchase_date', [$from->toDateString(), $to->toDateString()])
-            ->whereIn('status', ['received', 'partial'])
-            ->sum('subtotal');
+        // Measured by what arrived, not by what was ordered — a part delivery
+        // costs what came off the van. See PurchaseSpendQuery.
+        $purchaseCogsExGst = PurchaseSpendQuery::totalExGst($from->toDateString(), $to->toDateString());
 
         $variableCost = round($purchaseCogsExGst + (float) $wholesale['cogs'], 2);
 
