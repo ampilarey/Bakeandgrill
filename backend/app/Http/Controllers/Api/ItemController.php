@@ -96,7 +96,9 @@ class ItemController extends Controller
             $with[] = 'menuGroup';
             $with[] = 'channelAvailabilities';
             $with[] = 'comboItems.item';
+            $with[] = 'comboItems.variant';
             $with[] = 'platterGroups.allowedItems.item';
+            $with[] = 'platterGroups.allowedItems.variant';
             $with[] = 'recipe.recipeItems.inventoryItem';
         }
         // Public / POS need catering flag for Events & Catering sections.
@@ -127,6 +129,8 @@ class ItemController extends Controller
                 // inactive and the bundle falls back to its own price.
                 'comboItems.item:id,name,name_dv,base_price,image_url,is_available,is_active,has_variants',
                 'comboItems.item.variants',
+                'comboItems.variant:id,item_id,name,price',
+                'platterGroups.allowedItems.variant:id,item_id,name,price',
                 // Full child Item models — public platter picker needs availability + tomorrow_remaining.
                 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem',
                 // The size check in ItemAvailabilityService needs these.
@@ -427,6 +431,8 @@ class ItemController extends Controller
                         $data['combo_items'] = $item->comboItems->map(fn ($row) => [
                             'item_id' => $row->item_id,
                             'item_name' => $row->item?->name,
+                            'variant_id' => $row->variant_id,
+                            'variant' => \App\Domains\Menu\Services\BundleChildRules::variantForApi($row->variant_id ? $row->variant : null),
                             'quantity' => $row->quantity,
                             'is_optional' => $row->is_optional,
                             'surcharge' => (float) $row->surcharge,
@@ -508,6 +514,8 @@ class ItemController extends Controller
                     ? $item->comboItems->map(fn ($row) => [
                         'item_id' => $row->item_id,
                         'item_name' => $row->item?->name,
+                        'variant_id' => $row->variant_id,
+                        'variant' => \App\Domains\Menu\Services\BundleChildRules::variantForApi($row->variant_id ? $row->variant : null),
                         'quantity' => $row->quantity,
                         'is_optional' => $row->is_optional,
                         'surcharge' => (float) $row->surcharge,
@@ -556,6 +564,16 @@ class ItemController extends Controller
         );
 
         $item = Item::create($data);
+
+        if ((int) $item->stock_quantity !== 0) {
+            app(\App\Services\StockManagementService::class)->recordPreparedStockEdit(
+                $item,
+                0,
+                (int) $item->stock_quantity,
+                $request->user()?->id,
+                'Opening count from item editor',
+            );
+        }
 
         if ($request->has('modifier_ids')) {
             $item->modifiers()->sync($request->modifier_ids);
@@ -647,8 +665,10 @@ class ItemController extends Controller
         $with = ['category', 'variants', 'modifiers', 'packagingOptions', 'channelAvailabilities', 'extraCategories'];
         if (!$isAdmin) {
             $with[] = 'comboItems.item';
+            $with[] = 'comboItems.variant';
             $with[] = 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem';
             $with[] = 'platterGroups.allowedItems.item.variants';
+            $with[] = 'platterGroups.allowedItems.variant';
             $with[] = 'photos';
             // Sizes cut from one ingredient pool (see RecipeStockService).
             $with[] = 'recipe.recipeItems.inventoryItem';
@@ -737,6 +757,8 @@ class ItemController extends Controller
                 $payload['combo_items'] = $item->comboItems->map(fn ($row) => [
                     'item_id' => $row->item_id,
                     'item_name' => $row->item?->name,
+                    'variant_id' => $row->variant_id,
+                    'variant' => \App\Domains\Menu\Services\BundleChildRules::variantForApi($row->variant_id ? $row->variant : null),
                     'quantity' => $row->quantity,
                     'is_optional' => $row->is_optional,
                     'surcharge' => (float) $row->surcharge,
@@ -810,8 +832,19 @@ class ItemController extends Controller
         $oldThumbUrl = $item->getAttribute('thumb_url');
         $oldImageWebpUrl = $item->getAttribute('image_webp_url');
         $oldThumbWebpUrl = $item->getAttribute('thumb_webp_url');
+        $stockBefore = (int) $item->stock_quantity;
 
         $item->update($data);
+
+        // A count typed into the editor is a stock movement like any other
+        // (2026-09-07 audit, finding 9).
+        app(\App\Services\StockManagementService::class)->recordPreparedStockEdit(
+            $item->fresh() ?? $item,
+            $stockBefore,
+            (int) $item->stock_quantity,
+            $request->user()?->id,
+            'Edited in item editor',
+        );
 
         $keep = array_values(array_filter([
             $item->image_url,
@@ -927,6 +960,38 @@ class ItemController extends Controller
     public function destroy($id)
     {
         $item = Item::findOrFail($id);
+
+        /*
+         * An item inside a bundle or on a platter cannot simply go: the bundle
+         * would keep selling and printing without it, and its contents price
+         * would quietly fall (menu-item stock audit, 2026-09-07, finding 7).
+         * Say which bundles, so the owner can take it out of them first.
+         */
+        $inBundles = \App\Models\ComboItem::query()
+            ->where('item_id', $item->id)
+            ->with('combo:id,name')
+            ->get()
+            ->map(fn ($row) => $row->combo?->name)
+            ->filter()
+            ->unique()
+            ->values();
+        $onPlatters = \App\Models\PlatterGroupItem::query()
+            ->where('item_id', $item->id)
+            ->with('group.item:id,name')
+            ->get()
+            ->map(fn ($row) => $row->group?->item?->name)
+            ->filter()
+            ->unique()
+            ->values();
+        $parents = $inBundles->merge($onPlatters)->unique()->values();
+        if ($parents->isNotEmpty()) {
+            return response()->json([
+                'message' => "\"{$item->name}\" is part of " . $parents->map(fn ($n) => "\"{$n}\"")->join(', ')
+                    . ' — remove it from ' . ($parents->count() === 1 ? 'that bundle' : 'those bundles') . ' first.',
+                'used_in' => $parents->all(),
+            ], 422);
+        }
+
         $item->delete();
 
         return response()->json([

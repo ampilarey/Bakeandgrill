@@ -31,7 +31,7 @@ final class ComboOptionResolver
 {
     /**
      * @param list<array<string, mixed>> $childrenPayload
-     * @return list<array{item: Item, quantity: int, surcharge: float, group_id: int|null}>
+     * @return list<array{item: Item, variant: ?\App\Models\Variant, quantity: int, surcharge: float, group_id: int|null}>
      */
     public function resolve(Item $combo, array $childrenPayload): array
     {
@@ -39,24 +39,43 @@ final class ComboOptionResolver
             return [];
         }
 
-        $combo->loadMissing('comboItems.item');
+        $combo->loadMissing(['comboItems.item', 'comboItems.variant']);
 
         // Only the optional rows are a choice. A required child comes with the
         // bundle and is never picked, so naming one is a client bug, not an
-        // order.
-        $optional = [];
+        // order. An extra offered in two sizes is two rows, told apart by
+        // the size the payload names.
+        $optional = []; // item_id => list<ComboItem>
         foreach ($combo->comboItems as $row) {
             if (!$row->is_optional || $row->item === null) {
                 continue;
             }
-            $optional[(int) $row->item_id] = $row;
+            $optional[(int) $row->item_id][] = $row;
         }
 
         $seen = [];
         $resolved = [];
         foreach ($childrenPayload as $payloadRow) {
             $itemId = (int) ($payloadRow['item_id'] ?? 0);
-            $row = $optional[$itemId] ?? null;
+            $rows = $optional[$itemId] ?? [];
+            $wantVariant = isset($payloadRow['variant_id']) && $payloadRow['variant_id'] !== null ? (int) $payloadRow['variant_id'] : null;
+
+            $row = null;
+            if ($rows !== []) {
+                if ($wantVariant !== null) {
+                    foreach ($rows as $candidate) {
+                        if ((int) ($candidate->variant_id ?? 0) === $wantVariant) {
+                            $row = $candidate;
+                        }
+                    }
+                } elseif (count($rows) === 1) {
+                    $row = $rows[0];
+                } else {
+                    throw ValidationException::withMessages([
+                        'items' => ["Say which size of \"{$rows[0]->item->name}\" you want."],
+                    ]);
+                }
+            }
 
             if ($row === null) {
                 throw ValidationException::withMessages([
@@ -66,10 +85,11 @@ final class ComboOptionResolver
 
             // Taking the same extra twice is one extra, not two — the choice
             // is take-it-or-leave-it, so a repeat is a duplicate submit.
-            if (isset($seen[$itemId])) {
+            $seenKey = $itemId . ':' . (int) ($row->variant_id ?? 0);
+            if (isset($seen[$seenKey])) {
                 continue;
             }
-            $seen[$itemId] = true;
+            $seen[$seenKey] = true;
 
             $child = $row->item;
             if (!$child->is_active) {
@@ -80,6 +100,7 @@ final class ComboOptionResolver
 
             $resolved[] = [
                 'item' => $child,
+                'variant' => $row->variant_id ? $row->variant : null,
                 'quantity' => max(1, (int) $row->quantity),
                 'surcharge' => max(0.0, (float) $row->surcharge),
                 'group_id' => null,

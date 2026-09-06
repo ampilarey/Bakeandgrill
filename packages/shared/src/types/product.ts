@@ -165,9 +165,14 @@ export type MenuItem = {
   tomorrow_remaining?: number | null;
 };
 
+/** Which size of a sized child a bundle or platter names (2026-09-07 audit). */
+export type ChildVariantRef = { id: number; name: string; price: number };
+
 export type ComboItemEntry = {
   item_id: number;
   item_name?: string | null;
+  variant_id?: number | null;
+  variant?: ChildVariantRef | null;
   quantity: number;
   is_optional: boolean;
   /**
@@ -184,6 +189,8 @@ export type PlatterRuleType = 'exactly' | 'min' | 'range';
 
 export type PlatterAllowedItem = {
   item_id: number;
+  variant_id?: number | null;
+  variant?: ChildVariantRef | null;
   surcharge: number;
   sort_order?: number;
   item?: {
@@ -217,10 +224,30 @@ export type PlatterGroup = {
 export type PlatterSelection = {
   group_id: number;
   item_id: number;
+  /** The size picked, when the definition names one. Null for a sizeless child. */
+  variant_id?: number | null;
   item_name: string;
   quantity: number;
   surcharge: number;
 };
+
+/** "Coke (Large)" — one name for a sized child everywhere it is printed. */
+export function childDisplayName(
+  name: string | null | undefined,
+  variant: { name: string } | null | undefined,
+  fallbackId?: number,
+): string {
+  const base = name || (fallbackId != null ? `Item #${fallbackId}` : 'Item');
+  return variant ? `${base} (${variant.name})` : base;
+}
+
+/** True when a selection is for this allowed row — same item AND same size. */
+export function selectionMatchesRow(
+  s: { item_id: number; variant_id?: number | null },
+  row: { item_id: number; variant_id?: number | null },
+): boolean {
+  return s.item_id === row.item_id && (s.variant_id ?? null) === (row.variant_id ?? null);
+}
 
 export type PackagingOption = {
   id: number;

@@ -49,6 +49,12 @@ export function RecipeEditorModal({
   const [limitsAvailability, setLimitsAvailability] = useState(
     () => item.recipe?.limits_availability ?? false,
   );
+  // When these ingredients leave the store: as the dish sells (the default),
+  // or when the kitchen records a production batch of it. One or the other —
+  // never both, so the flour is not taken twice (2026-09-07 audit).
+  const [consumedAt, setConsumedAt] = useState<'sale' | 'production'>(
+    () => item.recipe?.consumed_at ?? 'sale',
+  );
 
   useEffect(() => {
     let alive = true;
@@ -110,7 +116,7 @@ export function RecipeEditorModal({
           quantity: parseFloat(r.quantity),
           unit: r.unit || null,
         }));
-      const res = await saveItemRecipe(item.id, ingredients, limitsAvailability);
+      const res = await saveItemRecipe(item.id, ingredients, limitsAvailability, consumedAt);
       onSaved(res.item);
     } catch (e) {
       setError((e as Error).message);
@@ -253,6 +259,32 @@ export function RecipeEditorModal({
             Cost rolls up live from inventory unit prices — a later price change moves the margin
             without re-saving. Profit is the selling price less this cost.
           </p>
+
+          <div style={{ marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+              These ingredients leave stock when…
+            </p>
+            {([
+              ['sale', 'the dish is sold', 'Made to order. Every sale, bundle, catering order and wholesale delivery takes its share.'],
+              ['production', 'the kitchen records making it', 'Baked ahead and counted as prepared stock. A production batch takes the ingredients; sales take the finished count.'],
+            ] as const).map(([value, label, hint]) => (
+              <label key={value} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="recipe-consumed-at"
+                  value={value}
+                  checked={consumedAt === value}
+                  onChange={() => setConsumedAt(value)}
+                  data-testid={`recipe-consumed-${value}`}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{label}</span>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.5 }}>{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
 
           {/* Off by default: an ingredient count nobody keeps current must not
               take an item off the menu on its own. */}

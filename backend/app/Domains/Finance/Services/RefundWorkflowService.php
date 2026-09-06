@@ -740,12 +740,13 @@ class RefundWorkflowService
                 $orderItem,
                 $restoreQty,
                 $lineQty,
-                fn ($child) => $comboStock->refundKey(
+                fn ($child, $variant = null) => $comboStock->refundKey(
                     (int) $order->id,
                     (int) $orderItem->id,
                     (int) $child->id,
                     $isFullRefund,
                     (int) $refund->id,
+                    $variant?->id,
                 ),
                 (int) $order->id,
                 $actorId,

@@ -1,8 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react';
-import type { MenuCategory, MenuGroupRow } from '../../api';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { fetchModifiers, type MenuCategory, type MenuGroupRow, type Modifier } from '../../api';
 import { useGstBootstrap } from '../../hooks/useGstBootstrap';
 import { Btn, ErrorMsg, Input, Modal, ModalActions } from '../../components/SharedUI';
 import { ItemSearch, type MenuItemSelection } from '../../components/ItemSearch';
+import { ChildSizeSelect, sizeOptionsFromSelection } from './ChildSizeSelect';
 import { Field, FormTextarea, ImageUploadField } from './menuFormPrimitives';
 import {
   emptyPackagingOptionRow, emptyPlatterGroupRow, emptyVariantRow, SALES_CHANNELS,
@@ -313,11 +314,24 @@ function PlatterGroupsEditor({
                   placeholder="Search menu item…"
                   onChange={(sel) => {
                     const items = [...group.items];
+                    const sizes = sizeOptionsFromSelection(sel);
                     items[iIdx] = {
                       ...items[iIdx],
                       item_id: sel ? String(sel.id) : '',
                       item_name: sel?.item.name,
+                      size_options: sizes,
+                      variant_id: sizes.length === 1 ? String(sizes[0].id) : '',
+                      variant_name: sizes.length === 1 ? sizes[0].name : undefined,
                     };
+                    updateGroup(gIdx, { items });
+                  }}
+                />
+                <ChildSizeSelect
+                  row={row}
+                  testId={`platter-size-${gIdx}-${iIdx}`}
+                  onChange={(variantId, variantName) => {
+                    const items = [...group.items];
+                    items[iIdx] = { ...items[iIdx], variant_id: variantId, variant_name: variantName };
                     updateGroup(gIdx, { items });
                   }}
                 />
@@ -643,7 +657,7 @@ function VariantsEditor({
  * is always in reach.
  */
 type SectionId =
-  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'bundle' | 'signage';
+  | 'basics' | 'pricing' | 'card' | 'details' | 'selling' | 'photo' | 'stock' | 'packaging' | 'addons' | 'bundle' | 'signage';
 
 const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'basics', label: 'Basics' },
@@ -654,6 +668,7 @@ const SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: 'photo', label: 'Photo' },
   { id: 'stock', label: 'Stock' },
   { id: 'packaging', label: 'Packaging' },
+  { id: 'addons', label: 'Add-ons' },
   { id: 'bundle', label: 'Bundle' },
   { id: 'signage', label: 'TV board' },
 ];
@@ -712,6 +727,16 @@ export function MenuItemEditorModal({
   const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
   const gstBootstrap = useGstBootstrap();
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // The add-on list, once per open. Null until it arrives.
+  const [modifiers, setModifiers] = useState<Modifier[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchModifiers()
+      .then((res) => { if (alive) setModifiers(res.modifiers ?? []); })
+      .catch(() => { if (alive) setModifiers([]); });
+    return () => { alive = false; };
+  }, []);
 
   const register = (id: SectionId, el: HTMLElement | null) => { sectionRefs.current[id] = el; };
   const jump = (id: SectionId) => {
@@ -1364,6 +1389,47 @@ export function MenuItemEditorModal({
           </Section>
 
           <Section
+            id="addons"
+            title="Add-ons"
+            hint="What a customer can add to this dish — extra cheese, no onions. Manage the list and what each one uses under Menu → Add-ons."
+            register={register}
+            testId="addons-section"
+          >
+            {modifiers === null ? (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>Loading add-ons…</p>
+            ) : modifiers.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-text-muted)' }}>No add-ons defined yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {modifiers.map((m) => {
+                  const on = form.modifier_ids.includes(m.id);
+                  return (
+                    <label
+                      key={m.id}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999,
+                        border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        background: on ? 'var(--color-bg)' : 'var(--color-surface)', fontSize: 13, cursor: 'pointer',
+                        opacity: m.is_active ? 1 : 0.6,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        data-testid={`addon-${m.id}`}
+                        onChange={(e) => set('modifier_ids', e.target.checked
+                          ? [...form.modifier_ids, m.id]
+                          : form.modifier_ids.filter((id) => id !== m.id))}
+                      />
+                      {m.name}{m.price > 0 ? ` · +${m.price.toFixed(2)}` : ''}{m.is_active ? '' : ' (off)'}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
+          <Section
             id="bundle"
             title="Bundle / combo / platter"
             register={register}
@@ -1446,11 +1512,25 @@ export function MenuItemEditorModal({
                           placeholder="Search menu item…"
                           onChange={(sel) => {
                             const next = [...form.combo_items];
+                            const sizes = sizeOptionsFromSelection(sel);
                             next[idx] = {
                               ...next[idx],
                               item_id: sel ? String(sel.id) : '',
                               item_name: sel?.item.name,
+                              size_options: sizes,
+                              // One size is no choice; several must be chosen.
+                              variant_id: sizes.length === 1 ? String(sizes[0].id) : '',
+                              variant_name: sizes.length === 1 ? sizes[0].name : undefined,
                             };
+                            set('combo_items', next);
+                          }}
+                        />
+                        <ChildSizeSelect
+                          row={row}
+                          testId={`combo-size-${idx}`}
+                          onChange={(variantId, variantName) => {
+                            const next = [...form.combo_items];
+                            next[idx] = { ...next[idx], variant_id: variantId, variant_name: variantName };
                             set('combo_items', next);
                           }}
                         />

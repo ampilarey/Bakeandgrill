@@ -114,7 +114,7 @@ final class BundlePricingService
     {
         $rows = $item->relationLoaded('comboItems')
             ? $item->comboItems
-            : $item->comboItems()->with('item.variants')->get();
+            : $item->comboItems()->with(['item.variants', 'variant'])->get();
 
         $total = 0.0;
         foreach ($rows as $row) {
@@ -127,7 +127,13 @@ final class BundlePricingService
                 continue;
             }
 
-            $total += $this->listPriceOf($child) * max(1, (int) $row->quantity);
+            // A named size prices at that size, not at the cheapest one.
+            $variant = $row->variant_id
+                ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first())
+                : null;
+            $price = $variant ? (float) $variant->price : $this->listPriceOf($child);
+
+            $total += $price * max(1, (int) $row->quantity);
         }
 
         return $total;

@@ -93,7 +93,7 @@ final class TradeReconciliationService
                 $qtyReturnedWaste = 0;
 
                 if ($countedReturn > 0) {
-                    if (! in_array($returnAction, [
+                    if (!in_array($returnAction, [
                         TradeDeliveryLine::ACTION_ACCEPT_TO_STOCK,
                         TradeDeliveryLine::ACTION_REJECT_TO_WASTE,
                     ], true)) {
@@ -150,7 +150,7 @@ final class TradeReconciliationService
                 ]);
 
                 if ($qtyReturnedGood > 0) {
-                    $inKey = 'trade:return:accept:'.$locked->id.':line:'.$line->id;
+                    $inKey = 'trade:return:accept:' . $locked->id . ':line:' . $line->id;
                     if ($line->variant_id && $line->variant) {
                         $this->stock->restoreConsignmentVariantStock(
                             $line->variant,
@@ -170,6 +170,19 @@ final class TradeReconciliationService
                             $line->unit_cost_laar,
                         );
                     }
+
+                    // A good return brings its bundle children and its
+                    // ingredients back too (2026-09-07 audit).
+                    $lineIndex = (int) $locked->lines->sortBy('id')->values()->search(fn ($l) => (int) $l->id === (int) $line->id);
+                    app(TradeDispatchService::class)->returnToShelf(
+                        $locked,
+                        $line,
+                        $lineIndex,
+                        (int) $qtyReturnedGood,
+                        $inKey,
+                        $actor->id,
+                        'returned',
+                    );
                 }
 
                 if ($qtyReturnedWaste > 0) {
@@ -180,7 +193,7 @@ final class TradeReconciliationService
                         'unit' => 'ea',
                         'cost_estimate' => round(($line->unit_cost_laar * $qtyReturnedWaste) / 100, 2),
                         'reason' => 'quality',
-                        'notes' => 'Trade return rejected — delivery '.$locked->delivery_number,
+                        'notes' => 'Trade return rejected — delivery ' . $locked->delivery_number,
                     ]);
                     // Rejected returns do NOT return to stock.
                 }

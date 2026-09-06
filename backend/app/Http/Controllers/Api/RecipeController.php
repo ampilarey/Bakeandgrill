@@ -46,6 +46,9 @@ class RecipeController extends Controller
         $data = $request->validate([
             'yield_quantity' => ['sometimes', 'numeric', 'min:0.001', 'max:100000'],
             'limits_availability' => ['sometimes', 'boolean'],
+            // When the ingredients leave the store: when the dish is sold, or
+            // when the kitchen records producing it (2026-09-07 audit).
+            'consumed_at' => ['sometimes', 'string', 'in:sale,production'],
             'instructions' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'ingredients' => ['present', 'array', 'max:200'],
             'ingredients.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
@@ -67,6 +70,9 @@ class RecipeController extends Controller
             // current must not 86 an item on its own.
             if (array_key_exists('limits_availability', $data)) {
                 $recipe->limits_availability = (bool) $data['limits_availability'];
+            }
+            if (array_key_exists('consumed_at', $data)) {
+                $recipe->consumed_at = $data['consumed_at'];
             }
             if (array_key_exists('instructions', $data)) {
                 $recipe->instructions = $data['instructions'];
@@ -126,6 +132,7 @@ class RecipeController extends Controller
                 'id' => $item->recipe->id,
                 'yield_quantity' => (float) $item->recipe->yield_quantity,
                 'limits_availability' => (bool) $item->recipe->limits_availability,
+                'consumed_at' => (string) ($item->recipe->consumed_at ?? 'sale'),
                 'instructions' => $item->recipe->instructions,
                 'ingredients' => $item->recipe->recipeItems->map(fn ($ri) => [
                     'id' => $ri->id,

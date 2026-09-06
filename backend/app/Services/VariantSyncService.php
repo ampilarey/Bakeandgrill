@@ -78,14 +78,21 @@ class VariantSyncService
                 }
             }
 
+            $stock = app(StockManagementService::class);
+            $actorId = auth()->id();
             if ($id) {
                 $variant = Variant::where('item_id', $item->id)->find($id);
                 if ($variant) {
+                    $before = (int) $variant->stock_qty;
                     $variant->update($fields);
+                    $stock->recordVariantStockEdit($variant, $before, (int) $variant->stock_qty, $actorId, 'Edited in item editor');
                     $keptIds[] = (int) $variant->id;
                 }
             } else {
                 $created = $item->variants()->create($fields);
+                if ((int) $created->stock_qty !== 0) {
+                    $stock->recordVariantStockEdit($created, 0, (int) $created->stock_qty, $actorId, 'Opening count from item editor');
+                }
                 $keptIds[] = (int) $created->id;
             }
         }

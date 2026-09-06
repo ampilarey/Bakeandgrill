@@ -94,7 +94,9 @@ class InventoryController extends Controller
 
         $usedByItem = DB::table('stock_movements')
             ->whereIn('inventory_item_id', $ids)
-            ->whereIn('type', ['sale', 'waste', 'deduction'])
+            // 'production': ingredients the kitchen used making prepared
+            // stock — going through it as surely as a sale (2026-09-07 audit).
+            ->whereIn('type', ['sale', 'waste', 'deduction', 'production'])
             ->where('quantity', '<', 0)
             ->whereRaw(StockMovement::OCCURRED_AT_SQL . ' >= ?', [$since])
             ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as used')

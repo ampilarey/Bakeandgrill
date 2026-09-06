@@ -3,6 +3,7 @@
  */
 import type { CSSProperties } from 'react';
 import type { PlatterGroup, PlatterSelection } from '@shared/types';
+import { childDisplayName, selectionMatchesRow } from '@shared/types';
 import {
   adjustPlatterSelection,
   countSelectionsForGroup,
@@ -54,15 +55,16 @@ export function PlatterPicker({
                 const child = row.item;
                 const selectable = isPlatterChildSelectable(child, orderDay);
                 const qty = selections
-                  .filter((s) => s.group_id === group.id && s.item_id === row.item_id)
+                  .filter((s) => s.group_id === group.id && selectionMatchesRow(s, row))
                   .reduce((s, r) => s + r.quantity, 0);
                 const atMax = max != null && have >= max;
-                const name = child?.name ?? `Item #${row.item_id}`;
+                const name = childDisplayName(child?.name, row.variant, row.item_id);
+                const rowKey = `${row.item_id}:${row.variant_id ?? 0}`;
                 const surcharge = Math.max(0, Number(row.surcharge) || 0);
 
                 return (
                   <li
-                    key={row.item_id}
+                    key={rowKey}
                     data-testid={`platter-child-${row.item_id}`}
                     style={{
                       display: 'flex',
@@ -102,6 +104,7 @@ export function PlatterPicker({
                             row.item_id,
                             -1,
                             variantId,
+                            row.variant_id ?? null,
                           );
                           if (next) onChange(next);
                         }}
@@ -129,6 +132,7 @@ export function PlatterPicker({
                             row.item_id,
                             1,
                             variantId,
+                            row.variant_id ?? null,
                           );
                           if (next) onChange(next);
                         }}

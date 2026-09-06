@@ -57,6 +57,12 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
         Route::patch('/items/{id}', [ItemController::class, 'update']);
         Route::delete('/items/{id}', [ItemController::class, 'destroy']);
         Route::patch('/items/{id}/toggle-availability', [ItemController::class, 'toggleAvailability']);
+
+        // Add-ons and the ingredient each one uses (2026-09-07 audit, finding 11).
+        Route::get('/modifiers', [App\Http\Controllers\Api\ModifierController::class, 'index']);
+        Route::post('/modifiers', [App\Http\Controllers\Api\ModifierController::class, 'store']);
+        Route::patch('/modifiers/{id}', [App\Http\Controllers\Api\ModifierController::class, 'update']);
+        Route::delete('/modifiers/{id}', [App\Http\Controllers\Api\ModifierController::class, 'destroy']);
     });
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {

@@ -115,6 +115,10 @@ class OrderStatusController extends Controller
                         $freshForStock,
                         $request->user()?->id,
                     );
+                    // Ingredients too: the payment-day listener skipped them
+                    // for a collect-tomorrow order (2026-09-07 audit, finding 5).
+                    app(\App\Domains\Inventory\Services\InventoryDeductionService::class)
+                        ->deductForOrder($freshForStock, $request->user()?->id);
                 }
             }
 
@@ -362,9 +366,16 @@ class OrderStatusController extends Controller
                         continue;
                     }
 
+                    /*
+                     * Only put back what was taken. A ticket whose stock was
+                     * never deducted (collect-tomorrow, not yet fired) must
+                     * not gain stock on void (2026-09-07 audit, finding 13).
+                     */
+                    $wasDeducted = $stockService->wasPreparedStockDeductedForLine((int) $order->id, (int) $orderItem->id);
+
                     if ($orderItem->variant_id) {
                         $variant = Variant::find($orderItem->variant_id);
-                        if ($variant && $variant->track_stock) {
+                        if ($wasDeducted && $variant && $variant->track_stock) {
                             $stockService->restoreVariantStock(
                                 $variant,
                                 $qty,
@@ -375,7 +386,7 @@ class OrderStatusController extends Controller
                         }
                     } elseif ($orderItem->item_id) {
                         $item = $orderItem->item ?? Item::find($orderItem->item_id);
-                        if ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                        if ($wasDeducted && $item && $item->track_stock && $item->availability_type === 'stock_based') {
                             $stockService->restorePreparedStock(
                                 $item,
                                 $qty,
@@ -396,13 +407,15 @@ class OrderStatusController extends Controller
                                 $orderItem,
                                 $qty,
                                 $qty,
-                                fn (Item $child) => $comboStock->cancelKey(
+                                fn (Item $child, ?Variant $variant = null) => $comboStock->cancelKey(
                                     (int) $order->id,
                                     (int) $orderItem->id,
                                     (int) $child->id,
+                                    $variant?->id,
                                 ),
                                 (int) $order->id,
                                 $request->user()->id,
+                                onlyIfPreviouslyDeducted: true,
                             );
                         }
                     }

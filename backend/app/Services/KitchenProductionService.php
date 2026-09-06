@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Inventory\Services\InventoryDeductionService;
+use App\Models\Item;
 use App\Models\KitchenProductionBatch;
 use App\Models\KitchenProductionItem;
 use App\Models\KitchenProductionVariance;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Models\Variant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -196,7 +199,7 @@ class KitchenProductionService
             ]);
 
             foreach ($payload['items'] ?? [] as $line) {
-                KitchenProductionItem::create([
+                $prodItem = KitchenProductionItem::create([
                     'kitchen_production_batch_id' => $batch->id,
                     'order_id' => $batch->order_id,
                     'item_id' => $line['item_id'] ?? null,
@@ -210,6 +213,8 @@ class KitchenProductionService
                     'status' => 'produced',
                     'kitchen_notes' => $line['notes'] ?? null,
                 ]);
+
+                $this->consumeIngredients($batch, $prodItem, $user);
             }
 
             $this->audit->log(
@@ -256,6 +261,12 @@ class KitchenProductionService
     {
         if ($batch->produced_by !== $user->id && !$user->hasPermission('kitchen.production.manage')) {
             abort(403);
+        }
+
+        // Whatever the batch took off the shelf comes back — only what it
+        // took, under the matching keys.
+        foreach ($batch->items()->get() as $prodItem) {
+            $this->restoreIngredients($batch, $prodItem, $user);
         }
 
         $batch->update([
@@ -376,6 +387,84 @@ class KitchenProductionService
             ['kitchen_done_at' => $order->fresh()->kitchen_done_at?->toIso8601String()],
             ['source' => 'kds', 'user_id' => $user->id],
             $request,
+        );
+    }
+
+    /**
+     * Which of a batch's recipes it draws on.
+     *
+     * A prepared-stock batch takes only recipes marked "consumed at
+     * production" — the others are drawn when the dish sells, and taking
+     * them here as well would empty the shelf twice. A batch that is never
+     * sold (staff meal, test batch, other) takes every recipe, since no sale
+     * will. Order-bound cooking and remakes take nothing: the order does.
+     *
+     * Menu-item stock audit, 2026-09-07 (finding 3).
+     */
+    private function ingredientContextFor(KitchenProductionBatch $batch): ?string
+    {
+        return match ((string) $batch->production_type) {
+            'prepared_stock' => 'production',
+            'staff_meal', 'test_batch', 'other', 'waste_only' => 'any',
+            default => null,
+        };
+    }
+
+    private function consumeIngredients(KitchenProductionBatch $batch, KitchenProductionItem $prodItem, User $user): void
+    {
+        $context = $this->ingredientContextFor($batch);
+        $qty = (float) $prodItem->produced_qty;
+        if ($context === null || $qty <= 0 || !$prodItem->item_id) {
+            return;
+        }
+
+        $item = Item::query()->with('recipe.recipeItems.inventoryItem')->find($prodItem->item_id);
+        if (!$item) {
+            return;
+        }
+        $variant = $prodItem->variant_id ? Variant::find($prodItem->variant_id) : null;
+
+        app(InventoryDeductionService::class)->consume(
+            $item,
+            $variant,
+            $qty * ($variant?->consumptionFactor() ?? 1.0),
+            'kitchen:produce:prod-item:' . $prodItem->id,
+            'kitchen_production',
+            (int) $batch->id,
+            $user->id,
+            'Kitchen batch ' . $batch->batch_no,
+            context: $context,
+            movementType: 'production',
+        );
+    }
+
+    private function restoreIngredients(KitchenProductionBatch $batch, KitchenProductionItem $prodItem, User $user): void
+    {
+        $context = $this->ingredientContextFor($batch);
+        $qty = (float) $prodItem->produced_qty;
+        if ($context === null || $qty <= 0 || !$prodItem->item_id) {
+            return;
+        }
+
+        $item = Item::query()->with('recipe.recipeItems.inventoryItem')->find($prodItem->item_id);
+        if (!$item) {
+            return;
+        }
+        $variant = $prodItem->variant_id ? Variant::find($prodItem->variant_id) : null;
+
+        app(InventoryDeductionService::class)->restore(
+            $item,
+            $variant,
+            $qty * ($variant?->consumptionFactor() ?? 1.0),
+            'kitchen:produce:prod-item:' . $prodItem->id,
+            'kitchen:cancel:prod-item:' . $prodItem->id,
+            '',
+            'kitchen_production',
+            (int) $batch->id,
+            $user->id,
+            'Kitchen batch ' . $batch->batch_no . ' cancelled',
+            context: $context,
+            movementType: 'production_reversal',
         );
     }
 }

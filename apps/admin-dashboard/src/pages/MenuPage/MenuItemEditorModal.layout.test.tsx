@@ -47,7 +47,7 @@ describe('MenuItemEditorModal layout', () => {
 
     const nav = screen.getByTestId('mie-nav');
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Basics', 'Price & sizes', 'Menu card', 'Details', 'Where sold', 'Photo', 'Stock', 'Packaging', 'Bundle', 'TV board',
+      'Basics', 'Price & sizes', 'Menu card', 'Details', 'Where sold', 'Photo', 'Stock', 'Packaging', 'Add-ons', 'Bundle', 'TV board',
     ]);
 
     fireEvent.click(screen.getByLabelText(/This product has variants/));

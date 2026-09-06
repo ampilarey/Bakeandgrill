@@ -87,6 +87,8 @@ export type CartItem = {
   platterSelections?: Array<{
     group_id: number;
     item_id: number;
+    /** The size picked, when the platter offers the item in sizes. */
+    variant_id?: number | null;
     item_name: string;
     quantity: number;
     surcharge: number;
@@ -248,12 +250,13 @@ function readCart(): (CartItem & { variantId?: number | null })[] {
   } catch { return []; }
 }
 
-function childrenFromCartItem(item: CartItem): Array<{ item_id: number; quantity: number; group_id?: number; surcharge?: number }> | undefined {
+function childrenFromCartItem(item: CartItem): Array<{ item_id: number; quantity: number; group_id?: number; variant_id?: number; surcharge?: number }> | undefined {
   if (!item.platterSelections || item.platterSelections.length === 0) return undefined;
   return item.platterSelections.map((s) => ({
     item_id: s.item_id,
     quantity: s.quantity,
     group_id: s.group_id || undefined,
+    variant_id: s.variant_id || undefined,
     surcharge: s.surcharge,
   }));
 }

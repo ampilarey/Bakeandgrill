@@ -16,7 +16,7 @@ final class ComboCompositionService
         ComboItem::where('combo_id', $combo->id)->delete();
     }
 
-    /** @param list<array{item_id: int, quantity?: int, is_optional?: bool, surcharge?: float}> $rows */
+    /** @param list<array{item_id: int, variant_id?: int|null, quantity?: int, is_optional?: bool, surcharge?: float}> $rows */
     public function sync(Item $combo, array $rows): void
     {
         if (!$combo->is_combo) {
@@ -33,6 +33,7 @@ final class ComboCompositionService
             }
             $normalized[] = [
                 'item_id' => $itemId,
+                'variant_id' => BundleChildRules::resolveVariantId($itemId, $row['variant_id'] ?? null),
                 'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
                 'is_optional' => (bool) ($row['is_optional'] ?? false),
                 // Only an optional extra can carry a price of its own: a
@@ -54,6 +55,7 @@ final class ComboCompositionService
                 ComboItem::create([
                     'combo_id' => $combo->id,
                     'item_id' => $row['item_id'],
+                    'variant_id' => $row['variant_id'],
                     'quantity' => $row['quantity'],
                     'is_optional' => $row['is_optional'],
                     'surcharge' => $row['surcharge'],
@@ -66,10 +68,12 @@ final class ComboCompositionService
     public function formatForApi(Item $combo): array
     {
         return $combo->comboItems()
-            ->with(['item:id,name,name_dv,base_price,image_url,is_available,has_variants'])
+            ->with(['item:id,name,name_dv,base_price,image_url,is_available,has_variants', 'variant:id,name,price'])
             ->get()
             ->map(fn (ComboItem $row) => [
                 'item_id' => $row->item_id,
+                'variant_id' => $row->variant_id,
+                'variant' => BundleChildRules::variantForApi($row->variant),
                 'quantity' => $row->quantity,
                 'is_optional' => $row->is_optional,
                 'surcharge' => (float) $row->surcharge,

@@ -209,7 +209,10 @@ class OfflineOrderSyncService
                     request: $request,
                 );
 
-                $inventoryConflict = $this->inventory->deductForOrderAndDetectConflict($order, $user->id);
+                $inventoryConflict = $this->inventory->deductForOrderAndDetectConflict($order, $user->id)
+                    // A prepared count driven below zero by this sale is the
+                    // same kind of news as an ingredient below zero.
+                    || app(StockManagementService::class)->preparedStockWentNegativeForOrder((int) $order->id);
 
                 OfflineSyncRecord::updateOrCreate(
                     ['idempotency_key' => $idempotencyKey],
@@ -317,6 +320,17 @@ class OfflineOrderSyncService
 
             if (!empty($item['notes'])) {
                 $normalized['notes'] = $item['notes'];
+            }
+
+            // A platter's picks and a bundle's extras. Dropped here until the
+            // 2026-09-07 audit, so an offline platter sale could never sync.
+            if (!empty($item['children']) && is_array($item['children'])) {
+                $normalized['children'] = array_values(array_map(static fn (array $child): array => array_filter([
+                    'item_id' => (int) ($child['item_id'] ?? 0),
+                    'quantity' => (int) ($child['quantity'] ?? 1),
+                    'group_id' => !empty($child['group_id']) ? (int) $child['group_id'] : null,
+                    'variant_id' => !empty($child['variant_id']) ? (int) $child['variant_id'] : null,
+                ], static fn ($v) => $v !== null), $item['children']));
             }
 
             return $normalized;

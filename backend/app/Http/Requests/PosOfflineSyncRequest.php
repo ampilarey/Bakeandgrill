@@ -42,6 +42,8 @@ class PosOfflineSyncRequest extends FormRequest
             'orders.*.items.*.children' => ['nullable', 'array'],
             'orders.*.items.*.children.*.item_id' => ['required_with:orders.*.items.*.children', 'integer', 'exists:items,id'],
             'orders.*.items.*.children.*.quantity' => ['required_with:orders.*.items.*.children', 'integer', 'min:1', 'max:99'],
+            'orders.*.items.*.children.*.group_id' => ['nullable', 'integer'],
+            'orders.*.items.*.children.*.variant_id' => ['nullable', 'integer', 'exists:variants,id'],
             'orders.*.items.*.notes' => ['nullable', 'string', 'max:255'],
             'orders.*.totals' => ['required', 'array'],
             'orders.*.totals.subtotal' => ['required', 'numeric', 'min:0'],

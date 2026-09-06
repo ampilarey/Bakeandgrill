@@ -55,6 +55,7 @@ class StoreOrderRequest extends FormRequest
             'items.*.children.*.item_id' => 'required_with:items.*.children|integer|exists:items,id',
             'items.*.children.*.quantity' => 'required_with:items.*.children|integer|min:1|max:99',
             'items.*.children.*.group_id' => 'nullable|integer|exists:platter_groups,id',
+            'items.*.children.*.variant_id' => 'nullable|integer|exists:variants,id',
             'items.*.children.*.surcharge' => 'nullable|numeric|min:0',
         ];
     }

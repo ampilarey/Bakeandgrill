@@ -29,6 +29,7 @@ const ExpensesPage            = lazyWithRetry(() => import('./pages/ExpensesPage
 const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
 const MonthlySheetPage        = lazyWithRetry(() => import('./pages/MonthlySheetPage').then((m) => ({ default: m.MonthlySheetPage })));
+const ModifiersPage           = lazyWithRetry(() => import('./pages/ModifiersPage').then((m) => ({ default: m.ModifiersPage })));
 const BreakEvenPage           = lazyWithRetry(() => import('./pages/BreakEvenPage').then((m) => ({ default: m.BreakEvenPage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
@@ -308,6 +309,11 @@ export default function App() {
                 <Route path="menu" element={
                   <PermissionGuard user={user} permission="menu.manage">
                     <MenuPage />
+                  </PermissionGuard>
+                } />
+                <Route path="modifiers" element={
+                  <PermissionGuard user={user} permission="menu.manage">
+                    <ModifiersPage />
                   </PermissionGuard>
                 } />
                 {/* Staff management */}

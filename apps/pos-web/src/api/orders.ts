@@ -10,6 +10,8 @@ export type PosOrderLineChild = {
   item_id: number;
   quantity: number;
   group_id?: number;
+  /** The size picked, when the definition offers the item in sizes. */
+  variant_id?: number;
   surcharge?: number;
 };
 

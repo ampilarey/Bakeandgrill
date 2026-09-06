@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
-  UtensilsCrossed, Package, Tag, CalendarDays,
+  UtensilsCrossed, Package, Tag, CalendarDays, Plus,
   BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
   Users, LogOut,
   Heart, MessageSquare, BarChart2, Webhook,
@@ -75,6 +75,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/menu',      icon: UtensilsCrossed, label: 'Menu Items', permission: 'menu.manage',      description: 'Categories & items' },
       { to: '/specials',          icon: Tag,         label: 'Daily Specials',   permission: 'menu.manage',     description: 'Scheduled item discounts' },
+      // 2026-09-07 audit, finding 11: add-ons had no screen and moved no stock.
+      { to: '/modifiers',         icon: Plus,        label: 'Add-ons',          permission: 'menu.manage',     description: 'Extras and what each one uses' },
       { to: '/inventory',             icon: Boxes,         label: 'Inventory',       permission: 'inventory.view',      description: 'Stock levels, counts, waste' },
       // Purchasing audit, 2026-09-05: requests, orders, shopping lists, suppliers
       // and every buying switch are tabs of one page. Old paths redirect.

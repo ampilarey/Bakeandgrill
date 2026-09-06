@@ -487,6 +487,16 @@ class MenuBulkUpdateService
                 if ($item->isDirty()) {
                     $item->save();
                 }
+                if (array_key_exists('stock_quantity', $after)) {
+                    // The grid and the CSV import are stock edits too (2026-09-07 audit, finding 9).
+                    app(\App\Services\StockManagementService::class)->recordPreparedStockEdit(
+                        $item,
+                        (int) $before['stock_quantity'],
+                        (int) $after['stock_quantity'],
+                        $request?->user()?->id,
+                        'Edited in menu grid',
+                    );
+                }
                 $touched[] = ['id' => $item->id, 'name' => $item->name, 'old' => $before, 'new' => $after];
             }
 
@@ -521,6 +531,15 @@ class MenuBulkUpdateService
                 }
 
                 $variant->save();
+                if (array_key_exists('stock_qty', $after)) {
+                    app(\App\Services\StockManagementService::class)->recordVariantStockEdit(
+                        $variant,
+                        (int) $before['stock_qty'],
+                        (int) $after['stock_qty'],
+                        $request?->user()?->id,
+                        'Edited in menu grid',
+                    );
+                }
                 $touchedVariants[] = [
                     'id' => $variant->id,
                     'item_id' => $variant->item_id,
@@ -546,6 +565,15 @@ class MenuBulkUpdateService
                     unset($fields['extra_category_ids']);
                 }
                 $item = Item::create($fields);
+                if ((int) $item->stock_quantity !== 0) {
+                    app(\App\Services\StockManagementService::class)->recordPreparedStockEdit(
+                        $item,
+                        0,
+                        (int) $item->stock_quantity,
+                        $request?->user()?->id,
+                        'Opening count from menu grid',
+                    );
+                }
                 if ($extra !== null) {
                     $item->extraCategories()->sync(
                         $this->normalizeExtraCategories($extra, (int) $item->category_id),

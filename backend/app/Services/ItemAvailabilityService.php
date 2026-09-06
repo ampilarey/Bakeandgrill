@@ -149,7 +149,13 @@ class ItemAvailabilityService
 
         $rows = $item->relationLoaded('comboItems')
             ? $item->comboItems
-            : $item->comboItems()->with('item')->get();
+            : $item->comboItems()->with(['item', 'variant'])->get();
+
+        $soldOut = AvailabilityResult::unavailable(
+            'out_of_stock',
+            "{$item->name} is currently sold out.",
+            availableStock: 0,
+        );
 
         foreach ($rows as $row) {
             if ($row->is_optional) {
@@ -160,6 +166,10 @@ class ItemAvailabilityService
             if ($child === null) {
                 continue;
             }
+            $variant = $row->variant_id
+                ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first())
+                : null;
+            $needed = max(1, (int) $row->quantity);
 
             /*
              * The child's own flags and stock, not a full recursive `check`:
@@ -168,21 +178,26 @@ class ItemAvailabilityService
              * the kitchen can make it.
              */
             if (!$child->is_active || !$child->is_available || $child->isSnoozed($at)) {
-                return AvailabilityResult::unavailable(
-                    'out_of_stock',
-                    "{$item->name} is currently sold out.",
-                    availableStock: 0,
-                );
+                return $soldOut;
+            }
+            if ($variant && (!$variant->is_active || !$variant->isAvailableNow())) {
+                return $soldOut;
             }
 
-            if ($child->track_stock && $child->availability_type === 'stock_based') {
-                $needed = max(1, (int) $row->quantity);
+            // The child's ingredient pool, at the size's rate (2026-09-07
+            // audit, finding 1): a bundle is only as makeable as its parts.
+            $portions = $this->recipeStock->portionsAvailable($child, $variant);
+            if ($portions !== null && $portions < $needed) {
+                return $soldOut;
+            }
+
+            if ($variant && $variant->track_stock) {
+                if ($this->reservations->getAvailableVariantStock($variant) < $needed) {
+                    return $soldOut;
+                }
+            } elseif ($child->track_stock && $child->availability_type === 'stock_based') {
                 if ($this->reservations->getAvailableStock($child) < $needed) {
-                    return AvailabilityResult::unavailable(
-                        'out_of_stock',
-                        "{$item->name} is currently sold out.",
-                        availableStock: 0,
-                    );
+                    return $soldOut;
                 }
             }
         }

@@ -16,6 +16,7 @@
  */
 import type { CSSProperties } from "react";
 import type { PlatterGroup, PlatterSelection } from "../types";
+import { childDisplayName, selectionMatchesRow } from "@shared/types";
 import {
   adjustPlatterSelection,
   countSelectionsForGroup,
@@ -88,27 +89,29 @@ export function PosPlatterPicker({
             <div style={{ display: "grid", gap: 8 }}>
               {group.items.map((row) => {
                 const child = row.item;
-                const name = child?.name ?? `Item #${row.item_id}`;
+                // "Coke (Large)": the size is part of what is being picked.
+                const name = childDisplayName(child?.name, row.variant, row.item_id);
+                const rowKey = `${row.item_id}:${row.variant_id ?? 0}`;
                 // Sold out is the till's own version of the customer's
                 // availability gate: a cashier looking at the counter can
                 // still see it, so it is greyed rather than hidden.
                 const soldOut = child?.is_available === false;
                 const qty = selections
-                  .filter((s) => s.group_id === group.id && s.item_id === row.item_id)
+                  .filter((s) => s.group_id === group.id && selectionMatchesRow(s, row))
                   .reduce((sum, s) => sum + s.quantity, 0);
                 const atMax = max != null && have >= max;
                 const surcharge = Math.max(0, Number(row.surcharge) || 0);
 
                 const step = (delta: number) => {
                   const next = adjustPlatterSelection(
-                    groups, selections, group.id, row.item_id, delta, variantId,
+                    groups, selections, group.id, row.item_id, delta, variantId, row.variant_id ?? null,
                   );
                   if (next) onChange(next);
                 };
 
                 return (
                   <div
-                    key={row.item_id}
+                    key={rowKey}
                     data-testid={`pos-platter-choice-${row.item_id}`}
                     style={{
                       display: "flex", alignItems: "center", gap: 10,

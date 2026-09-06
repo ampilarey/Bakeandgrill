@@ -105,7 +105,7 @@ final class BundleSummaryService
     {
         $rows = $item->relationLoaded('comboItems')
             ? $item->comboItems
-            : $item->comboItems()->with('item')->get();
+            : $item->comboItems()->with(['item', 'variant'])->get();
 
         $out = [];
         foreach ($rows as $row) {
@@ -115,9 +115,12 @@ final class BundleSummaryService
             if ($child === null || !$child->is_active) {
                 continue;
             }
+            $variant = $row->variant_id
+                ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first())
+                : null;
 
             $out[] = [
-                'name' => (string) $child->name,
+                'name' => BundleChildRules::displayName($child, $variant),
                 'name_dv' => $child->name_dv ? (string) $child->name_dv : null,
                 'quantity' => max(1, (int) $row->quantity),
                 'optional' => (bool) $row->is_optional,
@@ -142,7 +145,10 @@ final class BundleSummaryService
                 if ($child === null || !$child->is_active) {
                     continue;
                 }
-                $choices[] = (string) $child->name;
+                $variant = $row->variant_id
+                    ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first())
+                    : null;
+                $choices[] = BundleChildRules::displayName($child, $variant);
             }
 
             if ($choices === []) {

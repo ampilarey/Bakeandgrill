@@ -293,6 +293,7 @@ function childrenFromCartItem(item: CartItem): PosOrderLineChild[] | undefined {
     item_id: s.item_id,
     quantity: s.quantity,
     ...(s.group_id ? { group_id: s.group_id } : {}),
+    ...(s.variant_id ? { variant_id: s.variant_id } : {}),
     surcharge: s.surcharge,
   }));
 }

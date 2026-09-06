@@ -52,6 +52,14 @@ class DeductInventoryListener
             return;
         }
 
+        // Collect-tomorrow: prepared stock waits for fire, and so do the
+        // ingredients — taking them on payment day emptied today's pool for
+        // tomorrow's order (2026-09-07 audit, finding 5). OrderStatusController
+        // deducts both when the ticket is fired.
+        if ($order->fulfil_date !== null) {
+            return;
+        }
+
         try {
             $this->deductionService->deductForOrder($order);
         } catch (\Throwable $e) {

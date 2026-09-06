@@ -10,9 +10,16 @@ export const SALES_CHANNELS = [
 
 export type VariantRow = MenuVariant & { _key: string };
 
+/** A size the child can be picked in — carried on the row so the editor can offer it. */
+export type ChildSizeOption = { id: number; name: string };
+
 export type ComboRow = {
   item_id: string;
   item_name?: string;
+  /** Which size goes in, when the child is sold in sizes. */
+  variant_id?: string;
+  variant_name?: string;
+  size_options?: ChildSizeOption[];
   quantity: string;
   is_optional: boolean;
   /** What taking an optional extra costs. Empty or 0 means it is free. */
@@ -22,6 +29,9 @@ export type ComboRow = {
 export type PlatterAllowedItemRow = {
   item_id: string;
   item_name?: string;
+  variant_id?: string;
+  variant_name?: string;
+  size_options?: ChildSizeOption[];
   surcharge: string;
 };
 
@@ -48,6 +58,8 @@ export type PackagingOptionRow = {
 };
 
 export type ItemForm = {
+  /** Add-ons the customer may pick on this item. */
+  modifier_ids: number[];
   name: string; name_dv: string;
   card_name: string; card_name_dv: string;
   description: string;
@@ -171,6 +183,7 @@ export function itemToForm(item: MenuItem): ItemForm {
     extra_category_ids: [...(item.extra_category_ids ?? [])],
     menu_group_id: item.menu_group_id != null ? String(item.menu_group_id) : '1',
     channels: channelsFromItem(item),
+    modifier_ids: (item.modifiers ?? []).map((m) => m.id),
     has_variants: item.has_variants ?? false,
     is_combo: item.is_combo ?? false,
     combo_mode: (item.platter_groups?.length ?? 0) > 0 ? 'choose' : 'fixed',
@@ -180,6 +193,8 @@ export function itemToForm(item: MenuItem): ItemForm {
     combo_items: (item.combo_items ?? []).map((row) => ({
       item_id: String(row.item_id),
       item_name: row.item?.name,
+      variant_id: row.variant_id != null ? String(row.variant_id) : '',
+      variant_name: row.variant?.name,
       quantity: String(row.quantity ?? 1),
       is_optional: row.is_optional ?? false,
       surcharge: row.surcharge ? String(row.surcharge) : '',
@@ -205,6 +220,8 @@ export function itemToForm(item: MenuItem): ItemForm {
         items: (g.items ?? []).map((row) => ({
           item_id: String(row.item_id),
           item_name: row.item?.name,
+          variant_id: row.variant_id != null ? String(row.variant_id) : '',
+          variant_name: row.variant?.name,
           surcharge: String(row.surcharge ?? 0),
         })),
       };
@@ -294,6 +311,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
     }));
   }
   payload.is_combo = form.is_combo;
+  payload.modifier_ids = form.modifier_ids;
   payload.show_on_signage = form.show_on_signage;
   payload.is_signage_promoted = form.is_signage_promoted;
   payload.combo_discount_pct = form.combo_discount_pct !== '' ? parseFloat(form.combo_discount_pct) : null;
@@ -305,6 +323,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
           .filter((row) => row.item_id !== '')
           .map((row, ri) => ({
             item_id: parseInt(row.item_id, 10),
+            variant_id: row.variant_id ? parseInt(row.variant_id, 10) : null,
             surcharge: Math.max(0, parseFloat(row.surcharge) || 0),
             sort_order: ri,
           }));
@@ -360,6 +379,7 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
       .filter((row) => row.item_id !== '')
       .map((row) => ({
         item_id: parseInt(row.item_id, 10),
+        variant_id: row.variant_id ? parseInt(row.variant_id, 10) : null,
         quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
         is_optional: row.is_optional,
         // Only an optional extra can carry a price: a required child comes
@@ -418,6 +438,7 @@ export function emptyItemForm(selectedCat: number | null): ItemForm {
     extra_category_ids: [],
     menu_group_id: '1',
     channels: { dine_in: true, takeaway: true, online_pickup: true, delivery: true, catering: false },
+    modifier_ids: [],
     has_variants: false, variants: [],
     is_combo: false, combo_mode: 'fixed', combo_discount_pct: '', combo_items: [], platter_groups: [],
     show_on_signage: true, is_signage_promoted: false,

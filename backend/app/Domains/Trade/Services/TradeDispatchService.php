@@ -24,12 +24,13 @@ final class TradeDispatchService
         private readonly StockManagementService $stock,
         private readonly TradeSmsNotifier $sms,
         private readonly AuditLogService $audit,
+        private readonly \App\Domains\Inventory\Services\InventoryDeductionService $ingredients,
     ) {}
 
     /**
      * Create and dispatch a delivery in one transaction (idempotent).
      *
-     * @param  list<array{item_id: int, variant_id?: int|null, qty: int}>  $lines
+     * @param list<array{item_id: int, variant_id?: int|null, qty: int}> $lines
      */
     public function dispatch(
         TradeAccount $account,
@@ -61,7 +62,7 @@ final class TradeDispatchService
 
         foreach ($lines as $index => $raw) {
             $item = Item::query()->find($raw['item_id'] ?? null);
-            if (! $item) {
+            if (!$item) {
                 throw ValidationException::withMessages([
                     "lines.{$index}.item_id" => ['Item not found.'],
                 ]);
@@ -75,9 +76,9 @@ final class TradeDispatchService
             }
 
             $variant = null;
-            if (! empty($raw['variant_id'])) {
+            if (!empty($raw['variant_id'])) {
                 $variant = Variant::where('item_id', $item->id)->find($raw['variant_id']);
-                if (! $variant) {
+                if (!$variant) {
                     throw ValidationException::withMessages([
                         "lines.{$index}.variant_id" => ['Variant not found for this item.'],
                     ]);
@@ -85,11 +86,11 @@ final class TradeDispatchService
             }
 
             $price = $this->prices->resolve($account, $item, $variant);
-            if (! $price->found) {
+            if (!$price->found) {
                 abort(422, sprintf(
                     'No wholesale price for "%s"%s. Set a shop price, a standard wholesale price, or a default discount before dispatching.',
                     $item->name,
-                    $variant ? ' ('.$variant->name.')' : '',
+                    $variant ? ' (' . $variant->name . ')' : '',
                 ));
             }
 
@@ -112,7 +113,7 @@ final class TradeDispatchService
 
         $ownerOverride = $creditOverrideReason !== null && trim($creditOverrideReason) !== '';
         $perms = app(\App\Services\PermissionService::class);
-        if ($ownerOverride && ! $perms->isOwner($actor)) {
+        if ($ownerOverride && !$perms->isOwner($actor)) {
             abort(403, 'Only the owner can override the credit limit.');
         }
 
@@ -170,7 +171,7 @@ final class TradeDispatchService
                     'unit_cost_laar' => $row['unit_cost_laar'],
                 ]);
 
-                $stockKey = 'trade:dispatch:'.$delivery->id.':line:'.$i;
+                $stockKey = 'trade:dispatch:' . $delivery->id . ':line:' . $i;
                 try {
                     if ($variant) {
                         $this->stock->deductConsignmentVariantStock(
@@ -191,8 +192,44 @@ final class TradeDispatchService
                             $row['unit_cost_laar'],
                         );
                     }
+
+                    // A bundle leaves as its contents (2026-09-07 audit,
+                    // finding 14) — each required child's own count goes too.
+                    foreach ($this->bundleChildren($item, $qty) as $child) {
+                        $childKey = $stockKey . ':child:' . $child['item']->id . ($child['variant'] ? ':v' . $child['variant']->id : '');
+                        if ($child['variant']) {
+                            $this->stock->deductConsignmentVariantStock($child['variant'], $child['quantity'], $childKey, $delivery->id, $actor->id, null);
+                        } else {
+                            $this->stock->deductConsignmentStock($child['item'], $child['quantity'], $childKey, $delivery->id, $actor->id, null);
+                        }
+                    }
                 } catch (\RuntimeException $e) {
                     abort(422, $e->getMessage());
+                }
+
+                // Ingredients (finding 2): the dish on the van was made from
+                // something, and nothing else ever took it off the shelf.
+                $this->ingredients->consume(
+                    $item,
+                    $variant,
+                    $qty * ($variant?->consumptionFactor() ?? 1.0),
+                    'trade:dispatch:' . $delivery->id . ':line:' . $i,
+                    'trade_delivery',
+                    (int) $delivery->id,
+                    $actor->id,
+                    'Trade delivery ' . $delivery->delivery_number,
+                );
+                foreach ($this->bundleChildren($item, $qty) as $child) {
+                    $this->ingredients->consume(
+                        $child['item'],
+                        $child['variant'],
+                        $child['quantity'] * ($child['variant']?->consumptionFactor() ?? 1.0),
+                        'trade:dispatch:' . $delivery->id . ':line:' . $i . ':child:' . $child['item']->id . ($child['variant'] ? ':v' . $child['variant']->id : ''),
+                        'trade_delivery',
+                        (int) $delivery->id,
+                        $actor->id,
+                        'Trade delivery ' . $delivery->delivery_number,
+                    );
                 }
             }
 
@@ -247,7 +284,7 @@ final class TradeDispatchService
             }
 
             foreach ($locked->lines as $i => $line) {
-                $key = 'trade:cancel:'.$locked->id.':line:'.$line->id;
+                $key = 'trade:cancel:' . $locked->id . ':line:' . $line->id;
                 if ($line->variant_id && $line->variant) {
                     $this->stock->restoreConsignmentVariantStock(
                         $line->variant,
@@ -267,11 +304,13 @@ final class TradeDispatchService
                         $line->unit_cost_laar,
                     );
                 }
+
+                $this->returnToShelf($locked, $line, $i, (int) $line->qty_sent, 'trade:cancel:' . $locked->id . ':line:' . $line->id, $actor->id, 'cancelled');
             }
 
             $locked->update([
                 'status' => TradeDelivery::STATUS_CANCELLED,
-                'notes' => trim(($locked->notes ? $locked->notes."\n" : '').'Cancelled by '.$actor->name),
+                'notes' => trim(($locked->notes ? $locked->notes . "\n" : '') . 'Cancelled by ' . $actor->name),
             ]);
 
             $this->audit->log(
@@ -298,9 +337,9 @@ final class TradeDispatchService
 
     private function nextDeliveryNumber(): string
     {
-        $prefix = 'TD-'.now()->format('Ymd').'-';
+        $prefix = 'TD-' . now()->format('Ymd') . '-';
         $last = TradeDelivery::query()
-            ->where('delivery_number', 'like', $prefix.'%')
+            ->where('delivery_number', 'like', $prefix . '%')
             ->orderByDesc('delivery_number')
             ->value('delivery_number');
 
@@ -309,6 +348,80 @@ final class TradeDispatchService
             $seq = ((int) $m[1]) + 1;
         }
 
-        return $prefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * A bundle's required children, for a wholesale line.
+     *
+     * @return list<array{item: Item, variant: ?Variant, quantity: int}>
+     */
+    private function bundleChildren(Item $item, int $qty): array
+    {
+        if (!$item->is_combo) {
+            return [];
+        }
+
+        return app(\App\Domains\Menu\Services\ComboChildStockService::class)
+            ->requiredChildrenForStock($item, $qty);
+    }
+
+    /**
+     * Put back what dispatch took for `$qty` of a line — the bundle's
+     * children and every ingredient — under keys that pair with dispatch's,
+     * so a second call is a no-op and nothing never taken comes back.
+     */
+    public function returnToShelf(
+        TradeDelivery $delivery,
+        TradeDeliveryLine $line,
+        int $lineIndex,
+        int $qty,
+        string $restorePrefix,
+        int $actorId,
+        string $why,
+    ): void {
+        if ($qty <= 0 || !$line->item) {
+            return;
+        }
+        $item = $line->item;
+        $variant = $line->variant_id ? $line->variant : null;
+        $dispatchPrefix = 'trade:dispatch:' . $delivery->id . ':line:' . $lineIndex;
+        $notes = 'Trade delivery ' . $delivery->delivery_number . ' ' . $why;
+
+        foreach ($this->bundleChildren($item, $qty) as $child) {
+            $suffix = ':child:' . $child['item']->id . ($child['variant'] ? ':v' . $child['variant']->id : '');
+            if ($child['variant']) {
+                $this->stock->restoreConsignmentVariantStock($child['variant'], $child['quantity'], $restorePrefix . $suffix, $delivery->id, $actorId, null);
+            } else {
+                $this->stock->restoreConsignmentStock($child['item'], $child['quantity'], $restorePrefix . $suffix, $delivery->id, $actorId, null);
+            }
+            $this->ingredients->restore(
+                $child['item'],
+                $child['variant'],
+                $child['quantity'] * ($child['variant']?->consumptionFactor() ?? 1.0),
+                $dispatchPrefix . $suffix,
+                $restorePrefix . $suffix,
+                '',
+                'trade_delivery',
+                (int) $delivery->id,
+                $actorId,
+                $notes,
+                movementType: 'consignment_in',
+            );
+        }
+
+        $this->ingredients->restore(
+            $item,
+            $variant,
+            $qty * ($variant?->consumptionFactor() ?? 1.0),
+            $dispatchPrefix,
+            $restorePrefix,
+            '',
+            'trade_delivery',
+            (int) $delivery->id,
+            $actorId,
+            $notes,
+            movementType: 'consignment_in',
+        );
     }
 }

@@ -89,6 +89,8 @@ export type MenuItem = {
   effective_cost?: number | null;
   has_variants?: boolean;
   variants?: MenuVariant[];
+  /** Add-ons attached to this item. */
+  modifiers?: Array<{ id: number; name: string; price?: number }>;
   tax_rate?: number | null;
   tax_code?: string | null;
   is_available: boolean;
@@ -123,6 +125,9 @@ export type MenuItem = {
   combo_discount_pct?: number | null;
   combo_items?: Array<{
     item_id: number;
+    /** Which size of a sized child goes in (2026-09-07 audit). */
+    variant_id?: number | null;
+    variant?: ChildVariantRef | null;
     quantity: number;
     is_optional: boolean;
     /** What an optional extra costs when taken. 0 means it is free. */
@@ -137,8 +142,13 @@ export type MenuItem = {
   is_catering?: boolean;
 };
 
+/** Which size of a sized child a bundle or platter names. */
+export type ChildVariantRef = { id: number; name: string; price: number };
+
 export type PlatterGroupItem = {
   item_id: number;
+  variant_id?: number | null;
+  variant?: ChildVariantRef | null;
   surcharge?: number;
   sort_order?: number;
   item?: {
@@ -218,7 +228,9 @@ export type MenuItemPayload = {
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
-  combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean; surcharge?: number }>;
+  combo_items?: Array<{ item_id: number; variant_id?: number | null; quantity?: number; is_optional?: boolean; surcharge?: number }>;
+  /** Add-ons the customer may pick on this item. */
+  modifier_ids?: number[];
   platter_groups?: Array<{
     name: string;
     rule_type: 'exactly' | 'min' | 'range';
@@ -226,7 +238,7 @@ export type MenuItemPayload = {
     max_count?: number | null;
     size_counts?: Record<string, number> | null;
     sort_order?: number;
-    items: Array<{ item_id: number; surcharge?: number; sort_order?: number }>;
+    items: Array<{ item_id: number; variant_id?: number | null; surcharge?: number; sort_order?: number }>;
   }>;
   dietary_tags?: string[] | null;
   allergens?: string[] | null;
@@ -659,6 +671,8 @@ export interface ItemRecipe {
   yield_quantity: number;
   /** When true, the dish leaves the menu once its ingredients run out. */
   limits_availability: boolean;
+  /** 'sale' (default) or 'production' — when the ingredients leave the store. */
+  consumed_at?: 'sale' | 'production';
   instructions: string | null;
   ingredients: RecipeIngredient[];
 }
@@ -690,13 +704,60 @@ export async function saveItemRecipe(
   id: number,
   ingredients: RecipeIngredientInput[],
   limitsAvailability?: boolean,
+  consumedAt?: 'sale' | 'production',
 ): Promise<{ item: ItemWithRecipe }> {
   return req(`/items/${id}/recipe`, {
     method: 'PUT',
-    body: JSON.stringify(
-      limitsAvailability === undefined
-        ? { ingredients }
-        : { ingredients, limits_availability: limitsAvailability },
-    ),
+    body: JSON.stringify({
+      ingredients,
+      ...(limitsAvailability === undefined ? {} : { limits_availability: limitsAvailability }),
+      ...(consumedAt === undefined ? {} : { consumed_at: consumedAt }),
+    }),
   });
+}
+
+
+// ── Modifiers (add-ons) ──────────────────────────────────────────────────
+// Menu-item stock audit, 2026-09-07 (finding 11): add-ons had no admin
+// screen and never touched stock. Each one may now name the ingredient it
+// uses and how much of it per unit.
+
+export type Modifier = {
+  id: number;
+  name: string;
+  name_dv?: string | null;
+  price: number;
+  is_active: boolean;
+  sort_order: number;
+  inventory_item_id: number | null;
+  ingredient_quantity: number | null;
+  ingredient_unit: string | null;
+  inventory_item?: { id: number; name: string; unit: string | null } | null;
+};
+
+export type ModifierPayload = {
+  name: string;
+  name_dv?: string | null;
+  price?: number;
+  is_active?: boolean;
+  sort_order?: number;
+  inventory_item_id?: number | null;
+  ingredient_quantity?: number | null;
+  ingredient_unit?: string | null;
+};
+
+export async function fetchModifiers(): Promise<{ modifiers: Modifier[] }> {
+  return req('/modifiers');
+}
+
+export async function createModifier(payload: ModifierPayload): Promise<{ modifier: Modifier }> {
+  return req('/modifiers', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateModifier(id: number, payload: Partial<ModifierPayload>): Promise<{ modifier: Modifier }> {
+  return req(`/modifiers/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteModifier(id: number): Promise<{ message: string; deactivated: boolean }> {
+  return req(`/modifiers/${id}`, { method: 'DELETE' });
 }

@@ -86,6 +86,11 @@ class CateringEventFireService
 
             if (!$alreadyFired) {
                 $this->deductStockForFire($order, $confirmShortages && $shortages !== []);
+                // Ingredients too. The payment-day listener skips catering
+                // on purpose (stock is decided at fire), and until the
+                // 2026-09-07 audit nothing else ever took them.
+                app(\App\Domains\Inventory\Services\InventoryDeductionService::class)
+                    ->deductForOrder($order, $http?->user()?->id);
 
                 $oldStatus = $order->status;
                 if ($order->status === 'payment_pending') {

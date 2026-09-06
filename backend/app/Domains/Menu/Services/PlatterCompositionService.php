@@ -18,7 +18,7 @@ final class PlatterCompositionService
     /**
      * Replace all choice groups for a platter item.
      *
-     * @param  list<array<string, mixed>>  $groups
+     * @param list<array<string, mixed>> $groups
      */
     public function sync(Item $platter, array $groups): void
     {
@@ -83,6 +83,7 @@ final class PlatterCompositionService
                 }
                 $allowed[] = [
                     'item_id' => $itemId,
+                    'variant_id' => BundleChildRules::resolveVariantId($itemId, $row['variant_id'] ?? null),
                     'surcharge' => max(0, (float) ($row['surcharge'] ?? 0)),
                     'sort_order' => (int) ($row['sort_order'] ?? $rowIndex),
                 ];
@@ -123,6 +124,7 @@ final class PlatterCompositionService
                     PlatterGroupItem::create([
                         'platter_group_id' => $created->id,
                         'item_id' => $row['item_id'],
+                        'variant_id' => $row['variant_id'],
                         'surcharge' => $row['surcharge'],
                         'sort_order' => $row['sort_order'],
                     ]);
@@ -142,7 +144,7 @@ final class PlatterCompositionService
      * Public callers pass tomorrowRemainingMap + channel so allowed children
      * include available_now / tomorrow_remaining. Never leaks tomorrow_daily_capacity.
      *
-     * @param  array<int, int|null>  $tomorrowRemainingMap
+     * @param array<int, int|null> $tomorrowRemainingMap
      * @return list<array<string, mixed>>
      */
     public function formatForApi(
@@ -202,6 +204,10 @@ final class PlatterCompositionService
 
                     return [
                         'item_id' => $row->item_id,
+                        'variant_id' => $row->variant_id,
+                        'variant' => BundleChildRules::variantForApi(
+                            $row->variant_id ? ($row->relationLoaded('variant') ? $row->variant : $row->variant()->first()) : null,
+                        ),
                         'surcharge' => (float) $row->surcharge,
                         'sort_order' => $row->sort_order,
                         'item' => $itemPayload,

@@ -69,8 +69,8 @@ describe('menuItemForm platter definition', () => {
       max_count: 6,
     });
     expect(payload.platter_groups?.[0].items).toEqual([
-      { item_id: 2, surcharge: 0, sort_order: 0 },
-      { item_id: 3, surcharge: 5, sort_order: 1 },
+      { item_id: 2, variant_id: null, surcharge: 0, sort_order: 0 },
+      { item_id: 3, variant_id: null, surcharge: 5, sort_order: 1 },
     ]);
   });
 

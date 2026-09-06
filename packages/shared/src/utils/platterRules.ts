@@ -12,6 +12,7 @@
  * the payload.
  */
 import type { PlatterGroup, PlatterSelection } from '../types';
+import { childDisplayName, selectionMatchesRow } from '../types/product';
 
 export type PlatterGroupCounts = { min: number | null; max: number | null };
 
@@ -91,18 +92,18 @@ export function isPlatterSelectionValid(
 ): boolean {
   if (groups.length === 0) return false;
 
-  const allowedByGroup = new Map<number, Set<number>>();
+  const allowedByGroup = new Map<number, Set<string>>();
   for (const group of groups) {
     allowedByGroup.set(
       group.id,
-      new Set(group.items.map((row) => row.item_id)),
+      new Set(group.items.map((row) => `${row.item_id}:${row.variant_id ?? 0}`)),
     );
   }
 
   for (const sel of selections) {
     if (sel.quantity < 1) return false;
     const allowed = allowedByGroup.get(sel.group_id);
-    if (!allowed || !allowed.has(sel.item_id)) return false;
+    if (!allowed || !allowed.has(`${sel.item_id}:${sel.variant_id ?? 0}`)) return false;
   }
 
   for (const group of groups) {
@@ -119,7 +120,7 @@ export function isPlatterSelectionValid(
 export function platterSelectionsKey(selections: PlatterSelection[] | null | undefined): string {
   if (!selections || selections.length === 0) return '';
   return [...selections]
-    .map((s) => `${s.group_id}:${s.item_id}x${s.quantity}`)
+    .map((s) => `${s.group_id}:${s.item_id}${s.variant_id ? `v${s.variant_id}` : ''}x${s.quantity}`)
     .sort()
     .join(',');
 }
@@ -135,15 +136,19 @@ export function adjustPlatterSelection(
   itemId: number,
   delta: number,
   variantId?: number | null,
+  /** The size of the row being adjusted, when the group offers the item in sizes. */
+  childVariantId: number | null = null,
 ): PlatterSelection[] | null {
   const group = groups.find((g) => g.id === groupId);
   if (!group) return null;
-  const row = group.items.find((r) => r.item_id === itemId);
+  const rowRef = { item_id: itemId, variant_id: childVariantId };
+  const row = group.items.find((r) => selectionMatchesRow(rowRef, r))
+    ?? (childVariantId == null ? group.items.find((r) => r.item_id === itemId) : undefined);
   if (!row) return null;
 
   const { max } = resolveGroupCounts(group, variantId);
   const currentQty = selections
-    .filter((s) => s.group_id === groupId && s.item_id === itemId)
+    .filter((s) => s.group_id === groupId && selectionMatchesRow(s, row))
     .reduce((sum, s) => sum + s.quantity, 0);
   const groupTotal = countSelectionsForGroup(selections, groupId);
   const nextQty = currentQty + delta;
@@ -152,7 +157,7 @@ export function adjustPlatterSelection(
   if (delta > 0 && max != null && groupTotal + delta > max) return null;
 
   const without = selections.filter(
-    (s) => !(s.group_id === groupId && s.item_id === itemId),
+    (s) => !(s.group_id === groupId && selectionMatchesRow(s, row)),
   );
   if (nextQty === 0) return without;
 
@@ -161,7 +166,8 @@ export function adjustPlatterSelection(
     {
       group_id: groupId,
       item_id: itemId,
-      item_name: row.item?.name ?? `Item #${itemId}`,
+      variant_id: row.variant_id ?? null,
+      item_name: childDisplayName(row.item?.name, row.variant, itemId),
       quantity: nextQty,
       surcharge: Math.max(0, Number(row.surcharge) || 0),
     },

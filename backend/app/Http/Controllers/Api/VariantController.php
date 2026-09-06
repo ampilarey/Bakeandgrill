@@ -90,7 +90,10 @@ class VariantController extends Controller
             'sort_order' => 'nullable|integer',
         ]);
 
+        $before = (int) $variant->stock_qty;
         $variant->update($data);
+        app(\App\Services\StockManagementService::class)
+            ->recordVariantStockEdit($variant, $before, (int) $variant->stock_qty, $request->user()?->id, 'Edited via variants API');
 
         return response()->json(['variant' => $this->formatVariant($variant->fresh())]);
     }

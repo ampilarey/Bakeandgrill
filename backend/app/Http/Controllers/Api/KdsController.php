@@ -174,6 +174,7 @@ class KdsController extends Controller
         $order->loadMissing([
             'items.modifiers',
             'items.item.comboItems.item:id,name',
+            'items.item.comboItems.variant:id,name',
             'items.item.platterGroups:id,item_id',
         ]);
 
@@ -267,7 +268,7 @@ class KdsController extends Controller
             }
 
             $rows[] = [
-                'name' => (string) $child->name,
+                'name' => \App\Domains\Menu\Services\BundleChildRules::displayName($child, $row->variant_id ? $row->variant : null),
                 // Scaled by the line: two bundles is four portions of fries,
                 // and the kitchen counts portions, not bundles.
                 'quantity' => max(1, (int) $row->quantity) * max(1, (int) round((float) $line->quantity)),

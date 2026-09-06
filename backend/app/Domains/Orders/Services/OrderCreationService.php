@@ -423,9 +423,12 @@ class OrderCreationService
                         continue;
                     }
 
+                    // Only what was taken comes back (2026-09-07 audit, finding 13).
+                    $wasDeducted = $stockService->wasPreparedStockDeductedForLine((int) $order->id, (int) $existing->id);
+
                     if ($existing->variant_id) {
                         $variant = \App\Models\Variant::find($existing->variant_id);
-                        if ($variant && $variant->track_stock) {
+                        if ($wasDeducted && $variant && $variant->track_stock) {
                             $stockService->restoreVariantStock(
                                 $variant,
                                 $qty,
@@ -437,7 +440,7 @@ class OrderCreationService
                         // Combo children are still restored when the sold line has a variant.
                     } elseif ($existing->item_id) {
                         $item = $existing->item ?? Item::find($existing->item_id);
-                        if ($item && $item->track_stock && $item->availability_type === 'stock_based') {
+                        if ($wasDeducted && $item && $item->track_stock && $item->availability_type === 'stock_based') {
                             $stockService->restorePreparedStock(
                                 $item,
                                 $qty,
@@ -456,13 +459,15 @@ class OrderCreationService
                                 $existing,
                                 $qty,
                                 $qty,
-                                fn (Item $child) => $comboStock->editRestoreKey(
+                                fn (Item $child, ?\App\Models\Variant $variant = null) => $comboStock->editRestoreKey(
                                     (int) $order->id,
                                     (int) $existing->id,
                                     (int) $child->id,
+                                    $variant?->id,
                                 ),
                                 (int) $order->id,
                                 null,
+                                onlyIfPreviouslyDeducted: true,
                             );
                         }
                     }
@@ -671,6 +676,20 @@ class OrderCreationService
 
             $variantName = $variant?->name;
 
+            /*
+             * A prepared count is kept in whole units, so a line that draws on
+             * one must be a whole number. Rounding 0.5 kg up to one unit and
+             * 1.4 down to one, silently, was the previous behaviour (2026-09-07
+             * audit, finding 12). An item genuinely sold by weight should not
+             * track a prepared count at all.
+             */
+            $drawsOnPreparedCount = ($variant && $variant->track_stock)
+                || (!$variant && $itemModel->track_stock && $itemModel->availability_type === 'stock_based')
+                || ($variant && !$variant->track_stock && $itemModel->track_stock && $itemModel->availability_type === 'stock_based');
+            if ($drawsOnPreparedCount && abs($quantity - round($quantity)) > 1e-9) {
+                abort(422, "\"{$itemModel->name}\" is counted in whole units — enter a whole number, not {$quantity}.");
+            }
+
             // ── Stock check ───────────────────────────────────────────────────
             // Variant-level stock takes priority when the variant tracks its own stock.
             // Offline sync skips availability abort (Policy A) — deduct prepared stock below.
@@ -782,6 +801,8 @@ class OrderCreationService
                 // StockMovement idempotency key already exists.
                 // Prepared/variant stock columns are whole units; order qty is float for kg lines.
                 $stockQty = max(0, (int) round($quantity));
+                // An offline till already made the sale; the count may go
+                // below zero rather than the sync failing (finding 4).
                 if ($stockQty > 0 && $variant && $variant->track_stock) {
                     $key = $keyPrefix . $order->id . ':item:' . $orderItem->id;
                     app(StockManagementService::class)->deductVariantStock(
@@ -790,6 +811,7 @@ class OrderCreationService
                         $key,
                         $order->id,
                         $user?->id,
+                        $offlineSync,
                     );
                 } elseif ($stockQty > 0 && $itemModel->track_stock && $itemModel->availability_type === 'stock_based') {
                     $key = $keyPrefix . $order->id . ':item:' . $orderItem->id;
@@ -799,6 +821,7 @@ class OrderCreationService
                         $key,
                         $order->id,
                         $user?->id,
+                        $offlineSync,
                     );
                 }
 
@@ -813,6 +836,7 @@ class OrderCreationService
                         $keyPrefix,
                         (int) $order->id,
                         $user?->id,
+                        $offlineSync,
                     );
                 }
             }
@@ -854,11 +878,16 @@ class OrderCreationService
             foreach ($resolvedChildren as $childRow) {
                 /** @var Item $childItem */
                 $childItem = $childRow['item'];
+                /** @var \App\Models\Variant|null $childVariant */
+                $childVariant = $childRow['variant'] ?? null;
                 $childQty = (int) $childRow['quantity'] * max(0, (int) round($quantity));
                 if ($childQty <= 0) {
                     continue;
                 }
                 $surcharge = max(0.0, (float) $childRow['surcharge']);
+                // A sized pick draws on the size's own count when that size
+                // tracks one; otherwise on the item's, as before.
+                $childUsesVariantStock = $childVariant !== null && $childVariant->track_stock;
 
                 if ($deferStockForTomorrow && $order->fulfil_date !== null) {
                     if (!$childItem->allow_pre_order) {
@@ -878,10 +907,27 @@ class OrderCreationService
                 }
 
                 if (!$offlineSync && !$deferStockForTomorrow) {
-                    if (!$childItem->is_available) {
+                    // "86 today" counts for a pick as much as for the dish
+                    // on its own line (2026-09-07 audit, finding 10).
+                    if (!$childItem->is_available || $childItem->isSnoozed()) {
                         abort(422, "\"{$childItem->name}\" is currently unavailable.");
                     }
-                    if ($childItem->track_stock && $childItem->availability_type === 'stock_based') {
+                    if ($childVariant && (!$childVariant->is_active || !$childVariant->isAvailableNow())) {
+                        abort(422, "\"{$childItem->name} {$childVariant->name}\" is currently unavailable.");
+                    }
+                    $childPortions = app(\App\Domains\Inventory\Services\RecipeStockService::class)
+                        ->portionsAvailable($childItem, $childVariant);
+                    if ($childPortions !== null && $childPortions < $childQty) {
+                        abort(422, "Not enough ingredients for \"{$childItem->name}\". Available: {$childPortions}, requested: {$childQty}");
+                    }
+                    if ($childUsesVariantStock) {
+                        $lockedChildVariant = \App\Models\Variant::lockForUpdate()->find($childVariant->id) ?? $childVariant;
+                        $available = app(StockReservationService::class)->getAvailableVariantStock($lockedChildVariant);
+                        if ($available < $childQty) {
+                            abort(422, "Insufficient stock for {$childItem->name} {$lockedChildVariant->name}. Available: {$available}, requested: {$childQty}");
+                        }
+                        $childVariant = $lockedChildVariant;
+                    } elseif ($childItem->track_stock && $childItem->availability_type === 'stock_based') {
                         $lockedChild = Item::lockForUpdate()->find($childItem->id) ?? $childItem;
                         $available = app(StockReservationService::class)->getAvailableStock($lockedChild);
                         if ($available < $childQty) {
@@ -896,9 +942,9 @@ class OrderCreationService
                     'order_id' => $order->id,
                     'parent_order_item_id' => $orderItem->id,
                     'item_id' => $childItem->id,
-                    'variant_id' => null,
+                    'variant_id' => $childVariant?->id,
                     'item_name' => $childItem->name,
-                    'variant_name' => null,
+                    'variant_name' => $childVariant?->name,
                     'quantity' => $childQty,
                     'unit_price' => $surcharge,
                     'original_unit_price' => null,
@@ -920,18 +966,28 @@ class OrderCreationService
 
                 if (!$isOnlineOrder) {
                     $childStockQty = max(0, (int) round($childQty));
-                    if (
+                    $key = $keyPrefix . $order->id . ':item:' . $childOrderItem->id;
+                    if ($childStockQty > 0 && $childUsesVariantStock) {
+                        app(StockManagementService::class)->deductVariantStock(
+                            $childVariant,
+                            $childStockQty,
+                            $key,
+                            $order->id,
+                            $user?->id,
+                            $offlineSync,
+                        );
+                    } elseif (
                         $childStockQty > 0
                         && $childItem->track_stock
                         && $childItem->availability_type === 'stock_based'
                     ) {
-                        $key = $keyPrefix . $order->id . ':item:' . $childOrderItem->id;
                         app(StockManagementService::class)->deductPreparedStock(
                             $childItem,
                             $childStockQty,
                             $key,
                             $order->id,
                             $user?->id,
+                            $offlineSync,
                         );
                     }
                 }

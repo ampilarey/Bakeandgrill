@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { fetchCartRecommendations, trackSuggestion, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
 import type { ComboItemEntry, PlatterSelection, Variant } from '@shared/types';
+import { childDisplayName } from '@shared/types';
 import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -142,8 +143,10 @@ export function ItemSheet({
 
   const toggleComboExtra = (entry: ComboItemEntry) => {
     setPlatterSelections((prev) => {
-      if (prev.some((s) => s.item_id === entry.item_id)) {
-        return prev.filter((s) => s.item_id !== entry.item_id);
+      const same = (s: { item_id: number; variant_id?: number | null }) =>
+        s.item_id === entry.item_id && (s.variant_id ?? null) === (entry.variant_id ?? null);
+      if (prev.some(same)) {
+        return prev.filter((s) => !same(s));
       }
 
       return [...prev, {
@@ -151,7 +154,8 @@ export function ItemSheet({
         // the order payload drops a zero group id.
         group_id: 0,
         item_id: entry.item_id,
-        item_name: entry.item_name || entry.item?.name || `Item #${entry.item_id}`,
+        variant_id: entry.variant_id ?? null,
+        item_name: childDisplayName(entry.item_name || entry.item?.name, entry.variant, entry.item_id),
         // The owner's quantity, not the customer's: taking the extra means
         // taking what the bundle defines, once.
         quantity: Math.max(1, entry.quantity),
@@ -615,9 +619,9 @@ export function ItemSheet({
                 </p>
                 <ul style={{ margin: 0, paddingLeft: '1.125rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
                   {includedComboItems.map((entry) => (
-                    <li key={`${entry.item_id}-${entry.quantity}`}>
+                    <li key={`${entry.item_id}-${entry.variant_id ?? 0}-${entry.quantity}`}>
                       {entry.quantity > 1 ? `${entry.quantity}× ` : ''}
-                      {entry.item_name || entry.item?.name || `Item #${entry.item_id}`}
+                      {childDisplayName(entry.item_name || entry.item?.name, entry.variant, entry.item_id)}
                     </li>
                   ))}
                 </ul>
@@ -635,15 +639,16 @@ export function ItemSheet({
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   {optionalComboItems.map((entry) => {
-                    const name = entry.item_name || entry.item?.name || `Item #${entry.item_id}`;
+                    const name = childDisplayName(entry.item_name || entry.item?.name, entry.variant, entry.item_id);
                     const extra = Number(entry.surcharge ?? 0);
-                    const taken = platterSelections.some((s) => s.item_id === entry.item_id);
+                    const taken = platterSelections.some((s) =>
+                      s.item_id === entry.item_id && (s.variant_id ?? null) === (entry.variant_id ?? null));
                     const priceLabel = extra > 0 ? `+${formatCardPrice(extra)}` : 'Free';
 
                     if (viewOnly) {
                       return (
                         <div
-                          key={entry.item_id}
+                          key={`${entry.item_id}-${entry.variant_id ?? 0}`}
                           style={{
                             display: 'flex', justifyContent: 'space-between', gap: '0.75rem',
                             padding: '0.6rem 0.8rem', borderRadius: 12,
@@ -659,7 +664,7 @@ export function ItemSheet({
 
                     return (
                       <label
-                        key={entry.item_id}
+                        key={`${entry.item_id}-${entry.variant_id ?? 0}`}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.6rem',
                           padding: '0.6rem 0.8rem', borderRadius: 12, cursor: 'pointer',

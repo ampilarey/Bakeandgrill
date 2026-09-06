@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ComboItem extends Model
 {
-    protected $fillable = ['combo_id', 'item_id', 'quantity', 'is_optional', 'surcharge'];
+    protected $fillable = ['combo_id', 'item_id', 'variant_id', 'quantity', 'is_optional', 'surcharge'];
 
     protected $casts = [
+        'variant_id' => 'integer',
         'quantity' => 'integer',
         'is_optional' => 'boolean',
         // What taking an optional extra costs. Zero — the default and what
@@ -27,5 +28,11 @@ class ComboItem extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class, 'item_id');
+    }
+
+    /** Which size of the child goes in, when the child is sold in sizes. */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(Variant::class, 'variant_id');
     }
 }

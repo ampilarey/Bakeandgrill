@@ -72,6 +72,7 @@ class StockManagementService
         string $idempotencyKey,
         int $orderId,
         ?int $userId = null,
+        bool $allowNegative = false,
     ): void {
         if (!$item->track_stock || $item->availability_type !== 'stock_based') {
             return;
@@ -83,18 +84,25 @@ class StockManagementService
         }
 
         $item->refresh();
-        if ((int) $item->stock_quantity < $quantity) {
+        $before = (int) $item->stock_quantity;
+        if (!$allowNegative && $before < $quantity) {
             throw new \RuntimeException(sprintf(
                 'Insufficient stock for "%s". Available: %d, requested: %d.',
                 $item->name,
-                (int) $item->stock_quantity,
+                $before,
                 $quantity,
             ));
         }
 
+        /*
+         * An offline till already sold the thing; refusing to record the sale
+         * would only hide it (menu-item stock audit, 2026-09-07, finding 4).
+         * With $allowNegative the count goes below zero and says so, the way
+         * ingredient stock always has.
+         */
         $rows = DB::table('items')
             ->where('id', $item->id)
-            ->where('stock_quantity', '>=', $quantity)
+            ->when(!$allowNegative, fn ($q) => $q->where('stock_quantity', '>=', $quantity))
             ->decrement('stock_quantity', $quantity);
 
         if ($rows === 0) {
@@ -105,6 +113,7 @@ class StockManagementService
         }
 
         $item->refresh();
+        $this->noteWentNegative('menu_item', $item->id, $item->name, $before, (int) $item->stock_quantity, $orderId);
 
         StockMovement::create([
             'idempotency_key' => $idempotencyKey,
@@ -121,6 +130,98 @@ class StockManagementService
 
         if ($item->stock_quantity <= ($item->low_stock_threshold ?? 0)) {
             $this->triggerLowStockAlert($item);
+        }
+    }
+
+    /**
+     * A prepared count that just crossed below zero, said out loud: in the
+     * log ops alerting watches and in the audit trail beside every other
+     * stock event. Mirrors inventory.went_negative for ingredients.
+     */
+    private function noteWentNegative(string $kind, int $id, string $name, int $before, int $after, int $orderId): void
+    {
+        if ($after >= 0 || $before < 0) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Log::warning('prepared_stock.went_negative', [
+            'kind' => $kind, 'id' => $id, 'name' => $name, 'was' => $before, 'now' => $after, 'order_id' => $orderId,
+        ]);
+        app(AuditLogService::class)->log(
+            'prepared_stock.went_negative',
+            $kind === 'variant' ? 'Variant' : 'Item',
+            $id,
+            ['stock' => $before],
+            ['stock' => $after],
+            ['order_id' => $orderId],
+        );
+    }
+
+    /** True when any sale movement for this order left a prepared count below zero. */
+    public function preparedStockWentNegativeForOrder(int $orderId): bool
+    {
+        return StockMovement::query()
+            ->whereNull('inventory_item_id')
+            ->where('type', 'sale')
+            ->where('balance_after', '<', 0)
+            ->where(function ($q) use ($orderId) {
+                $q->where('idempotency_key', 'like', 'pos:order:' . $orderId . ':%')
+                    ->orWhere('idempotency_key', 'like', 'online:order:' . $orderId . ':%');
+            })
+            ->exists();
+    }
+
+    /**
+     * A prepared count typed straight into the item editor, the grid or a
+     * CSV import (menu-item stock audit, 2026-09-07, finding 9). The number
+     * is already saved; this writes the movement that says it changed, and
+     * raises the low-stock alert the adjust screen would have.
+     */
+    public function recordPreparedStockEdit(Item $item, int $before, int $after, ?int $userId, string $note): void
+    {
+        if ($before === $after) {
+            return;
+        }
+
+        StockMovement::create([
+            'idempotency_key' => 'edit:item:' . $item->id . ':' . \Illuminate\Support\Str::uuid(),
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'adjustment',
+            'quantity' => $after - $before,
+            'balance_after' => $after,
+            'unit_cost' => (float) ($item->cost ?? 0),
+            'reference_type' => 'menu_item',
+            'reference_id' => $item->id,
+            'notes' => $note,
+        ]);
+
+        if ($after < $before && $item->track_stock && $after <= ($item->low_stock_threshold ?? 0)) {
+            $this->triggerLowStockAlert($item);
+        }
+    }
+
+    public function recordVariantStockEdit(Variant $variant, int $before, int $after, ?int $userId, string $note): void
+    {
+        if ($before === $after) {
+            return;
+        }
+
+        StockMovement::create([
+            'idempotency_key' => 'edit:variant:' . $variant->id . ':' . \Illuminate\Support\Str::uuid(),
+            'inventory_item_id' => null,
+            'user_id' => $userId,
+            'type' => 'adjustment',
+            'quantity' => $after - $before,
+            'balance_after' => $after,
+            'unit_cost' => (float) ($variant->cost ?? 0),
+            'reference_type' => 'variant',
+            'reference_id' => $variant->id,
+            'notes' => $note,
+        ]);
+
+        if ($after < $before && $variant->track_stock && $after <= ($variant->low_stock_threshold ?? 0)) {
+            $this->triggerVariantLowStockAlert($variant);
         }
     }
 
@@ -308,7 +409,7 @@ class StockManagementService
         ?int $userId = null,
         ?int $unitCostLaar = null,
     ): void {
-        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
             return;
         }
 
@@ -373,7 +474,7 @@ class StockManagementService
         ?int $userId = null,
         ?int $unitCostLaar = null,
     ): void {
-        if (! $item->track_stock || $item->availability_type !== 'stock_based') {
+        if (!$item->track_stock || $item->availability_type !== 'stock_based') {
             return;
         }
 
@@ -382,7 +483,7 @@ class StockManagementService
         }
 
         $locked = Item::lockForUpdate()->find($item->id);
-        if (! $locked) {
+        if (!$locked) {
             return;
         }
 
@@ -420,7 +521,7 @@ class StockManagementService
         ?int $userId = null,
         ?int $unitCostLaar = null,
     ): void {
-        if (! $variant->track_stock) {
+        if (!$variant->track_stock) {
             return;
         }
 
@@ -477,7 +578,7 @@ class StockManagementService
         ?int $userId = null,
         ?int $unitCostLaar = null,
     ): void {
-        if (! $variant->track_stock) {
+        if (!$variant->track_stock) {
             return;
         }
 
@@ -486,7 +587,7 @@ class StockManagementService
         }
 
         $locked = Variant::lockForUpdate()->find($variant->id);
-        if (! $locked) {
+        if (!$locked) {
             return;
         }
 
@@ -593,6 +694,7 @@ class StockManagementService
         string $idempotencyKey,
         int $orderId,
         ?int $userId = null,
+        bool $allowNegative = false,
     ): void {
         if (!$variant->track_stock) {
             return;
@@ -604,18 +706,19 @@ class StockManagementService
         }
 
         $variant->refresh();
-        if ((int) $variant->stock_qty < $quantity) {
+        $before = (int) $variant->stock_qty;
+        if (!$allowNegative && $before < $quantity) {
             throw new \RuntimeException(sprintf(
                 'Insufficient stock for variant "%s". Available: %d, requested: %d.',
                 $variant->name ?? (string) $variant->id,
-                (int) $variant->stock_qty,
+                $before,
                 $quantity,
             ));
         }
 
         $rows = DB::table('variants')
             ->where('id', $variant->id)
-            ->where('stock_qty', '>=', $quantity)
+            ->when(!$allowNegative, fn ($q) => $q->where('stock_qty', '>=', $quantity))
             ->decrement('stock_qty', $quantity);
 
         if ($rows === 0) {
@@ -626,6 +729,7 @@ class StockManagementService
         }
 
         $variant->refresh();
+        $this->noteWentNegative('variant', $variant->id, (string) ($variant->name ?? $variant->id), $before, (int) $variant->stock_qty, $orderId);
 
         StockMovement::create([
             'idempotency_key' => $idempotencyKey,

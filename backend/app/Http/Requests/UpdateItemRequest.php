@@ -129,6 +129,8 @@ class UpdateItemRequest extends FormRequest
             'combo_discount_pct' => 'nullable|numeric|min:0|max:100',
             'combo_items' => 'sometimes|array',
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',
+            // Which size of a sized child (2026-09-07 audit, finding 6).
+            'combo_items.*.variant_id' => 'nullable|integer|exists:variants,id',
             'combo_items.*.quantity' => 'nullable|integer|min:1|max:99',
             'combo_items.*.is_optional' => 'nullable|boolean',
             // What an optional extra costs when the customer takes it.
@@ -143,6 +145,7 @@ class UpdateItemRequest extends FormRequest
             'platter_groups.*.sort_order' => 'nullable|integer|min:0',
             'platter_groups.*.items' => 'required_with:platter_groups|array|min:1',
             'platter_groups.*.items.*.item_id' => 'required|integer|exists:items,id',
+            'platter_groups.*.items.*.variant_id' => 'nullable|integer|exists:variants,id',
             'platter_groups.*.items.*.surcharge' => 'nullable|numeric|min:0',
             'platter_groups.*.items.*.sort_order' => 'nullable|integer|min:0',
             'dietary_tags' => 'sometimes|nullable|array|max:12',
