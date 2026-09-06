@@ -125,6 +125,8 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
 
 export async function fetchInventoryItems(params?: {
   search?: string; category_id?: number; low_stock?: boolean; page?: number;
+  /** Rows per page, 10–500 (server clamps). Default 50. */
+  per_page?: number;
 }): Promise<{
   data: InventoryItem[];
   meta: { current_page: number; last_page: number; total: number };
@@ -136,6 +138,7 @@ export async function fetchInventoryItems(params?: {
   if (params?.category_id) qs.set('category_id', String(params.category_id));
   if (params?.low_stock)   qs.set('low_stock',   '1');
   if (params?.page)        qs.set('page',        String(params.page));
+  if (params?.per_page)    qs.set('per_page',    String(params.per_page));
   const res = await req<{
     items: {
       data: BackendInventoryRow[];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sortInventory } from './inventorySort';
+import { needsReorderSoon, sortInventory } from './inventorySort';
 
 /*
  * The stock list's ordering rules. The point of testing them apart from the
@@ -43,6 +43,15 @@ describe('sortInventory', () => {
 
   it('groups by category with the uncategorised last', () => {
     expect(names(sortInventory(rows, 'category'))).toEqual(['Water', 'Aprons', 'Rice', 'Gas']);
+  });
+
+  it('the buying list is whatever is low OR runs out within the week', () => {
+    // Water: under its level and 3 days left. Gas: no level, 20 days. Rice:
+    // 120 days. Aprons: nothing known — not on the list.
+    expect(names(rows.filter(needsReorderSoon))).toEqual(['Water']);
+    expect(needsReorderSoon({ name: 'Milk', quantity_on_hand: 50, reorder_level: 10, days_left: 2 })).toBe(true);
+    expect(needsReorderSoon({ name: 'Milk', quantity_on_hand: 5, reorder_level: 10, days_left: null })).toBe(true);
+    expect(needsReorderSoon({ name: 'Milk', quantity_on_hand: 50, reorder_level: null, days_left: 8 })).toBe(false);
   });
 
   it('never mutates what it was given', () => {

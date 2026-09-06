@@ -100,7 +100,15 @@ class FinanceReportController extends Controller
         $wholesaleNet = round($wholesaleRevenue - (float) $wholesale['tax'], 2);
         // Retail keys stay order/purchase based; combined profit includes wholesale channel.
         $combinedNet = round($netRevenue + $wholesaleNet, 2);
-        $grossProfit = round($combinedNet - (float) $cogs - $wholesaleCogs, 2);
+        /*
+         * Wholesale "COGS" is NOT subtracted. It is the recipe-priced cost of
+         * the goods on trade invoices — but those ingredients were bought
+         * through purchase orders, so their money is already inside $cogs
+         * (owner's model, 2026-09-06: cost is what was bought, per-item cost
+         * is not computed). Subtracting the recipe figure on top counted the
+         * same flour twice. It stays in the payload as an estimate to watch.
+         */
+        $grossProfit = round($combinedNet - (float) $cogs, 2);
         // Bank commissions are auto-recorded as approved expenses — included in $opexTotal.
         /*
          * Waste is NOT subtracted. Under purchases-as-cost accounting (the
@@ -317,12 +325,13 @@ class FinanceReportController extends Controller
         $wholesale = app(WholesaleChannelAggregator::class)->summary($from, $to);
         $wholesaleRevenue = (float) $wholesale['revenue'];
         $wholesaleCogs = (float) $wholesale['cogs'];
-        // Waste is inside $purchases already (the ingredients were bought);
-        // it is reported, not subtracted again.
+        // Waste and the wholesale recipe cost are both inside $purchases
+        // already (the ingredients were bought); they are reported, not
+        // subtracted again. Same rule as profitAndLoss().
         $profit = round(
             $netRevenue
             + round($wholesaleRevenue - (float) $wholesale['tax'], 2)
-            - $expenses - $purchases - $wholesaleCogs,
+            - $expenses - $purchases,
             2,
         );
 

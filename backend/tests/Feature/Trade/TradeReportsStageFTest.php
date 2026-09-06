@@ -106,8 +106,8 @@ class TradeReportsStageFTest extends TestCase
     private function retailOrder(int $totalLaar = 10000): Order
     {
         return Order::create([
-            'order_number' => 'R-'.uniqid(),
-            'tracking_token' => 't'.uniqid(),
+            'order_number' => 'R-' . uniqid(),
+            'tracking_token' => 't' . uniqid(),
             'type' => 'takeaway',
             'status' => 'completed',
             'subtotal' => $totalLaar / 100,
@@ -131,13 +131,13 @@ class TradeReportsStageFTest extends TestCase
         $qtySent = $qtySold + $qtyWaste + $qtyMissing;
         $delivery = TradeDelivery::create([
             'trade_account_id' => $this->account->id,
-            'delivery_number' => 'TD-F-'.uniqid(),
+            'delivery_number' => 'TD-F-' . uniqid(),
             'status' => TradeDelivery::STATUS_INVOICED,
             'dispatched_at' => now()->subDays(5),
             // Same calendar day as invoice issue so period filters pick up waste + revenue together.
             'reconciled_at' => now(),
             'invoiced_at' => now(),
-            'idempotency_key' => 'f-d-'.uniqid(),
+            'idempotency_key' => 'f-d-' . uniqid(),
         ]);
         $line = TradeDeliveryLine::create([
             'trade_delivery_id' => $delivery->id,
@@ -154,8 +154,8 @@ class TradeReportsStageFTest extends TestCase
 
         $revenueLaar = ($qtySold + $qtyMissing) * $unitPrice;
         $invoice = Invoice::create([
-            'invoice_number' => 'TI-F-'.uniqid(),
-            'idempotency_key' => 'f-inv-'.uniqid(),
+            'invoice_number' => 'TI-F-' . uniqid(),
+            'idempotency_key' => 'f-inv-' . uniqid(),
             'type' => 'sale',
             'status' => 'sent',
             'is_tax_invoice' => true,
@@ -221,14 +221,14 @@ class TradeReportsStageFTest extends TestCase
         $this->assertSame(0, $summary['wholesale']['revenue_laar']);
 
         Sanctum::actingAs($this->owner, ['staff']);
-        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from='.$from->toDateString().'&to='.$to->toDateString())
+        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from=' . $from->toDateString() . '&to=' . $to->toDateString())
             ->assertOk()
             ->json();
         $this->assertEqualsWithDelta(100.0, (float) $pnl['revenue']['gross'], 0.001);
         $this->assertEqualsWithDelta(0.0, (float) $pnl['revenue']['wholesale'], 0.001);
         $this->assertEqualsWithDelta((float) $pnl['revenue']['net'], (float) $pnl['revenue']['combined_net'], 0.001);
 
-        $daily = $this->getJson('/api/reports/finance/daily-summary?date='.$from->toDateString())
+        $daily = $this->getJson('/api/reports/finance/daily-summary?date=' . $from->toDateString())
             ->assertOk()
             ->json();
         $this->assertEqualsWithDelta(100.0, (float) $daily['revenue'], 0.001);
@@ -248,12 +248,12 @@ class TradeReportsStageFTest extends TestCase
         $this->assertSame(1, $summary['wholesale']['invoices_count']);
 
         Sanctum::actingAs($this->owner, ['staff']);
-        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from='.now()->toDateString().'&to='.now()->toDateString())
+        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from=' . now()->toDateString() . '&to=' . now()->toDateString())
             ->assertOk()->json();
         $this->assertEqualsWithDelta(100.0, (float) $pnl['revenue']['gross'], 0.001);
         $this->assertEqualsWithDelta($expectedWholesale / 100, (float) $pnl['revenue']['wholesale'], 0.001);
 
-        $daily = $this->getJson('/api/reports/finance/daily-summary?date='.now()->toDateString())
+        $daily = $this->getJson('/api/reports/finance/daily-summary?date=' . now()->toDateString())
             ->assertOk()->json();
         $this->assertEqualsWithDelta(100.0, (float) $daily['revenue'], 0.001);
         $this->assertEqualsWithDelta($expectedWholesale / 100, (float) $daily['wholesale_revenue'], 0.001);
@@ -264,7 +264,7 @@ class TradeReportsStageFTest extends TestCase
     {
         $invoice = $this->tradeInvoiceWithCogs(8, 0, 0, 5000, 2500);
         Payment::create([
-            'idempotency_key' => 'f-part-'.uniqid(),
+            'idempotency_key' => 'f-part-' . uniqid(),
             'order_id' => null,
             'invoice_id' => $invoice->id,
             'method' => 'cash',
@@ -291,11 +291,45 @@ class TradeReportsStageFTest extends TestCase
     }
 
     #[Test]
+    public function wholesale_recipe_cost_is_shown_but_not_subtracted_a_second_time(): void
+    {
+        /*
+         * Owner's model (2026-09-06): the month's cost is the ingredients
+         * bought; nothing is costed per dish. The recipe-priced cost of the
+         * goods on a trade invoice is therefore already inside the purchase
+         * spend — subtracting it again took the same flour out twice. It is
+         * still reported, as a figure to compare against.
+         */
+        $this->tradeInvoiceWithCogs(4, 0, 0, 5000, 2500);
+        Sanctum::actingAs($this->owner, ['staff']);
+        $day = now()->toDateString();
+
+        $pnl = $this->getJson("/api/reports/finance/profit-and-loss?from={$day}&to={$day}")
+            ->assertOk()->json();
+
+        $this->assertEqualsWithDelta(100.0, (float) $pnl['wholesale_cogs'], 0.001, 'still reported');
+        $this->assertEqualsWithDelta(
+            (float) $pnl['revenue']['combined_net'] - (float) $pnl['cogs'],
+            (float) $pnl['gross_profit'],
+            0.001,
+            'gross profit is income less what was bought — the recipe figure must not come off as well',
+        );
+
+        $daily = $this->getJson("/api/reports/finance/daily-summary?date={$day}")->assertOk()->json();
+        $this->assertEqualsWithDelta(
+            (float) $daily['net_revenue'] + ((float) $daily['wholesale_revenue'] - (float) $daily['wholesale']['tax'])
+                - (float) $daily['expenses'] - (float) $daily['purchases'],
+            (float) $daily['net_profit'],
+            0.001,
+        );
+    }
+
+    #[Test]
     public function wholesale_waste_is_cost_never_revenue(): void
     {
         $this->tradeInvoiceWithCogs(7, 3, 0, 5000, 2500);
         Sanctum::actingAs($this->owner, ['staff']);
-        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from='.now()->toDateString().'&to='.now()->toDateString())
+        $pnl = $this->getJson('/api/reports/finance/profit-and-loss?from=' . now()->toDateString() . '&to=' . now()->toDateString())
             ->assertOk()->json();
 
         $this->assertGreaterThan(0, (float) $pnl['wholesale_waste_cost']);
@@ -331,7 +365,7 @@ class TradeReportsStageFTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->owner, ['staff']);
-        $rows = $this->getJson('/api/admin/trade-reports/sell-through?from='.now()->subDay()->toDateString().'&to='.now()->toDateString())
+        $rows = $this->getJson('/api/admin/trade-reports/sell-through?from=' . now()->subDay()->toDateString() . '&to=' . now()->toDateString())
             ->assertOk()
             ->json('rows');
         $this->assertCount(1, $rows);
@@ -349,11 +383,11 @@ class TradeReportsStageFTest extends TestCase
         foreach ([3, 5] as $i => $sold) {
             $d = TradeDelivery::create([
                 'trade_account_id' => $this->account->id,
-                'delivery_number' => 'TD-SQ-'.$i,
+                'delivery_number' => 'TD-SQ-' . $i,
                 'status' => TradeDelivery::STATUS_RECONCILED,
                 'dispatched_at' => now()->subDays(10 - $i),
                 'reconciled_at' => now()->subDays(9 - $i),
-                'idempotency_key' => 'sq-'.$i,
+                'idempotency_key' => 'sq-' . $i,
             ]);
             TradeDeliveryLine::create([
                 'trade_delivery_id' => $d->id,
@@ -405,8 +439,8 @@ class TradeReportsStageFTest extends TestCase
             ['due' => $asOf->copy()->subDays(61), 'bucket' => 'days_60_plus_laar', 'amt' => 40000],
         ] as $i => $case) {
             Invoice::create([
-                'invoice_number' => 'TI-AGE-'.$i,
-                'idempotency_key' => 'age-'.$i,
+                'invoice_number' => 'TI-AGE-' . $i,
+                'idempotency_key' => 'age-' . $i,
                 'type' => 'sale',
                 'status' => 'sent',
                 'is_tax_invoice' => true,
@@ -499,11 +533,11 @@ class TradeReportsStageFTest extends TestCase
         for ($i = 0; $i < 40; $i++) {
             $d = TradeDelivery::create([
                 'trade_account_id' => $this->account->id,
-                'delivery_number' => 'TD-Q-'.$i,
+                'delivery_number' => 'TD-Q-' . $i,
                 'status' => TradeDelivery::STATUS_RECONCILED,
                 'dispatched_at' => now()->subDays(20),
                 'reconciled_at' => now()->subDays(10),
-                'idempotency_key' => 'q-'.$i,
+                'idempotency_key' => 'q-' . $i,
             ]);
             for ($j = 0; $j < 10; $j++) {
                 TradeDeliveryLine::create([
@@ -551,7 +585,7 @@ class TradeReportsStageFTest extends TestCase
         $this->tradeInvoiceWithCogs(5, 0, 0, 5000, 2500);
         $breakdown = app(ReportsService::class)->salesBreakdown(now()->startOfDay(), now()->endOfDay());
         $this->assertTrue(collect($breakdown['items'])->isEmpty() || collect($breakdown['items'])->every(
-            fn ($r) => ! isset($r['channel']) || $r['channel'] !== 'wholesale',
+            fn ($r) => !isset($r['channel']) || $r['channel'] !== 'wholesale',
         ));
         $this->assertNotEmpty($breakdown['wholesale_items']);
         $this->assertSame('wholesale', $breakdown['wholesale_items'][0]['channel']);

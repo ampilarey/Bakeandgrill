@@ -106,9 +106,14 @@ export function ProfitLossPage() {
                     { label: 'GST for MIRA',           value: -(pnl.revenue.tax ?? 0),           color: 'var(--color-text-muted)' },
                     { label: 'Refunds',                value: -(pnl.revenue.refunds ?? 0),       color: 'var(--color-warning)' },
                     { label: 'Wholesale Revenue',      value: (pnl.revenue.wholesale ?? 0) - (pnl.revenue.wholesale_tax ?? 0), color: 'var(--color-success)' },
-                    { label: 'Retail COGS',            value: -pnl.cogs,                         color: 'var(--color-danger)' },
-                    { label: 'Wholesale COGS',         value: -(pnl.wholesale_cogs ?? 0),        color: 'var(--color-danger)' },
+                    // Every ingredient bought, retail and wholesale alike —
+                    // the shop's cost is what it bought, not a per-dish sum.
+                    { label: 'Ingredients bought',     value: -pnl.cogs,                         color: 'var(--color-danger)' },
                     { label: 'Operating Expenses',     value: -pnl.expenses.total,               color: '#f97316' },
+                    // Recipe-priced cost of the goods on trade invoices. Those
+                    // ingredients are inside "bought" already — shown to be
+                    // compared, not subtracted a second time.
+                    { label: 'Wholesale recipe cost (info)', value: -(pnl.wholesale_cogs ?? 0),  color: 'var(--color-text-muted)', info: true },
                     // Waste money is already inside COGS (the ingredients were
                     // bought) — shown to be watched, not subtracted again.
                     { label: 'of which wasted (info)',  value: -pnl.waste_cost,                  color: 'var(--color-text-muted)', info: true },

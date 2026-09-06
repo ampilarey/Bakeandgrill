@@ -68,7 +68,14 @@ class InventoryController extends Controller
             });
         }
 
-        $page = $query->orderBy('name')->paginate(50);
+        /*
+         * The admin stock list wants the whole store on one screen — its
+         * sort ("runs out soonest") is meaningless over a 50-row slice — so
+         * it may ask for bigger pages and walks them all. Capped so nobody
+         * pulls ten thousand rows in one request.
+         */
+        $perPage = min(max((int) $request->query('per_page', 50), 10), 500);
+        $page = $query->orderBy('name')->paginate($perPage);
 
         /*
          * How fast each item goes, so the list can say "water: ~5 bottles a

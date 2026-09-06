@@ -4,7 +4,8 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
-  INVENTORY_SORTS, INVENTORY_SORT_STORAGE_KEY, isInventorySortKey, sortInventory, type InventorySortKey,
+  INVENTORY_SORTS, INVENTORY_SORT_STORAGE_KEY, REORDER_SOON_DAYS, isInventorySortKey, needsReorderSoon, sortInventory,
+  type InventorySortKey,
 } from '../utils/inventorySort';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
@@ -122,7 +123,13 @@ export default function InventoryPage() {
     setSortKey(key);
     try { localStorage.setItem(INVENTORY_SORT_STORAGE_KEY, key); } catch { /* private mode */ }
   };
-  const sortedItems = useMemo(() => sortInventory(items, sortKey), [items, sortKey]);
+  // "Reorder soon": the buying list — low, or under a week left at its rate.
+  const [reorderOnly, setReorderOnly] = useState(false);
+  const reorderSoonCount = useMemo(() => items.filter(needsReorderSoon).length, [items]);
+  const sortedItems = useMemo(
+    () => sortInventory(reorderOnly ? items.filter(needsReorderSoon) : items, sortKey),
+    [items, sortKey, reorderOnly],
+  );
   const [lowCount, setLowCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -515,9 +522,25 @@ export default function InventoryPage() {
   const loadItems = async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetchInventoryItems({ search: searchDebounced || undefined });
-      setItems(res.data ?? []);
-      setKnownUnits(res.units ?? []);
+      /*
+       * The whole store, not the first page of it. This used to stop after
+       * page one, so a shop with more than fifty items never saw the rest
+       * unless they searched for it — and "runs out soonest" was ranking a
+       * slice. Bigger pages, walked to the end.
+       */
+      const all: InventoryItem[] = [];
+      let units: string[] = [];
+      let page = 1;
+      let lastPage = 1;
+      do {
+        const res = await fetchInventoryItems({ search: searchDebounced || undefined, page, per_page: 200 });
+        all.push(...(res.data ?? []));
+        if (page === 1) units = res.units ?? [];
+        lastPage = res.meta?.last_page ?? 1;
+        page++;
+      } while (page <= lastPage);
+      setItems(all);
+      setKnownUnits(units);
     } catch (e) { setError((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -883,6 +906,20 @@ export default function InventoryPage() {
             >
               {INVENTORY_SORTS.map((o) => <option key={o.key} value={o.key}>Sort: {o.label}</option>)}
             </select>
+            <button
+              type="button"
+              aria-pressed={reorderOnly}
+              title={`Only items at or under their reorder level, or with under ${REORDER_SOON_DAYS} days left at the rate they go`}
+              onClick={() => setReorderOnly((v) => !v)}
+              style={{
+                ...S.select, width: 'auto', minHeight: 40, cursor: 'pointer', fontWeight: 600,
+                color: reorderOnly ? 'var(--color-surface)' : reorderSoonCount > 0 ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                background: reorderOnly ? 'var(--color-danger)' : 'var(--color-surface)',
+                borderColor: reorderOnly || reorderSoonCount > 0 ? 'var(--color-danger)' : 'var(--color-border)',
+              }}
+            >
+              🛒 Reorder soon ({reorderSoonCount})
+            </button>
             {canManage && (
               <Btn onClick={() => {
                 setCreateOpen(true);
@@ -930,8 +967,8 @@ export default function InventoryPage() {
           {isMobile ? (
             loading ? (
               <TableSkeleton rows={5} cols={2} />
-            ) : items.length === 0 ? (
-              <EmptyState message="No inventory items found." />
+            ) : sortedItems.length === 0 ? (
+              <EmptyState message={reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {sortedItems.map((item) => {
@@ -1002,8 +1039,8 @@ export default function InventoryPage() {
           <TableCard stickyHead>
             {loading ? (
               <TableSkeleton rows={8} cols={7} />
-            ) : items.length === 0 ? (
-              <EmptyState message="No inventory items found." />
+            ) : sortedItems.length === 0 ? (
+              <EmptyState message={reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
             ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

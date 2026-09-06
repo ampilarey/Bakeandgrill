@@ -141,6 +141,41 @@ describe('Pack sizes on the inventory list', () => {
     expect(localStorage.getItem('bg_inventory_sort')).toBe('days_left');
   });
 
+  it('shows the whole store, not the first page of it', async () => {
+    // The list stopped after page one, so item fifty-one never appeared
+    // unless somebody searched for it by name.
+    fetchInventoryItems.mockImplementation(async ({ page }: { page?: number }) =>
+      (page ?? 1) === 1
+        ? { data: [ghee], meta: { current_page: 1, last_page: 2, total: 2 }, units: ['ml'] }
+        : { data: [looseSalt], meta: { current_page: 2, last_page: 2, total: 2 }, units: [] });
+    renderPage();
+
+    await screen.findByText('Ghee');
+    expect(await screen.findByText('Salt')).toBeInTheDocument();
+    expect(fetchInventoryItems).toHaveBeenCalledWith(expect.objectContaining({ page: 1, per_page: 200 }));
+    expect(fetchInventoryItems).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+  });
+
+  it('narrows to the buying list on the desk and the phone alike', async () => {
+    // Water is under its level with 3 days left; gas has 20 days and no level.
+    fetchInventoryItems.mockResolvedValue({
+      data: [water, { ...gas, reorder_level: null }],
+      meta: { current_page: 1, last_page: 1, total: 2 },
+      units: [],
+    });
+    renderPage();
+    const toggle = await screen.findByRole('button', { name: /Reorder soon \(1\)/ });
+    expect(screen.getByText('Gas cylinder')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Water')).toBeInTheDocument();
+    expect(screen.queryByText('Gas cylinder')).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.getByText('Gas cylinder')).toBeInTheDocument();
+  });
+
   it('says how fast an item goes, and when it runs out', async () => {
     fetchInventoryItems.mockResolvedValue({
       data: [water, gas],

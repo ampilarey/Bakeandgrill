@@ -53,6 +53,19 @@ function rate(i: Sortable): number | null {
 
 const isLow = (i: Sortable) => i.reorder_level != null && i.quantity_on_hand <= i.reorder_level;
 
+/** "Reorder soon" means within a week at the current rate. */
+export const REORDER_SOON_DAYS = 7;
+
+/**
+ * The buying list: at or under its reorder level, or going to run out
+ * within a week at the rate it goes. Either signal is enough — an item
+ * with no reorder level set still shows up when the rate says so, and one
+ * with no rate still shows up when the level says so.
+ */
+export function needsReorderSoon(i: Sortable): boolean {
+  return isLow(i) || (i.days_left != null && i.days_left <= REORDER_SOON_DAYS);
+}
+
 /**
  * A comparator where a missing value always sinks to the bottom, whichever
  * direction the known values run — "runs out soonest" must not open with

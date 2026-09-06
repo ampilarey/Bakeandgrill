@@ -82,11 +82,13 @@ class BreakEvenService
 
         // Variable cost = what the stock that arrived actually cost — a part
         // delivery costs what came off the van, and the entered price is the
-        // money paid since input GST is never claimed back. Wholesale COGS
-        // comes ex-tax from its own aggregator.
+        // money paid since input GST is never claimed back. The wholesale
+        // recipe cost is NOT added: those ingredients came in through the
+        // same purchase orders, so it is already in this figure. It stays in
+        // components as an estimate to look at.
         $purchaseCogs = PurchaseSpendQuery::total($from->toDateString(), $to->toDateString());
 
-        $variableCost = round($purchaseCogs + (float) $wholesale['cogs'], 2);
+        $variableCost = round($purchaseCogs, 2);
 
         // Fixed cost = approved operating expenses over the window, itemised
         // by expense category so the owner sees and tunes each line (rent,
