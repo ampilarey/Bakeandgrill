@@ -24,7 +24,25 @@ esac
 
 echo "=== Full deploy: $ENV ($ROOT) ==="
 cd "$ROOT"
-git pull origin main
+
+# A file re-touched without being changed (a backup job, a chmod, the cPanel
+# file manager) leaves git's stat cache stale, and `git pull` then refuses
+# with "local changes would be overwritten" for files that are not actually
+# modified. Refresh the cache first so only real edits can stop a deploy.
+git update-index -q --refresh || true
+
+# Real local edits on a deploy checkout are a mistake somebody should look at,
+# not something to merge over or throw away in a script. Say so and stop.
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Refusing to deploy: this checkout has local changes to tracked files:"
+  git status --short | grep -v '^??' || true
+  echo "Keep them:    git stash push -m \"local-$(date +%F)\""
+  echo "Discard them: git checkout -- ."
+  echo "Then re-run this deploy."
+  exit 1
+fi
+
+git pull --ff-only origin main
 cd backend
 composer install --no-dev --optimize-autoloader
 
