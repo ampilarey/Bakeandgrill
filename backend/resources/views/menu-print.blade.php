@@ -211,7 +211,7 @@
 
         /* The dot leader is a cell with a dotted underline: flexbox would look
            the same in a browser and collapse in dompdf. */
-        .row__dots {
+        .row td.row__dots {
             width: 100%;
             border-bottom: 1px dotted #cfc6b8;
         }
@@ -347,11 +347,29 @@
             .rule-mark { margin: 6px 0 2px; }
             .rule-line { margin-bottom: 10px; }
 
-            /* A long name wraps rather than shoving the page sideways. The
-               leader dots go with it — a broken line of dots is worse than
-               none, and the price still sits at the right margin. */
+            /*
+             * The line between a dish and its price.
+             *
+             * Owner, 2026-09-06: "in mobile menu print page there is no lines
+             * so difficult to read the price". I had hidden the leader dots
+             * here, which took away the one thing carrying the eye across.
+             *
+             * Putting them back column-style made it worse: the leader cell
+             * asks for all the width, so on a narrow screen the *name* gets
+             * squeezed and "Mas Huni" wraps onto two lines. So on a phone the
+             * rule goes under the whole row instead — name left, price right,
+             * one dotted line joining them. A4 keeps its leader dots, where
+             * there is room for them to work.
+             */
             .row td.row__name { white-space: normal; }
-            .row__dots { display: none; }
+            .row td.row__dots { display: none; }
+
+            .row--priced {
+                border-bottom: 1px dotted #cfc6b8;
+                padding-bottom: 1px;
+            }
+
+            .row, .row--priced { margin-bottom: 7px; }
 
             .style-short .row,
             .style-full .row { font-size: 0.95rem; }

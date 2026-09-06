@@ -419,6 +419,50 @@ class PrintableMenuTest extends TestCase
         );
     }
 
+    public function test_a_phone_gets_a_line_under_every_price(): void
+    {
+        /*
+         * Owner, 2026-09-06: "in mobile menu print page there is no lines so
+         * difficult to read the price". I had hidden the leader dots on a
+         * phone, which removed the one thing carrying the eye from a dish to
+         * its price. Putting them back column-style was worse — the leader
+         * cell asks for all the width, so the *name* got squeezed and short
+         * names wrapped onto two lines — so the rule goes under the whole row
+         * instead.
+         */
+        $this->dish('Mas Huni', 35);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+
+        $this->assertStringContainsString('row--priced', $html);
+        $this->assertStringContainsString('.row--priced {', $html);
+        $this->assertStringContainsString('.row td.row__dots { display: none; }', $html);
+    }
+
+    public function test_a_name_with_no_price_beside_it_is_not_underlined(): void
+    {
+        // A sized item's own row carries no price — the sizes below do. A rule
+        // under it would be a line to nowhere.
+        $this->sized('Bondibai', ['Small' => 20, 'Medium' => 40]);
+
+        $html = $this->get('/menu/print')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<table class="row">', $html);
+        $this->assertStringContainsString('class="row row__size row--priced"', $html);
+    }
+
+    public function test_a4_keeps_its_leader_dots(): void
+    {
+        // The phone rule replaces the leader; on paper there is room for the
+        // dots to do their job, and they stay.
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')
+            ->assertOk()
+            ->assertSee('.row td.row__dots {', false)
+            ->assertSee('border-bottom: 1px dotted #cfc6b8;', false);
+    }
+
     public function test_cost_price_never_reaches_the_paper(): void
     {
         // The page is public. Anything the kitchen pays must stay off it.

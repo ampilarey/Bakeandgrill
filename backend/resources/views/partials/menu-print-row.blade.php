@@ -36,7 +36,9 @@
 @endphp
 
 <div class="dish">
-    <table class="row">
+    {{-- `row--priced` marks the rows a phone underlines: a line under a name
+         with no price beside it would be a rule to nowhere. --}}
+    <table class="row{{ !$hasSizes && $price ? ' row--priced' : '' }}">
         <tr>
             <td class="row__name">{{ $item->card_name ?: $item->name }}</td>
             @if ($showDhivehi && $dv !== '')
@@ -61,7 +63,7 @@
     @endif
 
     @foreach ($sizes as $size)
-        <table class="row row__size">
+        <table class="row row__size row--priced">
             <tr>
                 <td class="row__name">{{ $size['name'] }}</td>
                 <td class="row__dots"></td>
