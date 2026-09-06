@@ -122,7 +122,11 @@ class ItemController extends Controller
         if (!$isAdmin) {
             $query->where('is_active', true);
             $query->with([
-                'comboItems.item:id,name,name_dv,base_price,image_url,is_available,has_variants',
+                // `is_active` and the child's sizes are what BundlePricingService
+                // prices a discounted bundle from; without them every child looks
+                // inactive and the bundle falls back to its own price.
+                'comboItems.item:id,name,name_dv,base_price,image_url,is_available,is_active,has_variants',
+                'comboItems.item.variants',
                 // Full child Item models — public platter picker needs availability + tomorrow_remaining.
                 'platterGroups.allowedItems.item.recipe.recipeItems.inventoryItem',
                 // The size check in ItemAvailabilityService needs these.
@@ -232,7 +236,9 @@ class ItemController extends Controller
             ? app(\App\Domains\Catalog\Services\NewMenuItemService::class)->newItemIds()
             : [];
 
-        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds) {
+        $bundlePricing = app(\App\Domains\Menu\Services\BundlePricingService::class);
+
+        $transformed = $items->through(function ($item) use ($isAdmin, $canSeeCost, $isPosView, $availability, $channel, $specialPricing, $effectivePricing, $tomorrowRemainingMap, $newItemIds, $bundlePricing) {
             $includeAvailability = !$isAdmin || $isPosView;
             $includeAdminExtras = $isAdmin && !$isPosView;
             $includeCost = $canSeeCost && !$isPosView;
@@ -260,7 +266,17 @@ class ItemController extends Controller
                 'short_description_dv' => $item->short_description_dv,
                 'sku' => $item->sku,
                 'image_url' => $item->display_image_url,
-                'base_price' => $item->base_price,
+                /*
+                 * A discounted fixed bundle is priced from its contents, so
+                 * that is the price every surface must show — otherwise the
+                 * menu advertises one number and the order charges another
+                 * (owner's audit, 2026-09-06, F1). `bundle_contents_price` is
+                 * what the same food costs bought separately, for the saving.
+                 */
+                'base_price' => $bundlePricing->bundlePrice($item) ?? $item->base_price,
+                'bundle_contents_price' => $includeAvailability && $bundlePricing->bundlePrice($item) !== null
+                    ? round($bundlePricing->contentsPrice($item), 2)
+                    : null,
                 'price_note' => $item->price_note,
                 'packaging_fee' => (float) ($item->packaging_fee ?? 0),
                 'packaging_fee_mode' => (string) ($item->packaging_fee_mode ?? 'per_unit'),
@@ -413,6 +429,7 @@ class ItemController extends Controller
                             'item_name' => $row->item?->name,
                             'quantity' => $row->quantity,
                             'is_optional' => $row->is_optional,
+                            'surcharge' => (float) $row->surcharge,
                             'unit_price' => $row->item ? (float) $row->item->base_price : 0,
                             'item' => $row->item ? [
                                 'id' => $row->item->id,
@@ -493,6 +510,7 @@ class ItemController extends Controller
                         'item_name' => $row->item?->name,
                         'quantity' => $row->quantity,
                         'is_optional' => $row->is_optional,
+                        'surcharge' => (float) $row->surcharge,
                         'item' => $row->item ? [
                             'id' => $row->item->id,
                             'name' => $row->item->name,
@@ -721,6 +739,7 @@ class ItemController extends Controller
                     'item_name' => $row->item?->name,
                     'quantity' => $row->quantity,
                     'is_optional' => $row->is_optional,
+                    'surcharge' => (float) $row->surcharge,
                     'unit_price' => $row->item ? (float) $row->item->base_price : 0,
                     'item' => $row->item ? [
                         'id' => $row->item->id,

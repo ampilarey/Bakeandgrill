@@ -125,6 +125,8 @@ export type MenuItem = {
     item_id: number;
     quantity: number;
     is_optional: boolean;
+    /** What an optional extra costs when taken. 0 means it is free. */
+    surcharge?: number;
     item?: { id: number; name: string; base_price: number } | null;
   }>;
   platter_groups?: PlatterGroup[];
@@ -216,7 +218,7 @@ export type MenuItemPayload = {
   show_on_signage?: boolean;
   is_signage_promoted?: boolean;
   combo_discount_pct?: number | null;
-  combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean }>;
+  combo_items?: Array<{ item_id: number; quantity?: number; is_optional?: boolean; surcharge?: number }>;
   platter_groups?: Array<{
     name: string;
     rule_type: 'exactly' | 'min' | 'range';

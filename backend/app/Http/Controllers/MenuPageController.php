@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\Catalog\Services\NewMenuItemService;
+use App\Domains\Menu\Services\BundleSummaryService;
 use App\Domains\Promotions\Services\OffersService;
 use App\Models\Category;
 use App\Models\Item;
@@ -72,6 +73,7 @@ class MenuPageController extends Controller
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuPriceByItemId' => $this->effectivePrices($items),
             'menuNewItemIds' => app(NewMenuItemService::class)->newItemIds(),
+            'menuBundles' => app(BundleSummaryService::class)->forItems($items),
             'menuPhotos' => $this->displayPhotos($items),
             'menuDietaryFilters' => $this->dietaryFilters($items),
             'favouriteIds' => $this->favouriteItemIds(),
@@ -280,7 +282,12 @@ class MenuPageController extends Controller
     public function show(int $item, Request $request): View
     {
         $row = Item::query()
-            ->with(['variants', 'category', 'photos'])
+            ->with([
+                'variants', 'category', 'photos',
+                'comboItems.item:id,name,name_dv,is_active,base_price,has_variants',
+                'comboItems.item.variants',
+                'platterGroups.allowedItems.item:id,name,is_active',
+            ])
             ->withTrashed()
             ->find($item);
 
@@ -313,6 +320,7 @@ class MenuPageController extends Controller
             'menuSpecialsByItemId' => $specialsByItemId,
             'menuPriceByItemId' => $this->effectivePrices($priced),
             'menuVariantPrices' => $this->effectiveVariantPrices($row),
+            'menuBundle' => app(BundleSummaryService::class)->forItem($row),
             'socialImage' => app(SocialPreviewImage::class)->forItem($row),
             'favouriteIds' => $this->favouriteItemIds(),
             'menuLocale' => $this->menuLocale(),
@@ -325,7 +333,16 @@ class MenuPageController extends Controller
     private function sellableItems(): Collection
     {
         return Item::query()
-            ->with(['variants', 'category', 'photos', 'extraCategories'])
+            // The bundle relations are what tells a reader that "Mixed Platter"
+            // is choose-your-own (owner's audit, 2026-09-06, F7). Eager-loaded
+            // rather than resolved per card, which would be an N+1 across the
+            // whole menu.
+            ->with([
+                'variants', 'category', 'photos', 'extraCategories',
+                'comboItems.item:id,name,name_dv,is_active,base_price,has_variants',
+                'comboItems.item.variants',
+                'platterGroups.allowedItems.item:id,name,is_active',
+            ])
             ->where('is_active', true)
             ->where('is_available', true)
             ->orderBy('sort_order')

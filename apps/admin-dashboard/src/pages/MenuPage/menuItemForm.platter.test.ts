@@ -131,9 +131,25 @@ describe('menuItemForm platter definition', () => {
   it('fixed combo mode clears platter_groups in the payload', () => {
     const form = itemToForm(baseItem());
     form.combo_mode = 'fixed';
-    form.combo_items = [{ item_id: '2', quantity: '1', is_optional: false }];
+    form.combo_items = [{ item_id: '2', quantity: '1', is_optional: false, surcharge: '' }];
     const payload = formToPayload(form, false);
     expect(payload.combo_items).toHaveLength(1);
     expect(payload.platter_groups).toEqual([]);
+  });
+
+  it('only an optional component carries a surcharge', () => {
+    // A required child comes with the bundle and is already in its price, so
+    // a stray number on one must not become a charge.
+    const form = itemToForm(baseItem());
+    form.combo_mode = 'fixed';
+    form.combo_items = [
+      { item_id: '2', quantity: '1', is_optional: false, surcharge: '9' },
+      { item_id: '3', quantity: '1', is_optional: true, surcharge: '15' },
+    ];
+
+    const payload = formToPayload(form, false);
+
+    expect(payload.combo_items?.[0]?.surcharge).toBe(0);
+    expect(payload.combo_items?.[1]?.surcharge).toBe(15);
   });
 });

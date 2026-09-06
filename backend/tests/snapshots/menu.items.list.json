@@ -70,7 +70,8 @@
             "unavailable_reason": null,
             "available_from": null,
             "is_low_stock": false,
-            "tomorrow_remaining": null
+            "tomorrow_remaining": null,
+            "bundle_contents_price": null
         }
     ],
     "first_page_url": "http://localhost:8000/api/items?page=1",

@@ -648,6 +648,15 @@ class OrderCreationService
 
             $catalogPrice = $variant ? (float) $variant->price : (float) $itemModel->base_price;
 
+            /*
+             * A discounted fixed bundle is priced from its contents. Resolved
+             * here as well as inside EffectivePriceService so the
+             * special-exhausted fallback below lands on the bundle's price
+             * rather than on a `base_price` the menu never advertised.
+             */
+            $catalogPrice = app(\App\Domains\Menu\Services\BundlePricingService::class)
+                ->catalogPriceFor($itemModel, $catalogPrice, $variantId ? (int) $variantId : null);
+
             // Always resolve price server-side — client unit_price is ignored (offline sync totals are validated separately).
             $pricing = $this->effectivePricing->resolveUnitPrice($itemModel->id, $catalogPrice, $itemModel, $variantId);
             $unitPrice = $pricing->unitPrice;
@@ -701,11 +710,21 @@ class OrderCreationService
             $childrenPayload = is_array($itemPayload['children'] ?? null)
                 ? $itemPayload['children']
                 : [];
-            $resolvedChildren = $platterOrders->resolveChildren(
-                $itemModel,
-                $childrenPayload,
-                $variantId ? (int) $variantId : null,
-            );
+            /*
+             * A fixed bundle's `children` are the optional extras the customer
+             * chose to take (owner's audit, 2026-09-06, F5). They become child
+             * order lines exactly as a platter's picks do, which is what makes
+             * them show on the ticket, move stock and refund on their own.
+             * Required children are not a choice and never appear here.
+             */
+            $resolvedChildren = ($itemModel->is_combo && !$itemModel->isPlatter())
+                ? app(\App\Domains\Menu\Services\ComboOptionResolver::class)
+                    ->resolve($itemModel, $childrenPayload)
+                : $platterOrders->resolveChildren(
+                    $itemModel,
+                    $childrenPayload,
+                    $variantId ? (int) $variantId : null,
+                );
 
             // `notes` is a free-form per-line string the POS uses for
             // kitchen instructions ("No salt", "Extra spicy", etc.).

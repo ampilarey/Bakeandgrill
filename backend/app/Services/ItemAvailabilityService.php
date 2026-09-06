@@ -109,10 +109,85 @@ class ItemAvailabilityService
                 );
             }
 
+            $fromChildren = $this->bundleChildBlock($item, $at);
+            if ($fromChildren !== null) {
+                return $fromChildren;
+            }
+
             return AvailabilityResult::available(availableStock: $available);
         }
 
+        $fromChildren = $this->bundleChildBlock($item, $at);
+        if ($fromChildren !== null) {
+            return $fromChildren;
+        }
+
         return AvailabilityResult::available(availableStock: $portions);
+    }
+
+    /**
+     * A bundle is only as available as the things inside it.
+     *
+     * Owner's audit, 2026-09-06 (F3): nothing about a bundle's availability
+     * looked at its children. The only child check happened at order time, in
+     * `ComboChildStockService`, and it checked *stock* — so a child switched
+     * off with the "Sold out" toggle, which is how a kitchen 86s a dish, was
+     * skipped entirely. The bundle stayed on the menu, sold, and could not be
+     * made.
+     *
+     * Required children only: an optional one is by definition something the
+     * customer might not get. Platters are excluded — their contents are
+     * chosen at order time and each pick is checked as it is picked.
+     *
+     * Returns null when nothing is wrong, so the caller keeps its own answer.
+     */
+    private function bundleChildBlock(Item $item, Carbon $at): ?AvailabilityResult
+    {
+        if (!$item->is_combo || $item->isPlatter()) {
+            return null;
+        }
+
+        $rows = $item->relationLoaded('comboItems')
+            ? $item->comboItems
+            : $item->comboItems()->with('item')->get();
+
+        foreach ($rows as $row) {
+            if ($row->is_optional) {
+                continue;
+            }
+
+            $child = $row->item;
+            if ($child === null) {
+                continue;
+            }
+
+            /*
+             * The child's own flags and stock, not a full recursive `check`:
+             * a child is not being sold on this channel, it is being *used*,
+             * so its channel switches and menu group say nothing about whether
+             * the kitchen can make it.
+             */
+            if (!$child->is_active || !$child->is_available || $child->isSnoozed($at)) {
+                return AvailabilityResult::unavailable(
+                    'out_of_stock',
+                    "{$item->name} is currently sold out.",
+                    availableStock: 0,
+                );
+            }
+
+            if ($child->track_stock && $child->availability_type === 'stock_based') {
+                $needed = max(1, (int) $row->quantity);
+                if ($this->reservations->getAvailableStock($child) < $needed) {
+                    return AvailabilityResult::unavailable(
+                        'out_of_stock',
+                        "{$item->name} is currently sold out.",
+                        availableStock: 0,
+                    );
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

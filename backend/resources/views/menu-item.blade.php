@@ -168,6 +168,48 @@
         </div>
     @endif
 
+    @php $bundle = $menuBundle ?? null; @endphp
+    @if($bundle && $bundle['kind'] === 'fixed')
+        <div class="menu-item-bundle">
+            <p class="menu-item-bundle-label">What’s inside</p>
+            <ul class="menu-item-bundle-list">
+                @foreach($bundle['contents'] as $row)
+                    <li>
+                        <span class="menu-item-bundle-qty">{{ $row['quantity'] }}×</span>
+                        <span @if($menuLocale === 'dv' && $row['name_dv']) lang="dv" @endif>
+                            {{ $menuLocale === 'dv' && $row['name_dv'] ? $row['name_dv'] : $row['name'] }}
+                            @if($row['optional'])
+                                <span class="menu-item-bundle-optional">optional</span>
+                            @endif
+                        </span>
+                    </li>
+                @endforeach
+            </ul>
+            {{-- Only when a bundle discount is set, and only against the price
+                 actually on the page — a special running on top of the bundle
+                 makes the saving larger, not smaller, so quoting the contents
+                 price against anything else would understate it. --}}
+            @if($bundle['contents_price'] !== null && $bundle['contents_price'] > $price['price'])
+                <p class="menu-item-bundle-save">
+                    Save MVR {{ number_format($bundle['contents_price'] - $price['price'], 2) }} —
+                    MVR {{ number_format($bundle['contents_price'], 2) }} bought separately
+                </p>
+            @endif
+        </div>
+    @elseif($bundle && $bundle['kind'] === 'choice')
+        <div class="menu-item-bundle">
+            <p class="menu-item-bundle-label">Choose your own</p>
+            @foreach($bundle['groups'] as $group)
+                <div class="menu-item-bundle-group">
+                    <p class="menu-item-bundle-group-head">
+                        {{ $group['name'] }}<span class="menu-item-bundle-pick">{{ $group['pick'] }}</span>
+                    </p>
+                    <p class="menu-item-bundle-choices">{{ implode(' · ', $group['choices']) }}</p>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     @if($variants->isNotEmpty())
         {{-- Chips, matching the order app's item sheet, rather than the price
              list this used to be. Two reasons beyond looking the same: a size

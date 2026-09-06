@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Item;
-use App\Models\Variant;
 use App\Models\Recipe;
+use App\Models\Variant;
 
 /**
  * Roll up ingredient unit costs into a menu item recipe cost (MVR).
@@ -55,14 +55,72 @@ class RecipeCostCalculator
         return $stored > 0 ? round($stored, 2) : null;
     }
 
-    /** Manual cost field, else recipe roll-up. */
+    /** Manual cost field, else recipe roll-up, else a bundle's contents. */
     public function effectiveCost(Item $item): ?float
     {
         if ($item->cost !== null && (float) $item->cost > 0) {
             return (float) $item->cost;
         }
 
-        return $this->forItem($item);
+        $own = $this->forItem($item);
+        if ($own !== null) {
+            return $own;
+        }
+
+        return $this->bundleCost($item);
+    }
+
+    /**
+     * What a fixed bundle costs to make: the sum of what its contents cost.
+     *
+     * Owner's audit, 2026-09-06 (F4): a bundle's cost came from the bundle's
+     * own recipe and nowhere else. Unless somebody re-entered every child's
+     * ingredients on the bundle itself, a bundle cost zero — so the margin
+     * badge, the recipe editor's profit figures and the break-even calculator
+     * all treated the lowest-margin thing on a menu as pure profit.
+     *
+     * Optional children are counted. Unlike the price, where a maybe should
+     * not be charged for, a cost you might incur is a cost worth knowing:
+     * costing a bundle as if nobody ever takes the optional side is the
+     * optimistic direction, and this number exists to stop optimism.
+     *
+     * Null when nothing inside has a cost — an unknown cost must stay unknown
+     * rather than become a confident zero. Platters are excluded: their
+     * contents are chosen at order time, so there is no fixed cost to state.
+     */
+    public function bundleCost(Item $item, int $depth = 0): ?float
+    {
+        // Guard against a bundle that contains itself, directly or otherwise.
+        if (!$item->is_combo || $depth > 5 || $item->isPlatter()) {
+            return null;
+        }
+
+        $rows = $item->relationLoaded('comboItems')
+            ? $item->comboItems
+            : $item->comboItems()->with(['item.recipe.recipeItems.inventoryItem'])->get();
+
+        $total = 0.0;
+        $known = false;
+
+        foreach ($rows as $row) {
+            $child = $row->item;
+            if ($child === null) {
+                continue;
+            }
+
+            $childCost = $child->cost !== null && (float) $child->cost > 0
+                ? (float) $child->cost
+                : ($this->forItem($child) ?? $this->bundleCost($child, $depth + 1));
+
+            if ($childCost === null) {
+                continue;
+            }
+
+            $known = true;
+            $total += $childCost * max(1, (int) $row->quantity);
+        }
+
+        return $known ? round($total, 2) : null;
     }
 
     /**

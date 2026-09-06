@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Domains\Menu\Services\BundlePricingService;
 use App\Domains\Promotions\Services\AutoPromotionPricing;
 use App\Models\Item;
 use App\Models\SiteSetting;
@@ -17,6 +18,7 @@ class EffectivePriceService
     public function __construct(
         private SpecialPricingService $specialPricing,
         private AutoPromotionPricing $autoPromoPricing,
+        private BundlePricingService $bundlePricing,
     ) {}
 
     public function resolveUnitPrice(
@@ -25,6 +27,15 @@ class EffectivePriceService
         ?Item $item = null,
         ?int $variantId = null,
     ): EffectivePriceResult {
+        /*
+         * A fixed bundle with a discount set is priced from its contents (see
+         * BundlePricingService). Resolved here rather than at each of the
+         * twenty-odd call sites, so the menu, the till, the website, a social
+         * post and the order itself cannot disagree about what a bundle costs.
+         * Everything else passes through untouched.
+         */
+        $catalogPrice = $this->bundlePricing->catalogPriceFor($item, $catalogPrice, $variantId);
+
         $special = $this->specialPricing->resolveUnitPrice($itemId, $catalogPrice, $item, $variantId);
         $promo = $this->autoPromoPricing->resolveForItem($itemId, $catalogPrice, $item);
 

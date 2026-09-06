@@ -16,7 +16,7 @@ final class ComboCompositionService
         ComboItem::where('combo_id', $combo->id)->delete();
     }
 
-    /** @param list<array{item_id: int, quantity?: int, is_optional?: bool}> $rows */
+    /** @param list<array{item_id: int, quantity?: int, is_optional?: bool, surcharge?: float}> $rows */
     public function sync(Item $combo, array $rows): void
     {
         if (!$combo->is_combo) {
@@ -35,6 +35,12 @@ final class ComboCompositionService
                 'item_id' => $itemId,
                 'quantity' => max(1, (int) ($row['quantity'] ?? 1)),
                 'is_optional' => (bool) ($row['is_optional'] ?? false),
+                // Only an optional extra can carry a price of its own: a
+                // required child comes with the bundle and is already in its
+                // price (owner's audit, 2026-09-06, F5).
+                'surcharge' => ($row['is_optional'] ?? false)
+                    ? max(0.0, round((float) ($row['surcharge'] ?? 0), 2))
+                    : 0.0,
             ];
         }
 
@@ -50,6 +56,7 @@ final class ComboCompositionService
                     'item_id' => $row['item_id'],
                     'quantity' => $row['quantity'],
                     'is_optional' => $row['is_optional'],
+                    'surcharge' => $row['surcharge'],
                 ]);
             }
         });
@@ -65,6 +72,7 @@ final class ComboCompositionService
                 'item_id' => $row->item_id,
                 'quantity' => $row->quantity,
                 'is_optional' => $row->is_optional,
+                'surcharge' => (float) $row->surcharge,
                 'item' => $row->item ? [
                     'id' => $row->item->id,
                     'name' => $row->item->name,

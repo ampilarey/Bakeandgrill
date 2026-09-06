@@ -131,6 +131,8 @@ class StoreItemRequest extends FormRequest
             'combo_items.*.item_id' => 'required_with:combo_items|integer|exists:items,id',
             'combo_items.*.quantity' => 'nullable|integer|min:1|max:99',
             'combo_items.*.is_optional' => 'nullable|boolean',
+            // What an optional extra costs when the customer takes it.
+            'combo_items.*.surcharge' => 'nullable|numeric|min:0|max:99999',
             'platter_groups' => 'sometimes|array',
             'platter_groups.*.name' => 'required_with:platter_groups|string|max:120',
             'platter_groups.*.rule_type' => 'required_with:platter_groups|string|in:exactly,min,range',

@@ -9,9 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ComboItem extends Model
 {
-    protected $fillable = ['combo_id', 'item_id', 'quantity', 'is_optional'];
+    protected $fillable = ['combo_id', 'item_id', 'quantity', 'is_optional', 'surcharge'];
 
-    protected $casts = ['quantity' => 'integer', 'is_optional' => 'boolean'];
+    protected $casts = [
+        'quantity' => 'integer',
+        'is_optional' => 'boolean',
+        // What taking an optional extra costs. Zero — the default and what
+        // every bundle did before — means it is included in the bundle price.
+        'surcharge' => 'decimal:2',
+    ];
 
     public function combo(): BelongsTo
     {

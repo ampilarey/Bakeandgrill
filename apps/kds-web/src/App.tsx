@@ -530,6 +530,23 @@ function App() {
                     {item.modifiers.map((mod) => mod.modifier_name).join(", ")}
                   </div>
                 )}
+                {/* A fixed bundle used to print as one line with its name, so
+                    the kitchen had to know the recipe from memory. Indented
+                    like a platter's picks — same shape on the ticket, because
+                    it is the same question. */}
+                {item.bundle_contents && item.bundle_contents.length > 0 && (
+                  <div
+                    className="text-xs mt-1"
+                    style={{ color: "#8B7355", paddingLeft: 12 }}
+                    data-testid="kds-bundle-contents"
+                  >
+                    {item.bundle_contents.map((row, i) => (
+                      <div key={`${row.name}-${i}`}>
+                        ↳ {row.quantity}x {row.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {item.kitchen_produced_qty != null && (
                   <div className="text-xs mt-1" style={{ color: "#047857" }}>
                     Cooked {item.kitchen_produced_qty}/{item.quantity}

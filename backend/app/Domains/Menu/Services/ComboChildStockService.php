@@ -66,10 +66,42 @@ class ComboChildStockService
     }
 
     /**
-     * @param  array<int, true>  $visiting
+     * Every required child, whether or not it tracks stock.
+     *
+     * Owner's audit, 2026-09-06 (F3): `requiredChildrenForStock` drops
+     * children that do not track stock, which is right for a stock deduction
+     * and wrong for an availability check — a dish 86'd with the "Sold out"
+     * toggle usually tracks no stock at all, so nothing looked at it and the
+     * bundle sold anyway.
+     *
      * @return list<array{item: Item, quantity: int}>
      */
-    private function expand(Item $item, int $multiplier, array $visiting): array
+    public function requiredChildren(Item $soldItem, int $lineQuantity): array
+    {
+        if ($lineQuantity <= 0 || !$soldItem->is_combo || $soldItem->isPlatter()) {
+            return [];
+        }
+
+        $expanded = $this->expand($soldItem, $lineQuantity, [], includeUntracked: true);
+
+        $aggregated = [];
+        foreach ($expanded as $entry) {
+            $id = $entry['item']->id;
+            if (!isset($aggregated[$id])) {
+                $aggregated[$id] = $entry;
+            } else {
+                $aggregated[$id]['quantity'] += $entry['quantity'];
+            }
+        }
+
+        return array_values($aggregated);
+    }
+
+    /**
+     * @param array<int, true> $visiting
+     * @return list<array{item: Item, quantity: int}>
+     */
+    private function expand(Item $item, int $multiplier, array $visiting, bool $includeUntracked = false): array
     {
         // Guard against nested/self-referencing combos looping forever.
         if (isset($visiting[$item->id])) {
@@ -103,15 +135,17 @@ class ComboChildStockService
             }
 
             if ($child->is_combo) {
-                foreach ($this->expand($child, $qty, $visiting) as $nested) {
+                foreach ($this->expand($child, $qty, $visiting, $includeUntracked) as $nested) {
                     $out[] = $nested;
                 }
 
                 continue;
             }
 
-            // A child that does not track stock is skipped, not an error.
-            if (!$child->track_stock || $child->availability_type !== 'stock_based') {
+            // A child that does not track stock is skipped, not an error —
+            // unless the caller is asking who the children *are* rather than
+            // what to deduct.
+            if (!$includeUntracked && (!$child->track_stock || $child->availability_type !== 'stock_based')) {
                 continue;
             }
 
@@ -160,6 +194,19 @@ class ComboChildStockService
      */
     public function assertChildrenAvailable(Item $soldItem, int $lineQuantity): void
     {
+        /*
+         * Flags first, for every required child. A dish switched off with the
+         * "Sold out" toggle tracks no stock, so the loop below never saw it and
+         * the bundle sold regardless (owner's audit, 2026-09-06, F3).
+         */
+        foreach ($this->requiredChildren($soldItem, $lineQuantity) as $entry) {
+            /** @var Item $child */
+            $child = $entry['item'];
+            if (!$child->is_active || !$child->is_available || $child->isSnoozed()) {
+                abort(422, "\"{$soldItem->name}\" cannot be made right now — \"{$child->name}\" is unavailable.");
+            }
+        }
+
         $reservation = app(StockReservationService::class);
         foreach ($this->requiredChildrenForStock($soldItem, $lineQuantity) as $entry) {
             /** @var Item $child */
@@ -190,7 +237,7 @@ class ComboChildStockService
     }
 
     /**
-     * @param  callable(Item $child): string  $keyForChild
+     * @param callable(Item $child): string $keyForChild
      */
     public function restoreForOrderItem(
         Item $soldItem,

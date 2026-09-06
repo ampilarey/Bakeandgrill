@@ -20,6 +20,16 @@ export type KdsOrderItem = {
     id: number;
     modifier_name: string;
   }>;
+  /**
+   * What a fixed bundle is made of. A platter's picks and any optional extra
+   * the customer took arrive as their own lines instead, so this is null for
+   * a platter and never repeats an optional. Quantities are already scaled by
+   * the line.
+   */
+  bundle_contents?: Array<{
+    name: string;
+    quantity: number;
+  }> | null;
 };
 
 export type KdsActivityRow = {

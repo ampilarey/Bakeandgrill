@@ -55,7 +55,7 @@ class KdsController extends Controller
 
         $orders = Order::with([
             'items.modifiers',
-            'items.item:id,menu_group_id,prep_time_minutes,is_available',
+            'items.item:id,menu_group_id,prep_time_minutes,is_available,is_combo',
             'table:id,name,location',
             'kitchenDoneBy:id,name',
         ])
@@ -161,6 +161,22 @@ class KdsController extends Controller
     /** Kitchen-safe order payload — no financial or payment fields. */
     public static function formatKitchenOrder(Order $order): array
     {
+        /*
+         * A platter's picks are real order lines, so the ticket has always
+         * shown them. A fixed bundle's contents live in `combo_items` as a
+         * definition, so its ticket was one line with the bundle's name and
+         * the kitchen had to know the recipe from memory (owner's audit,
+         * 2026-09-06, F6).
+         *
+         * Loaded here rather than at each of the six call sites, several of
+         * which re-fetch the order after a status change.
+         */
+        $order->loadMissing([
+            'items.modifiers',
+            'items.item.comboItems.item:id,name',
+            'items.item.platterGroups:id,item_id',
+        ]);
+
         $tableLabel = $order->ticket_name
             ?? $order->table?->name
             ?? null;
@@ -203,6 +219,7 @@ class KdsController extends Controller
                         'id' => $m->id,
                         'modifier_name' => $m->modifier_name,
                     ])->values()->all(),
+                    'bundle_contents' => self::bundleContentsFor($line),
                 ];
             })->values()->all(),
         ];
@@ -217,6 +234,47 @@ class KdsController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * What a fixed bundle is made of, for the ticket.
+     *
+     * Null for everything else, including platters — their picks are already
+     * on the ticket as child lines, and printing them twice would read as a
+     * double order. Optional extras are left out for the same reason: since
+     * F5 the customer chooses them, so one that was taken is already a child
+     * line and one that was not is not part of this order.
+     *
+     * @return list<array{name: string, quantity: int}>|null
+     */
+    private static function bundleContentsFor(OrderItem $line): ?array
+    {
+        $item = $line->item;
+        if ($item === null || !$item->is_combo || $line->parent_order_item_id) {
+            return null;
+        }
+
+        // A platter is an item with choice groups; its picks are real lines.
+        if ($item->relationLoaded('platterGroups') && $item->platterGroups->isNotEmpty()) {
+            return null;
+        }
+
+        $rows = [];
+        foreach ($item->comboItems as $row) {
+            $child = $row->item;
+            if ($child === null || $row->is_optional) {
+                continue;
+            }
+
+            $rows[] = [
+                'name' => (string) $child->name,
+                // Scaled by the line: two bundles is four portions of fries,
+                // and the kitchen counts portions, not bundles.
+                'quantity' => max(1, (int) $row->quantity) * max(1, (int) round((float) $line->quantity)),
+            ];
+        }
+
+        return $rows === [] ? null : $rows;
     }
 
     public function start(Request $request, int $id): JsonResponse

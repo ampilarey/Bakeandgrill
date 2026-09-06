@@ -514,6 +514,22 @@ html.js .menu-fav { display: inline-flex; }
     box-shadow: 0 2px 8px rgba(220,38,38,0.35);
 }
 
+/* Bundles say so on the card. A "Mixed Platter" that a customer picks the
+   contents of read exactly like a dish until now (owner's audit, 2026-09-06,
+   F7). Quiet on purpose — this is a fact about the item, not a promotion, so
+   it must not compete with the New badge or the price. */
+.menu-card-bundle {
+    display: inline-block;
+    margin: 0.1rem 0 0.15rem;
+    font-size: 0.66rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.08rem 0.42rem;
+    line-height: 1.4;
+}
+
 /* A rule above each sub-category. The cards carry no borders, so without
    it two sub-categories read as one run of round photos with a stray word
    between them. Owner, 2026-09-02. The first block under the band skips
@@ -736,6 +752,7 @@ body.menu-sheet-open { overflow: hidden; }
     $defaultItemImage = $mediaUrl(content('default_item_image'));
     $menuOffers = $menuOffers ?? collect();
     $menuNewItemIds = $menuNewItemIds ?? [];
+    $menuBundles = $menuBundles ?? [];
     $menuSpecialsByItemId = $menuSpecialsByItemId ?? [];
     $menuPriceByItemId = $menuPriceByItemId ?? [];
     $menuPhotos = $menuPhotos ?? [];
@@ -1068,6 +1085,7 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                 $photo = $chosen['url'] ?? null;
                                 $webp  = $chosen['webp'] ?? null;
                                 $isNew = isset($menuNewItemIds[$item->id]);
+                                $bundle = $menuBundles[$item->id] ?? null;
 
                                 // Search matches the English name too, always.
                                 // A Dhivehi visitor typing "bajiya" on a Latin
@@ -1076,7 +1094,13 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                     $iname['text'], $idesc['text'],
                                     $item->card_name, $item->name,
                                     $item->name_dv, $item->card_name_dv,
-                                ])->filter()->map(fn ($v) => mb_strtolower(trim((string) $v)))
+                                ])
+                                  // A bundle is findable by what is in it. Somebody
+                                  // searching "chicken" wants the family bundle that
+                                  // contains chicken, not only dishes named for it.
+                                  ->concat(collect($bundle['contents'] ?? [])->pluck('name'))
+                                  ->concat(collect($bundle['groups'] ?? [])->flatMap(fn ($g) => $g['choices']))
+                                  ->filter()->map(fn ($v) => mb_strtolower(trim((string) $v)))
                                   ->unique()->implode(' ');
 
                                 $tags = collect((array) ($item->dietary_tags ?? []))
@@ -1126,6 +1150,9 @@ try { if (localStorage.getItem('bg-menu-rail-side') === 'right') document.docume
                                         <{{ $itemHeading }} class="menu-card-name" @if($iname['dv']) lang="dv" @endif>{{ $iname['text'] }}</{{ $itemHeading }}>
                                         @if($idesc['text'] !== '')
                                             <p class="menu-card-desc" @if($idesc['dv']) lang="dv" @endif>{{ Str::limit($idesc['text'], 60) }}</p>
+                                        @endif
+                                        @if($bundle)
+                                            <span class="menu-card-bundle">{{ $bundle['label'] }}</span>
                                         @endif
                                         <div class="menu-card-price">
                                             {{-- An item with sizes keeps its money on the variants, so

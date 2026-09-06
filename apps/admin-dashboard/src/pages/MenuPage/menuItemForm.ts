@@ -10,7 +10,14 @@ export const SALES_CHANNELS = [
 
 export type VariantRow = MenuVariant & { _key: string };
 
-export type ComboRow = { item_id: string; item_name?: string; quantity: string; is_optional: boolean };
+export type ComboRow = {
+  item_id: string;
+  item_name?: string;
+  quantity: string;
+  is_optional: boolean;
+  /** What taking an optional extra costs. Empty or 0 means it is free. */
+  surcharge: string;
+};
 
 export type PlatterAllowedItemRow = {
   item_id: string;
@@ -175,6 +182,7 @@ export function itemToForm(item: MenuItem): ItemForm {
       item_name: row.item?.name,
       quantity: String(row.quantity ?? 1),
       is_optional: row.is_optional ?? false,
+      surcharge: row.surcharge ? String(row.surcharge) : '',
     })),
     platter_groups: (item.platter_groups ?? []).map((g) => {
       const exact = g.rule_type === 'exactly'
@@ -354,6 +362,9 @@ export function formToPayload(form: ItemForm, includeChannels: boolean): MenuIte
         item_id: parseInt(row.item_id, 10),
         quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
         is_optional: row.is_optional,
+        // Only an optional extra can carry a price: a required child comes
+        // with the bundle and is already in its price.
+        surcharge: row.is_optional ? Math.max(0, parseFloat(row.surcharge) || 0) : 0,
       }));
     payload.platter_groups = [];
   } else {

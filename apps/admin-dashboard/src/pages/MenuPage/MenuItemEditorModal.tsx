@@ -1377,7 +1377,7 @@ export function MenuItemEditorModal({
                   set('is_combo', e.target.checked);
                   if (e.target.checked) {
                     if (form.combo_mode === 'fixed' && form.combo_items.length === 0) {
-                      set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                      set('combo_items', [{ item_id: '', quantity: '1', is_optional: false, surcharge: '' }]);
                     }
                     if (form.combo_mode === 'choose' && form.platter_groups.length === 0) {
                       set('platter_groups', [emptyPlatterGroupRow()]);
@@ -1405,7 +1405,7 @@ export function MenuItemEditorModal({
                         onChange={() => {
                           set('combo_mode', 'fixed');
                           if (form.combo_items.length === 0) {
-                            set('combo_items', [{ item_id: '', quantity: '1', is_optional: false }]);
+                            set('combo_items', [{ item_id: '', quantity: '1', is_optional: false, surcharge: '' }]);
                           }
                         }}
                       />
@@ -1465,13 +1465,39 @@ export function MenuItemEditorModal({
                               const next = [...form.combo_items];
                               next[idx] = { ...next[idx], is_optional: e.target.checked };
                               set('combo_items', next);
-                            }} />
+                            }} data-testid={`combo-optional-${idx}`} />
                             Optional
                           </label>
                         </div>
+                        {/* An optional extra is now a real choice the customer
+                            makes, so it needs a price of its own. Leave it at 0
+                            and it is included, which is what every bundle did
+                            before this existed. */}
+                        {row.is_optional && (
+                          <div style={{ marginTop: 8 }}>
+                            <Input
+                              label="Extra charge if taken (MVR)"
+                              value={row.surcharge}
+                              onChange={(v) => {
+                                const next = [...form.combo_items];
+                                next[idx] = { ...next[idx], surcharge: v };
+                                set('combo_items', next);
+                              }}
+                              type="number"
+                              placeholder="0.00"
+                              // Two optional components would otherwise share
+                              // an id derived from the label.
+                              id={`combo-surcharge-${idx}`}
+                              data-testid={`combo-surcharge-${idx}`}
+                            />
+                            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                              Leave at 0 to include it free. The customer chooses whether to take it.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
-                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false }])}>
+                    <Btn variant="secondary" small onClick={() => set('combo_items', [...form.combo_items, { item_id: '', quantity: '1', is_optional: false, surcharge: '' }])}>
                       + Add component
                     </Btn>
                   </div>

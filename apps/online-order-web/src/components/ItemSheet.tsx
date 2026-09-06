@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { fetchCartRecommendations, trackSuggestion, getItemReviews, getItemPhotos } from '../api';
 import type { Item, Modifier, ItemReview, ItemPhoto } from '../api';
-import type { PlatterSelection, Variant } from '@shared/types';
+import type { ComboItemEntry, PlatterSelection, Variant } from '@shared/types';
 import { useCart } from '../context/CartContext';
 import { useSiteSettingsContext } from '../context/SiteSettingsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -131,6 +131,35 @@ export function ItemSheet({
     () => initialPlatterSelections ?? [],
   );
 
+  /*
+   * A fixed bundle's contents split in two: what comes with it, and what the
+   * customer may add. Only the second is a choice, and only the second can
+   * carry a price of its own.
+   */
+  const comboEntries = item.combo_items ?? [];
+  const includedComboItems = comboEntries.filter((row) => !row.is_optional);
+  const optionalComboItems = comboEntries.filter((row) => row.is_optional);
+
+  const toggleComboExtra = (entry: ComboItemEntry) => {
+    setPlatterSelections((prev) => {
+      if (prev.some((s) => s.item_id === entry.item_id)) {
+        return prev.filter((s) => s.item_id !== entry.item_id);
+      }
+
+      return [...prev, {
+        // No choice group — a bundle extra belongs to the bundle itself, and
+        // the order payload drops a zero group id.
+        group_id: 0,
+        item_id: entry.item_id,
+        item_name: entry.item_name || entry.item?.name || `Item #${entry.item_id}`,
+        // The owner's quantity, not the customer's: taking the extra means
+        // taking what the bundle defines, once.
+        quantity: Math.max(1, entry.quantity),
+        surcharge: Number(entry.surcharge ?? 0),
+      }];
+    });
+  };
+
   const modifierTotal = selectedModifiers.reduce((s, m) => s + Number(m.price), 0);
   const catalogPrice = selectedVariant
     ? Number(selectedVariant.effective_price ?? selectedVariant.price)
@@ -140,7 +169,13 @@ export function ItemSheet({
       ? Number(selectedVariant.original_price)
       : null)
     : (item.special?.original_price != null ? Number(item.special.original_price) : null);
-  const platterExtra = isPlatter ? surchargeTotal(platterSelections) : 0;
+  /*
+   * Also the optional extras a customer took on a fixed bundle. Both are
+   * chosen the same way, ride the same cart field and become the same child
+   * order lines, so they price the same way too (owner's audit, 2026-09-06,
+   * F5). Empty for an ordinary dish, so this is zero for almost everything.
+   */
+  const platterExtra = surchargeTotal(platterSelections);
   const totalPrice = catalogPrice + modifierTotal + platterExtra;
   const unitSavingsLabel =
     originalCatalog != null && originalCatalog > catalogPrice
@@ -285,7 +320,9 @@ export function ItemSheet({
   const isEdit = editIndex != null && editIndex >= 0;
   const handleConfirm = () => {
     if (!canAdd) return;
-    const picks = isPlatter ? platterSelections : [];
+    // A platter's picks or a bundle's optional extras — the same field, and
+    // empty for everything else.
+    const picks = platterSelections;
     if (isEdit && onUpdateEntry) onUpdateEntry(selectedVariant, selectedPackagingId, picks);
     else onAddToCart(selectedVariant, selectedPackagingId, picks);
   };
@@ -571,20 +608,82 @@ export function ItemSheet({
               </div>
             )}
 
-            {!isPlatter && item.is_combo && item.combo_items && item.combo_items.length > 0 && (
+            {!isPlatter && item.is_combo && includedComboItems.length > 0 && (
               <div style={{ marginBottom: '1.1rem' }}>
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.45rem' }}>
                   Includes
                 </p>
                 <ul style={{ margin: 0, paddingLeft: '1.125rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
-                  {item.combo_items.map((entry) => (
+                  {includedComboItems.map((entry) => (
                     <li key={`${entry.item_id}-${entry.quantity}`}>
                       {entry.quantity > 1 ? `${entry.quantity}× ` : ''}
                       {entry.item_name || entry.item?.name || `Item #${entry.item_id}`}
-                      {entry.is_optional ? ' (optional)' : ''}
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Optional extras used to render as the word "(optional)" beside
+                a component the customer could neither take nor decline. They
+                are a real choice now: what is ticked becomes a child line on
+                the order, reaches the kitchen and moves stock. */}
+            {!isPlatter && item.is_combo && optionalComboItems.length > 0 && (
+              <div style={{ marginBottom: '1.1rem' }} data-testid="combo-extras">
+                <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-dark)', margin: '0 0 0.45rem' }}>
+                  {viewOnly ? 'Optional extras' : 'Add an extra'}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {optionalComboItems.map((entry) => {
+                    const name = entry.item_name || entry.item?.name || `Item #${entry.item_id}`;
+                    const extra = Number(entry.surcharge ?? 0);
+                    const taken = platterSelections.some((s) => s.item_id === entry.item_id);
+                    const priceLabel = extra > 0 ? `+${formatCardPrice(extra)}` : 'Free';
+
+                    if (viewOnly) {
+                      return (
+                        <div
+                          key={entry.item_id}
+                          style={{
+                            display: 'flex', justifyContent: 'space-between', gap: '0.75rem',
+                            padding: '0.6rem 0.8rem', borderRadius: 12,
+                            border: '1px solid var(--color-border)', background: 'var(--color-surface-alt)',
+                            fontSize: '0.88rem', color: 'var(--color-text)',
+                          }}
+                        >
+                          <span>{entry.quantity > 1 ? `${entry.quantity}× ` : ''}{name}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{priceLabel}</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <label
+                        key={entry.item_id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.6rem',
+                          padding: '0.6rem 0.8rem', borderRadius: 12, cursor: 'pointer',
+                          border: `2px solid ${taken ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                          background: taken ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                          fontSize: '0.9rem', color: 'var(--color-text)',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={taken}
+                          onChange={() => toggleComboExtra(entry)}
+                          data-testid={`combo-extra-${entry.item_id}`}
+                        />
+                        <span style={{ flex: 1 }}>
+                          {entry.quantity > 1 ? `${entry.quantity}× ` : ''}{name}
+                        </span>
+                        <span style={{ fontWeight: 700, color: extra > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                          {priceLabel}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -839,6 +938,7 @@ export function ItemSheet({
               ref={addRef}
               onClick={handleConfirm}
               disabled={!canAdd}
+              data-testid="item-sheet-add"
               className="modal-add-btn"
               style={{
                 width: '100%', padding: '0.95rem',

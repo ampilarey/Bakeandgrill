@@ -170,6 +170,12 @@ export type ComboItemEntry = {
   item_name?: string | null;
   quantity: number;
   is_optional: boolean;
+  /**
+   * What an optional extra costs when the customer takes it. 0 — the default,
+   * and what every bundle did before the choice was real — means it is
+   * included in the bundle's price. Never set on a required component.
+   */
+  surcharge?: number;
   unit_price?: number;
   item?: { id: number; name: string; name_dv?: string | null; base_price?: number | string | null } | null;
 };

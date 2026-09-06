@@ -136,6 +136,49 @@ html.js .menu-item-page .menu-fav { display: inline-flex; }
     margin-top: 0.25rem;
     font-size: 0.85rem; color: #7C2D12; text-transform: capitalize; line-height: 1.4;
 }
+/* What is in a bundle, and what you choose on a platter. The website used to
+   show a bundle's name and price and nothing else, so the one question a
+   bundle raises went unanswered here while the order app answered it
+   (owner's audit, 2026-09-06, F7). */
+.menu-item-bundle {
+    margin: 0 0 1.1rem; padding: 0.8rem 0.95rem;
+    background: var(--card, #fff);
+    border: 1px solid var(--border); border-radius: 12px;
+}
+.menu-item-bundle-label {
+    margin: 0 0 0.5rem;
+    font-size: 0.78rem; font-weight: 800;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--muted);
+}
+.menu-item-bundle-list { margin: 0; padding: 0; list-style: none; }
+.menu-item-bundle-list li {
+    display: flex; gap: 0.5rem;
+    padding: 0.22rem 0;
+    font-size: 0.92rem; color: var(--dark); line-height: 1.45;
+}
+.menu-item-bundle-qty { font-weight: 700; color: var(--muted); min-width: 1.6rem; }
+.menu-item-bundle-optional {
+    font-size: 0.8rem; color: var(--muted); font-style: italic;
+}
+.menu-item-bundle-group { margin-top: 0.7rem; }
+.menu-item-bundle-group:first-of-type { margin-top: 0; }
+.menu-item-bundle-group-head {
+    margin: 0 0 0.2rem;
+    font-size: 0.9rem; font-weight: 700; color: var(--dark);
+}
+.menu-item-bundle-pick {
+    margin-left: 0.4rem;
+    font-size: 0.8rem; font-weight: 600; color: var(--muted);
+}
+.menu-item-bundle-choices {
+    margin: 0; font-size: 0.88rem; color: var(--muted); line-height: 1.5;
+}
+.menu-item-bundle-save {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem; font-weight: 700; color: #15803D;
+}
+
 /* Sizes as chips, the way the order app's sheet shows them. They used to be
    a two-column price list, which reads as information rather than a choice. */
 .menu-item-sizes {
