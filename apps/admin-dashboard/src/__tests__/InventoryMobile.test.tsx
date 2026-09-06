@@ -114,7 +114,8 @@ describe('Inventory on a phone', () => {
       'Edit this item',
       'Stock movements',
       'Price history',
-      'Pack sizes — how you buy this',
+      // Pack sizes is not here any more: it was an unlabelled 📦 nobody
+      // found, and now lives inside Edit item as a named section.
     ]) {
       expect(card.querySelector(`[title="${title}"]`)).not.toBeNull();
     }

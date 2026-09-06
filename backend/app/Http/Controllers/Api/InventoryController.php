@@ -33,7 +33,18 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
-        $query = InventoryItem::query()->with('category:id,name');
+        /*
+         * Packs come with the list so the row can say "5 × 500 ml tin" beside
+         * the stock figure. Owner, 2026-09-06: "i dont see pack size" — the
+         * only way to know an item had any was to open a modal behind an
+         * unlabelled 📦 button, so in practice nobody knew.
+         *
+         * One extra query for the page, not one per row.
+         */
+        $query = InventoryItem::query()->with([
+            'category:id,name',
+            'purchaseUnits:id,inventory_item_id,name,base_units',
+        ]);
 
         if ($request->boolean('active_only')) {
             $query->where('is_active', true);

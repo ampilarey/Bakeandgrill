@@ -86,28 +86,32 @@ export default function InventoryPage() {
    * are counted in pieces and bought by the tray or the case. Defining them
    * here is what lets a purchase say "1 case" and have the shelf gain 210.
    */
-  const [packsItem, setPacksItem] = useState<InventoryItem | null>(null);
   const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
   const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '' });
   const [packSaving, setPackSaving] = useState(false);
 
-  const openPacks = async (item: InventoryItem) => {
-    setPacksItem(item);
+  /*
+   * Owner, 2026-09-06: "i dont see pack size". It lived behind an unlabelled
+   * 📦 among five other emoji buttons on the row, so the feature may as well
+   * not have existed. It is a named section of Edit item now, next to the
+   * unit it is measured against — the one field it only makes sense beside.
+   */
+  const loadPacks = async (itemId: number) => {
     setPacks([]);
     setPacksError('');
     setPackForm({ name: '', qty: '', ofPackId: '' });
     setPacksLoading(true);
     try {
-      const res = await getPurchaseUnits(item.id);
+      const res = await getPurchaseUnits(itemId);
       setPacks(res.purchase_units);
     } catch (e) { setPacksError((e as Error).message); }
     finally { setPacksLoading(false); }
   };
 
   const savePack = async () => {
-    if (!packsItem) return;
+    if (!editItem) return;
     const name = packForm.name.trim();
     const qty = parseFloat(packForm.qty);
     if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return; }
@@ -115,24 +119,27 @@ export default function InventoryPage() {
     setPackSaving(true);
     setPacksError('');
     try {
-      await createPurchaseUnit(packsItem.id, packForm.ofPackId
+      await createPurchaseUnit(editItem.id, packForm.ofPackId
         // "A case is 7 trays" — how a box is actually described. The server
         // resolves it to the base unit before storing.
         ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty }
         : { name, base_units: qty });
-      const res = await getPurchaseUnits(packsItem.id);
+      const res = await getPurchaseUnits(editItem.id);
       setPacks(res.purchase_units);
       setPackForm({ name: '', qty: '', ofPackId: '' });
+      // The row shows an item's packs, so it has to hear about a new one.
+      void loadItems();
     } catch (e) { setPacksError((e as Error).message); }
     finally { setPackSaving(false); }
   };
 
   const removePack = async (id: number) => {
-    if (!packsItem) return;
+    if (!editItem) return;
     setPackSaving(true);
     try {
-      await deletePurchaseUnit(packsItem.id, id);
+      await deletePurchaseUnit(editItem.id, id);
       setPacks((p) => p.filter((x) => x.id !== id));
+      void loadItems();
     } catch (e) { setPacksError((e as Error).message); }
     finally { setPackSaving(false); }
   };
@@ -158,6 +165,7 @@ export default function InventoryPage() {
   const openEdit = (item: InventoryItem) => {
     setEditItem(item);
     setEditError('');
+    void loadPacks(item.id);
     setEditForm({
       name: item.name ?? '',
       unit: item.unit ?? '',
@@ -202,6 +210,44 @@ export default function InventoryPage() {
       void loadLowStock();
     } catch (e) { setEditError((e as Error).message); }
     finally { setEditSaving(false); }
+  };
+
+
+  /**
+   * An item's packs, in one line for the row: "500 ml tin · 100 ml tin".
+   *
+   * Owner, 2026-09-06: "i dont see pack size". Whether an item had any was
+   * invisible until you opened a modal, so a shop with packs set up looked
+   * exactly like one without.
+   */
+  const packSummary = (item: InventoryItem): string | null => {
+    const rows = item.purchase_units ?? [];
+    if (rows.length === 0) return null;
+
+    return rows
+      .slice()
+      .sort((a, b) => Number(a.base_units) - Number(b.base_units))
+      .map((p) => `${p.name} (${Number(p.base_units)} ${item.unit})`)
+      .join(' · ');
+  };
+
+  /**
+   * The same stock figure counted in the biggest pack, when it divides
+   * cleanly — "2500 ml" also being "5 × 500 ml tin" is what somebody
+   * standing at the shelf is actually counting.
+   *
+   * Deliberately silent on a remainder: "4.6 tins" is not a thing anybody
+   * has, and rounding it here would put a wrong number on the screen.
+   */
+  const packEquivalent = (item: InventoryItem): string | null => {
+    const rows = (item.purchase_units ?? []).filter((p) => Number(p.base_units) > 1);
+    if (rows.length === 0 || item.quantity_on_hand <= 0) return null;
+
+    const biggest = rows.reduce((a, b) => (Number(a.base_units) >= Number(b.base_units) ? a : b));
+    const whole = item.quantity_on_hand / Number(biggest.base_units);
+    if (!Number.isInteger(whole) || whole < 1) return null;
+
+    return `${whole} × ${biggest.name}`;
   };
 
   /**
@@ -273,7 +319,6 @@ export default function InventoryPage() {
       {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>}
       <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
       <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
-      {canManage && <Btn small variant="secondary" onClick={() => void openPacks(item)} title="Pack sizes — how you buy this">📦</Btn>}
     </>
   );
 
@@ -731,6 +776,11 @@ export default function InventoryPage() {
                           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
                             {[item.sku, item.category?.name].filter(Boolean).join(' · ') || 'No SKU'}
                           </div>
+                          {packSummary(item) && (
+                            <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                              Buys as {packSummary(item)}
+                            </div>
+                          )}
                         </div>
                         {isLow && <Badge color="red">Low</Badge>}
                       </div>
@@ -747,6 +797,9 @@ export default function InventoryPage() {
                         )}
                         <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                           {item.unit}
+                          {packEquivalent(item) && (
+                            <span style={{ color: 'var(--color-text-muted)' }}> · {packEquivalent(item)}</span>
+                          )}
                           {item.reorder_level != null && (
                             <span style={{ color: 'var(--color-text-muted)' }}> · reorder at {item.reorder_level}</span>
                           )}
@@ -781,10 +834,24 @@ export default function InventoryPage() {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <tr key={item.id}>
-                      <td style={{ ...TD, fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ ...TD, fontWeight: 600 }}>
+                        {item.name}
+                        {packSummary(item) && (
+                          <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                            Buys as {packSummary(item)}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{item.sku ?? '—'}</td>
                       <td style={TD}>{item.category?.name ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
-                      <td style={{ ...TD, fontWeight: 700 }}>{item.quantity_on_hand} {item.unit}</td>
+                      <td style={{ ...TD, fontWeight: 700 }}>
+                        {item.quantity_on_hand} {item.unit}
+                        {packEquivalent(item) && (
+                          <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                            {packEquivalent(item)}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ ...TD, color: 'var(--color-text-muted)' }}>
                         {item.reorder_level != null ? `${item.reorder_level} ${item.unit}` : '—'}
                       </td>
@@ -949,6 +1016,92 @@ export default function InventoryPage() {
                 </p>
               )}
             </label>
+
+            {/* ── Pack sizes: how you buy it ─────────────────────────────
+                Sits under Unit because that is the number it is measured
+                against: ghee counted in ml, bought as a 100 ml or 500 ml tin.
+                Saves on its own, so the note says so — Cancel above closes
+                the form, it does not take a pack back. */}
+            <div
+              data-testid="pack-sizes-section"
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '12px 14px', background: 'var(--color-bg)',
+              }}
+            >
+              <p style={{ ...S.label, margin: '0 0 4px' }}>Pack sizes — how you buy this</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{editItem.unit}</strong>.
+                Add the containers you actually buy — a 500 ml tin, a case — and a purchase order can say
+                “2 tins” while the shelf gains the right number and the price per {editItem.unit} works
+                itself out. These save as you add them.
+              </p>
+              {packsError && (
+                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{packsError}</p>
+              )}
+
+              {packsLoading ? <TableSkeleton rows={2} cols={2} /> : packs.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                  No packs yet — this is bought loose, by the {editItem.unit}.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                  {packs.map((p) => (
+                    <div key={p.id} data-testid={`pack-row-${p.id}`} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                      border: '1px solid var(--color-border)', borderRadius: 10,
+                      padding: '8px 12px', background: 'var(--color-surface)',
+                    }}>
+                      <span style={{ fontSize: 13 }}>
+                        <strong>{p.name}</strong>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>
+                          {' '}= {Number(p.base_units)} {editItem.unit}
+                        </span>
+                      </span>
+                      <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <input
+                  aria-label="Pack name"
+                  placeholder="Name, e.g. 500 ml tin or Case"
+                  value={packForm.name}
+                  onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
+                  style={S.input}
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
+                  <input
+                    aria-label="Amount in the pack"
+                    type="number"
+                    min="0.000001"
+                    step="any"
+                    placeholder="500"
+                    value={packForm.qty}
+                    onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
+                    style={{ ...S.input, width: 100 }}
+                  />
+                  {/* A case is 7 trays. Defining a big pack from a small one is
+                      how people describe a box, and beats multiplying it out. */}
+                  <select
+                    aria-label="Measured in"
+                    value={packForm.ofPackId}
+                    onChange={(e) => setPackForm((f) => ({ ...f, ofPackId: e.target.value }))}
+                    style={{ ...S.select, width: 'auto', minWidth: 130 }}
+                  >
+                    <option value="">{editItem.unit}</option>
+                    {packs.map((p) => <option key={p.id} value={p.id}>{p.name.toLowerCase()}</option>)}
+                  </select>
+                  <Btn small onClick={() => void savePack()} disabled={packSaving}>
+                    {packSaving ? 'Saving…' : 'Add pack'}
+                  </Btn>
+                </div>
+              </div>
+            </div>
             <label>
               <span style={S.label}>SKU</span>
               <input style={S.input} value={editForm.sku} aria-label="SKU"
@@ -1008,78 +1161,6 @@ export default function InventoryPage() {
           <ModalActions>
             <Btn variant="secondary" onClick={() => setEditItem(null)}>Cancel</Btn>
             <Btn disabled={editSaving} onClick={() => void saveEdit()}>{editSaving ? 'Saving…' : 'Save changes'}</Btn>
-          </ModalActions>
-        </Modal>
-      )}
-
-      {/* ── Pack sizes: how you buy it ── */}
-      {packsItem && (
-        <Modal title={`Pack sizes — ${packsItem.name}`} onClose={() => setPacksItem(null)} maxWidth={520}>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
-            Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{packsItem.unit}</strong>.
-            Add the packs you actually buy, and a purchase order can say “1 case” while the shelf gains
-            the right number and the price per {packsItem.unit} works itself out.
-          </p>
-          {packsError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{packsError}</p>}
-
-          {packsLoading ? <TableSkeleton rows={2} cols={2} /> : packs.length === 0 ? (
-            <EmptyState message={`No packs yet — this is bought loose, by the ${packsItem.unit}.`} />
-          ) : (
-            <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
-              {packs.map((p) => (
-                <div key={p.id} data-testid={`pack-row-${p.id}`} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                  border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 12px',
-                }}>
-                  <span style={{ fontSize: 13 }}>
-                    <strong>{p.name}</strong>
-                    <span style={{ color: 'var(--color-text-secondary)' }}>
-                      {' '}= {Number(p.base_units)} {packsItem.unit}
-                    </span>
-                  </span>
-                  <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <input
-              aria-label="Pack name"
-              placeholder="Name, e.g. Tray or Case"
-              value={packForm.name}
-              onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
-              style={S.input}
-            />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
-              <input
-                aria-label="Amount in the pack"
-                type="number"
-                min="0.000001"
-                step="any"
-                placeholder="30"
-                value={packForm.qty}
-                onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
-                style={{ ...S.input, width: 100 }}
-              />
-              {/* A case is 7 trays. Defining a big pack from a small one is how
-                  people describe a box, and beats multiplying it out by hand. */}
-              <select
-                aria-label="Measured in"
-                value={packForm.ofPackId}
-                onChange={(e) => setPackForm((f) => ({ ...f, ofPackId: e.target.value }))}
-                style={{ ...S.select, width: 'auto', minWidth: 130 }}
-              >
-                <option value="">{packsItem.unit}</option>
-                {packs.map((p) => <option key={p.id} value={p.id}>{p.name.toLowerCase()}</option>)}
-              </select>
-            </div>
-          </div>
-          <ModalActions>
-            <Btn variant="ghost" onClick={() => setPacksItem(null)}>Close</Btn>
-            <Btn onClick={() => void savePack()} disabled={packSaving}>{packSaving ? 'Saving…' : 'Add pack'}</Btn>
           </ModalActions>
         </Modal>
       )}

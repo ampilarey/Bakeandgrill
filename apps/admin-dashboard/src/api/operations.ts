@@ -38,6 +38,12 @@ export interface InventoryItem {
   storage_location: string | null;
   notes: string | null;
   preferred_supplier_id: number | null;
+  /**
+   * How this item is bought, as opposed to how it is counted — ghee counted
+   * in ml, bought as a 100 ml tin or a 500 ml tin. Comes with the list so a
+   * row can show them without opening anything.
+   */
+  purchase_units?: InventoryPurchaseUnit[];
 }
 
 export interface InventoryCategory {
