@@ -8,6 +8,7 @@
  */
 export type InventorySortKey =
   | 'name'
+  | 'name_desc'
   | 'days_left'
   | 'usage'
   | 'on_hand'
@@ -16,6 +17,7 @@ export type InventorySortKey =
 
 export const INVENTORY_SORTS: { key: InventorySortKey; label: string }[] = [
   { key: 'name', label: 'Name A–Z' },
+  { key: 'name_desc', label: 'Name Z–A' },
   { key: 'low_first', label: 'Low stock first' },
   { key: 'days_left', label: 'Runs out soonest' },
   { key: 'usage', label: 'Most used per day' },
@@ -70,6 +72,8 @@ export function sortInventory<T extends Sortable>(items: T[], key: InventorySort
   switch (key) {
     case 'name':
       return out.sort(byName);
+    case 'name_desc':
+      return out.sort((a, b) => byName(b, a));
     case 'low_first':
       return out.sort((a, b) => Number(isLow(b)) - Number(isLow(a)) || byName(a, b));
     case 'days_left':

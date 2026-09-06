@@ -19,6 +19,10 @@ describe('sortInventory', () => {
     expect(names(sortInventory(rows, 'name'))).toEqual(['Aprons', 'Gas', 'Rice', 'Water']);
   });
 
+  it('sorts Z–A as the exact mirror of A–Z', () => {
+    expect(names(sortInventory(rows, 'name_desc'))).toEqual(['Water', 'Rice', 'Gas', 'Aprons']);
+  });
+
   it('puts low stock first, then alphabetical', () => {
     expect(names(sortInventory(rows, 'low_first'))).toEqual(['Water', 'Aprons', 'Gas', 'Rice']);
   });
