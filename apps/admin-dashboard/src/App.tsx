@@ -28,6 +28,7 @@ const InvoicesPage            = lazyWithRetry(() => import('./pages/InvoicesPage
 const ExpensesPage            = lazyWithRetry(() => import('./pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
 const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
 const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
+const MonthlySheetPage        = lazyWithRetry(() => import('./pages/MonthlySheetPage').then((m) => ({ default: m.MonthlySheetPage })));
 const BreakEvenPage           = lazyWithRetry(() => import('./pages/BreakEvenPage').then((m) => ({ default: m.BreakEvenPage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
@@ -339,6 +340,11 @@ export default function App() {
                 <Route path="profit-loss" element={
                   <PermissionGuard user={user} permission="reports.financial">
                     <ProfitLossPage />
+                  </PermissionGuard>
+                } />
+                <Route path="monthly-sheet" element={
+                  <PermissionGuard user={user} permission="reports.financial">
+                    <MonthlySheetPage />
                   </PermissionGuard>
                 } />
                 <Route path="break-even" element={

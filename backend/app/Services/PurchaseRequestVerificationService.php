@@ -175,6 +175,7 @@ final class PurchaseRequestVerificationService
                     'quantity' => $qty,
                     'unit_cost' => $unitCost,
                     'total_cost' => round($qty * $unitCost, 2),
+                    'brand' => $line->brand,
                     'received_quantity' => $alreadyStocked ? $qty : 0,
                     'receive_status' => $alreadyStocked ? 'complete' : 'pending',
                     'received_at' => $alreadyStocked ? now() : null,
@@ -463,6 +464,9 @@ final class PurchaseRequestVerificationService
                 'purchase_id' => null,
                 'unit_price' => $newCost,
                 'unit' => $invItem->unit,
+                // The brand the runner actually bought, so a shop run feeds
+                // the same brand comparison a purchase order does.
+                'brand' => $item->brand,
                 // Dated when it was bought, so the 90-day "cheapest supplier"
                 // window measures the price from the day it was actually paid.
                 'recorded_at' => ($item->bought_at ?? now())->toDateString(),

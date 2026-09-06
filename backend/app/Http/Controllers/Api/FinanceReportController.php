@@ -102,8 +102,14 @@ class FinanceReportController extends Controller
         $combinedNet = round($netRevenue + $wholesaleNet, 2);
         $grossProfit = round($combinedNet - (float) $cogs - $wholesaleCogs, 2);
         // Bank commissions are auto-recorded as approved expenses — included in $opexTotal.
-        // WasteLog already includes consignment waste — do not add wholesaleWaste again.
-        $operatingProfit = round($grossProfit - $opexTotal - $wasteCost, 2);
+        /*
+         * Waste is NOT subtracted. Under purchases-as-cost accounting (the
+         * owner's model, 2026-09-06) the wasted ingredients were already paid
+         * for inside the purchase figures — subtracting their estimated value
+         * again counted the same money twice. It stays in the payload as an
+         * information line: worth watching, already paid for.
+         */
+        $operatingProfit = round($grossProfit - $opexTotal, 2);
 
         return response()->json([
             'from' => $from->toDateString(),
@@ -311,10 +317,12 @@ class FinanceReportController extends Controller
         $wholesale = app(WholesaleChannelAggregator::class)->summary($from, $to);
         $wholesaleRevenue = (float) $wholesale['revenue'];
         $wholesaleCogs = (float) $wholesale['cogs'];
+        // Waste is inside $purchases already (the ingredients were bought);
+        // it is reported, not subtracted again.
         $profit = round(
             $netRevenue
             + round($wholesaleRevenue - (float) $wholesale['tax'], 2)
-            - $expenses - $purchases - $wholesaleCogs - $wasteCost,
+            - $expenses - $purchases - $wholesaleCogs,
             2,
         );
 
@@ -372,6 +380,23 @@ class FinanceReportController extends Controller
             ]),
             'wholesale_top_items' => app(WholesaleChannelAggregator::class)->topItems($from, $to, 10),
         ]);
+    }
+
+    /**
+     * One month, the owner's way: income in, ingredients and expenses out,
+     * profit at the bottom, last month beside it. See MonthlySheetService.
+     */
+    public function monthlySheet(Request $request): JsonResponse
+    {
+        $month = (string) $request->query('month', now()->format('Y-m'));
+
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+            return response()->json(['message' => 'Give the month as YYYY-MM.'], 422);
+        }
+
+        return response()->json(
+            app(\App\Domains\Reporting\Services\MonthlySheetService::class)->sheet($month),
+        );
     }
 
     // ──────────────────────────────────────────────────────────

@@ -73,6 +73,7 @@ type BackendInventoryRow = {
   storage_location?: string | null;
   notes?: string | null;
   preferred_supplier_id?: number | string | null;
+  purchase_units?: InventoryPurchaseUnit[];
 };
 
 function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
@@ -97,6 +98,12 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     storage_location: row.storage_location ?? null,
     notes: row.notes ?? null,
     preferred_supplier_id: row.preferred_supplier_id != null ? Number(row.preferred_supplier_id) : null,
+    /*
+     * Was silently dropped here, which meant the "Buys as 500 ml tin" line on
+     * the stock list — and everything else that reads packs off a row — never
+     * saw them on the live site while the tests mocked this very function.
+     */
+    purchase_units: row.purchase_units ?? [],
   };
 }
 
@@ -612,6 +619,8 @@ export interface InventoryPurchaseUnit {
   id: number;
   name: string;
   base_units: number | string;
+  /** The EAN on this pack, so a scan can say which size arrived. */
+  barcode?: string | null;
 }
 
 export async function getPurchaseUnits(itemId: number): Promise<{
@@ -629,7 +638,7 @@ export async function getPurchaseUnits(itemId: number): Promise<{
  */
 export async function createPurchaseUnit(
   itemId: number,
-  data: { name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number },
+  data: { name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number; barcode?: string },
 ): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
   return req(`/inventory/${itemId}/purchase-units`, { method: 'POST', body: JSON.stringify(data) });
 }
@@ -638,7 +647,7 @@ export async function createPurchaseUnit(
 export async function updatePurchaseUnit(
   itemId: number,
   id: number,
-  data: { name?: string; base_units?: number },
+  data: { name?: string; base_units?: number; barcode?: string | null },
 ): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
   return req(`/inventory/${itemId}/purchase-units/${id}`, {
     method: 'PATCH',

@@ -29,7 +29,9 @@ class PurchaseController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Purchase::with(['supplier', 'items']);
+        // Packs ride along so the receive modal can resolve a scanned pack
+        // barcode to "one 500 ml tin" instead of one lonely millilitre.
+        $query = Purchase::with(['supplier', 'items.inventoryItem.purchaseUnits']);
 
         if ($request->has('status')) {
             $query->where('status', $request->query('status'));
@@ -91,7 +93,7 @@ class PurchaseController extends Controller
 
     public function show($id)
     {
-        $purchase = Purchase::with(['supplier', 'items.inventoryItem'])
+        $purchase = Purchase::with(['supplier', 'items.inventoryItem.purchaseUnits'])
             ->findOrFail($id);
 
         foreach (app(PurchaseEditPolicy::class)->summary($purchase) as $key => $value) {

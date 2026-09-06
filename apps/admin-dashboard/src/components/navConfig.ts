@@ -123,6 +123,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
       { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
+      { to: '/monthly-sheet', icon: CalendarDays, label: 'Monthly Sheet', permission: 'reports.financial', description: 'Income, ingredients, expenses, profit — one month' },
       { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'reports.financial', description: 'P&L statement' },
       { to: '/break-even',  icon: Target,     label: 'Break-even',    permission: 'reports.financial', description: 'Estimated sales to cover costs' },
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },

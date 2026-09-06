@@ -292,6 +292,36 @@ export type PnLReport = {
   net_profit_margin_pct: number;
 };
 
+export interface MonthlySheetMonth {
+  month: string;
+  label: string;
+  days_covered: number;
+  is_current: boolean;
+  income: {
+    takings_incl_gst: number;
+    gst_for_mira: number;
+    refunds: number;
+    wholesale_net: number;
+    orders: number;
+    total: number;
+  };
+  ingredients: number;
+  expenses: { total: number; by_category: { category: string; icon?: string | null; total: number }[] };
+  waste_info: number;
+  profit: number;
+  stock_change: { opening_value: number; closing_value: number; change: number } | null;
+  profit_by_usage: number | null;
+}
+
+export interface MonthlySheet extends MonthlySheetMonth {
+  previous: MonthlySheetMonth;
+}
+
+/** One month the owner's way: income, ingredients, expenses, profit. */
+export async function getMonthlySheet(month: string): Promise<MonthlySheet> {
+  return req(`/reports/finance/monthly-sheet?month=${encodeURIComponent(month)}`);
+}
+
 export async function getProfitAndLoss(from: string, to: string): Promise<PnLReport> {
   return req(`/reports/finance/profit-and-loss?from=${from}&to=${to}`);
 }

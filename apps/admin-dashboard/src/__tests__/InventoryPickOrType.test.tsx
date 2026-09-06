@@ -205,7 +205,7 @@ describe('The item form has no dead ends', () => {
     fireEvent.click(within(section).getByText('Save'));
 
     await waitFor(() => expect(updatePurchaseUnit).toHaveBeenCalledWith(21, 7, {
-      name: '500ml tin', base_units: 500,
+      name: '500ml tin', base_units: 500, barcode: null,
     }));
   });
 

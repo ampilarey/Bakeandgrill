@@ -18,6 +18,8 @@ type ItemDraft = {
   actualQty: string;
   unitCostMvr: string;
   shopName: string;
+  /** The brand on the tin — what makes a shop run comparable across brands. */
+  brand: string;
   notes: string;
   /** The day it was bought. Defaults to today; a past date catches up a late entry. */
   boughtOn: string;
@@ -31,7 +33,7 @@ function todayIso(): string {
 }
 
 function emptyDraft(): ItemDraft {
-  return { actualQty: "", unitCostMvr: "", shopName: "", notes: "", boughtOn: todayIso() };
+  return { actualQty: "", unitCostMvr: "", shopName: "", brand: "", notes: "", boughtOn: todayIso() };
 }
 
 export function AssignedBuyingListPanel({ onClose }: Props) {
@@ -93,6 +95,7 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
         actual_qty: parseFloat(d.actualQty) || item.requested_qty,
         actual_unit_cost_laar: mvrToLaar(d.unitCostMvr),
         supplier_name_text: d.shopName.trim() || undefined,
+        brand: d.brand.trim() || undefined,
         buyer_notes: d.notes.trim() || undefined,
         // Only sent when it isn't today, so the normal case posts nothing extra.
         bought_at: d.boughtOn && d.boughtOn !== todayIso() ? d.boughtOn : undefined,
@@ -164,6 +167,7 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                       </button>
                     )}
                     <input placeholder="Bought from" aria-label="Bought from" value={d.shopName} onChange={(e) => setDraft(item, { shopName: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
+                    <input placeholder="Brand (as on the tin)" aria-label="Brand" value={d.brand} onChange={(e) => setDraft(item, { brand: e.target.value })} style={{ padding: 8, borderRadius: radius.m, border: `1px solid ${palette.border}` }} />
                     <label style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: palette.panelMuted }}>
                       Bought on
                       <input

@@ -293,6 +293,11 @@ final class PurchaseRequestService
                 'actual_total_laar' => $totalLaar,
                 'supplier_id' => $data['supplier_id'] ?? $item->supplier_id,
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
+                // The brand on the tin, so a shop run is visible to the same
+                // brand price comparison a purchase order feeds.
+                'brand' => isset($data['brand']) && trim((string) $data['brand']) !== ''
+                    ? trim((string) $data['brand'])
+                    : $item->brand,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
                 'bought_at' => $this->boughtAt($data),
                 // Who spent the money, so the delivery cannot be accepted by
@@ -500,6 +505,9 @@ final class PurchaseRequestService
                 'actual_total_laar' => $totalLaar,
                 'supplier_id' => $data['supplier_id'] ?? $item->supplier_id,
                 'supplier_name_text' => $data['supplier_name_text'] ?? $item->supplier_name_text,
+                'brand' => isset($data['brand']) && trim((string) $data['brand']) !== ''
+                    ? trim((string) $data['brand'])
+                    : $item->brand,
                 'buyer_notes' => $data['buyer_notes'] ?? $item->buyer_notes,
                 'bought_at' => $this->boughtAt($data),
                 // Who spent the money, so the delivery cannot be accepted by

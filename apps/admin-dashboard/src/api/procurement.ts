@@ -245,6 +245,7 @@ export async function markPurchaseRequestItemBought(
     actual_unit_cost_laar?: number;
     supplier_id?: number | null;
     supplier_name_text?: string;
+    brand?: string;
     buyer_notes?: string;
     from_quote_id?: number;
   },

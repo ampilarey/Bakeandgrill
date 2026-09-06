@@ -313,6 +313,7 @@ class PurchaseRequestController extends Controller
             'actual_unit_cost_laar' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name_text' => ['nullable', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:100'],
             'buyer_notes' => ['nullable', 'string', 'max:1000'],
             'from_quote_id' => ['nullable', 'integer', 'exists:purchase_request_item_quotes,id'],
             // Catching up on a shop run from a previous day. Omitted means now.
@@ -334,6 +335,7 @@ class PurchaseRequestController extends Controller
             'actual_unit_cost_laar' => ['nullable', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'supplier_name_text' => ['nullable', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:100'],
             'buyer_notes' => ['nullable', 'string', 'max:1000'],
             'bought_at' => BackdatePolicy::rules(required: false),
         ], BackdatePolicy::messages('bought_at'));

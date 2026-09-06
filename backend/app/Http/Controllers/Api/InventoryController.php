@@ -43,7 +43,7 @@ class InventoryController extends Controller
          */
         $query = InventoryItem::query()->with([
             'category:id,name',
-            'purchaseUnits:id,inventory_item_id,name,base_units',
+            'purchaseUnits:id,inventory_item_id,name,base_units,barcode',
         ]);
 
         if ($request->boolean('active_only')) {

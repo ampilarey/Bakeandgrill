@@ -20,7 +20,15 @@ vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({ can: () => true, loading: false, user: null }),
 }));
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
-vi.mock('../components/ItemSearch', () => ({ ItemSearch: () => null }));
+vi.mock('../components/ItemSearch', () => ({
+  // A fake picker: one button that "finds" eggs. Enough to prove the edit
+  // modal turns a selection into a new line.
+  ItemSearch: ({ onChange }: { onChange?: (v: unknown) => void }) => (
+    <button onClick={() => onChange?.({ id: 9, label: 'Egg', item: { id: 9, cost_per_unit: 2 } })}>
+      pick-egg
+    </button>
+  ),
+}));
 
 /*
  * Phone or desk. Owner, 2026-09-06: "still i dont see po Del/edit option" —
@@ -223,6 +231,40 @@ describe('Purchase order actions', () => {
     await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalledWith(1, [
       { inventory_item_id: 7, quantity: 25, unit_cost: 6.5 },
     ]));
+  });
+
+  it('adds a forgotten item as a new line', async () => {
+    // "Forgot the eggs" no longer means cancelling and starting over.
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0001')).getByText('Edit'));
+    await screen.findByLabelText('Quantity for Rice');
+
+    fireEvent.click(screen.getAllByText('pick-egg')[0]);
+    fireEvent.change(await screen.findByLabelText('Quantity for Egg'), { target: { value: '30' } });
+    fireEvent.click(screen.getByText('Save changes'));
+
+    await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalledWith(1, [
+      { inventory_item_id: 7, quantity: 10, unit_cost: 5 },
+      { inventory_item_id: 9, quantity: 30, unit_cost: 2 },
+    ]));
+  });
+
+  it('refuses to add the same item twice', async () => {
+    // Rice is already on the order; a second Rice line would receive wrong.
+    fetchPurchases.mockResolvedValue({
+      purchases: {
+        data: [{ ...draft, items: [{ ...line, inventory_item_id: 9, inventory_item: { id: 9, name: 'Egg' } }] }],
+        current_page: 1, last_page: 1, total: 1,
+      },
+    });
+    renderPage();
+    fireEvent.click(within(await rowFor('PO-0001')).getByText('Edit'));
+    await screen.findByLabelText('Quantity for Egg');
+
+    fireEvent.click(screen.getAllByText('pick-egg')[0]);
+
+    expect(await screen.findByText(/already on this order/)).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Quantity for Egg/)).toHaveLength(1);
   });
 
   it('drops a line the admin removed', async () => {

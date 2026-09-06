@@ -109,15 +109,17 @@ export function ProfitLossPage() {
                     { label: 'Retail COGS',            value: -pnl.cogs,                         color: 'var(--color-danger)' },
                     { label: 'Wholesale COGS',         value: -(pnl.wholesale_cogs ?? 0),        color: 'var(--color-danger)' },
                     { label: 'Operating Expenses',     value: -pnl.expenses.total,               color: '#f97316' },
-                    { label: 'Waste Cost',             value: -pnl.waste_cost,                   color: 'var(--color-warning)' },
-                    { label: 'Wholesale waste (info)', value: -(pnl.wholesale_waste_cost ?? 0),  color: 'var(--color-warning)' },
+                    // Waste money is already inside COGS (the ingredients were
+                    // bought) — shown to be watched, not subtracted again.
+                    { label: 'of which wasted (info)',  value: -pnl.waste_cost,                  color: 'var(--color-text-muted)', info: true },
+                    { label: 'Wholesale waste (info)', value: -(pnl.wholesale_waste_cost ?? 0),  color: 'var(--color-text-muted)', info: true },
                     { label: 'Net Profit',             value: pnl.operating_profit,              color: pnl.operating_profit >= 0 ? 'var(--color-primary)' : 'var(--color-danger-strong)' },
-                  ].map((row) => (
-                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  ].map((row: { label: string; value: number; color: string; info?: boolean }) => (
+                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, opacity: row.info ? 0.75 : 1 }}>
                       <div style={{ width: 150, fontSize: 12, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{row.label}</div>
                       <ProgressBar pct={pnl.revenue.gross !== 0 ? Math.abs(row.value) / pnl.revenue.gross * 100 : 0} color={row.color} />
-                      <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.value >= 0 ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', fontSize: 13, flexShrink: 0 }}>
-                        {row.value < 0 ? '−' : ''}MVR {parseFloat(String(Math.abs(row.value) ?? 0)).toFixed(2)}
+                      <div style={{ width: 100, textAlign: 'right', fontWeight: 700, color: row.info ? 'var(--color-text-muted)' : row.value >= 0 ? 'var(--color-success-strong)' : 'var(--color-danger-strong)', fontSize: 13, flexShrink: 0 }}>
+                        {row.info || row.value >= 0 ? '' : '−'}MVR {parseFloat(String(Math.abs(row.value) ?? 0)).toFixed(2)}
                       </div>
                     </div>
                   ))}

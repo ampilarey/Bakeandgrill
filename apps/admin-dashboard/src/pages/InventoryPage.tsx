@@ -11,6 +11,7 @@ import { downloadCSV } from '../utils/csvExport';
 import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
 import { PickOrType } from '../components/PickOrType';
+import { countScanIntoQtys } from '../utils/stockCountScan';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
@@ -115,14 +116,15 @@ export default function InventoryPage() {
   const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
-  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '' });
+  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '' });
   const [packSaving, setPackSaving] = useState(false);
+  const [scanPackBarcode, setScanPackBarcode] = useState(false);
   /*
    * A pack you can correct, not only add and delete. Owner, 2026-09-06: "no
    * pack size edit option" — a typo in "500 ml tin" meant deleting the pack
    * and with it the name a purchase order was already showing.
    */
-  const [packEdit, setPackEdit] = useState<{ id: number; name: string; qty: string } | null>(null);
+  const [packEdit, setPackEdit] = useState<{ id: number; name: string; qty: string; barcode: string } | null>(null);
   /*
    * Every unit the store already uses, so Unit is a list to pick from rather
    * than an empty box to guess at. Owner: "cannot see unit list."
@@ -138,7 +140,7 @@ export default function InventoryPage() {
   const loadPacks = async (itemId: number) => {
     setPacks([]);
     setPacksError('');
-    setPackForm({ name: '', qty: '', ofPackId: '' });
+    setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
     setPacksLoading(true);
     try {
       const res = await getPurchaseUnits(itemId);
@@ -156,14 +158,15 @@ export default function InventoryPage() {
     setPackSaving(true);
     setPacksError('');
     try {
+      const barcode = packForm.barcode.trim();
       await createPurchaseUnit(editItem.id, packForm.ofPackId
         // "A case is 7 trays" — how a box is actually described. The server
         // resolves it to the base unit before storing.
-        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty }
-        : { name, base_units: qty });
+        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}) }
+        : { name, base_units: qty, ...(barcode ? { barcode } : {}) });
       const res = await getPurchaseUnits(editItem.id);
       setPacks(res.purchase_units);
-      setPackForm({ name: '', qty: '', ofPackId: '' });
+      setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
       // The row shows an item's packs, so it has to hear about a new one.
       void loadItems();
     } catch (e) { setPacksError((e as Error).message); }
@@ -195,7 +198,11 @@ export default function InventoryPage() {
     setPackSaving(true);
     setPacksError('');
     try {
-      await updatePurchaseUnit(editItem.id, packEdit.id, { name, base_units: qty });
+      await updatePurchaseUnit(editItem.id, packEdit.id, {
+        name,
+        base_units: qty,
+        barcode: packEdit.barcode.trim() || null,
+      });
       const res = await getPurchaseUnits(editItem.id);
       setPacks(res.purchase_units);
       setPackEdit(null);
@@ -691,6 +698,14 @@ export default function InventoryPage() {
   // ── Stock Count tab ────────────────────────────────────────────────────────
   const [countItems, setCountItems] = useState<InventoryItem[]>([]);
   const [countQtys, setCountQtys] = useState<Record<number, string>>({});
+  /*
+   * Counting the shelf with a camera. An item's code adds one unit; a pack's
+   * code adds the whole pack — one scan of a 500 ml tin counts 500 ml. The
+   * sheet stays open so a whole shelf is scan, scan, scan.
+   */
+  const [countScanOpen, setCountScanOpen] = useState(false);
+  const [countScanMsg, setCountScanMsg] = useState('');
+  const [countScanCode, setCountScanCode] = useState('');
   const [countNotes, setCountNotes] = useState<Record<number, string>>({});
   const [countLoading, setCountLoading] = useState(false);
   const [countSaving, setCountSaving] = useState(false);
@@ -718,6 +733,12 @@ export default function InventoryPage() {
   };
 
   useEffect(() => { if (tab === 'stock-count') void loadCountItems(); }, [tab]);
+
+  const handleCountScan = (code: string) => {
+    const res = countScanIntoQtys(countItems, countQtys, code);
+    setCountQtys(res.qtys);
+    setCountScanMsg(res.message);
+  };
 
   const handleSubmitCount = async () => {
     const counts = countItems
@@ -1190,6 +1211,14 @@ export default function InventoryPage() {
                               style={{ ...S.input, width: 90 }}
                             />
                             <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{editItem.unit}</span>
+                            <input
+                              aria-label={`Barcode of ${p.name}`}
+                              placeholder="Barcode on the pack"
+                              inputMode="numeric"
+                              value={packEdit.barcode}
+                              onChange={(e) => setPackEdit((f) => (f ? { ...f, barcode: e.target.value } : f))}
+                              style={{ ...S.input, flex: '1 1 140px', width: 'auto' }}
+                            />
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <Btn small disabled={packSaving} onClick={() => void savePackEdit()}>
@@ -1205,6 +1234,11 @@ export default function InventoryPage() {
                             <span style={{ color: 'var(--color-text-secondary)' }}>
                               {' '}= {Number(p.base_units)} {editItem.unit}
                             </span>
+                            {p.barcode && (
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                ⌷ {p.barcode}
+                              </span>
+                            )}
                           </span>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <Btn
@@ -1213,7 +1247,7 @@ export default function InventoryPage() {
                               disabled={packSaving}
                               onClick={() => {
                                 setPacksError('');
-                                setPackEdit({ id: p.id, name: p.name, qty: String(Number(p.base_units)) });
+                                setPackEdit({ id: p.id, name: p.name, qty: String(Number(p.base_units)), barcode: p.barcode ?? '' });
                               }}
                             >
                               Edit
@@ -1263,7 +1297,29 @@ export default function InventoryPage() {
                     {packSaving ? 'Saving…' : 'Add pack'}
                   </Btn>
                 </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    aria-label="Pack barcode"
+                    placeholder="Barcode on the pack (optional)"
+                    inputMode="numeric"
+                    value={packForm.barcode}
+                    onChange={(e) => setPackForm((f) => ({ ...f, barcode: e.target.value }))}
+                    style={{ ...S.input, flex: 1, width: 'auto' }}
+                  />
+                  <Btn small variant="secondary" onClick={() => setScanPackBarcode(true)} aria-label="Scan the pack barcode">
+                    📷 Scan
+                  </Btn>
+                </div>
+                {/* Different sizes carry different EANs; the code on the tin is
+                    what lets receiving and stock counts count the right size. */}
               </div>
+              {scanPackBarcode && (
+                <ScanSheet
+                  title="Scan the pack"
+                  onScan={(code) => { setPackForm((f) => ({ ...f, barcode: code.trim() })); setScanPackBarcode(false); }}
+                  onClose={() => setScanPackBarcode(false)}
+                />
+              )}
             </div>
             <label>
               <span style={S.label}>SKU</span>
@@ -1631,9 +1687,46 @@ export default function InventoryPage() {
             </div>
           ) : countLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Loading items…</p> : (
             <div>
-              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
                 Enter the actual counted quantities. Leave blank to skip an item.
               </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCountScan(countScanCode);
+                  setCountScanCode('');
+                }}
+                style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}
+              >
+                <input
+                  aria-label="Scan or type a barcode to count"
+                  placeholder="Scan or type a barcode…"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={countScanCode}
+                  onChange={(e) => setCountScanCode(e.target.value)}
+                  style={{ ...S.input, flex: '1 1 220px', width: 'auto' }}
+                />
+                <Btn small variant="secondary" onClick={() => { setCountScanMsg(''); setCountScanOpen(true); }} type="button">
+                  📷 Camera
+                </Btn>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  Each scan adds one — a pack barcode adds the whole pack.
+                </span>
+                {countScanMsg && (
+                  <span role="status" data-testid="count-scan-message" style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-primary)', flexBasis: '100%' }}>
+                    {countScanMsg}
+                  </span>
+                )}
+              </form>
+              {countScanOpen && (
+                <ScanSheet
+                  title="Scan the shelf"
+                  hint="Each scan adds one to the count — a pack barcode adds the whole pack. Scan again for the next packet."
+                  onScan={(code) => { setCountScanOpen(false); handleCountScan(code); }}
+                  onClose={() => setCountScanOpen(false)}
+                />
+              )}
               <TableCard>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead><tr>

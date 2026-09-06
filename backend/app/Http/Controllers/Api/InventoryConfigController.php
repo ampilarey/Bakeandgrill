@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
+use App\Models\InventoryPurchaseUnit;
 use App\Models\UnitConversion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,7 +101,7 @@ class InventoryConfigController extends Controller
 
         return response()->json([
             'base_unit' => $item->unit,
-            'purchase_units' => $item->purchaseUnits()->get(['id', 'name', 'base_units']),
+            'purchase_units' => $item->purchaseUnits()->get(['id', 'name', 'base_units', 'barcode']),
             // Brands this item has actually been bought as, so the buying
             // screen can suggest them rather than asking anybody to remember
             // last week's spelling. Most recent first: what you bought last is
@@ -143,7 +144,17 @@ class InventoryConfigController extends Controller
             'base_units' => 'required_without:of_purchase_unit_id|nullable|numeric|min:0.000001',
             'of_purchase_unit_id' => 'nullable|integer',
             'of_quantity' => 'required_with:of_purchase_unit_id|nullable|numeric|min:0.000001',
+            // The EAN on this pack, so a scan can say WHICH tin arrived.
+            'barcode' => 'nullable|string|max:64',
         ]);
+
+        $barcode = isset($v['barcode']) ? trim((string) $v['barcode']) : '';
+        if ($barcode !== '' && ($clash = $this->scanCodeOwner($barcode, null)) !== null) {
+            return response()->json([
+                'message' => 'That barcode is already used by ' . $clash . '.',
+                'errors' => ['barcode' => ['A scan must resolve to exactly one thing.']],
+            ], 422);
+        }
 
         $name = trim($v['name']);
         $baseUnits = isset($v['base_units']) ? (float) $v['base_units'] : null;
@@ -173,7 +184,10 @@ class InventoryConfigController extends Controller
             ->first();
 
         if ($existing !== null) {
-            $existing->update(['base_units' => $baseUnits]);
+            $existing->update(array_filter([
+                'base_units' => $baseUnits,
+                'barcode' => $barcode !== '' ? $barcode : null,
+            ], fn ($x) => $x !== null));
 
             return response()->json(['purchase_unit' => $existing->fresh()]);
         }
@@ -181,6 +195,7 @@ class InventoryConfigController extends Controller
         $unit = $item->purchaseUnits()->create([
             'name' => $name,
             'base_units' => $baseUnits,
+            'barcode' => $barcode !== '' ? $barcode : null,
         ]);
 
         return response()->json(['purchase_unit' => $unit], 201);
@@ -205,7 +220,21 @@ class InventoryConfigController extends Controller
         $v = $request->validate([
             'name' => 'sometimes|string|max:40',
             'base_units' => 'sometimes|numeric|min:0.000001',
+            'barcode' => 'sometimes|nullable|string|max:64',
         ]);
+
+        if (array_key_exists('barcode', $v)) {
+            $barcode = trim((string) ($v['barcode'] ?? ''));
+            if ($barcode !== ''
+                && $barcode !== (string) $unit->barcode
+                && ($clash = $this->scanCodeOwner($barcode, $unit->id)) !== null) {
+                return response()->json([
+                    'message' => 'That barcode is already used by ' . $clash . '.',
+                    'errors' => ['barcode' => ['A scan must resolve to exactly one thing.']],
+                ], 422);
+            }
+            $unit->barcode = $barcode !== '' ? $barcode : null;
+        }
 
         if (isset($v['name'])) {
             $name = trim($v['name']);
@@ -240,6 +269,34 @@ class InventoryConfigController extends Controller
         $unit->save();
 
         return response()->json(['purchase_unit' => $unit->fresh()]);
+    }
+
+    /**
+     * Who already answers to this code in the stock-side scan namespace —
+     * item barcodes, item SKUs, and pack barcodes. Returns a human sentence
+     * fragment naming the owner, or null when the code is free. The till-side
+     * namespace (menu items and variants) is separate on purpose: a packet of
+     * flour and a dish never meet the same scanner.
+     */
+    private function scanCodeOwner(string $code, ?int $ignorePurchaseUnitId): ?string
+    {
+        $item = InventoryItem::query()
+            ->where(fn ($q) => $q->where('barcode', $code)->orWhere('sku', $code))
+            ->first(['id', 'name']);
+        if ($item !== null) {
+            return 'the item "' . $item->name . '"';
+        }
+
+        $pack = InventoryPurchaseUnit::query()
+            ->with('inventoryItem:id,name')
+            ->where('barcode', $code)
+            ->when($ignorePurchaseUnitId, fn ($q) => $q->whereKeyNot($ignorePurchaseUnitId))
+            ->first();
+        if ($pack !== null) {
+            return 'the pack "' . $pack->name . '" of "' . ($pack->inventoryItem?->name ?? 'another item') . '"';
+        }
+
+        return null;
     }
 
     public function destroyPurchaseUnit(int $itemId, int $id)

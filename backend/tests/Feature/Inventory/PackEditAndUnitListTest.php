@@ -157,6 +157,62 @@ class PackEditAndUnitListTest extends TestCase
         $this->assertSame(100.0, (float) $fresh->total_cost);
     }
 
+    public function test_a_pack_can_carry_its_own_barcode(): void
+    {
+        // The 100 ml and 500 ml tins have different EANs on the shelf; the
+        // item's single barcode field could never say which size arrived.
+        $item = $this->ghee();
+
+        $this->postJson("/api/inventory/{$item->id}/purchase-units", [
+            'name' => '500 ml tin', 'base_units' => 500, 'barcode' => '8901234567890',
+        ])->assertCreated()->assertJsonPath('purchase_unit.barcode', '8901234567890');
+
+        $units = $this->getJson("/api/inventory/{$item->id}/purchase-units")
+            ->assertOk()->json('purchase_units');
+        $this->assertSame('8901234567890', $units[0]['barcode']);
+    }
+
+    public function test_a_pack_barcode_cannot_collide_with_anything_scannable(): void
+    {
+        /*
+         * A scan must resolve to exactly one thing — the same rule the till
+         * codes already live by. Colliding with an item's barcode, an item's
+         * SKU, or another pack is refused with the owner named.
+         */
+        $item = $this->ghee();
+        $pack = $item->purchaseUnits()->create(['name' => 'Tin', 'base_units' => 500, 'barcode' => '111']);
+
+        // Another pack's code.
+        $this->postJson("/api/inventory/{$item->id}/purchase-units", [
+            'name' => 'Small tin', 'base_units' => 100, 'barcode' => '111',
+        ])->assertStatus(422);
+
+        // An item's own barcode.
+        InventoryItem::create([
+            'name' => 'Oil', 'sku' => 'OIL-1', 'barcode' => '222', 'unit' => 'ml',
+            'current_stock' => 0, 'unit_cost' => 0, 'is_active' => true,
+        ]);
+        $this->patchJson("/api/inventory/{$item->id}/purchase-units/{$pack->id}", [
+            'barcode' => '222',
+        ])->assertStatus(422);
+
+        // An item's SKU.
+        $this->patchJson("/api/inventory/{$item->id}/purchase-units/{$pack->id}", [
+            'barcode' => 'OIL-1',
+        ])->assertStatus(422);
+
+        // Its own current code is not a collision with itself.
+        $this->patchJson("/api/inventory/{$item->id}/purchase-units/{$pack->id}", [
+            'barcode' => '111', 'name' => 'Big tin',
+        ])->assertOk();
+
+        // And clearing it is allowed.
+        $this->patchJson("/api/inventory/{$item->id}/purchase-units/{$pack->id}", [
+            'barcode' => null,
+        ])->assertOk();
+        $this->assertNull($pack->fresh()->barcode);
+    }
+
     public function test_the_inventory_list_says_what_units_are_in_use(): void
     {
         // So the item form can offer a list instead of an empty box.

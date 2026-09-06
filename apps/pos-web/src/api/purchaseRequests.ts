@@ -149,6 +149,7 @@ export async function markPurchaseRequestItemBought(
     actual_unit?: string;
     actual_unit_cost_laar?: number;
     supplier_name_text?: string;
+    brand?: string;
     buyer_notes?: string;
   },
 ): Promise<{ item: PosPurchaseRequestItem; request: PosPurchaseRequest }> {
@@ -166,6 +167,7 @@ export async function markPurchaseRequestItemPartial(
     actual_unit?: string;
     actual_unit_cost_laar?: number;
     supplier_name_text?: string;
+    brand?: string;
     buyer_notes?: string;
   },
 ): Promise<{ item: PosPurchaseRequestItem; request: PosPurchaseRequest }> {

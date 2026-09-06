@@ -88,12 +88,13 @@ class BreakEvenService
 
         $variableCost = round($purchaseCogs + (float) $wholesale['cogs'], 2);
 
-        // Fixed cost = approved operating expenses + waste over the window,
-        // itemised by expense category so the owner sees and tunes each line
-        // (rent, salaries, utilities…) rather than one lump. Waste is not
-        // strictly fixed, but it is a standing loss the business carries rather
-        // than a per-sale cost, so it sits on the fixed side as its own line
-        // the owner can move or remove.
+        // Fixed cost = approved operating expenses over the window, itemised
+        // by expense category so the owner sees and tunes each line (rent,
+        // salaries, utilities…) rather than one lump. Waste is deliberately
+        // NOT a cost line any more: the wasted ingredients were bought, so
+        // their money is already inside the purchase COGS above — a waste
+        // line on top counted it twice. It stays in components as a figure
+        // worth watching.
         $opexByCategory = Expense::whereDate('expense_date', '>=', $from->toDateString())
             ->whereDate('expense_date', '<=', $to->toDateString())
             ->where('status', 'approved')
@@ -104,9 +105,9 @@ class BreakEvenService
 
         $opex = (float) $opexByCategory->sum('total');
         $waste = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
-        $fixedCost = round($opex + $waste, 2);
+        $fixedCost = round($opex, 2);
 
-        // One monthly-normalised row per category, biggest first, plus waste.
+        // One monthly-normalised row per category, biggest first.
         $fixedLines = $opexByCategory
             ->map(fn ($row) => [
                 'key' => 'category:' . ($row->expense_category_id ?? 'none'),
@@ -117,14 +118,6 @@ class BreakEvenService
             ->sortByDesc('monthly')
             ->values()
             ->all();
-
-        if ($waste > 0) {
-            $fixedLines[] = [
-                'key' => 'waste',
-                'label' => 'Waste',
-                'monthly' => round($waste / $days * 30, 2),
-            ];
-        }
 
         $marginRatio = BreakEvenCalculator::contributionMarginRatio($revenueExGst, $variableCost);
 

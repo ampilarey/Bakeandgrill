@@ -530,9 +530,11 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const [undoPo, setUndoPo] = useState<Purchase | null>(null);
   const [undoReason, setUndoReason] = useState('');
   const [undoWarnings, setUndoWarnings] = useState<string[]>([]);
+  const [editAddPick, setEditAddPick] = useState<InventoryItemSelection | null>(null);
 
   const openEdit = (po: Purchase) => {
     setEditPo(po);
+    setEditAddPick(null);
     setEditLines((po.items ?? []).map((line) => ({
       inventory_item_id: String(line.inventory_item_id ?? line.inventory_item?.id ?? ''),
       name: line.inventory_item?.name ?? `Item #${line.inventory_item_id ?? '?'}`,
@@ -1464,10 +1466,33 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 4px', lineHeight: 1.5 }}>
-            To add an item to this order, cancel it and raise a new one — an order is the
-            document you sent the supplier, and growing it after the fact is a different order.
-          </p>
+          {/* Forgot the eggs. Owner asked for this outright, and nothing has
+              arrived against the order — it is still just a document, and the
+              policy above already refuses this modal once anything lands. */}
+          <div style={{ border: '1px dashed var(--color-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>Add an item to this order</p>
+            <ItemSearch
+              kind="inventory"
+              value={editAddPick}
+              onChange={(sel) => {
+                setEditAddPick(null);
+                if (!sel) return;
+                if (editLines.some((l) => l.inventory_item_id === String(sel.id))) {
+                  setError(`${sel.label} is already on this order — edit its line instead.`);
+                  return;
+                }
+                setEditLines((rows) => [...rows, {
+                  inventory_item_id: String(sel.id),
+                  name: sel.label,
+                  quantity: '1',
+                  unit_cost: String(sel.item.cost_per_unit ?? ''),
+                  purchase_unit_id: '',
+                  brand: '',
+                }]);
+              }}
+              placeholder="Search inventory to add a line…"
+            />
+          </div>
           <ModalActions>
             <Btn variant="ghost" onClick={() => setEditPo(null)}>Cancel</Btn>
             <Btn onClick={() => void handleSaveLines()} disabled={actionLoading}>

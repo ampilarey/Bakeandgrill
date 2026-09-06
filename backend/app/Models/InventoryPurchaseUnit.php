@@ -22,6 +22,7 @@ class InventoryPurchaseUnit extends Model
         'inventory_item_id',
         'name',
         'base_units',
+        'barcode',
     ];
 
     protected $casts = [

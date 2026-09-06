@@ -72,12 +72,41 @@ class OneShopRunOnePotTest extends TestCase
         $this->postJson("/api/purchase-requests/{$id}/items/{$itemId}/mark-bought", [
             'actual_qty' => 2,
             'actual_unit_cost_laar' => 500,
+            'supplier_name_text' => 'Fahi Store',
+            'brand' => 'Anchor',
         ])->assertOk();
 
         Sanctum::actingAs($this->manager, ['staff']);
         $this->postJson("/api/purchase-requests/{$id}/items/{$itemId}/verify-received")->assertOk();
 
         return $id;
+    }
+
+    public function test_the_brand_on_the_tin_survives_the_whole_shop_run(): void
+    {
+        /*
+         * Purchase orders always carried brand; the shop run never did, so
+         * half the buying was invisible to the brand price comparison. The
+         * brand typed at mark-bought has to land in the price history and on
+         * the PO line the request becomes.
+         */
+        $id = $this->boughtRequest();
+
+        $this->assertSame('Anchor', PurchaseRequest::findOrFail($id)->items()->first()->brand);
+        $this->assertSame(
+            'Anchor',
+            \App\Models\SupplierPriceHistory::whereNull('purchase_id')
+                ->where('inventory_item_id', $this->flour->id)
+                ->value('brand'),
+        );
+
+        $this->postJson("/api/purchase-requests/{$id}/convert-to-purchase")->assertOk();
+
+        $purchaseId = PurchaseRequest::findOrFail($id)->purchase_id;
+        $this->assertSame(
+            'Anchor',
+            \App\Models\PurchaseItem::where('purchase_id', $purchaseId)->value('brand'),
+        );
     }
 
     public function test_a_request_that_became_a_purchase_cannot_also_become_an_expense(): void
