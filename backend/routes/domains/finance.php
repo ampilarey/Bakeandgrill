@@ -45,6 +45,24 @@ Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expe
     Route::post('/{id}/approve', [App\Http\Controllers\Api\ExpenseController::class, 'approve'])->whereNumber('id');
 });
 
+// ─── Bank settlements (owner, 2026-09-07: "match actual money received") ───
+Route::middleware(['auth:sanctum', 'permission:finance.settlements'])->prefix('settlements')->group(function () {
+    Route::get('/card-qr', [App\Http\Controllers\Api\SettlementController::class, 'cardQr']);
+    Route::get('/transfers', [App\Http\Controllers\Api\SettlementController::class, 'transfers']);
+    Route::get('/cash', [App\Http\Controllers\Api\SettlementController::class, 'cash']);
+    Route::get('/statements', [App\Http\Controllers\Api\SettlementController::class, 'imports']);
+    Route::post('/statements', [App\Http\Controllers\Api\SettlementController::class, 'importStatement']);
+    Route::delete('/statements/{id}', [App\Http\Controllers\Api\SettlementController::class, 'destroyImport'])->whereNumber('id');
+    Route::post('/lines/{id}/match', [App\Http\Controllers\Api\SettlementController::class, 'matchTransfer'])->whereNumber('id');
+    Route::post('/lines/{id}/unmatch', [App\Http\Controllers\Api\SettlementController::class, 'unmatchTransfer'])->whereNumber('id');
+    Route::post('/lines/{id}/ignore', [App\Http\Controllers\Api\SettlementController::class, 'ignoreLine'])->whereNumber('id');
+    Route::post('/lines/{id}/restore', [App\Http\Controllers\Api\SettlementController::class, 'restoreLine'])->whereNumber('id');
+    Route::put('/cash/{date}', [App\Http\Controllers\Api\SettlementController::class, 'saveCashHandover']);
+    Route::delete('/cash/{date}', [App\Http\Controllers\Api\SettlementController::class, 'deleteCashHandover']);
+    Route::get('/settings', [App\Http\Controllers\Api\SettlementController::class, 'settings']);
+    Route::patch('/settings', [App\Http\Controllers\Api\SettlementController::class, 'updateSettings']);
+});
+
 // ─── Finance Reports ───────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('reports/finance')->group(function () {
     Route::get('/profit-and-loss', [App\Http\Controllers\Api\FinanceReportController::class, 'profitAndLoss']);

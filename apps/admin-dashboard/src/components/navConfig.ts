@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
-  UtensilsCrossed, Package, Tag, CalendarDays, Plus,
+  UtensilsCrossed, Package, Tag, CalendarDays, Plus, Landmark,
   BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
   Users, LogOut,
   Heart, MessageSquare, BarChart2, Webhook,
@@ -130,6 +130,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/break-even',  icon: Target,     label: 'Break-even',    permission: 'reports.financial', description: 'Estimated sales to cover costs' },
       { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
       { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
+      // Owner, 2026-09-07: "the system must match actual money received."
+      { to: '/settlements', icon: Landmark,   label: 'Bank Settlements', permission: 'finance.settlements', description: 'Card, QR, transfers & cash against the bank' },
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
       { to: '/complaints',  icon: AlertTriangle, label: 'Complaints', permission: 'complaints.view',    description: 'Customer receipt & invoice concerns' },
     ],

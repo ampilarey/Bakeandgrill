@@ -50,6 +50,7 @@ class ManagerPermissionAllowlistTest extends TestCase
         'finance.expenses',
         'finance.invoices',
         'finance.profit_loss',
+        'finance.settlements',
         'finance.view',
         'integrations.sms',
         'inventory.categories',
