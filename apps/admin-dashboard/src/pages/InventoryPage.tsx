@@ -71,6 +71,22 @@ export function unitOptions(known: string[], current: string): { value: string; 
   return out;
 }
 
+/** The rate the days-left figure stands on — consumption first, buying second. */
+export function usagePerDay(item: {
+  usage_per_day?: number | null;
+  bought_per_day?: number | null;
+}): number | null {
+  const used = Number(item.usage_per_day ?? 0);
+  if (used > 0) return used;
+  const bought = Number(item.bought_per_day ?? 0);
+  return bought > 0 ? bought : null;
+}
+
+/** "5" not "5.000", "0.25" not "0.250" — the shelf does not care about zeros. */
+export function formatRate(rate: number): string {
+  return String(Math.round(rate * 100) / 100);
+}
+
 export default function InventoryPage() {
   usePageTitle('Inventory');
   const { can } = useCurrentUserPermissions();
@@ -469,6 +485,13 @@ export default function InventoryPage() {
       finally { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); }
     }, 800);
   };
+
+  // Under three days reads as "order now", under a week as "watch it".
+  const daysLeftColor = (item: InventoryItem) =>
+    item.days_left == null ? 'var(--color-text-muted)'
+      : item.days_left <= 3 ? 'var(--color-danger-strong)'
+        : item.days_left <= 7 ? 'var(--color-warning-strong)'
+          : 'var(--color-text-muted)';
 
   const loadItems = async () => {
     setLoading(true); setError('');
@@ -950,7 +973,7 @@ export default function InventoryPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Name', 'SKU', 'Category', 'On Hand', 'Reorder Level', 'Status', 'Actions'].map(h => (
+                  {['Name', 'SKU', 'Category', 'On Hand', 'Per day', 'Reorder Level', 'Status', 'Actions'].map(h => (
                     <th key={h} style={TH}>{h}</th>
                   ))}
                 </tr>
@@ -976,6 +999,24 @@ export default function InventoryPage() {
                           <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
                             {packEquivalent(item)}
                           </div>
+                        )}
+                      </td>
+                      {/* Owner, 2026-09-06: "water, 5 bottles per day". Real
+                          consumption where recipes track it; the buying rate
+                          where they do not — what comes in goes out. */}
+                      <td style={TD}>
+                        {usagePerDay(item) != null ? (
+                          <>
+                            <span style={{ fontWeight: 700 }}>~{formatRate(usagePerDay(item)!)} /day</span>
+                            <div style={{ fontSize: 11, color: daysLeftColor(item), marginTop: 2 }}>
+                              {item.days_left != null
+                                ? `≈ ${item.days_left} day${item.days_left === 1 ? '' : 's'} left`
+                                : 'out of stock'}
+                              {item.usage_source === 'bought' ? ' · from buying' : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)' }}>—</span>
                         )}
                       </td>
                       <td style={{ ...TD, color: 'var(--color-text-muted)' }}>

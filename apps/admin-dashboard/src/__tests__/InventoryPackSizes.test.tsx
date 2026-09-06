@@ -48,6 +48,21 @@ const ghee = {
 
 const looseSalt = { ...ghee, id: 22, name: 'Salt', sku: 'SALT-1', unit: 'kg', quantity_on_hand: 8, purchase_units: [] };
 
+/*
+ * Owner, 2026-09-06: "water, 5 bottles per day … known by sale and quantity
+ * bought, each day." The list says the rate and roughly when it runs out.
+ */
+const water = {
+  ...ghee, id: 23, name: 'Water', sku: 'WTR-1', unit: 'bottle', quantity_on_hand: 15,
+  purchase_units: [],
+  usage_per_day: 5, bought_per_day: 4.5, usage_source: 'used', days_left: 3,
+};
+const gas = {
+  ...ghee, id: 24, name: 'Gas cylinder', sku: 'GAS-1', unit: 'piece', quantity_on_hand: 2,
+  purchase_units: [],
+  usage_per_day: 0, bought_per_day: 0.1, usage_source: 'bought', days_left: 20,
+};
+
 const getPurchaseUnits = vi.fn();
 const createPurchaseUnit = vi.fn();
 const deletePurchaseUnit = vi.fn();
@@ -102,6 +117,21 @@ describe('Pack sizes on the inventory list', () => {
       data: [ghee, looseSalt],
       meta: { current_page: 1, last_page: 1, total: 2 },
     });
+  });
+
+  it('says how fast an item goes, and when it runs out', async () => {
+    fetchInventoryItems.mockResolvedValue({
+      data: [water, gas],
+      meta: { current_page: 1, last_page: 1, total: 2 },
+      units: [],
+    });
+    renderPage();
+
+    expect(await screen.findByText('~5 /day')).toBeInTheDocument();
+    expect(screen.getByText(/≈ 3 days left/)).toBeInTheDocument();
+    // An untracked item stands on its buying rate, and says so.
+    expect(screen.getByText('~0.1 /day')).toBeInTheDocument();
+    expect(screen.getByText(/≈ 20 days left · from buying/)).toBeInTheDocument();
   });
 
   it('says what an item buys as, without opening anything', async () => {

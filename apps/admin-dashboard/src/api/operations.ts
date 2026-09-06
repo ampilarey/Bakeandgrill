@@ -38,6 +38,14 @@ export interface InventoryItem {
   storage_location: string | null;
   notes: string | null;
   preferred_supplier_id: number | null;
+  /** Consumption over the last 30 days, per day — sales and waste. */
+  usage_per_day?: number | null;
+  /** How fast it is bought in, per day, same window. */
+  bought_per_day?: number | null;
+  /** Which rate days_left stands on: tracked usage, or the buying rate. */
+  usage_source?: 'used' | 'bought' | null;
+  /** Stock ÷ rate — roughly how many days before it runs out. */
+  days_left?: number | null;
   /**
    * How this item is bought, as opposed to how it is counted — ghee counted
    * in ml, bought as a 100 ml tin or a 500 ml tin. Comes with the list so a
@@ -74,6 +82,10 @@ type BackendInventoryRow = {
   notes?: string | null;
   preferred_supplier_id?: number | string | null;
   purchase_units?: InventoryPurchaseUnit[];
+  usage_per_day?: number | string | null;
+  bought_per_day?: number | string | null;
+  usage_source?: 'used' | 'bought' | null;
+  days_left?: number | null;
 };
 
 function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
@@ -104,6 +116,10 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
      * saw them on the live site while the tests mocked this very function.
      */
     purchase_units: row.purchase_units ?? [],
+    usage_per_day: row.usage_per_day != null ? Number(row.usage_per_day) : null,
+    bought_per_day: row.bought_per_day != null ? Number(row.bought_per_day) : null,
+    usage_source: row.usage_source ?? null,
+    days_left: row.days_left ?? null,
   };
 }
 

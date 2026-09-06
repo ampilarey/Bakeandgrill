@@ -68,8 +68,62 @@ class InventoryController extends Controller
             });
         }
 
+        $page = $query->orderBy('name')->paginate(50);
+
+        /*
+         * How fast each item goes, so the list can say "water: ~5 bottles a
+         * day" (owner, 2026-09-06). Two rates, over the last 30 days:
+         *
+         *   - `usage_per_day`: real consumption — sale (recipe deductions)
+         *     and waste movements. The truer number, when recipes track it.
+         *   - `bought_per_day`: how fast it is bought in. The fallback for
+         *     items nothing deducts automatically — bottled water bought
+         *     five a day IS used five a day, give or take the shelf.
+         *
+         * Two grouped queries for the whole page, not one per row.
+         */
+        $ids = collect($page->items())->pluck('id')->all();
+        $since = now()->subDays(30);
+
+        $usedByItem = DB::table('stock_movements')
+            ->whereIn('inventory_item_id', $ids)
+            ->whereIn('type', ['sale', 'waste', 'deduction'])
+            ->where('quantity', '<', 0)
+            ->whereRaw(StockMovement::OCCURRED_AT_SQL . ' >= ?', [$since])
+            ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as used')
+            ->groupBy('inventory_item_id')
+            ->pluck('used', 'inventory_item_id');
+
+        $boughtByItem = DB::table('stock_movements')
+            ->whereIn('inventory_item_id', $ids)
+            ->where('type', 'purchase')
+            ->where('quantity', '>', 0)
+            ->whereRaw(StockMovement::OCCURRED_AT_SQL . ' >= ?', [$since])
+            ->selectRaw('inventory_item_id, SUM(quantity) as bought')
+            ->groupBy('inventory_item_id')
+            ->pluck('bought', 'inventory_item_id');
+
+        $page->through(function (InventoryItem $item) use ($usedByItem, $boughtByItem) {
+            $used = round(((float) ($usedByItem[$item->id] ?? 0)) / 30, 3);
+            $bought = round(((float) ($boughtByItem[$item->id] ?? 0)) / 30, 3);
+            $rate = $used > 0 ? $used : $bought;
+
+            $item->setAttribute('usage_per_day', $used);
+            $item->setAttribute('bought_per_day', $bought);
+            // Which rate the days-left figure stands on, so the screen can say.
+            $item->setAttribute('usage_source', $used > 0 ? 'used' : ($bought > 0 ? 'bought' : null));
+            $item->setAttribute(
+                'days_left',
+                $rate > 0 && (float) $item->current_stock > 0
+                    ? (int) floor(((float) $item->current_stock) / $rate)
+                    : null,
+            );
+
+            return $item;
+        });
+
         return response()->json([
-            'items' => $query->orderBy('name')->paginate(50),
+            'items' => $page,
             /*
              * Every unit already in use, so the item form can offer a list
              * instead of an empty box. Owner, 2026-09-06: "cannot see unit
