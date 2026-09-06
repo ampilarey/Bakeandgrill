@@ -87,8 +87,11 @@ export function ProfitLossPage() {
           {pnl && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-                <StatCard label="Retail Revenue" value={`MVR ${parseFloat(String(pnl.revenue.gross ?? 0)).toFixed(2)}`} sub={`${pnl.revenue.orders} orders`} accent="var(--color-primary)" />
-                <StatCard label="Wholesale Revenue" value={`MVR ${parseFloat(String(pnl.revenue.wholesale ?? 0)).toFixed(2)}`} sub="Trade invoices" accent="var(--color-primary)" />
+                {/* Net of GST: the 8% on the bill is collected for MIRA, not
+                    earned, so every profit figure below starts from what the
+                    shop keeps. Takings incl. GST stay visible as the sub. */}
+                <StatCard label="Retail Revenue" value={`MVR ${parseFloat(String(pnl.revenue.net ?? 0)).toFixed(2)}`} sub={`${pnl.revenue.orders} orders · MVR ${parseFloat(String(pnl.revenue.gross ?? 0)).toFixed(2)} incl. GST`} accent="var(--color-primary)" />
+                <StatCard label="Wholesale Revenue" value={`MVR ${(parseFloat(String(pnl.revenue.wholesale ?? 0)) - parseFloat(String(pnl.revenue.wholesale_tax ?? 0))).toFixed(2)}`} sub="Trade invoices, ex GST" accent="var(--color-primary)" />
                 <StatCard label="Gross Profit"  value={`MVR ${parseFloat(String(pnl.gross_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.gross_margin_pct}%`} accent={pnl.gross_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
                 <StatCard label="Operating Expenses" value={`MVR ${parseFloat(String(pnl.expenses.total ?? 0)).toFixed(2)}`} accent="#f97316" />
                 <StatCard label="Net Profit"    value={`MVR ${parseFloat(String(pnl.operating_profit ?? 0)).toFixed(2)}`} sub={`Margin: ${pnl.net_profit_margin_pct}%`} accent={pnl.operating_profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
@@ -99,8 +102,10 @@ export function ProfitLossPage() {
                 <Card>
                   <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 20, margin: '0 0 20px' }}>P&L Breakdown</p>
                   {[
-                    { label: 'Retail Revenue',         value: pnl.revenue.gross,                 color: 'var(--color-success)' },
-                    { label: 'Wholesale Revenue',      value: pnl.revenue.wholesale ?? 0,        color: 'var(--color-success)' },
+                    { label: 'Takings incl. GST',      value: pnl.revenue.gross,                 color: 'var(--color-success)' },
+                    { label: 'GST for MIRA',           value: -(pnl.revenue.tax ?? 0),           color: 'var(--color-text-muted)' },
+                    { label: 'Refunds',                value: -(pnl.revenue.refunds ?? 0),       color: 'var(--color-warning)' },
+                    { label: 'Wholesale Revenue',      value: (pnl.revenue.wholesale ?? 0) - (pnl.revenue.wholesale_tax ?? 0), color: 'var(--color-success)' },
                     { label: 'Retail COGS',            value: -pnl.cogs,                         color: 'var(--color-danger)' },
                     { label: 'Wholesale COGS',         value: -(pnl.wholesale_cogs ?? 0),        color: 'var(--color-danger)' },
                     { label: 'Operating Expenses',     value: -pnl.expenses.total,               color: '#f97316' },

@@ -247,9 +247,20 @@ class PurchaseController extends Controller
             $request,
         );
 
+        // The delete gate guarantees nothing was received, so nothing is
+        // owed: an unpaid invoice raised from this order goes with it.
+        $invoiceWarning = app(\App\Domains\Finance\Services\PurchasePayableSync::class)
+            ->voidUnpaidInvoiceFor(
+                $purchase,
+                'purchase order ' . $purchase->purchase_number . ' was deleted',
+            );
+
         $purchase->delete();
 
-        return response()->json(['message' => 'Purchase order deleted.']);
+        return response()->json([
+            'message' => 'Purchase order deleted.',
+            'warnings' => array_values(array_filter([$invoiceWarning])),
+        ]);
     }
 
     /**
@@ -566,6 +577,18 @@ class PurchaseController extends Controller
 
             $purchase = $purchase->load(['supplier', 'items.inventoryItem', 'receipts']);
             app(NonStockPurchaseExpenseService::class)->syncForPurchase($purchase, $request->user());
+
+            /*
+             * Quick-receive stocks in right here, so the GST ledger has to hear
+             * about it right here too — only the workflow receive() used to
+             * post, and a purchase entered directly as received never reached
+             * the ledger at all. The poster itself decides claimable vs
+             * reference-only from the purchase's own flags.
+             */
+            if ($shouldStockIn) {
+                app(\App\Domains\Gst\Services\GstLedgerPoster::class)
+                    ->postPurchaseInput($purchase->fresh(), $request->user()?->id);
+            }
 
             return $purchase->fresh(['supplier', 'items.inventoryItem', 'receipts']);
         });

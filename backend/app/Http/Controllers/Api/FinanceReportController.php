@@ -59,7 +59,7 @@ class FinanceReportController extends Controller
          * a short-closed one to nothing (owner, 2026-09-06). See
          * PurchaseSpendQuery.
          */
-        $cogs = PurchaseSpendQuery::totalExGst($from->toDateString(), $to->toDateString());
+        $cogs = PurchaseSpendQuery::total($from->toDateString(), $to->toDateString());
 
         // Operating expenses (use date strings — SQLite stores expense_date with time)
         $opex = Expense::whereDate('expense_date', '>=', $from->toDateString())
@@ -88,9 +88,18 @@ class FinanceReportController extends Controller
         $wholesaleWaste = round($wholesaleWasteLaar / 100, 2);
 
         $grossRevenue = (float) ($revenue->total ?? 0);
-        $netRevenue = round($grossRevenue - $refundsTotal, 2);
+        $outputTax = (float) ($revenue->tax ?? 0);
+        /*
+         * Output GST is money collected for MIRA, not income — it was shown as
+         * a line here but never subtracted, so every profit figure carried the
+         * whole 8% as if the shop kept it. Owner, 2026-09-06: "gst not return
+         * in cafe" — nothing offsets it on the cost side either, so it has to
+         * come out of revenue before any profit is claimed.
+         */
+        $netRevenue = round($grossRevenue - $outputTax - $refundsTotal, 2);
+        $wholesaleNet = round($wholesaleRevenue - (float) $wholesale['tax'], 2);
         // Retail keys stay order/purchase based; combined profit includes wholesale channel.
-        $combinedNet = round($netRevenue + $wholesaleRevenue, 2);
+        $combinedNet = round($netRevenue + $wholesaleNet, 2);
         $grossProfit = round($combinedNet - (float) $cogs - $wholesaleCogs, 2);
         // Bank commissions are auto-recorded as approved expenses — included in $opexTotal.
         // WasteLog already includes consignment waste — do not add wholesaleWaste again.
@@ -102,7 +111,7 @@ class FinanceReportController extends Controller
             'revenue' => [
                 'gross' => $grossRevenue,
                 'refunds' => $refundsTotal,
-                'tax' => (float) ($revenue->tax ?? 0),
+                'tax' => $outputTax,
                 'discounts' => (float) ($revenue->discount ?? 0),
                 'net' => $netRevenue,
                 'orders' => (int) ($revenue->orders ?? 0),
@@ -177,7 +186,7 @@ class FinanceReportController extends Controller
             ->keyBy('date');
 
         // What left the bank, on the day the goods came.
-        $purchaseByDay = PurchaseSpendQuery::byDayIncGst($from->toDateString(), $to->toDateString());
+        $purchaseByDay = PurchaseSpendQuery::byDay($from->toDateString(), $to->toDateString());
 
         // Build day-by-day series
         $days = [];
@@ -267,7 +276,8 @@ class FinanceReportController extends Controller
             ->whereIn('status', ['approved', 'processed', 'completed'])
             ->selectRaw(ReportMoneySql::sumLaarAsMvr(ReportMoneySql::REFUND_AMOUNT_LAAR) . ' as total')
             ->value('total');
-        $netRevenue = round($revenue - $refundsTotal, 2);
+        // Net of the output GST handed to MIRA — collected, not earned.
+        $netRevenue = round($revenue - $tax - $refundsTotal, 2);
 
         // Foreign currency held at shift close — record only, never in cash math.
         $foreignCurrencyHeld = Shift::query()
@@ -292,7 +302,7 @@ class FinanceReportController extends Controller
 
         $expenses = (float) Expense::whereDate('expense_date', $date)->where('status', 'approved')->sum('amount');
         // What arrived that day, not what was ordered — see PurchaseSpendQuery.
-        $purchases = PurchaseSpendQuery::totalIncGst($date, $date);
+        $purchases = PurchaseSpendQuery::total($date, $date);
         $wasteCost = (float) WasteLog::whereBetween('created_at', [$from, $to])->sum('cost_estimate');
 
         $commissionSummary = app(PaymentCommissionService::class)->paymentCommissionSummary($from, $to);
@@ -301,7 +311,12 @@ class FinanceReportController extends Controller
         $wholesale = app(WholesaleChannelAggregator::class)->summary($from, $to);
         $wholesaleRevenue = (float) $wholesale['revenue'];
         $wholesaleCogs = (float) $wholesale['cogs'];
-        $profit = round($netRevenue + $wholesaleRevenue - $expenses - $purchases - $wholesaleCogs - $wasteCost, 2);
+        $profit = round(
+            $netRevenue
+            + round($wholesaleRevenue - (float) $wholesale['tax'], 2)
+            - $expenses - $purchases - $wholesaleCogs - $wasteCost,
+            2,
+        );
 
         $totalLaar = ReportMoneySql::ORDER_TOTAL_LAAR;
 
@@ -369,7 +384,7 @@ class FinanceReportController extends Controller
         $fromDate = $from->toDateString();
         $toDate = $to->toDateString();
 
-        $purchasesTotal = PurchaseSpendQuery::totalIncGst($fromDate, $toDate);
+        $purchasesTotal = PurchaseSpendQuery::total($fromDate, $toDate);
 
         // Orders that actually delivered something, which is what the money
         // beside it is made of. A draft nobody received is not a purchase yet.
@@ -381,7 +396,7 @@ class FinanceReportController extends Controller
             ->leftJoin('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
             ->selectRaw('purchases.supplier_id, COALESCE(suppliers.name, ?) as supplier_name', ['Unknown'])
             ->selectRaw('COUNT(DISTINCT purchases.id) as po_count')
-            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_INC_GST . ') as total')
+            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_COST . ') as total')
             ->groupBy('purchases.supplier_id', 'suppliers.name')
             ->orderByDesc('total')
             ->limit(25)
@@ -475,7 +490,7 @@ class FinanceReportController extends Controller
             ->groupByRaw('DATE(expense_date)')
             ->pluck('amount', 'date');
 
-        $purchaseByDay = PurchaseSpendQuery::byDayIncGst($fromDate, $toDate);
+        $purchaseByDay = PurchaseSpendQuery::byDay($fromDate, $toDate);
 
         $wasteCost = (float) WasteLog::query()
             ->whereBetween('created_at', [$from, $to])

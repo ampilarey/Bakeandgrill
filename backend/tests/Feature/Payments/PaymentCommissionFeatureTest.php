@@ -172,10 +172,14 @@ class PaymentCommissionFeatureTest extends TestCase
         $owner = $this->makeOwner(['email' => 'owner3@commission.test']);
         Sanctum::actingAs($owner, ['staff']);
 
+        // Tax pinned to zero: profit is net of output GST now, and this test
+        // is about the commission, not the tax.
         $order = Order::factory()->create([
             'status' => 'completed',
             'total' => 100,
             'total_laar' => 10000,
+            'tax_amount' => 0,
+            'tax_laar' => 0,
             'created_at' => now(),
         ]);
 

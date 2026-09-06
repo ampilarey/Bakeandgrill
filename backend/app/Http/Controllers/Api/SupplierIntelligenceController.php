@@ -194,7 +194,7 @@ class SupplierIntelligenceController extends Controller
         $purchases = PurchaseSpendQuery::allLines()
             ->where('purchases.supplier_id', $supplierId)
             ->selectRaw('COUNT(DISTINCT purchases.id) as cnt')
-            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_INC_GST . ') as spend')
+            ->selectRaw('SUM(' . PurchaseSpendQuery::RECEIVED_COST . ') as spend')
             ->first();
 
         $ratings = SupplierRating::where('supplier_id', $supplierId)

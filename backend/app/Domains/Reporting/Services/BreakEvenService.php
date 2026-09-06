@@ -22,11 +22,10 @@ use Carbon\Carbon;
  * to hand over a defensible seed and the break-even that seed implies; the
  * what-if happens client-side against BreakEvenCalculator's mirror.
  *
- * Deliberately GST-exclusive on both revenue and cost, unlike the P&L headline
- * (AUDIT_FINANCE_2026-08-26.md F1/F2): output GST is a liability the shop
- * remits, not income, and input GST on purchases is reclaimable, not a cost.
- * Counting either would flatter the margin and understate the sales actually
- * needed to break even.
+ * Revenue is net of output GST (a liability the shop remits, not income —
+ * AUDIT_FINANCE_2026-08-26.md F1/F2). Purchase cost is the money actually
+ * paid: the café does not claim input tax back (owner, 2026-09-06), so the
+ * price on the line is the cost, tax and all. See PurchaseSpendQuery.
  */
 class BreakEvenService
 {
@@ -81,13 +80,13 @@ class BreakEvenService
 
         $revenueExGst = round(max(0.0, $retailGross - $retailTax - $refunds) + $wholesaleRevenueExGst, 2);
 
-        // Variable cost = COGS at ex-tax purchase value (input GST is
-        // reclaimable). Wholesale COGS is already ex-tax in the aggregator.
-        // Measured by what arrived, not by what was ordered — a part delivery
-        // costs what came off the van. See PurchaseSpendQuery.
-        $purchaseCogsExGst = PurchaseSpendQuery::totalExGst($from->toDateString(), $to->toDateString());
+        // Variable cost = what the stock that arrived actually cost — a part
+        // delivery costs what came off the van, and the entered price is the
+        // money paid since input GST is never claimed back. Wholesale COGS
+        // comes ex-tax from its own aggregator.
+        $purchaseCogs = PurchaseSpendQuery::total($from->toDateString(), $to->toDateString());
 
-        $variableCost = round($purchaseCogsExGst + (float) $wholesale['cogs'], 2);
+        $variableCost = round($purchaseCogs + (float) $wholesale['cogs'], 2);
 
         // Fixed cost = approved operating expenses + waste over the window,
         // itemised by expense category so the owner sees and tunes each line
@@ -154,7 +153,9 @@ class BreakEvenService
             'components' => [
                 'retail_revenue_ex_gst' => round(max(0.0, $retailGross - $retailTax - $refunds), 2),
                 'wholesale_revenue_ex_gst' => round($wholesaleRevenueExGst, 2),
-                'purchase_cogs_ex_gst' => round($purchaseCogsExGst, 2),
+                'purchase_cogs' => round($purchaseCogs, 2),
+                // Old key, kept so a cached client keeps rendering.
+                'purchase_cogs_ex_gst' => round($purchaseCogs, 2),
                 'wholesale_cogs' => (float) $wholesale['cogs'],
                 'operating_expenses' => round($opex, 2),
                 'waste' => round($waste, 2),

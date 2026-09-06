@@ -93,6 +93,24 @@ class PurchaseWorkflowController extends Controller
                 . 'Cancelled: ' . ($validated['reason'] ?? 'No reason given'),
         ]);
 
+        /*
+         * An invoice raised from this order used to outlive it in Accounts
+         * Payable, still claiming the full amount was owed. Nothing received
+         * means nothing owed, so the unpaid invoice goes with the order; a
+         * short-close leaves a real part-debt, which only a human can settle,
+         * so that case gets a warning instead.
+         */
+        $payables = app(\App\Domains\Finance\Services\PurchasePayableSync::class);
+        $receivedSomething = $purchase->items->contains(
+            fn ($i) => (float) ($i->received_quantity ?? 0) > 0,
+        );
+        $invoiceWarning = $receivedSomething
+            ? $payables->warnIfInvoiceOutOfStep($purchase)
+            : $payables->voidUnpaidInvoiceFor(
+                $purchase,
+                'purchase order ' . $purchase->purchase_number . ' was cancelled',
+            );
+
         $this->audit->log(
             'purchase.cancelled',
             'Purchase',
@@ -103,7 +121,10 @@ class PurchaseWorkflowController extends Controller
             $request,
         );
 
-        return response()->json(['purchase' => $purchase->fresh(['supplier', 'items'])]);
+        return response()->json([
+            'purchase' => $purchase->fresh(['supplier', 'items']),
+            'warnings' => array_values(array_filter([$invoiceWarning])),
+        ]);
     }
 
     /**
@@ -213,7 +234,13 @@ class PurchaseWorkflowController extends Controller
              */
             SupplierPriceHistory::where('purchase_id', $purchase->id)->delete();
 
-            $purchase->status = 'ordered';
+            /*
+             * A live order goes back to `ordered`, ready to receive again. A
+             * short-closed one was cancelled on purpose — undoing its receipt
+             * must not quietly resurrect it, so cancelled stays cancelled;
+             * and with nothing received any more, it can now be deleted.
+             */
+            $purchase->status = $purchase->status === 'cancelled' ? 'cancelled' : 'ordered';
             $purchase->actual_delivery_date = null;
             $purchase->notes = ($purchase->notes ? $purchase->notes . "\n" : '')
                 . 'Receipt undone: ' . $validated['reason'];
@@ -239,6 +266,13 @@ class PurchaseWorkflowController extends Controller
             }
         }
 
+        // The order's worth just changed; an invoice raised from it did not.
+        $invoiceNote = app(\App\Domains\Finance\Services\PurchasePayableSync::class)
+            ->warnIfInvoiceOutOfStep($purchase);
+        if ($invoiceNote !== null) {
+            $warnings[] = $invoiceNote;
+        }
+
         // The auto-expense deliberately never deletes itself; say so rather
         // than leaving money on the books with nothing to explain it.
         if (Expense::where('purchase_id', $purchase->id)->exists()) {
@@ -251,7 +285,7 @@ class PurchaseWorkflowController extends Controller
             'Purchase',
             $id,
             ['status' => $was],
-            ['status' => 'ordered'],
+            ['status' => $purchase->status],
             ['reason' => $validated['reason'], 'warnings' => $warnings],
             $request,
         );
@@ -438,7 +472,12 @@ class PurchaseWorkflowController extends Controller
         }
 
         $usageByItem = DB::table('stock_movements')
-            ->where('type', 'deduction')
+            /*
+             * Consumption is `sale` (recipes) plus `waste`; nothing has ever
+             * written `deduction`, which is all this read — usage always came
+             * back zero. `deduction` stays for any legacy rows.
+             */
+            ->whereIn('type', ['sale', 'waste', 'deduction'])
             ->where('created_at', '>=', now()->subDays($lookbackDays))
             ->where('quantity', '<', 0)
             ->whereIn('inventory_item_id', $lowItems->pluck('id'))

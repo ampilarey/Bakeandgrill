@@ -108,7 +108,7 @@ class PurchaseSpendFollowsDeliveryTest extends TestCase
     {
         [$from, $to] = $this->window();
 
-        return PurchaseSpendQuery::totalExGst($from, $to);
+        return PurchaseSpendQuery::total($from, $to);
     }
 
     public function test_a_part_delivery_costs_what_came_off_the_van(): void
@@ -186,18 +186,19 @@ class PurchaseSpendFollowsDeliveryTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $this->spendHubTotal(), 0.01);
     }
 
-    public function test_the_spend_hub_shows_the_part_delivery_with_its_gst(): void
+    public function test_the_spend_hub_shows_exactly_what_was_paid(): void
     {
-        // Cash flow wants what left the bank, so the same received value with
-        // the order's GST rate applied back on.
+        /*
+         * Owner, 2026-09-06: "gst not return in cafe." The price typed on the
+         * line is the money handed over — an earlier version multiplied it by
+         * the GST rate for a "with GST" view, inventing 8% of spend that
+         * nobody ever paid.
+         */
         $po = $this->draft();
         $this->approve($po);
         $this->receive($po, 4);
 
-        $rateBp = (int) ($po->fresh()->gst_rate_bp ?? 0);
-        $expected = round(80.0 * (1 + $rateBp / 10000), 2);
-
-        $this->assertEqualsWithDelta($expected, $this->spendHubTotal(), 0.02);
+        $this->assertEqualsWithDelta(80.0, $this->spendHubTotal(), 0.01);
     }
 
     public function test_the_supplier_only_gets_credit_for_what_it_delivered(): void
@@ -221,8 +222,8 @@ class PurchaseSpendFollowsDeliveryTest extends TestCase
         $spend = (float) \App\Models\SupplierPerformanceCache::where('supplier_id', $supplierId)
             ->value('total_spend');
 
-        $rateBp = (int) ($po->fresh()->gst_rate_bp ?? 0);
-        $this->assertEqualsWithDelta(round(80.0 * (1 + $rateBp / 10000), 2), $spend, 0.02);
+        // Exactly the money handed over for the four sacks — no GST arithmetic.
+        $this->assertEqualsWithDelta(80.0, $spend, 0.01);
     }
 
     public function test_a_new_order_can_still_be_numbered_after_one_is_deleted(): void

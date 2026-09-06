@@ -117,6 +117,19 @@ final class PurchaseRequestVerificationService
             return Purchase::with('items')->findOrFail($pr->purchase_id);
         }
 
+        /*
+         * One shop run, one pot. Each conversion used to guard only against
+         * its own duplicate, so a request could quietly become an Expense AND
+         * a Purchase — the same money counted twice in every monthly cost
+         * figure. Owner's accounting model, 2026-09-06: monthly cost must be
+         * the truth, so a request already in one pot cannot enter the other.
+         */
+        if ($pr->expense_id) {
+            throw ValidationException::withMessages(['purchase' => [
+                'This request is already recorded as an expense. Delete that expense first if it should be a purchase order instead — otherwise the same money would be counted twice.',
+            ]]);
+        }
+
         return DB::transaction(function () use ($pr, $user, $request) {
             $pr->load('items');
             $supplierId = $pr->items->first()?->supplier_id;
@@ -189,6 +202,13 @@ final class PurchaseRequestVerificationService
             return Expense::findOrFail($pr->expense_id);
         }
 
+        // The mirror of the guard in convertToPurchase — see there.
+        if ($pr->purchase_id) {
+            throw ValidationException::withMessages(['expense' => [
+                'This request is already a purchase order. Its money is in the purchase figures — recording it as an expense too would count it twice.',
+            ]]);
+        }
+
         return DB::transaction(function () use ($pr, $user, $request) {
             $category = $this->resolveExpenseCategory();
             $amountLaar = $pr->total_actual_laar ?? 0;
@@ -244,6 +264,11 @@ final class PurchaseRequestVerificationService
         $pr->refresh();
         if ($pr->expense_id) {
             return Expense::find($pr->expense_id);
+        }
+
+        // Already a purchase order — its money is counted there.
+        if ($pr->purchase_id) {
+            return null;
         }
 
         if ($pr->status !== 'closed') {

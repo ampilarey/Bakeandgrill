@@ -264,6 +264,7 @@ export type PnLReport = {
   revenue: {
     gross: number;
     tax: number;
+    refunds?: number;
     discounts?: number;
     net: number;
     orders: number;

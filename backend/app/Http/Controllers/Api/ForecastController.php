@@ -205,7 +205,12 @@ class ForecastController extends Controller
         $days = (int) $request->query('lookback_days', 30);
 
         $movements = DB::table('stock_movements')
-            ->where('type', 'deduction')
+            /*
+             * Consumption is `sale` (recipes) plus `waste`; nothing has ever
+             * written `deduction`, which is all this read — usage always came
+             * back zero. `deduction` stays for any legacy rows.
+             */
+            ->whereIn('type', ['sale', 'waste', 'deduction'])
             ->where('created_at', '>=', now()->subDays($days))
             ->where('quantity', '<', 0)
             ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as consumed')

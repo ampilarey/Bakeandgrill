@@ -647,7 +647,16 @@ final class RestockIntelligenceService
     private function usageByItem(int $lookbackDays): array
     {
         return DB::table('stock_movements')
-            ->where('type', 'deduction')
+            /*
+             * Consumption is written as `sale` movements; nothing has ever
+             * written `deduction`, which is all this read — so usage always
+             * came back zero and every cover-days suggestion silently fell
+             * back to reorder-point maths. `deduction` stays for legacy rows.
+             * Waste is deliberately NOT here: this service reads WasteLog
+             * separately and adds it under the include_waste toggle, so
+             * counting `waste` movements too would double it.
+             */
+            ->whereIn('type', ['sale', 'deduction'])
             ->where('created_at', '>=', now()->subDays($lookbackDays))
             ->where('quantity', '<', 0)
             ->selectRaw('inventory_item_id, SUM(ABS(quantity)) as consumed')

@@ -155,9 +155,15 @@ final class InventoryCostUsageService
             $query->where('purchases.purchase_date', '>=', now()->subDays($days)->toDateString());
         }
 
+        /*
+         * Received only — the same definition as every money report (see
+         * PurchaseSpendQuery). The old COALESCE fell back to the *ordered*
+         * quantity on legacy rows, so this panel could disagree with the
+         * spend hub about the same item.
+         */
         $row = $query->select(
-            DB::raw('SUM(COALESCE(purchase_items.received_quantity, purchase_items.quantity)) as qty'),
-            DB::raw('SUM(purchase_items.unit_cost * COALESCE(purchase_items.received_quantity, purchase_items.quantity)) as spend'),
+            DB::raw('SUM(COALESCE(purchase_items.received_quantity, 0)) as qty'),
+            DB::raw('SUM(purchase_items.unit_cost * COALESCE(purchase_items.received_quantity, 0)) as spend'),
         )->first();
 
         return [

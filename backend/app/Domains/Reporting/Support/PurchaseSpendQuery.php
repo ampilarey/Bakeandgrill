@@ -31,30 +31,20 @@ use Illuminate\Support\Facades\DB;
  * contributes nothing, a cancelled order keeps whatever genuinely arrived
  * before it was called off, and a full receipt equals the order total.
  *
- * `subtotal` and `total` differ by GST, so both shapes are offered: COGS and
- * the break-even calculator want ex-GST, because input tax is reclaimable
- * rather than a cost, while cash-flow wants what actually left the bank.
+ * On GST — owner, 2026-09-06: "gst not return in cafe." The café never claims
+ * input tax back, so the price typed on a line IS the money handed over, tax
+ * and all, and there is nothing to add or strip. An earlier version scaled
+ * these figures up by the order's GST rate for a "with GST" view, which
+ * invented 8% of spend that never existed. For the rare purchase entered with
+ * a proper tax invoice and the claim ticked, the lines are typed ex-GST and
+ * the claimed tax comes back — so the entered line value is the true cost in
+ * that case too. One number, no tax arithmetic: what was typed is what it
+ * cost.
  */
 final class PurchaseSpendQuery
 {
-    /**
-     * Value received, ex-GST — the line money as entered.
-     *
-     * Purchase lines carry no tax of their own; GST sits on the purchase
-     * header. So a line sum is the ex-tax figure, which is what COGS wants.
-     */
-    public const RECEIVED_EX_GST = 'purchase_items.received_quantity * purchase_items.unit_cost';
-
-    /**
-     * The same value with the order's GST rate applied back on, for cash flow.
-     *
-     * Scaled from the header rather than stored per line: `gst_rate_bp` is
-     * basis points against the whole order, and applying it proportionally to
-     * the received share is the closest true statement available without
-     * inventing a per-line tax nobody recorded.
-     */
-    public const RECEIVED_INC_GST = '(purchase_items.received_quantity * purchase_items.unit_cost)'
-        . ' * (1 + COALESCE(purchases.gst_rate_bp, 0) / 10000.0)';
+    /** The money a received line cost: what was typed, times what arrived. */
+    public const RECEIVED_COST = 'purchase_items.received_quantity * purchase_items.unit_cost';
 
     /**
      * Received purchase lines in a date window, ready to aggregate.
@@ -89,30 +79,23 @@ final class PurchaseSpendQuery
             ->where('purchase_items.received_quantity', '>', 0);
     }
 
-    /** Total value received in the window, ex-GST. */
-    public static function totalExGst(string $fromDate, string $toDate): float
+    /** Total spent on what was received in the window. */
+    public static function total(string $fromDate, string $toDate): float
     {
         return round((float) self::lines($fromDate, $toDate)
-            ->sum(DB::raw(self::RECEIVED_EX_GST)), 2);
-    }
-
-    /** Total value received in the window, with GST — what left the bank. */
-    public static function totalIncGst(string $fromDate, string $toDate): float
-    {
-        return round((float) self::lines($fromDate, $toDate)
-            ->sum(DB::raw(self::RECEIVED_INC_GST)), 2);
+            ->sum(DB::raw(self::RECEIVED_COST)), 2);
     }
 
     /**
-     * Value received per day, keyed by date string.
+     * Spend per day, keyed by date string.
      *
      * @return array<string, float>
      */
-    public static function byDayIncGst(string $fromDate, string $toDate): array
+    public static function byDay(string $fromDate, string $toDate): array
     {
         return self::lines($fromDate, $toDate)
             ->selectRaw('DATE(COALESCE(purchases.actual_delivery_date, purchases.purchase_date)) as d')
-            ->selectRaw('SUM(' . self::RECEIVED_INC_GST . ') as amount')
+            ->selectRaw('SUM(' . self::RECEIVED_COST . ') as amount')
             ->groupByRaw('DATE(COALESCE(purchases.actual_delivery_date, purchases.purchase_date))')
             ->pluck('amount', 'd')
             ->map(fn ($v) => round((float) $v, 2))
