@@ -21,3 +21,4 @@ export * from './effectiveDiscount';
 export * from './feeTax';
 export * from './itemDescription';
 export * from './businessDay';
+export * from './platterRules';

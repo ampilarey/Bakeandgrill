@@ -389,8 +389,8 @@ export function OrderCart(p: Props) {
     // hasn't re-rendered yet at the moment the child fires this.
     const indexAtRemoval = p.cartItems.findIndex(
       (ci) =>
-        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) ===
-        makeCartKey(removed.id, removed.modifiers, removed.variant_id, removed.notes, removed.packaging_option_id),
+        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id, ci.platterSelections) ===
+        makeCartKey(removed.id, removed.modifiers, removed.variant_id, removed.notes, removed.packaging_option_id, removed.platterSelections),
     );
     setRecentlyRemoved({
       item: removed,
@@ -1050,7 +1050,7 @@ export function OrderCart(p: Props) {
         ) : (
           p.cartItems.map((item) => (
             <CartLine
-              key={makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id)}
+              key={makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id, item.platterSelections)}
               item={item}
               cartItems={p.cartItems}
               setCartItems={p.setCartItems}
@@ -1399,11 +1399,12 @@ export function CartLine({
   isResumed: boolean;
   onLineRemoved?: (removed: CartItem) => void;
 }) {
-  const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id);
+  const itemKey = makeCartKey(item.id, item.modifiers, item.variant_id, item.notes, item.packaging_option_id, item.platterSelections);
   const unitPrice = Number(item.price ?? 0) +
     item.modifiers.reduce((s, m) => s + Number(m.price ?? 0), 0);
   const lineTotal = unitPrice * item.quantity;
   const notes = item.notes ?? [];
+  const picks = item.platterSelections ?? [];
 
   // Swipe-to-delete state. Tracks the horizontal drag offset; positive
   // = swiped left (Mail.app pattern). We only act on big swipes so
@@ -1436,7 +1437,7 @@ export function CartLine({
   const removeLine = () => {
     setCartItems(
       cartItems.filter(
-        (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) !== itemKey,
+        (ci) => makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id, ci.platterSelections) !== itemKey,
       ),
     );
     // Surface the removed line to the parent so it can show the
@@ -1453,7 +1454,7 @@ export function CartLine({
     }
     setCartItems(
       cartItems.map((ci) =>
-        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id) === itemKey
+        makeCartKey(ci.id, ci.modifiers, ci.variant_id, ci.notes, ci.packaging_option_id, ci.platterSelections) === itemKey
           ? { ...ci, quantity: ci.quantity + delta }
           : ci,
       ),
@@ -1690,7 +1691,7 @@ export function CartLine({
             the qty stepper so the column visually lines up with the
             name above. Unit price is no longer here (it lives inline
             in the title for qty > 1). */}
-        {(item.modifiers.length > 0 || notes.length > 0) && (
+        {(item.modifiers.length > 0 || notes.length > 0 || picks.length > 0) && (
           <div className="pos-cart-line-meta" style={{
             display: 'flex', flexWrap: 'wrap', alignItems: 'center',
             gap: 6, fontSize: 10, color: C.subtle, lineHeight: 1.2,
@@ -1698,6 +1699,16 @@ export function CartLine({
             {item.modifiers.length > 0 && (
               <span style={{ color: C.muted }}>
                 + {item.modifiers.map((m) => m.name).join(', ')}
+              </span>
+            )}
+            {/* What went on the platter. Without it two Mixed Platters read
+                as the same line and the cashier has no way to check the
+                order back to the customer (owner's audit, 2026-09-06, F2). */}
+            {picks.length > 0 && (
+              <span style={{ color: C.muted }} data-testid="pos-cart-line-picks">
+                {picks
+                  .map((s) => `${s.quantity > 1 ? `${s.quantity}× ` : ''}${s.item_name}`)
+                  .join(', ')}
               </span>
             )}
             {notes.length > 0 && notes.map((n) => (

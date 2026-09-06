@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CartItem, Item, Modifier, PackagingOption, Variant } from "../types";
+import type {
+  CartItem, Item, Modifier, PackagingOption, PlatterSelection, Variant,
+} from "../types";
+import { platterSelectionsKey, surchargeTotal } from "@shared/utils";
 import type { PosCustomer } from "../api";
 import { isPackagingEligible, type PosOrderType } from "../orderTypes";
 import {
@@ -77,10 +80,15 @@ export const makeCartKey = (
   variantId?: number | null,
   notes?: string[],
   packagingOptionId?: number | null,
+  // Two differently filled platters are two lines. Without this they would
+  // merge to one line of quantity two and the kitchen would get one set of
+  // picks for both (owner's audit, 2026-09-06, F2).
+  platterSelections?: PlatterSelection[] | null,
 ) =>
   `${itemId}-v${variantId ?? 0}-${modifiers.map((m) => m.id).sort().join(",")}` +
   `-n${(notes ?? []).slice().sort().join("|")}` +
-  `-p${packagingOptionId ?? 0}`;
+  `-p${packagingOptionId ?? 0}` +
+  `-c${platterSelectionsKey(platterSelections)}`;
 
 /** Resolve packaging snapshot from catalog options (or legacy item fee). */
 export function resolvePackagingSnapshot(
@@ -448,6 +456,8 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
         variant?: Variant | null;
         modifiers?: Modifier[];
         packagingOptionId?: number | null;
+        /** A platter's picks, resolved in the Configure panel. */
+        platterSelections?: PlatterSelection[];
       },
     ) => {
       // Variant precedence: explicit override > what the cashier picked
@@ -479,12 +489,14 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
       // key intentionally uses [] — that way tapping the same item
       // twice still merges to qty 2, but a line that previously had
       // a note attached stays separate (different key suffix).
+      const picks = opts?.platterSelections ?? [];
       const key = makeCartKey(
         item.id,
         modifiers,
         chosenVariant?.id,
         [],
         packaging.packaging_option_id,
+        picks,
       );
       setCartItems((curr) => {
         const existing = curr.find(
@@ -495,6 +507,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
               ci.variant_id,
               ci.notes,
               ci.packaging_option_id,
+              ci.platterSelections,
             ) === key,
         );
         if (existing) {
@@ -502,9 +515,14 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             ci === existing ? { ...ci, quantity: ci.quantity + 1 } : ci,
           );
         }
-        const parsedPrice = chosenVariant
+        const basePrice = chosenVariant
           ? Number(chosenVariant.effective_price ?? chosenVariant.price ?? 0)
           : Number(item.special?.effective_price ?? item.base_price ?? 0);
+        // A pick usually costs nothing; one that carries a surcharge is part
+        // of what this line costs. The server recomputes it from the
+        // definition either way — this only keeps the till's own total
+        // honest before the order is sent.
+        const parsedPrice = basePrice + surchargeTotal(picks);
         const parsedModifiers = modifiers.map((m) => ({
           ...m,
           price: parseFloat(String(m.price ?? 0)),
@@ -534,6 +552,7 @@ export function useCart(posOrderType: PosOrderType = "Takeaway") {
             // "rewrite history on a paid-up line".
             notes: [],
             is_catering: !!item.is_catering,
+            ...(picks.length > 0 ? { platterSelections: picks } : {}),
           },
         ];
       });

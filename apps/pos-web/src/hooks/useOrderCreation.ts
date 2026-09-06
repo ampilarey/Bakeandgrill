@@ -32,6 +32,7 @@ import {
 import { allocateOfflineOrderNumber } from "../offline/offlineOrderNumber";
 import { runOfflineSync } from "../offline/syncEngine";
 import type { CartItem, Item, Variant } from "../types";
+import type { PosOrderLineChild } from "../api/orders";
 import type { PaymentRow } from "./useCart";
 import type { PosCustomer } from "../api";
 import type { PosDeliveryDetails, PosOrderType } from "../orderTypes";
@@ -276,6 +277,25 @@ type Params = {
     creditBalanceMvr?: number | null,
   ) => void;
 };
+
+
+/**
+ * A cart line's platter picks (or a bundle's optional extras) as the order
+ * payload's `children`. Undefined for an ordinary line, which is almost all
+ * of them.
+ *
+ * `group_id` is dropped when zero: a bundle's extra belongs to no choice
+ * group, and the server validates the field against real group ids.
+ */
+function childrenFromCartItem(item: CartItem): PosOrderLineChild[] | undefined {
+  if (!item.platterSelections || item.platterSelections.length === 0) return undefined;
+  return item.platterSelections.map((s) => ({
+    item_id: s.item_id,
+    quantity: s.quantity,
+    ...(s.group_id ? { group_id: s.group_id } : {}),
+    surcharge: s.surcharge,
+  }));
+}
 
 export function useOrderCreation(params: Params) {
   const [statusMessage, setStatusMessage] = useState("");
@@ -586,6 +606,7 @@ export function useOrderCreation(params: Params) {
         ...(item.notes && item.notes.length > 0
           ? { notes: item.notes.join(" · ") }
           : {}),
+        ...(childrenFromCartItem(item) ? { children: childrenFromCartItem(item) } : {}),
       })),
     };
 
@@ -787,6 +808,7 @@ export function useOrderCreation(params: Params) {
             price: m.price,
           })),
           ...(item.notes?.length ? { notes: item.notes.join(" · ") } : {}),
+          ...(childrenFromCartItem(item) ? { children: childrenFromCartItem(item) } : {}),
         })),
         totals: {
           subtotal: params.cartSubtotal,
@@ -1610,6 +1632,7 @@ export function useOrderCreation(params: Params) {
           name: m.name,
           price: m.price,
         })),
+        children: childrenFromCartItem(it),
       }));
       const currentFp = cartFingerprint(params.cartItems);
       const itemsChanged = resumedItemsFingerprint !== currentFp;

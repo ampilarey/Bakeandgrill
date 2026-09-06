@@ -244,6 +244,77 @@ class PlatterOrderLinesTest extends TestCase
         $this->assertSame(0, StockMovement::where('item_id', $this->kimaa->id)->count());
     }
 
+    public function test_the_till_can_complete_a_platter_sale(): void
+    {
+        /*
+         * Owner's audit, 2026-09-06, F2: pos-web had no platter picker and its
+         * order payload had no `children` field, so a cashier could tap a
+         * platter, take money, and then be shown "Choose items for X before
+         * ordering" — an error they could do nothing about. The endpoint was
+         * always ready; the till is what could not ask.
+         *
+         * This holds the contract the till now sends against: the parent line,
+         * a child line per pick, and a total of the platter plus surcharges.
+         */
+        $staffRole = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'is_active' => true]);
+        $staff = User::create([
+            'name' => 'Counter Cashier',
+            'email' => 'platter-till@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $staffRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        $device = $this->makeDevice('pos', ['identifier' => 'PLATTER-TILL-1']);
+        $this->ensurePosApiReady($staff, $device);
+
+        $res = $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [[
+                    'item_id' => $this->platter->id,
+                    'quantity' => 1,
+                    'children' => $this->sixPicks(3, 3),
+                ]],
+            ]);
+
+        $this->assertSame(201, $res->status(), $res->getContent());
+
+        $order = Order::findOrFail((int) $res->json('order.id'));
+        $parent = $order->items()->whereNull('parent_order_item_id')->firstOrFail();
+        $children = $order->items()->whereNotNull('parent_order_item_id')->get();
+
+        $this->assertSame($this->platter->id, $parent->item_id);
+        $this->assertCount(2, $children);
+        $this->assertSame(6, (int) $children->sum('quantity'));
+        // 120 for the platter, plus 3 × MVR 5 for the gulha's surcharge.
+        $this->assertEqualsWithDelta(135.0, (float) $order->subtotal, 0.001);
+    }
+
+    public function test_the_till_is_refused_a_platter_with_no_picks(): void
+    {
+        // The refusal that used to be all a cashier could get. It stays — the
+        // picker is what stops them reaching it.
+        $staffRole = Role::firstOrCreate(['slug' => 'staff'], ['name' => 'Staff', 'is_active' => true]);
+        $staff = User::create([
+            'name' => 'Counter Cashier 2',
+            'email' => 'platter-till-2@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $staffRole->id,
+            'pin_hash' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+        $device = $this->makeDevice('pos', ['identifier' => 'PLATTER-TILL-2']);
+        $this->ensurePosApiReady($staff, $device);
+
+        $this->withHeader('X-Device-Identifier', $device->identifier)
+            ->postJson('/api/orders', [
+                'type' => 'takeaway',
+                'items' => [['item_id' => $this->platter->id, 'quantity' => 1]],
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_tomorrow_requires_each_child_allow_pre_order(): void
     {
         $this->gulha->update(['allow_pre_order' => false]);

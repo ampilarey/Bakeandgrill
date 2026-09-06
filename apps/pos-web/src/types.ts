@@ -12,4 +12,6 @@ export type {
   Order,
   OrderItem,
   Payment,
+  PlatterGroup,
+  PlatterSelection,
 } from '@shared/types';

@@ -5,8 +5,15 @@
 **Scope:** what the three names mean, how one is priced, how stock moves, what
 each surface does with them, and where the seams are.
 
-**Audited read-only.** Nothing in this document has been changed. Findings are
-listed with what each one costs you, in the order I would fix them.
+**Audited read-only.** Findings are listed with what each one costs you, in
+the order I would fix them.
+
+**Update, same day — all seven are fixed.** The owner read this and said "Fix
+all". Each finding below now carries a *Fixed:* note saying what it does
+instead; the "If you want these fixed" section at the end is kept as the record
+of the order they were done in. No combos or platters exist on the live menu
+today, so every change here is latent until one is created — including F1's
+change to what a discounted bundle charges.
 
 ---
 
@@ -120,6 +127,14 @@ should be removed.
 
 *Where:* `items.combo_discount_pct`; `MenuItemEditorModal.tsx` line ~1393.
 
+*Fixed:* it computes the price. `BundlePricingService` reads the percentage off
+the bundle's contents — **the bundle sells for what its contents come to, less
+that percentage** — and `EffectivePriceService` resolves it, so the website
+menu, the order app, the POS and the order all say the same number. Pricing
+from the contents rather than off the bundle's own price is what keeps it
+honest as its children change: put the price of chicken up and the bundle
+follows. Leave the box empty and nothing changes.
+
 ### F2 — The POS cannot sell a platter. *(High)*
 
 The POS order payload has no `children` field, and pos-web has no platter
@@ -133,6 +148,14 @@ cashier gets an error they cannot act on. Platters are effectively
 online-and-catering only, which is not something the interface says anywhere.
 
 *Where:* `apps/pos-web/src/api/orders.ts`; `PlatterOrderService.php` line ~36.
+
+*Fixed:* the till has a picker. `PosPlatterPicker` shows each choice group with
+how many picks it needs and what any surcharge costs, the Add button says
+"Pick 2 more" until the rules are met, and the payload carries `children` on
+all three POS paths (counter, delivery, offline sync). The endpoint always
+accepted them — the till is what could not ask. The rules moved to
+`@shared/utils` so the count a cashier is held to is the count the customer
+sees.
 
 ### F3 — A fixed bundle sells when its contents are sold out. *(Medium-high)*
 
@@ -153,6 +176,13 @@ no error at all — the bundle sells and the kitchen cannot make it.
 Worth noting the asymmetry: **platter picks do check `is_available`**
 (OrderCreationService line ~862). Only fixed bundles skip it.
 
+*Fixed:* both. `ItemAvailabilityService` now looks at the required children at
+each of its return points, so a bundle whose contents cannot be made is off the
+menu rather than sold and then refused. `assertChildrenAvailable` checks the
+flags — active, available, not snoozed — before it checks stock, so the "Sold
+out" toggle counts. A child's *channel* switches are deliberately left out: the
+bundle has its own, and the child may not be sold separately at all.
+
 ### F4 — A bundle's cost and margin are wrong. *(Medium)*
 
 `RecipeCostCalculator` has no combo awareness: a bundle's cost comes from the
@@ -163,6 +193,11 @@ bundle itself, a bundle costs 0 as far as the system is concerned.
 editor and the break-even calculator all treat a bundle as almost pure profit.
 Bundles are usually the lowest-margin thing on a menu, so this is wrong in the
 most expensive direction.
+
+*Fixed:* `RecipeCostCalculator` rolls a bundle's cost up from its children when
+the bundle has no cost of its own — nested bundles included, with a depth
+guard. A cost entered on the bundle itself still wins, and a bundle with
+nothing costed inside it stays unknown rather than becoming zero.
 
 ### F5 — "Optional" children are a label with no mechanism. *(Medium)*
 
@@ -177,17 +212,38 @@ word on a screen.
 
 *Where:* `ComboChildStockService.php` lines 16–21.
 
+*Fixed:* it is a choice now. `combo_items` gained a `surcharge` (default 0 —
+what every bundle does today), the item editor prices it, the order app offers
+a checkbox per optional component, and what the customer ticks becomes a child
+order line exactly as a platter's pick does: on the kitchen ticket, through the
+ordinary stock path, refundable on its own. Quantity and price come from the
+definition, never from the payload — otherwise a request for fifty free dips
+would be an order for fifty free dips. This is the "stage 4" the service's own
+docblock was waiting for.
+
 ### F6 — The kitchen ticket for a fixed bundle does not say what is in it. *(Low-medium)*
 
 A platter prints its picks, because they are real order lines. A fixed bundle
 prints one line with the bundle's name. The kitchen has to know the recipe of
 the bundle from memory or a printed sheet.
 
+*Fixed:* the ticket lists the required contents under the bundle line, scaled
+by the line — two family meals is four portions of fries, and the kitchen
+counts portions. Platters send nothing here, and neither do optional extras:
+both are already lines of their own, and printing them twice reads as a double
+order.
+
 ### F7 — The website menu does not describe bundles. *(Low)*
 
 The order app lists a bundle's contents and offers the platter picker. The
 Blade menu shows name and price only — a customer reading the website cannot
 tell that "Mixed Platter" is choose-your-own, or what a bundle contains.
+
+*Fixed:* `/menu/{id}` says what is inside a fixed bundle, or what you choose
+from and how many on a platter; a discounted bundle shows the saving against
+buying the same food separately. The grid marks each one "Bundle" or "Choose
+your own", and a bundle is findable by what is in it — searching "chicken"
+reaches the family meal that contains chicken.
 
 ---
 

@@ -259,6 +259,13 @@ export type CartItem = {
   notes?: string[];
   /** Snapshot: item has catering channel enabled (POS cart badge). */
   is_catering?: boolean;
+  /**
+   * A platter's picks, or a fixed bundle's optional extras — both become
+   * child order lines through the payload's `children` field. Part of the
+   * line's identity: two differently filled platters are two lines, not one
+   * of quantity two.
+   */
+  platterSelections?: PlatterSelection[];
 };
 
 export type RestaurantTable = {

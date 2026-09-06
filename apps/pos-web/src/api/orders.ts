@@ -1,6 +1,18 @@
 import { request } from "./client";
 import type { PosCustomer } from "./customers";
 
+/**
+ * A platter's picks, or a fixed bundle's optional extras, as child order
+ * lines. Quantity and surcharge are re-read from the definition server-side —
+ * what goes up here only says *which*.
+ */
+export type PosOrderLineChild = {
+  item_id: number;
+  quantity: number;
+  group_id?: number;
+  surcharge?: number;
+};
+
 export async function createOrder(payload: {
   type: string;
   print?: boolean;
@@ -25,6 +37,7 @@ export async function createOrder(payload: {
       price: number;
     }>;
     notes?: string;
+    children?: PosOrderLineChild[];
   }>;
 }): Promise<{ order: { id: number; total: number } }> {
   return request("/orders", { method: "POST", body: JSON.stringify(payload) });
@@ -58,6 +71,7 @@ export async function createDeliveryOrder(payload: {
       price: number;
     }>;
     notes?: string;
+    children?: PosOrderLineChild[];
   }>;
 }): Promise<{ order: { id: number; total: number; delivery_fee?: number } }> {
   return request("/orders/delivery", { method: "POST", body: JSON.stringify(payload) });

@@ -29,6 +29,8 @@ function lineKey(line: CartItem): string {
     line.variant_id,
     line.notes,
     line.packaging_option_id,
+    // Two differently filled platters must not merge into one line of two.
+    line.platterSelections,
   );
 }
 

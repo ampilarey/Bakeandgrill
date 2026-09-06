@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Category, Item, Modifier, Variant } from "../types";
+import type { Category, Item, Modifier, PlatterSelection, Variant } from "../types";
+import { isPlatterSelectionValid, platterPickHint, surchargeTotal } from "@shared/utils";
+import { PosPlatterPicker } from "./PosPlatterPicker";
 import type { PosQuickLayout, PosQuickLayoutSource, PosQuickTab } from "../api";
 import { effectiveItemPrice, originalItemPrice } from "../hooks/useCart";
 import { useLongPress } from "../hooks/useLongPress";
@@ -1155,12 +1157,16 @@ export function MenuGrid({
               const hasVariants = item.has_variants;
               const hasPackagingChoices =
                 packagingEligible && (item.packaging_options?.length ?? 0) > 1;
+              // A platter is nothing but a choice, so it always opens the
+              // panel — a one-tap add would send an order with no picks and
+              // the server would refuse it (owner's audit, 2026-09-06, F2).
+              const isPlatterTile = (item.platter_groups?.length ?? 0) > 0;
               // For items without modifiers, variants, or packaging choices,
               // tap = direct add to cart. Otherwise open configure.
               // Dine-in never counts packaging as a configure reason.
               const onClick = () => {
                 if (readOnly) return;
-                if (hasMods || hasVariants || hasPackagingChoices) handleSelectItem(item);
+                if (isPlatterTile || hasMods || hasVariants || hasPackagingChoices) handleSelectItem(item);
                 else addToCart(item);
               };
               return (
@@ -1211,10 +1217,13 @@ export function MenuGrid({
           selectedModifiers={selectedModifiers}
           toggleModifier={toggleModifier}
           packagingEligible={packagingEligible}
-          onAdd={(variant, packagingOptionId) => {
+          onAdd={(variant, packagingOptionId, platterSelections) => {
             addToCart(selectedItem, {
               variant: variant ?? undefined,
               packagingOptionId: packagingEligible ? packagingOptionId : null,
+              ...(platterSelections && platterSelections.length > 0
+                ? { platterSelections }
+                : {}),
             });
             clearSelectedItem();
           }}
@@ -1246,7 +1255,11 @@ function ConfigurePanel({
   /** When the item has variants, the chosen variant is passed back so
    *  the cart can record the correct id/name/price. For items without
    *  variants we pass `null` and `addToCart` falls back to base_price. */
-  onAdd: (variant: Variant | null, packagingOptionId?: number | null) => void;
+  onAdd: (
+    variant: Variant | null,
+    packagingOptionId?: number | null,
+    platterSelections?: PlatterSelection[],
+  ) => void;
   onClose: () => void;
 }) {
   const c = tileColor(item.category_id);
@@ -1261,11 +1274,20 @@ function ConfigurePanel({
     [item],
   );
 
+  const platterGroups = useMemo(
+    () => (item.platter_groups ?? []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    [item],
+  );
+  const isPlatter = platterGroups.length > 0;
+
   // One-tap commit when packaging OR variants are the sole choice
   // (no modifiers, and not both). Mirrors the existing variant UX so
   // packaging-only items don't need a second "Add to ticket" tap.
-  const oneTapVariant = item.has_variants && mods.length === 0 && !showPackagingPicker;
-  const oneTapPackaging = showPackagingPicker && !item.has_variants && mods.length === 0;
+  //
+  // Never for a platter: tapping a size would commit the line before the
+  // cashier has chosen anything to put in it.
+  const oneTapVariant = item.has_variants && mods.length === 0 && !showPackagingPicker && !isPlatter;
+  const oneTapPackaging = showPackagingPicker && !item.has_variants && mods.length === 0 && !isPlatter;
   const oneTapMode = oneTapVariant || oneTapPackaging;
   const [chosenVariantId, setChosenVariantId] = useState<number | null>(() => {
     if (!item.has_variants) return null;
@@ -1280,6 +1302,22 @@ function ConfigurePanel({
   });
 
   const chosenVariant = variants.find((v) => v.id === chosenVariantId) ?? null;
+
+  /*
+   * Platter picks. Until now the till had no idea these existed: a cashier
+   * could tap a platter and take money, and the server refused the order with
+   * an error they could do nothing about (owner's audit, 2026-09-06, F2).
+   */
+  const [platterSelections, setPlatterSelections] = useState<PlatterSelection[]>([]);
+  const platterValid = !isPlatter
+    || isPlatterSelectionValid(platterGroups, platterSelections, chosenVariantId);
+  const platterHint = isPlatter
+    ? platterPickHint(platterGroups, platterSelections, chosenVariantId)
+    : null;
+  // A surcharged pick is part of what the line costs, so the footer says the
+  // real number before the cashier commits it.
+  const platterExtra = surchargeTotal(platterSelections);
+
 
   // Headline price reflects the currently-chosen variant (or base price
   // when there are no variants). Keeps the modal honest about what will
@@ -1304,7 +1342,7 @@ function ConfigurePanel({
     : originalItemPrice(item);
 
   const needsVariant = item.has_variants && variants.length > 0 && chosenVariantId == null;
-  const canAdd = !needsVariant;
+  const canAdd = !needsVariant && platterValid;
 
   return (
     <div
@@ -1554,10 +1592,22 @@ function ConfigurePanel({
             </div>
           )}
 
+          {isPlatter && (
+            <div>
+              <div style={sectionLabel}>What goes on it</div>
+              <PosPlatterPicker
+                groups={platterGroups}
+                selections={platterSelections}
+                onChange={setPlatterSelections}
+                variantId={chosenVariantId}
+              />
+            </div>
+          )}
+
           {/* Defensive fallback — shouldn't fire in practice because the
               tile-tap handler only opens this modal when there are
               modifiers, variants, or packaging choices. */}
-          {!item.has_variants && mods.length === 0 && !showPackagingPicker && (
+          {!isPlatter && !item.has_variants && mods.length === 0 && !showPackagingPicker && (
             <div style={{ fontSize: 13, color: C.muted }}>
               Nothing to configure — tap "Add to ticket" to drop it on the order.
             </div>
@@ -1604,9 +1654,11 @@ function ConfigurePanel({
                 Cancel
               </button>
               <button
-                onClick={() => onAdd(chosenVariant, chosenPackagingId)}
+                onClick={() => onAdd(chosenVariant, chosenPackagingId, platterSelections)}
                 disabled={!canAdd}
-                title={needsVariant ? 'Pick a size/option to continue' : undefined}
+                title={needsVariant
+                  ? 'Pick a size/option to continue'
+                  : (platterHint ?? undefined)}
                 style={{
                   flex: 2, padding: '12px 16px', borderRadius: 10,
                   background: canAdd ? '#10B981' : '#A7F3D0',
@@ -1617,9 +1669,9 @@ function ConfigurePanel({
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}
               >
-                <span>Add to ticket</span>
+                <span>{platterHint ?? 'Add to ticket'}</span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  MVR {headlinePrice.toFixed(2)}
+                  MVR {(headlinePrice + platterExtra).toFixed(2)}
                 </span>
               </button>
             </>
