@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
+import {
+  INVENTORY_SORTS, INVENTORY_SORT_STORAGE_KEY, isInventorySortKey, sortInventory, type InventorySortKey,
+} from '../utils/inventorySort';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
@@ -104,6 +107,22 @@ export default function InventoryPage() {
 
   // ── Stock tab ──────────────────────────────────────────────────────────────
   const [items, setItems] = useState<InventoryItem[]>([]);
+  /*
+   * How the list is ordered — one control, both layouts. Remembered per
+   * browser: somebody who always wants "runs out soonest" should not have
+   * to ask for it every morning.
+   */
+  const [sortKey, setSortKey] = useState<InventorySortKey>(() => {
+    try {
+      const saved = localStorage.getItem(INVENTORY_SORT_STORAGE_KEY);
+      return isInventorySortKey(saved) ? saved : 'name';
+    } catch { return 'name'; }
+  });
+  const changeSort = (key: InventorySortKey) => {
+    setSortKey(key);
+    try { localStorage.setItem(INVENTORY_SORT_STORAGE_KEY, key); } catch { /* private mode */ }
+  };
+  const sortedItems = useMemo(() => sortInventory(items, sortKey), [items, sortKey]);
   const [lowCount, setLowCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -856,6 +875,14 @@ export default function InventoryPage() {
               onChange={e => setSearch(e.target.value)}
               style={{ ...S.input, maxWidth: 320 }}
             />
+            <select
+              aria-label="Sort items"
+              value={sortKey}
+              onChange={(e) => changeSort(e.target.value as InventorySortKey)}
+              style={{ ...S.select, width: 'auto', minHeight: 40 }}
+            >
+              {INVENTORY_SORTS.map((o) => <option key={o.key} value={o.key}>Sort: {o.label}</option>)}
+            </select>
             {canManage && (
               <Btn onClick={() => {
                 setCreateOpen(true);
@@ -907,7 +934,7 @@ export default function InventoryPage() {
               <EmptyState message="No inventory items found." />
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
-                {items.map((item) => {
+                {sortedItems.map((item) => {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <article
@@ -933,6 +960,14 @@ export default function InventoryPage() {
                         </div>
                         {isLow && <Badge color="red">Low</Badge>}
                       </div>
+
+                      {usagePerDay(item) != null && (
+                        <div style={{ fontSize: 12, marginTop: 6, color: daysLeftColor(item) }}>
+                          ~{formatRate(usagePerDay(item)!)} {item.unit}/day
+                          {item.days_left != null ? ` · ≈ ${item.days_left} day${item.days_left === 1 ? '' : 's'} left` : ' · out of stock'}
+                          {item.usage_source === 'bought' ? ' · from buying' : ''}
+                        </div>
+                      )}
 
                       {/* The number people came to see, at a size they can read. */}
                       <div style={{
@@ -979,7 +1014,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => {
+                {sortedItems.map(item => {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <tr key={item.id}>

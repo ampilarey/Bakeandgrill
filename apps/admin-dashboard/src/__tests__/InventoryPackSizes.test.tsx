@@ -119,6 +119,28 @@ describe('Pack sizes on the inventory list', () => {
     });
   });
 
+  it('offers the same sort on the desk and the phone, and both obey it', async () => {
+    // Owner, 2026-09-07: "Add inventory sort option in both desktop and
+    // mobile view." One control; the order it produces must match.
+    fetchInventoryItems.mockResolvedValue({
+      data: [water, gas],
+      meta: { current_page: 1, last_page: 1, total: 2 },
+      units: [],
+    });
+    renderPage();
+    const sort = await screen.findByLabelText('Sort items');
+
+    // Default: alphabetical — Gas cylinder before Water.
+    let rows = screen.getAllByRole('row').slice(1);
+    expect(rows[0]).toHaveTextContent('Gas cylinder');
+
+    fireEvent.change(sort, { target: { value: 'days_left' } });
+    rows = screen.getAllByRole('row').slice(1);
+    // Water runs out in 3 days, gas in 20.
+    expect(rows[0]).toHaveTextContent('Water');
+    expect(localStorage.getItem('bg_inventory_sort')).toBe('days_left');
+  });
+
   it('says how fast an item goes, and when it runs out', async () => {
     fetchInventoryItems.mockResolvedValue({
       data: [water, gas],
