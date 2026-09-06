@@ -82,6 +82,21 @@
             color: #fff;
         }
 
+        /*
+         * Written as `.toolbar a.toolbar__back` on purpose: `.toolbar a` above
+         * is the more specific selector, so a bare `.toolbar__back` block loses
+         * every property it shares with it and the rule reads as if it works.
+         *
+         * Kept as a pill like the rest — same tap target, and on a phone this
+         * is the control somebody reaches for when they are stuck, so it should
+         * not be the smallest thing on the row. Muted text and a gap after it
+         * so it does not read as a fourth layout choice.
+         */
+        .toolbar a.toolbar__back {
+            color: #6b5d4f;
+            margin-right: 0.4rem;
+        }
+
         .toolbar__spacer { margin-left: auto; }
 
         .toolbar__pdf {
@@ -325,6 +340,10 @@
             .toolbar__label { display: none; }
             .toolbar__spacer { margin-left: 0; }
 
+            /* The word stays even though the rest of the row is tight: an
+               arrow on its own is a guess about where it goes. */
+            .toolbar a.toolbar__back { margin-right: 0.2rem; }
+
             .toolbar a,
             .toolbar button {
                 font-size: 0.78rem;
@@ -411,6 +430,20 @@
 
 @unless ($forPdf)
     <div class="toolbar no-print">
+        {{--
+          A way back to the menu. Owner, 2026-09-06: "when i go to print in
+          blade menu, there is no go back option. I checked the mobile view."
+          There was not one — the toolbar offered three layouts, Dhivehi, Share,
+          PDF and Print, and no way out. On a phone with no browser chrome the
+          page was a dead end.
+
+          A plain link rather than history.back(): this page is shared and
+          bookmarked, so "back" is frequently nowhere. /menu is always true.
+        --}}
+        <a class="toolbar__back" data-testid="menu-print-back" href="{{ route('menu') }}">
+            ← <span class="toolbar__back-text">Menu</span>
+        </a>
+
         <span class="toolbar__label">Layout</span>
         @foreach ($printStyles as $style)
             @php

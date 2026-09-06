@@ -173,6 +173,51 @@ class PrintableMenuTest extends TestCase
         $res->assertSee('.no-print { display: none !important; }', false);
     }
 
+    public function test_there_is_a_way_back_to_the_menu(): void
+    {
+        /*
+         * Owner, 2026-09-06: "when i go to print in blade menu, there is no go
+         * back option. I checked the mobile view." There was not one — three
+         * layouts, Dhivehi, Share, PDF and Print, and no way out. On a phone
+         * with no browser chrome the page was a dead end.
+         */
+        $this->dish('Mas Huni', 35);
+
+        $res = $this->get('/menu/print')->assertOk();
+
+        $res->assertSee('data-testid="menu-print-back"', false);
+        $res->assertSee('href="' . url('/menu') . '"', false);
+    }
+
+    public function test_the_way_back_survives_every_layout_and_dhivehi(): void
+    {
+        // The toolbar is rebuilt per layout, so the escape has to be in each.
+        $this->dish('Mas Huni', 35, ['name_dv' => 'މަސްހުނި']);
+
+        foreach (['short', 'full', 'wall'] as $style) {
+            $this->get("/menu/print?style={$style}")
+                ->assertOk()
+                ->assertSee('data-testid="menu-print-back"', false);
+        }
+
+        $this->get('/menu/print?dv=1')
+            ->assertOk()
+            ->assertSee('data-testid="menu-print-back"', false);
+    }
+
+    public function test_the_way_back_is_not_printed_and_not_in_the_pdf(): void
+    {
+        // It belongs to the screen. A sheet of paper with "← Menu" on it is a
+        // mistake, and so is a PDF sent to a customer.
+        $this->dish('Mas Huni', 35);
+
+        $this->get('/menu/print')->assertOk()->assertSee('class="toolbar no-print"', false);
+
+        $pdf = $this->get('/menu/print.pdf');
+        $pdf->assertOk();
+        $this->assertStringNotContainsString('menu-print-back', $pdf->getContent());
+    }
+
     public function test_the_sheet_is_not_offered_to_search_engines(): void
     {
         // It is the same menu Google already has at /menu, in a layout meant
