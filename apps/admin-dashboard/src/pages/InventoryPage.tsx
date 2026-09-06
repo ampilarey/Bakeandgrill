@@ -14,12 +14,12 @@ import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
   fetchInventoryCategories, createInventoryCategory, updateInventoryCategory,
   getUnitConversions, createUnitConversion, deleteUnitConversion,
-  getInventoryPriceHistory, getInventoryCheapestSupplier, submitStockCount,
+  getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
   getPurchaseUnits, createPurchaseUnit, deletePurchaseUnit,
   type InventoryItem, type InventoryCategory, type UnitConversion,
-  type InventoryPriceHistoryEntry, type CheapestSupplier, type PreparedStockRow,
+  type InventoryPriceHistoryEntry, type CheapestSupplier, type InventoryCostUsage, type PreparedStockRow,
   type StockMovementRow, type Supplier,
   type InventoryPurchaseUnit,
 } from '../api';
@@ -566,21 +566,41 @@ export default function InventoryPage() {
     }
   };
 
-  const openPriceHistory = async (item: InventoryItem) => {
-    setPriceHistoryItem(item);
-    setPriceHistory([]);
-    setCheapestSupplier(undefined);
-    setHistoryError('');
+  /*
+   * Cost and usage. Owner, 2026-09-06: "I need to know the best price and
+   * total quantity of the product utilized even though different brands and
+   * sizes."
+   *
+   * Everything was already recorded — the brand on the line, the pack, the
+   * price divided to the base unit, every movement in and out — and nothing
+   * added it up, so the question had no answer on any screen.
+   */
+  const [costUsage, setCostUsage] = useState<InventoryCostUsage | null>(null);
+  const [costDays, setCostDays] = useState(90);
+
+  const loadCostUsage = async (itemId: number, days: number) => {
     setHistoryLoading(true);
+    setHistoryError('');
     try {
-      const [histRes, cheapRes] = await Promise.all([
-        getInventoryPriceHistory(item.id),
-        getInventoryCheapestSupplier(item.id),
+      const [costRes, histRes, cheapRes] = await Promise.all([
+        getInventoryCostUsage(itemId, days),
+        getInventoryPriceHistory(itemId),
+        getInventoryCheapestSupplier(itemId),
       ]);
+      setCostUsage(costRes);
       setPriceHistory(histRes.history);
       setCheapestSupplier(cheapRes.supplier);
     } catch (e) { setHistoryError((e as Error).message); }
     finally { setHistoryLoading(false); }
+  };
+
+  const openPriceHistory = async (item: InventoryItem) => {
+    setPriceHistoryItem(item);
+    setPriceHistory([]);
+    setCostUsage(null);
+    setCheapestSupplier(undefined);
+    setCostDays(90);
+    await loadCostUsage(item.id, 90);
   };
 
   // ── Stock Count tab ────────────────────────────────────────────────────────
@@ -1501,8 +1521,129 @@ export default function InventoryPage() {
 
       {/* ── Price History Modal ── */}
       {priceHistoryItem && (
-        <Modal title={`Price History — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={560}>
+        <Modal title={`Cost & usage — ${priceHistoryItem.name}`} onClose={() => setPriceHistoryItem(null)} maxWidth={720}>
           {historyError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{historyError}</p>}
+
+          {/* How far back to look. A bargain from last year is not a price you
+              can go and pay today, so the window is the first control. */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>Looking back</span>
+            {[30, 90, 365, 0].map((d) => (
+              <Btn
+                key={d}
+                small
+                variant={costDays === d ? 'primary' : 'secondary'}
+                disabled={historyLoading}
+                onClick={() => {
+                  setCostDays(d);
+                  void loadCostUsage(priceHistoryItem.id, d);
+                }}
+              >
+                {d === 0 ? 'All time' : `${d} days`}
+              </Btn>
+            ))}
+          </div>
+
+          {costUsage && !historyLoading && (
+            <>
+              {/* ── What it costs, per base unit ──────────────────────────
+                  The only comparison that means anything when the same thing
+                  arrives as a 100 ml tin of one brand and a 500 ml tin of
+                  another. A pack price against a pack price is a coincidence
+                  of size, not a comparison. */}
+              <p style={{ ...S.label, margin: '0 0 6px' }}>
+                Best price — per {costUsage.item.unit}
+              </p>
+              {costUsage.prices.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 18px' }}>
+                  Nothing bought in this window.
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto', marginBottom: 18 }} data-testid="cost-usage-prices">
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead><tr>
+                      <th style={TH}>Brand</th>
+                      <th style={TH}>Pack</th>
+                      <th style={TH}>Shop</th>
+                      <th style={TH}>Per {costUsage.item.unit}</th>
+                      <th style={TH}>A pack</th>
+                      <th style={TH}>Last bought</th>
+                    </tr></thead>
+                    <tbody>
+                      {costUsage.prices.map((row, i) => (
+                        <tr
+                          key={`${row.brand}-${row.pack_name}-${row.supplier}-${i}`}
+                          data-testid={row.is_cheapest ? 'cost-usage-cheapest' : undefined}
+                          style={row.is_cheapest ? { background: 'var(--color-success-bg)' } : undefined}
+                        >
+                          <td style={{ ...TD, fontWeight: 600 }}>
+                            {row.is_cheapest && <span title="Cheapest per unit">💰 </span>}
+                            {row.brand ?? <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>No brand</span>}
+                          </td>
+                          <td style={TD}>
+                            {row.pack_name
+                              ? `${row.pack_name}${row.pack_size ? ` (${row.pack_size} ${costUsage.item.unit})` : ''}`
+                              : <span style={{ color: 'var(--color-text-muted)' }}>Shop run</span>}
+                          </td>
+                          <td style={TD}>{row.supplier ?? '—'}</td>
+                          <td style={{ ...TD, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            MVR {row.per_unit.toFixed(4)}
+                          </td>
+                          <td style={{ ...TD, whiteSpace: 'nowrap' }}>
+                            {row.pack_price != null ? `MVR ${row.pack_price.toFixed(2)}` : '—'}
+                          </td>
+                          <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                            {row.last_bought ?? '—'}
+                            {row.times > 1 && <span> · ×{row.times}</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '8px 0 0', lineHeight: 1.5 }}>
+                    Ranked on the price of one {costUsage.item.unit}, which is the only way tins of
+                    different sizes compare. A bigger tin is not reliably the cheaper one.
+                  </p>
+                </div>
+              )}
+
+              {/* ── What you got through ───────────────────────────────── */}
+              <p style={{ ...S.label, margin: '0 0 6px' }}>
+                Bought and used{costUsage.usage.window_days > 0 ? ` — last ${costUsage.usage.window_days} days` : ' — all time'}
+              </p>
+              <div
+                data-testid="cost-usage-totals"
+                style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: 8, marginBottom: 18,
+                }}
+              >
+                {([
+                  ['Bought', `${costUsage.usage.received} ${costUsage.item.unit}`, null],
+                  ['Used', `${costUsage.usage.used} ${costUsage.item.unit}`,
+                    costUsage.usage.value_used != null ? `≈ MVR ${costUsage.usage.value_used.toFixed(2)}` : null],
+                  ['Thrown away', `${costUsage.usage.written_off} ${costUsage.item.unit}`, null],
+                  ['On hand now', `${costUsage.usage.on_hand} ${costUsage.item.unit}`, null],
+                  ['Spent', `MVR ${costUsage.usage.spend.toFixed(2)}`, null],
+                  ['Average price', costUsage.usage.average_price != null
+                    ? `MVR ${costUsage.usage.average_price.toFixed(4)}`
+                    : 'Not known',
+                    costUsage.usage.average_price != null ? `per ${costUsage.item.unit}` : null],
+                ] as Array<[string, string, string | null]>).map(([label, value, note]) => (
+                  <div key={label} style={{
+                    border: '1px solid var(--color-border)', borderRadius: 10,
+                    padding: '10px 12px', background: 'var(--color-surface)',
+                  }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>{label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)', marginTop: 2 }}>{value}</div>
+                    {note && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{note}</div>}
+                  </div>
+                ))}
+              </div>
+              <p style={{ ...S.label, margin: '0 0 6px' }}>Every purchase</p>
+            </>
+          )}
+
           {historyLoading ? <p style={{ color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Loading…</p> : (
             <>
               {cheapestSupplier && (

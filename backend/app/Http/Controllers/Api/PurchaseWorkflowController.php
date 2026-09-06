@@ -176,6 +176,14 @@ class PurchaseWorkflowController extends Controller
                             'purchase_id' => $purchase->id,
                             'unit_price' => $newCost,
                             'unit' => $invItem->unit,
+                            /*
+                             * The brand was on the line and got dropped here,
+                             * so anything received through the workflow — most
+                             * of the purchase orders — was invisible to a
+                             * brand comparison. PurchaseController's own write
+                             * has always carried it; this one had not.
+                             */
+                            'brand' => $pItem->brand,
                             'recorded_at' => $validated['actual_delivery_date']
                                 ?? $purchase->actual_delivery_date
                                 ?? $purchase->purchase_date

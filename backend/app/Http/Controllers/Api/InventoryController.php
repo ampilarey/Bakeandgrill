@@ -311,6 +311,42 @@ class InventoryController extends Controller
     }
 
     /**
+     * What this costs and how much of it you got through.
+     *
+     * Owner, 2026-09-06: "I need to know the best price and total quantity of
+     * the product utilized even though different brands and sizes."
+     *
+     * The comparison is per base unit throughout, which is the only way a
+     * 100 ml tin of one brand and a 500 ml tin of another are the same kind of
+     * number. `?days=` windows it (default 90, 0 for all time).
+     */
+    public function costUsage(Request $request, $id)
+    {
+        $item = InventoryItem::with('purchaseUnits:id,inventory_item_id,name,base_units')->findOrFail($id);
+
+        $days = (int) $request->query('days', '90');
+        $days = $days > 0 ? min($days, 3650) : 0;
+
+        $service = app(\App\Domains\Inventory\Services\InventoryCostUsageService::class);
+
+        return response()->json([
+            'item' => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'unit' => $item->unit,
+                'on_hand' => (float) ($item->current_stock ?? 0),
+                'packs' => $item->purchaseUnits->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'base_units' => (float) $p->base_units,
+                ])->values(),
+            ],
+            'prices' => $service->priceComparison($item, $days),
+            'usage' => $service->usage($item, $days),
+        ]);
+    }
+
+    /**
      * Who sold this cheapest, lately.
      *
      * Stock audit, 2026-09-03 (S3): this read `purchase_items` alone, so every

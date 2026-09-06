@@ -656,6 +656,58 @@ export async function getInventoryCheapestSupplier(id: number): Promise<{ suppli
   return req(`/inventory/${id}/cheapest-supplier`);
 }
 
+/**
+ * One way this item has been bought — a brand in a pack from a shop.
+ *
+ * `per_unit` is the only comparable number: a 500 ml tin against a 100 ml tin
+ * is not a comparison until both are expressed per ml. `pack_price` is there
+ * so the row is recognisable as the thing somebody carried in, never to be
+ * compared against another row's.
+ */
+export interface InventoryPriceRow {
+  brand: string | null;
+  pack_name: string | null;
+  pack_size: number | null;
+  supplier: string | null;
+  per_unit: number;
+  pack_price: number | null;
+  times: number;
+  total_qty: number | null;
+  last_bought: string | null;
+  /** 'purchase' knows the pack; 'buying_list' is a shop run and does not. */
+  source: 'purchase' | 'buying_list';
+  is_cheapest: boolean;
+}
+
+export interface InventoryUsage {
+  window_days: number;
+  unit: string;
+  received: number;
+  used: number;
+  written_off: number;
+  added_back: number;
+  on_hand: number;
+  spend: number;
+  average_price: number | null;
+  value_used: number | null;
+}
+
+export interface InventoryCostUsage {
+  item: {
+    id: number;
+    name: string;
+    unit: string;
+    on_hand: number;
+    packs: Array<{ id: number; name: string; base_units: number }>;
+  };
+  prices: InventoryPriceRow[];
+  usage: InventoryUsage;
+}
+
+export async function getInventoryCostUsage(id: number, days = 90): Promise<InventoryCostUsage> {
+  return req(`/inventory/${id}/cost-usage?days=${days}`);
+}
+
 // ── Stock count ───────────────────────────────────────────────────────────────
 
 export interface StockCountEntry {

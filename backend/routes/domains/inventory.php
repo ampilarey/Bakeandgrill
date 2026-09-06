@@ -27,6 +27,9 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         Route::get('/inventory/{id}', [InventoryController::class, 'show']);
         Route::get('/inventory/{id}/price-history', [InventoryController::class, 'priceHistory']);
         Route::get('/inventory/{id}/cheapest-supplier', [InventoryController::class, 'cheapestSupplier']);
+        // What each brand and pack size costs per base unit, and how much of
+        // the item was bought, used and thrown away over the window.
+        Route::get('/inventory/{id}/cost-usage', [InventoryController::class, 'costUsage']);
     });
     Route::post('/inventory', [InventoryController::class, 'store'])->middleware('permission:inventory.manage');
     Route::post('/inventory/stock-count', [InventoryController::class, 'stockCount'])->middleware('permission:inventory.manage');
