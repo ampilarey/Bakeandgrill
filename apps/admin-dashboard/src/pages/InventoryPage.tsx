@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense, Fragment } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
   INVENTORY_SORTS, INVENTORY_SORT_STORAGE_KEY, REORDER_SOON_DAYS, isInventorySortKey, needsReorderSoon, sortInventory,
+  INVENTORY_GROUP_STORAGE_KEY, groupInventoryByCategory,
   type InventorySortKey,
 } from '../utils/inventorySort';
 import {
@@ -148,6 +149,26 @@ export default function InventoryPage() {
   const sortedItems = useMemo(
     () => sortInventory(reorderOnly ? items.filter(needsReorderSoon) : items, sortKey),
     [items, sortKey, reorderOnly],
+  );
+  /*
+   * Owner, 2026-09-07: "add grouping based on groups". Sorting by category
+   * already put like with like, but nothing said where one group ended, and
+   * on a list this long that is the whole point. Remembered, like the sort.
+   */
+  const [groupByCategory, setGroupByCategory] = useState(() => {
+    try { return localStorage.getItem(INVENTORY_GROUP_STORAGE_KEY) === '1'; } catch { return false; }
+  });
+  const changeGrouping = (on: boolean) => {
+    setGroupByCategory(on);
+    try { localStorage.setItem(INVENTORY_GROUP_STORAGE_KEY, on ? '1' : '0'); } catch { /* private mode */ }
+  };
+  // One group holding everything when grouping is off, so both layouts draw
+  // the same way and the heading is simply not rendered.
+  const itemGroups = useMemo(
+    () => (groupByCategory
+      ? groupInventoryByCategory(sortedItems)
+      : [{ key: 'all', name: '', items: sortedItems }]),
+    [sortedItems, groupByCategory],
   );
   const [lowCount, setLowCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -312,7 +333,7 @@ export default function InventoryPage() {
     setEditError('');
     void loadPacks(item.id);
     /*
-     * Only "+ Add SKU" used to fetch these, so opening Edit showed an empty
+     * Only "+ Add Item" used to fetch these, so opening Edit showed an empty
      * Category list — the item's own category included. Part of why the owner
      * reported "no new catagory option": there was no category list at all.
      */
@@ -941,6 +962,20 @@ export default function InventoryPage() {
             >
               🛒 Reorder soon ({reorderSoonCount})
             </button>
+            {/* Owner, 2026-09-07. Off by default: a flat list is still the
+                fastest way to find one thing by eye. */}
+            <label
+              style={{ ...S.select, width: 'auto', minHeight: 40, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 600, color: 'var(--color-text-secondary)' }}
+              title="Show the list under its category headings"
+            >
+              <input
+                type="checkbox"
+                checked={groupByCategory}
+                onChange={(e) => changeGrouping(e.target.checked)}
+                data-testid="inventory-group-toggle"
+              />
+              Group by category
+            </label>
             {canManage && (
               <Btn onClick={() => {
                 setCreateOpen(true);
@@ -952,7 +987,7 @@ export default function InventoryPage() {
                 if (cats.length === 0) void loadCats();
                 if (suppliers.length === 0) void loadSuppliers();
               }}>
-                + Add SKU
+                + Add Item
               </Btn>
             )}
             {items.length > 0 && (
@@ -992,7 +1027,17 @@ export default function InventoryPage() {
               <EmptyState message={reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
-                {sortedItems.map((item) => {
+                {itemGroups.map((group) => (
+                  <Fragment key={group.key}>
+                    {group.name && (
+                      <h3
+                        data-testid={`inventory-group-heading-${group.key}`}
+                        style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}
+                      >
+                        {group.name} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>({group.items.length})</span>
+                      </h3>
+                    )}
+                    {group.items.map((item) => {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <article
@@ -1053,7 +1098,9 @@ export default function InventoryPage() {
                       </div>
                     </article>
                   );
-                })}
+                    })}
+                  </Fragment>
+                ))}
               </div>
             )
           ) : (
@@ -1072,7 +1119,27 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedItems.map(item => {
+                {itemGroups.map((group) => (
+                  <Fragment key={group.key}>
+                    {group.name && (
+                      <tr data-testid={`inventory-group-heading-${group.key}`}>
+                        <th
+                          colSpan={8}
+                          scope="colgroup"
+                          style={{
+                            textAlign: 'left', padding: '10px 12px 6px', fontSize: 12, fontWeight: 700,
+                            color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4,
+                            background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)',
+                          }}
+                        >
+                          {group.name}
+                          <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6 }}>
+                            ({group.items.length})
+                          </span>
+                        </th>
+                      </tr>
+                    )}
+                    {group.items.map(item => {
                   const isLow = item.reorder_level != null && item.quantity_on_hand <= item.reorder_level;
                   return (
                     <tr key={item.id}>
@@ -1128,7 +1195,9 @@ export default function InventoryPage() {
                       </td>
                     </tr>
                   );
-                })}
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
             )}

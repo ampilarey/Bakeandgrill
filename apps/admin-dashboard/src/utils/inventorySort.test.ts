@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { needsReorderSoon, sortInventory } from './inventorySort';
+import { needsReorderSoon, sortInventory, groupInventoryByCategory } from './inventorySort';
 
 /*
  * The stock list's ordering rules. The point of testing them apart from the
@@ -58,5 +58,56 @@ describe('sortInventory', () => {
     const before = names(rows);
     sortInventory(rows, 'on_hand');
     expect(names(rows)).toEqual(before);
+  });
+});
+
+describe('groupInventoryByCategory', () => {
+  const item = (name: string, category: string | null) => ({
+    name,
+    quantity_on_hand: 1,
+    reorder_level: null,
+    category: category === null ? null : { name: category },
+  });
+
+  it('puts like with like and names each group', () => {
+    const groups = groupInventoryByCategory([
+      item('Flour', 'Dry store'),
+      item('Milk', 'Chilled'),
+      item('Sugar', 'Dry store'),
+    ]);
+
+    expect(groups.map((g) => [g.name, g.items.map((i) => i.name)])).toEqual([
+      ['Chilled', ['Milk']],
+      ['Dry store', ['Flour', 'Sugar']],
+    ]);
+  });
+
+  it('keeps the order the sort gave, inside each group', () => {
+    const groups = groupInventoryByCategory([
+      item('Sugar', 'Dry store'),
+      item('Flour', 'Dry store'),
+    ]);
+    expect(groups[0].items.map((i) => i.name)).toEqual(['Sugar', 'Flour']);
+  });
+
+  it('collects the unfiled ones at the end', () => {
+    const groups = groupInventoryByCategory([
+      item('Odd thing', null),
+      item('Milk', 'Chilled'),
+      item('Blank', '   '),
+    ]);
+
+    expect(groups.map((g) => g.name)).toEqual(['Chilled', 'No category']);
+    expect(groups[1].items.map((i) => i.name)).toEqual(['Odd thing', 'Blank']);
+  });
+
+  it('treats one category named two ways as one group', () => {
+    const groups = groupInventoryByCategory([item('A', 'Chilled'), item('B', 'chilled')]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items).toHaveLength(2);
+  });
+
+  it('has nothing to group when the list is empty', () => {
+    expect(groupInventoryByCategory([])).toEqual([]);
   });
 });

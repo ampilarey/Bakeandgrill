@@ -101,3 +101,44 @@ export function sortInventory<T extends Sortable>(items: T[], key: InventorySort
         || byName(a, b));
   }
 }
+
+export const INVENTORY_GROUP_STORAGE_KEY = 'bg_inventory_group_by_category';
+
+/** A run of items sharing one category, in the order the list is already in. */
+export type InventoryGroup<T> = { key: string; name: string; items: T[] };
+
+/**
+ * The stock list under its category headings. Owner, 2026-09-07: "add
+ * grouping based on groups".
+ *
+ * Sorting by category already put like with like, but nothing said where one
+ * group ended and the next began, and on a list this long that is the whole
+ * point. Items keep whatever order the sort gave them inside their group, so
+ * grouping composes with "Low stock first" rather than fighting it.
+ *
+ * Items with no category collect at the end: they are the ones somebody still
+ * has to file, and burying them between real groups hides that.
+ */
+export function groupInventoryByCategory<T extends { category?: { name: string } | null }>(
+  items: T[],
+): InventoryGroup<T>[] {
+  const groups = new Map<string, InventoryGroup<T>>();
+
+  for (const item of items) {
+    const name = item.category?.name?.trim() || '';
+    const key = name.toLowerCase() || '\u0000uncategorised';
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, name: name || 'No category', items: [] };
+      groups.set(key, group);
+    }
+    group.items.push(item);
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    const aLast = a.key === '\u0000uncategorised';
+    const bLast = b.key === '\u0000uncategorised';
+    if (aLast !== bLast) return aLast ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+}
