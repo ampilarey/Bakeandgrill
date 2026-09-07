@@ -70,14 +70,16 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         ->middleware('permission.any:menu.manage,menu.prepared_stock');
 
     // Suppliers — read requires suppliers.view, write requires suppliers.manage
+    // {id} is numeric so /suppliers/performance and /suppliers/price-comparison
+    // (finance domain, loaded after this file) are not swallowed.
     Route::middleware('permission:suppliers.view')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
-        Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
+        Route::get('/suppliers/{id}', [SupplierController::class, 'show'])->whereNumber('id');
     });
     Route::middleware('permission:suppliers.manage')->group(function () {
         Route::post('/suppliers', [SupplierController::class, 'store']);
-        Route::patch('/suppliers/{id}', [SupplierController::class, 'update']);
-        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
+        Route::patch('/suppliers/{id}', [SupplierController::class, 'update'])->whereNumber('id');
+        Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy'])->whereNumber('id');
     });
 
     // Purchases — all operations require suppliers.purchases

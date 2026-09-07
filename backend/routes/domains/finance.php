@@ -102,11 +102,11 @@ Route::middleware(['auth:sanctum', 'permission:suppliers.manage'])->prefix('supp
     // Static routes MUST come before parameterised /{id} routes
     Route::get('/performance', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'allPerformance']);
     Route::get('/price-comparison/{itemId}', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceComparison']);
-    Route::post('/{id}/ratings', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'rate']);
-    Route::get('/{id}/ratings', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'ratings']);
-    Route::get('/{id}/performance', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'performance']);
-    Route::post('/{id}/performance/refresh', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'refreshCache']);
-    Route::get('/{id}/price-history/{itemId}', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceHistory']);
+    Route::post('/{id}/ratings', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'rate'])->whereNumber('id');
+    Route::get('/{id}/ratings', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'ratings'])->whereNumber('id');
+    Route::get('/{id}/performance', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'performance'])->whereNumber('id');
+    Route::post('/{id}/performance/refresh', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'refreshCache'])->whereNumber('id');
+    Route::get('/{id}/price-history/{itemId}', [App\Http\Controllers\Api\SupplierIntelligenceController::class, 'priceHistory'])->whereNumber('id');
 });
 
 // ─── Purchase Workflow ─────────────────────────────────────────────────────
