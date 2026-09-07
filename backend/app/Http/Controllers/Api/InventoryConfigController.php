@@ -107,7 +107,76 @@ class InventoryConfigController extends Controller
             // last week's spelling. Most recent first: what you bought last is
             // the likeliest thing you are buying now.
             'brands' => $this->recentBrands($itemId),
+            // What this item was last bought as, so the buying screen can
+            // open on it instead of on a blank line. Owner, 2026-09-07:
+            // "will the system remember the latest price, brand… by default
+            // it should be selected the latest".
+            'last_purchase' => $this->lastPurchase($item),
         ]);
+    }
+
+    /**
+     * The most recent purchase line for an item: what was paid, whose brand
+     * it was, and which box it came in.
+     *
+     * The pack is matched back to a live pack by name AND size, the same test
+     * the purchase editor uses. A pack that has since been renamed, resized
+     * or deleted resolves to null rather than to the wrong box, and the line
+     * simply opens loose.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function lastPurchase(InventoryItem $item): ?array
+    {
+        $line = DB::table('purchase_items')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->where('purchase_items.inventory_item_id', $item->id)
+            ->where('purchases.status', '!=', 'cancelled')
+            ->whereNull('purchases.deleted_at')
+            ->orderByDesc('purchase_items.id')
+            ->select([
+                'purchase_items.brand',
+                'purchase_items.unit_cost',
+                'purchase_items.pack_name',
+                'purchase_items.pack_size',
+                'purchase_items.pack_quantity',
+                'purchases.purchase_date',
+                'purchases.supplier_id',
+                'purchases.supplier_name_text',
+            ])
+            ->first();
+
+        if ($line === null) {
+            return null;
+        }
+
+        $packSize = $line->pack_size !== null ? (float) $line->pack_size : null;
+        $unitCost = (float) $line->unit_cost;
+
+        $packId = null;
+        if ($packSize !== null && $packSize > 0 && $line->pack_name !== null) {
+            $packId = $item->purchaseUnits()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $line->pack_name))])
+                ->get(['id', 'base_units'])
+                ->first(fn ($p) => abs((float) $p->base_units - $packSize) < 0.000001)
+                ?->id;
+        }
+
+        return [
+            'brand' => $line->brand ?: null,
+            // Per the item's own unit, always — the honest number to compare.
+            'unit_cost' => round($unitCost, 6),
+            // And what one box cost, which is what somebody types on a line
+            // bought by the box.
+            'pack_cost' => $packSize !== null && $packSize > 0 ? round($unitCost * $packSize, 2) : null,
+            'purchase_unit_id' => $packId,
+            'pack_name' => $line->pack_name,
+            'pack_size' => $packSize,
+            'pack_quantity' => $line->pack_quantity !== null ? (float) $line->pack_quantity : null,
+            'purchase_date' => $line->purchase_date ? substr((string) $line->purchase_date, 0, 10) : null,
+            'supplier' => $line->supplier_name_text
+                ?: ($line->supplier_id ? \App\Models\Supplier::whereKey($line->supplier_id)->value('name') : null),
+        ];
     }
 
     /**

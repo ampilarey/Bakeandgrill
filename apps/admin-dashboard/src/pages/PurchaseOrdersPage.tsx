@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit } from '../api';
+import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit, type LastPurchase } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
+import { PickOrType } from '../components/PickOrType';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -41,6 +42,8 @@ type ManualPoLine = {
   unitText: string;
   /** Packs defined for the picked item, loaded when it is picked. */
   packs: InventoryPurchaseUnit[];
+  /** What this item was last bought as, or null before the first purchase. */
+  last: LastPurchase | null;
   /**
    * An inline "define a pack" form, open on this line.
    *
@@ -71,7 +74,7 @@ type ManualPoLine = {
 };
 
 const blankManualLine = (): ManualPoLine => ({
-  selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], newPackQty: '',
+  selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], last: null, newPackQty: '',
   newItem: null, brand: '', brands: [], gst: false,
 });
 
@@ -269,13 +272,42 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const loadPacksFor = async (idx: number, itemId: number) => {
     try {
       const res = await getPurchaseUnits(itemId);
+      const last = res.last_purchase ?? null;
+      /*
+       * Open on the last purchase. Owner, 2026-09-07: "by default it should
+       * be selected the latest." The brand, the box and the price move
+       * together — the price of a Packet means nothing without the Packet —
+       * so all three come from the same line or none do.
+       *
+       * Only ever fills a box the person has not touched: a quantity or a
+       * price they have already typed is theirs, not last week's.
+       */
+      const pack = last?.purchase_unit_id != null
+        ? res.purchase_units.find((p) => p.id === last.purchase_unit_id) ?? null
+        : null;
+
       setManualPoForm((f) => ({
         ...f,
-        lines: f.lines.map((l, i) => (
-          i === idx && l.selection?.item.id === itemId
-            ? { ...l, packs: res.purchase_units, brands: res.brands ?? [] }
-            : l
-        )),
+        lines: f.lines.map((l, i) => {
+          if (i !== idx || l.selection?.item.id !== itemId) return l;
+
+          // Nothing on record yet: the item's own average cost is the best
+          // guess left, which is what the line used before any of this.
+          const price = last
+            ? (pack ? last.pack_cost : last.unit_cost)
+            : l.selection?.item.cost_per_unit ?? null;
+          return {
+            ...l,
+            packs: res.purchase_units,
+            brands: res.brands ?? [],
+            last,
+            brand: l.brand === '' && last?.brand ? last.brand : l.brand,
+            unitText: l.unitText === '' && pack ? pack.name : l.unitText,
+            unit_cost: (l.unit_cost === '' || l.unit_cost === '0') && price != null
+              ? String(price)
+              : l.unit_cost,
+          };
+        }),
       }));
     } catch {
       /* buy it loose */
@@ -1284,7 +1316,15 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       // Another item's brands are not this one's.
                       brand: '',
                       brands: [],
-                      unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
+                      last: null,
+                      /*
+                       * Blank, not the item's average cost: loadPacksFor is
+                       * about to fill it with what was actually last paid,
+                       * for the box it was last bought in, and an average
+                       * per unit sitting in a per-box field is worse than an
+                       * empty one. Falls back below when nothing is on record.
+                       */
+                      unit_cost: '',
                       gst: (sel?.item.gst_rate_bp ?? 0) > 0,
                     } : l),
                   }));
@@ -1369,24 +1409,46 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   brand and that is worth a record. */}
               {line.selection && (
                 <div style={{ marginTop: 8 }}>
-                  <label htmlFor={`manual-po-brand-${idx}`} style={lineLabelStyle}>Brand (optional)</label>
-                  <input
-                    id={`manual-po-brand-${idx}`}
-                    aria-label={`Brand for item ${idx + 1}`}
-                    list={`manual-po-brand-options-${idx}`}
-                    autoComplete="off"
-                    placeholder={line.brands[0] ? `e.g. ${line.brands[0]}` : 'Whose one is it'}
+                  <label style={lineLabelStyle}>Brand (optional)</label>
+                  {/* A dropdown of what this item has been bought as, newest
+                      first, that does not dead-end on a brand never seen
+                      before. Was a bare text box with a datalist, which on a
+                      phone shows nothing until you already know the answer. */}
+                  <PickOrType
+                    ariaLabel={`Brand for item ${idx + 1}`}
+                    options={line.brands.map((b) => ({ value: b, label: b }))}
                     value={line.brand}
-                    onChange={(e) => setManualPoForm((f) => ({
+                    emptyLabel="No brand"
+                    addLabel="＋ A brand not bought before"
+                    placeholder="Whose one is it"
+                    hint="Saved against this line, so next time it is the one already chosen."
+                    onChange={(v) => setManualPoForm((f) => ({
                       ...f,
-                      lines: f.lines.map((l, i) => i === idx ? { ...l, brand: e.target.value } : l),
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, brand: v } : l),
                     }))}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                   />
-                  <datalist id={`manual-po-brand-options-${idx}`}>
-                    {line.brands.map((b) => <option key={b} value={b} />)}
-                  </datalist>
                 </div>
+              )}
+
+              {/* Where the filled-in numbers came from, and when — a price
+                  carried over from months ago should be visibly old rather
+                  than quietly authoritative. */}
+              {line.selection && line.last && (
+                <p
+                  data-testid={`manual-po-last-${idx}`}
+                  style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}
+                >
+                  Last bought{line.last.purchase_date ? ` ${line.last.purchase_date}` : ''}
+                  {line.last.supplier ? ` from ${line.last.supplier}` : ''}
+                  {': '}
+                  {line.last.pack_name && line.last.pack_cost != null
+                    ? `${mvr(line.last.pack_cost)} a ${line.last.pack_name} (${tidyNumber(line.last.pack_size)} ${line.selection.item.unit})`
+                    : `${mvr(line.last.unit_cost)} a ${line.selection.item.unit}`}
+                  {line.last.brand ? ` · ${line.last.brand}` : ''}
+                  {line.last.pack_name && line.last.purchase_unit_id === null
+                    ? ' — that pack has changed since, so this line is counted loose.'
+                    : ''}
+                </p>
               )}
               {/* Labels above the boxes, not placeholders inside them: a
                   placeholder is gone the moment you type, so a filled-in line

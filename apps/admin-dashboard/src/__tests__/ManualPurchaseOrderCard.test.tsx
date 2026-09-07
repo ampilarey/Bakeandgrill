@@ -383,11 +383,15 @@ describe('Create Manual Purchase Order card', () => {
     fireEvent.click(screen.getByText('pick-flour'));
 
     const brand = await screen.findByLabelText('Brand for item 1');
-    // Past brands are offered, not imposed.
-    const options = document.getElementById('manual-po-brand-options-0')!;
-    expect(options.querySelectorAll('option')).toHaveLength(2);
+    // Past brands are offered as a list you can pick from, newest first,
+    // and it does not dead-end on a brand never bought before.
+    const labels = [...brand.querySelectorAll('option')].map((o) => o.textContent);
+    expect(labels).toContain('Brand A');
+    expect(labels).toContain('Brand B');
 
-    fireEvent.change(brand, { target: { value: 'Brand C' } });
+    fireEvent.change(brand, { target: { value: '__pick_or_type_add__' } });
+    fireEvent.change(await screen.findByLabelText('New brand for item 1'), { target: { value: 'Brand C' } });
+    fireEvent.click(screen.getByText('Use this'));
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '30' } });
     fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '2.1' } });
     fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));

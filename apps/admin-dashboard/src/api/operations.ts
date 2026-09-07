@@ -646,11 +646,32 @@ export interface InventoryPurchaseUnit {
   barcode?: string | null;
 }
 
+/**
+ * What an item was last bought as. Owner, 2026-09-07: "will the system
+ * remember the latest price, brand… by default it should be selected the
+ * latest." `purchase_unit_id` is null when the line was bought loose, or
+ * when its pack has since been renamed, resized or deleted.
+ */
+export interface LastPurchase {
+  brand: string | null;
+  /** Per the item's own unit — the figure to compare between shops. */
+  unit_cost: number;
+  /** What one box cost, when it came in one. */
+  pack_cost: number | null;
+  purchase_unit_id: number | null;
+  pack_name: string | null;
+  pack_size: number | null;
+  pack_quantity: number | null;
+  purchase_date: string | null;
+  supplier: string | null;
+}
+
 export async function getPurchaseUnits(itemId: number): Promise<{
   base_unit: string;
   purchase_units: InventoryPurchaseUnit[];
   /** Brands this item has been bought as, most recent first. */
   brands?: string[];
+  last_purchase?: LastPurchase | null;
 }> {
   return req(`/inventory/${itemId}/purchase-units`);
 }
