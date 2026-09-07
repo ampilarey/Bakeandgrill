@@ -37,10 +37,15 @@ class RecipeCostCalculator
         // pre-dated an ingredient price change silently kept winning — the
         // stale-cost finding in AUDIT_MONEY_PASS3. Recording an actual recipe
         // now overrides it with the live number.
+        // Only the rows every size shares. A row that belongs to one size
+        // is that size's cost, not the dish's — see effectiveCostForVariant.
         $sum = 0.0;
         $hasIngredients = false;
 
         foreach ($recipe->recipeItems as $row) {
+            if ($row->variant_id !== null) {
+                continue;
+            }
             $hasIngredients = true;
             $unitCost = (float) ($row->inventoryItem?->unit_cost ?? 0);
             $sum += (float) $row->quantity * $unitCost;
@@ -50,9 +55,35 @@ class RecipeCostCalculator
             return round($sum, 2);
         }
 
+        // A recipe made only of per-size rows has no cost as a whole; the
+        // stored figure is not a fallback for that, it was typed for a
+        // recipe with no rows at all.
+        if ($recipe->recipeItems->isNotEmpty()) {
+            return null;
+        }
+
         $stored = $recipe->total_cost !== null ? (float) $recipe->total_cost : 0.0;
 
         return $stored > 0 ? round($stored, 2) : null;
+    }
+
+    /** What one size's own rows cost, on top of its share of the dish. */
+    public function ownRowsCostForVariant(Recipe $recipe, Variant $variant): ?float
+    {
+        if (!$recipe->relationLoaded('recipeItems')) {
+            $recipe->load('recipeItems.inventoryItem');
+        }
+        $own = $recipe->recipeItems->filter(fn ($r) => (int) $r->variant_id === (int) $variant->id);
+        if ($own->isEmpty()) {
+            return null;
+        }
+        $yield = max(1.0, (float) $recipe->yield_quantity);
+        $sum = 0.0;
+        foreach ($own as $row) {
+            $sum += (float) $row->quantity * (float) ($row->inventoryItem?->unit_cost ?? 0) / $yield;
+        }
+
+        return round($sum, 2);
     }
 
     /** Manual cost field, else recipe roll-up, else a bundle's contents. */
@@ -142,8 +173,17 @@ class RecipeCostCalculator
             return (float) $variant->cost;
         }
 
+        // Its share of what every size uses, plus whatever is its alone
+        // (owner, 2026-09-07: the 1.5L size's own bottle).
         $itemCost = $this->effectiveCost($item);
+        $own = ($item->relationLoaded('recipe') ? $item->recipe : $item->recipe()->first())
+            ? $this->ownRowsCostForVariant($item->relationLoaded('recipe') ? $item->recipe : $item->recipe()->first(), $variant)
+            : null;
 
-        return $itemCost === null ? null : round($itemCost * $variant->consumptionFactor(), 2);
+        if ($itemCost === null && $own === null) {
+            return null;
+        }
+
+        return round(($itemCost ?? 0) * $variant->consumptionFactor() + ($own ?? 0), 2);
     }
 }

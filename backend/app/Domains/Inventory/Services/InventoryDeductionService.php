@@ -314,22 +314,34 @@ class InventoryDeductionService
         }
 
         $yield = max(1.0, (float) $recipe->yield_quantity);
-        $rows = $recipe->relationLoaded('recipeItems') ? $recipe->recipeItems : $recipe->recipeItems()->with('inventoryItem')->get();
+        $piles = $recipe->rowsFor($variant);
+
+        /*
+         * $portions arrives already multiplied by the size's "Uses" factor —
+         * that is how shared rows have always been scaled. A row that belongs
+         * to this size alone is written for exactly one of that size, so the
+         * factor is taken back out for it (owner, 2026-09-07: the 1.5L size
+         * takes one 1.5L bottle, whatever its factor says about the pool).
+         */
+        $factor = $variant?->consumptionFactor() ?? 1.0;
+        $ownPortions = $factor > 0 ? $portions / $factor : 0.0;
 
         $out = [];
-        foreach ($rows as $recipeItem) {
-            $inv = $recipeItem->inventoryItem;
-            $perUnit = (float) $recipeItem->quantity;
-            if (!$inv || $perUnit <= 0) {
-                continue;
-            }
-            $needed = $this->unitConversions->convert(
-                ($perUnit * $portions) / $yield,
-                $recipeItem->unit ?: $inv->unit,
-                $inv->unit,
-            );
-            if ($needed > 0) {
-                $out[] = ['inventory_item' => $inv, 'quantity' => $needed];
+        foreach ([[$piles['shared'], $portions], [$piles['own'], $ownPortions]] as [$rows, $pilePortions]) {
+            foreach ($rows as $recipeItem) {
+                $inv = $recipeItem->inventoryItem;
+                $perUnit = (float) $recipeItem->quantity;
+                if (!$inv || $perUnit <= 0 || $pilePortions <= 0) {
+                    continue;
+                }
+                $needed = $this->unitConversions->convert(
+                    ($perUnit * $pilePortions) / $yield,
+                    $recipeItem->unit ?: $inv->unit,
+                    $inv->unit,
+                );
+                if ($needed > 0) {
+                    $out[] = ['inventory_item' => $inv, 'quantity' => $needed];
+                }
             }
         }
 

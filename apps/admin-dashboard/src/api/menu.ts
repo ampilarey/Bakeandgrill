@@ -661,9 +661,23 @@ export interface RecipeIngredient {
   id: number;
   inventory_item_id: number;
   inventory_item: { id: number; name: string; unit: string; unit_cost: number } | null;
+  /** Null: every size shares this row. Set: one size's own row, taken as written. */
+  variant_id: number | null;
+  variant: { id: number; name: string } | null;
   quantity: number;
   unit: string | null;
   line_cost: number;
+}
+
+/** A size costed on its own: its share of the shared rows plus what is its alone. */
+export interface RecipeVariantCost {
+  variant_id: number;
+  name: string;
+  price: number;
+  consumption_factor: number;
+  cost: number | null;
+  profit: number | null;
+  margin_pct: number | null;
 }
 
 export interface ItemRecipe {
@@ -685,6 +699,9 @@ export interface ItemWithRecipe {
   effective_cost: number | null;
   profit: number | null;
   margin_pct: number | null;
+  /** Active sizes, for rows that belong to one size. */
+  variants?: Array<{ id: number; name: string; consumption_factor: number }>;
+  variant_costs?: RecipeVariantCost[];
   recipe: ItemRecipe | null;
 }
 
@@ -693,6 +710,8 @@ export interface RecipeIngredientInput {
   inventory_item_id: number;
   quantity: number;
   unit?: string | null;
+  /** One size's own row; omit or null for a row every size shares. */
+  variant_id?: number | null;
 }
 
 export async function getItemWithRecipe(id: number): Promise<{ item: ItemWithRecipe }> {

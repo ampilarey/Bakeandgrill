@@ -10,10 +10,16 @@ interface Row {
   inventory_item_id: number | '';
   quantity: string;
   unit: string;
+  /**
+   * '' = every size shares this row (scaled by the size's "Uses" factor).
+   * A variant id = this size's own row, taken exactly as written. Owner,
+   * 2026-09-07: a 1.5L bottle for the 1.5L size, a 500ml for the 500ml.
+   */
+  variant_id: number | '';
 }
 
 let _rowSeq = 0;
-const newRow = (): Row => ({ key: `r${_rowSeq++}`, inventory_item_id: '', quantity: '', unit: '' });
+const newRow = (): Row => ({ key: `r${_rowSeq++}`, inventory_item_id: '', quantity: '', unit: '', variant_id: '' });
 
 function rowsFromItem(item: ItemWithRecipe): Row[] {
   const ings = item.recipe?.ingredients ?? [];
@@ -23,6 +29,7 @@ function rowsFromItem(item: ItemWithRecipe): Row[] {
     inventory_item_id: ing.inventory_item_id,
     quantity: String(ing.quantity),
     unit: ing.unit ?? ing.inventory_item?.unit ?? '',
+    variant_id: ing.variant_id ?? '',
   }));
 }
 
@@ -89,13 +96,22 @@ export function RecipeEditorModal({
     return map;
   }, [options]);
 
-  const price = Number(item.base_price) || 0;
-  const recipeCost = rows.reduce((sum, r) => {
+  const sizes = item.variants ?? [];
+  const hasSizes = sizes.length > 0;
+  const rowCost = (r: Row) => {
     const id = typeof r.inventory_item_id === 'number' ? r.inventory_item_id : 0;
     const qty = parseFloat(r.quantity);
-    if (!id || !(qty > 0)) return sum;
-    return sum + qty * (costOf.get(id) ?? 0);
-  }, 0);
+    return id && qty > 0 ? qty * (costOf.get(id) ?? 0) : 0;
+  };
+  const price = Number(item.base_price) || 0;
+  // The dish as a whole only knows what every size shares.
+  const recipeCost = rows.filter((r) => r.variant_id === '').reduce((sum, r) => sum + rowCost(r), 0);
+  // Each size: its share of the shared rows, plus what is its alone.
+  const sizeCosts = sizes.map((v) => ({
+    ...v,
+    cost: recipeCost * v.consumption_factor + rows.filter((r) => r.variant_id === v.id).reduce((sum, r) => sum + rowCost(r), 0),
+    price: item.variant_costs?.find((c) => c.variant_id === v.id)?.price ?? price,
+  }));
   const hasAny = rows.some((r) => typeof r.inventory_item_id === 'number' && parseFloat(r.quantity) > 0);
   const profit = hasAny ? price - recipeCost : null;
   const marginPct = hasAny && price > 0 ? (profit! / price) * 100 : null;
@@ -115,6 +131,7 @@ export function RecipeEditorModal({
           inventory_item_id: r.inventory_item_id as number,
           quantity: parseFloat(r.quantity),
           unit: r.unit || null,
+          variant_id: r.variant_id === '' ? null : r.variant_id,
         }));
       const res = await saveItemRecipe(item.id, ingredients, limitsAvailability, consumedAt);
       onSaved(res.item);
@@ -162,6 +179,7 @@ export function RecipeEditorModal({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
               <th style={th}>Ingredient</th>
+              {hasSizes && <th style={{ ...th, width: 120 }}>For size</th>}
               <th style={{ ...th, width: 90 }}>Qty</th>
               <th style={{ ...th, width: 70 }}>Unit</th>
               <th style={{ ...th, width: 90, textAlign: 'right' }}>Line cost</th>
@@ -194,6 +212,20 @@ export function RecipeEditorModal({
                         ))}
                       </select>
                     </td>
+                    {hasSizes && (
+                      <td style={td}>
+                        <select
+                          aria-label="Which size this row is for"
+                          value={r.variant_id}
+                          onChange={(e) => setRow(r.key, { variant_id: e.target.value ? Number(e.target.value) : '' })}
+                          title="All sizes: shared, scaled by each size's Uses factor. One size: taken exactly as written, only when that size sells."
+                          style={{ ...control, cursor: 'pointer' }}
+                        >
+                          <option value="">All sizes</option>
+                          {sizes.map((v) => <option key={v.id} value={v.id}>{v.name} only</option>)}
+                        </select>
+                      </td>
+                    )}
                     <td style={td}>
                       <input
                         type="number" min="0" step="any" inputMode="decimal"
@@ -258,7 +290,36 @@ export function RecipeEditorModal({
           <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '10px 0 0' }}>
             Cost rolls up live from inventory unit prices — a later price change moves the margin
             without re-saving. Profit is the selling price less this cost.
+            {hasSizes ? ' Rows marked "All sizes" are the recipe cost above; each size adds its own rows below.' : ''}
           </p>
+
+          {hasSizes && (
+            <div data-testid="recipe-size-costs" style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead><tr>
+                  <th style={th}>Size</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Price</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Cost</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Profit</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Margin</th>
+                </tr></thead>
+                <tbody>
+                  {sizeCosts.map((v) => {
+                    const p = v.price - v.cost;
+                    return (
+                      <tr key={v.id} data-testid={`recipe-size-cost-${v.id}`}>
+                        <td style={td}>{v.name}{v.consumption_factor !== 1 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · uses {v.consumption_factor}</span> : null}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{money(v.price)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{money(v.cost)}</td>
+                        <td style={{ ...td, textAlign: 'right', color: p < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{money(p)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{v.price > 0 ? `${((p / v.price) * 100).toFixed(1)}%` : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div style={{ marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
             <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
@@ -304,10 +365,10 @@ export function RecipeEditorModal({
                 Stop selling when these ingredients run out
               </span>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3, lineHeight: 1.5 }}>
-                The sizes share this one pool, each taking its own share (see <strong>Uses</strong> on
-                the variants tab). A size stays on the menu while the pool still covers it, so a full
-                portion is offered down to the last whole piece. Leave off if the ingredient counts
-                are not kept current.
+                Rows for all sizes are one shared pool, each size taking its own share (see <strong>Uses</strong> on
+                the variants tab); a row for one size is that size's own stock. A size stays on the menu while its
+                ingredients cover it, so a full portion is offered down to the last whole piece. Leave off if the
+                ingredient counts are not kept current.
               </span>
             </span>
           </label>

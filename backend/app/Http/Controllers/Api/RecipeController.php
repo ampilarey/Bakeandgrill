@@ -26,7 +26,7 @@ class RecipeController extends Controller
     /** GET /api/items/{id}/recipe — recipe + live cost / margin / profit. */
     public function show(int $id): JsonResponse
     {
-        $item = Item::with('recipe.recipeItems.inventoryItem')->findOrFail($id);
+        $item = Item::with(['recipe.recipeItems.inventoryItem', 'recipe.recipeItems.variant', 'variants'])->findOrFail($id);
 
         return response()->json(['item' => $this->payload($item)]);
     }
@@ -41,7 +41,7 @@ class RecipeController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $item = Item::with('recipe')->findOrFail($id);
+        $item = Item::with(['recipe', 'variants'])->findOrFail($id);
 
         $data = $request->validate([
             'yield_quantity' => ['sometimes', 'numeric', 'min:0.001', 'max:100000'],
@@ -54,7 +54,20 @@ class RecipeController extends Controller
             'ingredients.*.inventory_item_id' => ['required', 'integer', 'exists:inventory_items,id'],
             'ingredients.*.quantity' => ['required', 'numeric', 'min:0', 'max:100000'],
             'ingredients.*.unit' => ['nullable', 'string', 'max:20'],
+            // Null: every size shares the row. Set: one size's own row (owner,
+            // 2026-09-07 — a 1.5L bottle for the 1.5L size only).
+            'ingredients.*.variant_id' => ['nullable', 'integer'],
         ]);
+
+        $ownVariantIds = $item->variants->pluck('id')->map(fn ($v) => (int) $v)->all();
+        foreach ($data['ingredients'] as $i => $row) {
+            $vid = $row['variant_id'] ?? null;
+            if ($vid !== null && !in_array((int) $vid, $ownVariantIds, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "ingredients.{$i}.variant_id" => ['That size does not belong to this item.'],
+                ]);
+            }
+        }
 
         $item = DB::transaction(function () use ($item, $data) {
             $recipe = $item->recipe ?? Recipe::create([
@@ -87,6 +100,7 @@ class RecipeController extends Controller
                 }
                 $recipe->recipeItems()->create([
                     'inventory_item_id' => (int) $row['inventory_item_id'],
+                    'variant_id' => isset($row['variant_id']) && $row['variant_id'] !== null ? (int) $row['variant_id'] : null,
                     'quantity' => (float) $row['quantity'],
                     'unit' => $row['unit'] ?? null,
                 ]);
@@ -98,7 +112,7 @@ class RecipeController extends Controller
             $recipe->total_cost = $this->costs->forRecipe($recipe);
             $recipe->save();
 
-            return $item->load('recipe.recipeItems.inventoryItem');
+            return $item->load(['recipe.recipeItems.inventoryItem', 'recipe.recipeItems.variant', 'variants']);
         });
 
         return response()->json(['item' => $this->payload($item)]);
@@ -120,6 +134,24 @@ class RecipeController extends Controller
             ? round(($price - $basisCost) / $price * 100, 1)
             : null;
 
+        // Each size costed on its own: its share of the shared rows plus
+        // what is its alone. The editor shows this table for a sized dish.
+        $variants = $item->relationLoaded('variants') ? $item->variants : $item->variants()->get();
+        $variantCosts = $variants->where('is_active', true)->sortBy('sort_order')->values()->map(function ($v) use ($item) {
+            $vPrice = (float) ($v->price ?? 0);
+            $vCost = $this->costs->effectiveCostForVariant($item, $v);
+
+            return [
+                'variant_id' => $v->id,
+                'name' => $v->name,
+                'price' => $vPrice,
+                'consumption_factor' => $v->consumptionFactor(),
+                'cost' => $vCost,
+                'profit' => ($vCost !== null && $vPrice > 0) ? round($vPrice - $vCost, 2) : null,
+                'margin_pct' => ($vCost !== null && $vPrice > 0) ? round(($vPrice - $vCost) / $vPrice * 100, 1) : null,
+            ];
+        })->all();
+
         return [
             'id' => $item->id,
             'name' => $item->name,
@@ -128,6 +160,10 @@ class RecipeController extends Controller
             'effective_cost' => $effectiveCost,
             'profit' => $profit,
             'margin_pct' => $marginPct,
+            'variants' => $variants->where('is_active', true)->sortBy('sort_order')->values()->map(fn ($v) => [
+                'id' => $v->id, 'name' => $v->name, 'consumption_factor' => $v->consumptionFactor(),
+            ])->all(),
+            'variant_costs' => $variantCosts,
             'recipe' => $item->recipe ? [
                 'id' => $item->recipe->id,
                 'yield_quantity' => (float) $item->recipe->yield_quantity,
@@ -137,6 +173,8 @@ class RecipeController extends Controller
                 'ingredients' => $item->recipe->recipeItems->map(fn ($ri) => [
                     'id' => $ri->id,
                     'inventory_item_id' => $ri->inventory_item_id,
+                    'variant_id' => $ri->variant_id,
+                    'variant' => $ri->variant ? ['id' => $ri->variant->id, 'name' => $ri->variant->name] : null,
                     'inventory_item' => $ri->inventoryItem ? [
                         'id' => $ri->inventoryItem->id,
                         'name' => $ri->inventoryItem->name,

@@ -49,31 +49,41 @@ class RecipeStockService
         }
 
         $factor = $variant?->consumptionFactor() ?? 1.0;
-        if ($factor <= 0) {
+        $piles = $recipe->rowsFor($variant);
+        // A size that draws nothing from the shared pool and has no rows of
+        // its own is not limited by ingredients at all.
+        if ($factor <= 0 && $piles['own']->isEmpty()) {
             return null;
         }
 
         $yieldQuantity = max(1.0, (float) $recipe->yield_quantity);
         $portions = null;
 
-        foreach ($this->recipeItems($recipe) as $recipeItem) {
-            $inventoryItem = $recipeItem->inventoryItem;
-            if (!$inventoryItem || (float) $recipeItem->quantity <= 0) {
+        // Shared rows at the size's rate; the size's own rows as written
+        // (owner, 2026-09-07: one 1.5L bottle per 1.5L, whatever the factor).
+        foreach ([[$piles['shared'], $factor], [$piles['own'], 1.0]] as [$rows, $rate]) {
+            if ($rate <= 0) {
                 continue;
             }
+            foreach ($rows as $recipeItem) {
+                $inventoryItem = $recipeItem->inventoryItem;
+                if (!$inventoryItem || (float) $recipeItem->quantity <= 0) {
+                    continue;
+                }
 
-            $needed = $this->unitConversions->convert(
-                ((float) $recipeItem->quantity * $factor) / $yieldQuantity,
-                $recipeItem->unit ?: $inventoryItem->unit,
-                $inventoryItem->unit,
-            );
-            if ($needed <= 0) {
-                continue;
+                $needed = $this->unitConversions->convert(
+                    ((float) $recipeItem->quantity * $rate) / $yieldQuantity,
+                    $recipeItem->unit ?: $inventoryItem->unit,
+                    $inventoryItem->unit,
+                );
+                if ($needed <= 0) {
+                    continue;
+                }
+
+                // Whole portions only — half an ingredient is not half a dish.
+                $fromThisLine = (int) floor(max(0.0, (float) $inventoryItem->current_stock) / $needed);
+                $portions = $portions === null ? $fromThisLine : min($portions, $fromThisLine);
             }
-
-            // Whole portions only — half an ingredient is not half a dish.
-            $fromThisLine = (int) floor(max(0.0, (float) $inventoryItem->current_stock) / $needed);
-            $portions = $portions === null ? $fromThisLine : min($portions, $fromThisLine);
         }
 
         return $portions;
