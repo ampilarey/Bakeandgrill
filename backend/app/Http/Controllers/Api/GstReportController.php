@@ -45,6 +45,12 @@ class GstReportController extends Controller
         return response()->json($this->reports->inputStatement($this->period($request)));
     }
 
+    /** GST on purchases and expenses that could be claimed but is not — a chase list. */
+    public function toClaim(Request $request): JsonResponse
+    {
+        return response()->json($this->reports->toClaim($this->period($request)));
+    }
+
     public function ledger(Request $request): JsonResponse
     {
         return response()->json($this->reports->ledger(

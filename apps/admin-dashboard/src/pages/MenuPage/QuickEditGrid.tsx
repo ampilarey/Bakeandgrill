@@ -3,6 +3,9 @@ import type { MenuCategory, MenuGroupRow, MenuItem, MenuVariant } from '../../ap
 import {
   bulkRowErrors, bulkUpdateItems, fetchAdminItems,
   type BulkItemFields, type BulkRowErrors,
+  exportRecipesCsv,
+  importRecipesCsv,
+  type RecipeCsvImportResult,
 } from '../../api';
 import { Btn, Card, EmptyState, Spinner } from '../../components/SharedUI';
 import { BulkActionBar } from './BulkActionBar';
@@ -24,6 +27,7 @@ import {
   marginPct,
   menuGroupOptions,
   saveVisibleColumns,
+  STOCK_LINK_LABEL,
   visibleColumns,
   type GridColumn,
 } from './gridColumns';
@@ -160,6 +164,11 @@ export function QuickEditGrid({
   const [error, setError] = useState('');
   const [pending, setPending] = useState<BulkAction | null>(null);
   const [csvNotice, setCsvNotice] = useState<CsvImportResult | null>(null);
+  // Recipes CSV: the file is checked on the server first (dry run) and only
+  // written after the owner confirms what it would change.
+  const [recipePreview, setRecipePreview] = useState<{ file: File; result: RecipeCsvImportResult } | null>(null);
+  const [recipeErrors, setRecipeErrors] = useState<string[] | null>(null);
+  const [recipeBusy, setRecipeBusy] = useState(false);
   const [filters, setFilters] = useState<GridFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortState>(null);
   const [applyToSizes, setApplyToSizes] = useState(true);
@@ -400,6 +409,28 @@ export function QuickEditGrid({
     }
   };
 
+  const importRecipes = async (file: File, confirm = false) => {
+    setError('');
+    setRecipeErrors(null);
+    setRecipeBusy(true);
+    try {
+      const result = await importRecipesCsv(file, !confirm);
+      if (confirm) {
+        setRecipePreview(null);
+        onSaved(result.message);
+        await loadAll();
+      } else {
+        setRecipePreview({ file, result });
+      }
+    } catch (e) {
+      const body = (e as { body?: { errors?: string[]; message?: string } }).body;
+      setRecipePreview(null);
+      setRecipeErrors(body?.errors ?? [body?.message ?? (e as Error).message]);
+    } finally {
+      setRecipeBusy(false);
+    }
+  };
+
   const previewRows = pending ? previewAction(selectedItems, pending, { applyToSizes }) : [];
   const previewChanged = changedPreviewRows(previewRows);
 
@@ -428,7 +459,44 @@ export function QuickEditGrid({
         hasSizes={hasSizes}
         onExport={exportCsv}
         onImport={(file) => void importCsv(file)}
+        onExportRecipes={canSeeCost ? () => void exportRecipesCsv().catch((e) => setError((e as Error).message)) : undefined}
+        onImportRecipes={canSeeCost ? (file) => void importRecipes(file) : undefined}
       />
+
+      {recipeErrors && (
+        <Card style={{ padding: '12px 16px', marginBottom: 14, borderLeft: '3px solid var(--color-danger)' }} data-testid="recipes-csv-errors">
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>That recipes file could not be read. Nothing was saved.</div>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            {recipeErrors.slice(0, 20).map((line) => <li key={line}>{line}</li>)}
+            {recipeErrors.length > 20 && <li>…and {recipeErrors.length - 20} more.</li>}
+          </ul>
+          <div style={{ marginTop: 8 }}><Btn small variant="secondary" onClick={() => setRecipeErrors(null)}>Dismiss</Btn></div>
+        </Card>
+      )}
+
+      {recipePreview && (
+        <Card style={{ padding: '12px 16px', marginBottom: 14 }} data-testid="recipes-csv-preview">
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
+            {recipePreview.result.items} dish{recipePreview.result.items === 1 ? '' : 'es'} in the file
+            {' — '}{recipePreview.result.rows} ingredient row{recipePreview.result.rows === 1 ? '' : 's'}
+            {recipePreview.result.cleared > 0 ? `, ${recipePreview.result.cleared} recipe${recipePreview.result.cleared === 1 ? '' : 's'} would be emptied` : ''}.
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 4 }}>
+            Each dish listed gets its recipe replaced by the rows in the file. Dishes not in the file are left alone.
+          </div>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6, maxHeight: 180, overflowY: 'auto' }}>
+            {recipePreview.result.changes.map((c) => (
+              <li key={c.item_id}>{c.item}: {c.rows_before} → {c.rows_after} row{c.rows_after === 1 ? '' : 's'}</li>
+            ))}
+          </ul>
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn small onClick={() => void importRecipes(recipePreview.file, true)} disabled={recipeBusy} data-testid="recipes-csv-confirm">
+              {recipeBusy ? 'Saving…' : 'Save these recipes'}
+            </Btn>
+            <Btn small variant="secondary" onClick={() => setRecipePreview(null)} disabled={recipeBusy}>Cancel</Btn>
+          </div>
+        </Card>
+      )}
 
       {/* With nothing ticked the bar is one line of hint, not an empty card
           holding the sheet down. */}
@@ -880,6 +948,24 @@ function ItemCell({
   }
 
   // "Also show in" is picked in the item editor; here it is only shown.
+  if (column.key === 'stock_link') {
+    const link = item.stock_link ?? 'none';
+    const hint: Record<typeof link, string> = {
+      recipe: `Takes ingredients from stock through its recipe (${item.recipe_rows ?? 0} row${item.recipe_rows === 1 ? '' : 's'})`,
+      counted: 'Has its own count on the menu item or a size',
+      bundle: 'Deducts through the dishes inside it',
+      none: 'Selling this moves nothing in stock — add a recipe or track it',
+    };
+    return (
+      <td
+        style={{ ...cell, fontSize: 12, color: link === 'none' ? 'var(--color-warning)' : 'var(--color-text-secondary)', fontWeight: link === 'none' ? 600 : undefined }}
+        title={hint[link]}
+        data-testid={`stock-link-${item.id}`}
+      >
+        {STOCK_LINK_LABEL[link]}
+      </td>
+    );
+  }
   if (column.key === 'also_in') {
     const names = (item.extra_category_ids ?? [])
       .map((id) => categories.find((c) => c.id === id)?.name)

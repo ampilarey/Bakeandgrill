@@ -75,6 +75,7 @@ Route::middleware(['auth:sanctum', 'permission:reports.financial'])->prefix('rep
         Route::get('/summary', [App\Http\Controllers\Api\GstReportController::class, 'summary']);
         Route::get('/output-statement', [App\Http\Controllers\Api\GstReportController::class, 'outputStatement']);
         Route::get('/input-statement', [App\Http\Controllers\Api\GstReportController::class, 'inputStatement']);
+        Route::get('/to-claim', [App\Http\Controllers\Api\GstReportController::class, 'toClaim']);
         Route::get('/ledger', [App\Http\Controllers\Api\GstReportController::class, 'ledger']);
         Route::get('/reconciliation', [App\Http\Controllers\Api\GstReportController::class, 'reconciliation']);
         Route::post('/periods/{period}/lock', [App\Http\Controllers\Api\GstReportController::class, 'lockPeriod']);

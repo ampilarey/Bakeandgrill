@@ -52,6 +52,12 @@ eligible for GST return." Both hold:
 A purchase whose lines carry no GST is untouched: the whole-invoice figures a
 person types for a claim still stand.
 
+**GST you could claim back** (GST page → Input GST tab, top card): every
+purchase and approved expense in the period that carries GST but is not
+being claimed, with what is missing (supplier TIN, invoice number, invoice
+date) or the recorded block reason. It lists documents; the monthly sheet
+only gives the total. Cancelled purchases are left out.
+
 ## MIRA exports
 
 | Export | When required |
@@ -77,6 +83,7 @@ Sheets match MIRA layout: `TaxInvoices`, `OtherTransactions`, and `Input Tax Sta
 - `GET /api/reports/finance/gst/summary?period=YYYY-MM`
 - `GET /api/reports/finance/gst/output-statement?period=`
 - `GET /api/reports/finance/gst/input-statement?period=`
+- `GET /api/reports/finance/gst/to-claim?period=` — GST-bearing documents not yet claimed
 - Export routes under `/api/reports/finance/gst/export/*`
 
 Legacy `GET /api/reports/finance/tax` remains for Reports page compatibility.

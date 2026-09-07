@@ -30,7 +30,7 @@ export type GridFilters = {
   availability: 'any' | 'available' | 'sold_out';
   status: 'any' | 'active' | 'hidden';
   sizes: 'any' | 'with' | 'without';
-  stock: 'any' | 'tracked' | 'untracked' | 'low' | 'out';
+  stock: 'any' | 'tracked' | 'untracked' | 'low' | 'out' | 'unlinked';
   minPrice: string;
   maxPrice: string;
   columns: ColumnFilters;
@@ -154,6 +154,8 @@ function matchesStock(item: MenuItem, mode: GridFilters['stock']): boolean {
   switch (mode) {
     case 'tracked': return tracked;
     case 'untracked': return !tracked;
+    // Sells without touching stock: no recipe rows, no count, not a bundle.
+    case 'unlinked': return (item.stock_link ?? 'none') === 'none';
     case 'out': return tracked && Number(item.stock_quantity ?? 0) <= 0;
     case 'low': {
       if (!tracked) return false;

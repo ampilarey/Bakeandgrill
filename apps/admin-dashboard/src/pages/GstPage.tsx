@@ -7,10 +7,10 @@ import { Card } from '../components/ui/Card';
 import { Tabs, TabList, Tab } from '../components/ui/Tabs';
 import {
   getGstSettings, updateGstSettings, getGstSummary, getGstReconciliation,
-  getGstOutputStatement, getGstInputStatement, lockGstPeriod,
+  getGstOutputStatement, getGstInputStatement, getGstToClaim, lockGstPeriod,
   downloadGstSummaryCsv, downloadGstOutputXlsx, downloadGstInputXlsx, downloadGstLedgerCsv,
   getGstLedger, postGstManualAdjustment,
-  type GstSettings, type GstSummary, type GstLedgerEntry,
+  type GstSettings, type GstSummary, type GstLedgerEntry, type GstToClaim,
 } from '../api/gst';
 import { getInvoices, type Invoice } from '../api/finance';
 import { today } from '../utils/dateHelpers';
@@ -37,6 +37,7 @@ export default function GstPage() {
   const [settings, setSettings] = useState<GstSettings | null>(null);
   const [output, setOutput] = useState<{ tax_invoices: unknown[]; other_transactions: unknown[] } | null>(null);
   const [inputRows, setInputRows] = useState<unknown[]>([]);
+  const [toClaim, setToClaim] = useState<GstToClaim | null>(null);
   const [warnings, setWarnings] = useState<GstSummary['warnings']>([]);
   const [taxInvoices, setTaxInvoices] = useState<Invoice[]>([]);
   const [creditNotes, setCreditNotes] = useState<Invoice[]>([]);
@@ -89,6 +90,8 @@ export default function GstPage() {
     }
     if (tab === 'Input GST') {
       getGstInputStatement(period).then((d) => setInputRows((d as { rows: unknown[] }).rows ?? []));
+      setToClaim(null);
+      getGstToClaim(period).then(setToClaim).catch(() => setToClaim({ period, rows: [], total_laar: 0, count: 0 }));
     }
     if (tab === 'Tax Invoices' || tab === 'Credit Notes') {
       const { from, to } = periodRange(period);
@@ -281,6 +284,53 @@ export default function GstPage() {
           <pre style={{ fontSize: 11, overflow: 'auto', background: '#FAF7F2', padding: 12, borderRadius: 8 }}>
             {JSON.stringify(output, null, 2)}
           </pre>
+        </Card>
+      )}
+
+      {tab === 'Input GST' && (
+        <Card style={{ marginTop: 16, padding: 16 }} data-testid="gst-to-claim">
+          <h3 style={{ marginTop: 0 }}>GST you could claim back</h3>
+          <p style={{ margin: '0 0 12px', color: 'var(--color-text-secondary)', fontSize: 13 }}>
+            Purchases and expenses this period that carry GST but are not being claimed. Most only need the
+            supplier&apos;s tax invoice details filled in; once the claim is ticked they move up into the return.
+          </p>
+          {!toClaim ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+          ) : toClaim.rows.length === 0 ? (
+            <p style={{ color: 'var(--color-text-muted)' }}>Nothing waiting — every GST-bearing document this period is either claimed or has no GST.</p>
+          ) : (
+            <>
+              <StatCard label="Waiting to be claimed" value={mvr(toClaim.total_laar)} accent="var(--color-warning)" sub={`${toClaim.count} document${toClaim.count === 1 ? '' : 's'}`} />
+              <ResponsiveTable style={{ marginTop: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      {['Date', 'Document', 'Supplier', 'Total paid', 'GST inside', 'What is missing'].map((h) => (
+                        <th key={h} style={{ padding: '8px 6px', color: 'var(--color-text-secondary)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {toClaim.rows.map((row) => (
+                      <tr key={`${row.kind}-${row.id}`} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                        <td style={{ padding: '8px 6px' }}>{row.date ?? '—'}</td>
+                        <td style={{ padding: '8px 6px', fontWeight: 600 }}>
+                          <Link to={row.kind === 'purchase' ? '/purchasing/orders' : '/expenses'}>{row.number ?? `${row.kind} #${row.id}`}</Link>
+                          <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>{row.kind}</span>
+                        </td>
+                        <td style={{ padding: '8px 6px' }}>{row.supplier ?? '—'}</td>
+                        <td style={{ padding: '8px 6px' }}>{mvr(row.total_laar)}</td>
+                        <td style={{ padding: '8px 6px', fontWeight: 600 }}>{mvr(row.gst_laar)}</td>
+                        <td style={{ padding: '8px 6px', color: row.missing.length ? 'var(--color-warning)' : 'var(--color-text-secondary)' }}>
+                          {row.missing.length ? `Add ${row.missing.join(', ')}` : row.reason}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ResponsiveTable>
+            </>
+          )}
         </Card>
       )}
 

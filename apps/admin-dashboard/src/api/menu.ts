@@ -1,4 +1,5 @@
-import { req } from './client';
+import { downloadBlob } from '@shared/api';
+import { req, requestBlob } from './client';
 
 export type MenuCategory = {
   id: number;
@@ -87,6 +88,13 @@ export type MenuItem = {
   cost?: number | null;
   recipe_cost?: number | null;
   effective_cost?: number | null;
+  /**
+   * How selling this dish reaches stock (admin list only): 'recipe' takes
+   * ingredients, 'counted' has its own count, 'bundle' deducts through its
+   * children, 'none' touches nothing — the ones the owner still has to link.
+   */
+  stock_link?: 'recipe' | 'counted' | 'bundle' | 'none';
+  recipe_rows?: number;
   has_variants?: boolean;
   variants?: MenuVariant[];
   /** Add-ons attached to this item. */
@@ -779,4 +787,28 @@ export async function updateModifier(id: number, payload: Partial<ModifierPayloa
 
 export async function deleteModifier(id: number): Promise<{ message: string; deactivated: boolean }> {
   return req(`/modifiers/${id}`, { method: 'DELETE' });
+}
+
+/** Every recipe as one CSV row per ingredient line (owner-only, recipes.manage). */
+export async function exportRecipesCsv(): Promise<void> {
+  const blob = await requestBlob('/recipes/export.csv');
+  downloadBlob(blob, `recipes-${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+export interface RecipeCsvImportResult {
+  dry_run: boolean;
+  items: number;
+  rows: number;
+  cleared: number;
+  changes: { item_id: number; item: string; rows_before: number; rows_after: number }[];
+  message: string;
+  errors?: string[];
+}
+
+/** The export format back in. `dryRun` reports what would change without saving. */
+export async function importRecipesCsv(file: File, dryRun: boolean): Promise<RecipeCsvImportResult> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('dry_run', dryRun ? '1' : '0');
+  return req('/recipes/import.csv', { method: 'POST', body: form });
 }

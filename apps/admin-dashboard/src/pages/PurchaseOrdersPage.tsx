@@ -1466,11 +1466,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <div
                 key={idx}
                 data-testid={`po-edit-line-${idx}`}
-                style={{
-                  display: 'grid', gridTemplateColumns: '1fr 90px 110px auto auto',
-                  gap: 8, alignItems: 'center',
-                  border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 10px',
-                }}
+                className="po-edit-line"
               >
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{line.name}</span>
                 <input

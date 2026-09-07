@@ -44,6 +44,8 @@ export function GridToolbar({
   hasSizes,
   onExport,
   onImport,
+  onExportRecipes,
+  onImportRecipes,
 }: {
   filters: GridFilters;
   onFiltersChange: (f: GridFilters) => void;
@@ -59,6 +61,9 @@ export function GridToolbar({
   hasSizes: boolean;
   onExport: () => void;
   onImport: (file: File) => void;
+  /** Recipes as a spreadsheet — only offered to whoever can see cost. */
+  onExportRecipes?: () => void;
+  onImportRecipes?: (file: File) => void;
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
@@ -144,6 +149,27 @@ export function GridToolbar({
               (e.currentTarget.parentElement?.querySelector('input[type=file]') as HTMLInputElement | null)?.click();
             }} data-testid="csv-import">⭱ Import CSV</Btn>
           </label>
+          {onExportRecipes && (
+            <Btn small variant="secondary" onClick={onExportRecipes} data-testid="recipes-csv-export">⭳ Recipes CSV</Btn>
+          )}
+          {onImportRecipes && (
+            <label style={{ display: 'inline-flex' }}>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                data-testid="recipes-csv-file"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onImportRecipes(file);
+                  e.target.value = '';
+                }}
+              />
+              <Btn small variant="secondary" onClick={(e) => {
+                (e.currentTarget.parentElement?.querySelector('input[type=file]') as HTMLInputElement | null)?.click();
+              }} data-testid="recipes-csv-import">⭱ Import recipes</Btn>
+            </label>
+          )}
         </div>
       </div>
 
@@ -240,6 +266,7 @@ export function GridToolbar({
               <option value="untracked">Not tracked</option>
               <option value="low">Low stock</option>
               <option value="out">Out of stock</option>
+              <option value="unlinked">Not linked to stock</option>
             </select>
           </Labelled>
           <Labelled label="Price between">

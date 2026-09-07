@@ -5904,3 +5904,25 @@ work area is a single column that
 @media (min-width: 430px) {
   .admin-shell-sheet-prefs { display: none; }
 }
+
+/* ── Purchase order: edit-lines row ─────────────────────────────────────
+   Name, quantity, unit cost, GST tick, Remove. Five columns on a desktop;
+   on a phone the name takes the top line and the controls wrap under it,
+   so the modal never scrolls sideways. */
+.po-edit-line {
+  display: grid;
+  grid-template-columns: 1fr 90px 110px auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+@media (max-width: 767px) {
+  .po-edit-line {
+    grid-template-columns: 1fr 1fr auto auto;
+  }
+  .po-edit-line > :first-child {
+    grid-column: 1 / -1;
+  }
+}

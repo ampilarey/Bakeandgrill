@@ -505,6 +505,23 @@ class ItemController extends Controller
                 $data['cost'] = $includeCost && $item->cost !== null ? (float) $item->cost : null;
                 $data['recipe_cost'] = $recipeCosts?->forItem($item);
                 $data['effective_cost'] = $recipeCosts?->effectiveCost($item);
+                /*
+                 * How a sale of this moves stock, if at all. Owner, 2026-09-07:
+                 * anything sold that draws nothing off a shelf is invisible to
+                 * stock, usage and reorder alerts, and the list of those is
+                 * where the counting is still guesswork.
+                 *   recipe   ingredient rows take stock as it sells
+                 *   counted  a prepared count on the item or its sizes
+                 *   bundle   its children move stock, not the bundle itself
+                 *   none     nothing moves
+                 */
+                $recipeRows = $item->relationLoaded('recipe') && $item->recipe && $item->recipe->relationLoaded('recipeItems')
+                    ? $item->recipe->recipeItems->count()
+                    : 0;
+                $counted = (bool) $item->track_stock
+                    || ($item->relationLoaded('variants') && $item->variants->contains(fn ($v) => (bool) $v->track_stock));
+                $data['recipe_rows'] = $recipeRows;
+                $data['stock_link'] = $item->is_combo ? 'bundle' : ($recipeRows > 0 ? 'recipe' : ($counted ? 'counted' : 'none'));
                 $data['dietary_tags'] = $item->dietary_tags ?? [];
                 $data['allergens'] = $item->allergens ?? [];
                 $data['calories'] = $item->calories !== null ? (int) $item->calories : null;

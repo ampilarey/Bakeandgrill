@@ -162,6 +162,80 @@ class GstReportService
         ];
     }
 
+    /**
+     * GST that could come back but has not been claimed: purchases and
+     * expenses in the period carrying GST with no tax invoice on file, or
+     * with the claim left unticked. Owner, 2026-09-07: the monthly sheet
+     * says how much is blocked; this says which documents, so somebody can
+     * chase the invoice.
+     *
+     * @return array{period: string, rows: list<array<string, mixed>>, total_laar: int, count: int}
+     */
+    public function toClaim(string $period): array
+    {
+        $from = $this->periods->periodStartDate($period)->toDateString();
+        $to = $this->periods->periodEndDate($period)->toDateString();
+
+        $purchases = \App\Models\Purchase::query()
+            ->with('supplier:id,name')
+            ->where('status', '!=', 'cancelled')
+            ->where('gst_laar', '>', 0)
+            ->where(fn ($q) => $q->whereNull('is_input_tax_claimable')->orWhere('is_input_tax_claimable', false))
+            ->whereDate('purchase_date', '>=', $from)
+            ->whereDate('purchase_date', '<=', $to)
+            ->orderBy('purchase_date')
+            ->get()
+            ->map(fn ($p) => [
+                'kind' => 'purchase',
+                'id' => $p->id,
+                'number' => $p->purchase_number,
+                'date' => $p->purchase_date?->toDateString(),
+                'supplier' => $p->supplier?->name ?? $p->supplier_name_text,
+                'gst_laar' => (int) $p->gst_laar,
+                'total_laar' => (int) ($p->total_laar ?? round((float) $p->total * 100)),
+                'reason' => $p->claim_block_reason ?? 'Not claimed.',
+                'missing' => array_values(array_filter([
+                    empty($p->supplier_tin) ? 'supplier TIN' : null,
+                    empty($p->supplier_invoice_no) ? 'invoice number' : null,
+                    empty($p->supplier_invoice_date) ? 'invoice date' : null,
+                ])),
+            ]);
+
+        $expenses = \App\Models\Expense::query()
+            ->with('supplier:id,name')
+            ->where('status', 'approved')
+            ->where('tax_laar', '>', 0)
+            ->where(fn ($q) => $q->whereNull('is_input_tax_claimable')->orWhere('is_input_tax_claimable', false))
+            ->whereDate('expense_date', '>=', $from)
+            ->whereDate('expense_date', '<=', $to)
+            ->orderBy('expense_date')
+            ->get()
+            ->map(fn ($e) => [
+                'kind' => 'expense',
+                'id' => $e->id,
+                'number' => $e->expense_number,
+                'date' => \Carbon\Carbon::parse($e->expense_date)->toDateString(),
+                'supplier' => $e->supplier?->name,
+                'gst_laar' => (int) $e->tax_laar,
+                'total_laar' => (int) ($e->amount_laar ?? round((float) $e->amount * 100)),
+                'reason' => $e->claim_block_reason ?? 'Not claimed.',
+                'missing' => array_values(array_filter([
+                    empty($e->supplier_tin) ? 'supplier TIN' : null,
+                    empty($e->supplier_invoice_no) ? 'invoice number' : null,
+                    empty($e->supplier_invoice_date) ? 'invoice date' : null,
+                ])),
+            ]);
+
+        $rows = $purchases->concat($expenses)->sortBy('date')->values();
+
+        return [
+            'period' => $period,
+            'rows' => $rows->all(),
+            'total_laar' => (int) $rows->sum('gst_laar'),
+            'count' => $rows->count(),
+        ];
+    }
+
     public function inputStatement(string $period): array
     {
         $settings = $this->settings->get();

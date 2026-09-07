@@ -78,6 +78,15 @@ const numOf = (v: unknown) => {
   return Number.isFinite(n) ? n : Number.NEGATIVE_INFINITY;
 };
 
+export const STOCK_LINK_LABEL: Record<NonNullable<MenuItem['stock_link']>, string> = {
+  recipe: 'Recipe',
+  counted: 'Counted',
+  bundle: 'Via children',
+  none: 'Not linked',
+};
+
+const STOCK_LINK_ORDER: Record<NonNullable<MenuItem['stock_link']>, number> = { none: 0, counted: 1, recipe: 2, bundle: 3 };
+
 export const GRID_COLUMNS: GridColumn[] = [
   { key: 'name', label: 'Name', group: 'Basics', kind: 'text', field: 'name', variantField: 'name', minWidth: 200, defaultOn: true, sortValue: (i) => str(i.name) },
   { key: 'name_dv', label: 'Name (Dhivehi)', group: 'Basics', kind: 'text', field: 'name_dv', variantField: 'name_dv', minWidth: 150, defaultOn: false, sortValue: (i) => str(i.name_dv) },
@@ -105,6 +114,9 @@ export const GRID_COLUMNS: GridColumn[] = [
   { key: 'track_stock', label: 'Track stock', group: 'Stock', kind: 'bool', field: 'track_stock', variantField: 'track_stock', width: 80, defaultOn: false, sortValue: (i) => (i.track_stock ? 1 : 0) },
   { key: 'stock', label: 'Stock', group: 'Stock', kind: 'int', field: 'stock_quantity', variantField: 'stock_qty', width: 80, defaultOn: true, sortValue: (i) => numOf(i.stock_quantity) },
   { key: 'low_stock_threshold', label: 'Alert at', group: 'Stock', kind: 'int', field: 'low_stock_threshold', variantField: 'low_stock_threshold', width: 80, defaultOn: false, sortValue: (i) => numOf(i.low_stock_threshold) },
+  // Read-only: which way a sale reaches stock. 'none' is the stock-take list —
+  // dishes that sell without moving anything (owner, 2026-09-07).
+  { key: 'stock_link', label: 'Stock link', group: 'Stock', kind: 'text', width: 120, defaultOn: false, sortValue: (i) => STOCK_LINK_ORDER[i.stock_link ?? 'none'] },
   { key: 'consumption_factor', label: 'Uses', group: 'Stock', kind: 'decimal', variantField: 'consumption_factor', width: 76, defaultOn: false },
   // These two sat side by side as "Avail" and "Active" — both ticks, both 66px,
   // and the owner had to ask what the first one meant. They are the daily

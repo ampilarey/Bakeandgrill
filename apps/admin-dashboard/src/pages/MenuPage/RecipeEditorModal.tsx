@@ -176,7 +176,8 @@ export function RecipeEditorModal({
             <p style={{ color: 'var(--color-danger)', fontSize: 13, margin: '0 0 12px' }}>{error}</p>
           )}
 
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: hasSizes ? 560 : 420 }}>
             <thead><tr>
               <th style={th}>Ingredient</th>
               {hasSizes && <th style={{ ...th, width: 120 }}>For size</th>}
@@ -261,6 +262,7 @@ export function RecipeEditorModal({
               })}
             </tbody>
           </table>
+          </div>
 
           <div style={{ marginTop: 10 }}>
             <Btn small variant="secondary" onClick={() => setRows((rs) => [...rs, newRow()])}>

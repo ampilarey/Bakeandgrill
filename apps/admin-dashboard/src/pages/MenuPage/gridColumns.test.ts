@@ -23,8 +23,9 @@ describe('column set', () => {
     // A column that renders an input but has no field would silently discard
     // whatever was typed into it.
     // margin is arithmetic, consumption_factor is size-only, also_in is picked
-    // in the item editor and only shown here.
-    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor', 'also_in'].includes(c.key));
+    // in the item editor and only shown here, stock_link is worked out from
+    // the recipe and the stock flags.
+    const editable = GRID_COLUMNS.filter((c) => !['margin', 'consumption_factor', 'also_in', 'stock_link'].includes(c.key));
 
     for (const column of editable) {
       expect(column.field, `${column.key} needs a field`).toBeTruthy();

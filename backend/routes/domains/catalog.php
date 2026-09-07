@@ -79,6 +79,9 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:recipes.manage'])->group(function () {
         Route::get('/items/{id}/recipe', [App\Http\Controllers\Api\RecipeController::class, 'show']);
         Route::put('/items/{id}/recipe', [App\Http\Controllers\Api\RecipeController::class, 'update']);
+        // Every recipe as a spreadsheet, and back (owner, 2026-09-07).
+        Route::get('/recipes/export.csv', [App\Http\Controllers\Api\RecipeController::class, 'exportCsv']);
+        Route::post('/recipes/import.csv', [App\Http\Controllers\Api\RecipeController::class, 'importCsv']);
     });
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {

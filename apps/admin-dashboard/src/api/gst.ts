@@ -62,6 +62,31 @@ export async function getGstInputStatement(period: string): Promise<unknown> {
   return req(`/reports/finance/gst/input-statement?period=${encodeURIComponent(period)}`);
 }
 
+export interface GstToClaimRow {
+  kind: 'purchase' | 'expense';
+  id: number;
+  number: string | null;
+  date: string | null;
+  supplier: string | null;
+  gst_laar: number;
+  total_laar: number;
+  reason: string;
+  /** Which of supplier TIN / invoice number / invoice date is still blank. */
+  missing: string[];
+}
+
+export interface GstToClaim {
+  period: string;
+  rows: GstToClaimRow[];
+  total_laar: number;
+  count: number;
+}
+
+/** GST paid on purchases and expenses in the period that has not been claimed back. */
+export async function getGstToClaim(period: string): Promise<GstToClaim> {
+  return req(`/reports/finance/gst/to-claim?period=${encodeURIComponent(period)}`);
+}
+
 export async function lockGstPeriod(period: string): Promise<{ message: string }> {
   return req(`/reports/finance/gst/periods/${encodeURIComponent(period)}/lock`, { method: 'POST' });
 }

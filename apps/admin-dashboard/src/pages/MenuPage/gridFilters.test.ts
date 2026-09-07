@@ -81,6 +81,18 @@ describe('filters', () => {
     expect(applyFilters(menu, { ...EMPTY_FILTERS, stock: 'out' })).toEqual([]);
   });
 
+  it('lists the dishes that sell without touching stock', () => {
+    const linked = [
+      item({ id: 4, name: 'Bajiya', stock_link: 'recipe', recipe_rows: 2 }),
+      item({ id: 5, name: 'Water', stock_link: 'counted' }),
+      item({ id: 6, name: 'Platter', stock_link: 'bundle' }),
+      item({ id: 7, name: 'Tea', stock_link: 'none' }),
+      item({ id: 8, name: 'Old row' }),
+    ];
+    // No stock_link at all (older payload) counts as unlinked rather than hiding the row.
+    expect(applyFilters(linked, { ...EMPTY_FILTERS, stock: 'unlinked' }).map((i) => i.id)).toEqual([7, 8]);
+  });
+
   it('filters by a price range, inclusive at both ends', () => {
     expect(applyFilters(menu, { ...EMPTY_FILTERS, minPrice: '20' }).map((i) => i.id)).toEqual([2, 3]);
     expect(applyFilters(menu, { ...EMPTY_FILTERS, maxPrice: '20' }).map((i) => i.id)).toEqual([1, 2]);
