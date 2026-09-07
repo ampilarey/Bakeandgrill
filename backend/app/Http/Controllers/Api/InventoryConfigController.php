@@ -129,6 +129,37 @@ class InventoryConfigController extends Controller
             ->all();
     }
 
+    /** 210.000000 reads as 210, 0.500000 as 0.5. */
+    private function tidy(float $n): string
+    {
+        return rtrim(rtrim(number_format($n, 6, '.', ''), '0'), '.');
+    }
+
+    /**
+     * A name this item has not used yet, built from the one that was typed
+     * and the size it holds: "Packet" taken becomes "Packet 10", and if that
+     * is taken too, "Packet 10 (2)".
+     */
+    private function freePackName(InventoryItem $item, string $typed, float $baseUnits): string
+    {
+        $taken = $item->purchaseUnits()->pluck('name')
+            ->map(fn ($n) => mb_strtolower(trim((string) $n)))->all();
+
+        $candidate = $typed . ' ' . $this->tidy($baseUnits);
+        if (!in_array(mb_strtolower($candidate), $taken, true)) {
+            return $candidate;
+        }
+
+        for ($i = 2; $i < 50; $i++) {
+            $next = $candidate . " ({$i})";
+            if (!in_array(mb_strtolower($next), $taken, true)) {
+                return $next;
+            }
+        }
+
+        return $candidate . ' ' . uniqid();
+    }
+
     public function storePurchaseUnit(Request $request, int $itemId)
     {
         $item = InventoryItem::findOrFail($itemId);
@@ -146,6 +177,12 @@ class InventoryConfigController extends Controller
             'of_quantity' => 'required_with:of_purchase_unit_id|nullable|numeric|min:0.000001',
             // The EAN on this pack, so a scan can say WHICH tin arrived.
             'barcode' => 'nullable|string|max:64',
+            /*
+             * Yes, really change the size of the pack that already has this
+             * name. Without it a name already in use is refused rather than
+             * silently resized — see below.
+             */
+            'replace' => 'sometimes|boolean',
         ]);
 
         $barcode = isset($v['barcode']) ? trim((string) $v['barcode']) : '';
@@ -184,6 +221,39 @@ class InventoryConfigController extends Controller
             ->first();
 
         if ($existing !== null) {
+            /*
+             * A name already in use, for a different amount, is the dangerous
+             * one. Owner, 2026-09-07: "sometimes we buy 6 pcs packets, and
+             * sometimes 10 pcs packets" — two real sizes of the same thing.
+             * Typing "Packet" for the second used to resize the first without
+             * a word, so every later order of that item quietly became 10s.
+             *
+             * Both readings are legitimate — a correction, or a second size —
+             * and only the person typing knows which, so ask. `replace` is
+             * the correction; a distinct name is the second size, and one is
+             * suggested so the answer is one click either way.
+             */
+            $wasSize = (float) $existing->base_units;
+            if (!$request->boolean('replace') && abs($wasSize - $baseUnits) > 0.000001) {
+                return response()->json([
+                    'message' => sprintf(
+                        '"%s" on %s already holds %s. Is this a correction, or a second size?',
+                        $existing->name,
+                        $item->name,
+                        $this->tidy($wasSize),
+                    ),
+                    'conflict' => 'pack_name_in_use',
+                    'existing' => [
+                        'id' => $existing->id,
+                        'name' => $existing->name,
+                        'base_units' => $wasSize,
+                    ],
+                    'requested_base_units' => $baseUnits,
+                    // "Packet" already taken, so "Packet 10" for the new size.
+                    'suggested_name' => $this->freePackName($item, $name, $baseUnits),
+                ], 409);
+            }
+
             $existing->update(array_filter([
                 'base_units' => $baseUnits,
                 'barcode' => $barcode !== '' ? $barcode : null,

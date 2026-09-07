@@ -24,7 +24,8 @@ import {
   getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
-  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit,
+  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit, packNameConflict,
+  type PackNameConflict,
   createSupplier,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type InventoryCostUsage, type PreparedStockRow,
@@ -198,6 +199,13 @@ export default function InventoryPage() {
   const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
+  /*
+   * Owner, 2026-09-07: "sometimes we buy 6 pcs packets. And sometimes 10 pcs
+   * packets." A name already in use is either a correction or a second size,
+   * and only the person typing knows which, so the server refuses and this
+   * asks rather than silently resizing the pack that is already there.
+   */
+  const [packClash, setPackClash] = useState<PackNameConflict | null>(null);
   const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '' });
   const [packSaving, setPackSaving] = useState(false);
   const [scanPackBarcode, setScanPackBarcode] = useState(false);
@@ -231,9 +239,9 @@ export default function InventoryPage() {
     finally { setPacksLoading(false); }
   };
 
-  const savePack = async () => {
+  const savePack = async (options: { name?: string; replace?: boolean } = {}) => {
     if (!editItem) return;
-    const name = packForm.name.trim();
+    const name = (options.name ?? packForm.name).trim();
     const qty = parseFloat(packForm.qty);
     if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return; }
     if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return; }
@@ -241,17 +249,22 @@ export default function InventoryPage() {
     setPacksError('');
     try {
       const barcode = packForm.barcode.trim();
+      const replace = options.replace ? { replace: true } : {};
       await createPurchaseUnit(editItem.id, packForm.ofPackId
         // "A case is 7 trays" — how a box is actually described. The server
         // resolves it to the base unit before storing.
-        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}) }
-        : { name, base_units: qty, ...(barcode ? { barcode } : {}) });
+        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}), ...replace }
+        : { name, base_units: qty, ...(barcode ? { barcode } : {}), ...replace });
       const res = await getPurchaseUnits(editItem.id);
       setPacks(res.purchase_units);
       setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
+      setPackClash(null);
       // The row shows an item's packs, so it has to hear about a new one.
       void loadItems();
-    } catch (e) { setPacksError((e as Error).message); }
+    } catch (e) {
+      const clash = packNameConflict(e);
+      if (clash) { setPackClash(clash); } else { setPacksError((e as Error).message); }
+    }
     finally { setPackSaving(false); }
   };
 
@@ -331,6 +344,7 @@ export default function InventoryPage() {
   const openEdit = (item: InventoryItem) => {
     setEditItem(item);
     setEditError('');
+    setPackClash(null);
     void loadPacks(item.id);
     /*
      * Only "+ Add Item" used to fetch these, so opening Edit showed an empty
@@ -1500,6 +1514,43 @@ export default function InventoryPage() {
                     {packSaving ? 'Saving…' : 'Add pack'}
                   </Btn>
                 </div>
+
+                {/* Both answers are one click, and neither is the default:
+                    losing a pack size silently is what this replaces. */}
+                {packClash && (
+                  <div
+                    data-testid="pack-name-clash"
+                    style={{
+                      border: '1px solid var(--color-warning)', borderRadius: 10,
+                      padding: '10px 12px', background: 'var(--color-bg)', display: 'grid', gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: 'var(--color-text)' }}>{packClash.message}</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Btn
+                        small
+                        disabled={packSaving}
+                        data-testid="pack-clash-keep-both"
+                        onClick={() => {
+                          setPackForm((f) => ({ ...f, name: packClash.suggested_name }));
+                          void savePack({ name: packClash.suggested_name });
+                        }}
+                      >
+                        Keep both — call this “{packClash.suggested_name}”
+                      </Btn>
+                      <Btn
+                        small
+                        variant="secondary"
+                        disabled={packSaving}
+                        data-testid="pack-clash-replace"
+                        onClick={() => void savePack({ replace: true })}
+                      >
+                        No, {packClash.existing.name} really holds {packForm.qty}
+                      </Btn>
+                      <Btn small variant="ghost" disabled={packSaving} onClick={() => setPackClash(null)}>Cancel</Btn>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     aria-label="Pack barcode"

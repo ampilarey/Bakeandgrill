@@ -659,9 +659,31 @@ export async function getPurchaseUnits(itemId: number): Promise<{
  * Define a pack, either by how many base units it holds, or as a multiple of a
  * pack already defined ("a case is 7 trays"), which is how people describe a box.
  */
+/**
+ * The server refusing to resize a pack that already has this name (409). The
+ * owner buys hotdog buns in packets of 6 and of 10; typing "Packet" for the
+ * second used to turn the first into 10s without a word.
+ */
+export interface PackNameConflict {
+  conflict: 'pack_name_in_use';
+  message: string;
+  existing: { id: number; name: string; base_units: number };
+  requested_base_units: number;
+  suggested_name: string;
+}
+
+export function packNameConflict(error: unknown): PackNameConflict | null {
+  const body = (error as { body?: unknown } | null)?.body as PackNameConflict | undefined;
+  return body?.conflict === 'pack_name_in_use' ? body : null;
+}
+
 export async function createPurchaseUnit(
   itemId: number,
-  data: { name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number; barcode?: string },
+  data: {
+    name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number; barcode?: string;
+    /** Yes, change the size of the pack that already has this name. */
+    replace?: boolean;
+  },
 ): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
   return req(`/inventory/${itemId}/purchase-units`, { method: 'POST', body: JSON.stringify(data) });
 }

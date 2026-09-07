@@ -252,14 +252,27 @@ class PurchasePackTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_defining_the_same_pack_twice_updates_it(): void
+    /**
+     * Two "Case" rows would make the picker ambiguous, so a name is still
+     * used at most once per item. What changed on 2026-09-07 is that
+     * resizing the one already there has to be asked for: the owner buys
+     * hotdog buns in packets of 6 and of 10, and typing "Packet" for the
+     * second used to turn the first into 10s without a word. See
+     * PackNameConflictTest for the refusal and the suggested second name.
+     */
+    public function test_defining_the_same_pack_twice_updates_it_only_when_asked(): void
     {
-        // Two "Case" rows would make the picker ambiguous.
         Sanctum::actingAs($this->makeOwner(), ['staff']);
         $eggs = $this->eggs();
 
         $this->postJson("/api/inventory/{$eggs->id}/purchase-units", ['name' => 'Case', 'base_units' => 210])->assertCreated();
-        $this->postJson("/api/inventory/{$eggs->id}/purchase-units", ['name' => 'case', 'base_units' => 200])->assertOk();
+
+        // A different size under a name already in use: refused, nothing moved.
+        $this->postJson("/api/inventory/{$eggs->id}/purchase-units", ['name' => 'case', 'base_units' => 200])->assertStatus(409);
+        $this->assertEqualsWithDelta(210, (float) $eggs->purchaseUnits()->first()->base_units, 0.000001);
+
+        // Said plainly, it is a correction, and there is still only one row.
+        $this->postJson("/api/inventory/{$eggs->id}/purchase-units", ['name' => 'case', 'base_units' => 200, 'replace' => true])->assertOk();
 
         $this->assertSame(1, $eggs->purchaseUnits()->count());
         $this->assertEqualsWithDelta(200, (float) $eggs->purchaseUnits()->first()->base_units, 0.000001);
