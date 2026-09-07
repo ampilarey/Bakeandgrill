@@ -182,6 +182,32 @@ export async function fetchCardQrLedger(from: string, to: string): Promise<CardQ
   return req(`/settlements/card-qr${q(from, to)}`);
 }
 
+export type CardQrDayPayment = {
+  payment_id: number;
+  at: string;
+  method: string;
+  method_label: string;
+  order_number: string | null;
+  invoice_number: string | null;
+  customer: string | null;
+  reference: string | null;
+  amount_laar: number;
+  commission_laar: number;
+  net_laar: number;
+};
+
+export type CardQrDay = {
+  date: string;
+  payments: CardQrDayPayment[];
+  by_method: Array<{ method_label: string; count: number; gross_laar: number; commission_laar: number; net_laar: number }>;
+  totals: { count: number; gross_laar: number; commission_laar: number; net_laar: number };
+};
+
+/** The payments behind one day's expected amount — needs no statement. */
+export async function fetchCardQrDay(date: string): Promise<CardQrDay> {
+  return req(`/settlements/card-qr/${encodeURIComponent(date)}`);
+}
+
 export async function fetchTransferSettlements(from: string, to: string): Promise<TransfersView> {
   return req(`/settlements/transfers${q(from, to)}`);
 }

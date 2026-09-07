@@ -204,6 +204,63 @@ final class SettlementLedgerService
         ];
     }
 
+    /**
+     * What one day's expected amount is made of: every settled card and QR
+     * payment that day, and the split by method. Needs no statement — this
+     * is the till's side of the story.
+     */
+    public function cardQrDay(string $ymd): array
+    {
+        [$fromAt, $toAt] = BusinessDay::bounds($ymd);
+
+        $payments = Payment::query()
+            ->with(['order:id,order_number,customer_id', 'order.customer:id,name', 'invoice:id,invoice_number'])
+            ->whereIn('method', SettlementChannels::CARD_QR_METHODS)
+            ->whereIn('status', SettlementChannels::SETTLED_STATUSES)
+            ->where('amount', '>', 0)
+            ->whereBetween(\Illuminate\Support\Facades\DB::raw('COALESCE(processed_at, created_at)'), [$fromAt, $toAt])
+            ->orderBy(\Illuminate\Support\Facades\DB::raw('COALESCE(processed_at, created_at)'))
+            ->get();
+
+        $rows = [];
+        $byMethod = [];
+        foreach ($payments as $p) {
+            $gross = (int) ($p->amount_laar ?? round((float) $p->amount * 100));
+            $commission = (int) ($p->commission_laar ?? 0);
+            $label = PaymentMethodLabel::for((string) $p->method);
+            $rows[] = [
+                'payment_id' => $p->id,
+                'at' => Carbon::parse($p->processed_at ?? $p->created_at)->toIso8601String(),
+                'method' => (string) $p->method,
+                'method_label' => $label,
+                'order_number' => $p->order?->order_number,
+                'invoice_number' => $p->invoice?->invoice_number,
+                'customer' => $p->order?->customer?->name,
+                'reference' => $p->reference_number,
+                'amount_laar' => $gross,
+                'commission_laar' => $commission,
+                'net_laar' => $gross - $commission,
+            ];
+            $byMethod[$label] ??= ['method_label' => $label, 'count' => 0, 'gross_laar' => 0, 'commission_laar' => 0, 'net_laar' => 0];
+            $byMethod[$label]['count']++;
+            $byMethod[$label]['gross_laar'] += $gross;
+            $byMethod[$label]['commission_laar'] += $commission;
+            $byMethod[$label]['net_laar'] += $gross - $commission;
+        }
+
+        return [
+            'date' => $ymd,
+            'payments' => $rows,
+            'by_method' => array_values($byMethod),
+            'totals' => [
+                'count' => count($rows),
+                'gross_laar' => array_sum(array_column($rows, 'amount_laar')),
+                'commission_laar' => array_sum(array_column($rows, 'commission_laar')),
+                'net_laar' => array_sum(array_column($rows, 'net_laar')),
+            ],
+        ];
+    }
+
     private function dayStatus(int $expected, int $allocated, int $remaining, int $age, int $tolerance, int $alertDays): string
     {
         if ($expected <= 0 && $allocated <= 0) {

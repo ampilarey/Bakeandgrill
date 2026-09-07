@@ -225,6 +225,40 @@ class BankSettlementTest extends TestCase
 
     // ── statements ───────────────────────────────────────────────────────────
 
+    public function test_a_day_lists_the_payments_behind_its_expected_amount_without_any_statement(): void
+    {
+        // Owner, 2026-09-07: "if I don't upload the statement also, there
+        // should be an option to see the expected amount and its details."
+        $this->payment('card', 100, $this->day(1), 250);
+        $this->payment('card', 40, $this->day(1), 100);
+        $this->payment('qr', 25, $this->day(1), 0);
+        $this->payment('cash', 60, $this->day(1), 0);
+        $this->payment('card', 999, $this->day(2), 0);
+
+        $day = $this->getJson('/api/settlements/card-qr/' . $this->day(1))->assertOk()->json();
+
+        $this->assertCount(3, $day['payments'], 'cash and other days are not part of it');
+        $this->assertSame(16500, $day['totals']['gross_laar']);
+        $this->assertSame(350, $day['totals']['commission_laar']);
+        $this->assertSame(16150, $day['totals']['net_laar']);
+
+        $byMethod = collect($day['by_method'])->keyBy('method_label');
+        $this->assertSame(2, $byMethod['Card']['count']);
+        $this->assertSame(14000, $byMethod['Card']['gross_laar']);
+        $this->assertSame(13650, $byMethod['Card']['net_laar']);
+        $this->assertSame(1, $byMethod['QR']['count']);
+        $this->assertSame(2500, $byMethod['QR']['net_laar']);
+
+        $first = $day['payments'][0];
+        $this->assertSame('Card', $first['method_label']);
+        $this->assertSame(9750, $first['net_laar']);
+        $this->assertNotNull($first['order_number']);
+
+        // The same number the ledger shows as that day's expected amount.
+        $ledger = app(SettlementLedgerService::class)->cardQr($this->day(2), $this->day(0));
+        $this->assertSame(16150, collect($ledger['days'])->firstWhere('date', $this->day(1))['expected_laar']);
+    }
+
     public function test_the_parser_reads_a_csv_with_debit_and_credit_columns(): void
     {
         $csv = implode("\n", [

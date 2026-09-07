@@ -20,10 +20,10 @@
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  deleteCashHandover, deleteStatementImport, fetchCardQrLedger, fetchCashHandovers, fetchSettlementSettings,
+  deleteCashHandover, deleteStatementImport, fetchCardQrDay, fetchCardQrLedger, fetchCashHandovers, fetchSettlementSettings,
   fetchStatementImports, fetchTransferSettlements, ignoreStatementLine, matchTransferLine, restoreStatementLine,
   saveCashHandover, unmatchTransferLine, updateSettlementSettings, uploadStatement,
-  type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type LedgerDay, type SettlementAccount,
+  type CardQrDay, type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type LedgerDay, type SettlementAccount,
   type SettlementSettings, type StatementImport, type TransferRow, type TransfersView,
 } from '../api';
 import {
@@ -163,7 +163,8 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-        Every POS credit on the card & QR statement is added to the sales day the bank names, and the total is compared with that day's card + QR takings net of commission.
+        Each day's expected amount is the card + QR takings net of commission; open a day to see the payments behind it.
+        Every POS credit on the card & QR statement is added to the sales day the bank names and compared with that.
         {!ledger.start ? ' Tracking from the first card or QR payment on record; set a start date under Statements → Settings to ignore older days.' : ''}
       </p>
 
@@ -191,7 +192,10 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                   {d.remaining_laar > 0 ? ` · still owed ${mvr(d.remaining_laar)}` : ''}
                   {d.over_laar > 0 ? ` · ${mvr(d.over_laar)} more than the till took` : ''}
                 </div>
-                {d.deposits.length > 0 && <DayCredits day={d} />}
+                <div style={{ marginTop: 6 }}>
+                  <Btn small variant="secondary" onClick={() => setOpenDay(openDay === d.date ? null : d.date)}>{openDay === d.date ? 'Hide details' : 'Details'}</Btn>
+                </div>
+                {openDay === d.date && <div data-testid={`ledger-day-credits-${d.date}`}><DayDetails day={d} onError={onError} /></div>}
               </article>
             ))}
           </div>
@@ -203,7 +207,20 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                 {ledger.days.map((d) => (
                   <Fragment key={d.date}>
                     <tr data-testid={`ledger-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1, ...(d.status === 'over' ? mismatchRow : {}) }}>
-                      <td style={TD}>{d.date}{d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}</td>
+                      <td style={TD}>
+                        {d.payments > 0 || d.deposits.length > 0 ? (
+                          <button
+                            type="button"
+                            aria-expanded={openDay === d.date}
+                            aria-label={`Details for ${d.date}`}
+                            onClick={() => setOpenDay(openDay === d.date ? null : d.date)}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--color-primary)', fontWeight: 600 }}
+                          >
+                            {d.date} {openDay === d.date ? '▴' : '▾'}
+                          </button>
+                        ) : d.date}
+                        {d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}
+                      </td>
                       <td style={TD}>{mvr(d.gross_laar)}</td>
                       <td style={TD}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
                       <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.expected_laar)}</td>
@@ -229,7 +246,7 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                     </tr>
                     {openDay === d.date && (
                       <tr data-testid={`ledger-day-credits-${d.date}`}>
-                        <td style={{ ...TD, background: 'var(--color-bg)' }} colSpan={7}><DayCredits day={d} /></td>
+                        <td style={{ ...TD, background: 'var(--color-bg)' }} colSpan={7}><DayDetails day={d} onError={onError} /></td>
                       </tr>
                     )}
                   </Fragment>
@@ -284,6 +301,65 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
 }
 
 /**
+ * One day opened up: the till's side (every card and QR payment, by
+ * method, net of commission — no statement needed) beside the bank's side
+ * (every credit added to the day).
+ */
+function DayDetails({ day, onError }: { day: LedgerDay; onError: (m: string) => void }) {
+  const [detail, setDetail] = useState<CardQrDay | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetchCardQrDay(day.date)
+      .then((d) => { if (live) setDetail(d); })
+      .catch((e) => onError((e as Error).message));
+    return () => { live = false; };
+  }, [day.date, onError]);
+
+  return (
+    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', padding: '4px 0', fontSize: 12 }}>
+      <div data-testid={`day-expected-${day.date}`}>
+        <p style={{ margin: '0 0 6px', fontWeight: 700 }}>Expected {mvr(day.expected_laar)} — what the till took</p>
+        {!detail ? <TableSkeleton rows={2} cols={3} /> : detail.payments.length === 0 ? (
+          <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No card or QR payments this day.</p>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gap: 2, marginBottom: 8 }}>
+              {detail.by_method.map((m) => (
+                <div key={m.method_label}>
+                  <strong>{m.method_label}</strong> · {m.count} payment{m.count === 1 ? '' : 's'} · {mvr(m.gross_laar)}
+                  {m.commission_laar > 0 ? ` − ${mvr(m.commission_laar)} commission = ${mvr(m.net_laar)}` : ''}
+                </div>
+              ))}
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>{['Time', 'Order', 'Method', 'Amount', 'Net'].map((h) => <th key={h} style={{ ...TH, fontSize: 11 }}>{h}</th>)}</tr></thead>
+              <tbody>
+                {detail.payments.map((p) => (
+                  <tr key={p.payment_id}>
+                    <td style={TD}>{p.at.slice(11, 16)}</td>
+                    <td style={TD}>{p.order_number ?? p.invoice_number ?? '—'}{p.customer ? <span style={{ color: 'var(--color-text-muted)' }}> · {p.customer}</span> : null}</td>
+                    <td style={TD}>{p.method_label}</td>
+                    <td style={TD}>{mvr(p.amount_laar)}{p.commission_laar > 0 ? <span style={{ color: 'var(--color-text-muted)' }}> − {mvr(p.commission_laar).replace('MVR ', '')}</span> : null}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>{mvr(p.net_laar)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
+      <div>
+        <p style={{ margin: '0 0 6px', fontWeight: 700 }}>Bank added {mvr(day.allocated_laar)}</p>
+        {day.deposits.length === 0
+          ? <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>Nothing from the bank for this day yet. Upload the card & QR statement when it is out.</p>
+          : <DayCredits day={day} />}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Every bank credit added to one day, grouped by the terminal it came from.
  * With two POS terminals (a card machine and a QR stand) this is as close
  * as the statement gets to splitting card from QR.
@@ -295,7 +371,7 @@ function DayCredits({ day }: { day: LedgerDay }) {
     groups.set(key, [...(groups.get(key) ?? []), c]);
   }
   return (
-    <div style={{ display: 'grid', gap: 6, fontSize: 12, padding: '4px 0' }}>
+    <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
       {[...groups.entries()].map(([label, credits]) => (
         <div key={label}>
           <div style={{ fontWeight: 600 }}>

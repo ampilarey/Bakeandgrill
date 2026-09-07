@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum', 'permission:finance.expenses'])->prefix('expe
 // ─── Bank settlements (owner, 2026-09-07: "match actual money received") ───
 Route::middleware(['auth:sanctum', 'permission:finance.settlements'])->prefix('settlements')->group(function () {
     Route::get('/card-qr', [App\Http\Controllers\Api\SettlementController::class, 'cardQr']);
+    Route::get('/card-qr/{date}', [App\Http\Controllers\Api\SettlementController::class, 'cardQrDay'])->where('date', '\d{4}-\d{2}-\d{2}');
     Route::get('/transfers', [App\Http\Controllers\Api\SettlementController::class, 'transfers']);
     Route::get('/cash', [App\Http\Controllers\Api\SettlementController::class, 'cash']);
     Route::get('/statements', [App\Http\Controllers\Api\SettlementController::class, 'imports']);

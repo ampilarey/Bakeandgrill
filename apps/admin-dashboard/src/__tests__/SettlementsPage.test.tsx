@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettlementsPage } from '../pages/SettlementsPage';
 
@@ -18,6 +18,7 @@ const fetchCashHandovers = vi.fn();
 const saveCashHandover = vi.fn();
 const uploadStatement = vi.fn();
 const fetchTransferSettlements = vi.fn();
+const fetchCardQrDay = vi.fn();
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
   return {
@@ -27,6 +28,7 @@ vi.mock('../api', async () => {
     saveCashHandover: (...a: unknown[]) => saveCashHandover(...a),
     uploadStatement: (...a: unknown[]) => uploadStatement(...a),
     fetchTransferSettlements: (...a: unknown[]) => fetchTransferSettlements(...a),
+    fetchCardQrDay: (...a: unknown[]) => fetchCardQrDay(...a),
     fetchStatementImports: vi.fn().mockResolvedValue({ imports: [] }),
     fetchSettlementSettings: vi.fn().mockResolvedValue({ start_date: null, tolerance: 1, alert_days: 3, accounts: [{ key: 'card_qr', label: 'Card & QR account' }, { key: 'transfer', label: 'Transfer account' }], card_qr_methods: [] }),
   };
@@ -83,6 +85,17 @@ describe('Bank settlements', () => {
     vi.clearAllMocks();
     fetchCardQrLedger.mockResolvedValue(ledger);
     fetchTransferSettlements.mockResolvedValue(transfers);
+    fetchCardQrDay.mockImplementation((date: string) => Promise.resolve(date === '2026-09-02' ? {
+      date, by_method: [
+        { method_label: 'Card', count: 1, gross_laar: 3000, commission_laar: 0, net_laar: 3000 },
+        { method_label: 'QR', count: 1, gross_laar: 2000, commission_laar: 0, net_laar: 2000 },
+      ],
+      payments: [
+        { payment_id: 21, at: '2026-09-02T09:15:00+05:00', method: 'card', method_label: 'Card', order_number: 'ORD-21', invoice_number: null, customer: null, reference: null, amount_laar: 3000, commission_laar: 0, net_laar: 3000 },
+        { payment_id: 22, at: '2026-09-02T12:40:00+05:00', method: 'qr', method_label: 'QR', order_number: 'ORD-22', invoice_number: null, customer: 'Ali Rafeeu', reference: null, amount_laar: 2000, commission_laar: 0, net_laar: 2000 },
+      ],
+      totals: { count: 2, gross_laar: 5000, commission_laar: 0, net_laar: 5000 },
+    } : { date, by_method: [], payments: [], totals: { count: 0, gross_laar: 0, commission_laar: 0, net_laar: 0 } }));
     fetchCashHandovers.mockResolvedValue({ days: [cashDay], totals: { expected_handover_laar: 180000, received_laar: 0, awaiting_days: 1, differs_days: 0 } });
     saveCashHandover.mockResolvedValue({ day: { ...cashDay, received_laar: 180000, difference_laar: 0, status: 'settled' } });
   });
@@ -93,7 +106,7 @@ describe('Bank settlements', () => {
     expect(screen.getByText('oldest open day 2026-09-02')).toBeInTheDocument();
     expect(screen.getByTestId('ledger-day-2026-09-06')).toHaveTextContent('Partly settled');
     fireEvent.click(screen.getByRole('button', { name: '1 credit ▾' }));
-    expect(screen.getByTestId('ledger-day-credits-2026-09-06')).toHaveTextContent('MVR 60.00 on 2026-09-07 (oldest-day rule)');
+    expect(await screen.findByTestId('ledger-day-credits-2026-09-06')).toHaveTextContent('MVR 60.00 on 2026-09-07 (oldest-day rule)');
     expect(screen.getByTestId('ledger-day-2026-09-02')).toHaveTextContent('Overdue');
     // The bank paid 65 for a day the till took 50 on: shown against that day, not spread.
     expect(screen.getByTestId('ledger-day-2026-09-04')).toHaveTextContent('Bank paid more');
@@ -101,7 +114,7 @@ describe('Bank settlements', () => {
 
     // Every POS credit the bank added to that day, by terminal.
     fireEvent.click(screen.getByRole('button', { name: '3 credits ▾' }));
-    const credits = screen.getByTestId('ledger-day-credits-2026-09-04');
+    const credits = await screen.findByTestId('ledger-day-credits-2026-09-04');
     expect(credits).toHaveTextContent('terminal 000000 65018311 · 2 credits · MVR 55.00');
     expect(credits).toHaveTextContent('MVR 40.00 on 2026-09-05 · MVR 15.00 on 2026-09-05');
     expect(credits).toHaveTextContent('terminal 000081 70015698 · 1 credit · MVR 10.00');
@@ -131,6 +144,23 @@ describe('Bank settlements', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Upload transfer statement' }));
     expect(await screen.findByText('Upload the transfer account statement')).toBeInTheDocument();
     expect(screen.getByText(/Every "Transfer Credit" line is read and matched/)).toBeInTheDocument();
+  });
+
+  it('shows the payments behind a day\'s expected amount even with no statement uploaded', async () => {
+    renderPage();
+    await screen.findByText('MVR 87.50');
+    // No deposit has arrived for this day; the till's side is still there to see.
+    fireEvent.click(screen.getByRole('button', { name: 'Details for 2026-09-02' }));
+
+    const expected = await screen.findByTestId('day-expected-2026-09-02');
+    expect(expected).toHaveTextContent('Expected MVR 50.00 — what the till took');
+    await within(expected).findByText('ORD-21');
+    expect(expected).toHaveTextContent('Card · 1 payment · MVR 30.00');
+    expect(expected).toHaveTextContent('QR · 1 payment · MVR 20.00');
+    expect(expected).toHaveTextContent('ORD-22 · Ali Rafeeu');
+    expect(expected).toHaveTextContent('12:40');
+    expect(fetchCardQrDay).toHaveBeenCalledWith('2026-09-02');
+    expect(screen.getByTestId('ledger-day-credits-2026-09-02')).toHaveTextContent('Nothing from the bank for this day yet');
   });
 
   it('shows which sales day each deposit was for and the credits set aside', async () => {

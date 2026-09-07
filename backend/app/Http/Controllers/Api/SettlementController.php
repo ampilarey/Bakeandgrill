@@ -53,6 +53,12 @@ class SettlementController extends Controller
         return response()->json($this->ledger->cardQr($from, $to));
     }
 
+    /** The payments behind one day's expected amount — no statement needed. */
+    public function cardQrDay(string $date): JsonResponse
+    {
+        return response()->json($this->ledger->cardQrDay(Carbon::parse($date)->toDateString()));
+    }
+
     public function transfers(Request $request): JsonResponse
     {
         [$from, $to] = $this->window($request);
