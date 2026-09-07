@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstInputTaxValidator;
+use App\Domains\Gst\Services\PurchaseGstService;
 use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ImportPurchaseRequest;
@@ -74,8 +75,12 @@ class PurchaseController extends Controller
     {
         $validated = $request->validated();
         $validator = app(GstInputTaxValidator::class);
+        // Lines that carry GST decide the header — owner, 2026-09-07: "some
+        // items are eligible for GST return."
+        $validated = app(PurchaseGstService::class)->applyLinesToPayload($validated, $validated['items']);
         $validated = $validator->normalizePurchase($validated);
         $validator->assertClaimable($validated, 'purchase');
+        unset($validated['lines_with_gst']);
         $purchase = $this->createFromPayload($validated, $request);
 
         app(AuditLogService::class)->log(
@@ -135,13 +140,22 @@ class PurchaseController extends Controller
          * timestamps while it is at it.
          */
         $gstValidator = app(GstInputTaxValidator::class);
-        $effective = $gstValidator->normalizePurchase(array_merge(
-            $purchase->attributesToArray(),
-            $validated,
-        ));
+        $gst = app(PurchaseGstService::class);
+        $merged = array_merge($purchase->attributesToArray(), $validated);
+        // The lines the purchase will have — the incoming ones, else the
+        // stored ones — say how much GST there is to claim.
+        $lineSource = $lines ?? $purchase->items->map(fn ($l) => [
+            'inventory_item_id' => $l->inventory_item_id, 'quantity' => (float) $l->quantity,
+            'unit_cost' => (float) $l->unit_cost, 'gst_rate_bp' => $l->gst_rate_bp,
+        ])->all();
+        $effective = $gstValidator->normalizePurchase($gst->applyLinesToPayload($merged, $lineSource));
         $gstValidator->assertClaimable($effective, 'purchase');
 
-        $changes = array_intersect_key($effective, $validated + ['gst_rate_bp' => null]);
+        $derived = isset($effective['lines_with_gst'])
+            ? ['gst_laar' => null, 'total_laar' => null, 'amount_excluding_gst_laar' => null, 'is_input_tax_claimable' => null, 'claim_block_reason' => null, 'is_tax_invoice_received' => null]
+            : [];
+        unset($effective['lines_with_gst']);
+        $changes = array_intersect_key($effective, $validated + ['gst_rate_bp' => null] + $derived);
         $before = $purchase->only(['subtotal', 'total', 'status', 'purchase_date']);
 
         DB::transaction(function () use ($purchase, $changes, $lines) {
@@ -150,6 +164,7 @@ class PurchaseController extends Controller
             if ($lines !== null) {
                 $this->replaceLines($purchase, $lines);
             }
+            app(PurchaseGstService::class)->rollup($purchase->fresh('items'));
         });
 
         if ($lines !== null) {
@@ -196,6 +211,8 @@ class PurchaseController extends Controller
             );
 
             $subtotal += $priced['total'];
+            $gst = app(PurchaseGstService::class);
+            $rateBp = $gst->rateFor($line['gst_rate_bp'] ?? null, $inventoryItem);
 
             PurchaseItem::create([
                 'purchase_id' => $purchase->id,
@@ -203,6 +220,8 @@ class PurchaseController extends Controller
                 'quantity' => $priced['quantity'],
                 'unit_cost' => $priced['unit_cost'],
                 'total_cost' => $priced['total'],
+                'gst_rate_bp' => $rateBp ?: null,
+                'gst_laar' => $gst->gstInside((float) $priced['total'], $rateBp),
                 'pack_name' => $priced['pack_name'],
                 'pack_size' => $priced['pack_size'],
                 'pack_quantity' => $priced['pack_quantity'],
@@ -477,6 +496,8 @@ class PurchaseController extends Controller
 
                 $lineTotal = $priced['total'];
                 $subtotal += $lineTotal;
+                $gstService = app(PurchaseGstService::class);
+                $rateBp = $gstService->rateFor($itemPayload['gst_rate_bp'] ?? null, $inventoryItem);
 
                 $newQty = $priced['quantity'];
                 $lineStockIn = $shouldStockIn && $inventoryItem !== null;
@@ -488,6 +509,8 @@ class PurchaseController extends Controller
                     'quantity' => $newQty,
                     'unit_cost' => $priced['unit_cost'],
                     'total_cost' => $lineTotal,
+                    'gst_rate_bp' => $rateBp ?: null,
+                    'gst_laar' => $gstService->gstInside((float) $lineTotal, $rateBp),
                     // What was on the box, kept as typed so the order still
                     // reads "2 Case" a year after somebody edits the pack size.
                     'pack_name' => $priced['pack_name'],
@@ -506,7 +529,9 @@ class PurchaseController extends Controller
                     // Per unit of stock, never the pack price: averaging the
                     // cost of a whole case into the cost of one egg would
                     // multiply this item's value by the size of the box.
-                    $newCost = $priced['unit_cost'];
+                    // Net of GST that comes back, when this purchase can
+                    // claim it — that part was never the item's cost.
+                    $newCost = $gstService->netUnitCost($purchaseItem, $purchase);
 
                     $idempotencyKey = 'purchase:' . $purchase->id . ':item:' . $purchaseItem->id;
                     if (!StockMovement::where('idempotency_key', $idempotencyKey)->exists()) {
@@ -576,6 +601,8 @@ class PurchaseController extends Controller
                 'total_laar' => $totalLaar > 0 ? $totalLaar : (int) round($subtotal * 100),
                 'gst_laar' => $gstLaar,
             ]);
+            // Lines that carry GST restate the header from what was stored.
+            app(PurchaseGstService::class)->rollup($purchase->fresh('items'));
 
             $purchase = $purchase->load(['supplier', 'items.inventoryItem', 'receipts']);
             app(NonStockPurchaseExpenseService::class)->syncForPurchase($purchase, $request->user());

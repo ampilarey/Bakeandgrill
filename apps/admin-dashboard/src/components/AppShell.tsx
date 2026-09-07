@@ -306,11 +306,13 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
           <kbd className="admin-shell-kbd">{SEARCH_SHORTCUT}</kbd>
         </button>
       )}
+      {/* On a narrow phone these two move into the section sheet, next to
+          Log Out, so the page title keeps its room. See .admin-shell-icon-btn--secondary. */}
       <button
         type="button"
         onClick={() => setDarkMode((d) => !d)}
         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        className={`admin-shell-icon-btn${darkMode ? ' admin-shell-icon-btn--active' : ''}`}
+        className={`admin-shell-icon-btn admin-shell-icon-btn--secondary${darkMode ? ' admin-shell-icon-btn--active' : ''}`}
       >
         {darkMode ? <Sun size={16} /> : <Moon size={16} />}
       </button>
@@ -318,7 +320,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
         type="button"
         onClick={toggleAudio}
         title={audioOn ? 'Sound alerts ON — click to mute' : 'Sound alerts OFF — click to enable'}
-        className={`admin-shell-icon-btn${audioOn ? ' admin-shell-icon-btn--active' : ''}`}
+        className={`admin-shell-icon-btn admin-shell-icon-btn--secondary${audioOn ? ' admin-shell-icon-btn--active' : ''}`}
       >
         {audioOn ? <Bell size={16} /> : <BellOff size={16} />}
       </button>
@@ -368,6 +370,10 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
             onClose={() => setSheetSection(null)}
             onLogout={onLogout}
             lowStockCount={lowStockCount}
+            darkMode={darkMode}
+            onToggleDarkMode={() => setDarkMode((d) => !d)}
+            audioOn={audioOn}
+            onToggleAudio={toggleAudio}
           />
         )}
       </div>

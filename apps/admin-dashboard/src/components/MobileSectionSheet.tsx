@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, UserCircle, X } from 'lucide-react';
+import { Bell, BellOff, LogOut, Moon, Sun, UserCircle, X } from 'lucide-react';
 import type { StaffUser } from '../api';
 import {
   NAV_EXACT_MATCH_PATHS,
@@ -19,6 +19,11 @@ interface MobileSectionSheetProps {
   onClose: () => void;
   onLogout: () => void;
   lowStockCount?: number;
+  /* Header controls that do not fit beside the page title on a narrow phone. */
+  darkMode?: boolean;
+  onToggleDarkMode?: () => void;
+  audioOn?: boolean;
+  onToggleAudio?: () => void;
 }
 
 /*
@@ -33,6 +38,7 @@ export function MobileSectionSheet(props: MobileSectionSheetProps) {
 
 function SectionSheetPanel({
   section, user, onClose, onLogout, lowStockCount = 0,
+  darkMode = false, onToggleDarkMode, audioOn = false, onToggleAudio,
 }: MobileSectionSheetProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,6 +116,22 @@ function SectionSheetPanel({
             })}
           </div>
 
+          {(onToggleDarkMode || onToggleAudio) && (
+            <div className="admin-shell-sheet-prefs">
+              {onToggleDarkMode && (
+                <button type="button" className="admin-shell-sheet-pref" onClick={onToggleDarkMode} aria-pressed={darkMode}>
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  {darkMode ? 'Light mode' : 'Dark mode'}
+                </button>
+              )}
+              {onToggleAudio && (
+                <button type="button" className="admin-shell-sheet-pref" onClick={onToggleAudio} aria-pressed={audioOn}>
+                  {audioOn ? <Bell size={18} /> : <BellOff size={18} />}
+                  {audioOn ? 'Sound alerts on' : 'Sound alerts off'}
+                </button>
+              )}
+            </div>
+          )}
           <button
             type="button"
             className="admin-shell-sheet-account"

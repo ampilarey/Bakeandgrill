@@ -29,6 +29,8 @@ export interface InventoryItem {
   is_active: boolean;
   /** Whether the floor may ask for this item from the POS request list. */
   requestable: boolean;
+  /** Bought with GST that comes back: 800 = 8%. null = nothing to claim. */
+  gst_rate_bp: number | null;
   last_counted_at: string | null;
   created_at: string;
   /* Setup fields, editable from Inventory. Present on the list payload
@@ -74,6 +76,7 @@ type BackendInventoryRow = {
   inventory_category_id?: number | null;
   is_active: boolean;
   requestable?: boolean;
+  gst_rate_bp?: number | string | null;
   last_counted_at?: string | null;
   created_at: string;
   lead_days?: number | string | null;
@@ -103,6 +106,7 @@ function mapInventoryRow(row: BackendInventoryRow): InventoryItem {
     // Absent on older payloads; an item nobody has ruled out is requestable,
     // which is also the column default.
     requestable: row.requestable ?? true,
+    gst_rate_bp: row.gst_rate_bp != null && Number(row.gst_rate_bp) > 0 ? Number(row.gst_rate_bp) : null,
     last_counted_at: row.last_counted_at ?? null,
     created_at: row.created_at,
     lead_days: row.lead_days != null ? Number(row.lead_days) : null,
@@ -782,6 +786,7 @@ export async function createInventoryItem(data: {
   preferred_supplier_id?: number;
   storage_location?: string;
   notes?: string;
+  gst_rate_bp?: number;
 }): Promise<{ item: InventoryItem }> {
   const res = await req<{ item: BackendInventoryRow }>('/inventory', {
     method: 'POST',
@@ -810,6 +815,7 @@ export async function updateInventoryItem(
     notes: string | null;
     is_active: boolean;
     requestable: boolean;
+    gst_rate_bp: number;
   }>,
 ): Promise<{ item: InventoryItem }> {
   const res = await req<{ item: BackendInventoryRow }>(`/inventory/${id}`, {

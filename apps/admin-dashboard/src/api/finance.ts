@@ -306,6 +306,10 @@ export interface MonthlySheetMonth {
     total: number;
   };
   ingredients: number;
+  /** GST on this month's purchases that comes back from MIRA — already left out of `ingredients`. */
+  gst_back_on_purchases: number;
+  /** GST that could come back once the tax invoice is on the order. Still counted as cost. */
+  gst_blocked_on_purchases: number;
   expenses: { total: number; by_category: { category: string; icon?: string | null; total: number }[] };
   waste_info: number;
   profit: number;
@@ -790,6 +794,8 @@ export interface Purchase {
   gst_laar?: number | null;
   is_tax_invoice_received?: boolean;
   is_input_tax_claimable?: boolean;
+  /** Why the GST on this order cannot be claimed yet, when it cannot. */
+  claim_block_reason?: string | null;
   revenue_or_capital?: 'revenue' | 'capital' | null;
   created_at: string;
   items?: {
@@ -798,6 +804,9 @@ export interface Purchase {
     received_quantity: number;
     receive_status: string;
     unit_cost: number;
+    /** GST on this line: rate (800 = 8%) and the amount inside the typed price. */
+    gst_rate_bp?: number | null;
+    gst_laar?: number;
     /** What was on the box: "2 Case" of 210 each, kept as it was typed. */
     pack_name?: string | null;
     pack_size?: number | null;
@@ -856,6 +865,8 @@ export interface PurchaseLineEdit {
   unit_cost: number;
   purchase_unit_id?: number | null;
   brand?: string | null;
+  /** 800 = 8% GST inside the price, 0 = none. Omit for the item's default. */
+  gst_rate_bp?: number;
 }
 
 /**

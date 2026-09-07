@@ -92,7 +92,13 @@ final class MonthlySheetService
         $income = round($takings - $gst - $refunds + $wholesaleNet, 2);
 
         // ── Cost: ingredients bought + expenses ─────────────────────────
+        // Net of the GST that comes back on items bought with a claimable
+        // rate and a tax invoice on file (owner, 2026-09-07: "some items are
+        // eligible for GST return"). Shown beside it so nobody wonders why
+        // the purchases figure is under the invoices.
         $ingredients = PurchaseSpendQuery::total($from->toDateString(), $to->toDateString());
+        $gstBack = PurchaseSpendQuery::claimableGst($from->toDateString(), $to->toDateString());
+        $gstBlocked = PurchaseSpendQuery::blockedGst($from->toDateString(), $to->toDateString());
 
         $byCategory = Expense::whereDate('expense_date', '>=', $from->toDateString())
             ->whereDate('expense_date', '<=', $to->toDateString())
@@ -130,6 +136,10 @@ final class MonthlySheetService
                 'total' => $income,
             ],
             'ingredients' => round($ingredients, 2),
+            // Already left out of `ingredients`; the GST MIRA gives back.
+            'gst_back_on_purchases' => $gstBack,
+            // GST that could come back once the tax invoice is on file. Still cost.
+            'gst_blocked_on_purchases' => $gstBlocked,
             'expenses' => [
                 'total' => $expensesTotal,
                 'by_category' => $byCategory

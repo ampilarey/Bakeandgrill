@@ -169,12 +169,16 @@ final class PurchaseRequestVerificationService
                     $allAlreadyStocked = false;
                 }
 
+                $gst = app(\App\Domains\Gst\Services\PurchaseGstService::class);
+                $rateBp = $gst->rateFor(null, InventoryItem::find($line->inventory_item_id));
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'inventory_item_id' => $line->inventory_item_id,
                     'quantity' => $qty,
                     'unit_cost' => $unitCost,
                     'total_cost' => round($qty * $unitCost, 2),
+                    'gst_rate_bp' => $rateBp ?: null,
+                    'gst_laar' => $gst->gstInside(round($qty * $unitCost, 2), $rateBp),
                     'brand' => $line->brand,
                     'received_quantity' => $alreadyStocked ? $qty : 0,
                     'receive_status' => $alreadyStocked ? 'complete' : 'pending',
@@ -185,6 +189,7 @@ final class PurchaseRequestVerificationService
             if ($anyLine && $allAlreadyStocked) {
                 $purchase->update(['status' => 'received']);
             }
+            app(\App\Domains\Gst\Services\PurchaseGstService::class)->rollup($purchase->fresh('items'));
 
             $pr->update(['purchase_id' => $purchase->id]);
 

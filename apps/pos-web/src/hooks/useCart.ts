@@ -27,6 +27,12 @@ export type PaymentRow = {
   method: "cash" | "card" | "qr" | "digital_wallet" | "house_account" | "wallet";
   amount: string;
   /**
+   * Who sent a bank transfer, as the cashier typed it from the customer's
+   * banking app. Stored as the payment's reference so the bank statement can
+   * be matched to the sale — walk-in orders rarely carry a customer name.
+   */
+  reference?: string;
+  /**
    * FIX 11 — cash overpay: the actual cash the cashier received. Only
    * meaningful on cash rows and only when > amount. Optional so older
    * flows / callers keep working without any changes.

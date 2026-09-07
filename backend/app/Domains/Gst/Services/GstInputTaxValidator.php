@@ -66,6 +66,10 @@ class GstInputTaxValidator
             return;
         }
 
+        // GST that was added up line by line rounds once per line, so the
+        // header can sit a laari per line away from a single-rate check.
+        $toleranceLaar = 1 + (int) ($data['lines_with_gst'] ?? 0);
+
         $errors = [];
 
         if (empty($data['supplier_tin'])) {
@@ -86,7 +90,7 @@ class GstInputTaxValidator
             $errors['gst_laar'] = ['GST amount must be greater than zero to claim input tax.'];
         } elseif ($exGst > 0) {
             $expected = $this->tax->reconcileGstLaar($exGst, $rateBp);
-            if (abs($expected - $gstLaar) > 1) {
+            if (abs($expected - $gstLaar) > $toleranceLaar) {
                 $errors['gst_laar'] = ["GST amount does not reconcile with {$rateBp} bp rate on excluding-GST amount."];
             }
         }

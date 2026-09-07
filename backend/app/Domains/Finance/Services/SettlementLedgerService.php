@@ -492,10 +492,18 @@ final class SettlementLedgerService
             return collect();
         }
 
+        // The customer on the order, or the sender's name the cashier typed
+        // when taking the transfer — walk-in orders rarely have a customer,
+        // and the typed name is exactly what the bank prints.
         return $pool->filter(function (Payment $p) use ($sender) {
-            $customer = $this->nameKey($p->order?->customer?->name);
+            foreach ([$p->order?->customer?->name, $p->reference_number] as $candidate) {
+                $key = $this->nameKey($candidate);
+                if ($key !== '' && strlen($key) >= 3 && (str_contains($sender, $key) || str_contains($key, $sender))) {
+                    return true;
+                }
+            }
 
-            return $customer !== '' && (str_contains($sender, $customer) || str_contains($customer, $sender));
+            return false;
         });
     }
 

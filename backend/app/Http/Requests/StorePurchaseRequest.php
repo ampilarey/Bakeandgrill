@@ -51,6 +51,9 @@ class StorePurchaseRequest extends FormRequest
             // Without one, both are in the item's own unit, as they always were.
             'items.*.quantity' => 'required|numeric|min:0.000001',
             'items.*.unit_cost' => 'required|numeric|min:0',
+            // Per line: null = the item's own default, 0 = no GST on this
+            // line, 800 = 8% GST inside the typed price.
+            'items.*.gst_rate_bp' => 'nullable|integer|min:0|max:10000',
             // Checked against the line's own item in PurchasePackResolver: one
             // item's pack applied to another would multiply the wrong stock.
             'items.*.purchase_unit_id' => 'nullable|integer|exists:inventory_purchase_units,id',

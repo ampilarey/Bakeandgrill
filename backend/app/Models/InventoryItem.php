@@ -13,7 +13,7 @@ class InventoryItem extends Model
     protected $fillable = [
         'name', 'sku', 'barcode', 'unit', 'current_stock', 'reorder_point', 'reorder_quantity',
         'lead_days', 'cover_days', 'restock_snoozed_until', 'restock_excluded',
-        'unit_cost', 'last_purchase_price', 'expiry_date', 'is_active', 'requestable',
+        'unit_cost', 'last_purchase_price', 'gst_rate_bp', 'expiry_date', 'is_active', 'requestable',
         'inventory_category_id', 'preferred_supplier_id', 'storage_location', 'notes',
     ];
 
@@ -25,6 +25,9 @@ class InventoryItem extends Model
         'requestable' => 'boolean',
         'current_stock' => 'float',
         'unit_cost' => 'decimal:4',
+        // Owner, 2026-09-07: some items are bought with GST that comes back.
+        // 800 = claimable at 8%; null = nothing to claim on this item.
+        'gst_rate_bp' => 'integer',
         'reorder_point' => 'float',
         'reorder_quantity' => 'float',
         'lead_days' => 'integer',

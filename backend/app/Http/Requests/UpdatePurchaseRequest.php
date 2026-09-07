@@ -52,6 +52,7 @@ class UpdatePurchaseRequest extends FormRequest
             'items.*.inventory_item_id' => 'required_with:items|integer|exists:inventory_items,id',
             'items.*.quantity' => 'required_with:items|numeric|min:0.000001',
             'items.*.unit_cost' => 'required_with:items|numeric|min:0',
+            'items.*.gst_rate_bp' => 'nullable|integer|min:0|max:10000',
             'items.*.purchase_unit_id' => 'nullable|integer|exists:inventory_purchase_units,id',
             'items.*.brand' => 'nullable|string|max:120',
         ];

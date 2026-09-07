@@ -35,6 +35,8 @@ class UpdateInventoryItemRequest extends FormRequest
             'is_active' => 'nullable|boolean',
             // Whether the floor may ask for this item from the POS request list.
             'requestable' => 'nullable|boolean',
+            // 0 or null: no GST to claim. 800: bought with 8% GST that comes back.
+            'gst_rate_bp' => 'nullable|integer|min:0|max:10000',
             'inventory_category_id' => 'nullable|integer|exists:inventory_categories,id',
             'preferred_supplier_id' => 'nullable|integer|exists:suppliers,id',
             'storage_location' => 'nullable|string|max:120',

@@ -129,7 +129,7 @@ function mapPaymentMethodForApi(method: string): string {
 
 function normalizePayments(
   rows: PaymentRow[],
-): { method: string; amount: number; tendered_amount?: number }[] {
+): { method: string; amount: number; tendered_amount?: number; reference_number?: string }[] {
   return rows
     .map((p) => {
       const amt = Number.parseFloat(p.amount);
@@ -138,10 +138,14 @@ function normalizePayments(
         tenderedRaw != null && tenderedRaw !== ""
           ? Number.parseFloat(String(tenderedRaw))
           : NaN;
-      const base: { method: string; amount: number; tendered_amount?: number } = {
+      const base: { method: string; amount: number; tendered_amount?: number; reference_number?: string } = {
         method: mapPaymentMethodForApi(p.method),
         amount: amt,
       };
+      // The sender's name on a transfer, for the bank settlement to match on.
+      if (p.reference && p.reference.trim()) {
+        base.reference_number = p.reference.trim().slice(0, 120);
+      }
       // FIX 11 — only forward tendered_amount on cash overpay so old
       // clients / non-cash rows keep the exact same payload as before.
       if (base.method === "cash" && Number.isFinite(tendered) && tendered > amt) {
@@ -822,6 +826,7 @@ export function useOrderCreation(params: Params) {
         payment: {
           method: offlineMethod,
           amount: Number.parseFloat(primary.amount),
+          ...(primary.reference ? { reference: primary.reference } : {}),
         },
         discount_amount: Math.max(0, Number.parseFloat(params.discountAmount) || 0),
         ...(params.customerId ? { customer_id: params.customerId } : {}),
@@ -964,7 +969,7 @@ export function useOrderCreation(params: Params) {
    * can retry without re-entering everything.
    */
   const handleCharge = async (
-    rows: Array<{ method: string; amount: number; tendered_amount?: number }>,
+    rows: Array<{ method: string; amount: number; tendered_amount?: number; reference?: string }>,
   ): Promise<boolean> => {
     if (params.cartItems.length === 0) return false;
     if (isSubmitting) return false;
@@ -976,6 +981,7 @@ export function useOrderCreation(params: Params) {
       ...(r.tendered_amount != null && Number.isFinite(r.tendered_amount)
         ? { tendered_amount: Number(r.tendered_amount).toFixed(2) }
         : {}),
+      ...(r.reference ? { reference: r.reference } : {}),
     }));
 
     const discountAmt = parsedDiscountAmount();

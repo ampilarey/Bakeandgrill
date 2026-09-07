@@ -39,6 +39,25 @@ const WasteLogsPage = lazy(() => import('./WasteLogsPage'));
 type InventoryTab = 'stock' | 'prepared' | 'categories' | 'conversions' | 'stock-count' | 'waste';
 const INVENTORY_TABS: readonly InventoryTab[] = ['stock', 'prepared', 'categories', 'conversions', 'stock-count', 'waste'];
 
+/**
+ * Owner, 2026-09-07: "some items are eligible for GST return." Whether this
+ * item is bought with 8% GST that comes back. Pre-fills every purchase line
+ * for it; a line can still say otherwise.
+ */
+function GstToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, cursor: 'pointer' }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label="Bought with GST that can be claimed back" style={{ marginTop: 3 }} />
+      <span>
+        <span style={{ fontWeight: 600 }}>Bought with 8% GST that comes back</span>
+        <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-muted)' }}>
+          The price you type on a purchase stays what you paid. The GST inside it is claimed back once the supplier's tax invoice is on the order, so it stops counting as cost.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 const S = {
   input: { width: '100%', padding: '8px 12px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const },
   select: { width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit' },
@@ -145,7 +164,7 @@ export default function InventoryPage() {
   const [scanBarcode, setScanBarcode] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
-    inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
+    inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '', gst: false,
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -283,7 +302,7 @@ export default function InventoryPage() {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [editForm, setEditForm] = useState({
     name: '', unit: '', sku: '', barcode: '', inventory_category_id: '', preferred_supplier_id: '',
-    reorder_point: '', lead_days: '', cover_days: '', storage_location: '', notes: '',
+    reorder_point: '', lead_days: '', cover_days: '', storage_location: '', notes: '', gst: false,
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -311,6 +330,7 @@ export default function InventoryPage() {
       cover_days: item.cover_days != null ? String(item.cover_days) : '',
       storage_location: item.storage_location ?? '',
       notes: item.notes ?? '',
+      gst: (item.gst_rate_bp ?? 0) > 0,
     });
   };
 
@@ -337,6 +357,7 @@ export default function InventoryPage() {
         cover_days: num(editForm.cover_days),
         storage_location: editForm.storage_location.trim() || null,
         notes: editForm.notes.trim() || null,
+        gst_rate_bp: editForm.gst ? 800 : 0,
       });
       setEditItem(null);
       void loadItems();
@@ -925,7 +946,7 @@ export default function InventoryPage() {
                 setCreateOpen(true);
                 setCreateError('');
                 setCreateForm({
-                  name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '',
+                  name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '', gst: false,
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 if (cats.length === 0) void loadCats();
@@ -1490,6 +1511,7 @@ export default function InventoryPage() {
               <input type="number" min="1" max="90" step="1" style={S.input} value={editForm.cover_days} aria-label="Cover days"
                 onChange={(e) => setEditForm((f) => ({ ...f, cover_days: e.target.value }))} />
             </label>
+            <GstToggle checked={editForm.gst} onChange={(v) => setEditForm((f) => ({ ...f, gst: v }))} />
             <label>
               <span style={S.label}>Storage location</span>
               <input style={S.input} value={editForm.storage_location} aria-label="Storage location"
@@ -1671,6 +1693,7 @@ export default function InventoryPage() {
               <span style={S.label}>Unit cost (MVR)</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.unit_cost} onChange={(e) => setCreateForm((f) => ({ ...f, unit_cost: e.target.value }))} />
             </label>
+            <GstToggle checked={createForm.gst} onChange={(v) => setCreateForm((f) => ({ ...f, gst: v }))} />
             <label>
               <span style={S.label}>Storage location</span>
               <input style={S.input} value={createForm.storage_location} onChange={(e) => setCreateForm((f) => ({ ...f, storage_location: e.target.value }))} placeholder="e.g. Cold room, Dry store" />
@@ -1707,6 +1730,7 @@ export default function InventoryPage() {
                 preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
                 storage_location: createForm.storage_location.trim() || undefined,
                 notes: createForm.notes.trim() || undefined,
+                gst_rate_bp: createForm.gst ? 800 : 0,
               }).then(() => {
                 setCreateOpen(false);
                 void loadItems();

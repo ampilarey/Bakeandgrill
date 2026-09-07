@@ -229,7 +229,7 @@ describe('Purchase order actions', () => {
     fireEvent.click(screen.getByText('Save changes'));
 
     await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalledWith(1, [
-      { inventory_item_id: 7, quantity: 25, unit_cost: 6.5 },
+      { inventory_item_id: 7, quantity: 25, unit_cost: 6.5, gst_rate_bp: 0 },
     ]));
   });
 
@@ -244,8 +244,8 @@ describe('Purchase order actions', () => {
     fireEvent.click(screen.getByText('Save changes'));
 
     await waitFor(() => expect(updatePurchaseLines).toHaveBeenCalledWith(1, [
-      { inventory_item_id: 7, quantity: 10, unit_cost: 5 },
-      { inventory_item_id: 9, quantity: 30, unit_cost: 2 },
+      { inventory_item_id: 7, quantity: 10, unit_cost: 5, gst_rate_bp: 0 },
+      { inventory_item_id: 9, quantity: 30, unit_cost: 2, gst_rate_bp: 0 },
     ]));
   });
 

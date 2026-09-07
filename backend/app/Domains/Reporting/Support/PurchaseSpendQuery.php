@@ -31,20 +31,28 @@ use Illuminate\Support\Facades\DB;
  * contributes nothing, a cancelled order keeps whatever genuinely arrived
  * before it was called off, and a full receipt equals the order total.
  *
- * On GST — owner, 2026-09-06: "gst not return in cafe." The café never claims
- * input tax back, so the price typed on a line IS the money handed over, tax
- * and all, and there is nothing to add or strip. An earlier version scaled
- * these figures up by the order's GST rate for a "with GST" view, which
- * invented 8% of spend that never existed. For the rare purchase entered with
- * a proper tax invoice and the claim ticked, the lines are typed ex-GST and
- * the claimed tax comes back — so the entered line value is the true cost in
- * that case too. One number, no tax arithmetic: what was typed is what it
- * cost.
+ * On GST — owner, 2026-09-06: "gst not return in cafe." The price typed on a
+ * line IS the money handed over, tax and all; an earlier version scaled these
+ * figures up by the order's GST rate for a "with GST" view, which invented 8%
+ * of spend that never existed. Then, owner 2026-09-07: "some items are
+ * eligible for GST return." For a line bought with claimable GST, on a
+ * purchase whose tax invoice is on file, the GST inside the typed price comes
+ * back from MIRA — so that part was never the cost. The cost of a received
+ * line is what was typed, times what arrived, less the share of the line's
+ * GST that will come back. Blocked GST (no tax invoice) stays in the cost:
+ * it is money gone until the invoice turns up.
  */
 final class PurchaseSpendQuery
 {
-    /** The money a received line cost: what was typed, times what arrived. */
-    public const RECEIVED_COST = 'purchase_items.received_quantity * purchase_items.unit_cost';
+    /**
+     * The GST on a received line that will come back, in MVR: the line's GST
+     * in proportion to what arrived, only when the purchase can claim it.
+     */
+    public const CLAIMABLE_GST = '(CASE WHEN purchases.is_input_tax_claimable = true AND purchase_items.quantity > 0 AND purchase_items.gst_laar > 0'
+        . ' THEN (purchase_items.received_quantity / purchase_items.quantity) * (purchase_items.gst_laar / 100.0) ELSE 0 END)';
+
+    /** The money a received line cost: what was typed, times what arrived, less the GST that comes back. */
+    public const RECEIVED_COST = '(purchase_items.received_quantity * purchase_items.unit_cost - ' . self::CLAIMABLE_GST . ')';
 
     /**
      * Received purchase lines in a date window, ready to aggregate.
@@ -79,11 +87,32 @@ final class PurchaseSpendQuery
             ->where('purchase_items.received_quantity', '>', 0);
     }
 
-    /** Total spent on what was received in the window. */
+    /** Total spent on what was received in the window, net of GST that comes back. */
     public static function total(string $fromDate, string $toDate): float
     {
         return round((float) self::lines($fromDate, $toDate)
             ->sum(DB::raw(self::RECEIVED_COST)), 2);
+    }
+
+    /**
+     * The GST inside the window's received lines that will come back from
+     * MIRA — already left out of total(); shown so the owner can see it.
+     */
+    public static function claimableGst(string $fromDate, string $toDate): float
+    {
+        return round((float) self::lines($fromDate, $toDate)
+            ->sum(DB::raw(self::CLAIMABLE_GST)), 2);
+    }
+
+    /**
+     * GST on received lines that could come back but cannot be claimed yet —
+     * the purchase has no tax invoice on file. Still counted as cost.
+     */
+    public static function blockedGst(string $fromDate, string $toDate): float
+    {
+        return round((float) self::lines($fromDate, $toDate)
+            ->sum(DB::raw('(CASE WHEN (purchases.is_input_tax_claimable IS NULL OR purchases.is_input_tax_claimable = false) AND purchase_items.quantity > 0 AND purchase_items.gst_laar > 0'
+                . ' THEN (purchase_items.received_quantity / purchase_items.quantity) * (purchase_items.gst_laar / 100.0) ELSE 0 END)')), 2);
     }
 
     /**

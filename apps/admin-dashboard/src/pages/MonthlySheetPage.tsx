@@ -141,6 +141,12 @@ export function MonthlySheetPage() {
             <div style={{ height: 10 }} />
 
             <Row label="Ingredients bought" value={cur.ingredients} prev={prev?.ingredients} negative />
+            {(cur.gst_back_on_purchases > 0 || (prev?.gst_back_on_purchases ?? 0) > 0) && (
+              <Row label="GST coming back on purchases (already left out)" value={cur.gst_back_on_purchases} prev={prev?.gst_back_on_purchases} muted />
+            )}
+            {cur.gst_blocked_on_purchases > 0 && (
+              <Row label="GST claimable once tax invoices are on file" value={cur.gst_blocked_on_purchases} muted />
+            )}
             <Row label="Expenses (salary, rent…)" value={cur.expenses.total} prev={prev?.expenses.total} negative />
 
             <div style={{

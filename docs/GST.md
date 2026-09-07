@@ -29,6 +29,29 @@ Configure under the **Settings** tab (or `PUT /api/admin/gst/settings`):
 
 Consult your accountant before changing accounting basis.
 
+## Input GST on purchases — per item
+
+Owner, 2026-09-06: "gst not return in cafe." Owner, 2026-09-07: "some items are
+eligible for GST return." Both hold:
+
+- The price typed on a purchase line is the money handed over, GST included.
+- An inventory item can be marked **Bought with 8% GST that comes back**
+  (`inventory_items.gst_rate_bp = 800`). Every purchase line for it is
+  pre-ticked; a line can be un-ticked (a shop with no tax invoice) or ticked
+  for an item that normally has none.
+- The line stores the GST inside its price (`purchase_items.gst_laar`). The
+  purchase adds its lines up: `gst_laar`, `amount_excluding_gst_laar` (the
+  value the GST was charged on — the taxed lines only), `total_laar`.
+- The claim is made only when the supplier TIN, tax invoice number and date
+  are on the purchase and the claim is ticked. Otherwise the GST is posted to
+  the ledger as **blocked**, with the reason, and stays in the cost.
+- Cost figures (`PurchaseSpendQuery`, monthly sheet, P&L, the item's recorded
+  unit cost at receipt) are net of GST that comes back and include GST that is
+  blocked. The monthly sheet shows both amounts beside "Ingredients bought".
+
+A purchase whose lines carry no GST is untouched: the whole-invoice figures a
+person types for a claim still stand.
+
 ## MIRA exports
 
 | Export | When required |

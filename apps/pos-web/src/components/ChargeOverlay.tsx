@@ -117,7 +117,7 @@ type Props = {
     split?: boolean;
   };
   onClose: () => void;
-  onConfirm: (rows: Array<{ method: ChargeMethod; amount: number; tendered_amount?: number }>) => Promise<void>;
+  onConfirm: (rows: Array<{ method: ChargeMethod; amount: number; tendered_amount?: number; reference?: string }>) => Promise<void>;
   submitting: boolean;
   /** Optional inline error to surface inside the overlay. The overlay
    *  is z-index 900 (covers the cart status banner area), so without
@@ -225,6 +225,13 @@ export function ChargeOverlay({
    * finds it. The lock is the point; the caption was not.
    */
   const [received, setReceived] = useState<string>("");
+  /**
+   * Who sent the transfer, as shown in the customer's banking app. Owner,
+   * 2026-09-07: the bank statement names the sender, walk-in orders name
+   * nobody, so this is what lets a transfer — even one for the wrong
+   * amount — find its sale on the Settlements page.
+   */
+  const [senderName, setSenderName] = useState<string>("");
   /** Face values (MVR) of note photos the cashier has tapped — sum → Received. */
   const [selectedNotes, setSelectedNotes] = useState<number[]>([]);
   /** Faces whose photo would not load; those chips name themselves instead. */
@@ -502,6 +509,9 @@ export function ChargeOverlay({
   const canConfirmAccountTender = canConfirmCredit || canConfirmWallet;
 
   const confirm = async () => {
+    const senderRef = method === "digital_wallet" && senderName.trim()
+      ? { reference: senderName.trim() }
+      : {};
     // Split tender: send TWO rows — the requested non-cash portion +
     // the remainder as cash. settleOrder() already top-ups any
     // shortfall with cash, but being explicit here means the server
@@ -541,7 +551,7 @@ export function ChargeOverlay({
       const rest = fromLaari(restLaari);
       const splitAmount = fromLaari(toLaari(splitNum));
       await onConfirm([
-        { method, amount: splitAmount },
+        { method, amount: splitAmount, ...senderRef },
         { method: "cash", amount: rest },
       ]);
       return;
@@ -554,7 +564,7 @@ export function ChargeOverlay({
       await onConfirm([{ method, amount: total, tendered_amount: receivedNum }]);
       return;
     }
-    await onConfirm([{ method, amount: total }]);
+    await onConfirm([{ method, amount: total, ...senderRef }]);
   };
 
   // Bug-035: trap Tab inside the charge overlay so keyboard focus
@@ -945,6 +955,28 @@ export function ChargeOverlay({
             {isOffline && (method === "card" || method === "qr" || method === "digital_wallet") && (
               <div style={{ fontSize: 12, color: "#64748B" }}>
                 Payment must already be received — will sync when online.
+              </div>
+            )}
+
+            {method === "digital_wallet" && (
+              <div className="pos-charge-sender">
+                <p style={tinyLabel}>Sender's name</p>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  aria-label="Sender's name on the transfer"
+                  placeholder="As shown on their transfer, e.g. AZLIFA AHMED"
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                  maxLength={120}
+                  style={{
+                    width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10,
+                    border: "1px solid #CBD5E1", fontSize: 15, background: "#fff", color: "#0F172A",
+                  }}
+                />
+                <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748B" }}>
+                  Lets the bank statement find this sale, even if the amount sent was wrong.
+                </p>
               </div>
             )}
 

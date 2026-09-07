@@ -48,11 +48,17 @@ type ManualPoLine = {
   brand: string;
   /** Brands this item has been bought as before, offered as suggestions. */
   brands: string[];
+  /**
+   * The typed price has 8% GST inside it that comes back (owner, 2026-09-07:
+   * "some items are eligible for GST return"). Pre-filled from the item;
+   * a line can say otherwise for the shop it came from.
+   */
+  gst: boolean;
 };
 
 const blankManualLine = (): ManualPoLine => ({
   selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], newPackQty: '',
-  newItem: null, brand: '', brands: [],
+  newItem: null, brand: '', brands: [], gst: false,
 });
 
 /** The pack the typed unit names, if the item has one by that name. */
@@ -201,8 +207,6 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     supplier_tin: '',
     supplier_invoice_no: '',
     supplier_invoice_date: '',
-    amount_ex_gst: '',
-    gst_amount: '',
     revenue_or_capital: 'revenue' as 'revenue' | 'capital',
   });
 
@@ -347,9 +351,10 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           unit_cost: cost,
           ...(linePack(l) ? { purchase_unit_id: linePack(l)!.id } : {}),
           ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
+          gst_rate_bp: l.gst ? 800 : 0,
         };
       })
-      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number }[];
+      .filter(Boolean) as { inventory_item_id: number; name: string; quantity: number; unit_cost: number; purchase_unit_id?: number; gst_rate_bp: number }[];
     if (lines.length === 0) { setManualPoError('Add at least one valid line item.'); return; }
 
     // A word like "case" with no size behind it cannot be turned into stock or
@@ -409,8 +414,6 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       supplier_tin: po.supplier_tin ?? po.supplier?.tin ?? '',
       supplier_invoice_no: po.supplier_invoice_no ?? '',
       supplier_invoice_date: po.supplier_invoice_date ?? '',
-      amount_ex_gst: po.amount_excluding_gst_laar != null ? String(po.amount_excluding_gst_laar / 100) : '',
-      gst_amount: po.gst_laar != null ? String(po.gst_laar / 100) : '',
       revenue_or_capital: (po.revenue_or_capital as 'revenue' | 'capital') ?? 'revenue',
     });
   };
@@ -517,7 +520,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const [editPo, setEditPo] = useState<Purchase | null>(null);
   const [editLines, setEditLines] = useState<Array<{
     inventory_item_id: string; name: string; quantity: string; unit_cost: string;
-    purchase_unit_id: string; brand: string;
+    purchase_unit_id: string; brand: string; gst: boolean;
   }>>([]);
   const [deletePo, setDeletePo] = useState<Purchase | null>(null);
   /*
@@ -549,6 +552,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       ),
       purchase_unit_id: '',
       brand: line.brand ?? '',
+      gst: (line.gst_rate_bp ?? 0) > 0,
     })));
   };
 
@@ -562,6 +566,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         unit_cost: parseFloat(l.unit_cost) || 0,
         ...(l.purchase_unit_id ? { purchase_unit_id: Number(l.purchase_unit_id) } : {}),
         ...(l.brand.trim() ? { brand: l.brand.trim() } : {}),
+        gst_rate_bp: l.gst ? 800 : 0,
       }));
 
     if (lines.length === 0) {
@@ -613,18 +618,15 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     if (!detail) return;
     setActionLoading(true);
     try {
+      // The GST itself comes from the lines; only the tax-invoice facts
+      // are typed here. The server decides whether the claim can be made.
       if (gstForm.is_input_tax_claimable) {
-        const exLaar = gstForm.amount_ex_gst ? Math.round(parseFloat(gstForm.amount_ex_gst) * 100) : undefined;
-        const gstLaar = gstForm.gst_amount ? Math.round(parseFloat(gstForm.gst_amount) * 100) : undefined;
         await updatePurchase(detail.id, {
           is_input_tax_claimable: true,
           is_tax_invoice_received: true,
           supplier_tin: gstForm.supplier_tin || undefined,
           supplier_invoice_no: gstForm.supplier_invoice_no || undefined,
           supplier_invoice_date: gstForm.supplier_invoice_date || undefined,
-          amount_excluding_gst_laar: exLaar,
-          gst_laar: gstLaar,
-          gst_rate_bp: gstLaar ? 800 : undefined,
           revenue_or_capital: gstForm.revenue_or_capital,
         });
       }
@@ -904,7 +906,12 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               <tbody>
                 {detail.items?.map((item) => (
                   <tr key={item.id}>
-                    <td style={TD}>{item.inventory_item?.name ?? '—'}</td>
+                    <td style={TD}>
+                      {item.inventory_item?.name ?? '—'}
+                      {(item.gst_laar ?? 0) > 0 && (
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>incl. GST {mvr((item.gst_laar ?? 0) / 100)}</span>
+                      )}
+                    </td>
                     <td style={{ ...TD, textAlign: 'center' }}>{item.quantity}</td>
                     <td style={{
                       ...TD, textAlign: 'center', fontWeight: 700,
@@ -976,24 +983,35 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--color-border)' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>Input GST (optional)</p>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
-                <input type="checkbox" checked={gstForm.is_input_tax_claimable} onChange={(e) => setGstForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
-                Claimable input tax on this purchase
-              </label>
-              {gstForm.is_input_tax_claimable && (
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <input placeholder="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <input placeholder="Supplier invoice no." value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                    <input type="date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                  </div>
-                  <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <input type="number" placeholder="Amount ex-GST (MVR)" value={gstForm.amount_ex_gst} onChange={(e) => setGstForm((f) => ({ ...f, amount_ex_gst: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                    <input type="number" placeholder="GST amount (MVR)" value={gstForm.gst_amount} onChange={(e) => setGstForm((f) => ({ ...f, gst_amount: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
-                  </div>
-                </div>
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--color-border)' }} data-testid="po-gst-panel">
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', margin: '0 0 6px' }}>Input GST</p>
+              {(detail.gst_laar ?? 0) > 0 ? (
+                <>
+                  <p style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>
+                    GST inside this order: <strong>{mvr((detail.gst_laar ?? 0) / 100)}</strong> on{' '}
+                    {(detail.items ?? []).filter((i) => (i.gst_laar ?? 0) > 0).length} line{(detail.items ?? []).filter((i) => (i.gst_laar ?? 0) > 0).length === 1 ? '' : 's'}.
+                    {detail.is_input_tax_claimable
+                      ? ' The tax invoice is on file, so it comes back and is left out of the cost.'
+                      : ' It comes back once the supplier\'s tax invoice details are on the order; until then it stays in the cost.'}
+                  </p>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 10 }}>
+                    <input type="checkbox" checked={gstForm.is_input_tax_claimable} onChange={(e) => setGstForm((f) => ({ ...f, is_input_tax_claimable: e.target.checked }))} />
+                    I have the supplier's tax invoice — claim this GST
+                  </label>
+                  {gstForm.is_input_tax_claimable && (
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <input placeholder="Supplier TIN" aria-label="Supplier TIN" value={gstForm.supplier_tin} onChange={(e) => setGstForm((f) => ({ ...f, supplier_tin: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, boxSizing: 'border-box' }} />
+                      <div className="form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <input placeholder="Supplier invoice no." aria-label="Supplier invoice number" value={gstForm.supplier_invoice_no} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_no: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
+                        <input type="date" aria-label="Supplier invoice date" value={gstForm.supplier_invoice_date} onChange={(e) => setGstForm((f) => ({ ...f, supplier_invoice_date: e.target.value }))} style={{ padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13 }} />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  No line on this order carries GST. Tick GST on a line when editing, or mark the item as bought with GST under Inventory, and it will show here.
+                </p>
               )}
             </div>
             </>
@@ -1154,6 +1172,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       brand: '',
                       brands: [],
                       unit_cost: sel?.item.cost_per_unit != null ? String(sel.item.cost_per_unit) : l.unit_cost,
+                      gst: (sel?.item.gst_rate_bp ?? 0) > 0,
                     } : l),
                   }));
                   if (sel) void loadPacksFor(idx, sel.item.id);
@@ -1222,6 +1241,15 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   </div>
                 </div>
               )}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, marginTop: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  aria-label={`GST inside the price for item ${idx + 1}`}
+                  checked={line.gst}
+                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, gst: e.target.checked } : l) }))}
+                />
+                <span>8% GST inside this price — comes back with the supplier's tax invoice</span>
+              </label>
               {/* Which brand this one was. Free text with the brands this item
                   has been bought as before: an egg is an egg on the shelf, so
                   the count stays one number, but the price moves brand to
@@ -1439,7 +1467,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 key={idx}
                 data-testid={`po-edit-line-${idx}`}
                 style={{
-                  display: 'grid', gridTemplateColumns: '1fr 90px 110px auto',
+                  display: 'grid', gridTemplateColumns: '1fr 90px 110px auto auto',
                   gap: 8, alignItems: 'center',
                   border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 10px',
                 }}
@@ -1457,6 +1485,15 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, unit_cost: e.target.value } : r))}
                   style={{ padding: '6px 8px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, width: '100%', boxSizing: 'border-box' }}
                 />
+                <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 12, whiteSpace: 'nowrap', cursor: 'pointer' }} title="8% GST inside this price, claimable with the supplier's tax invoice">
+                  <input
+                    type="checkbox"
+                    aria-label={`GST inside the price for ${line.name}`}
+                    checked={line.gst}
+                    onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, gst: e.target.checked } : r))}
+                  />
+                  GST
+                </label>
                 <Btn
                   small variant="ghost"
                   onClick={() => setEditLines((rows) => rows.filter((_, i) => i !== idx))}
@@ -1488,6 +1525,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   unit_cost: String(sel.item.cost_per_unit ?? ''),
                   purchase_unit_id: '',
                   brand: '',
+                  gst: (sel.item.gst_rate_bp ?? 0) > 0,
                 }]);
               }}
               placeholder="Search inventory to add a line…"

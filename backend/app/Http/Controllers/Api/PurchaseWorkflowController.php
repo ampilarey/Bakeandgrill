@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Domains\Finance\Services\NonStockPurchaseExpenseService;
 use App\Domains\Gst\Services\GstLedgerPoster;
 use App\Domains\Gst\Services\GstPeriodService;
+use App\Domains\Gst\Services\PurchaseGstService;
 use App\Domains\Inventory\Services\PurchaseEditPolicy;
 use App\Domains\Inventory\Services\RestockIntelligenceService;
 use App\Models\Expense;
@@ -316,6 +317,11 @@ class PurchaseWorkflowController extends Controller
             return response()->json(['message' => 'Only ordered or partial purchases can receive items.'], 422);
         }
 
+        // The claim stands on the tax-invoice details as they are right now,
+        // so the cost recorded for what arrives is net of GST only if the
+        // GST will actually come back.
+        app(PurchaseGstService::class)->rollup($purchase);
+
         DB::transaction(function () use ($purchase, $validated, $request) {
             foreach ($validated['items'] as $line) {
                 $pItem = PurchaseItem::where('id', $line['purchase_item_id'])
@@ -363,7 +369,9 @@ class PurchaseWorkflowController extends Controller
 
                     $oldStock = max(0, (float) ($invItem->current_stock ?? 0));
                     $oldCost = (float) ($invItem->unit_cost ?? 0);
-                    $newCost = (float) $pItem->unit_cost;
+                    // Net of GST that comes back when the purchase can claim
+                    // it: that part of the typed price was never the cost.
+                    $newCost = app(PurchaseGstService::class)->netUnitCost($pItem, $purchase);
 
                     $invItem->current_stock = $oldStock + $incomingQty;
 
@@ -601,9 +609,11 @@ class PurchaseWorkflowController extends Controller
                 'notes' => $validated['notes'] ?? 'Auto-generated from low-stock suggestion',
             ]);
 
+            $gst = app(PurchaseGstService::class);
             foreach ($validated['items'] as $line) {
                 $lineTotal = round((float) $line['quantity'] * (float) $line['unit_cost'], 2);
                 $subtotal += $lineTotal;
+                $rateBp = $gst->rateFor(null, InventoryItem::find($line['inventory_item_id']));
 
                 PurchaseItem::create([
                     'purchase_id' => $po->id,
@@ -611,10 +621,13 @@ class PurchaseWorkflowController extends Controller
                     'quantity' => $line['quantity'],
                     'unit_cost' => $line['unit_cost'],
                     'total_cost' => $lineTotal,
+                    'gst_rate_bp' => $rateBp ?: null,
+                    'gst_laar' => $gst->gstInside($lineTotal, $rateBp),
                 ]);
             }
 
             $po->update(['subtotal' => $subtotal, 'total' => $subtotal]);
+            $gst->rollup($po->fresh('items'));
 
             return $po;
         });

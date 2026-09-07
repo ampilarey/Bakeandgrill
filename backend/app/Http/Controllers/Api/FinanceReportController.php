@@ -60,6 +60,9 @@ class FinanceReportController extends Controller
          * PurchaseSpendQuery.
          */
         $cogs = PurchaseSpendQuery::total($from->toDateString(), $to->toDateString());
+        // Owner, 2026-09-07: some items are bought with GST that comes back.
+        // $cogs is already net of it; this is the amount, for the eye.
+        $cogsGstBack = PurchaseSpendQuery::claimableGst($from->toDateString(), $to->toDateString());
 
         // Operating expenses (use date strings — SQLite stores expense_date with time)
         $opex = Expense::whereDate('expense_date', '>=', $from->toDateString())
@@ -134,6 +137,7 @@ class FinanceReportController extends Controller
                 'combined_net' => $combinedNet,
             ],
             'cogs' => (float) $cogs,
+            'cogs_gst_back' => (float) $cogsGstBack,
             'wholesale_cogs' => $wholesaleCogs,
             'wholesale' => $wholesale,
             'gross_profit' => $grossProfit,
