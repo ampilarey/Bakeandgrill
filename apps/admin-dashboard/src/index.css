@@ -1891,11 +1891,17 @@ a { text-decoration: none; color: inherit; }
   padding: 0 3px;
 }
 
+/* Rendered in a portal on <body> and placed from the bell's rect, so no
+   ancestor's overflow can clip it. The mobile header sets `overflow-x: clip`,
+   which Safari and older Android browsers extend to the vertical axis; as a
+   child of the header this panel was cut to the header's 56px height. */
 .admin-shell-notif-dropdown {
-  position: absolute;
-  top: 42px;
-  right: 0;
+  position: fixed;
+  top: 56px;
+  left: 12px;
   width: min(320px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -1903,6 +1909,8 @@ a { text-decoration: none; color: inherit; }
   z-index: var(--z-dropdown);
   overflow: hidden;
 }
+
+.admin-shell-notif-dropdown-header { flex-shrink: 0; }
 
 .admin-shell-notif-dropdown-header {
   display: flex;
@@ -1926,7 +1934,8 @@ a { text-decoration: none; color: inherit; }
   font-family: inherit;
 }
 
-.admin-shell-notif-list { max-height: 360px; overflow-y: auto; }
+/* The panel caps its own height from the viewport; the list takes what is left. */
+.admin-shell-notif-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 .admin-shell-notif-empty {
   padding: 32px 16px;

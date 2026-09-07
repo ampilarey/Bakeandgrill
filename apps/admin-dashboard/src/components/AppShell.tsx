@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { StaffUser } from '../api';
 import { fetchLowStockItems } from '../api';
@@ -66,30 +67,112 @@ function formatNotifTime(ts: number): string {
   return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
 }
 
+/** Where the open panel sits, in viewport coordinates. */
+type PanelBox = { top: number; left: number; width: number; maxHeight: number };
+
+/**
+ * Owner, 2026-09-07, from a phone: "There is problem with mobile view. Check
+ * notifications."
+ *
+ * The panel used to be an absolutely-positioned child of the header, and the
+ * mobile header carries `overflow-x: clip` to stop wide chrome from widening
+ * the document. Current Chromium leaves the other axis visible, but Safari
+ * and older Android browsers resolve `clip` next to `visible` by clipping
+ * both — so the panel was cut off at the header's 56px edge and all anyone
+ * saw was an 8px sliver of its top border. Every admin page has this header,
+ * so it looked broken everywhere.
+ *
+ * It is now placed in a portal on `document.body` at fixed coordinates
+ * measured from the bell. No ancestor's overflow can reach it, in any
+ * browser, and it stays on screen on a narrow phone.
+ */
 function NotificationsBell() {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<PanelBox | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount } = useNotifications();
+
+  /** Anchor under the bell, right-aligned, but never off either edge. */
+  const place = useCallback(() => {
+    const b = btnRef.current?.getBoundingClientRect();
+    if (!b) return;
+    const margin = 12;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const width = Math.min(320, Math.max(240, vw - margin * 2));
+    const left = Math.max(margin, Math.min(b.right - width, vw - margin - width));
+    const top = b.bottom + 8;
+    setBox({ top: Math.round(top), left: Math.round(left), width: Math.round(width), maxHeight: Math.max(160, Math.round(vh - top - margin)) });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    const onMouse = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    place();
+    const onPointer = (e: Event) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
-    document.addEventListener('mousedown', onMouse);
+    // The bell moves with the sticky header, so follow scroll and resize.
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     return () => {
-      document.removeEventListener('mousedown', onMouse);
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
     };
-  }, [open]);
+  }, [open, place]);
+
+  const panel = (
+    <div
+      ref={panelRef}
+      className="admin-shell-notif-dropdown"
+      role="dialog"
+      aria-label="Notifications"
+      style={box ? { top: box.top, left: box.left, width: box.width, maxHeight: box.maxHeight } : undefined}
+    >
+      <div className="admin-shell-notif-dropdown-header">
+        <span>Notifications</span>
+        {notifications.length > 0 && (
+          <button type="button" onClick={clearAll} className="admin-shell-link-btn">Clear all</button>
+        )}
+        <button type="button" onClick={() => setOpen(false)} aria-label="Close notifications" className="admin-shell-icon-btn admin-shell-icon-btn--tiny">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="admin-shell-notif-list">
+        {notifications.length === 0 ? (
+          <div className="admin-shell-notif-empty">No notifications yet</div>
+        ) : notifications.map((n) => {
+          const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
+          return (
+            <div key={n.id} className="admin-shell-notif-row">
+              <span aria-hidden>{iconMap[n.type] ?? 'ℹ️'}</span>
+              <div>
+                <p className="admin-shell-notif-title">{n.title}</p>
+                <p className="admin-shell-notif-body">{n.body}</p>
+                <p className="admin-shell-notif-time">{formatNotifTime(n.ts)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
-    <div ref={wrapRef} className="admin-shell-notif-wrap">
+    <div className="admin-shell-notif-wrap">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => { setOpen((o) => !o); if (!open) markAllRead(); }}
         title="Notifications"
@@ -105,36 +188,7 @@ function NotificationsBell() {
         )}
       </button>
 
-      {open && (
-        <div className="admin-shell-notif-dropdown">
-          <div className="admin-shell-notif-dropdown-header">
-            <span>Notifications</span>
-            {notifications.length > 0 && (
-              <button type="button" onClick={clearAll} className="admin-shell-link-btn">Clear all</button>
-            )}
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close notifications" className="admin-shell-icon-btn admin-shell-icon-btn--tiny">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="admin-shell-notif-list">
-            {notifications.length === 0 ? (
-              <div className="admin-shell-notif-empty">No notifications yet</div>
-            ) : notifications.map((n) => {
-              const iconMap: Record<string, string> = { order: '🛒', stock: '📦', info: 'ℹ️', warning: '⚠️' };
-              return (
-                <div key={n.id} className="admin-shell-notif-row">
-                  <span aria-hidden>{iconMap[n.type] ?? 'ℹ️'}</span>
-                  <div>
-                    <p className="admin-shell-notif-title">{n.title}</p>
-                    <p className="admin-shell-notif-body">{n.body}</p>
-                    <p className="admin-shell-notif-time">{formatNotifTime(n.ts)}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {open && createPortal(panel, document.body)}
     </div>
   );
 }
