@@ -22,6 +22,7 @@ import {
 } from '../api';
 import { Gift, Search, Copy, Check } from 'lucide-react';
 import { PrintCardModal, type PrintCardData } from '../components/PrintCardModal';
+import { fmt } from '../utils/fmt';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'green',
@@ -426,7 +427,7 @@ export default function GiftCardsPage() {
                     </div>
                   )}
                 </td>
-                <td style={TD}>MVR {card.initial_balance.toFixed(2)}</td>
+                <td style={TD}>MVR {fmt(card.initial_balance, 2)}</td>
                 <td style={{ ...TD, fontWeight: 700, color: (card.available_balance ?? card.current_balance) > 0 ? 'var(--color-success-strong)' : 'var(--color-text-muted)' }}>
                   <div>MVR {Number(card.available_balance ?? card.current_balance).toFixed(2)}</div>
                   {(Number(card.held_balance ?? 0) > 0 || Number(card.available_balance ?? card.current_balance) !== Number(card.current_balance)) && (
@@ -540,7 +541,7 @@ export default function GiftCardsPage() {
                     <td style={{ ...TD, color: row.amount < 0 ? 'var(--color-danger-strong)' : 'var(--color-success-strong)', fontWeight: 600 }}>
                       {row.amount < 0 ? '−' : '+'}MVR {Math.abs(row.amount).toFixed(2)}
                     </td>
-                    <td style={TD}>MVR {row.balance_after.toFixed(2)}</td>
+                    <td style={TD}>MVR {fmt(row.balance_after, 2)}</td>
                     <td style={TD}>{row.order_id ? `#${row.order_id}` : '—'}</td>
                   </tr>
                 ))}
@@ -575,7 +576,7 @@ export default function GiftCardsPage() {
                   {copied ? <Check size={16} /> : <Copy size={16} />}
                 </button>
               </div>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Balance: MVR {issuedCard.current_balance.toFixed(2)}</p>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 14 }}>Balance: MVR {fmt(issuedCard.current_balance, 2)}</p>
               {issuedCard.expires_at && <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Expires: {issuedCard.expires_at}</p>}
 
               {issueSms && (

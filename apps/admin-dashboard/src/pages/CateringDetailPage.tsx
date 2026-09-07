@@ -15,6 +15,7 @@ import {
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { PageHeader, PageShell, Btn } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { fmt } from '../utils/fmt';
 
 type DraftLine = {
   key: string;
@@ -363,7 +364,7 @@ export function CateringDetailPage() {
                         >
                           {l.available_packaging_options.map((o) => (
                             <option key={o.id} value={o.id}>
-                              {o.name}{o.fee > 0 ? ` (+MVR ${o.fee.toFixed(2)})` : ''}
+                              {o.name}{o.fee > 0 ? ` (+MVR ${fmt(o.fee, 2)})` : ''}
                             </option>
                           ))}
                         </select>

@@ -32,6 +32,7 @@ import {
   type StockMovementRow, type Supplier,
   type InventoryPurchaseUnit,
 } from '../api';
+import { fmt } from '../utils/fmt';
 
 // Waste used to be its own sidebar entry. It is a stock question — what left
 // the shelf without being sold — so it lives here now (purchasing audit,
@@ -2238,7 +2239,7 @@ export default function InventoryPage() {
                             )}
                           </td>
                           <td style={TD}>{h.quantity}</td>
-                          <td style={{ ...TD, fontWeight: 600 }}>MVR {h.unit_cost.toFixed(2)}</td>
+                          <td style={{ ...TD, fontWeight: 600 }}>MVR {fmt(h.unit_cost, 2)}</td>
                         </tr>
                       ))}
                     </tbody>

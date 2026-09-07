@@ -13,6 +13,7 @@ import {
 import { Card, ErrorMsg, PageHeader, PageShell, SectionLabel, Spinner, StatCard } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { fmt } from '../utils/fmt';
 
 function fmtTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -389,7 +390,7 @@ export function SystemHealthPage() {
                         #{o.order_number}
                       </button>
                       <span style={{ color: 'var(--color-text-secondary)' }}>
-                        MVR {o.total.toFixed(2)} · {fmtTime(o.created_at)}
+                        MVR {fmt(o.total, 2)} · {fmtTime(o.created_at)}
                       </span>
                     </div>
                   ))}

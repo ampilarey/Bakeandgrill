@@ -20,6 +20,7 @@ import {
   writeRestockDefaults,
   type RestockPlanDefaults,
 } from '../utils/restockDefaults';
+import { fmt } from '../utils/fmt';
 
 type RestockFilter = 'due_soon' | 'all' | 'price_up' | 'alerts' | 'snoozed' | 'excluded';
 
@@ -1433,7 +1434,7 @@ export function ForecastPage() {
                     <div style={{ marginTop: 6, fontSize: 12, color: '#c2410c' }}>
                       {restockPreviewBySupplier.map((g) => (
                         <span key={g.supplier_id} style={{ marginRight: 12 }}>
-                          {g.name}: {g.lines} line{g.lines === 1 ? '' : 's'} · MVR {g.total.toFixed(2)}
+                          {g.name}: {g.lines} line{g.lines === 1 ? '' : 's'} · MVR {fmt(g.total, 2)}
                           {' '}· ETA {g.expected_delivery_date} ({g.maxLead}d lead)
                         </span>
                       ))}
@@ -1683,7 +1684,7 @@ export function ForecastPage() {
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '8px 12px' }}>{item.current_stock.toFixed(2)} {item.unit}</td>
+                        <td style={{ padding: '8px 12px' }}>{fmt(item.current_stock, 2)} {item.unit}</td>
                         <td style={{ padding: '8px 12px', fontWeight: 700 }}>
                           {item.days_of_stock === null ? '∞' : item.days_of_stock === 0 ? 'OUT' : `${item.days_of_stock}d`}
                           <span style={{
@@ -1906,7 +1907,7 @@ export function ForecastPage() {
                               <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.suggested_supplier.name}</div>
                               <div style={{ fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
                                 <span>
-                                  {item.unit_cost != null ? `MVR ${item.unit_cost.toFixed(2)}` : '—'}
+                                  {item.unit_cost != null ? `MVR ${fmt(item.unit_cost, 2)}` : '—'}
                                   {item.suggested_supplier.source ? ` · ${item.suggested_supplier.source}` : ''}
                                 </span>
                                 {(() => {

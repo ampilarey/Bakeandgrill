@@ -380,8 +380,12 @@ class InventoryController extends Controller
                     'purchase_id' => $item->purchase_id,
                     'purchase_number' => $item->purchase?->purchase_number,
                     'supplier' => $item->purchase?->supplier?->name,
-                    'unit_cost' => $item->unit_cost,
-                    'quantity' => $item->quantity,
+                    // Floats, not the decimal cast's strings: the admin
+                    // declares these as numbers and calls toFixed on them,
+                    // which is a white screen the moment an item has any
+                    // history at all (owner, 2026-09-07).
+                    'unit_cost' => (float) $item->unit_cost,
+                    'quantity' => (float) $item->quantity,
                     'purchase_date' => $item->purchase?->purchase_date?->toDateString(),
                 ];
             });

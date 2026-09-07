@@ -35,6 +35,7 @@ import {
   type PurchaseRequestItem,
   type PurchaseRequestItemQuote,
 } from '../api/procurement';
+import { fmt } from '../utils/fmt';
 
 const TABS = [
   { id: 'pending', label: 'Pending', statuses: 'requested' },
@@ -374,7 +375,7 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
                               <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
                                 {item.price_hint.last_paid != null && <>Last MVR {item.price_hint.last_paid.toFixed(2)} </>}
                                 {item.price_hint.cheapest && (
-                                  <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
+                                  <>· Cheapest {item.price_hint.cheapest.supplier_name ?? '—'} @ MVR {fmt(item.price_hint.cheapest.unit_price, 2)}</>
                                 )}
                               </div>
                             )}

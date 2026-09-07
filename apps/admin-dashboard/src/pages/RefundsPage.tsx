@@ -12,6 +12,7 @@ import {
   fetchAdminRefunds, issueRefund, approveRefund, rejectRefund, resendRefundOtp,
   REFUND_REASON_CATEGORIES, type AdminRefund, type RefundReasonCategory,
 } from '../api';
+import { fmt } from '../utils/fmt';
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'orange', approved: 'green', processed: 'green', rejected: 'red', cancelled: 'gray',
@@ -96,7 +97,7 @@ export default function RefundsPage() {
     setSelectedOrder(order);
     setIssueError('');
     if (order) {
-      setAmount(order.total > 0 ? order.total.toFixed(2) : '');
+      setAmount(order.total > 0 ? fmt(order.total, 2) : '');
     }
   };
 

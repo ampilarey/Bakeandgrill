@@ -18,6 +18,7 @@ import {
   Btn, Card, EmptyState, ErrorMsg, Input, PageHeader, PageShell, Spinner,
   StatCard, TableCard, TD, TH,
 } from '../components/SharedUI';
+import { fmt } from '../utils/fmt';
 
 type Tab = 'overview' | 'segments' | 'marketing' | 'quality' | 'corporate' | 'pairs';
 
@@ -519,11 +520,11 @@ export function CustomerGrowthPage() {
                       <td style={TD}>{row.item_name}</td>
                       <td style={TD}>{row.paired_item_name}</td>
                       <td style={{ ...TD, fontWeight: 700, color: row.lift >= 2 ? 'var(--color-success)' : 'var(--color-text)' }}>
-                        {row.lift.toFixed(1)}×
+                        {fmt(row.lift, 1)}×
                       </td>
                       <td style={TD}>{row.pair_count}</td>
-                      <td style={TD}>{row.confidence.toFixed(0)}%</td>
-                      <td style={{ ...TD, fontWeight: 600 }}>MVR {row.pair_revenue.toFixed(2)}</td>
+                      <td style={TD}>{fmt(row.confidence, 0)}%</td>
+                      <td style={{ ...TD, fontWeight: 600 }}>MVR {fmt(row.pair_revenue, 2)}</td>
                     </tr>
                   ))}
                 </tbody>
