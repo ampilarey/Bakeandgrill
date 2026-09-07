@@ -19,6 +19,7 @@ const saveCashHandover = vi.fn();
 const uploadStatement = vi.fn();
 const fetchTransferSettlements = vi.fn();
 const fetchCardQrDay = vi.fn();
+const fetchCashDay = vi.fn();
 vi.mock('../api', async () => {
   const actual = await vi.importActual<typeof import('../api')>('../api');
   return {
@@ -29,6 +30,7 @@ vi.mock('../api', async () => {
     uploadStatement: (...a: unknown[]) => uploadStatement(...a),
     fetchTransferSettlements: (...a: unknown[]) => fetchTransferSettlements(...a),
     fetchCardQrDay: (...a: unknown[]) => fetchCardQrDay(...a),
+    fetchCashDay: (...a: unknown[]) => fetchCashDay(...a),
     fetchStatementImports: vi.fn().mockResolvedValue({ imports: [] }),
     fetchSettlementSettings: vi.fn().mockResolvedValue({ start_date: null, tolerance: 1, alert_days: 3, accounts: [{ key: 'card_qr', label: 'Card & QR account' }, { key: 'transfer', label: 'Transfer account' }], card_qr_methods: [] }),
   };
@@ -71,9 +73,16 @@ const transfers = {
 };
 
 const cashDay = {
-  date: '2026-09-07', shifts: 1, counted_laar: 230000, till_expected_laar: 225000, till_variance_laar: 5000,
-  float_kept_laar: 50000, float_source: 'shift_opening', expected_handover_laar: 180000,
+  date: '2026-09-07', shifts: 1, cash_sales_laar: 185000, cash_sales_count: 12, cash_refunds_laar: 2000, paid_in_laar: 0, paid_out_laar: 3000, net_cash_laar: 180000,
+  counted_laar: 230000, till_expected_laar: 225000, till_variance_laar: 5000,
+  float_kept_laar: 50000, float_source: 'shift_opening', expected_basis: 'shift_count', expected_handover_laar: 180000,
   received_laar: null, difference_laar: null, received_by: null, notes: null, status: 'awaiting',
+};
+
+// Yesterday nobody closed a shift: the till's cash is still the actual amount.
+const uncountedDay = {
+  ...cashDay, date: '2026-09-06', shifts: 0, cash_sales_laar: 20000, cash_sales_count: 2, cash_refunds_laar: 0, paid_out_laar: 0, net_cash_laar: 20000,
+  counted_laar: 0, till_expected_laar: 0, till_variance_laar: 0, float_kept_laar: 0, expected_basis: 'cash_sales', expected_handover_laar: 20000,
 };
 
 function renderPage() {
@@ -96,7 +105,16 @@ describe('Bank settlements', () => {
       ],
       totals: { count: 2, gross_laar: 5000, commission_laar: 0, net_laar: 5000 },
     } : { date, by_method: [], payments: [], totals: { count: 0, gross_laar: 0, commission_laar: 0, net_laar: 0 } }));
-    fetchCashHandovers.mockResolvedValue({ days: [cashDay], totals: { expected_handover_laar: 180000, received_laar: 0, awaiting_days: 1, differs_days: 0 } });
+    fetchCashHandovers.mockResolvedValue({ days: [cashDay, uncountedDay], totals: { cash_sales_laar: 205000, net_cash_laar: 200000, expected_handover_laar: 200000, received_laar: 0, awaiting_days: 2, differs_days: 0 } });
+    fetchCashDay.mockResolvedValue({
+      date: '2026-09-06',
+      payments: [
+        { payment_id: 31, at: '2026-09-06T09:05:00+05:00', order_number: 'ORD-31', invoice_number: null, customer: null, amount_laar: 12000, tendered_laar: 12500, change_laar: 500 },
+        { payment_id: 32, at: '2026-09-06T13:20:00+05:00', order_number: 'ORD-32', invoice_number: null, customer: 'Ali Rafeeu', amount_laar: 8000, tendered_laar: null, change_laar: null },
+      ],
+      refunds: [], movements: [],
+      totals: { sales_laar: 20000, sales_count: 2, refunds_laar: 0, paid_in_laar: 0, paid_out_laar: 0 },
+    });
     saveCashHandover.mockResolvedValue({ day: { ...cashDay, received_laar: 180000, difference_laar: 0, status: 'settled' } });
   });
 
@@ -208,9 +226,11 @@ describe('Bank settlements', () => {
 
     const row = await screen.findByTestId('cash-day-2026-09-07');
     expect(row).toHaveTextContent('MVR 1,800.00');
+    expect(row).toHaveTextContent('12 sales MVR 1,850.00 − 20.00 refunds − 30.00 paid out');
+    expect(row).toHaveTextContent('count less float');
     expect(row).toHaveTextContent('Awaiting');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Enter' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Enter' }));
     // Pre-filled with what the owner should have received.
     expect(screen.getByTestId('cash-amount')).toHaveValue(1800);
     fireEvent.change(screen.getByTestId('cash-amount'), { target: { value: '1750' } });
@@ -218,6 +238,32 @@ describe('Bank settlements', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(saveCashHandover).toHaveBeenCalledWith('2026-09-07', { amount: 1750, float_kept: 300, notes: null }));
+  });
+
+  it('shows the actual cash the till took on a day with no shift count, and the sales behind it', async () => {
+    renderPage();
+    await screen.findByText('MVR 87.50');
+    fireEvent.click(screen.getByRole('tab', { name: 'Cash' }));
+
+    const row = await screen.findByTestId('cash-day-2026-09-06');
+    expect(row).toHaveTextContent('MVR 200.00');
+    expect(row).toHaveTextContent('2 sales MVR 200.00');
+    expect(row).toHaveTextContent('no shift closed');
+    expect(row).toHaveTextContent('from cash sales');
+    expect(row).toHaveTextContent('Awaiting');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cash details for 2026-09-06' }));
+    const detail = await screen.findByTestId('cash-day-detail-2026-09-06');
+    await within(detail).findByText('ORD-31');
+    expect(detail).toHaveTextContent('Cash sales MVR 200.00 · 2 payments');
+    expect(detail).toHaveTextContent('MVR 125.00 / MVR 5.00');
+    expect(detail).toHaveTextContent('ORD-32 · Ali Rafeeu');
+    expect(detail).toHaveTextContent('No refunds, paid-ins or paid-outs');
+    expect(fetchCashDay).toHaveBeenCalledWith('2026-09-06');
+
+    // The pre-filled amount is what the till took.
+    fireEvent.click(within(row).getByRole('button', { name: 'Enter' }));
+    expect(screen.getByTestId('cash-amount')).toHaveValue(200);
   });
 
   it('reads a statement back before storing it', async () => {

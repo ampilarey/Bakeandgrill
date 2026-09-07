@@ -547,6 +547,72 @@ class BankSettlementTest extends TestCase
         $this->assertSame('entered', $days[0]['float_source']);
     }
 
+    public function test_cash_shows_the_actual_cash_the_till_took_even_when_no_shift_was_closed(): void
+    {
+        // Owner, 2026-09-07: "in cash, it does not show actual amount."
+        $day = $this->day(1);
+        [$start] = BusinessDay::bounds($day);
+        $cash = function (float $amount, int $hour) use ($start): Payment {
+            $order = Order::factory()->create(['customer_id' => $this->makeCustomer()->id, 'total' => $amount]);
+
+            return Payment::create([
+                'order_id' => $order->id, 'method' => 'cash', 'amount' => $amount, 'amount_laar' => (int) round($amount * 100),
+                'status' => 'paid', 'processed_at' => $start->copy()->addHours($hour), 'idempotency_key' => 'cash-' . uniqid(),
+                'tendered_amount' => $amount + 5, 'change_given' => 5,
+            ]);
+        };
+        $cash(120, 9);
+        $cash(80, 13);
+        $this->payment('card', 500, $day, 0); // not cash — the helper's own cash payment is on the order, not this day's till
+
+        $days = $this->getJson('/api/settlements/cash?from=' . $day . '&to=' . $day)->assertOk()->json('days');
+        $row = $days[0];
+        $this->assertSame(0, $row['shifts']);
+        $this->assertSame(20000, $row['cash_sales_laar']);
+        $this->assertSame(2, $row['cash_sales_count']);
+        $this->assertSame(20000, $row['net_cash_laar']);
+        $this->assertSame('cash_sales', $row['expected_basis']);
+        $this->assertSame(20000, $row['expected_handover_laar'], 'with no count, the owner should receive what the till took');
+        $this->assertSame('awaiting', $row['status']);
+
+        // A paid-out for milk (from a shift still open) and an approved cash refund come off it.
+        $shift = Shift::create([
+            'user_id' => $this->owner->id, 'device_id' => $this->makeDevice()->id,
+            'opened_at' => $start->copy()->addHours(8), 'opening_cash' => 500,
+        ]);
+        $paidOut = new \App\Models\CashMovement(['shift_id' => $shift->id, 'user_id' => $this->owner->id, 'type' => 'paid_out', 'category' => 'supplies', 'amount' => 30, 'reason' => 'milk']);
+        $paidOut->created_at = $start->copy()->addHours(15);
+        $paidOut->save();
+        \App\Models\Refund::create([
+            'order_id' => Order::factory()->create(['customer_id' => $this->makeCustomer()->id])->id, 'user_id' => $this->owner->id,
+            'amount' => 20, 'drawer_cash_out_laar' => 2000, 'status' => 'approved', 'requested_at' => $start->copy()->addHours(16), 'approved_at' => $start->copy()->addHours(16),
+        ]);
+
+        $row = $this->getJson('/api/settlements/cash?from=' . $day . '&to=' . $day)->assertOk()->json('days.0');
+        $this->assertSame(3000, $row['paid_out_laar']);
+        $this->assertSame(2000, $row['cash_refunds_laar']);
+        $this->assertSame(15000, $row['net_cash_laar']);
+        $this->assertSame(15000, $row['expected_handover_laar']);
+
+        // The detail lists each cash payment with what was tendered and the change.
+        $detail = $this->getJson('/api/settlements/cash/' . $day)->assertOk()->json();
+        $this->assertCount(2, $detail['payments']);
+        $this->assertSame(12000, $detail['payments'][0]['amount_laar']);
+        $this->assertSame(12500, $detail['payments'][0]['tendered_laar']);
+        $this->assertSame(500, $detail['payments'][0]['change_laar']);
+        $this->assertCount(1, $detail['refunds']);
+        $this->assertCount(1, $detail['movements']);
+        $this->assertSame('out', $detail['movements'][0]['direction']);
+        $this->assertSame(20000, $detail['totals']['sales_laar']);
+
+        // Once the shift is closed with a count, the count less the float takes over.
+        $shift->update(['closed_at' => $start->copy()->addHours(20), 'closing_cash' => 650, 'expected_cash' => 650, 'variance' => 0]);
+        $row = $this->getJson('/api/settlements/cash?from=' . $day . '&to=' . $day)->assertOk()->json('days.0');
+        $this->assertSame('shift_count', $row['expected_basis']);
+        $this->assertSame(15000, $row['expected_handover_laar']);
+        $this->assertSame(15000, $row['net_cash_laar'], 'the till side is still shown beside the count');
+    }
+
     // ── access ───────────────────────────────────────────────────────────────
 
     public function test_staff_without_the_permission_cannot_see_settlements(): void

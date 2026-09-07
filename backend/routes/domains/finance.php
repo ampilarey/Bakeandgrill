@@ -51,6 +51,7 @@ Route::middleware(['auth:sanctum', 'permission:finance.settlements'])->prefix('s
     Route::get('/card-qr/{date}', [App\Http\Controllers\Api\SettlementController::class, 'cardQrDay'])->where('date', '\d{4}-\d{2}-\d{2}');
     Route::get('/transfers', [App\Http\Controllers\Api\SettlementController::class, 'transfers']);
     Route::get('/cash', [App\Http\Controllers\Api\SettlementController::class, 'cash']);
+    Route::get('/cash/{date}', [App\Http\Controllers\Api\SettlementController::class, 'cashDay'])->where('date', '\d{4}-\d{2}-\d{2}');
     Route::get('/statements', [App\Http\Controllers\Api\SettlementController::class, 'imports']);
     Route::post('/statements', [App\Http\Controllers\Api\SettlementController::class, 'importStatement']);
     Route::delete('/statements/{id}', [App\Http\Controllers\Api\SettlementController::class, 'destroyImport'])->whereNumber('id');

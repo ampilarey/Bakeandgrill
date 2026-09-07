@@ -73,6 +73,12 @@ class SettlementController extends Controller
         return response()->json($this->ledger->cash($from, $to));
     }
 
+    /** The cash payments and drawer movements behind one day. */
+    public function cashDay(string $date): JsonResponse
+    {
+        return response()->json($this->ledger->cashDay(Carbon::parse($date)->toDateString()));
+    }
+
     // ── statements ───────────────────────────────────────────────────────────
 
     public function imports(): JsonResponse

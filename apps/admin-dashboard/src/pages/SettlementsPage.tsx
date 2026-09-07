@@ -20,10 +20,10 @@
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  deleteCashHandover, deleteStatementImport, fetchCardQrDay, fetchCardQrLedger, fetchCashHandovers, fetchSettlementSettings,
+  deleteCashHandover, deleteStatementImport, fetchCardQrDay, fetchCardQrLedger, fetchCashDay, fetchCashHandovers, fetchSettlementSettings,
   fetchStatementImports, fetchTransferSettlements, ignoreStatementLine, matchTransferLine, restoreStatementLine,
   saveCashHandover, unmatchTransferLine, updateSettlementSettings, uploadStatement,
-  type CardQrDay, type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type LedgerDay, type SettlementAccount,
+  type CardQrDay, type CardQrLedger, type CashDay, type CashDayDetail, type CashView, type DayStatus, type ImportSummary, type LedgerDay, type SettlementAccount,
   type SettlementSettings, type StatementImport, type TransferRow, type TransfersView,
 } from '../api';
 import {
@@ -538,6 +538,7 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
   const [floatKept, setFloatKept] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [openDay, setOpenDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -578,12 +579,14 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <StatCard label="Should have received" value={mvr(t.expected_handover_laar)} sub="counted cash less the float kept" />
+        <StatCard label="Cash the till took" value={mvr(t.net_cash_laar)} sub={`${mvr(t.cash_sales_laar)} in cash sales, less refunds and paid-outs`} />
+        <StatCard label="Should have received" value={mvr(t.expected_handover_laar)} sub="the count less the float, or the till's cash when no count was made" />
         <StatCard label="Received" value={mvr(t.received_laar)} accent={t.received_laar >= t.expected_handover_laar ? 'var(--color-success)' : 'var(--color-warning)'} />
         <StatCard label="Days not entered" value={String(t.awaiting_days)} accent={t.awaiting_days > 0 ? 'var(--color-warning)' : 'var(--color-success)'} />
         <StatCard label="Days that differ" value={String(t.differs_days)} accent={t.differs_days > 0 ? 'var(--color-danger)' : 'var(--color-success)'} />
       </div>
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+        "Actual cash" is what the till took: cash sales less refunds paid from the drawer, plus paid-ins, less paid-outs. Open a day to see each one.
         Enter what the owner actually took, not the drawer total. The float that stays for tomorrow is taken from the shifts' opening cash unless you type it.
       </p>
 
@@ -595,38 +598,77 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
                 <strong>{d.date}</strong><StatusBadge status={d.status} />
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>
-                Counted {mvr(d.counted_laar)} · float {mvr(d.float_kept_laar)} · expected {mvr(d.expected_handover_laar)}
+                Actual cash {mvr(d.net_cash_laar)}{d.shifts ? ` · counted ${mvr(d.counted_laar)} · float ${mvr(d.float_kept_laar)}` : ''} · should receive {mvr(d.expected_handover_laar)}
                 {d.received_laar != null ? ` · received ${mvr(d.received_laar)}` : ''}
               </div>
-              <div style={{ marginTop: 8 }}><Btn small onClick={() => open(d)}>{d.received_laar != null ? 'Edit' : 'Enter received'}</Btn></div>
+              <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                <Btn small onClick={() => open(d)}>{d.received_laar != null ? 'Edit' : 'Enter received'}</Btn>
+                <Btn small variant="secondary" onClick={() => setOpenDay(openDay === d.date ? null : d.date)}>{openDay === d.date ? 'Hide details' : 'Details'}</Btn>
+              </div>
+              {openDay === d.date && <div data-testid={`cash-day-detail-${d.date}`}><CashDayDetails day={d} onError={onError} /></div>}
             </article>
           ))}
         </div>
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['Day', 'Shifts', 'Counted', 'Till variance', 'Float kept', 'Should receive', 'Received', 'Difference', 'Status', ''].map((h, i) => <th key={i} style={TH}>{h}</th>)}</tr></thead>
+            <thead><tr>{['Day', 'Actual cash', 'Counted', 'Float kept', 'Should receive', 'Received', 'Difference', 'Status', ''].map((h, i) => <th key={i} style={TH}>{h}</th>)}</tr></thead>
             <tbody>
               {view.days.map((d) => (
-                <tr key={d.date} data-testid={`cash-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1 }}>
-                  <td style={TD}>{d.date}</td>
-                  <td style={TD}>{d.shifts || '—'}</td>
-                  <td style={TD}>{d.shifts ? mvr(d.counted_laar) : '—'}</td>
-                  <td style={{ ...TD, color: d.till_variance_laar !== 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>{d.shifts ? mvr(d.till_variance_laar) : '—'}</td>
-                  <td style={TD}>{d.shifts ? mvr(d.float_kept_laar) : '—'}{d.float_source === 'entered' ? <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}> · typed</span> : null}</td>
-                  <td style={{ ...TD, fontWeight: 600 }}>{d.shifts ? mvr(d.expected_handover_laar) : '—'}</td>
-                  <td style={TD}>{d.received_laar != null ? mvr(d.received_laar) : '—'}{d.received_by ? <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{d.received_by}</div> : null}</td>
-                  <td style={{ ...TD, color: d.difference_laar ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{d.difference_laar != null && d.difference_laar !== 0 ? mvr(d.difference_laar) : '—'}</td>
-                  <td style={TD}><StatusBadge status={d.status} /></td>
-                  <td style={TD}>
-                    {(d.shifts > 0 || d.received_laar != null) && (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <Btn small variant="secondary" onClick={() => open(d)}>{d.received_laar != null ? 'Edit' : 'Enter'}</Btn>
-                        {d.received_laar != null && <Btn small variant="ghost" onClick={() => { void deleteCashHandover(d.date).then(load).catch((e) => onError((e as Error).message)); }}>Clear</Btn>}
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                <Fragment key={d.date}>
+                  <tr data-testid={`cash-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1 }}>
+                    <td style={TD}>
+                      {d.status !== 'none' ? (
+                        <button
+                          type="button"
+                          aria-expanded={openDay === d.date}
+                          aria-label={`Cash details for ${d.date}`}
+                          onClick={() => setOpenDay(openDay === d.date ? null : d.date)}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--color-primary)', fontWeight: 600 }}
+                        >
+                          {d.date} {openDay === d.date ? '▴' : '▾'}
+                        </button>
+                      ) : d.date}
+                      {d.shifts > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.shifts} shift{d.shifts === 1 ? '' : 's'}</span> : null}
+                    </td>
+                    <td style={{ ...TD, fontWeight: 600 }}>
+                      {d.status !== 'none' ? mvr(d.net_cash_laar) : '—'}
+                      {d.cash_sales_count > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                          {d.cash_sales_count} sale{d.cash_sales_count === 1 ? '' : 's'} {mvr(d.cash_sales_laar)}
+                          {d.cash_refunds_laar > 0 ? ` − ${mvr(d.cash_refunds_laar).replace('MVR ', '')} refunds` : ''}
+                          {d.paid_out_laar > 0 ? ` − ${mvr(d.paid_out_laar).replace('MVR ', '')} paid out` : ''}
+                          {d.paid_in_laar > 0 ? ` + ${mvr(d.paid_in_laar).replace('MVR ', '')} paid in` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={TD}>
+                      {d.expected_basis === 'shift_count' ? mvr(d.counted_laar) : <span style={{ color: 'var(--color-text-muted)' }}>{d.shifts ? 'no count' : 'no shift closed'}</span>}
+                      {d.expected_basis === 'shift_count' && d.till_variance_laar !== 0 ? <div style={{ fontSize: 11, color: 'var(--color-warning)' }}>till variance {mvr(d.till_variance_laar)}</div> : null}
+                    </td>
+                    <td style={TD}>{d.expected_basis === 'shift_count' || d.float_source === 'entered' ? mvr(d.float_kept_laar) : '—'}{d.float_source === 'entered' ? <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}> · typed</span> : null}</td>
+                    <td style={{ ...TD, fontWeight: 600 }}>
+                      {d.status !== 'none' ? mvr(d.expected_handover_laar) : '—'}
+                      {d.status !== 'none' && <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400 }}>{d.expected_basis === 'shift_count' ? 'count less float' : 'from cash sales'}</div>}
+                    </td>
+                    <td style={TD}>{d.received_laar != null ? mvr(d.received_laar) : '—'}{d.received_by ? <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{d.received_by}</div> : null}</td>
+                    <td style={{ ...TD, color: d.difference_laar ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{d.difference_laar != null && d.difference_laar !== 0 ? mvr(d.difference_laar) : '—'}</td>
+                    <td style={TD}><StatusBadge status={d.status} /></td>
+                    <td style={TD}>
+                      {(d.status !== 'none' || d.received_laar != null) && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <Btn small variant="secondary" onClick={() => open(d)}>{d.received_laar != null ? 'Edit' : 'Enter'}</Btn>
+                          {d.received_laar != null && <Btn small variant="ghost" onClick={() => { void deleteCashHandover(d.date).then(load).catch((e) => onError((e as Error).message)); }}>Clear</Btn>}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  {openDay === d.date && (
+                    <tr data-testid={`cash-day-detail-${d.date}`}>
+                      <td style={{ ...TD, background: 'var(--color-bg)' }} colSpan={9}><CashDayDetails day={d} onError={onError} /></td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -637,8 +679,11 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
         <Modal title={`Cash received — ${editing.date}`} onClose={() => setEditing(null)}>
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-              Shifts counted <strong>{mvr(editing.counted_laar)}</strong>. Float kept for tomorrow <strong>{mvr(editing.float_kept_laar)}</strong>
-              {editing.float_source === 'shift_opening' ? ' (the shifts’ opening cash)' : ''}. The owner should have received <strong>{mvr(editing.expected_handover_laar)}</strong>.
+              The till took <strong>{mvr(editing.net_cash_laar)}</strong> in cash.
+              {editing.expected_basis === 'shift_count'
+                ? <> Shifts counted <strong>{mvr(editing.counted_laar)}</strong>. Float kept for tomorrow <strong>{mvr(editing.float_kept_laar)}</strong>{editing.float_source === 'shift_opening' ? ' (the shifts’ opening cash)' : ''}.</>
+                : ' No shift was closed with a count, so that is what the owner should have received.'}
+              {' '}The owner should have received <strong>{mvr(editing.expected_handover_laar)}</strong>.
             </div>
             <Input label="Amount received (MVR)" type="number" value={amount} onChange={setAmount} data-testid="cash-amount" />
             <Input label="Float left in the drawer (MVR) — leave blank to use the shifts' opening cash" type="number" value={floatKept} onChange={setFloatKept} data-testid="cash-float" />
@@ -651,6 +696,64 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
         </Modal>
       )}
     </>
+  );
+}
+
+/** One cash day opened up: every cash sale, refund from the drawer and paid in / out. */
+function CashDayDetails({ day, onError }: { day: CashDay; onError: (m: string) => void }) {
+  const [detail, setDetail] = useState<CashDayDetail | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetchCashDay(day.date)
+      .then((d) => { if (live) setDetail(d); })
+      .catch((e) => onError((e as Error).message));
+    return () => { live = false; };
+  }, [day.date, onError]);
+
+  if (!detail) return <TableSkeleton rows={2} cols={3} />;
+  const outs = [
+    ...detail.refunds.map((r) => ({ key: `r${r.refund_id}`, at: r.at, label: `Refund${r.order_number ? ` · ${r.order_number}` : ''}${r.reason ? ` · ${r.reason}` : ''}`, amount: -r.amount_laar })),
+    ...detail.movements.map((m) => ({ key: `m${m.movement_id}`, at: m.at, label: `${m.direction === 'in' ? 'Paid in' : 'Paid out'}${m.category ? ` · ${m.category}` : ''}${m.reason ? ` · ${m.reason}` : ''}${m.by ? ` · ${m.by}` : ''}`, amount: m.direction === 'in' ? m.amount_laar : -m.amount_laar })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
+
+  return (
+    <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', padding: '4px 0', fontSize: 12 }}>
+      <div data-testid={`cash-sales-${day.date}`}>
+        <p style={{ margin: '0 0 6px', fontWeight: 700 }}>Cash sales {mvr(detail.totals.sales_laar)} · {detail.totals.sales_count} payment{detail.totals.sales_count === 1 ? '' : 's'}</p>
+        {detail.payments.length === 0 ? <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No cash payments this day.</p> : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><tr>{['Time', 'Order', 'Amount', 'Tendered / change'].map((h) => <th key={h} style={{ ...TH, fontSize: 11 }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {detail.payments.map((p) => (
+                <tr key={p.payment_id}>
+                  <td style={TD}>{p.at.slice(11, 16)}</td>
+                  <td style={TD}>{p.order_number ?? p.invoice_number ?? '—'}{p.customer ? <span style={{ color: 'var(--color-text-muted)' }}> · {p.customer}</span> : null}</td>
+                  <td style={{ ...TD, fontWeight: 600 }}>{mvr(p.amount_laar)}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-muted)' }}>{p.tendered_laar != null ? `${mvr(p.tendered_laar)} / ${mvr(p.change_laar ?? 0)}` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <div>
+        <p style={{ margin: '0 0 6px', fontWeight: 700 }}>
+          Out of the drawer {mvr(detail.totals.refunds_laar + detail.totals.paid_out_laar)}{detail.totals.paid_in_laar > 0 ? ` · paid in ${mvr(detail.totals.paid_in_laar)}` : ''}
+        </p>
+        {outs.length === 0 ? <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No refunds, paid-ins or paid-outs.</p> : (
+          <div style={{ display: 'grid', gap: 4 }}>
+            {outs.map((o) => (
+              <div key={o.key} style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+                <span>{o.at.slice(11, 16)} · {o.label}</span>
+                <strong style={{ color: o.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{signed(o.amount)}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+        <p style={{ margin: '8px 0 0', fontWeight: 700 }}>Actual cash {mvr(day.net_cash_laar)}</p>
+      </div>
+    </div>
   );
 }
 

@@ -114,11 +114,21 @@ export type TransfersView = {
 export type CashDay = {
   date: string;
   shifts: number;
+  /** The till's actual cash: sales, refunds out of the drawer, paid in, paid out. Always there. */
+  cash_sales_laar: number;
+  cash_sales_count: number;
+  cash_refunds_laar: number;
+  paid_in_laar: number;
+  paid_out_laar: number;
+  net_cash_laar: number;
+  /** From closed shifts with a count, when there are any. */
   counted_laar: number;
   till_expected_laar: number;
   till_variance_laar: number;
   float_kept_laar: number;
   float_source: 'entered' | 'shift_opening';
+  /** shift_count: count less float. cash_sales: what the till took, when no shift was counted. */
+  expected_basis: 'shift_count' | 'cash_sales';
   expected_handover_laar: number;
   received_laar: number | null;
   difference_laar: number | null;
@@ -129,8 +139,34 @@ export type CashDay = {
 
 export type CashView = {
   days: CashDay[];
-  totals: { expected_handover_laar: number; received_laar: number; awaiting_days: number; differs_days: number };
+  totals: {
+    cash_sales_laar: number;
+    net_cash_laar: number;
+    expected_handover_laar: number;
+    received_laar: number;
+    awaiting_days: number;
+    differs_days: number;
+  };
 };
+
+export type CashDayDetail = {
+  date: string;
+  payments: Array<{
+    payment_id: number; at: string; order_number: string | null; invoice_number: string | null; customer: string | null;
+    amount_laar: number; tendered_laar: number | null; change_laar: number | null;
+  }>;
+  refunds: Array<{ refund_id: number; at: string; order_number: string | null; amount_laar: number; reason: string | null }>;
+  movements: Array<{
+    movement_id: number; at: string; type: string; direction: 'in' | 'out'; category: string | null; amount_laar: number;
+    reason: string | null; by: string | null;
+  }>;
+  totals: { sales_laar: number; sales_count: number; refunds_laar: number; paid_in_laar: number; paid_out_laar: number };
+};
+
+/** The cash payments and drawer movements behind one day — needs no shift close. */
+export async function fetchCashDay(date: string): Promise<CashDayDetail> {
+  return req(`/settlements/cash/${encodeURIComponent(date)}`);
+}
 
 export type StatementImport = {
   id: number;
