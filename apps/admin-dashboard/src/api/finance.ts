@@ -813,7 +813,7 @@ export interface Purchase {
     pack_quantity?: number | null;
     brand?: string | null;
     inventory_item_id?: number | null;
-    inventory_item: { id: number; name: string; barcode?: string | null; sku?: string | null } | null;
+    inventory_item: { id: number; name: string; unit?: string | null; barcode?: string | null; sku?: string | null } | null;
   }[];
   /*
    * What may still be done to this order, decided server-side. The status

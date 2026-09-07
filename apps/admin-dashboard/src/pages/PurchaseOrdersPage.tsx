@@ -10,6 +10,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { ScanSheet } from '../components/ScanSheet';
 import { countScannedItem } from '../utils/receivingScan';
+import { asPacks, describePack, tidyNumber } from '../utils/packDetails';
 import { today } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
 
@@ -908,16 +909,35 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   <tr key={item.id}>
                     <td style={TD}>
                       {item.inventory_item?.name ?? '—'}
+                      {/* What was bought, in the shape it was bought in: the
+                          person at the door is counting boxes, not units. */}
+                      {(item.brand || describePack(item, item.inventory_item?.unit)) && (
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }} data-testid={`pack-of-${item.id}`}>
+                          {[item.brand, describePack(item, item.inventory_item?.unit)].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
                       {(item.gst_laar ?? 0) > 0 && (
                         <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>incl. GST {mvr((item.gst_laar ?? 0) / 100)}</span>
                       )}
                     </td>
-                    <td style={{ ...TD, textAlign: 'center' }}>{item.quantity}</td>
+                    <td style={{ ...TD, textAlign: 'center' }}>
+                      {tidyNumber(item.quantity)}{item.inventory_item?.unit ? ` ${item.inventory_item.unit}` : ''}
+                      {asPacks(item.quantity, item, item.inventory_item?.unit) && (
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }} data-testid={`ordered-packs-${item.id}`}>
+                          {asPacks(item.quantity, item, item.inventory_item?.unit)}
+                        </span>
+                      )}
+                    </td>
                     <td style={{
                       ...TD, textAlign: 'center', fontWeight: 700,
                       color: item.received_quantity >= item.quantity ? 'var(--color-success)' : 'var(--color-warning)',
                     }}>
-                      {item.received_quantity}
+                      {tidyNumber(item.received_quantity)}
+                      {asPacks(item.received_quantity, item, item.inventory_item?.unit) && (
+                        <span style={{ display: 'block', fontSize: 11, fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                          {asPacks(item.received_quantity, item, item.inventory_item?.unit)}
+                        </span>
+                      )}
                     </td>
                     {['ordered', 'partial'].includes(detail.status) && (
                       <td style={{ ...TD, textAlign: 'center' }}>
@@ -929,6 +949,14 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                           onChange={(e) => { const v = parseFloat(e.target.value); setReceiveQtys((q) => ({ ...q, [item.id]: isNaN(v) ? 0 : Math.max(0, v) })); }}
                           style={{ width: 70, height: 30, padding: '0 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', textAlign: 'center' }}
                         />
+                        {/* The box takes base units, because that is what the
+                            server takes. This says what the typed number is in
+                            boxes, so a miscount shows up before it is saved. */}
+                        {asPacks(receiveQtys[item.id] ?? 0, item, item.inventory_item?.unit) && (
+                          <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }} data-testid={`receiving-packs-${item.id}`}>
+                            = {asPacks(receiveQtys[item.id] ?? 0, item, item.inventory_item?.unit)}
+                          </span>
+                        )}
                       </td>
                     )}
                     <td style={TD}>
