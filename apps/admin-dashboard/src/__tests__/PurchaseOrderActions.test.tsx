@@ -97,6 +97,7 @@ const cancelPurchase = vi.fn();
 const deletePurchase = vi.fn();
 const updatePurchaseLines = vi.fn();
 const undoPurchaseReceipt = vi.fn();
+const getPurchaseUnits = vi.fn();
 
 vi.mock('../api', () => ({
   fetchPurchases: (...a: unknown[]) => fetchPurchases(...a),
@@ -113,7 +114,7 @@ vi.mock('../api', () => ({
   updatePurchase: vi.fn(),
   importPurchaseCsv: vi.fn(),
   uploadPurchaseReceipt: vi.fn(),
-  getPurchaseUnits: vi.fn().mockResolvedValue({ base_unit: 'kg', purchase_units: [] }),
+  getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
   createPurchaseUnit: vi.fn(),
   createInventoryItem: vi.fn(),
 }));
@@ -141,6 +142,8 @@ describe('Purchase order actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mobile = false;
+    // Most fixtures are loose lines on an item with no packs defined.
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'kg', purchase_units: [] });
     fetchPurchases.mockResolvedValue({
       purchases: { data: [draft, received], current_page: 1, last_page: 1, total: 2 },
     });
@@ -294,6 +297,9 @@ describe('Purchase order actions', () => {
         current_page: 1, last_page: 1, total: 1,
       },
     });
+    // The pack the line was bought in still exists on the item, which is what
+    // lets the editor keep counting in cases.
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'pcs', purchase_units: [{ id: 3, name: 'Case', base_units: 210 }] });
     renderPage();
     fireEvent.click(within(await rowFor('PO-0001')).getByText('Edit'));
 
@@ -301,6 +307,8 @@ describe('Purchase order actions', () => {
     // 1.97619 × 210 is the MVR 415 somebody actually paid for the case.
     expect(Number((screen.getByLabelText('Unit cost for Egg') as HTMLInputElement).value))
       .toBeCloseTo(415, 2);
+    // And the pack goes back with it — see PurchaseOrderEditPacks.test.tsx.
+    expect((await screen.findByLabelText('Buy Egg by') as HTMLSelectElement).value).toBe('3');
   });
 
   it('asks for a reason before cancelling', async () => {

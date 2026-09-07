@@ -11,6 +11,19 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { ScanSheet } from '../components/ScanSheet';
 import { countScannedItem } from '../utils/receivingScan';
 import { asPacks, describePack, tidyNumber } from '../utils/packDetails';
+
+/**
+ * What an edit line comes to in the item's own unit: the typed quantity times
+ * the size of the chosen pack. Null when the quantity is not yet a number, so
+ * a half-typed box says nothing rather than "= 0".
+ */
+function editLineBase(line: { quantity: string; purchase_unit_id: string; packs: InventoryPurchaseUnit[] }): number | null {
+  const qty = parseFloat(line.quantity);
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  const pack = line.packs.find((p) => String(p.id) === line.purchase_unit_id);
+  if (!pack) return null; // already in the item's own unit — nothing to convert
+  return Number((qty * Number(pack.base_units)).toFixed(4));
+}
 import { today } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
 
@@ -521,7 +534,19 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const [editPo, setEditPo] = useState<Purchase | null>(null);
   const [editLines, setEditLines] = useState<Array<{
     inventory_item_id: string; name: string; quantity: string; unit_cost: string;
-    purchase_unit_id: string; brand: string; gst: boolean;
+    /*
+     * Which pack the numbers are counted in. '' means the item's own unit.
+     *
+     * This used to be hard-coded to '' while the quantity and cost boxes were
+     * filled with pack figures, so opening a packed line and pressing Save
+     * with no edit at all rewrote "2 cases of 210 eggs at MVR 415" as "2 eggs
+     * at MVR 415 each" — 418 eggs of stock gone and the item's average cost
+     * poisoned, with the order total unchanged so nothing looked wrong.
+     */
+    purchase_unit_id: string; packs: InventoryPurchaseUnit[]; base_unit: string;
+    /** The pack this line was ordered in, when it can no longer be matched. */
+    lostPack: string | null;
+    brand: string; gst: boolean;
   }>>([]);
   const [deletePo, setDeletePo] = useState<Purchase | null>(null);
   /*
@@ -536,25 +561,85 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const [undoWarnings, setUndoWarnings] = useState<string[]>([]);
   const [editAddPick, setEditAddPick] = useState<InventoryItemSelection | null>(null);
 
-  const openEdit = (po: Purchase) => {
+  const openEdit = async (po: Purchase) => {
     setEditPo(po);
     setEditAddPick(null);
-    setEditLines((po.items ?? []).map((line) => ({
-      inventory_item_id: String(line.inventory_item_id ?? line.inventory_item?.id ?? ''),
-      name: line.inventory_item?.name ?? `Item #${line.inventory_item_id ?? '?'}`,
+    setError('');
+
+    const rows = await Promise.all((po.items ?? []).map(async (line) => {
+      const itemId = Number(line.inventory_item_id ?? line.inventory_item?.id ?? 0);
+      const base = {
+        inventory_item_id: String(itemId || ''),
+        name: line.inventory_item?.name ?? `Item #${line.inventory_item_id ?? '?'}`,
+        brand: line.brand ?? '',
+        gst: (line.gst_rate_bp ?? 0) > 0,
+      };
+
+      // The packs this item is bought in, so the line can stay in the one it
+      // was ordered in and be moved to another.
+      let packs: InventoryPurchaseUnit[] = [];
+      let baseUnit = line.inventory_item?.unit ?? '';
+      if (itemId) {
+        try {
+          const res = await getPurchaseUnits(itemId);
+          packs = res.purchase_units ?? [];
+          baseUnit = res.base_unit || baseUnit;
+        } catch { /* the picker just offers the base unit */ }
+      }
+
+      const packSizeOnLine = Number(line.pack_size ?? 0);
+      if (!(packSizeOnLine > 0)) {
+        // Bought loose: the numbers are already in the item's own unit.
+        return {
+          ...base,
+          quantity: String(line.quantity),
+          unit_cost: String(line.unit_cost),
+          purchase_unit_id: '',
+          packs,
+          base_unit: baseUnit,
+          lostPack: null,
+        };
+      }
+
       // A line bought by the pack is edited by the pack, the way it was
       // entered — showing 420 eggs where somebody typed "2 cases" would
-      // invite them to retype it wrong.
-      quantity: String(line.pack_quantity ?? line.quantity),
-      unit_cost: String(
-        line.pack_size && Number(line.pack_size) > 0
-          ? Number(line.unit_cost) * Number(line.pack_size)
-          : line.unit_cost,
-      ),
-      purchase_unit_id: '',
-      brand: line.brand ?? '',
-      gst: (line.gst_rate_bp ?? 0) > 0,
-    })));
+      // invite them to retype it wrong. Matched on the name AND the size, so
+      // a pack that has since been resized is not silently reused.
+      const named = (line.pack_name ?? '').trim().toLowerCase();
+      const match = packs.find((p) => p.name.trim().toLowerCase() === named && Number(p.base_units) === packSizeOnLine);
+
+      if (!match) {
+        /*
+         * The pack has been renamed, resized or deleted since the order. There
+         * is nothing safe to send, so the line falls back to the item's own
+         * unit — lossless, because the stored quantity and cost are already
+         * per unit — and says which pack it came from.
+         */
+        return {
+          ...base,
+          quantity: String(line.quantity),
+          unit_cost: String(line.unit_cost),
+          purchase_unit_id: '',
+          packs,
+          base_unit: baseUnit,
+          lostPack: `${(line.pack_name ?? 'pack')} of ${packSizeOnLine}`,
+        };
+      }
+
+      return {
+        ...base,
+        quantity: String(line.pack_quantity ?? line.quantity),
+        // Per pack, and rounded: 1.976190 × 210 is 414.99989999999997 in
+        // floating point, which is not a price anybody typed.
+        unit_cost: String(Number((Number(line.unit_cost) * packSizeOnLine).toFixed(2))),
+        purchase_unit_id: String(match.id),
+        packs,
+        base_unit: baseUnit,
+        lostPack: null,
+      };
+    }));
+
+    setEditLines(rows);
   };
 
   const handleSaveLines = async () => {
@@ -683,7 +768,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         <Btn small onClick={() => openDetail(po)}>Receive</Btn>
       )}
       {po.can_edit && (
-        <Btn small variant="secondary" onClick={() => openEdit(po)}>Edit</Btn>
+        <Btn small variant="secondary" onClick={() => void openEdit(po)}>Edit</Btn>
       )}
       {po.can_cancel && (
         <Btn small variant="danger" onClick={() => { setRejectId(po.id); setRejectReason(''); }}>Cancel</Btn>
@@ -1487,7 +1572,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         <Modal title={`Edit ${editPo.purchase_number}`} onClose={() => setEditPo(null)} maxWidth={640}>
           <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14 }}>
             Nothing has arrived against this order yet, so its lines can still change.
-            Quantity and cost are per pack where a pack is named.
+            Quantity and cost are counted in whatever each line is bought by — pick the pack
+            under the name, and the figure beneath says what that comes to in stock.
           </p>
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }} data-testid="po-edit-lines">
             {editLines.map((line, idx) => (
@@ -1496,7 +1582,39 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 data-testid={`po-edit-line-${idx}`}
                 className="po-edit-line"
               >
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{line.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {line.name}
+                  {/* Which pack the two boxes are counted in. Without this the
+                      pack was dropped on save and the pack figures were read
+                      as loose units. */}
+                  {line.packs.length > 0 && (
+                    <select
+                      aria-label={`Buy ${line.name} by`}
+                      data-testid={`po-edit-pack-${idx}`}
+                      value={line.purchase_unit_id}
+                      onChange={(e) => setEditLines((rows) => rows.map((r, i) => i === idx ? { ...r, purchase_unit_id: e.target.value, lostPack: null } : r))}
+                      style={{ display: 'block', marginTop: 4, padding: '4px 6px', border: '1.5px solid var(--color-border)', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', maxWidth: '100%' }}
+                    >
+                      <option value="">{line.base_unit ? `by the ${line.base_unit}` : 'by the unit'}</option>
+                      {line.packs.map((pack) => (
+                        <option key={pack.id} value={String(pack.id)}>
+                          by the {pack.name} ({tidyNumber(pack.base_units)}{line.base_unit ? ` ${line.base_unit}` : ''})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {line.lostPack && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--color-warning)', fontWeight: 400, marginTop: 2 }} data-testid={`po-edit-lostpack-${idx}`}>
+                      Was bought as {line.lostPack}, which no longer exists — now counted in {line.base_unit || 'units'}.
+                    </span>
+                  )}
+                  {/* What the two boxes come to in the item's own unit. */}
+                  {editLineBase(line) !== null && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }} data-testid={`po-edit-base-${idx}`}>
+                      = {tidyNumber(editLineBase(line)!)}{line.base_unit ? ` ${line.base_unit}` : ''}
+                    </span>
+                  )}
+                </span>
                 <input
                   aria-label={`Quantity for ${line.name}`}
                   type="number" min="0" step="any" value={line.quantity}
@@ -1548,9 +1666,18 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   quantity: '1',
                   unit_cost: String(sel.item.cost_per_unit ?? ''),
                   purchase_unit_id: '',
+                  packs: [],
+                  base_unit: sel.item.unit ?? '',
+                  lostPack: null,
                   brand: '',
                   gst: (sel.item.gst_rate_bp ?? 0) > 0,
                 }]);
+                // Its packs, so this line can be bought by the case too.
+                void getPurchaseUnits(sel.id).then((res) => setEditLines((rows) => rows.map((r) => (
+                  r.inventory_item_id === String(sel.id) && r.packs.length === 0
+                    ? { ...r, packs: res.purchase_units ?? [], base_unit: res.base_unit || r.base_unit }
+                    : r
+                )))).catch(() => {});
               }}
               placeholder="Search inventory to add a line…"
             />
