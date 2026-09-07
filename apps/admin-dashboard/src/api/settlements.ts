@@ -27,7 +27,8 @@ export type LedgerDay = {
   over_laar: number;
   age_days: number;
   status: DayStatus;
-  deposits: Array<{ line_id: number; date: string; amount_laar: number }>;
+  /** Every bank credit added to this day. `named`: the bank said it was for this day. */
+  deposits: Array<{ line_id: number; date: string; amount_laar: number; description: string | null; named: boolean }>;
 };
 
 export type LedgerDeposit = {

@@ -160,6 +160,9 @@ class BankSettlementTest extends TestCase
         $this->assertSame('settled', $byDate[$this->day(3)]['status']);
         $this->assertSame('overdue', $byDate[$this->day(4)]['status']);
         $this->assertSame([['date' => $this->day(3), 'amount_laar' => 5000]], $ledger['deposits'][0]['applied_to']);
+        // The day lists every POS credit the bank added for it.
+        $credit = $byDate[$this->day(3)]['deposits'][0];
+        $this->assertSame(['date' => $this->day(1), 'amount_laar' => 5000, 'description' => 'POS Credit Transfer', 'named' => true], array_diff_key($credit, ['line_id' => 1]));
 
         // The bank paid 130 for day 4 when the till only took 100: the
         // difference is shown against that day, not spread or swallowed.

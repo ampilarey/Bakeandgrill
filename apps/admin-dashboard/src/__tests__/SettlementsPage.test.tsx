@@ -35,8 +35,12 @@ vi.mock('../api', async () => {
 const ledger = {
   start: null, from: '2026-09-01', to: '2026-09-07',
   days: [
-    { date: '2026-09-06', gross_laar: 10000, commission_laar: 250, expected_laar: 9750, payments: 3, allocated_laar: 6000, remaining_laar: 3750, over_laar: 0, age_days: 1, status: 'partial', deposits: [{ line_id: 1, date: '2026-09-07', amount_laar: 6000 }] },
-    { date: '2026-09-04', gross_laar: 5000, commission_laar: 0, expected_laar: 5000, payments: 1, allocated_laar: 6500, remaining_laar: 0, over_laar: 1500, age_days: 3, status: 'over', deposits: [{ line_id: 2, date: '2026-09-05', amount_laar: 6500 }] },
+    { date: '2026-09-06', gross_laar: 10000, commission_laar: 250, expected_laar: 9750, payments: 3, allocated_laar: 6000, remaining_laar: 3750, over_laar: 0, age_days: 1, status: 'partial', deposits: [{ line_id: 1, date: '2026-09-07', amount_laar: 6000, description: 'POS SETTLEMENT', named: false }] },
+    { date: '2026-09-04', gross_laar: 5000, commission_laar: 0, expected_laar: 5000, payments: 1, allocated_laar: 6500, remaining_laar: 0, over_laar: 1500, age_days: 3, status: 'over', deposits: [
+      { line_id: 2, date: '2026-09-05', amount_laar: 4000, description: 'POS Credit Transfer · terminal 000000 65018311', named: true },
+      { line_id: 5, date: '2026-09-05', amount_laar: 1500, description: 'POS Credit Transfer · terminal 000000 65018311', named: true },
+      { line_id: 6, date: '2026-09-05', amount_laar: 1000, description: 'POS Credit Transfer · terminal 000081 70015698', named: true },
+    ] },
     { date: '2026-09-02', gross_laar: 5000, commission_laar: 0, expected_laar: 5000, payments: 1, allocated_laar: 0, remaining_laar: 5000, over_laar: 0, age_days: 5, status: 'overdue', deposits: [] },
   ],
   deposits: [
@@ -88,11 +92,45 @@ describe('Bank settlements', () => {
     expect(await screen.findByText('MVR 87.50')).toBeInTheDocument();
     expect(screen.getByText('oldest open day 2026-09-02')).toBeInTheDocument();
     expect(screen.getByTestId('ledger-day-2026-09-06')).toHaveTextContent('Partly settled');
-    expect(screen.getByTestId('ledger-day-2026-09-06')).toHaveTextContent('2026-09-07: MVR 60.00');
+    fireEvent.click(screen.getByRole('button', { name: '1 credit ▾' }));
+    expect(screen.getByTestId('ledger-day-credits-2026-09-06')).toHaveTextContent('MVR 60.00 on 2026-09-07 (oldest-day rule)');
     expect(screen.getByTestId('ledger-day-2026-09-02')).toHaveTextContent('Overdue');
     // The bank paid 65 for a day the till took 50 on: shown against that day, not spread.
     expect(screen.getByTestId('ledger-day-2026-09-04')).toHaveTextContent('Bank paid more');
     expect(screen.getByTestId('ledger-day-2026-09-04')).toHaveTextContent('+MVR 15.00');
+
+    // Every POS credit the bank added to that day, by terminal.
+    fireEvent.click(screen.getByRole('button', { name: '3 credits ▾' }));
+    const credits = screen.getByTestId('ledger-day-credits-2026-09-04');
+    expect(credits).toHaveTextContent('terminal 000000 65018311 · 2 credits · MVR 55.00');
+    expect(credits).toHaveTextContent('MVR 40.00 on 2026-09-05 · MVR 15.00 on 2026-09-05');
+    expect(credits).toHaveTextContent('terminal 000081 70015698 · 1 credit · MVR 10.00');
+  });
+
+  it('uploads the card & QR statement from its own tab, preset to that account', async () => {
+    uploadStatement.mockResolvedValueOnce({ dry_run: true, summary: {
+      account: 'card_qr', account_label: 'Card & QR account', filename: 'card.csv', format: 'bml', columns: {}, credit_lines: 5, new_lines: 5,
+      duplicate_lines: 0, debit_lines_skipped: 2, unreadable_lines: 0, set_aside_lines: 0, credit_total_laar: 50000, date_from: '2026-09-05', date_to: '2026-09-07', preview: [],
+    } });
+    renderPage();
+    await screen.findByText('MVR 87.50');
+    fireEvent.click(screen.getByRole('button', { name: 'Upload card & QR statement' }));
+
+    expect(screen.queryByLabelText('Account')).not.toBeInTheDocument();
+    const file = new File(['x'], 'card.csv', { type: 'text/csv' });
+    fireEvent.change(await screen.findByLabelText('Statement file'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check file' }));
+    await waitFor(() => expect(uploadStatement).toHaveBeenLastCalledWith('card_qr', file, true));
+    expect(await screen.findByTestId('import-summary')).toHaveTextContent('5 new credit lines');
+  });
+
+  it('uploads the transfer statement from the Transfers tab', async () => {
+    renderPage();
+    await screen.findByText('MVR 87.50');
+    fireEvent.click(screen.getByRole('tab', { name: 'Transfers' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Upload transfer statement' }));
+    expect(await screen.findByText('Upload the transfer account statement')).toBeInTheDocument();
+    expect(screen.getByText(/Every "Transfer Credit" line is read and matched/)).toBeInTheDocument();
   });
 
   it('shows which sales day each deposit was for and the credits set aside', async () => {

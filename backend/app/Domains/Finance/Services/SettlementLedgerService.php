@@ -101,7 +101,7 @@ final class SettlementLedgerService
                 // more than the till took is exactly what the owner wants
                 // to see.
                 $days[$for]['allocated_laar'] += $remaining;
-                $days[$for]['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $remaining];
+                $days[$for]['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $remaining, 'description' => $line->description, 'named' => true];
                 $applied[] = ['date' => $for, 'amount_laar' => $remaining];
                 $remaining = 0;
             } else {
@@ -120,7 +120,7 @@ final class SettlementLedgerService
                     }
                     $take = min($owed, $remaining);
                     $day['allocated_laar'] += $take;
-                    $day['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $take];
+                    $day['deposits'][] = ['line_id' => $line->id, 'date' => $txn, 'amount_laar' => $take, 'description' => $line->description, 'named' => false];
                     $applied[] = ['date' => $ymd, 'amount_laar' => $take];
                     $remaining -= $take;
                 }

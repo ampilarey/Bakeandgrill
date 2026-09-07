@@ -18,12 +18,12 @@
  *   Statements  the uploaded files, with a dry run first so the owner sees
  *               what was understood before anything is stored.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   deleteCashHandover, deleteStatementImport, fetchCardQrLedger, fetchCashHandovers, fetchSettlementSettings,
   fetchStatementImports, fetchTransferSettlements, ignoreStatementLine, matchTransferLine, restoreStatementLine,
   saveCashHandover, unmatchTransferLine, updateSettlementSettings, uploadStatement,
-  type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type SettlementAccount,
+  type CardQrLedger, type CashDay, type CashView, type DayStatus, type ImportSummary, type LedgerDay, type SettlementAccount,
   type SettlementSettings, type StatementImport, type TransferRow, type TransfersView,
 } from '../api';
 import {
@@ -129,6 +129,8 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
   const [ledger, setLedger] = useState<CardQrLedger | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDeposits, setShowDeposits] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [openDay, setOpenDay] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -160,17 +162,21 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
         <StatCard label="Deposited in window" value={mvr(t.deposited_laar)} sub={depositedSub} accent={t.excess_laar > 0 || t.over_days > 0 ? 'var(--color-warning)' : undefined} />
       </div>
 
-      {!ledger.start && (
-        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-          Tracking from the first card or QR payment on record. Set a start date under Statements → Settings to ignore older days.
-        </p>
-      )}
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+        Every POS credit on the card & QR statement is added to the sales day the bank names, and the total is compared with that day's card + QR takings net of commission.
+        {!ledger.start ? ' Tracking from the first card or QR payment on record; set a start date under Statements → Settings to ignore older days.' : ''}
+      </p>
 
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Btn small onClick={() => setUploading(true)}>Upload card & QR statement</Btn>
         <Btn small variant="secondary" onClick={() => setShowDeposits((v) => !v)}>
           {showDeposits ? 'Show days' : `Show deposits (${ledger.deposits.length})`}
         </Btn>
       </div>
+
+      {uploading && (
+        <UploadModal account="card_qr" title="Upload the card & QR account statement" onClose={() => setUploading(false)} onImported={() => void load()} onError={onError} />
+      )}
 
       {!showDeposits ? (
         isMobile ? (
@@ -185,33 +191,48 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
                   {d.remaining_laar > 0 ? ` · still owed ${mvr(d.remaining_laar)}` : ''}
                   {d.over_laar > 0 ? ` · ${mvr(d.over_laar)} more than the till took` : ''}
                 </div>
+                {d.deposits.length > 0 && <DayCredits day={d} />}
               </article>
             ))}
           </div>
         ) : (
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr>{['Day', 'Takings', 'Commission', 'Expected', 'Arrived', 'Still owed', 'Status'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Day', 'Takings', 'Commission', 'Expected', 'Bank added', 'Still owed', 'Status'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
               <tbody>
                 {ledger.days.map((d) => (
-                  <tr key={d.date} data-testid={`ledger-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1, ...(d.status === 'over' ? mismatchRow : {}) }}>
-                    <td style={TD}>{d.date}{d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}</td>
-                    <td style={TD}>{mvr(d.gross_laar)}</td>
-                    <td style={TD}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
-                    <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.expected_laar)}</td>
-                    <td style={TD}>
-                      {mvr(d.allocated_laar)}
-                      {d.deposits.length > 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                          {d.deposits.map((x) => `${x.date}: ${mvr(x.amount_laar)}`).join(' · ')}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ ...TD, color: d.remaining_laar > 0 ? 'var(--color-danger)' : d.over_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
-                      {d.remaining_laar > 0 ? mvr(d.remaining_laar) : d.over_laar > 0 ? `+${mvr(d.over_laar)}` : '—'}
-                    </td>
-                    <td style={TD}><StatusBadge status={d.status} /></td>
-                  </tr>
+                  <Fragment key={d.date}>
+                    <tr data-testid={`ledger-day-${d.date}`} style={{ opacity: d.status === 'none' ? 0.5 : 1, ...(d.status === 'over' ? mismatchRow : {}) }}>
+                      <td style={TD}>{d.date}{d.payments > 0 ? <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}> · {d.payments} payment{d.payments === 1 ? '' : 's'}</span> : null}</td>
+                      <td style={TD}>{mvr(d.gross_laar)}</td>
+                      <td style={TD}>{d.commission_laar ? `−${mvr(d.commission_laar)}` : '—'}</td>
+                      <td style={{ ...TD, fontWeight: 600 }}>{mvr(d.expected_laar)}</td>
+                      <td style={TD}>
+                        {mvr(d.allocated_laar)}
+                        {d.deposits.length > 0 && (
+                          <div>
+                            <button
+                              type="button"
+                              aria-expanded={openDay === d.date}
+                              onClick={() => setOpenDay(openDay === d.date ? null : d.date)}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, color: 'var(--color-primary)', fontWeight: 600 }}
+                            >
+                              {d.deposits.length} credit{d.deposits.length === 1 ? '' : 's'} {openDay === d.date ? '▴' : '▾'}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ ...TD, color: d.remaining_laar > 0 ? 'var(--color-danger)' : d.over_laar > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+                        {d.remaining_laar > 0 ? mvr(d.remaining_laar) : d.over_laar > 0 ? `+${mvr(d.over_laar)}` : '—'}
+                      </td>
+                      <td style={TD}><StatusBadge status={d.status} /></td>
+                    </tr>
+                    {openDay === d.date && (
+                      <tr data-testid={`ledger-day-credits-${d.date}`}>
+                        <td style={{ ...TD, background: 'var(--color-bg)' }} colSpan={7}><DayCredits day={d} /></td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -262,12 +283,40 @@ function CardQrTab({ from, to, isMobile, onError }: { from: string; to: string; 
   );
 }
 
+/**
+ * Every bank credit added to one day, grouped by the terminal it came from.
+ * With two POS terminals (a card machine and a QR stand) this is as close
+ * as the statement gets to splitting card from QR.
+ */
+function DayCredits({ day }: { day: LedgerDay }) {
+  const groups = new Map<string, LedgerDay['deposits']>();
+  for (const c of day.deposits) {
+    const key = c.description ?? 'Deposit';
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  return (
+    <div style={{ display: 'grid', gap: 6, fontSize: 12, padding: '4px 0' }}>
+      {[...groups.entries()].map(([label, credits]) => (
+        <div key={label}>
+          <div style={{ fontWeight: 600 }}>
+            {label} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>· {credits.length} credit{credits.length === 1 ? '' : 's'} · {mvr(credits.reduce((s, c) => s + c.amount_laar, 0))}</span>
+          </div>
+          <div style={{ color: 'var(--color-text-secondary)' }}>
+            {credits.map((c) => `${mvr(c.amount_laar)} on ${c.date}${c.named ? '' : ' (oldest-day rule)'}`).join(' · ')}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Transfers ──────────────────────────────────────────────────────────────
 
 function TransfersTab({ from, to, isMobile, onError }: { from: string; to: string; isMobile: boolean; onError: (m: string) => void }) {
   const [view, setView] = useState<TransfersView | null>(null);
   const [loading, setLoading] = useState(true);
   const [matching, setMatching] = useState<number | null>(null); // line id being matched
+  const [uploading, setUploading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -296,6 +345,16 @@ function TransfersTab({ from, to, isMobile, onError }: { from: string; to: strin
         <StatCard label="Not yet seen in bank" value={mvr(t.unverified_laar)} accent={t.unverified_laar > 0 ? 'var(--color-warning)' : 'var(--color-success)'} />
         <StatCard label="Bank lines unclaimed" value={String(t.unmatched_lines)} sub="credits no sale explains" accent={t.unmatched_lines > 0 ? 'var(--color-warning)' : undefined} />
       </div>
+
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+        Every transfer credit on the transfer account statement is matched to the transfer sale it was for, by the day the customer sent it. A customer who sent the wrong amount is flagged with the difference.
+      </p>
+      <div style={{ marginBottom: 12 }}>
+        <Btn small onClick={() => setUploading(true)}>Upload transfer statement</Btn>
+      </div>
+      {uploading && (
+        <UploadModal account="transfer" title="Upload the transfer account statement" onClose={() => setUploading(false)} onImported={() => void load()} onError={onError} />
+      )}
 
       {view.unmatched_lines.length > 0 && (
         <Card>
@@ -521,37 +580,34 @@ function CashTab({ from, to, isMobile, onError }: { from: string; to: string; is
 
 // ── Statements ─────────────────────────────────────────────────────────────
 
-function StatementsTab({ onError }: { onError: (m: string) => void }) {
-  const [imports, setImports] = useState<StatementImport[] | null>(null);
-  const [settings, setSettings] = useState<SettlementSettings | null>(null);
-  const [account, setAccount] = useState<SettlementAccount>('card_qr');
+const DEFAULT_ACCOUNTS: Array<{ key: SettlementAccount; label: string }> = [
+  { key: 'card_qr', label: 'Card & QR account' },
+  { key: 'transfer', label: 'Transfer account' },
+];
+
+/**
+ * Pick a file, read it back, then store it. Used on the Statements tab
+ * with an account chooser, and inside the Card & QR / Transfers tabs with
+ * the account fixed so the owner never uploads to the wrong one.
+ */
+function StatementUploader({ account, lockAccount, accounts, onImported, onError }: {
+  account: SettlementAccount;
+  lockAccount?: boolean;
+  accounts?: Array<{ key: SettlementAccount; label: string }>;
+  onImported: (summary: ImportSummary) => void;
+  onError: (m: string) => void;
+}) {
+  const [chosen, setChosen] = useState<SettlementAccount>(account);
   const [file, setFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const [startDate, setStartDate] = useState('');
-  const [tolerance, setTolerance] = useState('1');
-  const [alertDays, setAlertDays] = useState('3');
-
-  const load = useCallback(async () => {
-    try {
-      const [i, s] = await Promise.all([fetchStatementImports(), fetchSettlementSettings()]);
-      setImports(i.imports);
-      setSettings(s);
-      setStartDate(s.start_date ?? '');
-      setTolerance(String(s.tolerance));
-      setAlertDays(String(s.alert_days));
-      onError('');
-    } catch (e) { onError((e as Error).message); }
-  }, [onError]);
-
-  useEffect(() => { void load(); }, [load]);
+  const target = lockAccount ? account : chosen;
 
   const check = async () => {
     if (!file) { onError('Choose the statement file first.'); return; }
     setBusy(true);
-    try { setSummary((await uploadStatement(account, file, true)).summary); onError(''); }
+    try { setSummary((await uploadStatement(target, file, true)).summary); onError(''); }
     catch (e) { onError((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -560,52 +616,43 @@ function StatementsTab({ onError }: { onError: (m: string) => void }) {
     if (!file) return;
     setBusy(true);
     try {
-      const res = await uploadStatement(account, file, false);
+      const res = await uploadStatement(target, file, false);
       setSummary(null);
       setFile(null);
       if (fileRef.current) fileRef.current.value = '';
       onError('');
-      await load();
       setSummary({ ...res.summary });
+      onImported(res.summary);
     } catch (e) { onError((e as Error).message); }
     finally { setBusy(false); }
   };
 
-  const saveSettings = async () => {
-    try {
-      setSettings(await updateSettlementSettings({
-        start_date: startDate || null,
-        tolerance: parseFloat(tolerance) || 0,
-        alert_days: Math.max(1, parseInt(alertDays, 10) || 3),
-      }));
-      onError('');
-    } catch (e) { onError((e as Error).message); }
-  };
+  const hint = target === 'card_qr'
+    ? 'The card & QR account export. Every "POS Credit Transfer" line is read and added to the sales day it names; the rest of the file is ignored.'
+    : 'The transfer account export. Every "Transfer Credit" line is read and matched to the transfer sale it was for, by the day the customer sent it.';
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Card>
-        <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14 }}>Upload a bank statement</p>
-        <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-          The BML CSV export as downloaded, or any CSV / XLS / XLSX with a header row. Only credits are read. A file uploaded twice counts once. Check first, then confirm.
-        </p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+    <>
+      <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+        {hint} The BML CSV as downloaded, or any CSV / XLS / XLSX with a header row. A file uploaded twice counts once. Check first, then confirm.
+      </p>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        {!lockAccount && (
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600 }}>
             Account
-            <select aria-label="Account" value={account} onChange={(e) => setAccount(e.target.value as SettlementAccount)} style={{ minHeight: 40, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px' }}>
-              {(settings?.accounts ?? [{ key: 'card_qr', label: 'Card & QR account' }, { key: 'transfer', label: 'Transfer account' }]).map((a) => (
-                <option key={a.key} value={a.key}>{a.label}</option>
-              ))}
+            <select aria-label="Account" value={chosen} onChange={(e) => { setChosen(e.target.value as SettlementAccount); setSummary(null); }} style={{ minHeight: 40, borderRadius: 8, border: '1px solid var(--color-border)', padding: '0 10px' }}>
+              {(accounts ?? DEFAULT_ACCOUNTS).map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
             </select>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600 }}>
-            Statement file
-            <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" aria-label="Statement file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSummary(null); }} />
-          </label>
-          <Btn onClick={() => void check()} disabled={busy || !file}>Check file</Btn>
-        </div>
+        )}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, fontWeight: 600 }}>
+          Statement file
+          <input ref={fileRef} type="file" accept=".csv,.txt,.xls,.xlsx" aria-label="Statement file" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSummary(null); }} />
+        </label>
+        <Btn onClick={() => void check()} disabled={busy || !file}>Check file</Btn>
+      </div>
 
-        {summary && (
+      {summary && (
           <div data-testid="import-summary" style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'var(--color-bg)', fontSize: 13 }}>
             <p style={{ margin: '0 0 6px', fontWeight: 700 }}>
               {summary.import_id ? 'Imported' : 'Ready to import'} — {summary.account_label}, {summary.filename}
@@ -643,6 +690,60 @@ function StatementsTab({ onError }: { onError: (m: string) => void }) {
             )}
           </div>
         )}
+    </>
+  );
+}
+
+function UploadModal({ account, title, onClose, onImported, onError }: {
+  account: SettlementAccount; title: string; onClose: () => void; onImported: () => void; onError: (m: string) => void;
+}) {
+  const [done, setDone] = useState(false);
+  return (
+    <Modal title={title} onClose={onClose}>
+      <StatementUploader account={account} lockAccount onImported={() => { setDone(true); onImported(); }} onError={onError} />
+      <ModalActions><Btn variant={done ? 'primary' : 'secondary'} onClick={onClose}>{done ? 'Done' : 'Cancel'}</Btn></ModalActions>
+    </Modal>
+  );
+}
+
+function StatementsTab({ onError }: { onError: (m: string) => void }) {
+  const [imports, setImports] = useState<StatementImport[] | null>(null);
+  const [settings, setSettings] = useState<SettlementSettings | null>(null);
+
+  const [startDate, setStartDate] = useState('');
+  const [tolerance, setTolerance] = useState('1');
+  const [alertDays, setAlertDays] = useState('3');
+
+  const load = useCallback(async () => {
+    try {
+      const [i, s] = await Promise.all([fetchStatementImports(), fetchSettlementSettings()]);
+      setImports(i.imports);
+      setSettings(s);
+      setStartDate(s.start_date ?? '');
+      setTolerance(String(s.tolerance));
+      setAlertDays(String(s.alert_days));
+      onError('');
+    } catch (e) { onError((e as Error).message); }
+  }, [onError]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const saveSettings = async () => {
+    try {
+      setSettings(await updateSettlementSettings({
+        start_date: startDate || null,
+        tolerance: parseFloat(tolerance) || 0,
+        alert_days: Math.max(1, parseInt(alertDays, 10) || 3),
+      }));
+      onError('');
+    } catch (e) { onError((e as Error).message); }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <Card>
+        <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 14 }}>Upload a bank statement</p>
+        <StatementUploader account="card_qr" accounts={settings?.accounts} onImported={() => void load()} onError={onError} />
       </Card>
 
       <Card>
