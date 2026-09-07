@@ -454,28 +454,50 @@ export default function InventoryPage() {
       color: dir === -1 ? 'var(--color-danger)' : 'var(--color-success)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     });
-    const busy = quickAdjusting[item.id];
+    /*
+     * Saving, but still tappable. Owner, 2026-09-07: "when i click + or -
+     * every time page reloads."
+     *
+     * Both buttons used to disable themselves the moment you tapped, and stay
+     * disabled until the save came back — which defeated the whole point of
+     * the 800ms batching window, since a second tap inside it was refused.
+     * One tap, one round trip, one list rebuild, every time. The count was
+     * replaced by "…" as well, so you could not even see what you were
+     * building up to.
+     *
+     * The number on screen is already the right one: the tap updates it
+     * optimistically and the save reconciles later. So keep taking taps, and
+     * say a save is in flight by dimming the count rather than hiding it.
+     */
+    const saving = quickAdjusting[item.id];
+    const empty = item.quantity_on_hand <= 0;
     return (
       <>
         <button
+          type="button"
           onClick={() => quickAdjust(item, -1)}
-          disabled={busy || item.quantity_on_hand <= 0}
+          disabled={empty}
           title="Remove 1"
           aria-label={`Remove one ${item.name}`}
-          style={{ ...btn(-1), opacity: (busy || item.quantity_on_hand <= 0) ? 0.4 : 1 }}
+          style={{ ...btn(-1), opacity: empty ? 0.4 : 1 }}
         >−</button>
-        <span style={{
-          minWidth: big ? 56 : 32, textAlign: 'center', fontWeight: 700,
-          fontSize: big ? 18 : 13, color: isLow ? 'var(--color-danger)' : 'var(--color-text)',
-        }}>
-          {busy ? '…' : item.quantity_on_hand}
+        <span
+          data-testid={`stock-count-${item.id}`}
+          title={saving ? 'Saving…' : undefined}
+          style={{
+            minWidth: big ? 56 : 32, textAlign: 'center', fontWeight: 700,
+            fontSize: big ? 18 : 13, color: isLow ? 'var(--color-danger)' : 'var(--color-text)',
+            opacity: saving ? 0.55 : 1, transition: 'opacity 120ms',
+          }}
+        >
+          {item.quantity_on_hand}
         </span>
         <button
+          type="button"
           onClick={() => quickAdjust(item, 1)}
-          disabled={busy}
           title="Add 1"
           aria-label={`Add one ${item.name}`}
-          style={{ ...btn(1), opacity: busy ? 0.4 : 1 }}
+          style={btn(1)}
         >+</button>
       </>
     );
@@ -562,8 +584,8 @@ export default function InventoryPage() {
         // so every quick ± round-tripped a 422 and the stock never
         // actually moved server-side.
         await adjustInventoryStock(item.id, { delta: total, notes: 'Quick adjust' });
-        void loadItems();
-      } catch { void loadItems(); }
+        void loadItems({ background: true });
+      } catch { void loadItems({ background: true }); }
       finally { setQuickAdjusting((s) => ({ ...s, [item.id]: false })); }
     }, 800);
   };
@@ -575,8 +597,23 @@ export default function InventoryPage() {
         : item.days_left <= 7 ? 'var(--color-warning-strong)'
           : 'var(--color-text-muted)';
 
-  const loadItems = async () => {
-    setLoading(true); setError('');
+  /**
+   * Reload the stock list.
+   *
+   * `background` refreshes it without the skeleton. Owner, 2026-09-07: "when
+   * i click + or - every time page reloads." The quick ± already puts the new
+   * number on screen; 800ms later this ran to reconcile it and, by flipping
+   * `loading`, tore the whole list down for a skeleton while it re-walked
+   * every page of the inventory — the list vanished, came back, and the phone
+   * was at the top again. Indistinguishable from a reload, and it happened on
+   * every tap.
+   *
+   * A first load has nothing to show and wants the skeleton. A refresh of a
+   * list already on screen does not.
+   */
+  const loadItems = async ({ background = false }: { background?: boolean } = {}) => {
+    if (!background) setLoading(true);
+    setError('');
     try {
       /*
        * The whole store, not the first page of it. This used to stop after
@@ -598,7 +635,7 @@ export default function InventoryPage() {
       setItems(all);
       setKnownUnits(units);
     } catch (e) { setError((e as Error).message); }
-    finally { setLoading(false); }
+    finally { if (!background) setLoading(false); }
   };
 
   const loadLowStock = async () => {
