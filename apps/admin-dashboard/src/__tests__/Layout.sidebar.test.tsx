@@ -41,10 +41,10 @@ describe('Layout desktop section shell (compat)', () => {
     expect(screen.getByRole('tab', { name: /Monitor/i })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('does not mark Monitor active on /delivery-settings', () => {
-    renderLayout('/delivery-settings');
+  it('does not mark Monitor active on the delivery settings tab', () => {
+    renderLayout('/settings/delivery');
     expect(screen.getByRole('tab', { name: /Monitor/i })).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getByRole('tab', { name: /Manage/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /System/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('auto-selects Analyze on /reports', () => {

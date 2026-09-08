@@ -1,15 +1,14 @@
 import {
   LayoutDashboard, ClipboardList, ChefHat, Truck,
-  UtensilsCrossed, Package, Tag, CalendarDays, Plus, Landmark,
-  BarChart3, DollarSign, Receipt, TrendingDown, PieChart,
+  UtensilsCrossed, Package, Tag, CalendarDays, Plus,
+  BarChart3, DollarSign, Receipt, TrendingDown,
   Users, LogOut,
   Heart, MessageSquare, BarChart2, Webhook,
-  Gift, Star, Target, RotateCcw, CreditCard,
+  Target, RotateCcw,
   Boxes, LayoutGrid, Wallet, Clock, Monitor, Share2,
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
-  AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, HandCoins, FileText, LineChart,
-  CalendarClock,
+  AlertTriangle, LayoutTemplate, Shield, UserCog, Images, Tv, Store,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -41,7 +40,12 @@ export interface NavGroup {
 export const PINNED_NAV_ITEMS: NavItem[] = [];
 
 /** Paths that should not stay active for nested routes (e.g. /customers vs /customers/growth) */
-export const NAV_EXACT_MATCH_PATHS = new Set(['/customers', '/wholesale']);
+/**
+ * Paths that must match exactly rather than by prefix. Empty since the hubs
+ * (2026-09-08): /customers/growth and /wholesale/deliveries are tabs of the
+ * /customers and /wholesale entries now, so the prefix is the right match.
+ */
+export const NAV_EXACT_MATCH_PATHS = new Set<string>([]);
 
 const PINNED_PATHS = new Set(PINNED_NAV_ITEMS.map((i) => i.to));
 
@@ -63,8 +67,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/kds',       icon: ChefHat,         label: 'Kitchen Display', permission: 'orders.view', description: 'KDS screen' },
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'orders.manage',          description: 'Active delivery queue' },
-      { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
-      { to: '/production-plan', icon: CalendarClock, label: 'Production Plan', permission: 'kitchen.production.plan', description: 'What to make, slot by slot' },
+      // Owner, 2026-09-08: "related tabs together". The production plan and
+      // the handover (batches, receiving, variances, waste) share one page
+      // and one settings tab; each tab keeps the permission its page had.
+      { to: '/kitchen', icon: Utensils, label: 'Kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage'], description: 'Plan, handover, receiving & variance' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
     ],
   },
@@ -84,11 +90,8 @@ export const NAV_GROUPS: NavGroup[] = [
       // and every buying switch are tabs of one page. Old paths redirect.
       { to: '/purchasing',            icon: Package,       label: 'Purchasing',      permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'], description: 'Requests, orders, suppliers & buying settings' },
       { to: '/reservations',     icon: CalendarDays, label: 'Reservations',  permission: 'reservations.manage',   description: 'Table bookings' },
-      { to: '/online-ordering',   icon: ShoppingBag, label: 'Ordering Control', permission: 'settings.update', description: 'Online, delivery, pre-order & feature gates' },
       // Delivery settings: Ordering Control → Delivery tab only (/delivery-settings). Not listed again here.
-      { to: '/wholesale', icon: Store, label: 'Wholesale shops', permission: 'trade.view', description: 'Trade accounts & shop prices' },
-      { to: '/wholesale/deliveries', icon: Truck, label: 'Wholesale deliveries', permission: 'trade.view', description: 'Dispatch notes & reconciliation' },
-      { to: '/wholesale/invoicing', icon: FileText, label: 'Wholesale invoicing', permission: 'trade.view', description: 'Bill reconciled deliveries' },
+      { to: '/wholesale', icon: Store, label: 'Wholesale', permission: 'trade.view', description: 'Shops, deliveries, invoicing & reports' },
     ],
   },
   {
@@ -98,18 +101,11 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     order: 3,
     items: [
-      { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Customer database' },
-      { to: '/customers/growth', icon: BarChart2,  label: 'Customer Growth', permission: 'customers.manage',    description: 'Metrics, segments & CRM' },
+      { to: '/customers',        icon: Users,      label: 'Customers',       permission: 'customers.manage',    description: 'Directory, growth, referrals & reviews' },
       { to: '/catering',         icon: ConciergeBell, label: 'Events & Catering', permissions: ['events.manage', 'customers.manage'], description: 'Event orders, quotes & catering pipeline' },
       { to: '/loyalty',          icon: Heart,      label: 'Loyalty',         permission: 'loyalty.manage',      description: 'Points & rewards' },
-      { to: '/gift-cards',       icon: Gift,       label: 'Gift Cards',      permission: 'promotions.manage',   description: 'Issue & manage cards' },
-      { to: '/discount-cards',   icon: CreditCard, label: 'Discount Cards', permission: 'promotions.discount_cards', description: 'Owner-issued % / fixed cards' },
-      { to: '/referrals',        icon: Share2,     label: 'Referrals',       permission: 'customers.manage',    description: 'Referral program' },
-      { to: '/reviews',          icon: Star,       label: 'Reviews',         permission: 'customers.manage',    description: 'Moderate ratings' },
-      { to: '/promotions', icon: Target,        label: 'Promotions',      permission: 'promotions.manage',  description: 'Discounts & offers' },
-      { to: '/discount-controls', icon: Percent, label: 'Discount Controls', permission: 'discounts.settings.manage', description: 'POS caps, reasons & SMS approval' },
-      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage'], description: 'Campaigns, templates & sends' },
-      { to: '/sms/control-center', icon: MessageSquare, label: 'SMS Control Center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage'], description: 'Toggles, wording & kill switch' },
+      { to: '/promotions', icon: Target,        label: 'Promotions',      permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'], description: 'Offers, gift cards, discount cards & controls' },
+      { to: '/sms',        icon: MessageSquare, label: 'SMS & Messaging', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'], description: 'Campaigns, templates, sends & the control center' },
       { to: '/signage', icon: Tv, label: 'TV Signage', permission: 'signage.manage', description: 'Digital menu boards' },
       { to: '/social', icon: Share2, label: 'Social Hub', permission: 'social.view', description: 'Post to Facebook, Instagram & Telegram' },
     ],
@@ -122,18 +118,12 @@ export const NAV_GROUPS: NavGroup[] = [
     order: 4,
     items: [
       { to: '/reports',     icon: BarChart3,  label: 'Reports',       permission: 'reports.view',        description: 'Sales & daily summaries' },
-      { to: '/wholesale/reports', icon: LineChart, label: 'Wholesale reports', permission: 'trade.view', description: 'Sell-through, waste, margin & ageing' },
       { to: '/analytics',        icon: BarChart2,  label: 'Analytics',       permission: 'customers.analytics', description: 'Advanced insights' },
       { to: '/forecasts',             icon: TrendingDown,  label: 'Forecasts',       permission: 'reports.financial',   description: 'Demand forecasting' },
       { to: '/procurement-report',     icon: ShoppingBag,   label: 'Procurement',     permission: 'reports.financial',   description: 'Spend, price trends & quote savings' },
       { to: '/gst',         icon: Receipt,    label: 'GST',           permission: 'reports.financial',   description: 'MIRA GST reports & exports' },
-      { to: '/monthly-sheet', icon: CalendarDays, label: 'Monthly Sheet', permission: 'reports.financial', description: 'Income, ingredients, expenses, profit — one month' },
-      { to: '/profit-loss', icon: PieChart,   label: 'Profit & Loss', permission: 'reports.financial', description: 'P&L statement' },
-      { to: '/break-even',  icon: Target,     label: 'Break-even',    permission: 'reports.financial', description: 'Estimated sales to cover costs' },
-      { to: '/invoices',    icon: DollarSign, label: 'Invoices',      permission: 'finance.invoices',    description: 'Billing & AR' },
-      { to: '/expenses',    icon: Receipt,    label: 'Expenses',      permission: 'finance.expenses',    description: 'Operating costs' },
+      { to: '/finance',     icon: DollarSign, label: 'Finance',       permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements'], description: 'Monthly sheet, P&L, break-even, expenses, invoices & settlements' },
       // Owner, 2026-09-07: "the system must match actual money received."
-      { to: '/settlements', icon: Landmark,   label: 'Bank Settlements', permission: 'finance.settlements', description: 'Card, QR, transfers & cash against the bank' },
       { to: '/refunds',     icon: RotateCcw,  label: 'Refunds',       permission: 'orders.refund',       description: 'Refund history' },
       { to: '/complaints',  icon: AlertTriangle, label: 'Complaints', permission: 'complaints.view',    description: 'Customer receipt & invoice concerns' },
     ],
@@ -147,13 +137,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/content/website', icon: LayoutTemplate, label: 'Website Content', permission: 'website.manage', description: 'Public website copy, branding & visuals' },
       { to: '/content/order-app', icon: ShoppingBag, label: 'Order App Content', permission: 'website.manage', description: 'Ordering app copy, branding & visuals' },
-      { to: '/business-details', icon: FileText, label: 'Business Details', permission: 'website.manage', description: 'Invoice, receipt, signage & SMS business record' },
       { to: '/media', icon: Images, label: 'Media Library', permission: 'media.view', description: 'Uploaded images, video, audio & documents' },
-      { to: '/settings/permissions', icon: Shield, label: 'Roles & Permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Role defaults & per-user overrides' },
-      { to: '/settings/notifications', icon: Bell, label: 'Notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Customer SMS alerts for order status' },
-      { to: '/settings/charges', icon: Percent, label: 'Charges & Fees', permission: 'settings.update', description: 'Service charge and payment commission' },
-      { to: '/settings/credit', icon: HandCoins, label: 'Credit Accounts', permission: 'settings.update', description: 'Approval ceiling, payment terms, open or closed' },
-      { to: '/settings/currency', icon: Banknote, label: 'Currency Photos', permission: 'website.manage', description: 'Note & coin photos for the POS cash count' },
+      // Every switch not owned by a domain page: business record, ordering,
+      // delivery, charges, credit, notifications, currency photos, roles.
+      { to: '/settings', icon: Shield, label: 'Settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'], description: 'Business, ordering, delivery, fees, credit, notifications & roles' },
       { to: '/devices',       icon: Monitor,     label: 'Devices',        permission: 'devices.view',   description: 'POS & KDS devices' },
       { to: '/print-jobs',    icon: Printer,     label: 'Print Queue',    permission: 'devices.view',   description: 'Receipt print jobs' },
       { to: '/webhooks',      icon: Webhook,     label: 'Webhooks',       permission: 'integrations.webhooks', description: 'Outbound integrations' },
@@ -219,8 +206,7 @@ export function getAllNavItems(_includeDevItems = true): NavItem[] {
  * Delivery settings live under Ordering Control → Delivery tab.
  */
 export const NAV_PATH_ALIASES: Record<string, string> = {
-  '/delivery-settings': '/online-ordering',
-  // Old purchasing paths still resolve to the hub for highlighting until the
+  // Old paths still resolve to their hub for highlighting until the
   // redirect in App.tsx has fired.
   '/purchase-requests': '/purchasing',
   '/purchase-orders': '/purchasing',
@@ -228,6 +214,23 @@ export const NAV_PATH_ALIASES: Record<string, string> = {
   '/supplier-intelligence': '/purchasing',
   '/waste-logs': '/inventory',
   '/settings/stock': '/purchasing',
+  // Hubs, 2026-09-08.
+  '/kitchen-production': '/kitchen',
+  '/production-plan': '/kitchen',
+  '/referrals': '/customers',
+  '/reviews': '/customers',
+  '/gift-cards': '/promotions',
+  '/discount-cards': '/promotions',
+  '/discount-controls': '/promotions',
+  '/invoices': '/finance',
+  '/expenses': '/finance',
+  '/profit-loss': '/finance',
+  '/monthly-sheet': '/finance',
+  '/settlements': '/finance',
+  '/break-even': '/finance',
+  '/business-details': '/settings',
+  '/online-ordering': '/settings',
+  '/delivery-settings': '/settings',
 };
 
 function resolveNavPath(pathname: string): string {

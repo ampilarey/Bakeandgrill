@@ -224,10 +224,10 @@ export default function DeliverySettingsPage() {
           This tab is only for zones, fees, and capacity.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link to="/online-ordering" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
+          <Link to="/settings/ordering" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
             Today — delivery →
           </Link>
-          <Link to="/online-ordering?section=features" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
+          <Link to="/settings/ordering?section=features" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
             Tomorrow — delivery →
           </Link>
         </div>

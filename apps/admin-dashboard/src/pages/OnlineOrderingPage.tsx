@@ -713,7 +713,7 @@ export default function OnlineOrderingPage() {
             load();
           }}
           footer={(
-            <Link to="/delivery-settings" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
+            <Link to="/settings/delivery" className="oc-btn-block" style={{ ...S.btnSecondary, textDecoration: 'none' }}>
               Zones, fees, capacity →
             </Link>
           )}

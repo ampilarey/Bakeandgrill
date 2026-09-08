@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  getSalesTrends, getRevenueForecast, getInventoryForecast, getItemForecast, getRestockPlan,
+  getSalesTrends, getRevenueForecast, getInventoryForecast, getRestockPlan,
   createPurchaseFromSuggest, applySuggestedReorderPoints, applySuggestedPreferredSuppliers,
   generateRestockPurchaseRequest, updateInventoryItem, resolveReorderAlert,
-  type ItemForecast, type RestockPlan, type RestockPlanItem,
+  type RestockPlan, type RestockPlanItem,
 } from '../api';
 import {
   Btn, Card, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard,
 } from '../components/SharedUI';
-import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { today, daysAgo, daysFromToday } from '../utils/dateHelpers';
@@ -115,12 +114,6 @@ export function ForecastPage() {
   const [createdPoNumbers, setCreatedPoNumbers] = useState<string[]>([]);
   const [selectedRestockIds, setSelectedRestockIds] = useState<Set<number>>(new Set());
 
-  // Per-item forecast
-  const [selectedItem, setSelectedItem]   = useState<MenuItemSelection | null>(null);
-  const [itemForecast, setItemForecast]   = useState<ItemForecast | null>(null);
-  const [itemForecastDays, setItemForecastDays] = useState(14);
-  const [itemLoading, setItemLoading]     = useState(false);
-  const [itemError, setItemError]         = useState('');
 
   /** Saved pack size wins over plan suggestion for draft POs; local draft wins over both. */
   const qtyBaseline = (item: RestockPlanItem): number =>
@@ -252,25 +245,6 @@ export function ForecastPage() {
       `Restock defaults: usage ${next.lookback_days}d · buys ${next.buy_lookback_days}d · lead ${next.lead_days}d · cover ${next.cover_days}d`,
     );
   };
-
-  const handleItemForecast = async (selection: MenuItemSelection | null) => {
-    setSelectedItem(selection);
-    setItemForecast(null);
-    setItemError('');
-    if (!selection) return;
-    setItemLoading(true);
-    try {
-      const res = await getItemForecast({ item_id: selection.id, days: itemForecastDays });
-      setItemForecast(res);
-    } catch (e) { setItemError((e as Error).message); }
-    finally { setItemLoading(false); }
-  };
-
-  // Re-run item forecast when days slider changes (only if an item is already selected)
-  useEffect(() => {
-    if (selectedItem) void handleItemForecast(selectedItem);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemForecastDays]);
 
   const maxRevenue = trends ? Math.max(...(trends.data ?? []).map(d => d.revenue), 1) : 1;
 
@@ -1151,71 +1125,21 @@ export function ForecastPage() {
             </Card>
           )}
 
-          {/* Per-item demand forecast */}
-          <Card>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Per-Item Demand Forecast</div>
-            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 16 }}>
-              Search a menu item to see its projected daily demand.
+          {/*
+            The per-item forecast that lived here was a flat 28-day average
+            with no weekday or time of day in it. The production plan does
+            that job properly (owner, 2026-09-08: "Friday evening we will
+            need to make 50 bajiya"), so this points there.
+          */}
+          <Card data-testid="forecast-plan-pointer">
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Per-item demand</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+              How many of each item to make for a given day and time slot, allowing for the weekday, the part of the month,
+              holidays and what registered customers usually buy, now lives in the kitchen&apos;s production plan.
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
-              <div style={{ flex: '1 1 280px', minWidth: 220 }}>
-                <ItemSearch
-                  kind="menu"
-                  value={selectedItem}
-                  onChange={(v) => void handleItemForecast(v)}
-                  placeholder="Search menu items…"
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 700 }}>Days:</label>
-                <select
-                  value={itemForecastDays}
-                  onChange={(e) => setItemForecastDays(Number(e.target.value))}
-                  style={{ height: 36, padding: '0 8px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', background: 'var(--color-surface)', cursor: 'pointer' }}
-                >
-                  {[7, 14, 30].map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {itemLoading && <Spinner />}
-            {itemError && <div style={{ color: 'var(--color-danger)', fontSize: 13, marginBottom: 8 }}>{itemError}</div>}
-            {itemForecast && !itemLoading && (
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', marginBottom: 12 }}>
-                  {itemForecast.item_name} — next {itemForecastDays} days
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 100, minWidth: 'min(100%, 320px)' }}>
-                    {(itemForecast.forecast ?? []).map((d) => {
-                      const maxQty = Math.max(...(itemForecast.forecast ?? []).map((x) => x.predicted_qty), 1);
-                      const barH = Math.max(4, (d.predicted_qty / maxQty) * 84);
-                      return (
-                        <div key={d.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 28 }}>
-                          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 3, fontWeight: 600 }}>
-                            {Math.round(d.predicted_qty)}
-                          </div>
-                          <div
-                            style={{ width: '100%', maxWidth: 32, height: barH, background: 'var(--color-primary)', borderRadius: '3px 3px 0 0', opacity: 0.85 }}
-                            title={`${d.date}: ${d.predicted_qty.toFixed(1)} units · MVR ${d.predicted_revenue.toFixed(2)}`}
-                          />
-                          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 3, textAlign: 'center' }}>
-                            {d.date.slice(5)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 10, textAlign: 'right' }}>
-                  Est. revenue: MVR {itemForecast.forecast.reduce((s, d) => s + d.predicted_revenue, 0).toFixed(2)} ·{' '}
-                  Total units: {itemForecast.forecast.reduce((s, d) => s + d.predicted_qty, 0).toFixed(0)}
-                </div>
-              </div>
-            )}
-            {!selectedItem && !itemLoading && (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, margin: 0 }}>Search and select a menu item above to see its demand forecast.</p>
-            )}
+            <Link to="/kitchen/plan" style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
+              Open the production plan →
+            </Link>
           </Card>
 
           {/* Restock plan — usage + buy frequency */}

@@ -41,8 +41,24 @@ describe('App route coverage', () => {
       'wholesale/:id/invoicing',
       'wholesale/:id/statement',
       'wholesale/deliveries/:id',
-      // Delivery tab of Ordering Control — aliased to /online-ordering in NAV_PATH_ALIASES
+      // Hubs, 2026-09-08 ("related tabs together"): every one of these old
+      // paths redirects into a hub that is in nav.
+      'kitchen-production',
+      'production-plan',
+      'gift-cards',
+      'discount-cards',
+      'discount-controls',
+      'invoices',
+      'expenses',
+      'profit-loss',
+      'monthly-sheet',
+      'settlements',
+      'break-even',
+      'business-details',
+      'online-ordering',
       'delivery-settings',
+      'reviews',
+      'referrals',
       // Purchasing audit, 2026-09-05: old purchasing paths redirect into the
       // /purchasing hub (in nav) or the Inventory waste tab.
       'purchase-requests',

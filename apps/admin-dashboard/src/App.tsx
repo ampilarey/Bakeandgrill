@@ -10,48 +10,41 @@ import { can as userCan, getDefaultNavPath, canAny as userCanAny } from './compo
 import { clearCurrentUserPermissionCache, primeCurrentUserPermissionCache } from './hooks/usePermissions';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { PURCHASING_PAGE_PERMISSIONS } from './pages/PurchasingPage';
+import { KITCHEN_HUB_PERMISSIONS } from './pages/KitchenHub';
+import { CUSTOMERS_HUB_PERMISSIONS } from './pages/CustomersHub';
+import { PROMOTIONS_HUB_PERMISSIONS } from './pages/PromotionsHub';
+import { FINANCE_HUB_PERMISSIONS } from './pages/FinanceHub';
+import { WHOLESALE_HUB_PERMISSIONS } from './pages/WholesaleHub';
 
 const OrdersPage              = lazyWithRetry(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const KDSPage                 = lazyWithRetry(() => import('./pages/KDSPage').then((m) => ({ default: m.KDSPage })));
 const DeliveryPage            = lazyWithRetry(() => import('./pages/DeliveryPage').then((m) => ({ default: m.DeliveryPage })));
-const PromotionsPage          = lazyWithRetry(() => import('./pages/PromotionsPage').then((m) => ({ default: m.PromotionsPage })));
 const LoyaltyPage             = lazyWithRetry(() => import('./pages/LoyaltyPage').then((m) => ({ default: m.LoyaltyPage })));
 const SmsPage                 = lazyWithRetry(() => import('./pages/SmsPage').then((m) => ({ default: m.SmsPage })));
-const SmsControlCenterPage    = lazyWithRetry(() => import('./pages/SmsControlCenterPage').then((m) => ({ default: m.SmsControlCenterPage })));
-const DiscountControlsPage    = lazyWithRetry(() => import('./pages/DiscountControlsPage').then((m) => ({ default: m.DiscountControlsPage })));
 const ReportsPage             = lazyWithRetry(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const MenuPage                = lazyWithRetry(() => import('./pages/MenuPage').then((m) => ({ default: m.MenuPage })));
 const StaffPage               = lazyWithRetry(() => import('./pages/StaffPage').then((m) => ({ default: m.StaffPage })));
 const ReservationsPage        = lazyWithRetry(() => import('./pages/ReservationsPage'));
 const AnalyticsPage           = lazyWithRetry(() => import('./pages/AnalyticsPage'));
-const InvoicesPage            = lazyWithRetry(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
-const ExpensesPage            = lazyWithRetry(() => import('./pages/ExpensesPage').then((m) => ({ default: m.ExpensesPage })));
 const GstPage                 = lazyWithRetry(() => import('./pages/GstPage'));
-const ProfitLossPage          = lazyWithRetry(() => import('./pages/ProfitLossPage').then((m) => ({ default: m.ProfitLossPage })));
-const MonthlySheetPage        = lazyWithRetry(() => import('./pages/MonthlySheetPage').then((m) => ({ default: m.MonthlySheetPage })));
 const ModifiersPage           = lazyWithRetry(() => import('./pages/ModifiersPage').then((m) => ({ default: m.ModifiersPage })));
-const SettlementsPage         = lazyWithRetry(() => import('./pages/SettlementsPage').then((m) => ({ default: m.SettlementsPage })));
-const BreakEvenPage           = lazyWithRetry(() => import('./pages/BreakEvenPage').then((m) => ({ default: m.BreakEvenPage })));
 const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage').then((m) => ({ default: m.ForecastPage })));
 const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
 const PurchasingPage          = lazyWithRetry(() => import('./pages/PurchasingPage').then((m) => ({ default: m.PurchasingPage })));
-const KitchenProductionPage   = lazyWithRetry(() => import('./pages/KitchenProductionPage'));
-const ProductionPlanPage      = lazyWithRetry(() => import('./pages/ProductionPlanPage').then((m) => ({ default: m.ProductionPlanPage })));
+const KitchenHub              = lazyWithRetry(() => import('./pages/KitchenHub').then((m) => ({ default: m.KitchenHub })));
+const CustomersHub            = lazyWithRetry(() => import('./pages/CustomersHub').then((m) => ({ default: m.CustomersHub })));
+const PromotionsHub           = lazyWithRetry(() => import('./pages/PromotionsHub').then((m) => ({ default: m.PromotionsHub })));
+const FinanceHub              = lazyWithRetry(() => import('./pages/FinanceHub').then((m) => ({ default: m.FinanceHub })));
+const WholesaleHub            = lazyWithRetry(() => import('./pages/WholesaleHub').then((m) => ({ default: m.WholesaleHub })));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
 const SettingsPage            = lazyWithRetry(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const ContentHubPage          = lazyWithRetry(() => import('./pages/ContentHub/ContentHubPage'));
 const ContentHubChooser       = lazyWithRetry(() => import('./pages/ContentHub/ContentHubChooser').then((m) => ({ default: m.ContentHubChooser })));
-const BusinessDetailsPage     = lazyWithRetry(() => import('./pages/BusinessDetailsPage'));
-const GiftCardsPage           = lazyWithRetry(() => import('./pages/GiftCardsPage'));
-const DiscountCardsPage       = lazyWithRetry(() => import('./pages/DiscountCardsPage'));
-const ReviewsPage             = lazyWithRetry(() => import('./pages/ReviewsPage'));
 const SpecialsPage            = lazyWithRetry(() => import('./pages/SpecialsPage'));
 const RefundsPage             = lazyWithRetry(() => import('./pages/RefundsPage'));
 const ComplaintsPage          = lazyWithRetry(() => import('./pages/ComplaintsPage'));
-const CustomersPage           = lazyWithRetry(() => import('./pages/CustomersPage').then((m) => ({ default: m.CustomersPage })));
-const CustomerGrowthPage      = lazyWithRetry(() => import('./pages/CustomerGrowthPage').then((m) => ({ default: m.CustomerGrowthPage })));
 const CateringPage            = lazyWithRetry(() => import('./pages/CateringPage').then((m) => ({ default: m.CateringPage })));
 const CateringDetailPage      = lazyWithRetry(() => import('./pages/CateringDetailPage').then((m) => ({ default: m.CateringDetailPage })));
 const InventoryPage           = lazyWithRetry(() => import('./pages/InventoryPage'));
@@ -60,23 +53,17 @@ const ActivityPage            = lazyWithRetry(() => import('./pages/ActivityPage
 const ShiftsPage              = lazyWithRetry(() => import('./pages/ShiftsPage'));
 const TimeClockPage           = lazyWithRetry(() => import('./pages/TimeClockPage'));
 const DevicesPage             = lazyWithRetry(() => import('./pages/DevicesPage'));
-const ReferralsPage           = lazyWithRetry(() => import('./pages/ReferralsPage'));
 const PrintJobsPage           = lazyWithRetry(() => import('./pages/PrintJobsPage'));
 const XeroPage                = lazyWithRetry(() => import('./pages/XeroPage'));
-const OnlineOrderingPage      = lazyWithRetry(() => import('./pages/OnlineOrderingPage'));
 const ServiceAvailabilityPage = lazyWithRetry(() => import('./pages/ServiceAvailabilityPage'));
-const DeliverySettingsPage    = lazyWithRetry(() => import('./pages/DeliverySettingsPage'));
 const SystemHealthPage        = lazyWithRetry(() => import('./pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const MyAccountPage           = lazyWithRetry(() => import('./pages/MyAccountPage').then((m) => ({ default: m.MyAccountPage })));
 const MediaLibraryPage        = lazyWithRetry(() => import('./pages/MediaLibraryPage').then((m) => ({ default: m.MediaLibraryPage })));
 const SignagePage             = lazyWithRetry(() => import('./pages/SignagePage').then((m) => ({ default: m.SignagePage })));
 const SocialHubPage           = lazyWithRetry(() => import('./pages/SocialHubPage').then((m) => ({ default: m.SocialHubPage })));
-const WholesalePage           = lazyWithRetry(() => import('./pages/WholesalePage'));
 const WholesaleAccountPage    = lazyWithRetry(() => import('./pages/WholesaleAccountPage'));
-const WholesaleDeliveriesPage = lazyWithRetry(() => import('./pages/WholesaleDeliveriesPage'));
 const WholesaleInvoicingPage  = lazyWithRetry(() => import('./pages/WholesaleInvoicingPage'));
 const WholesaleStatementPage  = lazyWithRetry(() => import('./pages/WholesaleStatementPage'));
-const WholesaleReportsPage    = lazyWithRetry(() => import('./pages/WholesaleReportsPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -278,31 +265,26 @@ export default function App() {
                   staff into a page where every API call 403s. Tighten to .manage
                   so the sidebar/route mirror the API contract.
                 */}
-                <Route path="promotions" element={
-                  <PermissionGuard user={user} permission="promotions.manage">
-                    <PromotionsPage />
+                <Route path="promotions/*" element={
+                  <PermissionGuard user={user} permissions={PROMOTIONS_HUB_PERMISSIONS}>
+                    <PromotionsHub />
                   </PermissionGuard>
                 } />
+                <Route path="gift-cards" element={<MovedTo to="/promotions/gift-cards" />} />
+                <Route path="discount-cards" element={<MovedTo to="/promotions/discount-cards" />} />
+                <Route path="discount-controls" element={<MovedTo to="/promotions/controls" />} />
                 <Route path="loyalty" element={
                   <PermissionGuard user={user} permission="loyalty.manage">
                     <LoyaltyPage />
                   </PermissionGuard>
                 } />
+                {/* The control center is the SMS page's settings tab now. */}
                 <Route path="sms" element={
-                  <PermissionGuard user={user} permissions={['integrations.sms', 'sms_marketing.manage']}>
+                  <PermissionGuard user={user} permissions={['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']}>
                     <SmsPage />
                   </PermissionGuard>
                 } />
-                <Route path="sms/control-center" element={
-                  <PermissionGuard user={user} permissions={['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage']}>
-                    <SmsControlCenterPage />
-                  </PermissionGuard>
-                } />
-                <Route path="discount-controls" element={
-                  <PermissionGuard user={user} permission="discounts.settings.manage">
-                    <DiscountControlsPage />
-                  </PermissionGuard>
-                } />
+                <Route path="sms/control-center" element={<MovedTo to="/sms?tab=control-center" />} />
                 <Route path="reports" element={
                   <PermissionGuard user={user} permission="reports.view">
                     <ReportsPage />
@@ -334,37 +316,18 @@ export default function App() {
                     <AnalyticsPage />
                   </PermissionGuard>
                 } />
-                {/* Finance */}
-                <Route path="invoices" element={
-                  <PermissionGuard user={user} permission="finance.invoices">
-                    <InvoicesPage />
+                {/* Finance — six pages became one hub; the old paths redirect to their tab. */}
+                <Route path="finance/*" element={
+                  <PermissionGuard user={user} permissions={FINANCE_HUB_PERMISSIONS}>
+                    <FinanceHub />
                   </PermissionGuard>
                 } />
-                <Route path="expenses" element={
-                  <PermissionGuard user={user} permission="finance.expenses">
-                    <ExpensesPage />
-                  </PermissionGuard>
-                } />
-                <Route path="profit-loss" element={
-                  <PermissionGuard user={user} permission="reports.financial">
-                    <ProfitLossPage />
-                  </PermissionGuard>
-                } />
-                <Route path="monthly-sheet" element={
-                  <PermissionGuard user={user} permission="reports.financial">
-                    <MonthlySheetPage />
-                  </PermissionGuard>
-                } />
-                <Route path="settlements" element={
-                  <PermissionGuard user={user} permission="finance.settlements">
-                    <SettlementsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="break-even" element={
-                  <PermissionGuard user={user} permission="reports.financial">
-                    <BreakEvenPage />
-                  </PermissionGuard>
-                } />
+                <Route path="invoices" element={<MovedTo to="/finance/invoices" />} />
+                <Route path="expenses" element={<MovedTo to="/finance/expenses" />} />
+                <Route path="profit-loss" element={<MovedTo to="/finance/profit-loss" />} />
+                <Route path="monthly-sheet" element={<MovedTo to="/finance/monthly-sheet" />} />
+                <Route path="settlements" element={<MovedTo to="/finance/settlements" />} />
+                <Route path="break-even" element={<MovedTo to="/finance/break-even" />} />
                 <Route path="gst" element={
                   <PermissionGuard user={user} permission="reports.financial">
                     <GstPage />
@@ -391,16 +354,14 @@ export default function App() {
                 <Route path="purchase-orders" element={<MovedTo to="/purchasing/orders" />} />
                 <Route path="purchase-requests" element={<MovedTo to="/purchasing/requests" />} />
                 <Route path="shopping-lists" element={<MovedTo to="/purchasing/lists" />} />
-                <Route path="kitchen-production" element={
-                  <PermissionGuard user={user} permission="kitchen.production.view_all">
-                    <KitchenProductionPage />
+                {/* Kitchen — the production plan and the handover under one roof. */}
+                <Route path="kitchen/*" element={
+                  <PermissionGuard user={user} permissions={KITCHEN_HUB_PERMISSIONS}>
+                    <KitchenHub />
                   </PermissionGuard>
                 } />
-                <Route path="production-plan" element={
-                  <PermissionGuard user={user} permission="kitchen.production.plan">
-                    <ProductionPlanPage />
-                  </PermissionGuard>
-                } />
+                <Route path="kitchen-production" element={<MovedTo to="/kitchen/handover" />} />
+                <Route path="production-plan" element={<MovedTo to="/kitchen/plan" />} />
                 {/* Webhooks */}
                 <Route path="webhooks" element={
                   <PermissionGuard user={user} permission="integrations.webhooks">
@@ -430,43 +391,23 @@ export default function App() {
                   </PermissionGuard>
                 } />
                 <Route path="content-studio" element={<Navigate to="/content/website" replace />} />
-                <Route path="business-details" element={
-                  <PermissionGuard user={user} permission="website.manage">
-                    <BusinessDetailsPage />
-                  </PermissionGuard>
-                } />
+                <Route path="business-details" element={<MovedTo to="/settings/business" />} />
+                <Route path="online-ordering" element={<MovedTo to="/settings/ordering" />} />
+                <Route path="delivery-settings" element={<MovedTo to="/settings/delivery" />} />
                 {/* Settings hub */}
                 <Route path="settings/*" element={
                   <PermissionGuard user={user} permissions={['website.manage', 'settings.update', 'roles_permissions.manage']}>
                     <SettingsPage />
                   </PermissionGuard>
                 } />
-                {/* New feature pages */}
-                <Route path="wholesale" element={
-                  <PermissionGuard user={user} permission="trade.view">
-                    <WholesalePage />
-                  </PermissionGuard>
-                } />
-                <Route path="wholesale/deliveries" element={
-                  <PermissionGuard user={user} permission="trade.view">
-                    <WholesaleDeliveriesPage />
-                  </PermissionGuard>
-                } />
-                <Route path="wholesale/deliveries/:id" element={
-                  <PermissionGuard user={user} permission="trade.view">
-                    <WholesaleDeliveriesPage />
-                  </PermissionGuard>
-                } />
-                <Route path="wholesale/invoicing" element={
-                  <PermissionGuard user={user} permission="trade.view">
-                    <WholesaleInvoicingPage />
-                  </PermissionGuard>
-                } />
-                <Route path="wholesale/reports" element={
-                  <PermissionGuard user={user} permission="trade.view">
-                    <WholesaleReportsPage />
-                  </PermissionGuard>
-                } />
+                {/* Wholesale hub — the per-account pages below stay their own routes. */}
+                {['wholesale', 'wholesale/shops', 'wholesale/deliveries', 'wholesale/deliveries/:id', 'wholesale/invoicing', 'wholesale/reports'].map((path) => (
+                  <Route key={path} path={path} element={
+                    <PermissionGuard user={user} permissions={WHOLESALE_HUB_PERMISSIONS}>
+                      <WholesaleHub />
+                    </PermissionGuard>
+                  } />
+                ))}
                 <Route path="wholesale/:id/invoicing" element={
                   <PermissionGuard user={user} permission="trade.view">
                     <WholesaleInvoicingPage />
@@ -482,21 +423,8 @@ export default function App() {
                     <WholesaleAccountPage />
                   </PermissionGuard>
                 } />
-                <Route path="gift-cards" element={
-                  <PermissionGuard user={user} permission="promotions.manage">
-                    <GiftCardsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="discount-cards" element={
-                  <PermissionGuard user={user} permission="promotions.discount_cards">
-                    <DiscountCardsPage />
-                  </PermissionGuard>
-                } />
-                <Route path="reviews" element={
-                  <PermissionGuard user={user} permission="customers.manage">
-                    <ReviewsPage />
-                  </PermissionGuard>
-                } />
+                <Route path="reviews" element={<MovedTo to="/customers/reviews" />} />
+                <Route path="referrals" element={<MovedTo to="/customers/referrals" />} />
                 <Route path="specials" element={
                   <PermissionGuard user={user} permission="menu.manage">
                     <SpecialsPage />
@@ -514,11 +442,6 @@ export default function App() {
                 } />
                 {/* Waste is a tab of Inventory now. */}
                 <Route path="waste-logs" element={<MovedTo to="/inventory?tab=waste" />} />
-                <Route path="customers/growth" element={
-                  <PermissionGuard user={user} permission="customers.manage">
-                    <CustomerGrowthPage />
-                  </PermissionGuard>
-                } />
                 <Route path="catering" element={
                   <PermissionGuard user={user} permissions={['events.manage', 'customers.manage']}>
                     <CateringPage />
@@ -529,9 +452,10 @@ export default function App() {
                     <CateringDetailPage />
                   </PermissionGuard>
                 } />
-                <Route path="customers" element={
-                  <PermissionGuard user={user} permission="customers.manage">
-                    <CustomersPage />
+                {/* Customers hub: directory, growth, referrals, reviews. */}
+                <Route path="customers/*" element={
+                  <PermissionGuard user={user} permissions={CUSTOMERS_HUB_PERMISSIONS}>
+                    <CustomersHub />
                   </PermissionGuard>
                 } />
                 <Route path="inventory" element={
@@ -559,11 +483,6 @@ export default function App() {
                     <DevicesPage />
                   </PermissionGuard>
                 } />
-                <Route path="referrals" element={
-                  <PermissionGuard user={user} permission="customers.manage">
-                    <ReferralsPage />
-                  </PermissionGuard>
-                } />
                 <Route path="print-jobs" element={
                   <PermissionGuard user={user} permission="devices.view">
                     <PrintJobsPage />
@@ -574,19 +493,9 @@ export default function App() {
                     <XeroPage />
                   </PermissionGuard>
                 } />
-                <Route path="online-ordering" element={
-                  <PermissionGuard user={user} permission="settings.update">
-                    <OnlineOrderingPage />
-                  </PermissionGuard>
-                } />
                 <Route path="service-availability" element={
                   <PermissionGuard user={user} permission="service_availability.view">
                     <ServiceAvailabilityPage />
-                  </PermissionGuard>
-                } />
-                <Route path="delivery-settings" element={
-                  <PermissionGuard user={user} permission="settings.update">
-                    <DeliverySettingsPage />
                   </PermissionGuard>
                 } />
                 <Route path="system-health" element={

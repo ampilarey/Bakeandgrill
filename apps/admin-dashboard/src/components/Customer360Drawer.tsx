@@ -16,8 +16,8 @@ import { smsCharCount } from '../utils/smsCharCount';
 function timelineEventPath(ev: CustomerActivityEvent): string | null {
   if (!ev.source_id) return null;
   if (ev.type.startsWith('order_')) return `/orders?order=${ev.source_id}`;
-  if (ev.type.startsWith('invoice_') || ev.type === 'invoice') return `/invoices?invoice=${ev.source_id}`;
-  if (ev.type === 'review' || ev.type.startsWith('review_')) return `/reviews`;
+  if (ev.type.startsWith('invoice_') || ev.type === 'invoice') return `/finance/invoices?invoice=${ev.source_id}`;
+  if (ev.type === 'review' || ev.type.startsWith('review_')) return `/customers/reviews`;
   return null;
 }
 

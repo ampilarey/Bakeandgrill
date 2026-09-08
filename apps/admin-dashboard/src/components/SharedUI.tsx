@@ -6,6 +6,7 @@ import {
   type ButtonHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useInHub } from './hubContext';
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 export function Spinner({ size = 24 }: { size?: number }) {
@@ -158,6 +159,11 @@ export function TableStateBar({
 export function PageShell({
   children, className, style,
 }: { children: ReactNode; className?: string; style?: React.CSSProperties }) {
+  // Inside a hub the hub owns the shell; a nested one would double the padding.
+  const inHub = useInHub();
+  if (inHub) {
+    return <div className={className} style={style}>{children}</div>;
+  }
   return (
     <div className={['page-shell', 'animate-fade-in', className].filter(Boolean).join(' ')} style={style}>
       {children}
@@ -177,6 +183,18 @@ export function PageHeader({
   section?: string;
   breadcrumb?: ReactNode;
 }) {
+  // Inside a hub the title is the hub's; only the page's own buttons and
+  // filters survive.
+  const inHub = useInHub();
+  if (inHub) {
+    if (!action && !children) return null;
+    return (
+      <div className="page-header page-header--embedded">
+        <div>{children}</div>
+        {action && <div className="page-header-actions">{action}</div>}
+      </div>
+    );
+  }
   return (
     <div className="page-header">
       <div>

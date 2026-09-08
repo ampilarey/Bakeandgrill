@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { HubContext } from '../components/hubContext';
 import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
@@ -12,9 +13,13 @@ import { ScheduledTab } from './SmsPage/ScheduledTab';
 import { AutomationsTab } from './SmsPage/AutomationsTab';
 import { RecipientsTab } from './SmsPage/RecipientsTab';
 
-type Tab = 'recipients' | 'automations' | 'logs' | 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled';
+// The control center (toggles, wording, kill switch) was its own sidebar
+// entry with a near-identical icon; it is this page's settings.
+const SmsControlCenterPage = lazy(() => import('./SmsControlCenterPage'));
 
-const VALID_TABS: Tab[] = ['recipients', 'automations', 'logs', 'campaigns', 'promotions', 'contacts', 'templates', 'scheduled'];
+type Tab = 'recipients' | 'automations' | 'logs' | 'campaigns' | 'promotions' | 'contacts' | 'templates' | 'scheduled' | 'control-center';
+
+const VALID_TABS: Tab[] = ['recipients', 'automations', 'logs', 'campaigns', 'promotions', 'contacts', 'templates', 'scheduled', 'control-center'];
 
 type SmsTabDef = { id: Tab; label: string; icon?: React.ReactNode };
 
@@ -43,6 +48,13 @@ const SMS_SECTIONS: { id: string; label: string; tabs: SmsTabDef[] }[] = [
     label: 'Library',
     tabs: [
       { id: 'templates' as Tab, label: 'Templates', icon: <FileText size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} /> },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    tabs: [
+      { id: 'control-center' as Tab, label: 'Control Center' },
     ],
   },
 ];
@@ -152,6 +164,13 @@ export function SmsPage() {
       {tab === 'contacts'    && <ContactsTab />}
       {tab === 'templates'   && <TemplatesTab />}
       {tab === 'scheduled'   && <ScheduledTab />}
+      {tab === 'control-center' && (
+        <HubContext.Provider value={true}>
+          <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>
+            <SmsControlCenterPage />
+          </Suspense>
+        </HubContext.Provider>
+      )}
     </>
 
     </PageShell>

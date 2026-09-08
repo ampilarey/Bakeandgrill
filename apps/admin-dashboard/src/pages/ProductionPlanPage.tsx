@@ -108,10 +108,10 @@ export function ProductionPlanPage() {
       </Tabs>
       <div style={{ marginTop: 16 }}>
         {tab === 'plan' && <PlanTab canManage={canManage} />}
-        {tab === 'calendar' && <CalendarTab canManage={canManage} />}
-        {tab === 'accuracy' && <AccuracyTab />}
-        {tab === 'customers' && <CustomersTab />}
-        {tab === 'settings' && <SettingsTab canManage={canManage} />}
+        {tab === 'calendar' && <PlanCalendarTab canManage={canManage} />}
+        {tab === 'accuracy' && <PlanAccuracyTab />}
+        {tab === 'customers' && <PlanCustomersTab />}
+        {tab === 'settings' && <PlanSettingsTab canManage={canManage} />}
       </div>
     </PageShell>
   );
@@ -119,7 +119,7 @@ export function ProductionPlanPage() {
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
 
-function PlanTab({ canManage }: { canManage: boolean }) {
+export function PlanTab({ canManage }: { canManage: boolean }) {
   const isMobile = useIsMobile();
   const [date, setDate] = useState(() => daysFromToday(1));
   const [plan, setPlan] = useState<ProductionPlan | null>(null);
@@ -514,7 +514,7 @@ function Evidence({ item, plan }: { item: PlanItem; plan: ProductionPlan }) {
 
 const EMPTY_PERIOD: PlanCalendarInput = { kind: 'public_holiday', label: '', starts_on: '', ends_on: '', expected_change_pct: null, notes: '' };
 
-function CalendarTab({ canManage }: { canManage: boolean }) {
+export function PlanCalendarTab({ canManage }: { canManage: boolean }) {
   const [data, setData] = useState<PlanCalendar | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -666,7 +666,7 @@ function CalendarTab({ canManage }: { canManage: boolean }) {
 
 // ─── Accuracy ─────────────────────────────────────────────────────────────────
 
-function AccuracyTab() {
+export function PlanAccuracyTab() {
   const [weeks, setWeeks] = useState(4);
   const [data, setData] = useState<PlanAccuracy | null>(null);
   const [error, setError] = useState('');
@@ -775,7 +775,7 @@ function AccuracyTab() {
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 
-function CustomersTab() {
+export function PlanCustomersTab() {
   const [weeks, setWeeks] = useState(8);
   const [data, setData] = useState<PlanCustomerHabits | null>(null);
   const [error, setError] = useState('');
@@ -867,7 +867,7 @@ function CustomersTab() {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-function SettingsTab({ canManage }: { canManage: boolean }) {
+export function PlanSettingsTab({ canManage }: { canManage: boolean }) {
   const [settings, setSettings] = useState<PlanSettings | null>(null);
   const [plan, setPlan] = useState<ProductionPlan | null>(null);
   const [error, setError] = useState('');

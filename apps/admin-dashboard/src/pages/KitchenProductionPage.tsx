@@ -48,6 +48,7 @@ const ALL_TABS = [
 ] as const;
 
 type TabId = (typeof ALL_TABS)[number]['id'];
+export type KitchenHandoverTabId = TabId;
 
 const SUMMARY_META: Record<string, { label: string; accent: string; sub?: string }> = {
   batches_created: { label: 'Batches created', accent: 'var(--color-primary)', sub: 'Today' },
@@ -209,7 +210,11 @@ function BatchMeta({ batch }: { batch: KitchenProductionBatch }) {
   );
 }
 
-export default function KitchenProductionPage() {
+/**
+ * `tab`: rendered as one tab of the Kitchen hub, which draws the tab strip
+ * and the title itself; the page then shows just that tab's content.
+ */
+export default function KitchenProductionPage({ tab: forcedTab }: { tab?: TabId } = {}) {
   usePageTitle('Kitchen Handover');
   const { can } = useCurrentUserPermissions();
   const canManage = can('kitchen.production.manage');
@@ -228,7 +233,8 @@ export default function KitchenProductionPage() {
     [canReports, canManage, canReviewVariance],
   );
 
-  const [tab, setTab] = useState<TabId>('live');
+  const [ownTab, setTab] = useState<TabId>('live');
+  const tab: TabId = forcedTab ?? ownTab;
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState('');
@@ -244,11 +250,11 @@ export default function KitchenProductionPage() {
   const [settingsBusy, setSettingsBusy] = useState(false);
 
   useEffect(() => {
-    if (visibleTabs.length === 0) return;
+    if (forcedTab || visibleTabs.length === 0) return;
     if (!visibleTabs.some((t) => t.id === tab)) {
       setTab(visibleTabs[0].id);
     }
-  }, [visibleTabs, tab]);
+  }, [visibleTabs, tab, forcedTab]);
 
   useEffect(() => {
     setLoading(true);
@@ -379,13 +385,15 @@ export default function KitchenProductionPage() {
         />
         {err && <ErrorMsg message={err} />}
 
-        <Tabs active={tab} onChange={(id) => setTab(id as TabId)}>
-          <TabList>
-            {visibleTabs.map((t) => (
-              <Tab key={t.id} id={t.id}>{t.label}</Tab>
-            ))}
-          </TabList>
-        </Tabs>
+        {!forcedTab && (
+          <Tabs active={tab} onChange={(id) => setTab(id as TabId)}>
+            <TabList>
+              {visibleTabs.map((t) => (
+                <Tab key={t.id} id={t.id}>{t.label}</Tab>
+              ))}
+            </TabList>
+          </Tabs>
+        )}
 
         {loading && <Spinner />}
 

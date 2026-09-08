@@ -13,7 +13,7 @@ function renderAt(url: string) {
 
 describe('OrderingControlTabs', () => {
   it('renders one unified bar with all five sections', () => {
-    renderAt('/online-ordering');
+    renderAt('/settings/ordering');
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual([
       'Online', 'Features', 'Slots', 'Pre-order', 'Delivery',
@@ -21,14 +21,14 @@ describe('OrderingControlTabs', () => {
   });
 
   it.each([
-    ['/online-ordering', 'Online'],
-    ['/online-ordering?section=features', 'Features'],
-    ['/online-ordering?section=slots-fees', 'Slots'],
-    ['/online-ordering?section=pickup', 'Slots'],
-    ['/online-ordering?section=fees', 'Slots'],
-    ['/online-ordering?section=events', 'Pre-order'],
-    ['/online-ordering?section=gates', 'Online'],
-    ['/delivery-settings', 'Delivery'],
+    ['/settings/ordering', 'Online'],
+    ['/settings/ordering?section=features', 'Features'],
+    ['/settings/ordering?section=slots-fees', 'Slots'],
+    ['/settings/ordering?section=pickup', 'Slots'],
+    ['/settings/ordering?section=fees', 'Slots'],
+    ['/settings/ordering?section=events', 'Pre-order'],
+    ['/settings/ordering?section=gates', 'Online'],
+    ['/settings/delivery', 'Delivery'],
   ])('marks the right tab active for %s', (url, expected) => {
     renderAt(url);
     const active = screen.getAllByRole('tab').filter((t) => t.getAttribute('aria-selected') === 'true');
@@ -37,7 +37,7 @@ describe('OrderingControlTabs', () => {
   });
 
   it('uses the scrollable single-row tab bar class', () => {
-    const { container } = renderAt('/online-ordering');
+    const { container } = renderAt('/settings/ordering');
     expect(container.querySelector('.oc-tabbar')).not.toBeNull();
   });
 });

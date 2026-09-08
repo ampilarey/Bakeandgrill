@@ -328,7 +328,7 @@ export function ReportsTabPanels({ tab, loading, reportData }: ReportsTabPanelsP
           </div>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
             <Link to="/purchasing/orders" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Purchase Orders →</Link>
-            <Link to="/expenses" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Expenses →</Link>
+            <Link to="/finance/expenses" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Expenses →</Link>
             <Link to="/inventory?tab=waste" style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>Waste Tracking →</Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 20 }}>

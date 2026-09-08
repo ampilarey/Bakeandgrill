@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { PermissionsSettings } from './SettingsPage/PermissionsSettingsSubPage';
 import { ServiceChargeSettings } from './SettingsPage/ServiceChargeSettings';
 import { PaymentCommissionSettings } from './SettingsPage/PaymentCommissionSettings';
@@ -14,39 +15,17 @@ import {
   type OpsAlertsSettings,
 } from '../api';
 import { SmsNotificationRow } from './SettingsPage/SmsNotificationRow';
-import { PageHeader, PageShell } from '../components/SharedUI';
 
-/** Legacy ?tab= values from before hub cleanup — redirect to sidebar routes */
+/** Legacy ?tab= values from before the settings hub — redirect to the tab's path. */
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
-  ordering: '/online-ordering',
-  delivery: '/delivery-settings',
+  ordering: '/settings/ordering',
+  delivery: '/settings/delivery',
   'ordering-charges': '/settings/charges',
   website: '/content/website',
   permissions: '/settings/permissions',
   notifications: '/settings/notifications',
   charges: '/settings/charges',
 };
-
-/** Settings sub-pages now live in the System section rail (no separate hub cards). */
-const SETTINGS_TABS = [
-  { id: 'permissions',   label: 'Roles & Permissions',   desc: 'Manage role defaults and per-user overrides' },
-  { id: 'notifications', label: 'Notifications',         desc: 'Customer SMS alerts for order status changes' },
-  { id: 'charges',       label: 'Charges & Fees',        desc: 'Service charge and payment commission' },
-  { id: 'credit',        label: 'Credit Accounts',       desc: 'Approval ceiling, payment terms, and whether credit is open' },
-  { id: 'currency',      label: 'Currency Photos',       desc: 'Note & coin photos shown on the POS cash count' },
-] as const;
-
-type SettingsTabId = (typeof SETTINGS_TABS)[number]['id'];
-
-function isSettingsTab(v: string | null): v is SettingsTabId {
-  return !!v && SETTINGS_TABS.some((t) => t.id === v);
-}
-
-/** Path segment after /settings/ — e.g. /settings/permissions → permissions */
-function settingsPathTab(pathname: string): string | null {
-  const match = pathname.match(/^\/settings\/([^/?#]+)/);
-  return match?.[1] ?? null;
-}
 
 // ─── Notifications sub-page ──────────────────────────────────────────────────
 type NotifConfig = {
@@ -352,66 +331,69 @@ function ChargesSettings() {
 }
 
 // ─── Main SettingsPage ────────────────────────────────────────────────────────
+/*
+ * Settings — one page for every switch that is not owned by a domain page.
+ * Owner, 2026-09-08: "related tabs together and under same settings". Six
+ * System entries, Ordering Control from Manage, and the delivery settings
+ * that had no sidebar entry at all, are now tabs here. Purchasing, Kitchen,
+ * GST, Promotions and SMS keep their own settings tab, next to the work
+ * those switches govern.
+ */
+
+const BusinessDetailsPage = lazy(() => import('./BusinessDetailsPage'));
+const OnlineOrderingPage = lazy(() => import('./OnlineOrderingPage'));
+const DeliverySettingsPage = lazy(() => import('./DeliverySettingsPage'));
+
+const ANY_ADMIN = ['settings.update', 'roles_permissions.manage', 'website.manage'] as const;
+
+/** Roles & permissions still takes ?user= to open straight onto one person. */
+function PermissionsTab() {
+  const [searchParams] = useSearchParams();
+  const userParam = searchParams.get('user');
+  const id = userParam ? Number(userParam) : null;
+  return <PermissionsSettings initialUserId={id !== null && Number.isFinite(id) ? id : null} />;
+}
+
+export const SETTINGS_TABS: HubTab[] = [
+  { id: 'business', label: 'Business', permissions: ['website.manage'], desc: 'The business record on invoices, receipts, signage and SMS', render: () => <BusinessDetailsPage /> },
+  { id: 'ordering', label: 'Ordering', permissions: ['settings.update'], desc: 'Online, pickup, delivery, pre-order and feature gates', render: () => <OnlineOrderingPage /> },
+  { id: 'delivery', label: 'Delivery', permissions: ['settings.update'], desc: 'Delivery areas, fees and timing', render: () => <DeliverySettingsPage /> },
+  { id: 'charges', label: 'Charges & fees', permissions: ['settings.update'], desc: 'Service charge and payment commission', render: () => <ChargesSettings /> },
+  { id: 'credit', label: 'Credit accounts', permissions: ['settings.update'], desc: 'Approval ceiling, payment terms, and whether credit is open', render: () => <CreditAccountSettings /> },
+  { id: 'notifications', label: 'Notifications', permissions: ANY_ADMIN, desc: 'Customer SMS alerts for order status changes', render: () => <NotificationsSettings /> },
+  { id: 'currency', label: 'Currency photos', permissions: ['website.manage'], desc: 'Note & coin photos shown on the POS cash count', render: () => <CurrencyPhotosSettings /> },
+  { id: 'permissions', label: 'Roles & permissions', permissions: ANY_ADMIN, desc: 'Role defaults and per-user overrides', render: () => <PermissionsTab /> },
+];
+
+export const SETTINGS_HUB_PERMISSIONS = hubPermissions(SETTINGS_TABS);
+
 export function SettingsPage() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const pathTab = settingsPathTab(pathname);
   const userParam = searchParams.get('user');
-  const initialUserId = userParam ? Number(userParam) : null;
+  const legacyTarget = tabParam ? LEGACY_TAB_REDIRECTS[tabParam] : undefined;
+  // Stock Corrections moved to Purchasing → Settings (audit 2026-09-05),
+  // alongside every other switch that governs buying.
+  const stock = /^\/settings\/stock(\/|$)/.test(pathname);
 
   useEffect(() => {
-    document.title = 'Settings — Bake & Grill Admin';
-  }, []);
-
-  useEffect(() => {
-    if (tabParam && LEGACY_TAB_REDIRECTS[tabParam]) {
-      const target = LEGACY_TAB_REDIRECTS[tabParam];
+    if (legacyTarget) {
       // Preserve ?user= when bouncing permissions query → path
-      if (tabParam === 'permissions' && userParam) {
-        navigate(`${target}?user=${userParam}`, { replace: true });
-        return;
-      }
-      navigate(target, { replace: true });
+      const qs = tabParam === 'permissions' && userParam ? `?user=${userParam}` : '';
+      navigate(`${legacyTarget}${qs}`, { replace: true });
       return;
     }
-    // Stock Corrections moved to Purchasing → Settings (audit 2026-09-05),
-    // alongside every other switch that governs buying.
-    if (pathTab === 'stock') {
+    if (stock) {
       navigate('/purchasing/settings', { replace: true });
-      return;
     }
-    // Bare /settings or unknown path segments → Roles & Permissions
-    if (!isSettingsTab(pathTab)) {
-      const qs = userParam ? `?user=${userParam}` : '';
-      navigate(`/settings/permissions${qs}`, { replace: true });
-    }
-  }, [tabParam, pathTab, userParam, navigate]);
+  }, [legacyTarget, stock, tabParam, userParam, navigate]);
 
-  const active: SettingsTabId = isSettingsTab(pathTab) ? pathTab : 'permissions';
-  const card = SETTINGS_TABS.find((c) => c.id === active) ?? SETTINGS_TABS[0];
-
-  // Avoid flash while redirecting legacy/bare URLs
-  if (!isSettingsTab(pathTab) || tabParam) {
+  // Avoid a flash while a legacy URL is being redirected.
+  if (legacyTarget || stock) {
     return null;
   }
 
-  return (
-    <PageShell>
-      <PageHeader
-        section="System"
-        title={card.label}
-        subtitle={card.desc}
-      />
-
-      {active === 'permissions' && (
-        <PermissionsSettings initialUserId={Number.isFinite(initialUserId) ? initialUserId : null} />
-      )}
-      {active === 'notifications' && <NotificationsSettings />}
-      {active === 'charges' && <ChargesSettings />}
-      {active === 'credit' && <CreditAccountSettings />}
-      {active === 'currency' && <CurrencyPhotosSettings />}
-    </PageShell>
-  );
+  return <HubPage base="/settings" section="System" title="Settings" tabs={SETTINGS_TABS} />;
 }

@@ -1,15 +1,16 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
- * Single tab bar for the whole Ordering Control hub.
- * Four sections live on /online-ordering (?section=…); Delivery is its own route.
+ * Section bar shared by the Ordering and Delivery tabs of Settings.
+ * Four sections live on /settings/ordering (?section=…); Delivery is the
+ * neighbouring Settings tab, so the two pages read as one.
  */
 const TABS = [
-  { id: 'online', to: '/online-ordering', label: 'Online' },
-  { id: 'features', to: '/online-ordering?section=features', label: 'Features' },
-  { id: 'slots-fees', to: '/online-ordering?section=slots-fees', label: 'Slots' },
-  { id: 'preorder', to: '/online-ordering?section=events', label: 'Pre-order' },
-  { id: 'delivery', to: '/delivery-settings', label: 'Delivery' },
+  { id: 'online', to: '/settings/ordering', label: 'Online' },
+  { id: 'features', to: '/settings/ordering?section=features', label: 'Features' },
+  { id: 'slots-fees', to: '/settings/ordering?section=slots-fees', label: 'Slots' },
+  { id: 'preorder', to: '/settings/ordering?section=events', label: 'Pre-order' },
+  { id: 'delivery', to: '/settings/delivery', label: 'Delivery' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -28,7 +29,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
 });
 
 function activeTab(pathname: string, search: string): TabId {
-  if (pathname === '/delivery-settings' || pathname.startsWith('/delivery-settings/')) {
+  if (pathname === '/settings/delivery' || pathname.startsWith('/settings/delivery/') || pathname === '/delivery-settings') {
     return 'delivery';
   }
   const section = new URLSearchParams(search).get('section');

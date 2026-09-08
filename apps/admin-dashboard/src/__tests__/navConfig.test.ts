@@ -21,8 +21,9 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/kds', permission: 'orders.view' },
   { to: '/tables', permission: 'orders.view' },
   { to: '/delivery', permission: 'orders.manage' },
-  { to: '/kitchen-production', permission: 'kitchen.production.view_all' },
-  { to: '/production-plan', permission: 'kitchen.production.plan' },
+  // Hubs, 2026-09-08 ("related tabs together"): each hub carries the union
+  // of the permissions its pages had, and each tab keeps its own.
+  { to: '/kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage'] },
   { to: '/activity', permission: 'reports.view' },
   { to: '/shifts', permission: 'shifts.view_all_history' },
   { to: '/time-clock', permissions: ['staff.view', 'pos.time_clock'] },
@@ -33,49 +34,28 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   // each gated on the permission the old page carried.
   { to: '/purchasing', permissions: ['purchase_requests.view_all', 'suppliers.purchases', 'purchase_requests.create', 'suppliers.view', 'settings.update'] },
   { to: '/reservations', permission: 'reservations.manage' },
-  { to: '/online-ordering', permission: 'settings.update' },
   { to: '/wholesale', permission: 'trade.view' },
-  { to: '/wholesale/deliveries', permission: 'trade.view' },
-  { to: '/wholesale/invoicing', permission: 'trade.view' },
-  { to: '/wholesale/reports', permission: 'trade.view' },
   { to: '/customers', permission: 'customers.manage' },
-  { to: '/customers/growth', permission: 'customers.manage' },
   { to: '/catering', permissions: ['events.manage', 'customers.manage'] },
   { to: '/loyalty', permission: 'loyalty.manage' },
-  { to: '/gift-cards', permission: 'promotions.manage' },
-  { to: '/discount-cards', permission: 'promotions.discount_cards' },
-  { to: '/referrals', permission: 'customers.manage' },
-  { to: '/reviews', permission: 'customers.manage' },
   { to: '/complaints', permission: 'complaints.view' },
-  { to: '/promotions', permission: 'promotions.manage' },
-  { to: '/discount-controls', permission: 'discounts.settings.manage' },
-  { to: '/sms', permissions: ['integrations.sms', 'sms_marketing.manage'] },
-  { to: '/sms/control-center', permissions: ['sms.settings.manage', 'sms.logs.view', 'integrations.sms', 'sms_marketing.manage'] },
+  { to: '/promotions', permissions: ['promotions.manage', 'promotions.discount_cards', 'discounts.settings.manage'] },
+  { to: '/sms', permissions: ['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view'] },
   { to: '/signage', permission: 'signage.manage' },
   { to: '/social', permission: 'social.view' },
   { to: '/reports', permission: 'reports.view' },
   { to: '/analytics', permission: 'customers.analytics' },
   { to: '/forecasts', permission: 'reports.financial' },
-  { to: '/break-even', permission: 'reports.financial' },
   { to: '/procurement-report', permission: 'reports.financial' },
   { to: '/gst', permission: 'reports.financial' },
-  { to: '/monthly-sheet', permission: 'reports.financial' },
+  { to: '/finance', permissions: ['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements'] },
   { to: '/modifiers', permission: 'menu.manage' },
-  { to: '/profit-loss', permission: 'reports.financial' },
-  { to: '/invoices', permission: 'finance.invoices' },
-  { to: '/expenses', permission: 'finance.expenses' },
-  { to: '/settlements', permission: 'finance.settlements' },
   { to: '/refunds', permission: 'orders.refund' },
   { to: '/staff', permission: 'staff.view' },
   { to: '/content/website', permission: 'website.manage' },
   { to: '/content/order-app', permission: 'website.manage' },
-  { to: '/business-details', permission: 'website.manage' },
   { to: '/media', permission: 'media.view' },
-  { to: '/settings/permissions', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
-  { to: '/settings/notifications', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
-  { to: '/settings/charges', permission: 'settings.update' },
-  { to: '/settings/credit', permission: 'settings.update' },
-  { to: '/settings/currency', permission: 'website.manage' },
+  { to: '/settings', permissions: ['settings.update', 'roles_permissions.manage', 'website.manage'] },
   { to: '/devices', permission: 'devices.view' },
   { to: '/print-jobs', permission: 'devices.view' },
   { to: '/webhooks', permission: 'integrations.webhooks' },
@@ -131,8 +111,8 @@ describe('navConfig', () => {
     expect(byTo['/menu']?.permission).toBe('menu.manage');
     expect(byTo['/delivery']?.permission).toBe('orders.manage');
     expect(byTo['/reservations']?.permission).toBe('reservations.manage');
-    expect(byTo['/profit-loss']?.permission).toBe('reports.financial');
-    expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage']);
+    expect(byTo['/finance']?.permissions).toEqual(['reports.financial', 'finance.expenses', 'finance.invoices', 'finance.settlements']);
+    expect(byTo['/sms']?.permissions).toEqual(['integrations.sms', 'sms_marketing.manage', 'sms.settings.manage', 'sms.logs.view']);
     expect(byTo['/webhooks']?.permission).toBe('integrations.webhooks');
     expect(byTo['/xero']?.permission).toBe('integrations.xero');
   });
@@ -142,7 +122,7 @@ describe('navConfig', () => {
       { to: '/menu', apiPerm: 'menu.manage', weakPerm: 'menu.view' },
       { to: '/delivery', apiPerm: 'orders.manage', weakPerm: 'delivery.view' },
       { to: '/reservations', apiPerm: 'reservations.manage', weakPerm: 'reservations.view' },
-      { to: '/profit-loss', apiPerm: 'reports.financial', weakPerm: 'finance.profit_loss' },
+      { to: '/finance', apiPerm: 'reports.financial', weakPerm: 'finance.profit_loss' },
       { to: '/sms', apiPerm: 'integrations.sms', weakPerm: 'sms_marketing.view' },
       { to: '/webhooks', apiPerm: 'integrations.webhooks', weakPerm: 'webhooks.manage' },
       { to: '/xero', apiPerm: 'integrations.xero', weakPerm: 'xero.manage' },
@@ -190,7 +170,15 @@ describe('navConfig', () => {
     expect(getActiveSection('/shifts')?.id).toBe('team');
     expect(getActiveSection('/settings/permissions')?.id).toBe('system');
     expect(getActiveSection('/settings/notifications')?.id).toBe('system');
-    expect(getActiveSection('/delivery-settings')?.id).toBe('manage');
+    // Hubs: a tab path and an old path both light up the hub's section.
+    expect(getActiveSection('/settings/delivery')?.id).toBe('system');
+    expect(getActiveSection('/delivery-settings')?.id).toBe('system');
+    expect(getActiveSection('/kitchen/plan')?.id).toBe('monitor');
+    expect(getActiveSection('/production-plan')?.id).toBe('monitor');
+    expect(getActiveSection('/customers/growth')?.id).toBe('customers-marketing');
+    expect(getActiveSection('/finance/expenses')?.id).toBe('analyze');
+    expect(getActiveSection('/expenses')?.id).toBe('analyze');
+    expect(getActiveSection('/wholesale/deliveries/3')?.id).toBe('manage');
   });
 
   it('Inventory lives in Manage group, not pinned', () => {
@@ -206,27 +194,32 @@ describe('navConfig', () => {
     expect(match?.to).toBe('/delivery');
   });
 
-  it('resolveNavItemForPath maps delivery-settings to Ordering Control', () => {
+  it('resolveNavItemForPath maps old and tab paths onto their hub entry', () => {
     const all = getAllNavItems();
-    const match = resolveNavItemForPath('/delivery-settings', all);
-    expect(match?.to).toBe('/online-ordering');
+    expect(resolveNavItemForPath('/delivery-settings', all)?.to).toBe('/settings');
+    expect(resolveNavItemForPath('/settings/ordering', all)?.to).toBe('/settings');
+    expect(resolveNavItemForPath('/kitchen-production', all)?.to).toBe('/kitchen');
+    expect(resolveNavItemForPath('/kitchen/handover', all)?.to).toBe('/kitchen');
+    expect(resolveNavItemForPath('/gift-cards', all)?.to).toBe('/promotions');
+    expect(resolveNavItemForPath('/customers/reviews', all)?.to).toBe('/customers');
+    expect(resolveNavItemForPath('/wholesale/12', all)?.to).toBe('/wholesale');
   });
 
-  it('ordering control is under Manage group and Delivery & Zones is not duplicated in sidebar', () => {
-    const group = NAV_GROUPS.find((g) => g.id === 'manage');
-    const ordering = group?.items.find((i) => i.to === '/online-ordering');
-    expect(ordering?.label).toBe('Ordering Control');
-    expect(group?.items.find((i) => i.to === '/delivery-settings')).toBeUndefined();
+  it('ordering and delivery settings are tabs of Settings, not sidebar entries', () => {
+    const all = getAllNavItems();
+    expect(all.find((i) => i.to === '/online-ordering')).toBeUndefined();
+    expect(all.find((i) => i.to === '/delivery-settings')).toBeUndefined();
+    const system = NAV_GROUPS.find((g) => g.id === 'system');
+    expect(system?.items.find((i) => i.to === '/settings')?.label).toBe('Settings');
   });
 
   it('navItemPathname strips query strings', () => {
     expect(navItemPathname('/settings?tab=permissions')).toBe('/settings');
   });
 
-  it('settings nav links use path segments not query strings', () => {
+  it('settings is one entry, and no nav link carries a query tab', () => {
     const items = getAllNavItems();
-    expect(items.some((i) => i.to === '/settings/permissions')).toBe(true);
-    expect(items.some((i) => i.to === '/settings/notifications')).toBe(true);
+    expect(items.filter((i) => i.to.startsWith('/settings')).map((i) => i.to)).toEqual(['/settings']);
     expect(items.some((i) => i.to.includes('?tab='))).toBe(false);
   });
 
