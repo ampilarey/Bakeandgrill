@@ -25,7 +25,7 @@ function editLineBase(line: { quantity: string; purchase_unit_id: string; packs:
   if (!pack) return null; // already in the item's own unit — nothing to convert
   return Number((qty * Number(pack.base_units)).toFixed(4));
 }
-import { today } from '../utils/dateHelpers';
+import { today, enteredOn, enteredAt } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
 
 type ManualPoLine = {
@@ -946,9 +946,18 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                 {' · '}{po.items?.length ?? 0} item{(po.items?.length ?? 0) === 1 ? '' : 's'}
               </p>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
-                {po.purchase_date}
+                {po.purchase_date ?? '—'}
                 {po.expected_delivery_date ? ` · due ${po.expected_delivery_date}` : ''}
               </p>
+              {enteredOn(po.created_at) && (
+                <p
+                  style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)' }}
+                  data-testid={`po-entered-${po.id}`}
+                >
+                  Entered {enteredOn(po.created_at)}
+                  {po.purchase_date && enteredOn(po.created_at) !== po.purchase_date ? ' · back-dated' : ''}
+                </p>
+              )}
               <p style={{ margin: '8px 0 0', fontWeight: 700, fontSize: 16, color: 'var(--color-primary)' }}>
                 MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}
               </p>
@@ -963,7 +972,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr>
-                {['PO Number', 'Supplier', 'Status', 'Total', 'PO Date', 'Exp. Delivery', 'Items', 'Actions'].map((h) => (
+                {['PO Number', 'Supplier', 'Status', 'Total', 'PO Date', 'Entered', 'Exp. Delivery', 'Items', 'Actions'].map((h) => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
@@ -984,7 +993,20 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     <Badge label={po.status.toUpperCase()} color={STATUS_COLOR[po.status] ?? 'gray'} />
                   </td>
                   <td style={{ ...TD, fontWeight: 700, color: 'var(--color-primary)' }}>MVR {parseFloat(String(po.total ?? po.subtotal ?? 0)).toFixed(2)}</td>
-                  <td style={{ ...TD, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{po.purchase_date}</td>
+                  <td style={{ ...TD, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{po.purchase_date ?? '—'}</td>
+                  {/* When it was really keyed in. Owner, 2026-09-07: "many
+                      time we enter PO back date" — the PO date is whatever
+                      was typed, so on its own it cannot tell you that. */}
+                  <td
+                    style={{ ...TD, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', fontSize: 13 }}
+                    title={enteredAt(po.created_at)}
+                    data-testid={`po-entered-${po.id}`}
+                  >
+                    {enteredOn(po.created_at) || '—'}
+                    {enteredOn(po.created_at) && po.purchase_date && enteredOn(po.created_at) !== po.purchase_date && (
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--color-warning)' }}>back-dated</span>
+                    )}
+                  </td>
                   <td style={{ ...TD, color: po.expected_delivery_date ? 'var(--color-text-secondary)' : 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {po.expected_delivery_date ?? '—'}
                   </td>

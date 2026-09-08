@@ -56,12 +56,18 @@ class Purchase extends Model
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
-        'purchase_date' => 'date',
-        'expected_delivery_date' => 'date',
-        'actual_delivery_date' => 'date',
+        /*
+         * Date-only on the wire. A plain `date` cast serialises midnight in
+         * the app's timezone, so a purchase dated 2026-09-01 left here as
+         * "2026-08-31T19:00:00.000000Z" — Maldives being UTC+5 — and the
+         * admin, which prints the string, showed the owner the day before
+         * the one they typed (2026-09-07).
+         */
+        'purchase_date' => 'date:Y-m-d',
+        'expected_delivery_date' => 'date:Y-m-d',
+        'actual_delivery_date' => 'date:Y-m-d',
         'approved_at' => 'datetime',
-        'purchase_date' => 'date',
-        'supplier_invoice_date' => 'date',
+        'supplier_invoice_date' => 'date:Y-m-d',
         'amount_excluding_gst_laar' => 'integer',
         'gst_rate_bp' => 'integer',
         'gst_laar' => 'integer',
