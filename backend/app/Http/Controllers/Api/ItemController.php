@@ -1248,6 +1248,10 @@ class ItemController extends Controller
 
         $item = Item::query()->findOrFail($id);
         $tz = config('app.timezone');
+        $before = [
+            'is_available' => (bool) $item->is_available,
+            'snoozed_until' => $item->snoozed_until?->toIso8601String(),
+        ];
         $note = array_key_exists('unavailable_reason_note', $validated)
             ? (is_string($validated['unavailable_reason_note'])
                 ? trim($validated['unavailable_reason_note'])
@@ -1293,6 +1297,21 @@ class ItemController extends Controller
         }
 
         $item->refresh();
+
+        // On the record like a KDS "86": the production plan reads these
+        // to tell a quiet evening from one where the thing had run out.
+        app(\App\Services\AuditLogService::class)->log(
+            $validated['until'] === null ? 'item.restored' : 'item.snoozed',
+            'Item',
+            $item->id,
+            $before,
+            [
+                'is_available' => (bool) $item->is_available,
+                'snoozed_until' => $item->snoozed_until?->toIso8601String(),
+            ],
+            ['source' => 'admin', 'item_name' => $item->name, 'until' => $validated['until']],
+            $request,
+        );
 
         return response()->json([
             'message' => $message,

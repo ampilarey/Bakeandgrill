@@ -63,6 +63,7 @@
             "kitchen.production.create",
             "kitchen.production.manage",
             "kitchen.production.override",
+            "kitchen.production.plan",
             "kitchen.production.record_remake",
             "kitchen.production.record_waste",
             "kitchen.production.reports",

@@ -100,6 +100,37 @@ if (routes_domain_section_is('kitchen', 'production') && !routes_domain_loaded('
         ->middleware('permission:kitchen.production.reports');
     Route::get('/kitchen-reports/pos-receiving', [App\Http\Controllers\Api\KitchenProductionReportController::class, 'posReceivingReport'])
         ->middleware('permission:kitchen.production.reports');
+
+    // Production plan — what to make for a day, slot by slot. Reading and
+    // saving the plan is a kitchen-floor job; the calendar of holidays and
+    // the per-item dials change what the model does, so they sit behind
+    // kitchen.production.manage. Its own prefix, so nothing here can be
+    // swallowed by /kitchen-production/{id} above.
+    Route::get('/production-plan', [App\Http\Controllers\Api\ProductionPlanController::class, 'plan'])
+        ->middleware('permission:kitchen.production.plan');
+    Route::get('/production-plan/settings', [App\Http\Controllers\Api\ProductionPlanController::class, 'settings'])
+        ->middleware('permission:kitchen.production.plan');
+    Route::put('/production-plan/settings', [App\Http\Controllers\Api\ProductionPlanController::class, 'updateSettings'])
+        ->middleware('permission:kitchen.production.manage');
+    Route::put('/production-plan/items/{itemId}', [App\Http\Controllers\Api\ProductionPlanController::class, 'updateItem'])
+        ->whereNumber('itemId')
+        ->middleware('permission:kitchen.production.manage');
+    Route::get('/production-plan/calendar', [App\Http\Controllers\Api\ProductionPlanController::class, 'calendar'])
+        ->middleware('permission:kitchen.production.plan');
+    Route::post('/production-plan/calendar', [App\Http\Controllers\Api\ProductionPlanController::class, 'storeCalendar'])
+        ->middleware('permission:kitchen.production.manage');
+    Route::patch('/production-plan/calendar/{id}', [App\Http\Controllers\Api\ProductionPlanController::class, 'updateCalendar'])
+        ->whereNumber('id')
+        ->middleware('permission:kitchen.production.manage');
+    Route::delete('/production-plan/calendar/{id}', [App\Http\Controllers\Api\ProductionPlanController::class, 'destroyCalendar'])
+        ->whereNumber('id')
+        ->middleware('permission:kitchen.production.manage');
+    Route::post('/production-plan/commit', [App\Http\Controllers\Api\ProductionPlanController::class, 'commit'])
+        ->middleware('permission:kitchen.production.plan');
+    Route::get('/production-plan/accuracy', [App\Http\Controllers\Api\ProductionPlanController::class, 'accuracy'])
+        ->middleware('permission:kitchen.production.plan');
+    Route::get('/production-plan/customers', [App\Http\Controllers\Api\ProductionPlanController::class, 'customers'])
+        ->middleware('permission:kitchen.production.plan');
 }
 
 if (routes_domain_section_is('kitchen', 'wait_time') && !routes_domain_loaded('kitchen.wait_time')) {

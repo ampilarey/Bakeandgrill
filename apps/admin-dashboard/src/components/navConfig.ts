@@ -9,6 +9,7 @@ import {
   Printer, Link, ShoppingBag, Zap,
   ConciergeBell, Wrench, ClipboardCheck, HeartPulse, UserCircle, Utensils,
   AlertTriangle, LayoutTemplate, Shield, Bell, UserCog, Percent, Images, Tv, Store, Banknote, HandCoins, FileText, LineChart,
+  CalendarClock,
 } from 'lucide-react';
 import type { StaffUser } from '../api';
 
@@ -63,6 +64,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/tables',      icon: LayoutGrid, label: 'Tables',         permission: 'orders.view',            description: 'Floor plan & seating' },
       { to: '/delivery',    icon: Truck,      label: 'Delivery Orders', permission: 'orders.manage',          description: 'Active delivery queue' },
       { to: '/kitchen-production', icon: Utensils, label: 'Kitchen Handover', permission: 'kitchen.production.view_all', description: 'Production, receiving & variance' },
+      { to: '/production-plan', icon: CalendarClock, label: 'Production Plan', permission: 'kitchen.production.plan', description: 'What to make, slot by slot' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
     ],
   },

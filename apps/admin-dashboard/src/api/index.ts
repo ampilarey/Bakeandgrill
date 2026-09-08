@@ -27,6 +27,7 @@ export * from './system';
 export * from './procurement';
 export * from './purchasing';
 export * from './kitchen-production';
+export * from './production-plan';
 export * from './serviceAvailability';
 export * from './media';
 export * from './signage';

@@ -22,6 +22,7 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/tables', permission: 'orders.view' },
   { to: '/delivery', permission: 'orders.manage' },
   { to: '/kitchen-production', permission: 'kitchen.production.view_all' },
+  { to: '/production-plan', permission: 'kitchen.production.plan' },
   { to: '/activity', permission: 'reports.view' },
   { to: '/shifts', permission: 'shifts.view_all_history' },
   { to: '/time-clock', permissions: ['staff.view', 'pos.time_clock'] },

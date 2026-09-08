@@ -311,6 +311,7 @@ final class PermissionCatalog
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.override', 'name' => 'Override kitchen production records'],
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.convert_to_prepared_stock', 'name' => 'Convert production to prepared stock'],
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.reports', 'name' => 'View kitchen production reports'],
+            ['group' => 'Kitchen Production', 'slug' => 'kitchen.production.plan', 'name' => 'View and save the production plan'],
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.view', 'name' => 'View kitchen receiving queue'],
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.receive', 'name' => 'Receive from kitchen'],
             ['group' => 'Kitchen Production', 'slug' => 'kitchen.receiving.reject', 'name' => 'Reject kitchen handover'],
@@ -433,6 +434,11 @@ final class PermissionCatalog
             'kitchen.production.record_remake',
             'kitchen.production.record_waste',
             'kitchen.production.reports',
+            // Production plan (2026-09-08, intentional): the plan is read from
+            // sales history the manager can already see in reports, and saving
+            // it writes nothing but the plan itself. The calendar and the
+            // per-item dials sit behind kitchen.production.manage.
+            'kitchen.production.plan',
             'kitchen.production.submit',
             'kitchen.production.view_all',
             'kitchen.production.view_own',
@@ -555,6 +561,8 @@ final class PermissionCatalog
             'kitchen.production.record_waste',
             'kitchen.production.record_remake',
             'kitchen.production.attach_photo',
+            // The cook is the one who needs to know "50 bajiya for this evening".
+            'kitchen.production.plan',
         ];
     }
 

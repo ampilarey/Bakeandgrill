@@ -87,6 +87,9 @@ class ManagerPermissionAllowlistTest extends TestCase
         'kitchen.production.record_remake',
         'kitchen.production.record_waste',
         'kitchen.production.reports',
+        // Production plan (2026-09-08, intentional): read-only over sales the
+        // manager already sees; saving a plan changes no stock or money.
+        'kitchen.production.plan',
         'kitchen.production.submit',
         'kitchen.production.view_all',
         'kitchen.production.view_own',

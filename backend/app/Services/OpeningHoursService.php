@@ -197,6 +197,18 @@ class OpeningHoursService
     }
 
     /**
+     * Every special closure on record, `['YYYY-MM-DD' => 'Reason']`. The
+     * production plan treats these days as closed: nothing sold on a closed
+     * day says anything about demand, and nothing needs making for one.
+     *
+     * @return array<string, string>
+     */
+    public function closures(): array
+    {
+        return $this->getClosures();
+    }
+
+    /**
      * Get closure reason for today (if any).
      */
     public function getClosureReason(): ?string

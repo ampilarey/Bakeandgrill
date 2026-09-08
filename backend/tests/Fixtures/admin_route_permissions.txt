@@ -90,6 +90,17 @@ backend/routes/domains/inventory.php:79:suppliers.manage
 backend/routes/domains/inventory.php:87:suppliers.purchases
 backend/routes/domains/kitchen.php:100:kitchen.production.reports
 backend/routes/domains/kitchen.php:102:kitchen.production.reports
+backend/routes/domains/kitchen.php:110:kitchen.production.plan
+backend/routes/domains/kitchen.php:112:kitchen.production.plan
+backend/routes/domains/kitchen.php:114:kitchen.production.manage
+backend/routes/domains/kitchen.php:117:kitchen.production.manage
+backend/routes/domains/kitchen.php:119:kitchen.production.plan
+backend/routes/domains/kitchen.php:121:kitchen.production.manage
+backend/routes/domains/kitchen.php:124:kitchen.production.manage
+backend/routes/domains/kitchen.php:127:kitchen.production.manage
+backend/routes/domains/kitchen.php:129:kitchen.production.plan
+backend/routes/domains/kitchen.php:131:kitchen.production.plan
+backend/routes/domains/kitchen.php:133:kitchen.production.plan
 backend/routes/domains/kitchen.php:27:kds.view
 backend/routes/domains/kitchen.php:28:kds.view
 backend/routes/domains/kitchen.php:29:kds.view

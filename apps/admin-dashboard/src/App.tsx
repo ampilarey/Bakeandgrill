@@ -36,6 +36,7 @@ const ForecastPage            = lazyWithRetry(() => import('./pages/ForecastPage
 const ProcurementReportPage   = lazyWithRetry(() => import('./pages/ProcurementReportPage'));
 const PurchasingPage          = lazyWithRetry(() => import('./pages/PurchasingPage').then((m) => ({ default: m.PurchasingPage })));
 const KitchenProductionPage   = lazyWithRetry(() => import('./pages/KitchenProductionPage'));
+const ProductionPlanPage      = lazyWithRetry(() => import('./pages/ProductionPlanPage').then((m) => ({ default: m.ProductionPlanPage })));
 const WebhooksPage            = lazyWithRetry(() => import('./pages/WebhooksPage').then((m) => ({ default: m.WebhooksPage })));
 const DashboardPage           = lazyWithRetry(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const TestChecklistPage       = lazyWithRetry(() => import('./pages/TestChecklistPage'));
@@ -393,6 +394,11 @@ export default function App() {
                 <Route path="kitchen-production" element={
                   <PermissionGuard user={user} permission="kitchen.production.view_all">
                     <KitchenProductionPage />
+                  </PermissionGuard>
+                } />
+                <Route path="production-plan" element={
+                  <PermissionGuard user={user} permission="kitchen.production.plan">
+                    <ProductionPlanPage />
                   </PermissionGuard>
                 } />
                 {/* Webhooks */}
