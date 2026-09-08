@@ -19,6 +19,10 @@ class StoreSupplierRequest extends FormRequest
             'name' => 'required|string|max:255',
             'contact_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
+            // A shop is a mobile, a landline and whoever is on the counter.
+            // Capped so a stuck "add another" cannot fill the row.
+            'extra_phones' => 'nullable|array|max:10',
+            'extra_phones.*' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string',
             'payment_terms' => 'nullable|string|max:255',

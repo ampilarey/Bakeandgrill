@@ -936,6 +936,11 @@ export interface Supplier {
   name: string;
   contact_name: string | null;
   phone: string | null;
+  /**
+   * Other numbers for the same shop. `phone` stays the main one — an invoice
+   * is sent to it — and these sit beside it (owner, 2026-09-08).
+   */
+  extra_phones: string[] | null;
   email: string | null;
   address: string | null;
   payment_terms: string | null;
@@ -979,6 +984,7 @@ export async function createSupplier(data: {
   name: string;
   contact_name?: string;
   phone?: string;
+  extra_phones?: string[];
   email?: string;
   bank_name?: string;
   bank_account_name?: string;
@@ -992,6 +998,7 @@ export async function updateSupplier(id: number, data: Partial<{
   name: string;
   contact_name: string;
   phone: string;
+  extra_phones: string[];
   email: string;
   bank_name: string;
   bank_account_name: string;

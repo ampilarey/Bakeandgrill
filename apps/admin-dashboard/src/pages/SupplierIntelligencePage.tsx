@@ -59,7 +59,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierModal, setSupplierModal] = useState<Supplier | 'new' | null>(null);
   const [supplierForm, setSupplierForm] = useState({
-    name: '', contact_name: '', phone: '', email: '',
+    name: '', contact_name: '', phone: '', extra_phones: [] as string[], email: '',
     bank_name: '', bank_account_name: '', bank_account_number: '',
   });
   const [supplierSaving, setSupplierSaving] = useState(false);
@@ -80,6 +80,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
       name: sup?.name ?? '',
       contact_name: sup?.contact_name ?? '',
       phone: sup?.phone ?? '',
+      extra_phones: sup?.extra_phones ?? [],
       email: sup?.email ?? '',
       bank_name: sup?.bank_name ?? '',
       bank_account_name: sup?.bank_account_name ?? '',
@@ -96,6 +97,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
         name: supplierForm.name.trim(),
         contact_name: supplierForm.contact_name.trim() || undefined,
         phone: supplierForm.phone.trim() || undefined,
+        // Sent even when empty so numbers can be taken away again; the
+        // server drops blanks and repeats.
+        extra_phones: supplierForm.extra_phones.map((n) => n.trim()).filter(Boolean),
         email: supplierForm.email.trim() || undefined,
         // Sent even when blank on an edit, so clearing an account that has
         // changed hands actually clears it rather than leaving the old one.
@@ -269,7 +273,14 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                 <tr key={s.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
                   <td style={TD}>{s.contact_name ?? '—'}</td>
-                  <td style={TD}>{s.phone ?? '—'}</td>
+                  <td style={TD} data-testid={`supplier-phones-${s.id}`}>
+                    {s.phone ?? '—'}
+                    {(s.extra_phones ?? []).length > 0 && (
+                      <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {(s.extra_phones ?? []).join(' · ')}
+                      </span>
+                    )}
+                  </td>
                   <td style={TD}>{s.email ?? '—'}</td>
                   {/* Read at the moment somebody is making the transfer, so
                       the number is the line that stands out and the bank and
@@ -586,9 +597,45 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Contact name</label>
           <input value={supplierForm.contact_name} onChange={(e) => setSupplierForm((f) => ({ ...f, contact_name: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Phone</label>
-          <input value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label htmlFor="supplier-phone" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Phone</label>
+          <input id="supplier-phone" value={supplierForm.phone} onChange={(e) => setSupplierForm((f) => ({ ...f, phone: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8, boxSizing: 'border-box' }} />
+
+          {/* Owner, 2026-09-08: "add option to add more than one contact
+              number." A shop is a mobile, a landline and whoever is on the
+              counter. The first stays the one an invoice is sent to. */}
+          {supplierForm.extra_phones.map((num, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <input
+                aria-label={`Another number ${i + 1}`}
+                value={num}
+                inputMode="tel"
+                placeholder="Another number"
+                onChange={(e) => setSupplierForm((f) => ({
+                  ...f,
+                  extra_phones: f.extra_phones.map((n, j) => (j === i ? e.target.value : n)),
+                }))}
+                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              <Btn
+                small
+                variant="ghost"
+                aria-label={`Remove number ${i + 1}`}
+                onClick={() => setSupplierForm((f) => ({ ...f, extra_phones: f.extra_phones.filter((_, j) => j !== i) }))}
+              >
+                Remove
+              </Btn>
+            </div>
+          ))}
+          <div style={{ marginBottom: 12 }}>
+            <Btn
+              small
+              variant="secondary"
+              disabled={supplierForm.extra_phones.length >= 10}
+              onClick={() => setSupplierForm((f) => ({ ...f, extra_phones: [...f.extra_phones, ''] }))}
+            >
+              ＋ Add another number
+            </Btn>
+          </div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Email</label>
           <input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box' }} />

@@ -21,6 +21,7 @@ const bakery = {
   name: 'The Royal Bakery',
   contact_name: 'Ahmed',
   phone: '7771234',
+  extra_phones: ['3321234'],
   email: null,
   address: null,
   payment_terms: null,
@@ -32,7 +33,7 @@ const bakery = {
   is_active: true,
 };
 
-const cashOnly = { ...bakery, id: 4, name: 'Corner shop', bank_name: null, bank_account_name: null, bank_account_number: null };
+const cashOnly = { ...bakery, id: 4, name: 'Corner shop', extra_phones: null, bank_name: null, bank_account_name: null, bank_account_number: null };
 
 const fetchSuppliers = vi.fn();
 const createSupplier = vi.fn();
@@ -166,5 +167,79 @@ describe('Supplier bank account', () => {
     // Empty strings, not undefined: an omitted field would leave the old
     // account sitting there.
     expect(updateSupplier.mock.calls[0][1]).toMatchObject({ bank_account_number: '', bank_name: '' });
+  });
+});
+
+/*
+ * Owner, 2026-09-08: "add option to add more than one contact number." A shop
+ * is a mobile, a landline and whoever is on the counter today. The first one
+ * keeps its meaning — an invoice is sent to it — and the rest sit beside it.
+ */
+describe('More than one number for a supplier', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchSuppliers.mockResolvedValue({ data: [bakery, cashOnly] });
+    createSupplier.mockResolvedValue({ supplier: bakery });
+    updateSupplier.mockResolvedValue({ supplier: bakery });
+  });
+
+  it('lists the others under the main one', async () => {
+    open();
+
+    const cell = await screen.findByTestId('supplier-phones-3');
+    expect(cell).toHaveTextContent('7771234');
+    expect(cell).toHaveTextContent('3321234');
+  });
+
+  it('opens the editor on the numbers already on file', async () => {
+    open();
+    await screen.findByTestId('supplier-phones-3');
+
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByLabelText('Phone')).toHaveValue('7771234');
+    expect(within(dialog).getByLabelText('Another number 1')).toHaveValue('3321234');
+  });
+
+  it('adds a number and saves it alongside the first', async () => {
+    open();
+    await screen.findByTestId('supplier-phones-3');
+
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    const dialog = await screen.findByRole('dialog');
+
+    fireEvent.click(within(dialog).getByText('＋ Add another number'));
+    fireEvent.change(within(dialog).getByLabelText('Another number 2'), { target: { value: '9998888' } });
+    fireEvent.click(within(dialog).getByText('Save'));
+
+    await waitFor(() => expect(updateSupplier).toHaveBeenCalled());
+    expect(updateSupplier.mock.calls[0][1]).toMatchObject({
+      phone: '7771234',
+      extra_phones: ['3321234', '9998888'],
+    });
+  });
+
+  it('takes one away again', async () => {
+    open();
+    await screen.findByTestId('supplier-phones-3');
+
+    fireEvent.click(screen.getAllByText('Edit')[0]);
+    const dialog = await screen.findByRole('dialog');
+
+    fireEvent.click(within(dialog).getByLabelText('Remove number 1'));
+    fireEvent.click(within(dialog).getByText('Save'));
+
+    await waitFor(() => expect(updateSupplier).toHaveBeenCalled());
+    // Sent empty rather than omitted, so the number really goes.
+    expect(updateSupplier.mock.calls[0][1]).toMatchObject({ extra_phones: [] });
+  });
+
+  it('leaves a supplier with one number looking as it did', async () => {
+    open();
+
+    const cell = await screen.findByTestId('supplier-phones-4');
+    expect(cell).toHaveTextContent('7771234');
+    expect(cell.querySelector('span')).toBeNull();
   });
 });
