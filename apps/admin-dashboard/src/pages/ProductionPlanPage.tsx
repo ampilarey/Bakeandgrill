@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Badge, Btn, Card, DateInput, EmptyState, ErrorMsg, Input, PageHeader, PageShell, Select, Spinner,
+  Badge, Btn, Card, DateInput, EmptyState, ErrorMsg, Input, Select, Spinner,
   StatCard, TableCard, TD, TH,
 } from '../components/SharedUI';
-import { Tabs, TabList, Tab } from '../components/ui/Tabs';
 import { Toggle } from '../components/ui/Toggle';
-import { usePageTitle } from '../hooks/usePageTitle';
-import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { daysFromToday, today } from '../utils/dateHelpers';
 import { mvr } from '../utils/fmt';
@@ -44,15 +41,10 @@ import {
  * the model reckons. The kitchen changes the box, not the model.
  */
 
-type TabId = 'plan' | 'calendar' | 'accuracy' | 'customers' | 'settings';
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'plan', label: 'Plan' },
-  { id: 'calendar', label: 'Holidays & closures' },
-  { id: 'accuracy', label: 'How it did' },
-  { id: 'customers', label: 'Customers' },
-  { id: 'settings', label: 'Settings' },
-];
+/*
+ * These are the tabs of the Kitchen hub (see KitchenHub.tsx), which draws
+ * the title and the tab strip. This file exports the panels only.
+ */
 
 const POSITION_LABEL: Record<string, string> = {
   start: 'start of month',
@@ -87,35 +79,6 @@ function slotHours(from: number, to: number): string {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
-export function ProductionPlanPage() {
-  usePageTitle('Production Plan');
-  const { can } = useCurrentUserPermissions();
-  const canManage = can('kitchen.production.manage');
-  const [tab, setTab] = useState<TabId>('plan');
-
-  return (
-    <PageShell>
-      <PageHeader
-        section="Monitor"
-        title="Production Plan"
-        subtitle="How many of each thing to make, slot by slot, from what has sold on days like it."
-      />
-      <Tabs active={tab} onChange={(id) => setTab(id as TabId)}>
-        <TabList>
-          {TABS.map((t) => <Tab key={t.id} id={t.id}>{t.label}</Tab>)}
-        </TabList>
-      </Tabs>
-      <div style={{ marginTop: 16 }}>
-        {tab === 'plan' && <PlanTab canManage={canManage} />}
-        {tab === 'calendar' && <PlanCalendarTab canManage={canManage} />}
-        {tab === 'accuracy' && <PlanAccuracyTab />}
-        {tab === 'customers' && <PlanCustomersTab />}
-        {tab === 'settings' && <PlanSettingsTab canManage={canManage} />}
-      </div>
-    </PageShell>
-  );
-}
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
 

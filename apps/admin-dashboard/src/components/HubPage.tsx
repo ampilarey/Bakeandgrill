@@ -16,6 +16,12 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
  * own sidebar entry — and a bare hub path, or a tab the user cannot see,
  * lands on the first tab they can. This is the shape the Purchasing page
  * settled on (audit 2026-09-05); this generalises it.
+ *
+ * Tabs may declare a `group`. Kitchen has eleven of them, which on a 360px
+ * phone was one long sideways scroll with nothing to say more existed off
+ * the right-hand edge. Grouped, the strip becomes two short rows — the
+ * groups, then the tabs of the group you are in — the same two-level shape
+ * the SMS page already uses.
  */
 
 export interface HubTab {
@@ -24,6 +30,8 @@ export interface HubTab {
   /** Any one of these opens the tab. Empty means anyone who can open the hub. */
   permissions: readonly string[];
   desc?: string;
+  /** Optional first-level grouping. Tabs of one group must sit together. */
+  group?: string;
   render: () => ReactNode;
 }
 
@@ -39,12 +47,46 @@ export function hubPathTab(base: string, pathname: string): string | null {
   return m?.[1] ?? null;
 }
 
+/** Group names in tab order, skipping tabs with no group. */
+export function hubGroups(tabs: readonly HubTab[]): string[] {
+  const seen: string[] = [];
+  for (const t of tabs) {
+    if (t.group && !seen.includes(t.group)) seen.push(t.group);
+  }
+  return seen;
+}
+
 const tabStyle = (active: boolean): React.CSSProperties => ({
   padding: '8px 18px', border: 'none', borderRadius: 8, cursor: 'pointer',
   fontWeight: 600, fontSize: 14, fontFamily: 'inherit', whiteSpace: 'nowrap',
   background: active ? 'var(--color-primary)' : 'transparent',
   color: active ? 'var(--color-on-primary, #fff)' : 'var(--color-text-secondary)',
 });
+
+const groupStyle = (active: boolean): React.CSSProperties => ({
+  padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+  fontFamily: 'inherit', fontSize: 13, whiteSpace: 'nowrap',
+  fontWeight: active ? 700 : 500,
+  color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+  borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
+  marginBottom: -2,
+});
+
+function TabStrip({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className="tab-scroll-row hub-tabs"
+      style={{
+        display: 'flex', gap: 4, background: 'var(--color-bg)',
+        borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: {
   /** Path the tabs hang off, e.g. "/finance". */
@@ -82,31 +124,48 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: 
 
   if (loading || current === null) return null;
 
+  const groups = hubGroups(visible);
+  const grouped = groups.length > 1;
+  const siblings = grouped ? visible.filter((t) => t.group === current.group) : visible;
+
   return (
-    <PageShell>
+    <PageShell className="hub-page">
       <PageHeader section={section} title={title} subtitle={current.desc ?? subtitle} />
 
-      {visible.length > 1 && (
-        <div
-          role="tablist"
-          aria-label={title}
-          className="tab-scroll-row"
-          style={{
-            display: 'flex', gap: 4, marginBottom: 20, background: 'var(--color-bg)',
-            borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
-          }}
-        >
-          {visible.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={current.id === t.id}
-              onClick={() => navigate(`${base}/${t.id}`)}
-              style={tabStyle(current.id === t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
+      {grouped && (
+        <div className="tab-scroll-row hub-groups" style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', overflowX: 'auto' }}>
+          {groups.map((g) => {
+            const first = visible.find((t) => t.group === g)!;
+            return (
+              <button
+                key={g}
+                type="button"
+                aria-current={current.group === g ? 'true' : undefined}
+                onClick={() => navigate(`${base}/${first.id}`)}
+                style={groupStyle(current.group === g)}
+              >
+                {g}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {siblings.length > 1 && (
+        <div style={{ marginTop: grouped ? 12 : 0, marginBottom: 20 }}>
+          <TabStrip label={title}>
+            {siblings.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={current.id === t.id}
+                onClick={() => navigate(`${base}/${t.id}`)}
+                style={tabStyle(current.id === t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </TabStrip>
         </div>
       )}
 

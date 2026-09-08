@@ -2194,12 +2194,35 @@ a { text-decoration: none; color: inherit; }
 
 .page-header-actions { flex-shrink: 0; }
 
+/*
+ * A page rendered as a tab of a hub keeps its own buttons and filters but
+ * not its title — the hub drew that. Without this the leftover header kept
+ * the full 1.5rem margin and, on a phone where the header stacks, an empty
+ * element sat above the buttons and opened a gap (2026-09-08).
+ */
+.page-header--embedded { margin-bottom: 0.75rem; }
+
+/*
+ * The strip scrolls sideways on a narrow screen. Snapping makes a swipe
+ * settle on a whole tab rather than halfway through a word. A fade at the
+ * right edge was tried and dropped: CSS cannot tell a row that overflows
+ * from one that fits, so it dimmed the last tab when there was nothing
+ * more to see. Grouping (see HubPage) is what keeps these rows short.
+ */
+.hub-tabs { scroll-snap-type: x proximity; }
+.hub-tabs > button { scroll-snap-align: start; }
+
 @media (max-width: 767px) {
   /* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
   .page-header {
     flex-direction: column;
     align-items: stretch;
   }
+  /*
+   * Hub chrome on a phone: breadcrumb, title, subtitle and a tab strip all
+   * stacked before any content. The subtitle is the line that can go.
+   */
+  .hub-page .page-header { margin-bottom: 0.75rem; }
   .page-header-actions {
     flex-shrink: 1;
     min-width: 0;

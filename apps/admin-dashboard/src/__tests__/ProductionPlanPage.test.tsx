@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ProductionPlanPage } from '../pages/ProductionPlanPage';
+import { PlanTab, PlanCalendarTab, PlanSettingsTab } from '../pages/ProductionPlanPage';
 import { daysFromToday } from '../utils/dateHelpers';
 import type { PlanItem, PlanSlotRow, ProductionPlan } from '../api/production-plan';
 
@@ -117,8 +117,21 @@ function plan(over: Partial<ProductionPlan> = {}): ProductionPlan {
   };
 }
 
+/*
+ * These are the Plan tabs of the Kitchen hub, which draws the title and the
+ * tab strip (see HubPage.test.tsx). Each panel is rendered on its own here,
+ * the way the hub renders it.
+ */
 function show() {
-  render(<MemoryRouter><ProductionPlanPage /></MemoryRouter>);
+  render(<MemoryRouter><PlanTab canManage={manage} /></MemoryRouter>);
+}
+
+function showCalendar() {
+  render(<MemoryRouter><PlanCalendarTab canManage={manage} /></MemoryRouter>);
+}
+
+function showSettings() {
+  render(<MemoryRouter><PlanSettingsTab canManage={manage} /></MemoryRouter>);
 }
 
 describe('The production plan', () => {
@@ -270,8 +283,7 @@ describe('Holidays and closures', () => {
   });
 
   it('lists what is on record and lets a manager add a school holiday with an expectation', async () => {
-    show();
-    fireEvent.click(await screen.findByText('Holidays & closures'));
+    showCalendar();
 
     expect(await screen.findByText('National day')).toBeInTheDocument();
     expect(screen.getByText('Staff outing')).toBeInTheDocument();
@@ -294,8 +306,7 @@ describe('Holidays and closures', () => {
 
   it('is read-only for the cook', async () => {
     manage = false;
-    show();
-    fireEvent.click(await screen.findByText('Holidays & closures'));
+    showCalendar();
 
     expect(await screen.findByText('National day')).toBeInTheDocument();
     expect(screen.queryByTestId('calendar-form')).toBeNull();
@@ -319,8 +330,7 @@ describe('Settings', () => {
   });
 
   it('lets a manager change how far back the plan looks', async () => {
-    show();
-    fireEvent.click(await screen.findByText('Settings'));
+    showSettings();
 
     const lookback = await screen.findByLabelText('Look back (weeks)');
     fireEvent.change(lookback, { target: { value: '10' } });
@@ -332,8 +342,7 @@ describe('Settings', () => {
   });
 
   it('saves an item dial', async () => {
-    show();
-    fireEvent.click(await screen.findByText('Settings'));
+    showSettings();
 
     const tray = await screen.findByLabelText('Bajiya tray of');
     fireEvent.change(tray, { target: { value: '12' } });
@@ -347,8 +356,7 @@ describe('Settings', () => {
 
   it('is not for the cook', async () => {
     manage = false;
-    show();
-    fireEvent.click(await screen.findByText('Settings'));
+    showSettings();
 
     expect(await screen.findByText('Only a manager can change how the plan is worked out.')).toBeInTheDocument();
     expect(getProductionPlanSettings).not.toHaveBeenCalled();

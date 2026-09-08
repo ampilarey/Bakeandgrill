@@ -190,7 +190,7 @@ export function PageHeader({
     if (!action && !children) return null;
     return (
       <div className="page-header page-header--embedded">
-        <div>{children}</div>
+        {children ? <div>{children}</div> : null}
         {action && <div className="page-header-actions">{action}</div>}
       </div>
     );
