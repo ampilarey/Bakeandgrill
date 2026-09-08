@@ -939,6 +939,14 @@ export interface Supplier {
   email: string | null;
   address: string | null;
   payment_terms: string | null;
+  /*
+   * Where to send their money (owner, 2026-09-08). The number alone does not
+   * pay anybody here: two banks issue account numbers, and the name on the
+   * account is often the shopkeeper's rather than the shop's.
+   */
+  bank_name: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
   /** Stock audit 2026-09-03 (S6): days from order to delivery, per vendor. */
   lead_days: number | null;
   notes: string | null;
@@ -972,6 +980,9 @@ export async function createSupplier(data: {
   contact_name?: string;
   phone?: string;
   email?: string;
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
   lead_days?: number | null;
 }): Promise<{ supplier: Supplier }> {
   return req('/suppliers', { method: 'POST', body: JSON.stringify(data) });
@@ -982,6 +993,9 @@ export async function updateSupplier(id: number, data: Partial<{
   contact_name: string;
   phone: string;
   email: string;
+  bank_name: string;
+  bank_account_name: string;
+  bank_account_number: string;
   lead_days: number | null;
   is_active: boolean;
 }>): Promise<{ supplier: Supplier }> {

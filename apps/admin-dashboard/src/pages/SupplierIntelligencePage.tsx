@@ -58,7 +58,10 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierModal, setSupplierModal] = useState<Supplier | 'new' | null>(null);
-  const [supplierForm, setSupplierForm] = useState({ name: '', contact_name: '', phone: '', email: '' });
+  const [supplierForm, setSupplierForm] = useState({
+    name: '', contact_name: '', phone: '', email: '',
+    bank_name: '', bank_account_name: '', bank_account_number: '',
+  });
   const [supplierSaving, setSupplierSaving] = useState(false);
   const [supplierFormError, setSupplierFormError] = useState('');
 
@@ -78,6 +81,9 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
       contact_name: sup?.contact_name ?? '',
       phone: sup?.phone ?? '',
       email: sup?.email ?? '',
+      bank_name: sup?.bank_name ?? '',
+      bank_account_name: sup?.bank_account_name ?? '',
+      bank_account_number: sup?.bank_account_number ?? '',
     });
     setSupplierFormError('');
   };
@@ -91,6 +97,11 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
         contact_name: supplierForm.contact_name.trim() || undefined,
         phone: supplierForm.phone.trim() || undefined,
         email: supplierForm.email.trim() || undefined,
+        // Sent even when blank on an edit, so clearing an account that has
+        // changed hands actually clears it rather than leaving the old one.
+        bank_name: supplierForm.bank_name.trim(),
+        bank_account_name: supplierForm.bank_account_name.trim(),
+        bank_account_number: supplierForm.bank_account_number.trim(),
       };
       if (supplierModal && supplierModal !== 'new') {
         await updateSupplier(supplierModal.id, payload);
@@ -249,6 +260,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
               <th style={TH}>Contact</th>
               <th style={TH}>Phone</th>
               <th style={TH}>Email</th>
+              <th style={TH}>Bank account</th>
               <th style={TH}>Status</th>
               <th style={TH}>Actions</th>
             </tr></thead>
@@ -258,7 +270,23 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
                   <td style={TD}>{s.contact_name ?? '—'}</td>
                   <td style={TD}>{s.phone ?? '—'}</td>
-                  <td style={TD}>{s.email ?? '—'}</td>
+                  {/* Read at the moment somebody is making the transfer, so
+                      the number is the line that stands out and the bank and
+                      account name sit under it. */}
+                  <td style={TD} data-testid={`supplier-bank-${s.id}`}>
+                    {s.bank_account_number ? (
+                      <>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{s.bank_account_number}</span>
+                        {(s.bank_name || s.bank_account_name) && (
+                          <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            {[s.bank_name, s.bank_account_name].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+                    )}
+                  </td>
                   <td style={TD}>{s.is_active ? 'Active' : 'Inactive'}</td>
                   <td style={TD}>
                     <div style={{ display: 'flex', gap: 6 }}>
@@ -563,6 +591,38 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Email</label>
           <input type="email" value={supplierForm.email} onChange={(e) => setSupplierForm((f) => ({ ...f, email: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box' }} />
+
+          {/* Owner, 2026-09-08: "add supplier acc number option". The number
+              on its own does not pay anybody — two banks issue them, and the
+              account is often in the shopkeeper's name, not the shop's — so
+              all three sit together and all three are optional. */}
+          <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>Bank transfer details</p>
+          <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Optional — for suppliers you pay by transfer rather than cash.
+          </p>
+          <label htmlFor="supplier-bank-name" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Bank</label>
+          <input
+            id="supplier-bank-name"
+            value={supplierForm.bank_name}
+            placeholder="BML, MIB…"
+            onChange={(e) => setSupplierForm((f) => ({ ...f, bank_name: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label htmlFor="supplier-bank-account-name" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Account name</label>
+          <input
+            id="supplier-bank-account-name"
+            value={supplierForm.bank_account_name}
+            placeholder="Whose name the account is in"
+            onChange={(e) => setSupplierForm((f) => ({ ...f, bank_account_name: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 12, boxSizing: 'border-box' }} />
+          <label htmlFor="supplier-bank-account-number" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Account number</label>
+          <input
+            id="supplier-bank-account-number"
+            value={supplierForm.bank_account_number}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="7730000123456"
+            onChange={(e) => setSupplierForm((f) => ({ ...f, bank_account_number: e.target.value }))}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 16, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setSupplierModal(null)}>Cancel</Btn>
             <Btn onClick={() => void handleSaveSupplier()} disabled={supplierSaving}>{supplierSaving ? 'Saving…' : 'Save'}</Btn>

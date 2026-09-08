@@ -22,6 +22,11 @@ class UpdateSupplierRequest extends FormRequest
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string',
             'payment_terms' => 'nullable|string|max:255',
+            'bank_name' => 'nullable|string|max:100',
+            'bank_account_name' => 'nullable|string|max:255',
+            // Digits, spaces and dashes: an account is copied off a card or a
+            // message and a stray space must not lose the payment details.
+            'bank_account_number' => ['nullable', 'string', 'max:64', 'regex:/^[0-9 \\-]+$/'],
             'lead_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
             'is_active' => 'nullable|boolean',
