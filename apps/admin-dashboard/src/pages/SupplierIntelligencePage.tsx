@@ -270,6 +270,7 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
                   <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
                   <td style={TD}>{s.contact_name ?? '—'}</td>
                   <td style={TD}>{s.phone ?? '—'}</td>
+                  <td style={TD}>{s.email ?? '—'}</td>
                   {/* Read at the moment somebody is making the transfer, so
                       the number is the line that stands out and the bank and
                       account name sit under it. */}

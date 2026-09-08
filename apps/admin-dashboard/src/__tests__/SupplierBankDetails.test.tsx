@@ -73,6 +73,40 @@ describe('Supplier bank account', () => {
     expect(cell).toHaveTextContent('BML · Ahmed Hassan');
   });
 
+  /*
+   * Adding the column first put the account cell where the email cell was
+   * rather than beside it, so every column past Phone was reading one to the
+   * left and the owner saw the account under "Email" (2026-09-08). Counting
+   * the cells is what catches that; a testid on the new cell does not.
+   */
+  it('keeps every column under its own heading', async () => {
+    open();
+    await screen.findByTestId('supplier-bank-3');
+
+    const table = screen.getAllByRole('table')[0];
+    const headings = within(table).getAllByRole('columnheader').map((h) => h.textContent);
+    expect(headings).toEqual(['Name', 'Contact', 'Phone', 'Email', 'Bank account', 'Status', 'Actions']);
+
+    const row = screen.getByTestId('supplier-bank-3').closest('tr') as HTMLElement;
+    const cells = within(row).getAllByRole('cell');
+    expect(cells).toHaveLength(headings.length);
+
+    // Read by position, the way the eye does.
+    expect(cells[0]).toHaveTextContent('The Royal Bakery');
+    expect(cells[2]).toHaveTextContent('7771234');
+    expect(cells[3]).toHaveTextContent('—');
+    expect(cells[4]).toHaveTextContent('7730000123456');
+    expect(cells[5]).toHaveTextContent('Active');
+  });
+
+  it('still shows an email where there is one', async () => {
+    fetchSuppliers.mockResolvedValue({ data: [{ ...bakery, email: 'orders@royal.mv' }] });
+    open();
+
+    // The column the account cell displaced when it was first added.
+    expect(await screen.findByText('orders@royal.mv')).toBeInTheDocument();
+  });
+
   it('leaves a cash-only supplier blank', async () => {
     open();
 
