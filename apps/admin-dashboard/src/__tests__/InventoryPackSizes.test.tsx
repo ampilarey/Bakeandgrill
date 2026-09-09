@@ -67,6 +67,7 @@ const getPurchaseUnits = vi.fn();
 const createPurchaseUnit = vi.fn();
 const deletePurchaseUnit = vi.fn();
 const fetchInventoryItems = vi.fn();
+const createInventoryItem = vi.fn();
 
 vi.mock('../api', () => ({
   getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
@@ -88,7 +89,7 @@ vi.mock('../api', () => ({
   getInventoryCheapestSupplier: vi.fn(),
   submitStockCount: vi.fn(),
   adjustPreparedStock: vi.fn(),
-  createInventoryItem: vi.fn(),
+  createInventoryItem: (...a: unknown[]) => createInventoryItem(...a),
   fetchInventoryItemDetail: vi.fn(),
 }));
 
@@ -291,5 +292,61 @@ describe('Pack sizes inside Edit item', () => {
     fireEvent.click(screen.getByText('Add pack'));
 
     await waitFor(() => expect(fetchInventoryItems.mock.calls.length).toBeGreaterThan(before));
+  });
+});
+
+/*
+ * Owner, 2026-09-09: "no Pack sizes in add item in inventory", asked while
+ * working out how to enter turmeric powder that comes in 100g and 500g.
+ *
+ * A pack belongs to an item id, and a new item has none until it saves — so
+ * the create form genuinely cannot carry the section. What it can do is say
+ * where the section went and then put you in front of it, instead of leaving
+ * somebody to find the row again in a list of hundreds. Get that wrong and the
+ * answer to "how do I enter 100g and 500g" becomes three separate items.
+ */
+describe('Pack sizes for an item that does not exist yet', () => {
+  const turmeric = {
+    ...ghee, id: 31, name: 'Turmeric Powder', sku: 'TUR-1', unit: 'g',
+    quantity_on_hand: 0, purchase_units: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getPurchaseUnits.mockResolvedValue({ base_unit: 'g', purchase_units: [] });
+    fetchInventoryItems.mockResolvedValue({
+      data: [ghee],
+      meta: { current_page: 1, last_page: 1, total: 1 },
+    });
+    createInventoryItem.mockResolvedValue({ item: turmeric });
+  });
+
+  async function openCreate() {
+    renderPage();
+    fireEvent.click(await screen.findByText('+ Add Item'));
+  }
+
+  it('says on the create form where the pack sizes are', async () => {
+    await openCreate();
+
+    const hint = screen.getByTestId('new-item-pack-hint');
+    expect(hint.textContent).toMatch(/Pack\s*sizes/);
+    expect(hint.textContent).toMatch(/opens as soon as you press Create/);
+  });
+
+  it('opens the pack editor on the item it just made', async () => {
+    await openCreate();
+
+    fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Turmeric Powder' } });
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createInventoryItem).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Turmeric Powder' }),
+    ));
+    const section = await screen.findByTestId('pack-sizes-section');
+    // The new item's own packs, counted in the new item's own unit.
+    await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(31));
+    expect(section.textContent).toMatch(/Stock is counted in\s*g/);
+    expect(within(section).getByText(/No packs yet/)).toBeInTheDocument();
   });
 });

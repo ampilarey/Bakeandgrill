@@ -1814,6 +1814,16 @@ export default function InventoryPage() {
                 placeholder="sachet, tray, bottle…"
                 hint="Whatever you type here becomes this item's unit."
               />
+              {/* Owner, 2026-09-09: "no Pack sizes in add item in inventory".
+                  A pack hangs off an item id, which does not exist until this
+                  saves — so say where it went rather than leaving a gap. */}
+              <p data-testid="new-item-pack-hint" style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                Count in the smallest unit you use — <strong style={{ color: 'var(--color-text)' }}>g</strong> for
+                a powder, <strong style={{ color: 'var(--color-text)' }}>ml</strong> for a liquid,
+                <strong style={{ color: 'var(--color-text)' }}> piece</strong> for a bun. The sizes you buy
+                — a 100g pack, a 500g pack, a case — go in <strong style={{ color: 'var(--color-text)' }}>Pack
+                sizes</strong>, which opens as soon as you press Create.
+              </p>
             </div>
             <label>
               <span style={S.label}>Opening stock</span>
@@ -1891,9 +1901,16 @@ export default function InventoryPage() {
                 storage_location: createForm.storage_location.trim() || undefined,
                 notes: createForm.notes.trim() || undefined,
                 gst_rate_bp: createForm.gst ? 800 : 0,
-              }).then(() => {
+              }).then((res) => {
                 setCreateOpen(false);
                 void loadItems();
+                /*
+                 * Straight into Edit, because that is where Pack sizes live and
+                 * a new item is exactly when you know them. Turmeric is one item
+                 * in grams with a 100g and a 500g pack, not three items — but
+                 * only if the pack editor is in front of you at the time.
+                 */
+                openEdit(res.item);
               }).catch((e: Error) => setCreateError(e.message)).finally(() => setCreateSaving(false));
             }}>{createSaving ? 'Saving…' : 'Create'}</Btn>
           </ModalActions>
