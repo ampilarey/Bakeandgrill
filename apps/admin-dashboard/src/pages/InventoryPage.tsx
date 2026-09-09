@@ -229,11 +229,19 @@ export default function InventoryPage() {
     return `${candidate} (${createPacks.length + 1})`;
   };
 
-  const addCreatePack = (options: { name?: string; replace?: boolean } = {}) => {
+  /*
+   * Returns the list the drafts become, or null when the pack needs an answer
+   * first. The list is returned rather than only stored because Create has to
+   * write these in the same tick it is pressed, and setState is not read back
+   * that soon — the pack typed but not yet added has to reach the server too.
+   */
+  const addCreatePack = (
+    options: { name?: string; replace?: boolean } = {},
+  ): { name: string; baseUnits: number; barcode: string }[] | null => {
     const name = (options.name ?? createPackForm.name).trim();
     const qty = parseFloat(createPackForm.qty);
-    if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return; }
-    if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return; }
+    if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return null; }
+    if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return null; }
     const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
     const baseUnits = of ? qty * of.baseUnits : qty;
     const row = { name, baseUnits, barcode: createPackForm.barcode.trim() };
@@ -246,13 +254,21 @@ export default function InventoryPage() {
         wasBaseUnits: createPacks[clashAt].baseUnits,
         suggestedName: freeDraftPackName(name, baseUnits),
       });
-      return;
+      return null;
     }
-    setCreatePacks((p) => (clashAt >= 0 ? p.map((x, i) => (i === clashAt ? row : x)) : [...p, row]));
+    const next = clashAt >= 0
+      ? createPacks.map((x, i) => (i === clashAt ? row : x))
+      : [...createPacks, row];
+    setCreatePacks(next);
     setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
     setCreatePackError('');
     setCreatePackClash(null);
+    return next;
   };
+
+  /** Same rule as Edit: a pack half-typed into the boxes was still meant. */
+  const createPackFormHasEntry = () =>
+    createPackForm.name.trim() !== '' || createPackForm.qty.trim() !== '';
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   /*
    * Pack sizes: how an item is bought, as opposed to how it is counted. Eggs
@@ -309,12 +325,13 @@ export default function InventoryPage() {
     finally { setPacksLoading(false); }
   };
 
-  const savePack = async (options: { name?: string; replace?: boolean } = {}) => {
-    if (!editItem) return;
+  /** True when the pack reached the server; false when it needs an answer first. */
+  const savePack = async (options: { name?: string; replace?: boolean } = {}): Promise<boolean> => {
+    if (!editItem) return false;
     const name = (options.name ?? packForm.name).trim();
     const qty = parseFloat(packForm.qty);
-    if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return; }
-    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return; }
+    if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return false; }
+    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return false; }
     setPackSaving(true);
     setPacksError('');
     try {
@@ -331,12 +348,26 @@ export default function InventoryPage() {
       setPackClash(null);
       // The row shows an item's packs, so it has to hear about a new one.
       void loadItems();
+      return true;
     } catch (e) {
       const clash = packNameConflict(e);
       if (clash) { setPackClash(clash); } else { setPacksError((e as Error).message); }
+      return false;
     }
     finally { setPackSaving(false); }
   };
+
+  /*
+   * Owner, 2026-09-09: "i dont see the previoulsly added pack size."
+   *
+   * A pack typed into the boxes but never pushed through "Add pack" was
+   * dropped the moment the form closed — silently, and with the item saved
+   * around it, so the only evidence was a pack that was not there later. The
+   * boxes look like part of the form, so filling them and pressing the form's
+   * own save button is the obvious thing to do. Treat it as meant.
+   */
+  const packFormHasEntry = () =>
+    packForm.name.trim() !== '' || packForm.qty.trim() !== '';
 
   const removePack = async (id: number) => {
     if (!editItem) return;
@@ -445,6 +476,19 @@ export default function InventoryPage() {
     const unit = editForm.unit.trim();
     if (!name) { setEditError('Name is required.'); return; }
     if (!unit) { setEditError('Unit is required — what you count this in.'); return; }
+
+    // A pack left sitting in the boxes is a pack that was meant. Save it
+    // first, and stop here if it needs an answer — the item is still open,
+    // so nothing is lost while the question is on screen.
+    if (packFormHasEntry()) {
+      setEditSaving(true);
+      const saved = await savePack();
+      setEditSaving(false);
+      if (!saved) {
+        setEditError('The pack above has not been added yet. Sort that out and save again.');
+        return;
+      }
+    }
 
     setEditSaving(true);
     setEditError('');
@@ -2148,6 +2192,18 @@ export default function InventoryPage() {
             <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
             <Btn disabled={createSaving} onClick={() => {
               if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
+              // A pack left in the boxes is a pack that was meant. Take it now,
+              // or stop and let the question above it be answered.
+              let packsToWrite = createPacks;
+              if (createPackFormHasEntry()) {
+                const next = addCreatePack();
+                if (!next) {
+                  setCreateError('The pack above has not been added yet. Sort that out and press Create again.');
+                  return;
+                }
+                packsToWrite = next;
+              }
+              setCreateError('');
               setCreateSaving(true);
               void createInventoryItem({
                 name: createForm.name.trim(),
@@ -2177,7 +2233,7 @@ export default function InventoryPage() {
                 // them on. One at a time: the item is already made, so a pack
                 // that fails is a thing to report, not a reason to lose the rest.
                 const failed: string[] = [];
-                for (const p of createPacks) {
+                for (const p of packsToWrite) {
                   try {
                     await createPurchaseUnit(res.item.id, {
                       name: p.name,

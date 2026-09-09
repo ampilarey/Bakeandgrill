@@ -77,13 +77,14 @@ const createPurchaseUnit = vi.fn();
 const deletePurchaseUnit = vi.fn();
 const fetchInventoryItems = vi.fn();
 const createInventoryItem = vi.fn();
+const updateInventoryItem = vi.fn().mockResolvedValue({ item: {} });
 
 vi.mock('../api', () => ({
   getPurchaseUnits: (...a: unknown[]) => getPurchaseUnits(...a),
   createPurchaseUnit: (...a: unknown[]) => createPurchaseUnit(...a),
   deletePurchaseUnit: (...a: unknown[]) => deletePurchaseUnit(...a),
   fetchInventoryItems: (...a: unknown[]) => fetchInventoryItems(...a),
-  updateInventoryItem: vi.fn(),
+  updateInventoryItem: (...a: unknown[]) => updateInventoryItem(...a),
   fetchLowStockItems: vi.fn().mockResolvedValue({ data: [] }),
   fetchInventoryCategories: vi.fn().mockResolvedValue({ categories: [{ id: 3, name: 'Dry store' }] }),
   fetchSuppliers: vi.fn().mockResolvedValue({ data: [] }),
@@ -297,6 +298,34 @@ describe('Pack sizes inside Edit item', () => {
    * you buy and a pack is what size: both belong on the screen you are on when
    * you set the item up.
    */
+  it('takes a pack still sitting in the boxes when Save changes is pressed', async () => {
+    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 6, name: '100 ml tin', base_units: 100 } });
+    const section = await openEditor();
+    await within(section).findByTestId('pack-row-7');
+
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '100 ml tin' } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '100' } });
+    // Straight to the form's own save, without "Add pack".
+    fireEvent.click(screen.getByText('Save changes'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(21, {
+      name: '100 ml tin',
+      base_units: 100,
+    }));
+    await waitFor(() => expect(updateInventoryItem).toHaveBeenCalled());
+  });
+
+  it('holds the item open when the leftover pack cannot be saved', async () => {
+    const section = await openEditor();
+    await within(section).findByTestId('pack-row-7');
+
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Carton' } });
+    fireEvent.click(screen.getByText('Save changes'));
+
+    expect(await screen.findByText(/has not been added yet/)).toBeInTheDocument();
+    expect(updateInventoryItem).not.toHaveBeenCalled();
+  });
+
   it('carries the brand pictures beside the pack sizes', async () => {
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'ml',
@@ -497,6 +526,48 @@ describe('Pack sizes for an item that does not exist yet', () => {
 
     expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
     expect(screen.getByText(/No packs yet/)).toBeInTheDocument();
+  });
+
+  /*
+   * Owner, 2026-09-09: "i dont see the previoulsly added pack size."
+   *
+   * The boxes look like part of the form, so filling them and pressing the
+   * form's own save button is the obvious move — and it used to throw the
+   * pack away, with the item saved around it, leaving no trace but a pack
+   * that was not there afterwards.
+   */
+  it('takes a pack still sitting in the boxes when Create is pressed', async () => {
+    await openCreate();
+    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: '500g pack' } });
+    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: '500' } });
+    // Deliberately not pressing "Add pack".
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(
+      31, { name: '500g pack', base_units: 500 },
+    ));
+  });
+
+  it('takes the half-typed pack as well as the ones already listed', async () => {
+    await openCreate();
+    addPack('100g pack', '100');
+    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: '500g pack' } });
+    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: '500' } });
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledTimes(2));
+    expect(createPurchaseUnit).toHaveBeenNthCalledWith(2, 31, { name: '500g pack', base_units: 500 });
+  });
+
+  it('stops rather than creating the item when the leftover pack is unusable', async () => {
+    await openCreate();
+    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: 'Carton' } });
+    // No amount, so there is nothing to save it as.
+    fireEvent.click(screen.getByText('Create'));
+
+    expect(screen.getByText('Say how much is in it.')).toBeInTheDocument();
+    expect(screen.getByText(/has not been added yet/)).toBeInTheDocument();
+    expect(createInventoryItem).not.toHaveBeenCalled();
   });
 
   it('offers the camera for a pack barcode, the way Edit does', async () => {

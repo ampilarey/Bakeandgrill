@@ -108,8 +108,12 @@ export function BrandPhotos({ itemId, itemName, canManage, knownBrands = [] }: {
       <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
         Brand photos
       </p>
+      {/* Owner, 2026-09-09: "how to add more than one brand?" — there was one
+          brand box and no sign it repeated, so it read as a limit of one. */}
       <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px' }}>
-        One picture per brand, so whoever is at the shop can see which packet to pick up. It shows on the buying list and on a purchase order line.
+        As many brands as you buy — one picture each. Name the brand, take the picture,
+        and the boxes clear for the next one. They show on the buying list and on a
+        purchase order line, so whoever is at the shop can see which packet to pick up.
       </p>
 
       {error && <ErrorMsg message={error} />}
@@ -121,7 +125,7 @@ export function BrandPhotos({ itemId, itemName, canManage, knownBrands = [] }: {
               No brand pictures yet.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }} data-testid="brand-photo-list">
               {photos.map((p) => (
                 <div key={p.id} style={{ width: 96 }} data-testid={`brand-photo-${p.id}`}>
                   <BrandThumb photo={p} size={96} onClick={() => setZoom(p)} />
