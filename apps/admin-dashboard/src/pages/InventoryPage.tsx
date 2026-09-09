@@ -193,6 +193,40 @@ export default function InventoryPage() {
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
+  /*
+   * Packs typed before the item exists. Owner, 2026-09-09: "Add Inventory SKU,
+   * no add pack" — asked while entering turmeric that comes in 100g and 500g.
+   *
+   * A pack row belongs to an inventory item id and there is none until Create
+   * returns, so these are held here and written the moment there is. Held as
+   * resolved base units: a draft has no id for the server to measure "a case
+   * is 12 of the 500g packs" against, and the server only stores the number
+   * anyway.
+   */
+  const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string }[]>([]);
+  const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '' });
+  const [createPackError, setCreatePackError] = useState('');
+
+  const addCreatePack = () => {
+    const name = createPackForm.name.trim();
+    const qty = parseFloat(createPackForm.qty);
+    if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return; }
+    if (createPacks.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      // The same guard the server applies once the item is real: a name in use
+      // is either a correction or a second size, and only the typist knows.
+      setCreatePackError(`There is already a pack called ${name}. Give this one its own name.`);
+      return;
+    }
+    const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
+    setCreatePacks((p) => [...p, {
+      name,
+      baseUnits: of ? qty * of.baseUnits : qty,
+      barcode: createPackForm.barcode.trim(),
+    }]);
+    setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+    setCreatePackError('');
+  };
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   /*
    * Pack sizes: how an item is bought, as opposed to how it is counted. Eggs
@@ -1038,6 +1072,9 @@ export default function InventoryPage() {
                   name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '', gst: false,
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
+                setCreatePacks([]);
+                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+                setCreatePackError('');
                 if (cats.length === 0) void loadCats();
                 if (suppliers.length === 0) void loadSuppliers();
               }}>
@@ -1814,16 +1851,121 @@ export default function InventoryPage() {
                 placeholder="sachet, tray, bottle…"
                 hint="Whatever you type here becomes this item's unit."
               />
-              {/* Owner, 2026-09-09: "no Pack sizes in add item in inventory".
-                  A pack hangs off an item id, which does not exist until this
-                  saves — so say where it went rather than leaving a gap. */}
               <p data-testid="new-item-pack-hint" style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '6px 0 0', lineHeight: 1.45 }}>
                 Count in the smallest unit you use — <strong style={{ color: 'var(--color-text)' }}>g</strong> for
                 a powder, <strong style={{ color: 'var(--color-text)' }}>ml</strong> for a liquid,
-                <strong style={{ color: 'var(--color-text)' }}> piece</strong> for a bun. The sizes you buy
-                — a 100g pack, a 500g pack, a case — go in <strong style={{ color: 'var(--color-text)' }}>Pack
-                sizes</strong>, which opens as soon as you press Create.
+                <strong style={{ color: 'var(--color-text)' }}> piece</strong> for a bun. The sizes you buy go
+                in Pack sizes below.
               </p>
+            </div>
+
+            {/* ── Pack sizes, before the item exists ───────────────────────
+                Owner, 2026-09-09: "Add Inventory SKU, no add pack." These
+                cannot be saved yet — a pack row needs an item id — so they
+                are collected here and written the instant Create returns one.
+
+                Worth the extra state: somebody who cannot enter 100g and 500g
+                at the moment they are adding turmeric adds two items instead,
+                and from then on the stock is split, the recipe points at one
+                of them, and the per-gram comparison has nothing to compare. */}
+            <div
+              data-testid="new-item-pack-sizes"
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '12px 14px', background: 'var(--color-bg)',
+              }}
+            >
+              <p style={{ ...S.label, margin: '0 0 4px' }}>Pack sizes — how you buy this</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{createForm.unit.trim() || 'the unit above'}</strong>.
+                Add the containers you actually buy — a 500g pack, a case — and a purchase order can say
+                “2 packs” while the shelf gains the right number. These save with the item.
+              </p>
+              {createPackError && (
+                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{createPackError}</p>
+              )}
+
+              {createPacks.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                  No packs yet — leave it empty if this is bought loose.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                  {createPacks.map((p, i) => (
+                    <div key={p.name} data-testid={`new-pack-row-${i}`} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                      border: '1px solid var(--color-border)', borderRadius: 10,
+                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
+                    }}>
+                      <span style={{ fontSize: 13 }}>
+                        <strong>{p.name}</strong>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>
+                          {' '}= {p.baseUnits} {createForm.unit.trim()}
+                        </span>
+                        {p.barcode && (
+                          <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            ⌷ {p.barcode}
+                          </span>
+                        )}
+                      </span>
+                      <Btn
+                        small
+                        variant="ghost"
+                        aria-label={`Remove ${p.name}`}
+                        onClick={() => setCreatePacks((rows) => rows.filter((_, j) => j !== i))}
+                      >
+                        Remove
+                      </Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <input
+                  aria-label="New item pack name"
+                  placeholder="Name, e.g. 500g pack or Case"
+                  value={createPackForm.name}
+                  onChange={(e) => setCreatePackForm((f) => ({ ...f, name: e.target.value }))}
+                  style={S.input}
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
+                  <input
+                    aria-label="Amount in the new item pack"
+                    type="number"
+                    min="0.000001"
+                    step="any"
+                    placeholder="500"
+                    value={createPackForm.qty}
+                    onChange={(e) => setCreatePackForm((f) => ({ ...f, qty: e.target.value }))}
+                    style={{ ...S.input, width: 100 }}
+                  />
+                  {/* "A case is 12 of the 500g packs" — described against a pack
+                      already added, and multiplied out here, because a draft
+                      has no id for the server to resolve against. */}
+                  <select
+                    aria-label="New item pack measured in"
+                    value={createPackForm.ofIndex}
+                    onChange={(e) => setCreatePackForm((f) => ({ ...f, ofIndex: e.target.value }))}
+                    style={{ ...S.select, width: 'auto', minWidth: 130 }}
+                  >
+                    <option value="">{createForm.unit.trim() || 'unit'}</option>
+                    {createPacks.map((p, i) => <option key={p.name} value={String(i)}>{p.name.toLowerCase()}</option>)}
+                  </select>
+                  <Btn small onClick={addCreatePack}>Add pack</Btn>
+                </div>
+                <input
+                  aria-label="New item pack barcode"
+                  placeholder="Barcode on the pack (optional)"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={createPackForm.barcode}
+                  onChange={(e) => setCreatePackForm((f) => ({ ...f, barcode: e.target.value }))}
+                  style={S.input}
+                />
+              </div>
             </div>
             <label>
               <span style={S.label}>Opening stock</span>
@@ -1901,16 +2043,30 @@ export default function InventoryPage() {
                 storage_location: createForm.storage_location.trim() || undefined,
                 notes: createForm.notes.trim() || undefined,
                 gst_rate_bp: createForm.gst ? 800 : 0,
-              }).then((res) => {
+              }).then(async (res) => {
+                // The packs typed above, now that there is an item to hang
+                // them on. One at a time: the item is already made, so a pack
+                // that fails is a thing to report, not a reason to lose the rest.
+                const failed: string[] = [];
+                for (const p of createPacks) {
+                  try {
+                    await createPurchaseUnit(res.item.id, {
+                      name: p.name,
+                      base_units: p.baseUnits,
+                      ...(p.barcode ? { barcode: p.barcode } : {}),
+                    });
+                  } catch { failed.push(p.name); }
+                }
                 setCreateOpen(false);
+                setCreatePacks([]);
+                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+                setCreatePackError('');
                 void loadItems();
-                /*
-                 * Straight into Edit, because that is where Pack sizes live and
-                 * a new item is exactly when you know them. Turmeric is one item
-                 * in grams with a 100g and a 500g pack, not three items — but
-                 * only if the pack editor is in front of you at the time.
-                 */
-                openEdit(res.item);
+                if (failed.length > 0) {
+                  // The editor is where a missed pack gets added by hand.
+                  openEdit(res.item);
+                  setPacksError(`${res.item.name} was created, but ${failed.join(', ')} did not save. Add it here.`);
+                }
               }).catch((e: Error) => setCreateError(e.message)).finally(() => setCreateSaving(false));
             }}>{createSaving ? 'Saving…' : 'Create'}</Btn>
           </ModalActions>

@@ -296,14 +296,15 @@ describe('Pack sizes inside Edit item', () => {
 });
 
 /*
- * Owner, 2026-09-09: "no Pack sizes in add item in inventory", asked while
- * working out how to enter turmeric powder that comes in 100g and 500g.
+ * Owner, 2026-09-09: "Add Inventory SKU, no add pack" — asked while working
+ * out how to enter turmeric powder that comes in 100g and 500g.
  *
- * A pack belongs to an item id, and a new item has none until it saves — so
- * the create form genuinely cannot carry the section. What it can do is say
- * where the section went and then put you in front of it, instead of leaving
- * somebody to find the row again in a list of hundreds. Get that wrong and the
- * answer to "how do I enter 100g and 500g" becomes three separate items.
+ * A pack row belongs to an item id, so nothing can be saved while the create
+ * form is open. The packs are collected as drafts and written the instant
+ * Create returns an id. Without that, somebody who cannot enter 100g and 500g
+ * at the moment they are adding turmeric adds two items instead — and from
+ * then on the stock is split, the recipe points at one of them, and the
+ * per-gram comparison Cost & usage exists to make has nothing to compare.
  */
 describe('Pack sizes for an item that does not exist yet', () => {
   const turmeric = {
@@ -319,34 +320,118 @@ describe('Pack sizes for an item that does not exist yet', () => {
       meta: { current_page: 1, last_page: 1, total: 1 },
     });
     createInventoryItem.mockResolvedValue({ item: turmeric });
+    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 1, name: 'x', base_units: 1 } });
   });
 
-  async function openCreate() {
+  async function openCreate(unit?: string) {
     renderPage();
     fireEvent.click(await screen.findByText('+ Add Item'));
+    fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Turmeric Powder' } });
+    if (unit) fireEvent.change(screen.getByLabelText('New item unit'), { target: { value: unit } });
+    return screen.getByTestId('new-item-pack-sizes');
   }
 
-  it('says on the create form where the pack sizes are', async () => {
-    await openCreate();
+  function addPack(name: string, qty: string, measuredIn?: string) {
+    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: name } });
+    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: qty } });
+    if (measuredIn) {
+      fireEvent.change(screen.getByLabelText('New item pack measured in'), { target: { value: measuredIn } });
+    }
+    fireEvent.click(screen.getByText('Add pack'));
+  }
 
-    const hint = screen.getByTestId('new-item-pack-hint');
-    expect(hint.textContent).toMatch(/Pack\s*sizes/);
-    expect(hint.textContent).toMatch(/opens as soon as you press Create/);
+  it('is a named section on the create form, not a thing you find later', async () => {
+    const section = await openCreate();
+
+    expect(within(section).getByText(/Pack sizes — how you buy this/)).toBeInTheDocument();
+    expect(within(section).getByText(/No packs yet/)).toBeInTheDocument();
   });
 
-  it('opens the pack editor on the item it just made', async () => {
+  it('holds the sizes as drafts, then writes them against the new item', async () => {
     await openCreate();
+    addPack('100g pack', '100');
+    addPack('500g pack', '500');
 
-    fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Turmeric Powder' } });
+    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('100g pack');
+    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('500g pack');
+    // Nothing is saved while there is no item to save it against.
+    expect(createPurchaseUnit).not.toHaveBeenCalled();
+
     fireEvent.click(screen.getByText('Create'));
 
-    await waitFor(() => expect(createInventoryItem).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Turmeric Powder' }),
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledTimes(2));
+    expect(createPurchaseUnit).toHaveBeenNthCalledWith(1, 31, { name: '100g pack', base_units: 100 });
+    expect(createPurchaseUnit).toHaveBeenNthCalledWith(2, 31, { name: '500g pack', base_units: 500 });
+  });
+
+  it('multiplies a carton out against a pack already added', async () => {
+    // "A case is 12 of the 500g packs" — a draft has no id for the server to
+    // resolve against, so the arithmetic happens here.
+    await openCreate();
+    addPack('500g pack', '500');
+    addPack('Carton', '12', '0');
+
+    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('6000');
+
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledTimes(2));
+    expect(createPurchaseUnit).toHaveBeenNthCalledWith(2, 31, { name: 'Carton', base_units: 6000 });
+  });
+
+  it('carries a pack barcode through', async () => {
+    await openCreate();
+    fireEvent.change(screen.getByLabelText('New item pack barcode'), { target: { value: '8901234' } });
+    addPack('500g pack', '500');
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(
+      31, { name: '500g pack', base_units: 500, barcode: '8901234' },
     ));
-    const section = await screen.findByTestId('pack-sizes-section');
-    // The new item's own packs, counted in the new item's own unit.
+  });
+
+  it('refuses a second pack under a name already on the list', async () => {
+    await openCreate();
+    addPack('500g pack', '500');
+    addPack('500G Pack', '250');
+
+    expect(screen.getByText(/There is already a pack called 500G Pack/)).toBeInTheDocument();
+    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+  });
+
+  it('refuses a pack with no amount rather than storing a zero', async () => {
+    await openCreate();
+    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: 'Carton' } });
+    fireEvent.click(screen.getByText('Add pack'));
+
+    expect(screen.getByText('Say how much is in it.')).toBeInTheDocument();
+    expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
+  });
+
+  it('takes a draft back off the list', async () => {
+    await openCreate();
+    addPack('500g pack', '500');
+
+    fireEvent.click(screen.getByLabelText('Remove 500g pack'));
+
+    expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
+    expect(screen.getByText(/No packs yet/)).toBeInTheDocument();
+  });
+
+  it('says which pack did not save, and opens the item so it can be added', async () => {
+    // The item is already made by then, so losing the rest silently would be
+    // the worst of both: an item with some of its sizes and no word of it.
+    createPurchaseUnit
+      .mockResolvedValueOnce({ purchase_unit: { id: 1, name: '100g pack', base_units: 100 } })
+      .mockRejectedValueOnce(new Error('nope'));
+    await openCreate();
+    addPack('100g pack', '100');
+    addPack('500g pack', '500');
+
+    fireEvent.click(screen.getByText('Create'));
+
+    expect(await screen.findByText(/500g pack did not save/)).toBeInTheDocument();
+    expect(await screen.findByTestId('pack-sizes-section')).toBeInTheDocument();
     await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(31));
-    expect(section.textContent).toMatch(/Stock is counted in\s*g/);
-    expect(within(section).getByText(/No packs yet/)).toBeInTheDocument();
   });
 });
