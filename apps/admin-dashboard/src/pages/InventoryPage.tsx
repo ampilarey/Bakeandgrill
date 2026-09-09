@@ -25,8 +25,9 @@ import {
   getUnitConversions, createUnitConversion, deleteUnitConversion,
   getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
-  fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem,
+  fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem, deleteInventoryItem,
   getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit, packNameConflict,
+  itemNameConflict, type ItemNameConflict,
   type PackNameConflict,
   createSupplier,
   type InventoryItem, type InventoryCategory, type UnitConversion,
@@ -193,6 +194,12 @@ export default function InventoryPage() {
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState('');
+  /*
+   * Owner, 2026-09-09: "why 2 items in same name" — two Ghee rows, one with
+   * pack sizes and one without, because the pack editor could not be reached
+   * from this form and a second item looked like the way to get one.
+   */
+  const [nameClash, setNameClash] = useState<ItemNameConflict | null>(null);
   /*
    * Packs typed before the item exists. Owner, 2026-09-09: "Add Inventory SKU,
    * no add pack" — asked while entering turmeric that comes in 100g and 500g.
@@ -438,6 +445,7 @@ export default function InventoryPage() {
   const [editForm, setEditForm] = useState({
     name: '', unit: '', sku: '', barcode: '', inventory_category_id: '', preferred_supplier_id: '',
     reorder_point: '', lead_days: '', cover_days: '', storage_location: '', notes: '', gst: false,
+    active: true,
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -467,7 +475,109 @@ export default function InventoryPage() {
       storage_location: item.storage_location ?? '',
       notes: item.notes ?? '',
       gst: (item.gst_rate_bp ?? 0) > 0,
+      active: item.is_active !== false,
     });
+  };
+
+  /*
+   * Owner, 2026-09-09: "how to del an item in inventory." There was no way at
+   * all. There are two answers and they are not the same one:
+   *
+   *   Delete is for an item that never happened — a name typed badly, nothing
+   *   behind it. The server refuses anything else, because those rows are the
+   *   purchase history and the cost of goods.
+   *
+   *   Archive is for an item you have stopped buying. It leaves every figure
+   *   already reported exactly where it is.
+   */
+  /*
+   * Making the item, and the packs typed alongside it. A named function
+   * because the duplicate-name question has to be able to run it again with
+   * the answer attached.
+   */
+  const saveNewItem = (allowDuplicateName = false) => {
+              if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
+              // A pack left in the boxes is a pack that was meant. Take it now,
+              // or stop and let the question above it be answered.
+              let packsToWrite = createPacks;
+              if (createPackFormHasEntry()) {
+                const next = addCreatePack();
+                if (!next) {
+                  setCreateError('The pack above has not been added yet. Sort that out and press Create again.');
+                  return;
+                }
+                packsToWrite = next;
+              }
+              setCreateError('');
+              setNameClash(null);
+              setCreateSaving(true);
+              void createInventoryItem({
+                ...(allowDuplicateName ? { allow_duplicate_name: true } : {}),
+                name: createForm.name.trim(),
+                sku: createForm.sku.trim() || undefined,
+                barcode: createForm.barcode.trim() || undefined,
+                unit: createForm.unit.trim(),
+                current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
+                reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
+                lead_days: (() => {
+                  if (createForm.lead_days === '') return undefined;
+                  const n = parseInt(createForm.lead_days, 10);
+                  return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
+                })(),
+                cover_days: (() => {
+                  if (createForm.cover_days === '') return undefined;
+                  const n = parseInt(createForm.cover_days, 10);
+                  return Number.isFinite(n) ? Math.min(90, Math.max(1, n)) : undefined;
+                })(),
+                unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
+                inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
+                preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
+                storage_location: createForm.storage_location.trim() || undefined,
+                notes: createForm.notes.trim() || undefined,
+                gst_rate_bp: createForm.gst ? 800 : 0,
+              }).then(async (res) => {
+                // The packs typed above, now that there is an item to hang
+                // them on. One at a time: the item is already made, so a pack
+                // that fails is a thing to report, not a reason to lose the rest.
+                const failed: string[] = [];
+                for (const p of packsToWrite) {
+                  try {
+                    await createPurchaseUnit(res.item.id, {
+                      name: p.name,
+                      base_units: p.baseUnits,
+                      ...(p.barcode ? { barcode: p.barcode } : {}),
+                    });
+                  } catch { failed.push(p.name); }
+                }
+                setCreateOpen(false);
+                setCreatePacks([]);
+                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+                setCreatePackError('');
+                setCreatePackClash(null);
+                void loadItems();
+                if (failed.length > 0) {
+                  // The editor is where a missed pack gets added by hand.
+                  openEdit(res.item);
+                  setPacksError(`${res.item.name} was created, but ${failed.join(', ')} did not save. Add it here.`);
+                }
+              }).catch((e: Error) => {
+                const clash = itemNameConflict(e);
+                if (clash) setNameClash(clash); else setCreateError(e.message);
+              }).finally(() => setCreateSaving(false));
+              };
+
+  const removeItem = async () => {
+    if (!editItem) return;
+    if (!window.confirm(`Delete ${editItem.name}? This cannot be undone.`)) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await deleteInventoryItem(editItem.id);
+      setEditItem(null);
+      void loadItems();
+      void loadLowStock();
+    } catch (e) { setEditError((e as Error).message); }
+    finally { setEditSaving(false); }
   };
 
   const saveEdit = async () => {
@@ -507,6 +617,7 @@ export default function InventoryPage() {
         storage_location: editForm.storage_location.trim() || null,
         notes: editForm.notes.trim() || null,
         gst_rate_bp: editForm.gst ? 800 : 0,
+        is_active: editForm.active,
       });
       setEditItem(null);
       void loadItems();
@@ -1156,6 +1267,7 @@ export default function InventoryPage() {
                 setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
                 setCreatePackError('');
                 setCreatePackClash(null);
+                setNameClash(null);
                 if (cats.length === 0) void loadCats();
                 if (suppliers.length === 0) void loadSuppliers();
               }}>
@@ -1233,6 +1345,7 @@ export default function InventoryPage() {
                             </div>
                           )}
                         </div>
+                        {item.is_active === false && <Badge color="gray">Archived</Badge>}
                         {isLow && <Badge color="red">Low</Badge>}
                       </div>
 
@@ -1317,6 +1430,10 @@ export default function InventoryPage() {
                     <tr key={item.id}>
                       <td style={{ ...TD, fontWeight: 600 }}>
                         {item.name}
+                        {/* Archived rows stay in the list so they can be found
+                            and brought back; the badge says why they read as
+                            stale everywhere else. */}
+                        {item.is_active === false && <> <Badge color="gray">Archived</Badge></>}
                         {packSummary(item) && (
                           <div style={{ fontWeight: 400, fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
                             Buys as {packSummary(item)}
@@ -1840,6 +1957,52 @@ export default function InventoryPage() {
                 onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
           </div>
+          {/* ── Stop using this item ─────────────────────────────────────
+              Owner, 2026-09-09: "how to del an item in inventory." Two
+              answers, and they are not interchangeable. Archiving keeps
+              every figure already reported; deleting is only ever right for
+              an item that never happened, and the server enforces that. */}
+          {canManage && (
+            <div
+              data-testid="item-retire"
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '12px 14px', background: 'var(--color-bg)', marginTop: 14,
+              }}
+            >
+              <p style={{ ...S.label, margin: '0 0 8px' }}>Stop using this item</p>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, marginBottom: 10 }}>
+                <input
+                  type="checkbox"
+                  aria-label="Archived"
+                  data-testid="item-archived"
+                  checked={!editForm.active}
+                  onChange={(e) => setEditForm((f) => ({ ...f, active: !e.target.checked }))}
+                  style={{ marginTop: 2 }}
+                />
+                <span>
+                  <strong>Archive it</strong> — for something you have stopped buying. It drops off the
+                  buying and stock screens, and every purchase, count and report it appears in stays
+                  exactly as it is. Untick to bring it back.
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.5 }}>
+                Delete is only for an item nothing has touched — one added by mistake. Anything with
+                stock on the shelf, a purchase, a count or a recipe behind it is refused, because
+                deleting it would take that history with it.
+              </p>
+              <Btn
+                small
+                variant="danger"
+                disabled={editSaving}
+                data-testid="item-delete"
+                onClick={() => void removeItem()}
+              >
+                Delete this item
+              </Btn>
+            </div>
+          )}
+
           <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '12px 0 0', lineHeight: 1.45 }}>
             Stock on hand is changed through Adjust Stock, so every movement is recorded.
             Unit cost is the average your purchases have paid.
@@ -2188,73 +2351,50 @@ export default function InventoryPage() {
               <input style={S.input} value={createForm.notes} onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))} />
             </label>
           </div>
+          {/* Owner, 2026-09-09: "why 2 items in same name". Both answers are
+              one click and neither is the default — a second thing that
+              happens to share a name is legitimate, and only the person
+              typing knows. Silently allowing it is what this replaces. */}
+          {nameClash && (
+            <div
+              data-testid="item-name-clash"
+              style={{
+                border: '1px solid var(--color-warning)', borderRadius: 10,
+                padding: '10px 12px', background: 'var(--color-bg)',
+                display: 'grid', gap: 8, marginTop: 14,
+              }}
+            >
+              <span style={{ fontSize: 13, color: 'var(--color-text)' }}>{nameClash.message}</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Btn
+                  small
+                  data-testid="item-clash-open-existing"
+                  onClick={() => {
+                    const found = items.find((i) => i.id === nameClash.existing.id);
+                    setNameClash(null);
+                    setCreateOpen(false);
+                    if (found) openEdit(found);
+                  }}
+                >
+                  Open “{nameClash.existing.name}” instead
+                </Btn>
+                <Btn
+                  small
+                  variant="secondary"
+                  disabled={createSaving}
+                  data-testid="item-clash-add-anyway"
+                  onClick={() => saveNewItem(true)}
+                >
+                  No, this is a different thing — add it
+                </Btn>
+                <Btn small variant="ghost" onClick={() => setNameClash(null)}>Cancel</Btn>
+              </div>
+            </div>
+          )}
+
           <ModalActions>
             <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
-            <Btn disabled={createSaving} onClick={() => {
-              if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
-              // A pack left in the boxes is a pack that was meant. Take it now,
-              // or stop and let the question above it be answered.
-              let packsToWrite = createPacks;
-              if (createPackFormHasEntry()) {
-                const next = addCreatePack();
-                if (!next) {
-                  setCreateError('The pack above has not been added yet. Sort that out and press Create again.');
-                  return;
-                }
-                packsToWrite = next;
-              }
-              setCreateError('');
-              setCreateSaving(true);
-              void createInventoryItem({
-                name: createForm.name.trim(),
-                sku: createForm.sku.trim() || undefined,
-                barcode: createForm.barcode.trim() || undefined,
-                unit: createForm.unit.trim(),
-                current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
-                reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
-                lead_days: (() => {
-                  if (createForm.lead_days === '') return undefined;
-                  const n = parseInt(createForm.lead_days, 10);
-                  return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
-                })(),
-                cover_days: (() => {
-                  if (createForm.cover_days === '') return undefined;
-                  const n = parseInt(createForm.cover_days, 10);
-                  return Number.isFinite(n) ? Math.min(90, Math.max(1, n)) : undefined;
-                })(),
-                unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
-                inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
-                preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
-                storage_location: createForm.storage_location.trim() || undefined,
-                notes: createForm.notes.trim() || undefined,
-                gst_rate_bp: createForm.gst ? 800 : 0,
-              }).then(async (res) => {
-                // The packs typed above, now that there is an item to hang
-                // them on. One at a time: the item is already made, so a pack
-                // that fails is a thing to report, not a reason to lose the rest.
-                const failed: string[] = [];
-                for (const p of packsToWrite) {
-                  try {
-                    await createPurchaseUnit(res.item.id, {
-                      name: p.name,
-                      base_units: p.baseUnits,
-                      ...(p.barcode ? { barcode: p.barcode } : {}),
-                    });
-                  } catch { failed.push(p.name); }
-                }
-                setCreateOpen(false);
-                setCreatePacks([]);
-                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
-                setCreatePackError('');
-                setCreatePackClash(null);
-                void loadItems();
-                if (failed.length > 0) {
-                  // The editor is where a missed pack gets added by hand.
-                  openEdit(res.item);
-                  setPacksError(`${res.item.name} was created, but ${failed.join(', ')} did not save. Add it here.`);
-                }
-              }).catch((e: Error) => setCreateError(e.message)).finally(() => setCreateSaving(false));
-            }}>{createSaving ? 'Saving…' : 'Create'}</Btn>
+            <Btn disabled={createSaving} onClick={() => saveNewItem()}>{createSaving ? 'Saving…' : 'Create'}</Btn>
           </ModalActions>
         </Modal>
       )}

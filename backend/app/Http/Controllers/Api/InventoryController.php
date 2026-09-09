@@ -23,6 +23,7 @@ use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class InventoryController extends Controller
@@ -154,9 +155,160 @@ class InventoryController extends Controller
 
     public function store(StoreInventoryItemRequest $request)
     {
-        $item = InventoryItem::create($request->validated());
+        /*
+         * Owner, 2026-09-09: "why 2 items in same name" — two Ghee rows, one
+         * with pack sizes and one without, because the pack editor could not
+         * be found from the create form and a second item looked like the way
+         * to get one. Nothing stopped it: SKU and barcode are unique, the name
+         * never was.
+         *
+         * Not blocked outright — only the person typing knows whether this is
+         * a second thing that happens to share a name — but not silent either,
+         * because a duplicate splits the stock count, splits the recipe link,
+         * and leaves the price comparison with nothing to compare.
+         */
+        $name = trim((string) $request->input('name'));
+        if (!$request->boolean('allow_duplicate_name')) {
+            $existing = InventoryItem::query()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])
+                ->first();
+
+            if ($existing !== null) {
+                return response()->json([
+                    'message' => sprintf(
+                        'There is already an item called "%s" (%s %s on hand%s). Adding a second one splits the stock count and the recipe link between them.',
+                        $existing->name,
+                        rtrim(rtrim(number_format((float) $existing->current_stock, 3, '.', ''), '0'), '.'),
+                        $existing->unit,
+                        $existing->is_active ? '' : ', archived',
+                    ),
+                    'conflict' => 'inventory_item_name_in_use',
+                    'existing' => [
+                        'id' => $existing->id,
+                        'name' => $existing->name,
+                        'unit' => $existing->unit,
+                        'current_stock' => (float) $existing->current_stock,
+                        'is_active' => (bool) $existing->is_active,
+                    ],
+                ], 409);
+            }
+        }
+
+        $item = InventoryItem::create($request->safe()->except('allow_duplicate_name'));
 
         return response()->json(['item' => $item], 201);
+    }
+
+    /**
+     * Tables that belong to an item rather than record something that happened
+     * to it. They go when it goes, and none of them is a reason to keep it.
+     */
+    private const OWNED_TABLES = [
+        'inventory_purchase_units',
+        'inventory_brand_photos',
+        'inventory_reorder_alerts',
+    ];
+
+    /** Table name → what it is, for somebody who has never seen the schema. */
+    private const USE_LABELS = [
+        'stock_movements' => 'stock movements',
+        'purchase_items' => 'purchase order lines',
+        'recipe_items' => 'recipes',
+        'purchase_request_items' => 'staff requests',
+        'supplier_price_history' => 'supplier prices',
+        'stock_count_items' => 'stock counts',
+        'kitchen_production_items' => 'kitchen production',
+        'invoice_items' => 'invoice lines',
+        'waste_logs' => 'waste records',
+    ];
+
+    /**
+     * What an item is caught up in, as table → how many rows.
+     *
+     * Read off the schema rather than a hand-written list: a table added later
+     * that points at inventory items is covered the day it exists, which a
+     * list of names in this file would not be. The cost is a column check per
+     * table, and this runs once, on a delete somebody asked for.
+     *
+     * @return array<string, int>
+     */
+    private function whatUsesItem(int $itemId): array
+    {
+        $used = [];
+
+        foreach (Schema::getTableListing() as $table) {
+            $table = str_contains($table, '.') ? substr((string) strrchr($table, '.'), 1) : $table;
+            if ($table === 'inventory_items' || in_array($table, self::OWNED_TABLES, true)) {
+                continue;
+            }
+            if (!Schema::hasColumn($table, 'inventory_item_id')) {
+                continue;
+            }
+            $count = DB::table($table)->where('inventory_item_id', $itemId)->count();
+            if ($count > 0) {
+                $used[$table] = $count;
+            }
+        }
+
+        return $used;
+    }
+
+    /**
+     * Delete an item, but only one that never happened.
+     *
+     * Owner, 2026-09-09: "how to del an item in inventory." There was no way
+     * at all, which is wrong for the case this exists to serve — a name typed
+     * badly five minutes ago, with nothing behind it.
+     *
+     * It stays wrong to offer it for an item that has been bought, counted or
+     * cooked with: those rows are the purchase history and the cost of goods,
+     * and deleting the item either destroys them or orphans them. That item
+     * gets archived instead, which is the honest version of "stop showing me
+     * this" — it keeps every figure that has already been reported.
+     */
+    public function destroy(Request $request, $id): JsonResponse
+    {
+        $item = InventoryItem::query()->findOrFail($id);
+
+        $used = $this->whatUsesItem((int) $item->id);
+        $onHand = (float) $item->current_stock;
+
+        if ($used !== [] || abs($onHand) > 0.000001) {
+            $reasons = [];
+            if (abs($onHand) > 0.000001) {
+                $reasons[] = sprintf('%s %s still on the shelf', rtrim(rtrim(number_format($onHand, 3, '.', ''), '0'), '.'), $item->unit);
+            }
+            foreach ($used as $table => $count) {
+                $reasons[] = sprintf('%d %s', $count, self::USE_LABELS[$table] ?? str_replace('_', ' ', $table));
+            }
+
+            return response()->json([
+                'message' => sprintf(
+                    '%s has %s, so deleting it would take that history with it. Archive it instead — it stops appearing on the buying and stock screens, and every figure already reported stays put.',
+                    $item->name,
+                    implode(', ', $reasons),
+                ),
+                'conflict' => 'inventory_item_in_use',
+                'used_by' => $used,
+                'stock_on_hand' => $onHand,
+            ], 409);
+        }
+
+        $name = $item->name;
+        // Packs and brand pictures are the item's own, and cascade with it.
+        $item->delete();
+
+        app(AuditLogService::class)->log(
+            'inventory.item_deleted',
+            'InventoryItem',
+            (int) $id,
+            ['name' => $name],
+            [],
+            [],
+            $request,
+        );
+
+        return response()->json(['deleted' => true]);
     }
 
     public function show(Request $request, $id)

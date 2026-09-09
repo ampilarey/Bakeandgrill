@@ -867,6 +867,8 @@ export async function submitStockCount(counts: StockCountEntry[]): Promise<{ adj
 export async function createInventoryItem(data: {
   name: string;
   unit: string;
+  /** Yes, add it even though an item already has this name. */
+  allow_duplicate_name?: boolean;
   sku?: string;
   barcode?: string;
   current_stock?: number;
@@ -886,6 +888,35 @@ export async function createInventoryItem(data: {
     body: JSON.stringify(data),
   });
   return { item: mapInventoryRow(res.item) };
+}
+
+/**
+ * Remove an inventory item outright.
+ *
+ * The server refuses anything with history behind it — 409, with a message
+ * naming what holds it — so this only ever succeeds on an item nothing has
+ * touched. Everything else gets archived instead.
+ */
+/**
+ * The server's answer when a new item's name is already in use. Owner,
+ * 2026-09-09: "why 2 items in same name" — two Ghee rows, one with pack
+ * sizes and one without. Not blocked, because only the person typing knows
+ * whether this is a second thing that happens to share a name; not silent,
+ * because a duplicate splits the stock count and the recipe link.
+ */
+export interface ItemNameConflict {
+  message: string;
+  conflict: 'inventory_item_name_in_use';
+  existing: { id: number; name: string; unit: string; current_stock: number; is_active: boolean };
+}
+
+export function itemNameConflict(error: unknown): ItemNameConflict | null {
+  const body = (error as { body?: unknown } | null)?.body as ItemNameConflict | undefined;
+  return body?.conflict === 'inventory_item_name_in_use' ? body : null;
+}
+
+export async function deleteInventoryItem(id: number): Promise<{ deleted: boolean }> {
+  return req(`/inventory/${id}`, { method: 'DELETE' });
 }
 
 export async function updateInventoryItem(

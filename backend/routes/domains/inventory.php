@@ -55,6 +55,8 @@ if (routes_domain_section_is_or_unset('inventory', 'staff', 'staff') && !routes_
         Route::post('/stock-counts/{id}/reopen', [App\Http\Controllers\Api\StockCountSessionController::class, 'reopen'])->whereNumber('id');
     });
     Route::patch('/inventory/{id}', [InventoryController::class, 'update'])->middleware('permission:inventory.manage');
+    // Refuses anything with history behind it; that item gets archived instead.
+    Route::delete('/inventory/{id}', [InventoryController::class, 'destroy'])->middleware('permission:inventory.manage');
     Route::post('/inventory/{id}/adjust', [InventoryController::class, 'adjust'])->middleware('permission:inventory.manage');
     Route::post('/inventory/reorder-alerts/{id}/resolve', [InventoryController::class, 'resolveReorderAlert'])
         ->middleware('permission:inventory.manage')

@@ -17,6 +17,8 @@ class StoreInventoryItemRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            // Answers the "there is already an item called Ghee" question.
+            'allow_duplicate_name' => 'nullable|boolean',
             'sku' => 'nullable|string|max:100|unique:inventory_items,sku',
             'barcode' => 'nullable|string|max:64|unique:inventory_items,barcode',
             'unit' => 'required|string|max:50',
