@@ -40,9 +40,10 @@ class InventoryBrandPhoto extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-    public function url(): string
+    /** Null for a brand somebody has written down but not photographed yet. */
+    public function url(): ?string
     {
-        return Storage::disk('public')->url($this->file_path);
+        return $this->file_path === null ? null : Storage::disk('public')->url($this->file_path);
     }
 
     /** @return array<string, mixed> */

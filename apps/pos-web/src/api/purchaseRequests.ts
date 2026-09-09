@@ -23,7 +23,7 @@ export type PosPurchaseRequestItem = {
    * A picture of each brand this item has been bought as. Owner, 2026-09-09:
    * a brand name means nothing when you are looking at a shelf of tins.
    */
-  brand_photos?: { id: number; brand: string; url: string; note: string | null }[];
+  brand_photos?: { id: number; brand: string; url: string | null; note: string | null }[];
 };
 
 export type PosPurchaseRequest = {

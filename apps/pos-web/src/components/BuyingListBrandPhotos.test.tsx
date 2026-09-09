@@ -31,6 +31,7 @@ vi.mock("../api", () => ({
         brand_photos: [
           { id: 1, brand: "Sunrise", url: "https://cdn.test/sunrise.jpg", note: null },
           { id: 2, brand: "Royal", url: "https://cdn.test/royal.jpg", note: null },
+          { id: 3, brand: "GRB", url: null, note: null },
         ],
       }, {
         id: 11,
@@ -94,6 +95,18 @@ describe("Brand pictures on the buying list", () => {
     await waitFor(() => expect(markBought).toHaveBeenCalled());
     const [, , payload] = markBought.mock.calls[0] as [number, number, { brand?: string }];
     expect(payload.brand).toBe("Royal");
+  });
+
+  it("leaves out a brand nobody has photographed", async () => {
+    // Owner, 2026-09-09: "photo is optional". A tile with nothing in it is
+    // worse than no tile on a strip meant to be recognised at arm's length.
+    render(<AssignedBuyingListPanel onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText("Egg")).toBeInTheDocument());
+
+    const strip = screen.getByTestId("brand-photos-10");
+    expect(within(strip).getAllByRole("img").map((i) => i.getAttribute("alt")))
+      .toEqual(["Sunrise", "Royal"]);
+    expect(screen.queryByLabelText(/GRB — tap/)).toBeNull();
   });
 
   it("shows no strip for an item that has no pictures", async () => {

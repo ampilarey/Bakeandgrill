@@ -185,13 +185,19 @@ class InventoryConfigController extends Controller
     }
 
     /**
-     * Distinct brands bought for an item, newest first.
+     * Brands to offer for an item: the ones bought before, newest first, then
+     * any written down against the item that have not been bought yet.
+     *
+     * Owner, 2026-09-09: "i want to save more than one brand, and photo is
+     * optional." A brand recorded on the item is worth offering immediately —
+     * waiting for a first purchase line to mention it means the person typing
+     * that very line gets no help.
      *
      * @return list<string>
      */
     private function recentBrands(int $itemId, int $limit = 25): array
     {
-        return DB::table('purchase_items')
+        $bought = DB::table('purchase_items')
             ->where('inventory_item_id', $itemId)
             ->whereNotNull('brand')
             ->where('brand', '!=', '')
@@ -201,6 +207,34 @@ class InventoryConfigController extends Controller
             ->limit($limit)
             ->pluck('brand')
             ->all();
+
+        $seen = [];
+        $out = [];
+        foreach ($bought as $brand) {
+            $key = \App\Models\InventoryBrandPhoto::keyFor($brand);
+            if ($key === '' || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $brand;
+        }
+
+        // Spelling follows what was bought where both exist, so the pick list
+        // matches the purchase history rather than quietly proposing a variant.
+        $registered = DB::table('inventory_brand_photos')
+            ->where('inventory_item_id', $itemId)
+            ->orderBy('brand')
+            ->pluck('brand', 'brand_key')
+            ->all();
+        foreach ($registered as $key => $brand) {
+            if ($key === '' || isset($seen[$key]) || count($out) >= $limit) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $brand;
+        }
+
+        return $out;
     }
 
     /** 210.000000 reads as 210, 0.500000 as 0.5. */

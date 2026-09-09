@@ -185,4 +185,90 @@ class InventoryBrandPhotoTest extends TestCase
 
         $this->assertSame(0, InventoryBrandPhoto::count());
     }
+
+    /*
+     * Owner, 2026-09-09: "i want to save more than one brand, and photo is
+     * optional." The brand is the fact worth recording; the picture is the
+     * extra that makes a shelf recognisable, and it can follow later.
+     */
+
+    private function saveBrand(string $brand): \Illuminate\Testing\TestResponse
+    {
+        return $this->post("/api/inventory/{$this->egg->id}/brand-photos", ['brand' => $brand]);
+    }
+
+    public function test_a_brand_can_be_written_down_with_no_picture(): void
+    {
+        $photo = $this->saveBrand('GRB')->assertCreated()->json('photo');
+
+        $this->assertSame('GRB', $photo['brand']);
+        $this->assertNull($photo['url']);
+        $this->assertNull(InventoryBrandPhoto::firstOrFail()->file_path);
+    }
+
+    public function test_several_brands_can_be_written_down_without_any_pictures(): void
+    {
+        $this->saveBrand('GRB')->assertCreated();
+        $this->saveBrand('Rani')->assertCreated();
+        $this->saveBrand('Everest')->assertCreated();
+
+        $photos = $this->getJson("/api/inventory/{$this->egg->id}/brand-photos")->assertOk()->json('photos');
+
+        $this->assertCount(3, $photos);
+        $this->assertEqualsCanonicalizing(['Everest', 'GRB', 'Rani'], array_column($photos, 'brand'));
+        $this->assertSame([null, null, null], array_column($photos, 'url'));
+    }
+
+    public function test_a_picture_can_follow_the_brand_later(): void
+    {
+        $id = $this->saveBrand('GRB')->assertCreated()->json('photo.id');
+
+        $this->upload('GRB')->assertCreated();
+
+        // Still one brand, now with a picture on it.
+        $this->assertSame(1, InventoryBrandPhoto::count());
+        $row = InventoryBrandPhoto::findOrFail($id);
+        $this->assertNotNull($row->file_path);
+        Storage::disk('public')->assertExists($row->file_path);
+    }
+
+    public function test_saving_the_brand_again_does_not_take_its_picture_down(): void
+    {
+        $this->upload('Sunrise')->assertCreated();
+        $path = InventoryBrandPhoto::firstOrFail()->file_path;
+
+        // Correcting the spelling, with no new file attached.
+        $this->saveBrand('SUNRISE')->assertCreated();
+
+        $row = InventoryBrandPhoto::firstOrFail();
+        $this->assertSame($path, $row->file_path);
+        $this->assertSame('SUNRISE', $row->brand);
+        Storage::disk('public')->assertExists($path);
+    }
+
+    public function test_a_brand_with_no_picture_can_be_removed(): void
+    {
+        $id = $this->saveBrand('GRB')->assertCreated()->json('photo.id');
+
+        $this->deleteJson("/api/inventory/{$this->egg->id}/brand-photos/{$id}")->assertOk();
+
+        $this->assertSame(0, InventoryBrandPhoto::count());
+    }
+
+    public function test_a_brand_still_needs_a_name(): void
+    {
+        $this->saveBrand('   ')->assertStatus(422)->assertJsonValidationErrors('brand');
+    }
+
+    public function test_a_brand_written_down_is_offered_on_the_buying_screen(): void
+    {
+        // The point of recording it: the pick list helps the very first line
+        // that mentions the brand, not only the ones after it.
+        $this->saveBrand('GRB')->assertCreated();
+
+        $res = $this->getJson("/api/inventory/{$this->egg->id}/purchase-units")->assertOk();
+
+        $this->assertContains('GRB', $res->json('brands'));
+        $this->assertNull($res->json('brand_photos.grb.url'));
+    }
 }

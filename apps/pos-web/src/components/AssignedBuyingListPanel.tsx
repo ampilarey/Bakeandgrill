@@ -32,6 +32,18 @@ function todayIso(): string {
   return local.toISOString().slice(0, 10);
 }
 
+/*
+ * Only the brands somebody has photographed. A brand can be recorded without
+ * a picture (owner, 2026-09-09: "photo is optional"), and a tile with nothing
+ * in it is worse than no tile — this strip exists to be recognised at arm's
+ * length in a shop. The typed brand box still takes any brand.
+ */
+type BrandShot = { id: number; brand: string; url: string; note: string | null };
+
+function shotsFor(item: PosPurchaseRequestItem): BrandShot[] {
+  return (item.brand_photos ?? []).filter((p): p is BrandShot => !!p.url);
+}
+
 function emptyDraft(): ItemDraft {
   return { actualQty: "", unitCostMvr: "", shopName: "", brand: "", notes: "", boughtOn: todayIso() };
 }
@@ -143,9 +155,9 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
                     of item to know which brand is this". Tapping one fills the
                     brand box, so the record of what was bought writes itself.
                   */}
-                  {(item.brand_photos ?? []).length > 0 && (
+                  {shotsFor(item).length > 0 && (
                     <div style={{ display: "flex", gap: space.s, overflowX: "auto", padding: `${space.s}px 0` }} data-testid={`brand-photos-${item.id}`}>
-                      {(item.brand_photos ?? []).map((p) => {
+                      {shotsFor(item).map((p) => {
                         const chosen = d.brand.trim().toLowerCase() === p.brand.trim().toLowerCase();
                         return (
                           <button

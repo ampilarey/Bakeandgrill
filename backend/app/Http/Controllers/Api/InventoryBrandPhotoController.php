@@ -43,10 +43,17 @@ class InventoryBrandPhotoController extends Controller
     {
         $item = InventoryItem::query()->findOrFail($itemId);
 
+        /*
+         * Owner, 2026-09-09: "i want to save more than one brand, and photo is
+         * optional." The brand is the fact worth recording — it reaches the
+         * buying screens as something to pick rather than spell — and the
+         * picture is the useful extra, added now or whenever somebody is next
+         * standing in front of the tin.
+         */
         $validated = $request->validate([
             'brand' => ['required', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:160'],
-            'photo' => ['required', 'file', 'image', 'max:5120', 'mimes:jpg,jpeg,png,webp'],
+            'photo' => ['nullable', 'file', 'image', 'max:5120', 'mimes:jpg,jpeg,png,webp'],
         ]);
 
         $brand = trim((string) $validated['brand']);
@@ -58,35 +65,43 @@ class InventoryBrandPhotoController extends Controller
             ], 422);
         }
 
-        $path = $request->file('photo')->store("brand-photos/{$item->id}", 'public');
+        $file = $request->file('photo');
+        $path = $file?->store("brand-photos/{$item->id}", 'public');
 
-        $photo = DB::transaction(function () use ($item, $brand, $key, $path, $validated, $request) {
+        $photo = DB::transaction(function () use ($item, $brand, $key, $path, $file, $validated, $request) {
             $existing = InventoryBrandPhoto::query()
                 ->where('inventory_item_id', $item->id)
                 ->where('brand_key', $key)
                 ->lockForUpdate()
                 ->first();
 
-            // Replacing: the old file is no use to anybody once the row moves on.
-            $oldPath = $existing?->file_path;
-
             $row = $existing ?? new InventoryBrandPhoto([
                 'inventory_item_id' => $item->id,
                 'brand_key' => $key,
             ]);
-            $row->fill([
+
+            // Only a new file replaces the old one. Saving a brand again to
+            // correct its spelling must not take the picture down with it.
+            $oldPath = $path === null ? null : $existing?->file_path;
+
+            $fields = [
                 'inventory_item_id' => $item->id,
                 'brand' => $brand,
                 'brand_key' => $key,
-                'file_path' => $path,
-                'original_filename' => $request->file('photo')->getClientOriginalName(),
-                'mime_type' => $request->file('photo')->getClientMimeType(),
-                'size' => $request->file('photo')->getSize(),
-                'note' => isset($validated['note']) && trim((string) $validated['note']) !== ''
-                    ? trim((string) $validated['note'])
-                    : null,
                 'uploaded_by' => $request->user()?->id,
-            ]);
+            ];
+            if (array_key_exists('note', $validated)) {
+                $fields['note'] = trim((string) $validated['note']) !== ''
+                    ? trim((string) $validated['note'])
+                    : null;
+            }
+            if ($path !== null && $file !== null) {
+                $fields['file_path'] = $path;
+                $fields['original_filename'] = $file->getClientOriginalName();
+                $fields['mime_type'] = $file->getClientMimeType();
+                $fields['size'] = $file->getSize();
+            }
+            $row->fill($fields);
             $row->save();
 
             if ($oldPath !== null && $oldPath !== $path) {
@@ -101,7 +116,7 @@ class InventoryBrandPhotoController extends Controller
             'InventoryBrandPhoto',
             $photo->id,
             [],
-            ['brand' => $brand],
+            ['brand' => $brand, 'has_photo' => $photo->file_path !== null],
             ['inventory_item_id' => $item->id, 'item_name' => $item->name],
             $request,
         );
@@ -119,7 +134,10 @@ class InventoryBrandPhotoController extends Controller
         $brand = $photo->brand;
         $path = $photo->file_path;
         $photo->delete();
-        Storage::disk('public')->delete($path);
+        // A brand that was written down but never photographed has no file.
+        if ($path !== null) {
+            Storage::disk('public')->delete($path);
+        }
 
         app(AuditLogService::class)->log(
             'inventory.brand_photo_removed',

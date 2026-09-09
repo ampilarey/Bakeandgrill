@@ -673,7 +673,8 @@ export interface LastPurchase {
 export interface BrandPhoto {
   id: number;
   brand: string;
-  url: string;
+  /** Null for a brand written down but not photographed yet. */
+  url: string | null;
   note: string | null;
   updated_at?: string | null;
 }
@@ -699,15 +700,22 @@ export async function getBrandPhotos(itemId: number): Promise<{ item_id: number;
   return req(`/inventory/${itemId}/brand-photos`);
 }
 
+/**
+ * Save a brand for an item, with or without a picture of it.
+ *
+ * No file means the brand is recorded on its own — it still reaches the
+ * buying screens as something to pick — and a picture already saved under
+ * that brand is left where it is.
+ */
 export async function uploadBrandPhoto(
   itemId: number,
   brand: string,
-  file: File,
+  file?: File | null,
   note?: string,
 ): Promise<{ photo: BrandPhoto }> {
   const form = new FormData();
   form.append('brand', brand);
-  form.append('photo', file);
+  if (file) form.append('photo', file);
   if (note) form.append('note', note);
   return req(`/inventory/${itemId}/brand-photos`, { method: 'POST', body: form });
 }
