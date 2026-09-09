@@ -653,9 +653,13 @@ class PurchaseRequestController extends Controller
             'expense:id,expense_number',
         ]);
 
-        $priceHints = app(PurchaseRequestPriceHintService::class)->hintsForItems(
-            $pr->items->pluck('inventory_item_id')->filter()->map(fn ($id) => (int) $id)->all(),
-        );
+        $inventoryIds = $pr->items->pluck('inventory_item_id')->filter()->map(fn ($id) => (int) $id)->all();
+
+        $priceHints = app(PurchaseRequestPriceHintService::class)->hintsForItems($inventoryIds);
+        // Pictures of the brands each line has been bought as, so whoever is
+        // standing in the shop can see which tin to reach for. Owner,
+        // 2026-09-09. Loaded once for the whole request, not per line.
+        $brandPhotos = \App\Models\InventoryBrandPhoto::forItems($inventoryIds);
 
         $payload = [
             'id' => $pr->id,
@@ -683,7 +687,7 @@ class PurchaseRequestController extends Controller
             ] : null,
             'created_at' => $pr->created_at?->toIso8601String(),
             'updated_at' => $pr->updated_at?->toIso8601String(),
-            'items' => $pr->items->map(fn (PurchaseRequestItem $i) => $this->formatItem($i, $user, $staffView, $priceHints))->values()->all(),
+            'items' => $pr->items->map(fn (PurchaseRequestItem $i) => $this->formatItem($i, $user, $staffView, $priceHints, $brandPhotos))->values()->all(),
         ];
 
         if (!$staffView) {
@@ -694,9 +698,17 @@ class PurchaseRequestController extends Controller
         return $payload;
     }
 
-    /** @param array<int, array<string, mixed>> $priceHints */
-    private function formatItem(PurchaseRequestItem $item, User $user, bool $staffView, array $priceHints = []): array
-    {
+    /**
+     * @param array<int, array<string, mixed>> $priceHints
+     * @param array<int, array<string, array<string, mixed>>> $brandPhotos item id → brand key → photo
+     */
+    private function formatItem(
+        PurchaseRequestItem $item,
+        User $user,
+        bool $staffView,
+        array $priceHints = [],
+        array $brandPhotos = [],
+    ): array {
         $payload = [
             'id' => $item->id,
             'inventory_item_id' => $item->inventory_item_id,
@@ -721,6 +733,13 @@ class PurchaseRequestController extends Controller
         if ($item->inventory_item_id && isset($priceHints[$item->inventory_item_id])) {
             $payload['price_hint'] = $priceHints[$item->inventory_item_id];
         }
+
+        // Every brand of this line that has a picture, newest spelling first,
+        // so the buyer can compare the shelf against what the kitchen buys.
+        $payload['brand'] = $item->brand;
+        $payload['brand_photos'] = $item->inventory_item_id
+            ? array_values($brandPhotos[$item->inventory_item_id] ?? [])
+            : [];
 
         if (!$staffView) {
             $payload['estimated_unit_cost_laar'] = $item->estimated_unit_cost_laar;

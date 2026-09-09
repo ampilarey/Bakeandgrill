@@ -426,6 +426,10 @@ class InventoryController extends Controller
             ],
             'prices' => $service->priceComparison($item, $days),
             'usage' => $service->usage($item, $days),
+            // A picture of each brand on the shelf, keyed by the brand folded
+            // to lower case, so the price table can show which tin a row is
+            // talking about (owner, 2026-09-09).
+            'brand_photos' => \App\Models\InventoryBrandPhoto::forItems([$item->id])[$item->id] ?? [],
         ]);
     }
 

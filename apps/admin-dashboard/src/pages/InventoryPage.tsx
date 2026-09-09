@@ -16,6 +16,8 @@ import { downloadCSV } from '../utils/csvExport';
 import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
 import { PickOrType } from '../components/PickOrType';
+import { BrandPhotos, BrandThumb } from '../components/BrandPhotos';
+import { brandKey } from '../api/operations';
 import { countScanIntoQtys } from '../utils/stockCountScan';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
@@ -2137,8 +2139,17 @@ export default function InventoryPage() {
                           style={row.is_cheapest ? { background: 'var(--color-success-bg)' } : undefined}
                         >
                           <td style={{ ...TD, fontWeight: 600 }}>
-                            {row.is_cheapest && <span title="Cheapest per unit">💰 </span>}
-                            {row.brand ?? <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>No brand</span>}
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              {/* The packet, where somebody has photographed it — a brand
+                                  name means nothing until you are holding the tin. */}
+                              {row.brand && costUsage.brand_photos?.[brandKey(row.brand)] && (
+                                <BrandThumb photo={costUsage.brand_photos[brandKey(row.brand)]} size={32} />
+                              )}
+                              <span>
+                                {row.is_cheapest && <span title="Cheapest per unit">💰 </span>}
+                                {row.brand ?? <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>No brand</span>}
+                              </span>
+                            </span>
                           </td>
                           <td style={TD}>
                             {row.pack_name
@@ -2166,6 +2177,19 @@ export default function InventoryPage() {
                   </p>
                 </div>
               )}
+
+              {/* The packets themselves, so a name on a price row becomes a
+                  thing you can recognise on a shelf. */}
+              <div style={{ marginBottom: 18 }}>
+                <BrandPhotos
+                  itemId={costUsage.item.id}
+                  itemName={costUsage.item.name}
+                  canManage={canManage}
+                  knownBrands={Array.from(new Set(
+                    costUsage.prices.map((p) => p.brand).filter((b): b is string => !!b),
+                  ))}
+                />
+              </div>
 
               {/* ── What you got through ───────────────────────────────── */}
               <p style={{ ...S.label, margin: '0 0 6px' }}>

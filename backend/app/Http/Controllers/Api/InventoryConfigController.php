@@ -107,6 +107,11 @@ class InventoryConfigController extends Controller
             // last week's spelling. Most recent first: what you bought last is
             // the likeliest thing you are buying now.
             'brands' => $this->recentBrands($itemId),
+            // A picture of each brand on the shelf, where somebody has added
+            // one (owner, 2026-09-09: "upload a pic of different brand of item
+            // to know which brand is this"). Keyed by brand so a screen can
+            // look one up without scanning the list.
+            'brand_photos' => \App\Models\InventoryBrandPhoto::forItems([$itemId])[$itemId] ?? [],
             // What this item was last bought as, so the buying screen can
             // open on it instead of on a blank line. Owner, 2026-09-07:
             // "will the system remember the latest price, brand… by default

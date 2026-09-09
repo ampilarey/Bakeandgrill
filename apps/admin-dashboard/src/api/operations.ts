@@ -666,14 +666,54 @@ export interface LastPurchase {
   supplier: string | null;
 }
 
+/**
+ * A picture of one brand on the shelf. Owner, 2026-09-09: "can i upload a
+ * pic of different brand of item to know which brand is this."
+ */
+export interface BrandPhoto {
+  id: number;
+  brand: string;
+  url: string;
+  note: string | null;
+  updated_at?: string | null;
+}
+
+/** Brand folded to lower case with spaces collapsed — the key photos come back under. */
+export function brandKey(brand: string | null | undefined): string {
+  return (brand ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 export async function getPurchaseUnits(itemId: number): Promise<{
   base_unit: string;
   purchase_units: InventoryPurchaseUnit[];
   /** Brands this item has been bought as, most recent first. */
   brands?: string[];
+  /** Keyed by the folded brand, for the ones that have a picture. */
+  brand_photos?: Record<string, BrandPhoto>;
   last_purchase?: LastPurchase | null;
 }> {
   return req(`/inventory/${itemId}/purchase-units`);
+}
+
+export async function getBrandPhotos(itemId: number): Promise<{ item_id: number; photos: BrandPhoto[] }> {
+  return req(`/inventory/${itemId}/brand-photos`);
+}
+
+export async function uploadBrandPhoto(
+  itemId: number,
+  brand: string,
+  file: File,
+  note?: string,
+): Promise<{ photo: BrandPhoto }> {
+  const form = new FormData();
+  form.append('brand', brand);
+  form.append('photo', file);
+  if (note) form.append('note', note);
+  return req(`/inventory/${itemId}/brand-photos`, { method: 'POST', body: form });
+}
+
+export async function deleteBrandPhoto(itemId: number, id: number): Promise<{ deleted: boolean }> {
+  return req(`/inventory/${itemId}/brand-photos/${id}`, { method: 'DELETE' });
 }
 
 /**
@@ -796,6 +836,8 @@ export interface InventoryCostUsage {
   };
   prices: InventoryPriceRow[];
   usage: InventoryUsage;
+  /** Keyed by the folded brand, for the ones that have a picture. */
+  brand_photos?: Record<string, BrandPhoto>;
 }
 
 export async function getInventoryCostUsage(id: number, days = 90): Promise<InventoryCostUsage> {

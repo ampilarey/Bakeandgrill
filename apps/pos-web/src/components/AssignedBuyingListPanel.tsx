@@ -137,8 +137,46 @@ export function AssignedBuyingListPanel({ onClose }: Props) {
               return (
                 <div key={item.id} style={{ borderTop: `1px solid ${palette.border}`, paddingTop: space.s, marginTop: space.s }}>
                   <div style={{ fontWeight: 600 }}>{item.name}</div>
+                  {/*
+                    The packets, so the person holding the phone can match the
+                    shelf. Owner, 2026-09-09: "upload a pic of different brand
+                    of item to know which brand is this". Tapping one fills the
+                    brand box, so the record of what was bought writes itself.
+                  */}
+                  {(item.brand_photos ?? []).length > 0 && (
+                    <div style={{ display: "flex", gap: space.s, overflowX: "auto", padding: `${space.s}px 0` }} data-testid={`brand-photos-${item.id}`}>
+                      {(item.brand_photos ?? []).map((p) => {
+                        const chosen = d.brand.trim().toLowerCase() === p.brand.trim().toLowerCase();
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setDraft(item, { brand: chosen ? "" : p.brand })}
+                            aria-pressed={chosen}
+                            aria-label={`${p.brand} — tap if this is the one you bought`}
+                            style={{
+                              flexShrink: 0, width: 84, padding: 4, cursor: "pointer",
+                              background: chosen ? palette.primaryBg : "transparent",
+                              border: `2px solid ${chosen ? palette.primary : palette.border}`,
+                              borderRadius: radius.m, textAlign: "center",
+                            }}
+                          >
+                            <img
+                              src={p.url}
+                              alt={p.brand}
+                              style={{ width: "100%", height: 64, objectFit: "cover", borderRadius: radius.s, display: "block" }}
+                            />
+                            <span style={{ fontSize: 11, fontWeight: 600, display: "block", marginTop: 2, wordBreak: "break-word" }}>
+                              {p.brand}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div style={{ fontSize: type.bodySm.fontSize, color: palette.panelMuted, marginBottom: space.s }}>
                     Need {item.approved_qty ?? item.requested_qty} {item.requested_unit}
+                    {item.brand && <> · Usually {item.brand}</>}
                     {item.price_hint?.cheapest && (
                       <> · Cheapest {item.price_hint.cheapest.supplier_name ?? "shop"} @ MVR {item.price_hint.cheapest.unit_price.toFixed(2)}</>
                     )}

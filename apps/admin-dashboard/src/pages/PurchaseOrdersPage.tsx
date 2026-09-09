@@ -6,6 +6,8 @@ import {
 } from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { PickOrType } from '../components/PickOrType';
+import { BrandThumb } from '../components/BrandPhotos';
+import { brandKey, type BrandPhoto } from '../api/operations';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -65,6 +67,8 @@ type ManualPoLine = {
   brand: string;
   /** Brands this item has been bought as before, offered as suggestions. */
   brands: string[];
+  /** A picture of each brand on the shelf, keyed by the folded brand name. */
+  brandPhotos: Record<string, BrandPhoto>;
   /**
    * The typed price has 8% GST inside it that comes back (owner, 2026-09-07:
    * "some items are eligible for GST return"). Pre-filled from the item;
@@ -75,7 +79,7 @@ type ManualPoLine = {
 
 const blankManualLine = (): ManualPoLine => ({
   selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], last: null, newPackQty: '',
-  newItem: null, brand: '', brands: [], gst: false,
+  newItem: null, brand: '', brands: [], brandPhotos: {}, gst: false,
 });
 
 /** The pack the typed unit names, if the item has one by that name. */
@@ -300,6 +304,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
             ...l,
             packs: res.purchase_units,
             brands: res.brands ?? [],
+            brandPhotos: res.brand_photos ?? {},
             last,
             brand: l.brand === '' && last?.brand ? last.brand : l.brand,
             unitText: l.unitText === '' && pack ? pack.name : l.unitText,
@@ -1449,6 +1454,16 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       lines: f.lines.map((l, i) => i === idx ? { ...l, brand: v } : l),
                     }))}
                   />
+                  {/* The packet itself. A brand name is only a name until you
+                      are standing in front of the shelf (owner, 2026-09-09). */}
+                  {line.brandPhotos[brandKey(line.brand)] && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }} data-testid={`manual-po-brand-photo-${idx}`}>
+                      <BrandThumb photo={line.brandPhotos[brandKey(line.brand)]} size={40} />
+                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                        This is what {line.brand} looks like.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -17,6 +17,13 @@ export type PosPurchaseRequestItem = {
     last_paid: number | null;
     cheapest: { supplier_id: number; supplier_name: string | null; unit_price: number } | null;
   };
+  /** What the kitchen usually buys, if somebody typed it on the request. */
+  brand?: string | null;
+  /**
+   * A picture of each brand this item has been bought as. Owner, 2026-09-09:
+   * a brand name means nothing when you are looking at a shelf of tins.
+   */
+  brand_photos?: { id: number; brand: string; url: string; note: string | null }[];
 };
 
 export type PosPurchaseRequest = {

@@ -149,7 +149,17 @@ Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->prefix('unit
 Route::middleware(['auth:sanctum', 'permission.any:inventory.manage,suppliers.purchases'])
     ->get('/inventory/{itemId}/purchase-units', [App\Http\Controllers\Api\InventoryConfigController::class, 'indexPurchaseUnits']);
 
+// Brand photos: anyone who can see stock can look one up (the buyer on a
+// shop run needs it most); adding or removing one is an inventory job.
+Route::middleware(['auth:sanctum', 'permission:inventory.view'])
+    ->get('/inventory/{itemId}/brand-photos', [App\Http\Controllers\Api\InventoryBrandPhotoController::class, 'index'])
+    ->whereNumber('itemId');
+
 Route::middleware(['auth:sanctum', 'permission:inventory.manage'])->group(function () {
+    Route::post('/inventory/{itemId}/brand-photos', [App\Http\Controllers\Api\InventoryBrandPhotoController::class, 'store'])
+        ->whereNumber('itemId');
+    Route::delete('/inventory/{itemId}/brand-photos/{id}', [App\Http\Controllers\Api\InventoryBrandPhotoController::class, 'destroy'])
+        ->whereNumber('itemId')->whereNumber('id');
     Route::post('/inventory/{itemId}/purchase-units', [App\Http\Controllers\Api\InventoryConfigController::class, 'storePurchaseUnit']);
     Route::patch('/inventory/{itemId}/purchase-units/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'updatePurchaseUnit']);
     Route::delete('/inventory/{itemId}/purchase-units/{id}', [App\Http\Controllers\Api\InventoryConfigController::class, 'destroyPurchaseUnit']);

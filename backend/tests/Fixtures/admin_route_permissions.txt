@@ -41,10 +41,11 @@ backend/routes/domains/finance.php:101:suppliers.manage
 backend/routes/domains/finance.php:113:suppliers.purchases
 backend/routes/domains/finance.php:130:inventory.categories
 backend/routes/domains/finance.php:136:inventory.manage
-backend/routes/domains/finance.php:152:inventory.manage
-backend/routes/domains/finance.php:159:reports.financial
-backend/routes/domains/finance.php:168:inventory.manage
+backend/routes/domains/finance.php:154:inventory.view
+backend/routes/domains/finance.php:158:inventory.manage
+backend/routes/domains/finance.php:169:reports.financial
 backend/routes/domains/finance.php:16:finance.invoices
+backend/routes/domains/finance.php:178:inventory.manage
 backend/routes/domains/finance.php:32:finance.expenses
 backend/routes/domains/finance.php:49:finance.settlements
 backend/routes/domains/finance.php:69:reports.financial
