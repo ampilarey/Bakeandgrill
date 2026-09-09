@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import InventoryPage from '../pages/InventoryPage';
 
@@ -109,15 +109,17 @@ describe('Inventory on a phone', () => {
     renderPage();
     const card = await screen.findByTestId('inventory-card-4');
 
+    // Matched by title rather than a CSS attribute selector: the cost tooltip
+    // is a sentence, and jsdom's selector engine will not take one.
     for (const title of [
       'Full adjust dialog',
       'Edit this item',
       'Stock movements',
-      'Price history',
+      /^Cost & usage/,
       // Pack sizes is not here any more: it was an unlabelled 📦 nobody
       // found, and now lives inside Edit item as a named section.
     ]) {
-      expect(card.querySelector(`[title="${title}"]`)).not.toBeNull();
+      expect(within(card).getByTitle(title)).toBeInTheDocument();
     }
   });
 

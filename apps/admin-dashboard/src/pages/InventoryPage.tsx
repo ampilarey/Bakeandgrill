@@ -262,6 +262,8 @@ export default function InventoryPage() {
   const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
+  /** Brands this item has been bought as, from the same call as the packs. */
+  const [packBrands, setPackBrands] = useState<string[]>([]);
   /*
    * Owner, 2026-09-07: "sometimes we buy 6 pcs packets. And sometimes 10 pcs
    * packets." A name already in use is either a correction or a second size,
@@ -294,11 +296,15 @@ export default function InventoryPage() {
   const loadPacks = async (itemId: number) => {
     setPacks([]);
     setPacksError('');
+    setPackBrands([]);
     setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
     setPacksLoading(true);
     try {
       const res = await getPurchaseUnits(itemId);
       setPacks(res.purchase_units);
+      // This call already carries the brands the item has been bought as, so
+      // the picture manager can point at the ones still missing one for free.
+      setPackBrands(res.brands ?? []);
     } catch (e) { setPacksError((e as Error).message); }
     finally { setPacksLoading(false); }
   };
@@ -593,7 +599,10 @@ export default function InventoryPage() {
       )}
       {canManage && <Btn small variant="secondary" onClick={() => openEdit(item)} title="Edit this item">✏️</Btn>}
       <Btn small variant="secondary" onClick={() => void openLedger(item)} title="Stock movements">📜</Btn>
-      <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Price history">📈</Btn>
+      {/* Said in full, because "Price history" undersold a panel that also
+          ranks brands per unit, shows the packets and says what you got
+          through — and nobody opens an emoji to find out. */}
+      <Btn small variant="secondary" onClick={() => void openPriceHistory(item)} title="Cost & usage — price per unit by brand, brand pictures, what you got through">📈</Btn>
     </>
   );
 
@@ -1679,6 +1688,32 @@ export default function InventoryPage() {
                   onClose={() => setScanPackBarcode(false)}
                 />
               )}
+            </div>
+
+            {/* ── Brand pictures ───────────────────────────────────────────
+                Owner, 2026-09-09: "where can i add brands and its photos?"
+                They were only inside Cost & usage, behind the 📈 on the row —
+                the same place pack sizes were hidden when the answer was "i
+                dont see pack size". Both belong beside the unit: a pack is
+                what size you buy, a brand is whose, and this is the screen
+                you are on when you are setting an item up.
+
+                There is no list of brands to maintain anywhere. A brand is
+                whatever gets typed on a purchase line, and this hangs a
+                picture off the item-and-brand pair that already exists. */}
+            <div
+              data-testid="edit-item-brand-photos"
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '12px 14px', background: 'var(--color-bg)',
+              }}
+            >
+              <BrandPhotos
+                itemId={editItem.id}
+                itemName={editItem.name}
+                canManage={canManage}
+                knownBrands={packBrands}
+              />
             </div>
             <label>
               <span style={S.label}>SKU</span>

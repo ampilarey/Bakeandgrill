@@ -21,6 +21,15 @@ vi.mock('../hooks/usePermissions', () => ({
 }));
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
 
+// BrandPhotos reaches for operations directly, so stub only the calls it makes
+// and leave brandKey — which the page itself uses — as the real thing.
+vi.mock('../api/operations', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../api/operations')>(),
+  getBrandPhotos: vi.fn().mockResolvedValue({ item_id: 21, photos: [] }),
+  uploadBrandPhoto: vi.fn(),
+  deleteBrandPhoto: vi.fn(),
+}));
+
 const ghee = {
   id: 21,
   name: 'Ghee',
@@ -279,6 +288,29 @@ describe('Pack sizes inside Edit item', () => {
 
     expect(await screen.findByText('Say how much is in it.')).toBeInTheDocument();
     expect(createPurchaseUnit).not.toHaveBeenCalled();
+  });
+
+  /*
+   * Owner, 2026-09-09: "where can i add brands and its photos?" They existed,
+   * inside Cost & usage behind the 📈 on the row — the same hiding place pack
+   * sizes were in when the answer was "i dont see pack size". A brand is whose
+   * you buy and a pack is what size: both belong on the screen you are on when
+   * you set the item up.
+   */
+  it('carries the brand pictures beside the pack sizes', async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'ml',
+      purchase_units: [{ id: 7, name: '500 ml tin', base_units: 500 }],
+      brands: ['Sunrise', 'Royal'],
+    });
+    const section = await openEditor();
+
+    const brands = await screen.findByTestId('edit-item-brand-photos');
+    expect(brands).toBeInTheDocument();
+    // Packs first, then brands: size, then whose.
+    expect(section.compareDocumentPosition(brands) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The brands already bought come from the packs call, at no extra cost.
+    expect(await within(brands).findByText(/Royal/)).toBeInTheDocument();
   });
 
   it('offers the camera for the item barcode, the way Add Item does', async () => {

@@ -99,7 +99,7 @@ vi.mock('../api', () => ({
 
 async function openPanel() {
   render(<MemoryRouter><InventoryPage /></MemoryRouter>);
-  fireEvent.click(await screen.findByTitle('Price history'));
+  fireEvent.click(await screen.findByTitle(/^Cost & usage/));
   return await screen.findByTestId('cost-usage-prices');
 }
 
@@ -180,7 +180,7 @@ describe('Cost & usage panel', () => {
       usage: { ...costUsage.usage, received: 0, used: 0, spend: 0, average_price: null, value_used: null },
     });
     render(<MemoryRouter><InventoryPage /></MemoryRouter>);
-    fireEvent.click(await screen.findByTitle('Price history'));
+    fireEvent.click(await screen.findByTitle(/^Cost & usage/));
 
     expect(await screen.findByText('Nothing bought in this window.')).toBeInTheDocument();
     // An unknown average is not a claim that it was free.

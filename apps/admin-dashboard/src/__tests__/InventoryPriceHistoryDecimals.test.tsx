@@ -109,7 +109,7 @@ describe('Price history when the server sends decimals as strings', () => {
     });
 
     render(<MemoryRouter><InventoryPage /></MemoryRouter>);
-    fireEvent.click(await screen.findByTitle('Price history'));
+    fireEvent.click(await screen.findByTitle(/^Cost & usage/));
 
     expect(await screen.findByText('MVR 1.98')).toBeInTheDocument();
     expect(screen.getByText('Fahi Store')).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('Price history when the server sends decimals as strings', () => {
     });
 
     render(<MemoryRouter><InventoryPage /></MemoryRouter>);
-    fireEvent.click(await screen.findByTitle('Price history'));
+    fireEvent.click(await screen.findByTitle(/^Cost & usage/));
 
     expect(await screen.findByText('MVR 2.50')).toBeInTheDocument();
   });
@@ -138,7 +138,7 @@ describe('Price history when the server sends decimals as strings', () => {
     });
 
     render(<MemoryRouter><InventoryPage /></MemoryRouter>);
-    fireEvent.click(await screen.findByTitle('Price history'));
+    fireEvent.click(await screen.findByTitle(/^Cost & usage/));
 
     // The usage panel shows MVR 0.00 too; what matters is that the row
     // rendered at all rather than taking the page down.
