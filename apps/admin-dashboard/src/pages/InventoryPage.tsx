@@ -206,26 +206,52 @@ export default function InventoryPage() {
   const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string }[]>([]);
   const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '' });
   const [createPackError, setCreatePackError] = useState('');
+  const [scanNewPackBarcode, setScanNewPackBarcode] = useState(false);
+  /*
+   * A draft whose name is already on the list, held until the question is
+   * answered. Same question the server asks on a real item: "6 pcs packets …
+   * 10 pcs packets" is two sizes under one name and legitimate, a retyped
+   * name is a correction, and only the person typing knows which.
+   */
+  const [createPackClash, setCreatePackClash] = useState<
+    { existingName: string; wasBaseUnits: number; suggestedName: string } | null
+  >(null);
 
-  const addCreatePack = () => {
-    const name = createPackForm.name.trim();
+  /** "Packet" taken becomes "Packet 10" — how the server names a second size. */
+  const freeDraftPackName = (typed: string, baseUnits: number): string => {
+    const taken = createPacks.map((p) => p.name.trim().toLowerCase());
+    const candidate = `${typed} ${baseUnits}`;
+    if (!taken.includes(candidate.toLowerCase())) return candidate;
+    for (let i = 2; i < 50; i++) {
+      const next = `${candidate} (${i})`;
+      if (!taken.includes(next.toLowerCase())) return next;
+    }
+    return `${candidate} (${createPacks.length + 1})`;
+  };
+
+  const addCreatePack = (options: { name?: string; replace?: boolean } = {}) => {
+    const name = (options.name ?? createPackForm.name).trim();
     const qty = parseFloat(createPackForm.qty);
     if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return; }
     if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return; }
-    if (createPacks.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
-      // The same guard the server applies once the item is real: a name in use
-      // is either a correction or a second size, and only the typist knows.
-      setCreatePackError(`There is already a pack called ${name}. Give this one its own name.`);
+    const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
+    const baseUnits = of ? qty * of.baseUnits : qty;
+    const row = { name, baseUnits, barcode: createPackForm.barcode.trim() };
+    const clashAt = createPacks.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+
+    if (clashAt >= 0 && !options.replace
+      && Math.abs(createPacks[clashAt].baseUnits - baseUnits) > 0.000001) {
+      setCreatePackClash({
+        existingName: createPacks[clashAt].name,
+        wasBaseUnits: createPacks[clashAt].baseUnits,
+        suggestedName: freeDraftPackName(name, baseUnits),
+      });
       return;
     }
-    const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
-    setCreatePacks((p) => [...p, {
-      name,
-      baseUnits: of ? qty * of.baseUnits : qty,
-      barcode: createPackForm.barcode.trim(),
-    }]);
+    setCreatePacks((p) => (clashAt >= 0 ? p.map((x, i) => (i === clashAt ? row : x)) : [...p, row]));
     setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
     setCreatePackError('');
+    setCreatePackClash(null);
   };
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   /*
@@ -246,6 +272,7 @@ export default function InventoryPage() {
   const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '' });
   const [packSaving, setPackSaving] = useState(false);
   const [scanPackBarcode, setScanPackBarcode] = useState(false);
+  const [scanEditBarcode, setScanEditBarcode] = useState(false);
   /*
    * A pack you can correct, not only add and delete. Owner, 2026-09-06: "no
    * pack size edit option" — a typo in "500 ml tin" meant deleting the pack
@@ -1075,6 +1102,7 @@ export default function InventoryPage() {
                 setCreatePacks([]);
                 setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
                 setCreatePackError('');
+                setCreatePackClash(null);
                 if (cats.length === 0) void loadCats();
                 if (suppliers.length === 0) void loadSuppliers();
               }}>
@@ -1657,11 +1685,24 @@ export default function InventoryPage() {
               <input style={S.input} value={editForm.sku} aria-label="SKU"
                 onChange={(e) => setEditForm((f) => ({ ...f, sku: e.target.value }))} />
             </label>
+            {/* Add Item has had the camera since 2026-09-02; Edit never did,
+                so the one place a mistyped barcode gets corrected was the one
+                place you had to type it. */}
             <label>
               <span style={S.label}>Barcode</span>
-              <input style={S.input} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
-                onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input style={{ ...S.input, flex: 1 }} value={editForm.barcode} aria-label="Barcode" inputMode="numeric" autoComplete="off"
+                  onChange={(e) => setEditForm((f) => ({ ...f, barcode: e.target.value }))} />
+                <Btn variant="secondary" onClick={() => setScanEditBarcode(true)} aria-label="Scan the item barcode with the camera" title="Scan with the camera">📷</Btn>
+              </div>
             </label>
+            {scanEditBarcode && (
+              <ScanSheet
+                title="Scan the packet"
+                onScan={(code) => { setEditForm((f) => ({ ...f, barcode: code.trim() })); setScanEditBarcode(false); }}
+                onClose={() => setScanEditBarcode(false)}
+              />
+            )}
             <div>
               <span style={S.label}>Category</span>
               <PickOrType
@@ -1954,18 +1995,71 @@ export default function InventoryPage() {
                     <option value="">{createForm.unit.trim() || 'unit'}</option>
                     {createPacks.map((p, i) => <option key={p.name} value={String(i)}>{p.name.toLowerCase()}</option>)}
                   </select>
-                  <Btn small onClick={addCreatePack}>Add pack</Btn>
+                  <Btn small onClick={() => addCreatePack()}>Add pack</Btn>
                 </div>
-                <input
-                  aria-label="New item pack barcode"
-                  placeholder="Barcode on the pack (optional)"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={createPackForm.barcode}
-                  onChange={(e) => setCreatePackForm((f) => ({ ...f, barcode: e.target.value }))}
-                  style={S.input}
-                />
+
+                {/* The same question Edit asks, asked before the item exists.
+                    Both answers are one click and neither is the default. */}
+                {createPackClash && (
+                  <div
+                    data-testid="new-pack-name-clash"
+                    style={{
+                      border: '1px solid var(--color-warning)', borderRadius: 10,
+                      padding: '10px 12px', background: 'var(--color-bg)', display: 'grid', gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: 'var(--color-text)' }}>
+                      “{createPackClash.existingName}” already holds {createPackClash.wasBaseUnits}
+                      {createForm.unit.trim() ? ` ${createForm.unit.trim()}` : ''}. Is this a correction,
+                      or a second size?
+                    </span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Btn
+                        small
+                        data-testid="new-pack-clash-keep-both"
+                        onClick={() => {
+                          setCreatePackForm((f) => ({ ...f, name: createPackClash.suggestedName }));
+                          addCreatePack({ name: createPackClash.suggestedName });
+                        }}
+                      >
+                        Keep both — call this “{createPackClash.suggestedName}”
+                      </Btn>
+                      <Btn
+                        small
+                        variant="secondary"
+                        data-testid="new-pack-clash-replace"
+                        onClick={() => addCreatePack({ replace: true })}
+                      >
+                        No, {createPackClash.existingName} really holds {createPackForm.qty}
+                      </Btn>
+                      <Btn small variant="ghost" onClick={() => setCreatePackClash(null)}>Cancel</Btn>
+                    </div>
+                  </div>
+                )}
+                {/* Different sizes carry different EANs, and the gun is how
+                    they get typed correctly — same as on Edit. */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    aria-label="New item pack barcode"
+                    placeholder="Barcode on the pack (optional)"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={createPackForm.barcode}
+                    onChange={(e) => setCreatePackForm((f) => ({ ...f, barcode: e.target.value }))}
+                    style={{ ...S.input, flex: 1, width: 'auto' }}
+                  />
+                  <Btn small variant="secondary" onClick={() => setScanNewPackBarcode(true)} aria-label="Scan the new pack barcode">
+                    📷 Scan
+                  </Btn>
+                </div>
               </div>
+              {scanNewPackBarcode && (
+                <ScanSheet
+                  title="Scan the pack"
+                  onScan={(code) => { setCreatePackForm((f) => ({ ...f, barcode: code.trim() })); setScanNewPackBarcode(false); }}
+                  onClose={() => setScanNewPackBarcode(false)}
+                />
+              )}
             </div>
             <label>
               <span style={S.label}>Opening stock</span>
@@ -2061,6 +2155,7 @@ export default function InventoryPage() {
                 setCreatePacks([]);
                 setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
                 setCreatePackError('');
+                setCreatePackClash(null);
                 void loadItems();
                 if (failed.length > 0) {
                   // The editor is where a missed pack gets added by hand.

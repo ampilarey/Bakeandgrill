@@ -281,6 +281,16 @@ describe('Pack sizes inside Edit item', () => {
     expect(createPurchaseUnit).not.toHaveBeenCalled();
   });
 
+  it('offers the camera for the item barcode, the way Add Item does', async () => {
+    // Add Item has had the camera since 2026-09-02 and Edit never did, so the
+    // one place a mistyped barcode gets corrected was the one place you had
+    // to retype it by hand.
+    renderPage();
+    fireEvent.click((await screen.findAllByTitle('Edit this item'))[0]);
+
+    expect(await screen.findByLabelText('Scan the item barcode with the camera')).toBeInTheDocument();
+  });
+
   it('reloads the list after a pack changes, so the row catches up', async () => {
     createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 6, name: '100 ml tin', base_units: 100 } });
     const section = await openEditor();
@@ -390,12 +400,51 @@ describe('Pack sizes for an item that does not exist yet', () => {
     ));
   });
 
-  it('refuses a second pack under a name already on the list', async () => {
+  /*
+   * Owner, 2026-09-07: "sometimes we buy 6 pcs packets. And sometimes 10 pcs
+   * packets." Edit asks whether a reused name is a correction or a second
+   * size; the drafts have to ask the same question, or the one form that can
+   * enter both sizes at once is the one that silently picks an answer.
+   */
+  it('asks whether a reused name is a correction or a second size', async () => {
+    await openCreate();
+    addPack('Packet', '6');
+    addPack('packet', '10');
+
+    expect(screen.getByTestId('new-pack-name-clash')).toHaveTextContent(/already holds 6/);
+    // Neither answer has been taken yet.
+    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+  });
+
+  it('keeps both sizes under a name the list has not used', async () => {
+    await openCreate();
+    addPack('Packet', '6');
+    addPack('packet', '10');
+
+    fireEvent.click(screen.getByTestId('new-pack-clash-keep-both'));
+
+    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('Packet');
+    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('packet 10');
+    expect(screen.queryByTestId('new-pack-name-clash')).toBeNull();
+  });
+
+  it('resizes the pack already listed when it was a correction', async () => {
+    await openCreate();
+    addPack('Packet', '6');
+    addPack('Packet', '10');
+
+    fireEvent.click(screen.getByTestId('new-pack-clash-replace'));
+
+    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('10');
+    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+  });
+
+  it('does not ask when the name and the size both already match', async () => {
     await openCreate();
     addPack('500g pack', '500');
-    addPack('500G Pack', '250');
+    addPack('500g pack', '500');
 
-    expect(screen.getByText(/There is already a pack called 500G Pack/)).toBeInTheDocument();
+    expect(screen.queryByTestId('new-pack-name-clash')).toBeNull();
     expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
   });
 
@@ -416,6 +465,14 @@ describe('Pack sizes for an item that does not exist yet', () => {
 
     expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
     expect(screen.getByText(/No packs yet/)).toBeInTheDocument();
+  });
+
+  it('offers the camera for a pack barcode, the way Edit does', async () => {
+    // Different sizes carry different EANs and the gun is how they get typed
+    // correctly. Edit had the camera on its pack barcode; this did not.
+    await openCreate();
+
+    expect(screen.getByLabelText('Scan the new pack barcode')).toBeInTheDocument();
   });
 
   it('says which pack did not save, and opens the item so it can be added', async () => {
