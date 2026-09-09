@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchKdsOrders } from '../api';
 import type { KdsTicket } from '../api';
@@ -27,6 +27,29 @@ function urgencyColor(iso: string): { solid: string; faint: string } {
   if (m >= 15) return { solid: 'var(--color-danger)', faint: 'rgba(239,68,68,0.13)' };
   if (m >= 8)  return { solid: '#f97316', faint: 'rgba(249,115,22,0.13)' };
   return        { solid: 'var(--color-success)', faint: 'rgba(34,197,94,0.13)' };
+}
+
+/**
+ * Today's tickets first, anything from a previous day under its own heading.
+ * Returns one group when they are all from the same day, so an ordinary
+ * service shows no divider at all.
+ */
+export function splitByDay(
+  items: KdsTicket[],
+  now: Date = new Date(),
+): { earlier: boolean; tickets: KdsTicket[] }[] {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const isEarlier = (t: KdsTicket) => {
+    const at = new Date(t.created_at).getTime();
+    return Number.isFinite(at) && at < startOfToday;
+  };
+  const earlier = items.filter(isEarlier);
+  const today = items.filter((t) => !isEarlier(t));
+
+  return [
+    ...(today.length ? [{ earlier: false, tickets: today }] : []),
+    ...(earlier.length ? [{ earlier: true, tickets: earlier }] : []),
+  ];
 }
 
 function minutesSince(iso: string): number {
@@ -176,14 +199,39 @@ export function KDSPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {items.length === 0
           ? <div style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '20px 0' }}>Nothing here</div>
-          : items.map((t) => (
-            <div key={t.id} style={{
-              background: 'var(--color-surface)', borderRadius: 14, padding: '16px',
-              border: `2px solid ${urgencyColor(t.created_at).faint}`,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            }}>
-              {children(t)}
-            </div>
+          : splitByDay(items).map(({ earlier, tickets }) => (
+            <Fragment key={earlier ? 'earlier' : 'today'}>
+              {/*
+                Owner, 2026-09-09: the board was carrying four days of paid
+                tickets nobody bumped, and because the list runs oldest first,
+                a new order sat below all of them. Anything from before today
+                drops under its own heading so today's work stays on top.
+              */}
+              {earlier && (
+                <div
+                  data-testid={`kds-earlier-${title.toLowerCase()}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
+                    fontSize: 12, fontWeight: 700, color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                  }}
+                >
+                  <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+                  From earlier ({tickets.length})
+                  <span style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+                </div>
+              )}
+              {tickets.map((t) => (
+                <div key={t.id} style={{
+                  background: 'var(--color-surface)', borderRadius: 14, padding: '16px',
+                  border: `2px solid ${urgencyColor(t.created_at).faint}`,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  opacity: earlier ? 0.75 : 1,
+                }}>
+                  {children(t)}
+                </div>
+              ))}
+            </Fragment>
           ))
         }
       </div>

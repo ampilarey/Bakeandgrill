@@ -180,6 +180,20 @@ Schedule::command('orders:cancel-stale')
     ->onFailure($alertOnFailure('orders:cancel-stale'))
     ->after($trackSuccess('orders:cancel-stale'));
 
+/*
+ * Orders: close yesterday's paid tickets nobody bumped (owner, 2026-09-09 —
+ * the display was carrying four days of paid dine-in tickets, and until they
+ * reach `completed` none of that money shows in sales, GST or the forecast).
+ * Runs at 05:00, before the morning slot opens, so a ticket rung up late the
+ * night before has passed midnight and is safely yesterday's. Only fully paid
+ * tickets are touched; anything unpaid is reported, never closed.
+ */
+Schedule::command('orders:close-out --days=1')
+    ->dailyAt('05:00')
+    ->withoutOverlapping()
+    ->onFailure($alertOnFailure('orders:close-out'))
+    ->after($trackSuccess('orders:close-out'));
+
 // SMS: dispatch scheduled/recurring SMS messages every minute
 Schedule::command('sms:dispatch-scheduled')
     ->everyMinute()
