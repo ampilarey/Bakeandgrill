@@ -2278,6 +2278,31 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ── Table UX helpers ───────────────────────────────────────── */
+
+/*
+ * Layout audit, 2026-09-10 (L-02). These headers never stuck to anything.
+ *
+ * `.table-scroll` sets `overflow-x: auto`, and per CSS Overflow 3 an
+ * `overflow-y: visible` beside a non-visible `overflow-x` computes to `auto`
+ * — so the wrapper became the sticky header's scroll container. With no
+ * height on it the wrapper never scrolled, `top: 0` never engaged, and the
+ * header scrolled off the top of the page with everything else. Measured in
+ * Chromium: the header sat 500px above the viewport after a page scroll.
+ *
+ * Giving the wrapper a height is what turns it back on: now the rows scroll
+ * inside the region and the header stays put at its top.
+ *
+ * Desktop only. On a phone this would be a scroll area inside a scrolling
+ * page, which is worse than the problem — and few enough rows fit there that
+ * a pinned header earns little.
+ */
+@media (min-width: 768px) {
+  .admin-table-sticky-head {
+    max-height: min(70vh, 640px);
+    overflow-y: auto;
+  }
+}
+
 .admin-table-sticky-head thead th {
   position: sticky;
   top: 0;

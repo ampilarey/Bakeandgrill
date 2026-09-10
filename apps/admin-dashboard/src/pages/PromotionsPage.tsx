@@ -299,7 +299,7 @@ function PromotionForm({
         <Field label="Spend tiers (highest satisfied tier wins)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tiers.map((tier, idx) => (
-              <div key={idx} className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+              <div key={idx} className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, alignItems: 'end' }}>
                 <Input
                   label="Min spend (MVR)"
                   type="number"
@@ -342,7 +342,7 @@ function PromotionForm({
       )}
 
       {form.type === 'quantity_break' && (
-        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           <Field label="Min quantity">
             <Input
               type="number"
@@ -378,7 +378,7 @@ function PromotionForm({
       )}
 
       {form.type === 'buy_x_get_y' && (
-        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+        <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
           <Field label="Buy qty">
             <Input
               type="number"

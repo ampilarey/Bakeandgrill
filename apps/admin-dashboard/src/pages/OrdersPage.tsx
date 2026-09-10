@@ -15,8 +15,10 @@ import { ADMIN_ORDER_PAYMENT_METHODS } from '../lib/paymentMethods';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal,
+  Badge, Btn, Card, EmptyState, TableStateBar, PageHeader, PageShell, Select, Spinner, statColor, ConfirmDialog, useConfirmDialog, Modal, TableCard,
 } from '../components/SharedUI';
+import { RecordCard, RecordCardList } from '../components/RecordCard';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { downloadCSV } from '../utils/csvExport';
 
 const REFUNDABLE_STATUSES = new Set([
@@ -775,10 +777,73 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 type SortKey = 'order_number' | 'total' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
+/*
+ * The chips that tell a manager whether an order needs chasing. Shared because
+ * the phone card and the desktop row have to agree — layout audit L-01 split
+ * this view in two, and a signal that shows on one and not the other is worse
+ * than no signal at all.
+ */
+function OrderFlags({ o }: { o: Order }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+    {/* Pickup phone-call workflow surface:
+        🍳 COOKING — kitchen has the chit (fired_at set)
+                     AND status is still active. Hidden
+                     once paid or completed (no chasing
+                     needed) and on held tickets (kitchen
+                     hasn't seen it).
+        UNPAID    — payment_status != paid AND order is
+                     still active. The most chase-worthy
+                     signal for the manager. */}
+    {o.fired_at && ['pending', 'in_progress', 'preparing', 'ready'].includes(o.status) && (
+      <span
+        title="Kitchen is cooking this"
+        style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          color: '#047857', background: '#ECFDF5',
+          padding: '2px 5px', borderRadius: 4,
+          border: '1px solid #A7F3D0',
+        }}
+      >
+        🍳 COOKING
+      </span>
+    )}
+    {(o.payment_status === 'unpaid' || o.payment_status === 'partial') &&
+      !['cancelled', 'refunded', 'completed', 'paid'].includes(o.status) && (
+      <span
+        title={o.payment_status === 'partial' ? 'Partially paid' : 'Not paid yet'}
+        style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          color: 'var(--color-danger-strong)', background: 'var(--color-danger-bg)',
+          padding: '2px 5px', borderRadius: 4,
+          border: '1px solid #FECACA',
+        }}
+      >
+        {o.payment_status === 'partial' ? 'PARTIAL' : 'UNPAID'}
+      </span>
+    )}
+    {(o as { payment_settlement?: { paid_on_credit?: boolean; short_label?: string } }).payment_settlement?.paid_on_credit && (
+      <span
+        title="Charged to customer credit account"
+        style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          color: '#1D4ED8', background: '#EFF6FF',
+          padding: '2px 5px', borderRadius: 4,
+          border: '1px solid #BFDBFE',
+        }}
+      >
+        {(o as { payment_settlement?: { short_label?: string } }).payment_settlement?.short_label ?? 'CREDIT'}
+      </span>
+    )}
+    </div>
+  );
+}
+
 export function OrdersPage() {
   usePageTitle('Orders');
   const [searchParams, setSearchParams] = useSearchParams();
   const { can } = useCurrentUserPermissions();
+  const isMobile = useIsMobile();
   const canSendReceipt = can('orders.send_sms_bill');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1008,29 +1073,75 @@ export function OrdersPage() {
       ) : orders.length === 0 ? (
         <Card><EmptyState message="No orders found." /></Card>
       ) : (
+        isMobile ? (
+        /*
+         * Layout audit L-01: nine columns and nothing else. Scrolling sideways
+         * through all nine to read one order is not reading a list. The card
+         * carries what a manager scans for — which order, what state, whose,
+         * how much — and View opens the rest.
+         */
+        <RecordCardList testId="orders-cards">
+          {sortedOrders.map((o) => (
+            <RecordCard
+              key={o.id}
+              testId={`order-card-${o.id}`}
+              accent={o.payment_status === 'unpaid' || o.payment_status === 'partial'
+                ? 'var(--color-danger)' : 'var(--color-border)'}
+              title={<>#{o.order_number}{o.type === 'delivery' && <span style={{ marginLeft: 6, fontSize: 12 }}>🛵</span>}</>}
+              subtitle={`${typeLabel(o.type)} · ${timeAgo(o.created_at)}`}
+              badge={<Badge label={o.status} color={statColor(o.status)} />}
+              fields={[
+                { label: 'Total', value: <strong style={{ color: 'var(--color-primary)' }}>MVR {parseFloat(String(o.total ?? 0)).toFixed(2)}</strong> },
+                { label: 'Customer', value: o.customer?.name ?? o.customer_name ?? o.table_number ?? '—' },
+                { label: 'Cashier', value: o.user?.name ?? '—' },
+                o.device?.name ? { label: 'Station', value: o.device.name } : null,
+              ]}
+              actions={<>
+                <OrderFlags o={o} />
+                {quickLabel(o.status) && canQuickAdvanceStatus(o.status, can) && (
+                  <Btn small disabled={quickActing === o.id} onClick={() => void quickAdvance(o)}>
+                    {quickActing === o.id ? '…' : quickLabel(o.status)}
+                  </Btn>
+                )}
+                <Btn small variant="ghost" onClick={() => setSelectedId(o.id)}>View</Btn>
+              </>}
+            />
+          ))}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
+              <Btn small variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Prev</Btn>
+              <span style={{ lineHeight: '30px', fontSize: 13, color: 'var(--color-text-secondary)' }}>Page {page} of {totalPages}</span>
+              <Btn small variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
+            </div>
+          )}
+        </RecordCardList>
+        ) : (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-scroll" style={{ overflowX: 'auto' }}>
+          {/* Layout audit L-02: was a hand-rolled .table-scroll with nine
+              inline sticky headers that never engaged. TableCard's stickyHead
+              gives the wrapper a height, which is what makes sticky work. */}
+          <TableCard stickyHead>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                 <th
                   onClick={() => handleSort('order_number')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none' }}
                 >Order # <SortArrow col="order_number" /></th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Type</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Customer</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Cashier</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', position: 'sticky', top: 0, background: 'var(--color-bg)' }}>Station</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Type</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Customer</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cashier</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Station</th>
                 <th
                   onClick={() => handleSort('total')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none' }}
                 >Total <SortArrow col="total" /></th>
                 <th
                   onClick={() => handleSort('created_at')}
-                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, background: 'var(--color-bg)' }}
+                  style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', userSelect: 'none' }}
                 >Time <SortArrow col="created_at" /></th>
-                <th style={{ padding: '12px 16px', position: 'sticky', top: 0, background: 'var(--color-bg)' }} />
+                <th style={{ padding: '12px 16px' }} />
               </tr>
             </thead>
             <tbody>
@@ -1048,55 +1159,7 @@ export function OrdersPage() {
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                       <Badge label={o.status} color={statColor(o.status)} />
-                      {/* Pickup phone-call workflow surface:
-                          🍳 COOKING — kitchen has the chit (fired_at set)
-                                       AND status is still active. Hidden
-                                       once paid or completed (no chasing
-                                       needed) and on held tickets (kitchen
-                                       hasn't seen it).
-                          UNPAID    — payment_status != paid AND order is
-                                       still active. The most chase-worthy
-                                       signal for the manager. */}
-                      {o.fired_at && ['pending', 'in_progress', 'preparing', 'ready'].includes(o.status) && (
-                        <span
-                          title="Kitchen is cooking this"
-                          style={{
-                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-                            color: '#047857', background: '#ECFDF5',
-                            padding: '2px 5px', borderRadius: 4,
-                            border: '1px solid #A7F3D0',
-                          }}
-                        >
-                          🍳 COOKING
-                        </span>
-                      )}
-                      {(o.payment_status === 'unpaid' || o.payment_status === 'partial') &&
-                        !['cancelled', 'refunded', 'completed', 'paid'].includes(o.status) && (
-                        <span
-                          title={o.payment_status === 'partial' ? 'Partially paid' : 'Not paid yet'}
-                          style={{
-                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-                            color: 'var(--color-danger-strong)', background: 'var(--color-danger-bg)',
-                            padding: '2px 5px', borderRadius: 4,
-                            border: '1px solid #FECACA',
-                          }}
-                        >
-                          {o.payment_status === 'partial' ? 'PARTIAL' : 'UNPAID'}
-                        </span>
-                      )}
-                      {(o as { payment_settlement?: { paid_on_credit?: boolean; short_label?: string } }).payment_settlement?.paid_on_credit && (
-                        <span
-                          title="Charged to customer credit account"
-                          style={{
-                            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-                            color: '#1D4ED8', background: '#EFF6FF',
-                            padding: '2px 5px', borderRadius: 4,
-                            border: '1px solid #BFDBFE',
-                          }}
-                        >
-                          {(o as { payment_settlement?: { short_label?: string } }).payment_settlement?.short_label ?? 'CREDIT'}
-                        </span>
-                      )}
+                      <OrderFlags o={o} />
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px', color: 'var(--color-text-secondary)' }}>
@@ -1158,7 +1221,7 @@ export function OrdersPage() {
               ))}
             </tbody>
           </table>
-          </div>
+          </TableCard>
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -1169,6 +1232,7 @@ export function OrdersPage() {
             </div>
           )}
         </Card>
+        )
       )}
 
       {selectedId && (

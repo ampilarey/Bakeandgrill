@@ -900,7 +900,7 @@ export function PlanSettingsTab({ canManage }: { canManage: boolean }) {
         </p>
         <div style={{ display: 'grid', gap: 8 }}>
           {settings.slots.map((s, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, alignItems: 'end' }}>
               <Input label={i === 0 ? 'Name' : undefined} id={`slot-label-${i}`} aria-label={`Slot ${i + 1} name`} value={s.label} onChange={(v) => setSlot(i, { label: v })} />
               <Input label={i === 0 ? 'From (hour)' : undefined} id={`slot-from-${i}`} aria-label={`Slot ${i + 1} from`} type="number" min={0} max={23} value={String(s.from)} onChange={(v) => setSlot(i, { from: Number(v) })} />
               <Input label={i === 0 ? 'To (hour)' : undefined} id={`slot-to-${i}`} aria-label={`Slot ${i + 1} to`} type="number" min={0} max={23} value={String(s.to)} onChange={(v) => setSlot(i, { to: Number(v) })} />

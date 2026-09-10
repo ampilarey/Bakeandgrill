@@ -8,10 +8,12 @@ import {
   type SupplierPerf, type SupplierRating, type PriceHistory, type Supplier,
 } from '../api';
 import {
-  Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
+  Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { RecordCard, RecordCardList } from '../components/RecordCard';
 
 function Stars({ rating, max = 5 }: { rating: number | null; max?: number }) {
   if (rating === null) return <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Not rated</span>;
@@ -30,6 +32,7 @@ type DrillDown = { supplierId: number; supplierName: string };
 
 export function SupplierIntelligencePage({ embedded = false }: { embedded?: boolean } = {}) {
   usePageTitle(embedded ? 'Purchasing · Suppliers' : 'Supplier Intelligence');
+  const isMobile = useIsMobile();
   const [perfs, setPerfs]       = useState<SupplierPerf[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -257,6 +260,40 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
         </div>
         {suppliersLoading ? <Spinner /> : suppliers.length === 0 ? (
           <EmptyState message="No suppliers yet. Add one to use in purchase orders." />
+        ) : isMobile ? (
+          /* Layout audit L-01: seven columns, and the one somebody wants
+             — the bank account, at the moment they are making a transfer —
+             was the furthest right. */
+          <RecordCardList testId="supplier-cards">
+            {suppliers.map((s) => (
+              <RecordCard
+                key={s.id}
+                testId={`supplier-card-${s.id}`}
+                accent={s.is_active ? 'var(--color-border)' : 'var(--color-danger)'}
+                title={s.name}
+                subtitle={[s.contact_name, s.phone, ...(s.extra_phones ?? [])].filter(Boolean).join(' · ')}
+                badge={s.is_active ? undefined : <Badge color="red">Inactive</Badge>}
+                fields={[
+                  s.bank_account_number ? {
+                    label: 'Bank account',
+                    value: <>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{s.bank_account_number}</span>
+                      {(s.bank_name || s.bank_account_name) && (
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          {[s.bank_name, s.bank_account_name].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </>,
+                  } : null,
+                  s.email ? { label: 'Email', value: s.email } : null,
+                ]}
+                actions={<>
+                  <Btn small variant="secondary" onClick={() => openSupplierModal(s)}>Edit</Btn>
+                  <Btn small variant="danger" onClick={() => void handleDeleteSupplier(s.id)}>Delete</Btn>
+                </>}
+              />
+            ))}
+          </RecordCardList>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>

@@ -14,6 +14,8 @@ import {
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { Customer360Drawer, BADGE_MAP } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { RecordCard, RecordCardList } from '../components/RecordCard';
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -26,6 +28,7 @@ const TIER_COLOR: Record<string, string> = {
 
 export function CustomersPage() {
   usePageTitle('Customers');
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const openedCustomerId = useRef<string | null>(null);
 
@@ -329,6 +332,38 @@ export function CustomersPage() {
       </Card>
 
       {/* Table */}
+      {/* Layout audit L-01: eight columns, and on a phone the name you are
+          looking for was three drags to the right of where you started. */}
+      {isMobile ? (
+        <RecordCardList testId="customer-cards">
+          {customers.map((c) => (
+            <RecordCard
+              key={c.id}
+              testId={`customer-card-${c.id}`}
+              onClick={() => void openDetail(c)}
+              accent={c.is_active ? 'var(--color-border)' : 'var(--color-danger)'}
+              title={c.name ?? '—'}
+              subtitle={[c.phone, c.email].filter(Boolean).join(' · ')}
+              badge={c.tier
+                ? <Badge color={TIER_COLOR[c.tier] ?? 'gray'}>{c.tier}</Badge>
+                : (!c.is_active ? <Badge color="red">Inactive</Badge> : undefined)}
+              fields={[
+                { label: 'Orders', value: c.orders_count },
+                { label: 'Last order', value: fmtDate(c.last_order_at) },
+                { label: 'Joined', value: fmtDate(c.created_at) },
+              ]}
+              actions={(c.badges ?? []).length > 0 ? <>
+                {(c.badges ?? []).map((b) => {
+                  const meta = BADGE_MAP[b];
+                  return meta
+                    ? <Badge key={b} color={meta.color}>{meta.label}</Badge>
+                    : <Badge key={b} color="gray">{b}</Badge>;
+                })}
+              </> : undefined}
+            />
+          ))}
+        </RecordCardList>
+      ) : (
       <TableCard stickyHead>
         {loading ? (
           <TableSkeleton rows={8} cols={8} />
@@ -402,6 +437,7 @@ export function CustomersPage() {
           </div>
         )}
       </TableCard>
+      )}
 
       {/* Customer detail — SharedUI Modal (mobile bottom sheet + scroll lock) */}
       {selected && (

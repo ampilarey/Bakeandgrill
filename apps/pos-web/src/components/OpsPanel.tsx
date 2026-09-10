@@ -555,7 +555,7 @@ function InventoryTab({ ops, onRequestItem }: { ops: OpsState; onRequestItem?: (
         overflow: "hidden",
       }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr",
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
           padding: "10px 14px", background: "#F8FAFC",
           borderBottom: `1px solid ${C.border}`,
           fontSize: 11, fontWeight: 700, color: C.muted,
@@ -574,7 +574,7 @@ function InventoryTab({ ops, onRequestItem }: { ops: OpsState; onRequestItem?: (
             const empty = stock <= 0;
             return (
               <div key={it.id} style={{
-                display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr",
+                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
                 padding: "10px 14px", borderTop: `1px solid ${C.border}`,
                 fontSize: 13, color: C.text, alignItems: "center",
               }}>
@@ -746,7 +746,7 @@ function ReceivePurchaseForm({ ops, onDone }: { ops: OpsState; onDone: () => voi
           <div
             key={line.key}
             className="pos-ops-grid"
-            style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 8, alignItems: "center" }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, alignItems: "center" }}
           >
             <select
               value={line.inventoryItemId ?? ""}
@@ -1518,7 +1518,7 @@ function RefundsTab({ ops, canApprove }: { ops: OpsState; canApprove: boolean })
           </div>
         )}
 
-        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 1.6fr auto", gap: 10 }}>
+        <div className="pos-ops-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
           <input
             value={ops.refundAmount}
             onChange={(e) => ops.setRefundAmount(e.target.value)}

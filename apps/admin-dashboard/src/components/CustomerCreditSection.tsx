@@ -200,7 +200,7 @@ export function CustomerCreditSection({ customerId }: Props) {
         <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Loading credit…</p>
       ) : credit ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
             {[
               { label: 'Limit', value: `MVR ${credit.limit_mvr.toFixed(2)}` },
               { label: 'Balance owed', value: `MVR ${credit.balance_mvr.toFixed(2)}` },
@@ -429,7 +429,7 @@ export function CustomerCreditSection({ customerId }: Props) {
               <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Open invoices</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {openInvoices.map((inv) => (
-                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center' }}>
+                  <div key={inv.id} style={{ fontSize: 12, padding: '8px 10px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid #F0EAE3', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, alignItems: 'center' }}>
                     <Link to={`/finance/invoices?search=${encodeURIComponent(inv.invoice_number)}`} style={{ fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}>
                       {inv.invoice_number}
                     </Link>

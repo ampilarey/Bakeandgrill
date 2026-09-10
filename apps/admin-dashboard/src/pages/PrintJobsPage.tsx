@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { fetchPrintJobs, retryPrintJob, type PrintJob } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { RecordCard, RecordCardList } from '../components/RecordCard';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select, StatCard, TableCard, TD, TH, statColor,
 } from '../components/SharedUI';
@@ -28,6 +30,7 @@ function RetryCountBadge({ count }: { count: number }) {
 
 export default function PrintJobsPage() {
   usePageTitle('Print Queue');
+  const isMobile = useIsMobile();
 
   const [jobs, setJobs] = useState<PrintJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +133,40 @@ export default function PrintJobsPage() {
       ) : jobs.length === 0 ? (
         <Card><EmptyState message="No print jobs found." /></Card>
       ) : (
+        <>
+        {/* Layout audit L-01: nine columns, most of them one short token. */}
+        {isMobile ? (
+          <RecordCardList testId="print-job-cards">
+            {jobs.map((job) => (
+              <RecordCard
+                key={job.id}
+                testId={`print-job-card-${job.id}`}
+                accent={job.status === 'failed' ? 'var(--color-danger)' : 'var(--color-border)'}
+                title={<>#{job.id} <JobTypeIcon type={job.type} /><RetryCountBadge count={job.retry_count} /></>}
+                subtitle={new Date(job.created_at).toLocaleString('en-MV', { timeZone: 'Indian/Maldives' })}
+                badge={<Badge label={job.status} color={statColor(STATUS_COLORS[job.status] ?? 'default')} />}
+                fields={[
+                  job.order_id ? {
+                    label: 'Order',
+                    value: <Link to={`/orders?order=${job.order_id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>#{job.order_number ?? job.order_id}</Link>,
+                  } : null,
+                  { label: 'Printer', value: job.printer_name ?? 'Default' },
+                  { label: 'Copies', value: job.copies },
+                  job.error_message ? {
+                    label: 'Error',
+                    value: <span style={{ color: 'var(--color-danger)', fontFamily: 'monospace', fontSize: 12 }}>{job.error_message}</span>,
+                  } : null,
+                ]}
+                actions={(job.status === 'failed' || job.status === 'pending') ? (
+                  <Btn small variant="secondary" onClick={() => void handleRetry(job.id)} disabled={retryingId === job.id}>
+                    <RotateCcw size={12} style={{ marginRight: 4 }} />
+                    {retryingId === job.id ? 'Retrying…' : 'Retry'}
+                  </Btn>
+                ) : undefined}
+              />
+            ))}
+          </RecordCardList>
+        ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -210,18 +247,20 @@ export default function PrintJobsPage() {
               ))}
             </tbody>
           </table>
-
-          {/* Pagination */}
-          {meta.last_page > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
-              <Btn small variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</Btn>
-              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '6px 12px' }}>
-                Page {meta.current_page} of {meta.last_page}
-              </span>
-              <Btn small variant="secondary" disabled={page === meta.last_page} onClick={() => setPage(page + 1)}>Next →</Btn>
-            </div>
-          )}
         </TableCard>
+        )}
+
+        {/* Pagination sits outside the table so the card list keeps it too. */}
+        {meta.last_page > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
+            <Btn small variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</Btn>
+            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', padding: '6px 12px' }}>
+              Page {meta.current_page} of {meta.last_page}
+            </span>
+            <Btn small variant="secondary" disabled={page === meta.last_page} onClick={() => setPage(page + 1)}>Next →</Btn>
+          </div>
+        )}
+      </>
       )}
     </>
 

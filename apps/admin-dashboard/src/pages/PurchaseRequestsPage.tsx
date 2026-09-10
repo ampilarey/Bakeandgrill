@@ -756,7 +756,7 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
           <input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
           <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Item name</label>
           <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="e.g. Cooking oil 5L" style={{ width: '100%', marginBottom: 12, padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 6 }}>Qty</label>
               <input value={createQty} onChange={(e) => setCreateQty(e.target.value)} type="number" min="0.001" step="any" style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--color-border)', boxSizing: 'border-box' }} />

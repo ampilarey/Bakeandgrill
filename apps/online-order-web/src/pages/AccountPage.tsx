@@ -741,7 +741,7 @@ export function AccountPage() {
                     <p style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1D4ED8', margin: '0 0 12px' }}>
                       Credit Account · {credit.status.replace('_', ' ')}
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
                       <div>
                         <p style={{ fontSize: 11, color: '#1E40AF', margin: '0 0 4px', fontWeight: 700 }}>{t('account.credit_owed')}</p>
                         <p style={{ fontSize: 22, fontWeight: 900, color: '#1E3A8A', margin: 0 }}>MVR {credit.balance_mvr.toFixed(2)}</p>

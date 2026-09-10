@@ -1130,7 +1130,7 @@ export function MenuItemEditorModal({
             <p className="mie-count">
               Shown as “Contains …” on the item detail sheet (not on the menu card)
             </p>
-            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="form-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
               <Field label="Spice level">
                 <select
                   value={form.spice_level}

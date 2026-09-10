@@ -392,7 +392,9 @@ export default function ServiceAvailabilityPage() {
           role="status"
           style={{
             position: 'fixed',
-            bottom: 24,
+            // Layout audit L-04: a flat 24px put the lower edge under the
+            // iPhone home indicator. The stylesheet already defines the inset.
+            bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
             right: 24,
             zIndex: 'var(--z-toast)' as unknown as number,
             background: toast.type === 'ok' ? 'var(--color-success)' : 'var(--color-danger)',
