@@ -1,6 +1,7 @@
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
+import { a11yPlugin, a11yRules } from '../eslint-a11y.mjs';
 
 /**
  * Order app lint (2026-09-03), the same shape as apps/pos-web. Type errors
@@ -28,8 +29,10 @@ export default [
       },
     },
     linterOptions: { reportUnusedDisableDirectives: 'off' },
-    plugins: { '@typescript-eslint': tsPlugin, 'react-hooks': reactHooks },
+    plugins: { '@typescript-eslint': tsPlugin, 'react-hooks': reactHooks, 'jsx-a11y': a11yPlugin },
     rules: {
+      // See apps/eslint-a11y.mjs for what is enforced and what is not.
+      ...a11yRules,
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       'no-debugger': 'error',

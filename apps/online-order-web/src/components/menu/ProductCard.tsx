@@ -172,7 +172,11 @@ export function ProductCard({
     : null;
 
   return (
-    <article
+    // Was <article role="button">: an article is a standalone piece of
+    // content, and overriding it with a button role is a contradiction a
+    // screen reader has to resolve. The whole card opens the item, so it is
+    // a button and nothing else. Styling is class-based, so the tag is free.
+    <div
       className={`menu-card-article menu-card-article--zus${isUnavailable ? ' unavailable' : ''}${onSale ? ' menu-card-on-sale' : ''}${isList ? ' menu-card-article--list' : ''}`}
       role="button"
       tabIndex={0}
@@ -241,6 +245,6 @@ export function ProductCard({
           )}
         </div>
       </div>
-    </article>
+    </div>
   );
 }

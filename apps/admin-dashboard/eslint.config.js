@@ -1,6 +1,7 @@
 import tsParser from '@typescript-eslint/parser';
 import reactHooks from 'eslint-plugin-react-hooks';
 import local from './eslint-plugin-local/index.js';
+import { a11yPlugin, a11yRules } from '../eslint-a11y.mjs';
 
 /**
  * Admin theming guard (docs/ADMIN_THEMING_MOBILE_PLAN.md).
@@ -31,12 +32,15 @@ export default [
       // Registered so existing eslint-disable react-hooks/* comments resolve.
       // Rules stay off — Stage 1 does not expand hooks linting.
       'react-hooks': reactHooks,
+      'jsx-a11y': a11yPlugin,
     },
     rules: {
       // Preserved from the previous .eslintrc.json
       'no-console': 'warn',
       'react-hooks/rules-of-hooks': 'off',
       'react-hooks/exhaustive-deps': 'off',
+      // See apps/eslint-a11y.mjs for what is enforced and what is not.
+      ...a11yRules,
     },
   },
   {

@@ -220,7 +220,11 @@ export function TicketRow({
 
   return (
     <div
+      // role and tabIndex are set by the same condition, so the card is either
+      // a button or inert — never a focus stop with no role. The rule reads
+      // the ternary rather than the pairing, hence the suppression.
       role={cardClickHandler ? "button" : undefined}
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={cardClickHandler ? 0 : undefined}
       onKeyDown={cardClickHandler ? (e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -596,6 +600,7 @@ export function TicketRow({
                     <div
                       ref={moreMenuRef}
                       role="menu"
+                      tabIndex={-1}
                       onClick={(e) => e.stopPropagation()}
                       style={moreMenuStyle}
                     >

@@ -32,7 +32,10 @@ function FooterNavLink({ item, className }: { item: NavItem; className: string }
   const label = (item.label ?? '').trim() || url;
 
   if (url === '#') {
-    return <a href="#" className={className}>{label}</a>;
+    // safePublicUrl rejected whatever was configured, so there is nowhere to
+    // go. A link that navigates nowhere still announces itself as a link and
+    // takes a tab stop; plain text is the honest thing to show.
+    return <span className={className}>{label}</span>;
   }
   if (item.external || isExternalHref(url)) {
     return (
@@ -62,10 +65,11 @@ function LegalLinks({
         const key = `${url}-${i}`;
 
         if (url === '#') {
+          // Same as FooterNavLink: no valid destination, so not a link.
           return (
-            <a key={key} href="#" className={className}>
+            <span key={key} className={className}>
               {label}
-            </a>
+            </span>
           );
         }
         if (isExternalHref(url)) {

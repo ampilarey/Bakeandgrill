@@ -582,6 +582,10 @@ export function PrayerBar() {
       className="order-hpt-panel"
       style={{ top: dropPos.top, left: dropPos.left }}
       role="listbox"
+      // A listbox is an interactive role, so it has to be reachable. -1 keeps
+      // it out of the tab order — the search box and the options are the tab
+      // stops — while letting the panel take focus programmatically.
+      tabIndex={-1}
       aria-label={t('prayer.search_island')}
       onClick={e => e.stopPropagation()}
       onPointerDown={e => e.stopPropagation()}
@@ -607,15 +611,30 @@ export function PrayerBar() {
             <div className="order-hpt-group-label">
               {(ATOLL_ABBR[atoll] || atoll)}  —  {atoll}
             </div>
-            {islands.map(isl => (
-              <div
-                key={isl.id}
-                className={`order-hpt-option${island && isl.id === island.id ? ' selected' : ''}`}
-                onClick={e => { e.stopPropagation(); setDropOpen(false); selectIsland(isl); }}
-              >
-                {isl.name_latin || 'Island'}
-              </div>
-            ))}
+            {islands.map(isl => {
+              const pick = () => { setDropOpen(false); selectIsland(isl); };
+              return (
+                // The panel says listbox, so these have to be options — and an
+                // option nobody can reach with a keyboard is a picker that only
+                // works with a mouse.
+                <div
+                  key={isl.id}
+                  role="option"
+                  aria-selected={!!island && isl.id === island.id}
+                  tabIndex={0}
+                  className={`order-hpt-option${island && isl.id === island.id ? ' selected' : ''}`}
+                  onClick={e => { e.stopPropagation(); pick(); }}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pick();
+                  }}
+                >
+                  {isl.name_latin || 'Island'}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

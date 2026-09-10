@@ -88,7 +88,13 @@ export function MobileActionSheet({
           else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
         }}
         className="hub-mobile-action-sheet"
-        role="menu"
+        // It was role="menu", but nothing inside is a menuitem — callers pass
+        // whatever buttons and fields the sheet needs. A screen reader reading
+        // "menu" then finding no menu items has been told the wrong thing.
+        // It traps focus, closes on Escape and restores focus, which is a
+        // dialog.
+        role="dialog"
+        aria-modal="true"
         aria-labelledby={titleId}
         data-testid={testId}
       >

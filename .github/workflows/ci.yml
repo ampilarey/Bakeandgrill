@@ -317,6 +317,7 @@ jobs:
           npm run lint --workspace=apps/admin-dashboard
           npm run lint --workspace=apps/pos-web
           npm run lint --workspace=apps/online-order-web
+          npm run lint --workspace=apps/kds-web
 
       - name: Type-check all apps
         run: |

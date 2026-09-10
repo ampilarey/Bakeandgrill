@@ -173,6 +173,10 @@ function MenuItemTile({
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)'; }}
       onMouseOut={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)'; }}
+      // The same lift on keyboard focus, so tabbing the grid shows where you
+      // are instead of only the mouse getting the cue.
+      onFocus={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)'; }}
+      onBlur={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(15,23,42,0.06)'; }}
     >
       {imgSrc ? (
         <img

@@ -63,6 +63,9 @@ function mockFetch() {
 describe('PrayerBar island picker', () => {
   beforeEach(() => {
     localStorage.clear();
+    // The banner remembers whether it was expanded in sessionStorage, so
+    // without this a test that expands it decides where the next one starts.
+    sessionStorage.clear();
     mockFetch();
   });
 
@@ -94,6 +97,35 @@ describe('PrayerBar island picker', () => {
     await waitFor(() => {
       expect(screen.getByRole('listbox')).toBeTruthy();
     });
+  }, 15000);
+
+  it('picks an island from the keyboard', async () => {
+    // The panel calls itself a listbox, but the islands inside it were plain
+    // divs with an onClick — so somebody tabbing through the page could open
+    // the picker and then never choose anything.
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider>
+        <PrayerBar />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Malé/i })).toBeTruthy();
+    }, { timeout: 10000 });
+
+    await user.click(screen.getByRole('button', { name: /Dhuhr|Fajr|Asr|Maghrib|Isha|Sunrise|Prayer Times/i }));
+    await user.click(await screen.findByRole('button', { name: /Change island/i }, { timeout: 10000 }));
+
+    const listbox = await screen.findByRole('listbox', {}, { timeout: 10000 });
+    const option = within(listbox).getByRole('option', { name: 'Mahibadhoo' });
+
+    option.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Mahibadhoo/i })).toBeTruthy();
+    }, { timeout: 10000 });
   }, 15000);
 
   it('rehydrates Latin island label when localStorage has Dhivehi nameLatin', async () => {

@@ -120,6 +120,9 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
   }
   if (asset.media_type === 'video' && asset.url) {
     return (
+      // No caption track exists: this is an admin preview of a file somebody
+      // just uploaded, and the library stores no subtitles to point at.
+      // eslint-disable-next-line jsx-a11y/media-has-caption
       <video
         key={fullSrc}
         data-testid="detail-preview-video"
@@ -134,6 +137,8 @@ function AssetDetailPreview({ asset }: { asset: MediaAsset }) {
     return (
       <div style={{ width: '100%', padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         {mediaTypeIcon('audio', 40)}
+        {/* Same as the video above — an uploaded file has no caption track. */}
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <audio key={fullSrc} data-testid="detail-preview-audio" controls src={fullSrc} style={{ width: '100%' }} />
       </div>
     );
