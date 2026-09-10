@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Kitchen\Services;
 
 use App\Models\Item;
-use App\Models\ItemChannelAvailability;
 use App\Models\KitchenMenuState;
 use App\Models\MenuGroup;
 use App\Models\SiteSetting;
@@ -36,6 +35,23 @@ final class KitchenMenuResolver
     public function __construct(
         private readonly DeliveryGateService $deliveryGate,
     ) {}
+
+    /**
+     * Which menu groups are being served, remembered for this instance only.
+     *
+     * `isItemVisibleForChannel()` is called once per item, and it read the
+     * one-row `kitchen_menu_state` table every time: a sixty-dish menu cost
+     * sixty-one identical SELECTs for an answer that cannot change while the
+     * request is being served.
+     *
+     * Deliberately an instance property and not a static. The service is not
+     * a container singleton, so every resolution — and therefore every request
+     * — starts with it empty. A static would survive the switch being changed
+     * and keep serving yesterday's menu.
+     *
+     * @var list<int>|null
+     */
+    private ?array $activeMenuGroupIds = null;
 
     public function channelForOrderType(string $orderType): string
     {
@@ -71,12 +87,19 @@ final class KitchenMenuResolver
      */
     public function activeMenuGroupIds(): array
     {
-        $state = KitchenMenuState::query()->whereKey(1)->first();
-        if ($state === null || $state->active_menu_group_ids === null || $state->active_menu_group_ids === []) {
-            return MenuGroup::where('is_active', true)->pluck('id')->all();
+        if ($this->activeMenuGroupIds !== null) {
+            return $this->activeMenuGroupIds;
         }
 
-        return array_values(array_map('intval', $state->active_menu_group_ids));
+        $state = KitchenMenuState::query()->whereKey(1)->first();
+        if ($state === null || $state->active_menu_group_ids === null || $state->active_menu_group_ids === []) {
+            return $this->activeMenuGroupIds = MenuGroup::where('is_active', true)
+                ->pluck('id')
+                ->map(static fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return $this->activeMenuGroupIds = array_values(array_map('intval', $state->active_menu_group_ids));
     }
 
     public function isItemVisibleForChannel(Item $item, string $channel, ?Carbon $at = null, bool $ignoreDeliveryGate = false): bool
@@ -102,10 +125,7 @@ final class KitchenMenuResolver
             }
         }
 
-        $row = ItemChannelAvailability::query()
-            ->where('item_id', $item->id)
-            ->where('channel', $channel)
-            ->first();
+        $row = $item->channelAvailabilityFor($channel);
 
         if ($row === null || !$row->is_enabled) {
             return false;

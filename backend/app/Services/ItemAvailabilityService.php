@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Domains\Inventory\Services\RecipeStockService;
 use App\Domains\Kitchen\Services\KitchenMenuResolver;
 use App\Models\Item;
-use App\Models\ItemChannelAvailability;
 use Carbon\Carbon;
 
 /**
@@ -321,10 +320,7 @@ class ItemAvailabilityService
 
     private function channelAvailableFrom(Item $item, string $channel, Carbon $at): ?string
     {
-        $row = ItemChannelAvailability::query()
-            ->where('item_id', $item->id)
-            ->where('channel', $channel)
-            ->first();
+        $row = $item->channelAvailabilityFor($channel);
 
         if ($row && $row->is_enabled && $row->valid_from && $at->lt($row->valid_from)) {
             return $row->valid_from->toIso8601String();

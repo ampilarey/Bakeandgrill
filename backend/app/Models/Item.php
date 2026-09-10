@@ -110,6 +110,24 @@ class Item extends Model
         return $this->hasMany(ItemChannelAvailability::class, 'item_id');
     }
 
+    /**
+     * This item's row for one channel, from the eager-loaded set when there is
+     * one.
+     *
+     * Same idea as extraCategoryIds() above. The menu endpoints already eager
+     * load `channelAvailabilities`, but the two availability checks queried
+     * for the row anyway — one SELECT per dish on the busiest customer-facing
+     * request in the app.
+     */
+    public function channelAvailabilityFor(string $channel): ?ItemChannelAvailability
+    {
+        if ($this->relationLoaded('channelAvailabilities')) {
+            return $this->channelAvailabilities->firstWhere('channel', $channel);
+        }
+
+        return $this->channelAvailabilities()->where('channel', $channel)->first();
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(Variant::class);

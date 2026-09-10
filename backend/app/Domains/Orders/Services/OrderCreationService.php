@@ -580,6 +580,10 @@ class OrderCreationService
             'packagingOptions',
             'comboItems.item',
             'platterGroups.allowedItems.item',
+            // assertLineItemsAllowedForOrderType() below asks each line whether
+            // its channel is switched on. Without this it is one SELECT per
+            // line, inside the order transaction.
+            'channelAvailabilities',
         ])
             ->where('is_active', true)
             ->whereIn('id', $itemIds);
