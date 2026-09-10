@@ -70,7 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Owner, 2026-09-08: "related tabs together". The production plan and
       // the handover (batches, receiving, variances, waste) share one page
       // and one settings tab; each tab keeps the permission its page had.
-      { to: '/kitchen', icon: Utensils, label: 'Kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage'], description: 'Plan, handover, receiving & variance' },
+      { to: '/kitchen', icon: Utensils, label: 'Kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage', 'menu.manage'], description: 'Plan, handover, receiving & variance' },
       { to: '/activity',    icon: Zap,        label: 'POS Activity',   permission: 'reports.view',            description: 'Audit log & POS events' },
     ],
   },

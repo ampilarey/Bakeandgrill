@@ -78,6 +78,33 @@ class KdsController extends Controller
                     ->orWhereNotNull('fired_at')
                     ->orWhereNotNull('user_id');
             })
+            /*
+             * Nothing to make, nothing to show. Owner, 2026-09-09: "this page
+             * should show only the items that are active orders" — on a board
+             * of 77 counter sales that were paid at the till and never cooked.
+             *
+             * Order creation no longer fires those, but this is what clears
+             * the ones already sitting there, and it is the same shape as the
+             * four holds above: an order reaches the kitchen when the kitchen
+             * has work on it.
+             */
+            ->when(MenuGroup::counterGroupIds() !== [], function ($query) {
+                $counterGroups = MenuGroup::counterGroupIds();
+                // Hidden only when every line is a known counter good. An
+                // order with no lines, or a line whose catalog row has since
+                // gone, still shows — a ticket that should not be there is a
+                // far smaller problem than a dish nobody is told to cook.
+                $query->where(function ($q) use ($counterGroups) {
+                    $q->whereDoesntHave('items')
+                        ->orWhereHas('items', function ($line) use ($counterGroups) {
+                            $line->whereDoesntHave('item')
+                                ->orWhereHas('item', function ($item) use ($counterGroups) {
+                                    $item->whereNull('menu_group_id')
+                                        ->orWhereNotIn('menu_group_id', $counterGroups);
+                                });
+                        });
+                });
+            })
             ->orderBy('created_at')
             ->get()
             ->map(fn (Order $order) => $this->formatKitchenOrder($order));

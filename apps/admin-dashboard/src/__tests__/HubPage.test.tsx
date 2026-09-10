@@ -226,11 +226,11 @@ describe('A hub with grouped tabs', () => {
     expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
   });
 
-  it('groups the eleven Kitchen tabs into three short rows', async () => {
+  it('groups the twelve Kitchen tabs into three short rows', async () => {
     const { kitchenTabs } = await import('../pages/KitchenHub');
     const tabs = kitchenTabs(true);
 
-    expect(tabs).toHaveLength(11);
+    expect(tabs).toHaveLength(12);
     expect(hubGroups(tabs)).toEqual(['Plan', 'Handover', 'Settings']);
     // Nothing ungrouped, and no row longer than six.
     expect(tabs.every((t) => !!t.group)).toBe(true);

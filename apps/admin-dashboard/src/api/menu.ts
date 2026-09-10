@@ -23,6 +23,11 @@ export type MenuGroupRow = {
   slug: string;
   sort_order: number;
   is_active: boolean;
+  /**
+   * Whether the kitchen makes this group. Off for things sold straight off
+   * the counter — those never print a chit and never reach the kitchen board.
+   */
+  goes_to_kitchen?: boolean;
 };
 
 export type ItemChannelAvailabilityRow = {
@@ -273,6 +278,17 @@ export async function deleteVariant(itemId: number, variantId: number): Promise<
 
 export async function fetchMenuGroups(): Promise<{ data: MenuGroupRow[] }> {
   return req('/admin/menu-groups');
+}
+
+/** Turn a group's kitchen routing on or off. */
+export async function setMenuGroupKitchenRouting(
+  id: number,
+  goesToKitchen: boolean,
+): Promise<{ menu_group: MenuGroupRow }> {
+  return req(`/admin/menu-groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ goes_to_kitchen: goesToKitchen }),
+  });
 }
 
 export async function getKitchenMenuState(): Promise<{

@@ -42,6 +42,8 @@ if (routes_domain_section_is('catalog', 'main') && !routes_domain_loaded('catalo
 
     Route::middleware(['auth:sanctum', 'staff.token', 'permission:menu.manage'])->group(function () {
         Route::get('/admin/menu-groups', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'menuGroups']);
+        // Which groups the kitchen actually makes; counter groups stay off KDS.
+        Route::patch('/admin/menu-groups/{id}', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'updateMenuGroup'])->whereNumber('id');
         Route::get('/admin/kitchen-menu-state', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'kitchenState']);
         Route::patch('/admin/kitchen-menu-state', [App\Http\Controllers\Api\KitchenMenuAdminController::class, 'updateKitchenState']);
 

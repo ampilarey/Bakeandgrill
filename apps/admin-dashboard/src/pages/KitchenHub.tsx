@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { HubPage, hubPermissions, type HubTab } from '../components/HubPage';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
+import { KitchenRoutingTab } from './KitchenRoutingTab';
 
 /*
  * Kitchen — one page for the kitchen team. Owner, 2026-09-08: "related tabs
@@ -38,6 +39,14 @@ export function kitchenTabs(canManage: boolean): HubTab[] {
     { id: 'variances', group: 'Handover', label: 'Variances', permissions: ['kitchen.variance.review'], desc: 'Short, over, rejected and remade', render: () => <KitchenProductionPage tab="variances" /> },
     { id: 'waste', group: 'Handover', label: 'Waste', permissions: REPORTS, desc: 'Waste and remakes', render: () => <KitchenProductionPage tab="waste" /> },
     { id: 'staff', group: 'Handover', label: 'Staff output', permissions: REPORTS, desc: 'Batches per cook', render: () => <KitchenProductionPage tab="staff" /> },
+    {
+      id: 'routing',
+      group: 'Settings',
+      label: 'What the kitchen makes',
+      permissions: ['menu.manage'],
+      desc: 'Which groups are cooked to order, and which are sold off the counter',
+      render: () => <KitchenRoutingTab />,
+    },
     {
       id: 'settings',
       group: 'Settings',

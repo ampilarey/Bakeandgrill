@@ -23,7 +23,9 @@ const ROUTE_PERMISSION_BASELINE: Array<{ to: string; permission?: string; permis
   { to: '/delivery', permission: 'orders.manage' },
   // Hubs, 2026-09-08 ("related tabs together"): each hub carries the union
   // of the permissions its pages had, and each tab keeps its own.
-  { to: '/kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage'] },
+  // menu.manage joined 2026-09-10 with the "What the kitchen makes" tab: the
+  // switch and its endpoint share a permission, or it would show and then 403.
+  { to: '/kitchen', permissions: ['kitchen.production.plan', 'kitchen.production.reports', 'kitchen.production.view_all', 'kitchen.variance.review', 'kitchen.production.manage', 'menu.manage'] },
   { to: '/activity', permission: 'reports.view' },
   { to: '/shifts', permission: 'shifts.view_all_history' },
   { to: '/time-clock', permissions: ['staff.view', 'pos.time_clock'] },

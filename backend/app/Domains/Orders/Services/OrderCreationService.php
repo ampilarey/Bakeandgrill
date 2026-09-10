@@ -15,6 +15,7 @@ use App\Models\CateringRequestLine;
 use App\Models\Customer;
 use App\Models\Device;
 use App\Models\Item;
+use App\Models\MenuGroup;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderItemModifier;
@@ -125,9 +126,24 @@ class OrderCreationService
 
         $initialStatus = $isCustomerOnlineOrder ? 'payment_pending' : 'pending';
 
+        /*
+         * Owner, 2026-09-09: a bun taken off the counter and paid for was
+         * printing a kitchen chit and landing on the board, because `print`
+         * defaults to true and POS never sends anything else. Firing an order
+         * the kitchen has no work on wastes a chit and leaves a ticket nobody
+         * will ever bump — which is how the board reached 77.
+         *
+         * So: still only when the caller wants it, and now only when there is
+         * something to make. Groups default to going to the kitchen, so this
+         * changes nothing until somebody unticks a counter group.
+         */
         $printKitchen = $isCustomerOnlineOrder
             ? false
             : (!array_key_exists('print', $payload) || $payload['print'] === true);
+
+        if ($printKitchen && !$this->hasKitchenWork($payload['items'] ?? [])) {
+            $printKitchen = false;
+        }
 
         // `fired_at` records when the kitchen actually saw the ticket.
         // It is set whenever we're going to print to the kitchen at
@@ -1116,6 +1132,46 @@ class OrderCreationService
         if ($recentCount >= $max) {
             abort(429, 'Too many online orders. Please try again in a few minutes.');
         }
+    }
+
+    /**
+     * Whether any line on this order belongs to a group the kitchen makes.
+     *
+     * Anything not positively marked as a counter good counts as kitchen
+     * work: an unfiled item is more likely a new dish nobody has categorised
+     * than something off the shelf, and a chit that should not have printed
+     * is a far smaller problem than a dish that never reached the kitchen.
+     *
+     * @param array<int, array<string, mixed>> $items
+     */
+    private function hasKitchenWork(array $items): bool
+    {
+        $counterGroups = MenuGroup::counterGroupIds();
+        if ($counterGroups === []) {
+            return true;
+        }
+
+        $itemIds = [];
+        foreach ($items as $row) {
+            $id = (int) ($row['item_id'] ?? 0);
+            if ($id > 0) {
+                $itemIds[] = $id;
+            }
+        }
+        if ($itemIds === []) {
+            return true;
+        }
+        $itemIds = array_values(array_unique($itemIds));
+
+        // Skipped only when every distinct line is a known counter item.
+        // Anything else on the order — an unfiled item, a line whose catalog
+        // row has gone — means somebody may have to cook, so it fires.
+        $counterLines = Item::query()
+            ->whereIn('id', $itemIds)
+            ->whereIn('menu_group_id', $counterGroups)
+            ->count();
+
+        return $counterLines < count($itemIds);
     }
 
     private function generateOrderNumber(): string
