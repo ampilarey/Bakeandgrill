@@ -1,4 +1,3 @@
-import { heicTo } from 'heic-to/csp';
 
 const HEIC_MIME = /image\/hei[cf]/i;
 const HEIC_EXT = /\.hei[cf]$/i;
@@ -137,6 +136,18 @@ async function convertHeicNatively(file: File): Promise<File> {
 
 /** Updated libheif (heic-to) — needed on Chrome/Firefox / when native decode fails. */
 async function convertHeicWithWasm(file: File): Promise<File> {
+  /*
+   * libheif, and it is 2.9 MB — the single heaviest thing either app ships.
+   *
+   * Imported here rather than at the top of the file because this is the
+   * fallback, not the path. An iPhone photo decodes natively in Safari, and an
+   * Android photo is already a JPEG; both used to pull the whole decoder down
+   * anyway, on shop wifi, at the moment somebody was trying to photograph a
+   * receipt. Now it is fetched only when a HEIC arrives that the browser could
+   * not read itself.
+   */
+  const { heicTo } = await import('heic-to/csp');
+
   const blob = await withTimeout(
     heicTo({
       blob: file,
