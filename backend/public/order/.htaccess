@@ -1,11 +1,17 @@
 # Order SPA shell — must revalidate after deploy so customers pick up new builds
-# immediately; content-hashed assets are cached forever. Rules are ordered so the
-# shell no-cache directive wins for sw.js (which also matches the .js rule).
+# immediately; content-hashed assets are cached forever.
+#
+# The immutable rule is keyed on Vite's content hash (`HomePage-BSl2gt10.js`)
+# rather than on `.js`/`.css`, so it cannot reach `sw.js` or any other unhashed
+# shell file. That used to be handled by rule order — the shell block came last
+# and a later `Header set` overwrites an earlier one — which worked here and was
+# got wrong in the POS copy. Two rules that cannot both match is a better
+# guarantee than two rules in the right order.
 <IfModule mod_headers.c>
-  <FilesMatch "\.(js|css)$">
+  <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|manifest\.json|version\.json)$">
+  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|manifest\.json|version\.json|offline\.html|reset\.js)$">
     Header set Cache-Control "no-cache, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
     Header set Expires "0"

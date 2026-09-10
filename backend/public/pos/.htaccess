@@ -1,11 +1,23 @@
 # POS PWA shell files — must revalidate quickly after deploy (iPad standalone cache).
+#
+# The immutable rule is keyed on Vite's content hash (`index-C900Nd8g.js`), not
+# on the extension. It used to be `\.(js|css)$`, and because mod_headers lets a
+# later `Header set` overwrite an earlier one, that rule sat *below* the shell
+# list and won for `sw.js` — the one file here that must never be pinned. The
+# service worker spec caps an update check at 24 hours whatever max-age says,
+# so the damage was a day's delay rather than a year's, but a cashier's iPad
+# holding yesterday's build is exactly what this file exists to prevent.
+#
+# Keying on the hash means the two rules can no longer overlap, so their order
+# stops mattering. Every file Vite emits into assets/ carries the hash; nothing
+# in the shell does.
 <IfModule mod_headers.c>
   <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|manifest\.json|pos-version\.json)$">
     Header set Cache-Control "no-cache, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
     Header set Expires "0"
   </FilesMatch>
-  <FilesMatch "\.(js|css)$">
+  <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>

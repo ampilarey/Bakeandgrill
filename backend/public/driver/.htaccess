@@ -1,0 +1,18 @@
+# Driver PWA shell — must revalidate after deploy so a phone out on a delivery
+# run picks up new builds; content-hashed assets are cached forever.
+#
+# The driver app had no cache policy at all, which matters more here than
+# anywhere else: it is a service worker on somebody's own phone, installed to
+# the home screen, and a stale one keeps a driver on an old build with no
+# obvious way to notice. `sw.js` and `registerSW.js` are unhashed, so the
+# immutable rule is keyed on Vite's content hash and cannot reach them.
+<IfModule mod_headers.c>
+  <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest|manifest\.json)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>

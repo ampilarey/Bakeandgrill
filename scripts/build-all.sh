@@ -76,6 +76,10 @@ for target in "${TARGETS[@]}"; do
 
   echo "Deploying to $DEST_DIR ..."
   mkdir -p "$DEST_DIR"
+  # The `/*` glob is load-bearing: it does not match dotfiles, so each app's
+  # committed .htaccess (cache headers for the shell and the hashed assets)
+  # survives the wipe. `rm -rf "$DEST_DIR"` would delete it silently and the
+  # only symptom would be browsers holding a stale build after a deploy.
   rm -rf "${DEST_DIR:?}"/*
   cp -R dist/. "$DEST_DIR/"
 

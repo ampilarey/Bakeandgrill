@@ -1,0 +1,23 @@
+# Admin SPA shell — must revalidate after deploy so the office picks up new
+# builds immediately; content-hashed assets are cached forever.
+#
+# The admin had no cache policy at all while the order, POS and KDS builds each
+# had one. Two consequences: its hashed assets — around ninety chunks — were
+# re-validated on every load instead of being served from disk, and index.html
+# had nothing telling the browser it had changed, which is a large part of why
+# "close the tab and open it again" keeps being the advice after a deploy.
+#
+# `theme-init.js` is deliberately in the shell list: it is not content-hashed,
+# so pinning it would freeze the theme boot script at whatever shipped first.
+# That is the trap an extension-based rule falls into, so the immutable rule is
+# keyed on Vite's content hash instead.
+<IfModule mod_headers.c>
+  <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|theme-init\.js)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>

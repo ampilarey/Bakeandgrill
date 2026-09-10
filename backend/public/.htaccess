@@ -1,3 +1,23 @@
+# Compress what is worth compressing.
+#
+# Nothing was compressed before this. The customer menu is ~86 kB of JSON for a
+# sixty-dish menu and the kitchen board is ~47 kB every fifteen seconds; both
+# are repetitive text that gzip takes to roughly an eighth. Images and woff2
+# fonts are already compressed and are deliberately left alone — running them
+# through deflate costs CPU and gives back nothing.
+#
+# Guarded, so a server without the module serves everything exactly as before.
+<IfModule mod_deflate.c>
+    <IfModule mod_filter.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+        AddOutputFilterByType DEFLATE application/javascript text/javascript
+        AddOutputFilterByType DEFLATE application/json application/ld+json
+        AddOutputFilterByType DEFLATE application/xml application/rss+xml
+        AddOutputFilterByType DEFLATE application/manifest+json
+        AddOutputFilterByType DEFLATE image/svg+xml
+    </IfModule>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
