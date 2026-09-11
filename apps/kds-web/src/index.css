@@ -1,8 +1,628 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/**
+ * Kitchen display styles.
+ *
+ * This file used to be three `@tailwind` directives. Tailwind has been on v4
+ * here since the dependency bump, and v4 does not process those — it wants
+ * `@import "tailwindcss"`. So no utility was ever generated, and every
+ * className in the app was inert: the board's `lg:grid-cols-3` produced no
+ * columns, `p-4` no padding, `rounded-xl` no corners. What the kitchen saw
+ * was one full-width stack of unpadded rows, three screens tall.
+ *
+ * Rather than switch the directives on and inherit a design nobody has seen
+ * work, this follows apps/pos-web (Bug-038): Tailwind out of the pipeline,
+ * explicit CSS in. Twenty-four utility classes is not worth a framework, and
+ * a kitchen screen wants deliberate sizes anyway.
+ *
+ * Written for the screen it runs on: a wall-mounted display read from two
+ * metres away by somebody holding a pan. Food is the largest thing on a
+ * ticket; order numbers, table numbers and timestamps are reference. Every
+ * control is at least 44px. Lanes scroll on their own so the column headings
+ * never leave, and the page itself never scrolls.
+ */
+
+:root {
+  --kds-bg: #12100c;
+  --kds-lane: #1b1813;
+  --kds-card: #262117;
+  --kds-card-edge: #3a3327;
+  --kds-ink: #fdfaf4;
+  --kds-ink-dim: #b6a992;
+  --kds-ink-faint: #8b7f6b;
+  --kds-accent: #f0913f;
+
+  --kds-ok: #35c46a;
+  --kds-warn: #f7a23b;
+  --kds-late: #f4544c;
+  --kds-done: #35c46a;
+
+  /* One scale, so nothing is sized by accident. */
+  --kds-dish: 22px;
+  --kds-qty: 26px;
+  --kds-meta: 14px;
+  --kds-small: 13px;
+
+  --kds-tap: 48px;
+}
+
+/* A laptop or a phone in the pass — same board, smaller type. */
+@media (max-width: 1279px) {
+  :root {
+    --kds-dish: 19px;
+    --kds-qty: 22px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
 
 body {
+  margin: 0;
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
+  background: var(--kds-bg);
+  color: var(--kds-ink);
+  /* The board fills the screen and the lanes scroll; the page never does. */
+  overflow: hidden;
 }
+
+button {
+  font-family: inherit;
+}
+
+/* ── Shell ──────────────────────────────────────────────────────────────── */
+
+.kds-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.kds-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  background: var(--kds-lane);
+  border-bottom: 1px solid var(--kds-card-edge);
+  flex-shrink: 0;
+}
+
+.kds-brand {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.kds-who {
+  font-size: var(--kds-small);
+  color: var(--kds-ink-faint);
+  white-space: nowrap;
+}
+
+.kds-topbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The numbers a chef glances at, inline in the bar rather than four cards
+   costing 90px of board. */
+.kds-vitals {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.kds-vital {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.kds-vital-value {
+  font-size: 19px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.kds-vital-label {
+  font-size: 11px;
+  color: var(--kds-ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.kds-live {
+  font-size: var(--kds-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.kds-live[data-state="live"] { color: var(--kds-ok); }
+.kds-live[data-state="polling"] { color: var(--kds-warn); }
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.kds-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--kds-card-edge);
+  background: var(--kds-card);
+  color: var(--kds-ink-dim);
+  font-size: var(--kds-small);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kds-btn:hover { color: var(--kds-ink); border-color: var(--kds-ink-faint); }
+.kds-btn:focus-visible { outline: 3px solid var(--kds-accent); outline-offset: 2px; }
+
+.kds-btn--primary {
+  background: var(--kds-accent);
+  border-color: var(--kds-accent);
+  color: #1b1204;
+}
+
+.kds-btn--on {
+  background: var(--kds-done);
+  border-color: var(--kds-done);
+  color: #08210f;
+}
+
+.kds-select {
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--kds-card-edge);
+  background: var(--kds-card);
+  color: var(--kds-ink);
+  font-family: inherit;
+  font-size: var(--kds-small);
+  font-weight: 700;
+}
+
+/* ── Board ──────────────────────────────────────────────────────────────── */
+
+.kds-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+/* One dish at a time on a phone: tabs would hide the queue, and a kitchen
+   phone is a glance at what is next rather than a working surface. */
+@media (max-width: 900px) {
+  .kds-board { grid-template-columns: minmax(0, 1fr); }
+  body { overflow: auto; }
+  .kds-shell { height: auto; min-height: 100%; }
+  .kds-lane { max-height: none; }
+
+  /* Averages and the device name wrapped the top bar onto five rows and cost
+     a third of a phone screen before the first ticket. The lane counts say
+     how busy it is; the rest is a manager's question, asked on a bigger
+     screen. */
+  .kds-vitals,
+  .kds-who { display: none; }
+}
+
+.kds-board--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kds-lane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--kds-lane);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.kds-lane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--kds-card-edge);
+  flex-shrink: 0;
+}
+
+.kds-lane-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--kds-ink-dim);
+}
+
+.kds-lane-count {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--kds-ink);
+}
+
+.kds-lane-head[data-flash="true"] {
+  background: rgba(240, 145, 63, 0.16);
+}
+
+.kds-lane-head[data-flash="true"] .kds-lane-title {
+  color: var(--kds-accent);
+}
+
+/* The scroll lives here, so the heading above stays put while a busy lane
+   runs long. */
+.kds-lane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kds-lane-empty {
+  color: var(--kds-ink-faint);
+  font-size: var(--kds-meta);
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* ── Ticket ─────────────────────────────────────────────────────────────── */
+
+.kds-ticket {
+  background: var(--kds-card);
+  border-radius: 12px;
+  /* Age reads as a bar down the side — visible across a kitchen in a way a
+     2px border never was. */
+  border-left: 8px solid var(--kds-ok);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kds-ticket[data-urgency="warn"] { border-left-color: var(--kds-warn); }
+.kds-ticket[data-urgency="late"] { border-left-color: var(--kds-late); }
+
+.kds-ticket[data-overdue="true"] {
+  background: linear-gradient(180deg, rgba(244, 84, 76, 0.16), rgba(244, 84, 76, 0.05));
+}
+
+.kds-ticket-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kds-ticket-ref {
+  min-width: 0;
+}
+
+.kds-ticket-number {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.kds-ticket-where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.kds-timer {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.kds-timer-value {
+  font-size: 21px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.kds-timer-at {
+  font-size: 11px;
+  color: var(--kds-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.kds-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--kds-ink-dim);
+  white-space: nowrap;
+}
+
+.kds-tag--late { background: rgba(244, 84, 76, 0.2); color: #ffb0ab; }
+.kds-tag--done { background: rgba(53, 196, 106, 0.18); color: #8bf0b0; }
+.kds-tag--delivery { background: rgba(240, 145, 63, 0.18); color: #ffc793; }
+
+/* ── Lines ──────────────────────────────────────────────────────────────── */
+
+.kds-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--kds-card-edge);
+  border-bottom: 1px solid var(--kds-card-edge);
+  padding: 10px 0;
+}
+
+.kds-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.kds-line[data-child="true"] {
+  padding-left: 16px;
+  opacity: 0.88;
+}
+
+/* Quantity is the thing that gets misread from across a kitchen, so it gets
+   its own block rather than living inside the sentence. */
+.kds-qty {
+  flex-shrink: 0;
+  min-width: 42px;
+  text-align: center;
+  font-size: var(--kds-qty);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--kds-accent);
+}
+
+.kds-line-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.kds-dish {
+  font-size: var(--kds-dish);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.kds-line-note {
+  font-size: var(--kds-meta);
+  color: var(--kds-ink-dim);
+  margin-top: 3px;
+}
+
+.kds-line-note--mods {
+  color: #ffc793;
+  font-weight: 600;
+}
+
+.kds-line-note--cooked {
+  color: #8bf0b0;
+  font-weight: 700;
+}
+
+.kds-sub {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--kds-card-edge);
+  font-size: var(--kds-meta);
+  color: var(--kds-ink-dim);
+}
+
+.kds-line-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+/* Small in the layout, never small to hit: a cook taps this with the side of
+   a thumb, often through a glove. */
+.kds-chip {
+  min-height: 36px;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--kds-card-edge);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--kds-ink-dim);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* "Cooked" is progress and earns its colour. "Sold out" is an action that
+   sits on every single line, and in red it made a normal board look like an
+   emergency — it stays quiet until somebody reaches for it. */
+.kds-chip--cooked { background: rgba(53, 196, 106, 0.16); color: #8bf0b0; border-color: rgba(53, 196, 106, 0.4); }
+.kds-chip--86:hover { background: rgba(244, 84, 76, 0.16); color: #ffb0ab; border-color: rgba(244, 84, 76, 0.45); }
+.kds-chip--restore { background: rgba(53, 196, 106, 0.12); color: #8bf0b0; border-color: rgba(53, 196, 106, 0.35); }
+.kds-chip:focus-visible { outline: 3px solid var(--kds-accent); outline-offset: 2px; }
+
+.kds-ticket-note {
+  font-size: var(--kds-meta);
+  font-weight: 600;
+  color: #ffc793;
+  background: rgba(240, 145, 63, 0.12);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+/* ── Ticket actions ─────────────────────────────────────────────────────── */
+
+.kds-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kds-action {
+  flex: 1 1 auto;
+  min-height: var(--kds-tap);
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.kds-action:focus-visible { outline: 3px solid var(--kds-accent); outline-offset: 2px; }
+
+.kds-action--start { background: var(--kds-accent); color: #1b1204; }
+.kds-action--done { background: var(--kds-done); color: #08210f; }
+.kds-action--complete { background: var(--kds-done); color: #08210f; }
+
+.kds-action--quiet {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--kds-card-edge);
+  color: var(--kds-ink-dim);
+}
+
+/* Not a button — a sentence about who acts next. Sized like the buttons it
+   sits among so the row does not jump. */
+.kds-waiting {
+  flex: 1 1 auto;
+  min-height: var(--kds-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: var(--kds-small);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed var(--kds-card-edge);
+  color: var(--kds-ink-dim);
+}
+
+/* ── Activity drawer ────────────────────────────────────────────────────── */
+
+.kds-activity {
+  flex-shrink: 0;
+  background: var(--kds-lane);
+  border-top: 1px solid var(--kds-card-edge);
+  padding: 8px 18px 12px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.kds-activity-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--kds-meta);
+  color: var(--kds-ink-dim);
+  padding: 3px 0;
+}
+
+.kds-activity-row strong { color: var(--kds-ink); }
+
+.kds-banner {
+  margin: 10px 18px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(244, 84, 76, 0.16);
+  color: #ffb0ab;
+  font-size: var(--kds-meta);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Sign-in ────────────────────────────────────────────────────────────── */
+
+.kds-signin {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.kds-signin-card {
+  background: var(--kds-lane);
+  border: 1px solid var(--kds-card-edge);
+  border-radius: 20px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.kds-field {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--kds-ink-faint);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kds-input {
+  width: 100%;
+  min-height: var(--kds-tap);
+  border-radius: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--kds-card-edge);
+  font-size: 16px;
+  color: var(--kds-ink);
+  background: var(--kds-card);
+  outline: none;
+}
+
+.kds-input:focus-visible { outline: 3px solid var(--kds-accent); outline-offset: 1px; }
+
+.kds-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.kds-key {
+  height: 58px;
+  border-radius: 12px;
+  border: 1px solid var(--kds-card-edge);
+  background: var(--kds-card);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--kds-ink);
+  cursor: pointer;
+}
+
+.kds-key:disabled { background: transparent; border-color: transparent; cursor: default; }
+.kds-key:focus-visible { outline: 3px solid var(--kds-accent); outline-offset: 2px; }

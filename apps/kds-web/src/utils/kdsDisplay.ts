@@ -8,6 +8,22 @@ export function elapsed(iso: string): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+/**
+ * How old a ticket is, as a word rather than a colour.
+ *
+ * The board draws age as a bar down the side of the card, and CSS picks the
+ * colour from this. Keeping the thresholds here — not in a style object —
+ * means the board and any test agree on when a ticket turns amber.
+ */
+export function urgencyLevel(iso: string): "ok" | "warn" | "late" {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "ok";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m >= 15) return "late";
+  if (m >= 8) return "warn";
+  return "ok";
+}
+
 export function urgencyColor(iso: string): { solid: string; faint: string } {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return { solid: "#22c55e", faint: "rgba(34,197,94,0.13)" };

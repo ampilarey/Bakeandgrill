@@ -26,7 +26,7 @@ import { KdsPurchaseRequestOverlay } from "./components/KdsPurchaseRequestOverla
 import { KitchenProductionPanel } from "./components/kitchen-production/KitchenProductionPanel";
 import { useKdsSse } from "./hooks/useKdsSse";
 import { isAudioEnabled, playChime, playLateAlert, setAudioEnabled } from "./utils/audio";
-import { elapsed, isLateTicket, minutesSince, urgencyColor } from "./utils/kdsDisplay";
+import { elapsed, isLateTicket, minutesSince, urgencyLevel } from "./utils/kdsDisplay";
 
 const PREP_TARGET_DEFAULT = 12;
 
@@ -36,15 +36,6 @@ function ticketPrepTarget(order: KdsOrder): number {
     .filter((v): v is number => v != null && v > 0);
   return times.length ? Math.max(...times) : PREP_TARGET_DEFAULT;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pending",
-  paid: "Paid — waiting",
-  partial: "Partial paid",
-  in_progress: "In Progress",
-  preparing: "Preparing",
-  ready: "Ready",
-};
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -72,6 +63,9 @@ function App() {
   const [eightySixing, setEightySixing] = useState<number | null>(null);
   const [prOverlay, setPrOverlay] = useState<null | "request" | "my" | "buying" | "receive">(null);
   const [viewMode, setViewMode] = useState<"board" | "production">("board");
+  // Off by default: the board is for cooking, and who-did-what is a
+  // question asked occasionally rather than read continuously.
+  const [showActivity, setShowActivity] = useState(false);
   const [activity, setActivity] = useState<KdsActivityRow[]>([]);
 
   const prevPendingIdsRef = useRef<Set<number>>(new Set());
@@ -335,131 +329,92 @@ function App() {
     const clearPin = () => setPin("");
 
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: "#1C1408",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}>
-        <div style={{
-          background: "#fff",
-          borderRadius: 20,
-          padding: "40px 36px",
-          width: "100%",
-          maxWidth: 380,
-          boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
-        }}>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: "inline-block" }} />
-            <p style={{ color: "#8B7355", fontSize: 14, margin: 0 }}>Kitchen Display — sign in</p>
+      <div className="kds-signin">
+        <div className="kds-signin-card">
+          <div style={{ textAlign: "center", marginBottom: 22 }}>
+            <img src="/logo.png" alt="Bake &amp; Grill" style={{ width: 60, height: 60, borderRadius: 14, marginBottom: 10 }} />
+            <p style={{ color: "var(--kds-ink-dim)", fontSize: 15, margin: 0, fontWeight: 700 }}>
+              Kitchen Display — sign in
+            </p>
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8B7355", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Email or phone
-            </label>
+          <div style={{ marginBottom: 14 }}>
+            <label className="kds-field" htmlFor="kds-username">Email or phone</label>
             <input
+              id="kds-username"
+              className="kds-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              style={{
-                width: "100%", boxSizing: "border-box",
-                borderRadius: 10, padding: "10px 12px",
-                border: "1px solid #EDE4D4", fontSize: 14,
-                color: "#2A1E0C", background: "#FFFDF9", outline: "none",
-              }}
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#8B7355", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Device ID
-            </label>
+          <div style={{ marginBottom: 18 }}>
+            <label className="kds-field" htmlFor="kds-device">Device ID</label>
             <input
+              id="kds-device"
+              className="kds-input"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
-              style={{
-                width: "100%", boxSizing: "border-box",
-                borderRadius: 10, padding: "10px 12px",
-                border: "1px solid #EDE4D4", fontSize: 14,
-                color: "#2A1E0C", background: "#FFFDF9", outline: "none",
-              }}
             />
           </div>
 
-          <div style={{
-            display: "flex", justifyContent: "center", gap: 10,
-            marginBottom: 20, minHeight: 48, alignItems: "center",
-          }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 18, minHeight: 30, alignItems: "center" }}>
             {pin.length === 0 ? (
-              <span style={{ color: "#C4A882", fontSize: 14 }}>Enter your PIN below</span>
+              <span style={{ color: "var(--kds-ink-faint)", fontSize: 14 }}>Enter your PIN below</span>
             ) : (
               Array.from({ length: pin.length }).map((_, i) => (
-                <div key={i} style={{
-                  width: 16, height: 16, borderRadius: "50%",
-                  background: "#D4813A", transition: "all 0.1s",
-                }} />
+                <div key={i} style={{ width: 15, height: 15, borderRadius: "50%", background: "var(--kds-accent)" }} />
               ))
             )}
           </div>
 
           {errorMessage && (
-            <div style={{
-              background: "#fee2e2", color: "#991b1b", borderRadius: 10,
-              padding: "10px 14px", fontSize: 13, marginBottom: 14, textAlign: "center",
-            }}>
+            <div className="kds-banner" style={{ margin: "0 0 14px" }} role="alert">
               {errorMessage}
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <div className="kds-keypad">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((d) => (
               <button
                 key={d || "blank"}
+                type="button"
+                className="kds-key"
+                aria-label={d === "⌫" ? "Delete last digit" : d === "" ? undefined : `Digit ${d}`}
                 onClick={() => {
                   if (d === "⌫") backPin();
                   else if (d !== "") appendPin(d);
                 }}
                 disabled={d === ""}
-                style={{
-                  height: 56, borderRadius: 12, border: "1px solid #EDE4D4",
-                  background: d === "⌫" ? "#FFF3E8" : d === "" ? "transparent" : "#FFFDF9",
-                  fontSize: 18, fontWeight: 700,
-                  color: d === "⌫" ? "#D4813A" : "#2A1E0C",
-                  cursor: d === "" ? "default" : "pointer",
-                }}
+                style={d === "⌫" ? { color: "var(--kds-accent)" } : undefined}
               >
                 {d}
               </button>
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button onClick={clearPin} style={{
-              flex: 1, height: 48, borderRadius: 12,
-              border: "1px solid #EDE4D4", background: "#FFFDF9",
-              fontSize: 14, fontWeight: 600, color: "#8B7355", cursor: "pointer",
-            }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <button type="button" className="kds-btn" style={{ flex: 1, minHeight: 52 }} onClick={clearPin}>
               Clear
             </button>
-            <button onClick={() => void handleLogin()} disabled={pin.length < 4} style={{
-              flex: 2, height: 48, borderRadius: 12, border: "none",
-              background: pin.length < 4 ? "#F5C99A" : "#D4813A",
-              fontSize: 14, fontWeight: 700, color: "#fff",
-              cursor: pin.length < 4 ? "default" : "pointer",
-            }}>
-              Sign In →
+            <button
+              type="button"
+              className="kds-btn kds-btn--primary"
+              style={{ flex: 2, minHeight: 52, opacity: pin.length < 4 ? 0.5 : 1 }}
+              disabled={pin.length < 4}
+              onClick={() => void handleLogin()}
+            >
+              Sign in →
             </button>
           </div>
 
-          <div style={{ marginTop: 16, textAlign: "center" }}>
-            <a href="/" style={{ fontSize: 12, color: "#C4A882", textDecoration: "none" }}>← Main Website</a>
+          <div style={{ marginTop: 14, textAlign: "center" }}>
+            <a href="/" style={{ fontSize: 13, color: "var(--kds-ink-faint)", textDecoration: "none" }}>← Main website</a>
           </div>
 
           {import.meta.env.DEV && (
-            <p style={{ fontSize: 11, color: "#C4A882", marginTop: 12, textAlign: "center", lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11, color: "var(--kds-ink-faint)", marginTop: 12, textAlign: "center", lineHeight: 1.6 }}>
               Dev PINs: Owner (1111) · Admin (2222) · Manager (3333) · Cashier (4444)
             </p>
           )}
@@ -469,65 +424,55 @@ function App() {
   }
 
   const renderTicket = (order: KdsOrder) => {
-    const urgency = urgencyColor(order.created_at);
     const prepTarget = ticketPrepTarget(order);
     const overdue = minutesSince(order.created_at) >= prepTarget
       && !["ready", "completed"].includes(order.status);
+    const cooking = ["in_progress", "preparing"].includes(order.status);
 
     return (
-      <div
+      <article
         key={order.id}
-        className="bg-white rounded-xl shadow-sm p-4 space-y-3"
-        style={{ border: `2px solid ${urgency.faint}` }}
+        className="kds-ticket"
+        data-urgency={urgencyLevel(order.created_at)}
+        data-overdue={overdue ? "true" : "false"}
+        data-testid="kds-ticket"
       >
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm" style={{ color: "#8B7355" }}>{STATUS_LABELS[order.status] ?? order.status}</p>
-            <p className="text-lg font-semibold" style={{ color: "#2A1E0C" }}>
-              #{order.order_number}
-            </p>
-            {overdue && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", background: "#FEE2E2", padding: "2px 6px", borderRadius: 999 }}>
-                OVERDUE
-              </span>
-            )}
-            {order.delivery_island && (
-              <p className="text-xs" style={{ color: "#D4813A" }}>🛵 {order.delivery_island}</p>
-            )}
-            {order.kitchen_done_at && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#047857", background: "#ECFDF5", padding: "2px 6px", borderRadius: 999 }}>
-                Kitchen done
-              </span>
-            )}
-            {order.table_number && (
-              <p className="text-xs" style={{ color: "#8B7355" }}>Table {order.table_number}</p>
-            )}
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ color: urgency.solid, fontSize: 14, fontWeight: 700 }}>
-              {elapsed(order.created_at)}
+        <div className="kds-ticket-head">
+          <div className="kds-ticket-ref">
+            <div className="kds-ticket-number">#{order.order_number}</div>
+            <div className="kds-ticket-where">
+              {overdue && <span className="kds-tag kds-tag--late">Overdue</span>}
+              {order.delivery_island && (
+                <span className="kds-tag kds-tag--delivery">🛵 {order.delivery_island}</span>
+              )}
+              {order.table_number && <span className="kds-tag">Table {order.table_number}</span>}
+              {order.kitchen_done_at && <span className="kds-tag kds-tag--done">Kitchen done</span>}
             </div>
-            <span className="text-xs" style={{ color: "#8B7355" }}>{formatTime(order.created_at)}</span>
+          </div>
+          <div className="kds-timer">
+            <div className="kds-timer-value">{elapsed(order.created_at)}</div>
+            <div className="kds-timer-at">{formatTime(order.created_at)}</div>
           </div>
         </div>
-        <div className="space-y-2">
+
+        {order.notes && <p className="kds-ticket-note">{order.notes}</p>}
+
+        <div className="kds-lines">
           {order.items.map((item) => (
             <div
               key={item.id}
-              className="text-sm flex justify-between gap-2"
-              style={{
-                color: "#2A1E0C",
-                marginLeft: item.parent_order_item_id ? 16 : 0,
-                opacity: item.parent_order_item_id ? 0.92 : 1,
-              }}
+              className="kds-line"
+              data-child={item.parent_order_item_id ? "true" : "false"}
               data-testid={item.parent_order_item_id ? "kds-platter-child" : "kds-line"}
             >
-              <div>
-                <span className="font-semibold">{item.quantity}x</span>{" "}
-                {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
+              <div className="kds-qty">{item.quantity}×</div>
+              <div className="kds-line-body">
+                <div className="kds-dish">
+                  {item.parent_order_item_id ? `↳ ${item.item_name}` : item.item_name}
+                </div>
                 {item.modifiers && item.modifiers.length > 0 && (
-                  <div className="text-xs mt-1" style={{ color: "#8B7355" }}>
-                    {item.modifiers.map((mod) => mod.modifier_name).join(", ")}
+                  <div className="kds-line-note kds-line-note--mods">
+                    {item.modifiers.map((mod) => mod.modifier_name).join(" · ")}
                   </div>
                 )}
                 {/* A fixed bundle used to print as one line with its name, so
@@ -535,101 +480,64 @@ function App() {
                     like a platter's picks — same shape on the ticket, because
                     it is the same question. */}
                 {item.bundle_contents && item.bundle_contents.length > 0 && (
-                  <div
-                    className="text-xs mt-1"
-                    style={{ color: "#8B7355", paddingLeft: 12 }}
-                    data-testid="kds-bundle-contents"
-                  >
+                  <div className="kds-sub" data-testid="kds-bundle-contents">
                     {item.bundle_contents.map((row, i) => (
-                      <div key={`${row.name}-${i}`}>
-                        ↳ {row.quantity}x {row.name}
-                      </div>
+                      <div key={`${row.name}-${i}`}>↳ {row.quantity}× {row.name}</div>
                     ))}
                   </div>
                 )}
                 {item.kitchen_produced_qty != null && (
-                  <div className="text-xs mt-1" style={{ color: "#047857" }}>
+                  <div className="kds-line-note kds-line-note--cooked">
                     Cooked {item.kitchen_produced_qty}/{item.quantity}
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-              {canProduce && ["in_progress", "preparing"].includes(order.status)
-                && (item.kitchen_produced_qty ?? 0) < item.quantity && (
-                <button
-                  type="button"
-                  onClick={() => handleItemCooked(order.id, item.id)}
-                  style={{
-                    fontSize: 10, fontWeight: 700, padding: "4px 8px", borderRadius: 6,
-                    border: "none", background: "#047857", color: "#fff", cursor: "pointer", flexShrink: 0,
-                  }}
-                >
-                  Cooked
-                </button>
-              )}
-              {item.item_id && can86 ? (
-                <button
-                  type="button"
-                  onClick={() => handle86(item.item_id!, item.is_available !== false)}
-                  disabled={eightySixing === item.item_id}
-                  style={{
-                    fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 6,
-                    border: item.is_available === false ? "1px solid #BBF7D0" : "1px solid #FECACA",
-                    background: item.is_available === false ? "#F0FDF4" : "#FEF2F2",
-                    color: item.is_available === false ? "#15803D" : "#991B1B",
-                    cursor: "pointer", flexShrink: 0,
-                  }}
-                >
-                  {eightySixing === item.item_id ? "…" : item.is_available === false ? "Restore" : "Sold out"}
-                </button>
-              ) : null}
+              <div className="kds-line-actions">
+                {canProduce && cooking && (item.kitchen_produced_qty ?? 0) < item.quantity && (
+                  <button
+                    type="button"
+                    className="kds-chip kds-chip--cooked"
+                    onClick={() => handleItemCooked(order.id, item.id)}
+                  >
+                    Cooked
+                  </button>
+                )}
+                {item.item_id && can86 ? (
+                  <button
+                    type="button"
+                    className={item.is_available === false ? "kds-chip kds-chip--restore" : "kds-chip kds-chip--86"}
+                    onClick={() => handle86(item.item_id!, item.is_available !== false)}
+                    disabled={eightySixing === item.item_id}
+                  >
+                    {eightySixing === item.item_id ? "…" : item.is_available === false ? "Restore" : "Sold out"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="kds-actions">
           {["pending", "paid", "partial"].includes(order.status) && canStart && (
-            <button
-              className="flex-1 rounded-lg text-white py-2 text-sm font-semibold"
-              style={{ background: "#1C1408" }}
-              onClick={() => handleStart(order.id)}
-            >
-              Start
+            <button type="button" className="kds-action kds-action--start" onClick={() => handleStart(order.id)}>
+              Start cooking
             </button>
           )}
-          {["in_progress", "preparing"].includes(order.status) && (
+          {cooking && (
             <>
               {canKitchenDone && !order.kitchen_done_at && (
-                <button
-                  className="flex-1 rounded-lg text-white py-2 text-sm font-semibold"
-                  style={{ background: "#047857" }}
-                  onClick={() => handleKitchenDone(order.id)}
-                >
+                <button type="button" className="kds-action kds-action--done" onClick={() => handleKitchenDone(order.id)}>
                   Kitchen done
                 </button>
               )}
               {order.kitchen_done_at && (
-                <div
-                  className="flex-1 rounded-lg py-2 text-sm font-semibold text-center"
-                  style={{ background: "#ECFDF5", color: "#047857", border: "1px solid #A7F3D0" }}
-                >
-                  Waiting for cashier to mark ready
-                </div>
+                <div className="kds-waiting">Waiting for cashier to mark ready</div>
               )}
               {!canKitchenDone && !order.kitchen_done_at && (
-                <div
-                  className="flex-1 rounded-lg py-2 text-sm font-semibold text-center"
-                  style={{ background: "#EFF6FF", color: "#1E40AF", border: "1px dashed #BFDBFE" }}
-                >
-                  Ready? Tell cashier — they mark ready from POS
-                </div>
+                <div className="kds-waiting">Ready? Tell the cashier — they mark it from POS</div>
               )}
               {canPrint && (
-                <button
-                  className="rounded-lg py-2 px-3 text-sm font-semibold"
-                  style={{ border: "1px solid #EDE4D4", color: "#8B7355" }}
-                  onClick={() => handlePrint(order.id)}
-                >
+                <button type="button" className="kds-action kds-action--quiet" onClick={() => handlePrint(order.id)}>
                   Print
                 </button>
               )}
@@ -638,222 +546,159 @@ function App() {
           {order.status === "ready" && (
             <>
               {canBump && (
-              <button
-                className="flex-1 rounded-lg bg-emerald-600 text-white py-2 text-sm font-semibold"
-                onClick={() => handleBump(order.id)}
-              >
-                Complete ✓
-              </button>
+                <button type="button" className="kds-action kds-action--complete" onClick={() => handleBump(order.id)}>
+                  Complete ✓
+                </button>
               )}
               {canRecall && (
-              <button
-                className="rounded-lg py-2 px-3 text-sm font-semibold"
-                style={{ border: "1px solid #EDE4D4", color: "#8B7355" }}
-                onClick={() => handleRecall(order.id)}
-              >
-                Recall
-              </button>
+                <button type="button" className="kds-action kds-action--quiet" onClick={() => handleRecall(order.id)}>
+                  Recall
+                </button>
               )}
             </>
           )}
         </div>
-      </div>
+      </article>
     );
   };
 
-  const Column = ({
-    title,
-    items,
-    flash,
-  }: {
-    title: string;
-    items: KdsOrder[];
-    flash?: boolean;
-  }) => (
-    <section className="space-y-3">
-      <h2
-        className="text-sm font-semibold"
-        style={{
-          color: flash ? "#92400E" : "#8B7355",
-          background: flash ? "rgba(245,158,11,0.12)" : "transparent",
-          padding: flash ? "6px 10px" : 0,
-          borderRadius: 8,
-        }}
-      >
-        {title} ({items.length}){flash ? " — NEW!" : ""}
-      </h2>
-      {items.length === 0 && (
-        <p className="text-sm" style={{ color: "#8B7355", opacity: 0.6 }}>No tickets.</p>
-      )}
-      {items.map(renderTicket)}
+  const Lane = ({ title, items, flash }: { title: string; items: KdsOrder[]; flash?: boolean }) => (
+    <section className="kds-lane" data-testid={`kds-lane-${title.toLowerCase()}`}>
+      <div className="kds-lane-head" data-flash={flash ? "true" : "false"}>
+        <h2 className="kds-lane-title">{title}{flash ? " — new!" : ""}</h2>
+        <span className="kds-lane-count">{items.length}</span>
+      </div>
+      <div className="kds-lane-body">
+        {items.length === 0
+          ? <p className="kds-lane-empty">Nothing here.</p>
+          : items.map(renderTicket)}
+      </div>
     </section>
   );
 
+  const overPrepTarget = [...pendingOrders, ...inProgressOrders]
+    .filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t)).length;
+
   return (
-    <div className="min-h-screen" style={{ background: "#FFFDF9", color: "#2A1E0C" }}>
-      <header className="flex items-center justify-between px-6 py-4 bg-white shadow-sm" style={{ borderBottom: "1px solid #EDE4D4" }}>
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: "#2A1E0C" }}>Bake & Grill KDS</h1>
-          <p className="text-sm" style={{ color: "#8B7355" }}>
-            {staffUser?.name ?? "Kitchen"}{staffUser?.role === "kitchen_staff" ? " · Kitchen Staff" : staffUser?.role ? ` · ${staffUser.role}` : ""} · Device {deviceId}
-          </p>
-        </div>
-        <div className="flex items-center gap-4 flex-wrap justify-end">
-          <span className="text-sm" style={{ color: sseConnected ? "#047857" : "#B45309", fontWeight: 600 }}>
-            {sseConnected ? "● Live (SSE)" : isLoading ? "Refreshing…" : "○ Polling (15s)"}
+    <div className="kds-shell">
+      <header className="kds-topbar">
+        <h1 className="kds-brand">Bake &amp; Grill KDS</h1>
+        <span className="kds-who">
+          {staffUser?.name ?? "Kitchen"} · {deviceId}
+        </span>
+
+        <select
+          className="kds-select"
+          aria-label="Station"
+          value={stationFilter === "all" ? "all" : String(stationFilter)}
+          onChange={(e) => setStationFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+        >
+          <option value="all">All stations</option>
+          {menuGroups.map((g) => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
+
+        {/* The four figures that used to cost ninety pixels of board, inline.
+            A chef checks these between tickets, not while reading one. */}
+        <div className="kds-vitals">
+          <span className="kds-vital">
+            <span className="kds-vital-value">{avgWait(pendingOrders)}m</span>
+            <span className="kds-vital-label">wait</span>
           </span>
-          <button
-            type="button"
-            onClick={toggleAudio}
-            className="text-xs"
-            style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}
-          >
-            {audioOn ? "🔔 Sound on" : "🔕 Sound off"}
-          </button>
-          <button
-            type="button"
-            onClick={() => token && void load(token)}
-            className="text-xs"
-            style={{ color: "#8B7355", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
-          >
-            Refresh
-          </button>
-          {canCreatePurchaseRequest && (
-            <button type="button" onClick={() => setPrOverlay("request")} className="text-xs" style={{ color: "#fff", background: "#D4813A", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}>
-              Request item
-            </button>
-          )}
-          {canViewOwnPurchaseRequests && (
-            <button type="button" onClick={() => setPrOverlay("my")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
-              My requests
-            </button>
-          )}
-          {canBuyAssigned && (
-            <button type="button" onClick={() => setPrOverlay("buying")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
-              Buying list
-            </button>
-          )}
-          {canReceiveDeliveries && (
-            <button type="button" onClick={() => setPrOverlay("receive")} className="text-xs" style={{ color: "#8B7355", background: "none", border: "1px solid #EDE4D4", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
-              To receive
-            </button>
-          )}
-          {canProduce && (
-            <button
-              type="button"
-              onClick={() => setViewMode((m) => (m === "board" ? "production" : "board"))}
-              className="text-xs"
-              style={{ color: "#fff", background: viewMode === "production" ? "#047857" : "#1C1408", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 700 }}
-            >
-              {viewMode === "production" ? "Ticket board" : "Production"}
-            </button>
-          )}
-          <a href="/" className="text-xs" style={{ color: "#8B7355", textDecoration: "none" }}>← Site</a>
-          <button
-            className="text-xs underline"
-            style={{ color: "#8B7355", background: "none", border: "none", cursor: "pointer" }}
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <span className="kds-vital">
+            <span className="kds-vital-value">{avgWait(inProgressOrders)}m</span>
+            <span className="kds-vital-label">cooking</span>
+          </span>
+          <span className="kds-vital">
+            <span className="kds-vital-value" style={{ color: overPrepTarget > 0 ? "var(--kds-late)" : undefined }}>
+              {overPrepTarget}
+            </span>
+            <span className="kds-vital-label">over target</span>
+          </span>
         </div>
+
+        <div className="kds-topbar-spacer" />
+
+        <span className="kds-live" data-state={sseConnected ? "live" : "polling"}>
+          {sseConnected ? "● Live" : isLoading ? "Refreshing…" : "○ Polling"}
+        </span>
+        <button type="button" className="kds-btn" onClick={toggleAudio} aria-pressed={audioOn}>
+          {audioOn ? "🔔 Sound on" : "🔕 Sound off"}
+        </button>
+        {canCreatePurchaseRequest && (
+          <button type="button" className="kds-btn kds-btn--primary" onClick={() => setPrOverlay("request")}>
+            Request item
+          </button>
+        )}
+        {canViewOwnPurchaseRequests && (
+          <button type="button" className="kds-btn" onClick={() => setPrOverlay("my")}>My requests</button>
+        )}
+        {canBuyAssigned && (
+          <button type="button" className="kds-btn" onClick={() => setPrOverlay("buying")}>Buying list</button>
+        )}
+        {canReceiveDeliveries && (
+          <button type="button" className="kds-btn" onClick={() => setPrOverlay("receive")}>To receive</button>
+        )}
+        {canProduce && (
+          <button
+            type="button"
+            className={viewMode === "production" ? "kds-btn kds-btn--on" : "kds-btn"}
+            onClick={() => setViewMode((m) => (m === "board" ? "production" : "board"))}
+          >
+            {viewMode === "production" ? "Ticket board" : "Production"}
+          </button>
+        )}
+        {activity.length > 0 && (
+          <button
+            type="button"
+            className="kds-btn"
+            onClick={() => setShowActivity((v) => !v)}
+            aria-expanded={showActivity}
+          >
+            {showActivity ? "Hide activity" : "Activity"}
+          </button>
+        )}
+        <button type="button" className="kds-btn" onClick={handleLogout}>Logout</button>
       </header>
 
-      {errorMessage && (
-        <div style={{ margin: 16, padding: 12, background: "#FEF2F2", color: "#991B1B", borderRadius: 10, fontSize: 13 }}>
-          {errorMessage}
-        </div>
-      )}
+      {errorMessage && <div className="kds-banner" role="alert">{errorMessage}</div>}
 
-      <div style={{ display: "flex", gap: 12, padding: "12px 16px 0", flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ fontSize: 13, color: "#8B7355", display: "flex", alignItems: "center", gap: 8 }}>
-          Station
-          <select
-            value={stationFilter === "all" ? "all" : String(stationFilter)}
-            onChange={(e) => setStationFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-            style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #EDE4D4", fontFamily: "inherit" }}
-          >
-            <option value="all">All stations</option>
-            {menuGroups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 12,
-        padding: "12px 16px",
-      }}>
-        {[
-          { label: "Pending avg wait", value: `${avgWait(pendingOrders)}m`, color: "#f59e0b" },
-          { label: "Cooking avg wait", value: `${avgWait(inProgressOrders)}m`, color: "#3b82f6" },
-          { label: "Ready queue", value: String(readyOrders.length), color: "#22c55e" },
-          {
-            label: "Over prep target",
-            value: String([...pendingOrders, ...inProgressOrders].filter((t) => minutesSince(t.created_at) >= ticketPrepTarget(t)).length),
-            color: "#ef4444",
-          },
-        ].map((stat) => (
-          <div key={stat.label} style={{ background: "#fff", border: "1px solid #EDE4D4", borderRadius: 12, padding: "10px 12px" }}>
-            <p style={{ margin: 0, fontSize: 11, color: "#8B7355" }}>{stat.label}</p>
-            <p style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 800, color: stat.color }}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {activity.length > 0 && (
-        <div style={{
-          margin: "0 16px 4px",
-          padding: "10px 12px",
-          background: "#fff",
-          border: "1px solid #EDE4D4",
-          borderRadius: 12,
-          maxHeight: 96,
-          overflowY: "auto",
-        }}>
-          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#8B7355", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Kitchen activity
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {activity.slice(0, 8).map((row) => (
-              <div key={row.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, color: "#2A1E0C" }}>
-                <span>
-                  <strong>{row.user_name}</strong>
-                  {" · "}
-                  {row.action.replace(/^order\.|^item\.|^kitchen\./, "").replace(/_/g, " ")}
-                  {row.model_id != null ? ` #${row.model_id}` : ""}
-                </span>
-                <span style={{ color: "#8B7355", flexShrink: 0 }}>
-                  {row.created_at ? formatTime(row.created_at) : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <main className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 md:p-6 lg:grid-cols-3">
+      <main className={viewMode === "production" ? "kds-board kds-board--single" : "kds-board"}>
         {viewMode === "production" && token ? (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <KitchenProductionPanel
-              token={token}
-              orders={orders}
-              canProduce={canProduce}
-              canPreparedStock={canPreparedStock}
-              onRefresh={() => void load(token)}
-            />
-          </div>
+          <KitchenProductionPanel
+            token={token}
+            orders={orders}
+            canProduce={canProduce}
+            canPreparedStock={canPreparedStock}
+            onRefresh={() => void load(token)}
+          />
         ) : (
           <>
-            <Column title="Pending" items={pendingOrders} flash={newTicketFlash} />
-            <Column title="Cooking" items={inProgressOrders} />
-            <Column title="Ready" items={readyOrders} />
+            <Lane title="Pending" items={pendingOrders} flash={newTicketFlash} />
+            <Lane title="Cooking" items={inProgressOrders} />
+            <Lane title="Ready" items={readyOrders} />
           </>
         )}
       </main>
+
+      {/* Who did what, on request. It is a manager's question, and on a board
+          it was costing four lines of ticket space to answer it unasked. */}
+      {showActivity && activity.length > 0 && (
+        <div className="kds-activity">
+          {activity.slice(0, 8).map((row) => (
+            <div key={row.id} className="kds-activity-row">
+              <span>
+                <strong>{row.user_name}</strong>
+                {" · "}
+                {row.action.replace(/^order\.|^item\.|^kitchen\./, "").replace(/_/g, " ")}
+                {row.model_id != null ? ` #${row.model_id}` : ""}
+              </span>
+              <span>{row.created_at ? formatTime(row.created_at) : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {prOverlay && token && (
         <KdsPurchaseRequestOverlay token={token} mode={prOverlay} onClose={() => setPrOverlay(null)} />
