@@ -118,9 +118,28 @@ export async function staffLogin(
 }
 
 export async function fetchMe(token: string): Promise<KdsStaffUser> {
-  return request<KdsStaffUser>(ENDPOINTS.AUTH_ME, {
+  /*
+   * Owner, 2026-09-11: "I created kitchen staff acc. But when he tries to
+   * logon kds app it says no kds access for this account."
+   *
+   * GET /auth/me answers `{ "user": { ..., "permissions": [...] } }`, and this
+   * returned that envelope while claiming to return the user inside it. So
+   * `me.permissions` was undefined for everybody, the login screen's
+   * `permissions.includes("kds.view")` was always false, and the app turned
+   * away every account including the owner's. Typing the call
+   * `request<KdsStaffUser>` is what hid it: TypeScript believed the assertion
+   * and had nothing to compare it against.
+   *
+   * Every other call in this file already unwraps — data.orders, data.data,
+   * data.activity, data.item. This one was missed because it is the only one
+   * on the sign-in path, and the kitchen has been reading the board through
+   * the admin dashboard instead.
+   */
+  const data = await request<{ user: KdsStaffUser }>(ENDPOINTS.AUTH_ME, {
     headers: authHeaders(token),
   });
+
+  return data.user;
 }
 
 export async function fetchKdsOrders(token: string): Promise<KdsOrder[]> {
