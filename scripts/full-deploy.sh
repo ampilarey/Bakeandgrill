@@ -59,6 +59,14 @@ echo "Verifying Redis isolation..."
 php artisan app:verify-redis-isolation
 
 php artisan migrate --force
+
+# Role permissions are rows; the catalog that defines them is code. Until this
+# ran on every deploy the only thing reconciling the two was a migration
+# somebody remembered to write, and four slugs had already drifted — a role
+# looked right in the admin and was short a permission in the kitchen. Writes
+# only where the stored set differs, and never touches per-user overrides.
+php artisan permissions:sync
+
 php artisan storage:link --force 2>/dev/null || true
 php artisan config:cache
 php artisan route:cache
