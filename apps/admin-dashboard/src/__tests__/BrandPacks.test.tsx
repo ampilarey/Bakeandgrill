@@ -129,9 +129,10 @@ describe('Brands and packs, brand first', () => {
     // Only Amul's packs and the shared ones are on offer — not Nestlé's jar.
     const measuredIn = screen.getByLabelText('Measured in') as HTMLSelectElement;
     const options = [...measuredIn.options].map((o) => o.textContent);
-    expect(options).toContain('tin');
-    expect(options).toContain('loose kg');
-    expect(options).not.toContain('jar');
+    expect(options).toContain('ml');
+    expect(options).toContain('of a tin');
+    expect(options).toContain('of a loose kg');
+    expect(options).not.toContain('of a jar');
 
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Case' } });
     fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '12' } });
@@ -139,6 +140,19 @@ describe('Brands and packs, brand first', () => {
     fireEvent.click(screen.getByText('Add pack'));
 
     await waitFor(() => expect(store.addPack).toHaveBeenCalledWith(expect.objectContaining({ name: 'Case', baseUnits: 12000 })));
+  });
+
+  it('does not offer a dropdown of one thing when there is nothing to measure against', () => {
+    // Owner, 2026-09-12, on a bread counted in packets with no packs yet:
+    // "Why only packet is there in the option?" A list of one is a question,
+    // not a choice — so it is plain text, and says what it is.
+    show({ brands: [], packs: [], unit: 'packet' });
+
+    fireEvent.click(screen.getByLabelText('Add a pack for any brand'));
+
+    expect(screen.queryByLabelText('Measured in')).toBeNull();
+    expect(screen.getByTestId('pack-measured-in')).toHaveTextContent('packet');
+    expect(screen.getByText(/packet is what this item is counted in/)).toBeInTheDocument();
   });
 
   it('refuses a pack with no amount rather than sending a zero', async () => {

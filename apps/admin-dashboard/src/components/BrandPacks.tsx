@@ -484,24 +484,36 @@ export function BrandPacks({
         <span style={S.secondary}>1 of these is</span>
         <input
           aria-label="Amount in the pack"
-          type="number" min="0.000001" step="any" placeholder="500"
+          type="number" min="0.000001" step="any" placeholder="how many"
           value={packForm.qty}
           onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
           style={{ ...S.input, width: 100 }}
         />
         {/* A case is 7 trays. Defining a big pack from a small one is how
-            people describe a box, and beats multiplying it out. */}
-        <select
-          aria-label="Measured in"
-          value={packForm.ofKey}
-          onChange={(e) => setPackForm((f) => ({ ...f, ofKey: e.target.value }))}
-          style={{ ...S.select, minWidth: 120 }}
-        >
-          <option value="">{unit || 'unit'}</option>
-          {measurableIn(brand).map((p) => <option key={p.key} value={p.key}>{p.name.toLowerCase()}</option>)}
-        </select>
+            people describe a box, and beats multiplying it out. With no
+            pack to describe it against there is nothing to choose, and a
+            dropdown of one entry only invites the question "why only
+            packet?" (owner, 2026-09-12) — so it is plain text until then. */}
+        {measurableIn(brand).length === 0 ? (
+          <span style={{ ...S.secondary, fontWeight: 600 }} data-testid="pack-measured-in">{unit || 'unit'}</span>
+        ) : (
+          <select
+            aria-label="Measured in"
+            value={packForm.ofKey}
+            onChange={(e) => setPackForm((f) => ({ ...f, ofKey: e.target.value }))}
+            style={{ ...S.select, minWidth: 120 }}
+          >
+            <option value="">{unit || 'unit'}</option>
+            {measurableIn(brand).map((p) => <option key={p.key} value={p.key}>of a {p.name.toLowerCase()}</option>)}
+          </select>
+        )}
         <Btn small disabled={busy} onClick={() => void addPack()}>{busy ? 'Saving…' : 'Add pack'}</Btn>
       </div>
+      <p style={{ ...S.muted, margin: 0 }}>
+        {unit ? `${unit} is what this item is counted in` : 'Counted in the unit set above'}
+        {measurableIn(brand).length > 0 ? ', or describe it as so many of a pack already here' : ''}
+        . To count it in something else, change Unit above.
+      </p>
       {/* Both answers are one click, and neither is the default: losing a
           pack size silently is what this replaces. */}
       {clash && (
