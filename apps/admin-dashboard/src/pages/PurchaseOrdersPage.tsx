@@ -43,6 +43,50 @@ export function packsForBrand(packs: InventoryPurchaseUnit[], brand: string): In
     });
 }
 
+/**
+ * What a line opens on for one item bought as one brand: the box, and what
+ * one of them costs. Null when nothing is on file for that brand.
+ *
+ * Owner, 2026-09-12: "In po, when brand is selected, its defaults should
+ * appear." The register the item editor keeps — each brand's packs and what
+ * they usually cost — is what the owner set up and what every purchase
+ * corrects, so it comes first. What was last paid is the fallback for a brand
+ * nobody has priced.
+ *
+ * In order:
+ *   1. the box this brand was last bought in, if it still exists — at the
+ *      register's price for it when there is one (the last purchase already
+ *      corrected that, and it may have been edited since), else at what was
+ *      paid;
+ *   2. the brand's own priced pack;
+ *   3. loose, at the last price, when that is how this brand was last bought;
+ *   4. a shared priced pack.
+ */
+export function lineOpening(
+  packs: InventoryPurchaseUnit[],
+  brand: string,
+  last: LastPurchase | null,
+): { pack: InventoryPurchaseUnit | null; price: number | null } | null {
+  const key = brandKey(brand);
+  const offered = packsForBrand(packs, brand);
+  const lastWasThisBrand = last !== null && brandKey(last.brand) === key;
+  const priceOf = (p: InventoryPurchaseUnit): number | null =>
+    (p.default_unit_cost == null ? null : Number(p.default_unit_cost));
+
+  if (lastWasThisBrand && last.purchase_unit_id != null) {
+    const box = offered.find((p) => p.id === last.purchase_unit_id);
+    if (box) return { pack: box, price: priceOf(box) ?? last.pack_cost };
+  }
+  const own = key === '' ? undefined : offered.find((p) => p.brand_key === key && p.default_unit_cost != null);
+  if (own) return { pack: own, price: priceOf(own) };
+  if (lastWasThisBrand && last.purchase_unit_id == null) {
+    return { pack: null, price: last.unit_cost };
+  }
+  const shared = offered.find((p) => (p.brand_key ?? '') === '' && p.default_unit_cost != null);
+  if (shared) return { pack: shared, price: priceOf(shared) };
+  return null;
+}
+
 function editLineBase(line: { quantity: string; purchase_unit_id: string; packs: InventoryPurchaseUnit[] }): number | null {
   const qty = parseFloat(line.quantity);
   if (!Number.isFinite(qty) || qty <= 0) return null;
@@ -86,6 +130,13 @@ type ManualPoLine = {
    * are all the inventory record needs; everything else has a sane default.
    */
   newItem: { name: string; unit: string } | null;
+  /**
+   * Whether the person has typed in the price or the unit box. A box the
+   * screen filled — from the last purchase, or from a brand's register — is
+   * the screen's to refill when the brand changes; one they typed is theirs.
+   */
+  costTyped: boolean;
+  unitTyped: boolean;
   /** Which brand this purchase is, free text. */
   brand: string;
   /** Brands this item has been bought as before, offered as suggestions. */
@@ -102,8 +153,23 @@ type ManualPoLine = {
 
 const blankManualLine = (): ManualPoLine => ({
   selection: null, quantity: '1', unit_cost: '0', unitText: '', packs: [], last: null, newPackQty: '',
-  newItem: null, brand: '', brands: [], brandPhotos: {}, gst: false,
+  newItem: null, brand: '', brands: [], brandPhotos: {}, gst: false, costTyped: false, unitTyped: false,
 });
+
+/**
+ * The register's word on the box in the unit box: what one usually costs
+ * and since when. Typing something else on the line is what updates it
+ * (owner, 2026-09-12), so the figure is worth saying out loud.
+ */
+export function usualPriceNote(line: Pick<ManualPoLine, 'unitText' | 'packs'>): string | null {
+  const pack = linePack(line as ManualPoLine);
+  if (!pack || pack.default_unit_cost == null) return null;
+  const whose = pack.brand ? `${pack.brand}'s ${pack.name.toLowerCase()}` : `A ${pack.name.toLowerCase()}`;
+  const since = pack.default_cost_updated_at
+    ? ` (priced ${new Date(pack.default_cost_updated_at).toLocaleDateString()})`
+    : '';
+  return `${whose} usually costs ${mvr(Number(pack.default_unit_cost))}${since} — pay something else and that updates.`;
+}
 
 /** The pack the typed unit names, if the item has one by that name. */
 function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
@@ -301,39 +367,36 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       const res = await getPurchaseUnits(itemId);
       const last = res.last_purchase ?? null;
       /*
-       * Open on the last purchase. Owner, 2026-09-07: "by default it should
-       * be selected the latest." The brand, the box and the price move
-       * together — the price of a Packet means nothing without the Packet —
-       * so all three come from the same line or none do.
+       * Open on the last purchase's brand. Owner, 2026-09-07: "by default it
+       * should be selected the latest." The box and the price then come
+       * from what is on file for that brand — see lineOpening — so the brand,
+       * the box and the price agree with each other rather than each being
+       * the newest thing on its own.
        *
-       * Only ever fills a box the person has not touched: a quantity or a
-       * price they have already typed is theirs, not last week's.
+       * Only ever fills a box the person has not touched: a price they have
+       * already typed is theirs, not last week's.
        */
-      const pack = last?.purchase_unit_id != null
-        ? res.purchase_units.find((p) => p.id === last.purchase_unit_id) ?? null
-        : null;
-
       setManualPoForm((f) => ({
         ...f,
         lines: f.lines.map((l, i) => {
           if (i !== idx || l.selection?.item.id !== itemId) return l;
 
+          const brand = l.brand === '' && last?.brand ? last.brand : l.brand;
+          const opening = lineOpening(res.purchase_units, brand, last);
           // Nothing on record yet: the item's own average cost is the best
           // guess left, which is what the line used before any of this.
-          const price = last
-            ? (pack ? last.pack_cost : last.unit_cost)
-            : l.selection?.item.cost_per_unit ?? null;
+          const price = opening
+            ? opening.price
+            : (last ? last.unit_cost : l.selection?.item.cost_per_unit ?? null);
           return {
             ...l,
             packs: res.purchase_units,
             brands: res.brands ?? [],
             brandPhotos: res.brand_photos ?? {},
             last,
-            brand: l.brand === '' && last?.brand ? last.brand : l.brand,
-            unitText: l.unitText === '' && pack ? pack.name : l.unitText,
-            unit_cost: (l.unit_cost === '' || l.unit_cost === '0') && price != null
-              ? String(price)
-              : l.unit_cost,
+            brand,
+            unitText: l.unitTyped ? l.unitText : (opening?.pack?.name ?? ''),
+            unit_cost: !l.costTyped && price != null ? String(price) : l.unit_cost,
           };
         }),
       }));
@@ -1367,6 +1430,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       brand: '',
                       brands: [],
                       last: null,
+                      // And its boxes are the screen's to fill again.
+                      costTyped: false,
+                      unitTyped: false,
                       /*
                        * Blank, not the item's average cost: loadPacksFor is
                        * about to fill it with what was actually last paid,
@@ -1488,16 +1554,13 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                          * box the buyer has not touched is filled: a price
                          * already typed is theirs, not the register's.
                          */
-                        const forBrand = packsForBrand(l.packs, v)
-                          .filter((pk) => pk.default_unit_cost != null);
-                        const pick = forBrand[0] ?? null;
-                        const untouched = l.unit_cost === '' || l.unit_cost === '0';
+                        const opening = lineOpening(l.packs, v, l.last);
                         return {
                           ...l,
                           brand: v,
-                          unitText: pick && l.unitText === '' ? pick.name : l.unitText,
-                          unit_cost: pick && untouched
-                            ? String(Number(pick.default_unit_cost))
+                          unitText: opening && !l.unitTyped ? (opening.pack?.name ?? '') : l.unitText,
+                          unit_cost: opening && !l.costTyped && opening.price != null
+                            ? String(opening.price)
                             : l.unit_cost,
                         };
                       }),
@@ -1562,7 +1625,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                       value={line.unitText}
                       onChange={(e) => setManualPoForm((f) => ({
                         ...f,
-                        lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value } : l),
+                        lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value, unitTyped: true } : l),
                       }))}
                       style={{
                         width: 104, flexShrink: 0, padding: '8px 10px', borderRadius: 10,
@@ -1589,10 +1652,15 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                   <input id={`manual-po-cost-${idx}`} type="number" min="0" step="0.01"
                     aria-label={`Unit cost for item ${idx + 1}`}
                     value={line.unit_cost}
-                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value } : l) }))}
+                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value, costTyped: true } : l) }))}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                 </div>
               </div>
+              {usualPriceNote(line) && (
+                <p data-testid={`manual-po-usual-${idx}`} style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  {usualPriceNote(line)}
+                </p>
+              )}
               {/* The typed unit is not one this item has been bought by, so
                   it cannot be priced until somebody says what it holds. */}
               {needsPackSize(line) && (

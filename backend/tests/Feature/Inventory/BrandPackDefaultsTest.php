@@ -108,6 +108,22 @@ class BrandPackDefaultsTest extends TestCase
         $this->assertSame('', $byName['Loose kg']['brand_key']);
     }
 
+    public function test_a_brand_that_so_far_exists_only_on_a_pack_is_still_offered(): void
+    {
+        /*
+         * Amul's tin was set up in the item editor before Amul was ever bought
+         * or given a picture. The buying screen's brand list used to be built
+         * from purchase lines and pictures alone, so the one brand with a pack
+         * and a price on file was the one you could not pick.
+         */
+        $this->addPack(['name' => 'Tin', 'base_units' => 1, 'brand' => 'Amul', 'default_unit_cost' => 185]);
+
+        $brands = $this->getJson("/api/inventory/{$this->ghee->id}/purchase-units")
+            ->assertOk()->json('brands');
+
+        $this->assertContains('Amul', $brands);
+    }
+
     public function test_a_brand_is_offered_its_own_packs_and_the_shared_ones(): void
     {
         $this->addPack(['name' => 'Tin', 'base_units' => 1, 'brand' => 'Amul']);

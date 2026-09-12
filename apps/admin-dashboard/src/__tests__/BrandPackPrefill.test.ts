@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { packsForBrand } from '../pages/PurchaseOrdersPage';
-import type { InventoryPurchaseUnit } from '../api/operations';
+import { lineOpening, packsForBrand } from '../pages/PurchaseOrdersPage';
+import type { InventoryPurchaseUnit, LastPurchase } from '../api/operations';
 
 /*
  * Owner, 2026-09-12: "when that brand is selected in manual po and every
@@ -65,5 +65,56 @@ describe('packs offered for a brand', () => {
     const names = packsForBrand(packs, '').map((p) => p.name);
 
     expect(names).toEqual(['Loose kg']);
+  });
+});
+
+/*
+ * What a line opens on. Owner, 2026-09-12: "In po, when brand is selected,
+ * its defaults should appear." The register — each brand's packs and what
+ * they usually cost — comes first; what was last paid is the fallback.
+ */
+const lastAmulTin: LastPurchase = {
+  brand: 'Amul', unit_cost: 0.2, pack_cost: 200, purchase_unit_id: 2,
+  pack_name: 'Tin', pack_size: 1, pack_quantity: 3, purchase_date: '2026-09-01', supplier: 'Fahi',
+};
+
+describe('what a line opens on for a brand', () => {
+  it("opens on the brand's own priced pack when nothing of it has been bought", () => {
+    expect(lineOpening(packs, 'Nestlé', null)).toEqual({ pack: packs[2], price: 120 });
+  });
+
+  it('prices the box last bought at what the register says for it, not what was paid then', () => {
+    // The last purchase already corrected the register, and the owner may
+    // have edited it since — so the register is the newer of the two.
+    expect(lineOpening(packs, 'Amul', lastAmulTin)).toEqual({ pack: packs[1], price: 185 });
+  });
+
+  it('falls back to what was paid when the box last bought carries no price', () => {
+    const unpriced = packs.map((p) => (p.id === 2 ? { ...p, default_unit_cost: null } : p));
+
+    expect(lineOpening(unpriced, 'Amul', lastAmulTin)).toEqual({ pack: unpriced[1], price: 200 });
+  });
+
+  it("switching to another brand brings that brand's box and price, not the last purchase's", () => {
+    // The last purchase was Amul's tin; picking Nestlé must not leave the
+    // line priced at Amul's tin.
+    expect(lineOpening(packs, 'Nestlé', lastAmulTin)).toEqual({ pack: packs[2], price: 120 });
+  });
+
+  it('opens loose at the last price when that is how this brand was last bought', () => {
+    const loose: LastPurchase = { ...lastAmulTin, brand: 'Royal', purchase_unit_id: null, pack_name: null, pack_size: null, pack_cost: null };
+
+    expect(lineOpening(packs, 'Royal', loose)).toEqual({ pack: null, price: 0.2 });
+  });
+
+  it('has nothing to say about a brand never bought and never set up', () => {
+    expect(lineOpening(packs, 'Royal', lastAmulTin)).toBeNull();
+    expect(lineOpening(packs, 'Royal', null)).toBeNull();
+  });
+
+  it('falls back to a shared priced pack for a brand with none of its own', () => {
+    const shared = [pack({ id: 1, name: 'Loose kg', default_unit_cost: 40 })];
+
+    expect(lineOpening(shared, 'Royal', null)).toEqual({ pack: shared[0], price: 40 });
   });
 });

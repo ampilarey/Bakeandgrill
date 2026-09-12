@@ -17,7 +17,10 @@ import { planShelfLabels, shelfLabelsHtml } from '../utils/shelfLabels';
 import { ScanSheet } from '../components/ScanSheet';
 import { PickOrType } from '../components/PickOrType';
 import { BrandPhotos, BrandThumb } from '../components/BrandPhotos';
-import { brandKey } from '../api/operations';
+import {
+  BrandPacks, packRowFromUnit, type BrandPackRow, type BrandPackStore, type BrandPacksHandle, type BrandRow,
+} from '../components/BrandPacks';
+import { brandKey, getBrandPhotos, uploadBrandPhoto, deleteBrandPhoto } from '../api/operations';
 import { countScanIntoQtys } from '../utils/stockCountScan';
 import {
   fetchInventoryItems, fetchLowStockItems, adjustInventoryStock,
@@ -26,9 +29,8 @@ import {
   getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem, deleteInventoryItem,
-  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit, packNameConflict, uploadBrandPhoto,
+  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit,
   itemNameConflict, type ItemNameConflict,
-  type PackNameConflict,
   createSupplier,
   type InventoryItem, type InventoryCategory, type UnitConversion,
   type InventoryPriceHistoryEntry, type CheapestSupplier, type InventoryCostUsage, type PreparedStockRow,
@@ -201,160 +203,150 @@ export default function InventoryPage() {
    */
   const [nameClash, setNameClash] = useState<ItemNameConflict | null>(null);
   /*
-   * Packs typed before the item exists. Owner, 2026-09-09: "Add Inventory SKU,
-   * no add pack" — asked while entering turmeric that comes in 100g and 500g.
+   * Brands and packs typed before the item exists. Owner, 2026-09-09: "Add
+   * Inventory SKU, no add pack" — asked while entering turmeric that comes in
+   * 100g and 500g; and 2026-09-12: "Edit and add new option should be same."
    *
-   * A pack row belongs to an inventory item id and there is none until Create
-   * returns, so these are held here and written the moment there is. Held as
-   * resolved base units: a draft has no id for the server to measure "a case
-   * is 12 of the 500g packs" against, and the server only stores the number
-   * anyway.
-   */
-  const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string; brand: string; price: string }[]>([]);
-  const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '', brand: '', price: '' });
-  /*
-   * Brand photos, before the item exists. Owner, 2026-09-12: "Edit and add new
-   * option should be same."
+   * A pack row and a brand row both belong to an inventory item id and there
+   * is none until Create returns, so these are held here and written the
+   * moment there is. The editor is the same one Edit uses; only this store
+   * — where its changes go — differs.
    *
-   * The upload endpoint needs an item id, so these are held as files and sent
-   * the moment Create returns one — the same trick the draft packs use, and
-   * for the same reason: somebody setting up turmeric should not have to save
-   * it, find it again and reopen it to finish the job.
+   * Mirrored in a ref because Create reads the drafts in the same tick it is
+   * pressed, and setState is not read back that soon.
    */
-  const [createBrandPhotos, setCreateBrandPhotos] = useState<{ brand: string; file: File | null; preview: string | null }[]>([]);
-  const [createBrandForm, setCreateBrandForm] = useState<{ brand: string; file: File | null }>({ brand: '', file: null });
-  const [createBrandError, setCreateBrandError] = useState('');
-  const createBrandFileRef = useRef<HTMLInputElement>(null);
+  type DraftBrand = BrandRow & { file: File | null };
+  type Draft = { brands: DraftBrand[]; packs: BrandPackRow[] };
+  const [draft, setDraft] = useState<Draft>({ brands: [], packs: [] });
+  const draftRef = useRef<Draft>(draft);
+  const draftSeq = useRef(0);
+  const createEditorRef = useRef<BrandPacksHandle>(null);
 
-  /** Add the brand in the boxes to the draft list. Photo optional. */
-  const addCreateBrand = (): { brand: string; file: File | null; preview: string | null }[] | null => {
-    const brand = createBrandForm.brand.trim();
-    if (!brand) { setCreateBrandError('Type the brand name first.'); return null; }
-    if (createBrandPhotos.some((b) => brandKey(b.brand) === brandKey(brand))) {
-      setCreateBrandError(`${brand} is already on the list.`);
-      return null;
-    }
-    const row = {
-      brand,
-      file: createBrandForm.file,
-      preview: createBrandForm.file ? URL.createObjectURL(createBrandForm.file) : null,
-    };
-    const next = [...createBrandPhotos, row];
-    setCreateBrandPhotos(next);
-    setCreateBrandForm({ brand: '', file: null });
-    setCreateBrandError('');
-    if (createBrandFileRef.current) createBrandFileRef.current.value = '';
-    return next;
+  const writeDraft = (next: Draft) => {
+    draftRef.current = next;
+    setDraft(next);
   };
 
-  /** Same rule as the packs: a brand half-typed into the boxes was meant. */
-  const createBrandFormHasEntry = () => createBrandForm.brand.trim() !== '';
-  const [createPackError, setCreatePackError] = useState('');
-  const [scanNewPackBarcode, setScanNewPackBarcode] = useState(false);
-  /*
-   * A draft whose name is already on the list, held until the question is
-   * answered. Same question the server asks on a real item: "6 pcs packets …
-   * 10 pcs packets" is two sizes under one name and legitimate, a retyped
-   * name is a correction, and only the person typing knows which.
-   */
-  const [createPackClash, setCreatePackClash] = useState<
-    { existingName: string; wasBaseUnits: number; suggestedName: string } | null
-  >(null);
+  /** Object URLs are only alive while the form is; releasing them here keeps a long session from holding every preview. */
+  const resetDraft = () => {
+    draftRef.current.brands.forEach((b) => { if (b.photoUrl) URL.revokeObjectURL(b.photoUrl); });
+    writeDraft({ brands: [], packs: [] });
+  };
+
+  const closeCreate = () => {
+    setCreateOpen(false);
+    resetDraft();
+  };
 
   /** "Packet" taken becomes "Packet 10" — how the server names a second size. */
-  const freeDraftPackName = (typed: string, baseUnits: number): string => {
-    const taken = createPacks.map((p) => p.name.trim().toLowerCase());
-    const candidate = `${typed} ${baseUnits}`;
+  const freeDraftPackName = (packs: BrandPackRow[], brand: string, typed: string, baseUnits: number): string => {
+    const key = brandKey(brand);
+    const taken = packs.filter((p) => brandKey(p.brand) === key).map((p) => p.name.trim().toLowerCase());
+    const candidate = `${typed} ${Number(baseUnits.toFixed(6))}`;
     if (!taken.includes(candidate.toLowerCase())) return candidate;
     for (let i = 2; i < 50; i++) {
       const next = `${candidate} (${i})`;
       if (!taken.includes(next.toLowerCase())) return next;
     }
-    return `${candidate} (${createPacks.length + 1})`;
+    return `${candidate} (${packs.length + 1})`;
   };
 
-  /*
-   * Returns the list the drafts become, or null when the pack needs an answer
-   * first. The list is returned rather than only stored because Create has to
-   * write these in the same tick it is pressed, and setState is not read back
-   * that soon — the pack typed but not yet added has to reach the server too.
-   */
-  const addCreatePack = (
-    options: { name?: string; replace?: boolean } = {},
-  ): { name: string; baseUnits: number; barcode: string; brand: string; price: string }[] | null => {
-    const name = (options.name ?? createPackForm.name).trim();
-    const qty = parseFloat(createPackForm.qty);
-    if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return null; }
-    if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return null; }
-    const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
-    const baseUnits = of ? qty * of.baseUnits : qty;
-    const brand = createPackForm.brand.trim();
-    const row = { name, baseUnits, barcode: createPackForm.barcode.trim(), brand, price: createPackForm.price.trim() };
-    /*
-     * A clash is per brand now. Amul's tin and Nestlé's tin are two boxes
-     * that happen to share a word, and refusing the second would be refusing
-     * the thing this feature exists for.
-     */
-    const clashAt = createPacks.findIndex(
-      (p) => p.name.toLowerCase() === name.toLowerCase()
-        && p.brand.trim().toLowerCase() === brand.toLowerCase(),
-    );
-
-    if (clashAt >= 0 && !options.replace
-      && Math.abs(createPacks[clashAt].baseUnits - baseUnits) > 0.000001) {
-      setCreatePackClash({
-        existingName: createPacks[clashAt].name,
-        wasBaseUnits: createPacks[clashAt].baseUnits,
-        suggestedName: freeDraftPackName(name, baseUnits),
+  const draftStore: BrandPackStore = {
+    addBrand: async (brand, file) => {
+      const cur = draftRef.current;
+      writeDraft({
+        ...cur,
+        brands: [...cur.brands, {
+          key: `b${++draftSeq.current}`, brand, file, photoUrl: file ? URL.createObjectURL(file) : null,
+        }],
       });
-      return null;
-    }
-    const next = clashAt >= 0
-      ? createPacks.map((x, i) => (i === clashAt ? row : x))
-      : [...createPacks, row];
-    setCreatePacks(next);
-    setCreatePackForm((f) => ({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: f.brand }));
-    setCreatePackError('');
-    setCreatePackClash(null);
-    return next;
+    },
+    setBrandPhoto: async (brand, file) => {
+      const cur = draftRef.current;
+      const key = brandKey(brand);
+      const existing = cur.brands.find((b) => brandKey(b.brand) === key) ?? null;
+      if (existing?.photoUrl) URL.revokeObjectURL(existing.photoUrl);
+      const row: DraftBrand = {
+        key: existing?.key ?? `b${++draftSeq.current}`,
+        brand: existing?.brand ?? brand,
+        file,
+        photoUrl: URL.createObjectURL(file),
+      };
+      writeDraft({
+        ...cur,
+        brands: existing ? cur.brands.map((b) => (b.key === row.key ? row : b)) : [...cur.brands, row],
+      });
+    },
+    removeBrand: async ({ brand, row }) => {
+      const cur = draftRef.current;
+      const key = brandKey(brand);
+      if (row?.photoUrl) URL.revokeObjectURL(row.photoUrl);
+      writeDraft({
+        brands: cur.brands.filter((b) => brandKey(b.brand) !== key),
+        packs: cur.packs.filter((p) => brandKey(p.brand) !== key),
+      });
+    },
+    addPack: async (input) => {
+      const cur = draftRef.current;
+      const key = brandKey(input.brand);
+      /*
+       * The same question the server asks on a real item. Owner, 2026-09-07:
+       * "sometimes we buy 6 pcs packets. And sometimes 10 pcs packets" — a
+       * reused name is a correction or a second size, and only the person
+       * typing knows which. A clash is per brand: Amul's tin and Nestlé's tin
+       * are two boxes that happen to share a word.
+       */
+      const at = cur.packs.findIndex(
+        (p) => brandKey(p.brand) === key && p.name.toLowerCase() === input.name.toLowerCase(),
+      );
+      if (at >= 0 && !input.replace && Math.abs(cur.packs[at].baseUnits - input.baseUnits) > 0.000001) {
+        const was = cur.packs[at];
+        const message = `"${was.name}" already holds ${Number(was.baseUnits.toFixed(6))}. Is this a correction, or a second size?`;
+        throw Object.assign(new Error(message), {
+          body: {
+            conflict: 'pack_name_in_use',
+            message,
+            existing: { id: 0, name: was.name, base_units: was.baseUnits },
+            requested_base_units: input.baseUnits,
+            suggested_name: freeDraftPackName(cur.packs, input.brand, input.name, input.baseUnits),
+          },
+        });
+      }
+      const row: BrandPackRow = {
+        key: at >= 0 ? cur.packs[at].key : `d${++draftSeq.current}`,
+        brand: input.brand, name: input.name, baseUnits: input.baseUnits,
+        price: input.price, pricedAt: null, barcode: input.barcode,
+      };
+      writeDraft({
+        ...cur,
+        packs: at >= 0 ? cur.packs.map((p, i) => (i === at ? row : p)) : [...cur.packs, row],
+      });
+    },
+    updatePack: async (pack, changes) => {
+      const cur = draftRef.current;
+      writeDraft({ ...cur, packs: cur.packs.map((p) => (p.key === pack.key ? { ...p, ...changes } : p)) });
+    },
+    removePack: async (pack) => {
+      const cur = draftRef.current;
+      writeDraft({ ...cur, packs: cur.packs.filter((p) => p.key !== pack.key) });
+    },
   };
-
-  /** Same rule as Edit: a pack half-typed into the boxes was still meant. */
-  const createPackFormHasEntry = () =>
-    createPackForm.name.trim() !== '' || createPackForm.qty.trim() !== '';
-
-  /** Brands named on the draft packs, in the order they were first used. */
-  const createPackBrands = Array.from(
-    new Set(createPacks.map((p) => p.brand.trim()).filter((b) => b !== '')),
-  );
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   /*
-   * Pack sizes: how an item is bought, as opposed to how it is counted. Eggs
-   * are counted in pieces and bought by the tray or the case. Defining them
-   * here is what lets a purchase say "1 case" and have the shelf gain 210.
+   * What an item that exists buys as: its packs, its brands, and the brands
+   * it has actually been bought as. Eggs are counted in pieces and bought by
+   * the tray or the case; defining that here is what lets a purchase say
+   * "1 case" and have the shelf gain 210.
    */
   const [packs, setPacks] = useState<InventoryPurchaseUnit[]>([]);
+  const [brandRows, setBrandRows] = useState<BrandRow[]>([]);
   const [packsLoading, setPacksLoading] = useState(false);
   const [packsError, setPacksError] = useState('');
   /** Brands this item has been bought as, from the same call as the packs. */
   const [packBrands, setPackBrands] = useState<string[]>([]);
-  /*
-   * Owner, 2026-09-07: "sometimes we buy 6 pcs packets. And sometimes 10 pcs
-   * packets." A name already in use is either a correction or a second size,
-   * and only the person typing knows which, so the server refuses and this
-   * asks rather than silently resizing the pack that is already there.
-   */
-  const [packClash, setPackClash] = useState<PackNameConflict | null>(null);
-  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '', brand: '', price: '' });
-  const [packSaving, setPackSaving] = useState(false);
-  const [scanPackBarcode, setScanPackBarcode] = useState(false);
+  const packRows = useMemo(() => packs.map(packRowFromUnit), [packs]);
+  const editEditorRef = useRef<BrandPacksHandle>(null);
   const [scanEditBarcode, setScanEditBarcode] = useState(false);
-  /*
-   * A pack you can correct, not only add and delete. Owner, 2026-09-06: "no
-   * pack size edit option" — a typo in "500 ml tin" meant deleting the pack
-   * and with it the name a purchase order was already showing.
-   */
-  const [packEdit, setPackEdit] = useState<{ id: number; name: string; qty: string; barcode: string } | null>(null);
   /*
    * Every unit the store already uses, so Unit is a list to pick from rather
    * than an empty box to guess at. Owner: "cannot see unit list."
@@ -367,112 +359,29 @@ export default function InventoryPage() {
    * not have existed. It is a named section of Edit item now, next to the
    * unit it is measured against — the one field it only makes sense beside.
    */
+  const loadPackList = async (itemId: number) => {
+    const res = await getPurchaseUnits(itemId);
+    setPacks(res.purchase_units);
+    // This call already carries the brands the item has been bought as, so
+    // the editor can offer the ones still missing from its list for free.
+    setPackBrands(res.brands ?? []);
+  };
+
+  const loadBrands = async (itemId: number) => {
+    const res = await getBrandPhotos(itemId);
+    setBrandRows(res.photos.map((p) => ({ key: String(p.id), id: p.id, brand: p.brand, photoUrl: p.url })));
+  };
+
   const loadPacks = async (itemId: number) => {
     setPacks([]);
-    setPacksError('');
+    setBrandRows([]);
     setPackBrands([]);
-    setPackForm({ name: '', qty: '', ofPackId: '', barcode: '', brand: '', price: '' });
+    setPacksError('');
     setPacksLoading(true);
     try {
-      const res = await getPurchaseUnits(itemId);
-      setPacks(res.purchase_units);
-      // This call already carries the brands the item has been bought as, so
-      // the picture manager can point at the ones still missing one for free.
-      setPackBrands(res.brands ?? []);
+      await Promise.all([loadPackList(itemId), loadBrands(itemId)]);
     } catch (e) { setPacksError((e as Error).message); }
     finally { setPacksLoading(false); }
-  };
-
-  /** True when the pack reached the server; false when it needs an answer first. */
-  const savePack = async (options: { name?: string; replace?: boolean } = {}): Promise<boolean> => {
-    if (!editItem) return false;
-    const name = (options.name ?? packForm.name).trim();
-    const qty = parseFloat(packForm.qty);
-    if (!name) { setPacksError('Give the pack a name, like Tray or Case.'); return false; }
-    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return false; }
-    setPackSaving(true);
-    setPacksError('');
-    try {
-      const barcode = packForm.barcode.trim();
-      const replace = options.replace ? { replace: true } : {};
-      const brand = packForm.brand.trim();
-      const price = parseFloat(packForm.price);
-      // A pack with no brand belongs to the item and is offered whichever
-      // brand is being bought; a price left blank simply opens blank.
-      const brandAndPrice = {
-        ...(brand ? { brand } : {}),
-        ...(Number.isFinite(price) && price > 0 ? { default_unit_cost: price } : {}),
-      };
-      await createPurchaseUnit(editItem.id, packForm.ofPackId
-        // "A case is 7 trays" — how a box is actually described. The server
-        // resolves it to the base unit before storing.
-        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}), ...brandAndPrice, ...replace }
-        : { name, base_units: qty, ...(barcode ? { barcode } : {}), ...brandAndPrice, ...replace });
-      const res = await getPurchaseUnits(editItem.id);
-      setPacks(res.purchase_units);
-      // The brand stays: adding several packs for one brand is the common
-      // case, and retyping it each time is the annoying half of that.
-      setPackForm((f) => ({ name: '', qty: '', ofPackId: '', barcode: '', price: '', brand: f.brand }));
-      setPackClash(null);
-      // The row shows an item's packs, so it has to hear about a new one.
-      void loadItems();
-      return true;
-    } catch (e) {
-      const clash = packNameConflict(e);
-      if (clash) { setPackClash(clash); } else { setPacksError((e as Error).message); }
-      return false;
-    }
-    finally { setPackSaving(false); }
-  };
-
-  /*
-   * Owner, 2026-09-09: "i dont see the previoulsly added pack size."
-   *
-   * A pack typed into the boxes but never pushed through "Add pack" was
-   * dropped the moment the form closed — silently, and with the item saved
-   * around it, so the only evidence was a pack that was not there later. The
-   * boxes look like part of the form, so filling them and pressing the form's
-   * own save button is the obvious thing to do. Treat it as meant.
-   */
-  const packFormHasEntry = () =>
-    packForm.name.trim() !== '' || packForm.qty.trim() !== '';
-
-  const removePack = async (id: number) => {
-    if (!editItem) return;
-    setPackSaving(true);
-    try {
-      await deletePurchaseUnit(editItem.id, id);
-      setPacks((p) => p.filter((x) => x.id !== id));
-      void loadItems();
-    } catch (e) { setPacksError((e as Error).message); }
-    finally { setPackSaving(false); }
-  };
-
-  /*
-   * Correcting a pack changes what *future* orders convert to. Purchases keep
-   * their own copy of the pack they were entered with, so nothing already
-   * received moves — which is what makes this safe to offer.
-   */
-  const savePackEdit = async () => {
-    if (!editItem || !packEdit) return;
-    const name = packEdit.name.trim();
-    const qty = parseFloat(packEdit.qty);
-    if (!name) { setPacksError('A pack needs a name.'); return; }
-    if (!Number.isFinite(qty) || qty <= 0) { setPacksError('Say how much is in it.'); return; }
-    setPackSaving(true);
-    setPacksError('');
-    try {
-      await updatePurchaseUnit(editItem.id, packEdit.id, {
-        name,
-        base_units: qty,
-        barcode: packEdit.barcode.trim() || null,
-      });
-      const res = await getPurchaseUnits(editItem.id);
-      setPacks(res.purchase_units);
-      setPackEdit(null);
-      void loadItems();
-    } catch (e) { setPacksError((e as Error).message); }
-    finally { setPackSaving(false); }
   };
 
   /**
@@ -514,7 +423,6 @@ export default function InventoryPage() {
   const openEdit = (item: InventoryItem) => {
     setEditItem(item);
     setEditError('');
-    setPackClash(null);
     void loadPacks(item.id);
     /*
      * Only "+ Add Item" used to fetch these, so opening Edit showed an empty
@@ -541,6 +449,69 @@ export default function InventoryPage() {
   };
 
   /*
+   * Where the editor's changes go for an item that exists: straight to the
+   * server, then the lists are re-read so the screen shows what was stored.
+   * Correcting a pack changes what *future* orders convert to; purchases keep
+   * their own copy of the pack they were entered with, so nothing already
+   * received moves — which is what makes this safe to offer.
+   */
+  const liveStore: BrandPackStore = {
+    addBrand: async (brand, file) => {
+      if (!editItem) return;
+      await uploadBrandPhoto(editItem.id, brand, file);
+      await loadBrands(editItem.id);
+    },
+    setBrandPhoto: async (brand, file) => {
+      if (!editItem) return;
+      await uploadBrandPhoto(editItem.id, brand, file);
+      await loadBrands(editItem.id);
+    },
+    removeBrand: async ({ row, packs: theirs }) => {
+      if (!editItem) return;
+      // Its packs go with it: the brand's card is the only place they show.
+      for (const p of theirs) {
+        if (p.id != null) await deletePurchaseUnit(editItem.id, p.id);
+      }
+      if (row?.id != null) await deleteBrandPhoto(editItem.id, row.id);
+      await Promise.all([loadPackList(editItem.id), loadBrands(editItem.id)]);
+      void loadItems();
+    },
+    addPack: async (input) => {
+      if (!editItem) return;
+      // A pack with no brand belongs to the item and is offered whichever
+      // brand is being bought; a price left blank simply opens blank.
+      await createPurchaseUnit(editItem.id, {
+        name: input.name,
+        base_units: input.baseUnits,
+        ...(input.barcode ? { barcode: input.barcode } : {}),
+        ...(input.brand ? { brand: input.brand } : {}),
+        ...(input.price != null ? { default_unit_cost: input.price } : {}),
+        ...(input.replace ? { replace: true } : {}),
+      });
+      await loadPackList(editItem.id);
+      // The row shows an item's packs, so it has to hear about a new one.
+      void loadItems();
+    },
+    updatePack: async (pack, changes) => {
+      if (!editItem || pack.id == null) return;
+      await updatePurchaseUnit(editItem.id, pack.id, {
+        name: changes.name,
+        base_units: changes.baseUnits,
+        barcode: changes.barcode || null,
+        default_unit_cost: changes.price,
+      });
+      await loadPackList(editItem.id);
+      void loadItems();
+    },
+    removePack: async (pack) => {
+      if (!editItem || pack.id == null) return;
+      await deletePurchaseUnit(editItem.id, pack.id);
+      setPacks((p) => p.filter((x) => x.id !== pack.id));
+      void loadItems();
+    },
+  };
+
+  /*
    * Owner, 2026-09-09: "how to del an item in inventory." There was no way at
    * all. There are two answers and they are not the same one:
    *
@@ -556,103 +527,80 @@ export default function InventoryPage() {
    * because the duplicate-name question has to be able to run it again with
    * the answer attached.
    */
-  const saveNewItem = (allowDuplicateName = false) => {
-              if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
-              // A pack left in the boxes is a pack that was meant. Take it now,
-              // or stop and let the question above it be answered.
-              // A brand left in the boxes is a brand that was meant, exactly
-              // as with the packs below.
-              let brandsToWrite = createBrandPhotos;
-              if (createBrandFormHasEntry()) {
-                const next = addCreateBrand();
-                if (!next) {
-                  setCreateError('The brand above has not been added yet. Sort that out and press Create again.');
-                  return;
-                }
-                brandsToWrite = next;
-              }
-              let packsToWrite = createPacks;
-              if (createPackFormHasEntry()) {
-                const next = addCreatePack();
-                if (!next) {
-                  setCreateError('The pack above has not been added yet. Sort that out and press Create again.');
-                  return;
-                }
-                packsToWrite = next;
-              }
-              setCreateError('');
-              setNameClash(null);
-              setCreateSaving(true);
-              void createInventoryItem({
-                ...(allowDuplicateName ? { allow_duplicate_name: true } : {}),
-                name: createForm.name.trim(),
-                sku: createForm.sku.trim() || undefined,
-                barcode: createForm.barcode.trim() || undefined,
-                unit: createForm.unit.trim(),
-                current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
-                reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
-                lead_days: (() => {
-                  if (createForm.lead_days === '') return undefined;
-                  const n = parseInt(createForm.lead_days, 10);
-                  return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
-                })(),
-                cover_days: (() => {
-                  if (createForm.cover_days === '') return undefined;
-                  const n = parseInt(createForm.cover_days, 10);
-                  return Number.isFinite(n) ? Math.min(90, Math.max(1, n)) : undefined;
-                })(),
-                unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
-                inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
-                preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
-                storage_location: createForm.storage_location.trim() || undefined,
-                notes: createForm.notes.trim() || undefined,
-                gst_rate_bp: createForm.gst ? 800 : 0,
-              }).then(async (res) => {
-                // The packs typed above, now that there is an item to hang
-                // them on. One at a time: the item is already made, so a pack
-                // that fails is a thing to report, not a reason to lose the rest.
-                const failed: string[] = [];
-                // Brands first: a pack that names one reads better in the
-                // editor afterwards if the brand is already on the item.
-                for (const b of brandsToWrite) {
-                  try {
-                    await uploadBrandPhoto(res.item.id, b.brand, b.file);
-                  } catch { failed.push(b.brand); }
-                }
-                for (const p of packsToWrite) {
-                  try {
-                    const price = parseFloat(p.price);
-                    await createPurchaseUnit(res.item.id, {
-                      name: p.name,
-                      base_units: p.baseUnits,
-                      ...(p.barcode ? { barcode: p.barcode } : {}),
-                      ...(p.brand ? { brand: p.brand } : {}),
-                      ...(Number.isFinite(price) && price > 0 ? { default_unit_cost: price } : {}),
-                    });
-                  } catch { failed.push(p.name); }
-                }
-                setCreateOpen(false);
-                setCreatePacks([]);
-                // Object URLs are only alive while the form is; releasing them
-                // here keeps a long session from holding every photo preview.
-                createBrandPhotos.forEach((b) => { if (b.preview) URL.revokeObjectURL(b.preview); });
-                setCreateBrandPhotos([]);
-                setCreateBrandForm({ brand: '', file: null });
-                setCreateBrandError('');
-                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: '' });
-                setCreatePackError('');
-                setCreatePackClash(null);
-                void loadItems();
-                if (failed.length > 0) {
-                  // The editor is where a missed pack gets added by hand.
-                  openEdit(res.item);
-                  setPacksError(`${res.item.name} was created, but ${failed.join(', ')} did not save. Add it here.`);
-                }
-              }).catch((e: Error) => {
-                const clash = itemNameConflict(e);
-                if (clash) setNameClash(clash); else setCreateError(e.message);
-              }).finally(() => setCreateSaving(false));
-              };
+  const saveNewItem = async (allowDuplicateName = false) => {
+    if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
+    // A brand or a pack left sitting in the boxes was meant. Take it now, or
+    // stop and let whatever question it raised be answered first.
+    if (await createEditorRef.current?.flush() === 'stuck') {
+      setCreateError('The brand or pack above has not been added yet. Sort that out and press Create again.');
+      return;
+    }
+    const { brands: brandsToWrite, packs: packsToWrite } = draftRef.current;
+    setCreateError('');
+    setNameClash(null);
+    setCreateSaving(true);
+    try {
+      const res = await createInventoryItem({
+        ...(allowDuplicateName ? { allow_duplicate_name: true } : {}),
+        name: createForm.name.trim(),
+        sku: createForm.sku.trim() || undefined,
+        barcode: createForm.barcode.trim() || undefined,
+        unit: createForm.unit.trim(),
+        current_stock: createForm.current_stock ? parseFloat(createForm.current_stock) : undefined,
+        reorder_point: createForm.reorder_point ? parseFloat(createForm.reorder_point) : undefined,
+        lead_days: (() => {
+          if (createForm.lead_days === '') return undefined;
+          const n = parseInt(createForm.lead_days, 10);
+          return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : undefined;
+        })(),
+        cover_days: (() => {
+          if (createForm.cover_days === '') return undefined;
+          const n = parseInt(createForm.cover_days, 10);
+          return Number.isFinite(n) ? Math.min(90, Math.max(1, n)) : undefined;
+        })(),
+        unit_cost: createForm.unit_cost ? parseFloat(createForm.unit_cost) : undefined,
+        inventory_category_id: createForm.inventory_category_id ? Number(createForm.inventory_category_id) : undefined,
+        preferred_supplier_id: createForm.preferred_supplier_id ? Number(createForm.preferred_supplier_id) : undefined,
+        storage_location: createForm.storage_location.trim() || undefined,
+        notes: createForm.notes.trim() || undefined,
+        gst_rate_bp: createForm.gst ? 800 : 0,
+      });
+
+      // The brands and packs typed above, now that there is an item to hang
+      // them on. One at a time: the item is already made, so one that fails
+      // is a thing to report, not a reason to lose the rest. Brands first, so
+      // a pack that names one lands on a brand that is already there.
+      const failed: string[] = [];
+      for (const b of brandsToWrite) {
+        try {
+          await uploadBrandPhoto(res.item.id, b.brand, b.file);
+        } catch { failed.push(b.brand); }
+      }
+      for (const p of packsToWrite) {
+        try {
+          await createPurchaseUnit(res.item.id, {
+            name: p.name,
+            base_units: p.baseUnits,
+            ...(p.barcode ? { barcode: p.barcode } : {}),
+            ...(p.brand ? { brand: p.brand } : {}),
+            ...(p.price != null ? { default_unit_cost: p.price } : {}),
+          });
+        } catch { failed.push(p.name); }
+      }
+      closeCreate();
+      void loadItems();
+      if (failed.length > 0) {
+        // The editor is where a missed one gets added by hand.
+        openEdit(res.item);
+        setPacksError(`${res.item.name} was created, but ${failed.join(', ')} did not save. Add it here.`);
+      }
+    } catch (e) {
+      const clash = itemNameConflict(e);
+      if (clash) setNameClash(clash); else setCreateError((e as Error).message);
+    } finally {
+      setCreateSaving(false);
+    }
+  };
 
   const removeItem = async () => {
     if (!editItem) return;
@@ -675,17 +623,15 @@ export default function InventoryPage() {
     if (!name) { setEditError('Name is required.'); return; }
     if (!unit) { setEditError('Unit is required — what you count this in.'); return; }
 
-    // A pack left sitting in the boxes is a pack that was meant. Save it
-    // first, and stop here if it needs an answer — the item is still open,
-    // so nothing is lost while the question is on screen.
-    if (packFormHasEntry()) {
-      setEditSaving(true);
-      const saved = await savePack();
-      setEditSaving(false);
-      if (!saved) {
-        setEditError('The pack above has not been added yet. Sort that out and save again.');
-        return;
-      }
+    // A brand or a pack left sitting in the boxes was meant. Save it first,
+    // and stop here if it needs an answer — the item is still open, so
+    // nothing is lost while the question is on screen.
+    setEditSaving(true);
+    const flushed = await editEditorRef.current?.flush();
+    setEditSaving(false);
+    if (flushed === 'stuck') {
+      setEditError('The brand or pack above has not been added yet. Sort that out and save again.');
+      return;
     }
 
     setEditSaving(true);
@@ -1346,15 +1292,12 @@ export default function InventoryPage() {
             {canManage && (
               <Btn onClick={() => {
                 setCreateOpen(true);
+                resetDraft();
                 setCreateError('');
                 setCreateForm({
                   name: '', sku: '', barcode: '', unit: 'kg', current_stock: '', reorder_point: '', lead_days: '', cover_days: '', unit_cost: '', gst: false,
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
-                setCreatePacks([]);
-                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: '' });
-                setCreatePackError('');
-                setCreatePackClash(null);
                 setNameClash(null);
                 if (cats.length === 0) void loadCats();
                 if (suppliers.length === 0) void loadSuppliers();
@@ -1732,290 +1675,27 @@ export default function InventoryPage() {
               )}
             </div>
 
-            {/* ── Pack sizes: how you buy it ─────────────────────────────
-                Sits under Unit because that is the number it is measured
-                against: ghee counted in ml, bought as a 100 ml or 500 ml tin.
-                Saves on its own, so the note says so — Cancel above closes
-                the form, it does not take a pack back. */}
-            <div
-              data-testid="pack-sizes-section"
-              style={{
-                border: '1px solid var(--color-border)', borderRadius: 10,
-                padding: '12px 14px', background: 'var(--color-bg)',
-              }}
-            >
-              <p style={{ ...S.label, margin: '0 0 4px' }}>Pack sizes — how you buy this</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{editItem.unit}</strong>.
-                Add the containers you actually buy — a 500 ml tin, a case — and a purchase order can say
-                “2 tins” while the shelf gains the right number and the price per {editItem.unit} works
-                itself out. These save as you add them.
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '-6px 0 12px', lineHeight: 1.5 }}>
-                Editing one only changes what future orders convert to — a purchase already
-                entered keeps the pack it was entered with, so nothing you have received moves.
-              </p>
-              {packsError && (
-                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{packsError}</p>
-              )}
-
-              {packsLoading ? <TableSkeleton rows={2} cols={2} /> : packs.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                  No packs yet — this is bought loose, by the {editItem.unit}.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
-                  {packs.map((p) => (
-                    <div key={p.id} data-testid={`pack-row-${p.id}`} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                      border: '1px solid var(--color-border)', borderRadius: 10,
-                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
-                    }}>
-                      {packEdit?.id === p.id ? (
-                        <>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
-                            <input
-                              aria-label={`Name of ${p.name}`}
-                              value={packEdit.name}
-                              onChange={(e) => setPackEdit((f) => (f ? { ...f, name: e.target.value } : f))}
-                              style={{ ...S.input, flex: '1 1 120px', width: 'auto' }}
-                            />
-                            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>=</span>
-                            <input
-                              aria-label={`Amount in ${p.name}`}
-                              type="number"
-                              min="0.000001"
-                              step="any"
-                              value={packEdit.qty}
-                              onChange={(e) => setPackEdit((f) => (f ? { ...f, qty: e.target.value } : f))}
-                              style={{ ...S.input, width: 90 }}
-                            />
-                            <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{editItem.unit}</span>
-                            <input
-                              aria-label={`Barcode of ${p.name}`}
-                              placeholder="Barcode on the pack"
-                              inputMode="numeric"
-                              value={packEdit.barcode}
-                              onChange={(e) => setPackEdit((f) => (f ? { ...f, barcode: e.target.value } : f))}
-                              style={{ ...S.input, flex: '1 1 140px', width: 'auto' }}
-                            />
-                          </div>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <Btn small disabled={packSaving} onClick={() => void savePackEdit()}>
-                              {packSaving ? 'Saving…' : 'Save'}
-                            </Btn>
-                            <Btn small variant="ghost" disabled={packSaving} onClick={() => setPackEdit(null)}>Cancel</Btn>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <span style={{ fontSize: 13 }}>
-                            {p.brand && (
-                              <span style={{
-                                display: 'inline-block', fontSize: 11, fontWeight: 700,
-                                background: 'var(--color-border-light)', color: 'var(--color-text-secondary)',
-                                borderRadius: 999, padding: '2px 8px', marginRight: 6,
-                              }}>
-                                {p.brand}
-                              </span>
-                            )}
-                            <strong>{p.name}</strong>
-                            <span style={{ color: 'var(--color-text-secondary)' }}>
-                              {' '}= {Number(p.base_units)} {editItem.unit}
-                            </span>
-                            {p.default_unit_cost != null && (
-                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
-                                {' '}· MVR {Number(p.default_unit_cost).toFixed(2)}
-                              </span>
-                            )}
-                            {/* When the figure was last true. A price set in
-                                March reading as "March" is the whole reason
-                                purchasing writes back to it. */}
-                            {p.default_cost_updated_at && (
-                              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                                priced {new Date(p.default_cost_updated_at).toLocaleDateString()}
-                              </span>
-                            )}
-                            {p.barcode && (
-                              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                                ⌷ {p.barcode}
-                              </span>
-                            )}
-                          </span>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <Btn
-                              small
-                              variant="secondary"
-                              disabled={packSaving}
-                              onClick={() => {
-                                setPacksError('');
-                                setPackEdit({ id: p.id, name: p.name, qty: String(Number(p.base_units)), barcode: p.barcode ?? '' });
-                              }}
-                            >
-                              Edit
-                            </Btn>
-                            <Btn small variant="ghost" disabled={packSaving} onClick={() => void removePack(p.id)}>Remove</Btn>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {/* Brand first: it decides what the rest means. Amul's tin
-                    and Nestlé's tin are two boxes at two prices, and a pack
-                    with no brand belongs to the item however it is bought. */}
-                <input
-                  aria-label="Pack brand"
-                  list="edit-pack-brands"
-                  placeholder="Brand (optional) — e.g. Amul"
-                  value={packForm.brand}
-                  onChange={(e) => setPackForm((f) => ({ ...f, brand: e.target.value }))}
-                  style={S.input}
-                />
-                <datalist id="edit-pack-brands">
-                  {packBrands.map((b) => <option key={b} value={b} />)}
-                </datalist>
-                <input
-                  aria-label="Pack name"
-                  placeholder="Name, e.g. 500 ml tin or Case"
-                  value={packForm.name}
-                  onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
-                  style={S.input}
-                />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Usually costs MVR</span>
-                  <input
-                    aria-label="Pack default price"
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="185"
-                    value={packForm.price}
-                    onChange={(e) => setPackForm((f) => ({ ...f, price: e.target.value }))}
-                    style={{ ...S.input, width: 120 }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    per pack — purchase orders open at this and correct it when you pay something else
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
-                  <input
-                    aria-label="Amount in the pack"
-                    type="number"
-                    min="0.000001"
-                    step="any"
-                    placeholder="500"
-                    value={packForm.qty}
-                    onChange={(e) => setPackForm((f) => ({ ...f, qty: e.target.value }))}
-                    style={{ ...S.input, width: 100 }}
-                  />
-                  {/* A case is 7 trays. Defining a big pack from a small one is
-                      how people describe a box, and beats multiplying it out. */}
-                  <select
-                    aria-label="Measured in"
-                    value={packForm.ofPackId}
-                    onChange={(e) => setPackForm((f) => ({ ...f, ofPackId: e.target.value }))}
-                    style={{ ...S.select, width: 'auto', minWidth: 130 }}
-                  >
-                    <option value="">{editItem.unit}</option>
-                    {packs.map((p) => <option key={p.id} value={p.id}>{p.name.toLowerCase()}</option>)}
-                  </select>
-                  <Btn small onClick={() => void savePack()} disabled={packSaving}>
-                    {packSaving ? 'Saving…' : 'Add pack'}
-                  </Btn>
-                </div>
-
-                {/* Both answers are one click, and neither is the default:
-                    losing a pack size silently is what this replaces. */}
-                {packClash && (
-                  <div
-                    data-testid="pack-name-clash"
-                    style={{
-                      border: '1px solid var(--color-warning)', borderRadius: 10,
-                      padding: '10px 12px', background: 'var(--color-bg)', display: 'grid', gap: 8,
-                    }}
-                  >
-                    <span style={{ fontSize: 13, color: 'var(--color-text)' }}>{packClash.message}</span>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Btn
-                        small
-                        disabled={packSaving}
-                        data-testid="pack-clash-keep-both"
-                        onClick={() => {
-                          setPackForm((f) => ({ ...f, name: packClash.suggested_name }));
-                          void savePack({ name: packClash.suggested_name });
-                        }}
-                      >
-                        Keep both — call this “{packClash.suggested_name}”
-                      </Btn>
-                      <Btn
-                        small
-                        variant="secondary"
-                        disabled={packSaving}
-                        data-testid="pack-clash-replace"
-                        onClick={() => void savePack({ replace: true })}
-                      >
-                        No, {packClash.existing.name} really holds {packForm.qty}
-                      </Btn>
-                      <Btn small variant="ghost" disabled={packSaving} onClick={() => setPackClash(null)}>Cancel</Btn>
-                    </div>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    aria-label="Pack barcode"
-                    placeholder="Barcode on the pack (optional)"
-                    inputMode="numeric"
-                    value={packForm.barcode}
-                    onChange={(e) => setPackForm((f) => ({ ...f, barcode: e.target.value }))}
-                    style={{ ...S.input, flex: 1, width: 'auto' }}
-                  />
-                  <Btn small variant="secondary" onClick={() => setScanPackBarcode(true)} aria-label="Scan the pack barcode">
-                    📷 Scan
-                  </Btn>
-                </div>
-                {/* Different sizes carry different EANs; the code on the tin is
-                    what lets receiving and stock counts count the right size. */}
-              </div>
-              {scanPackBarcode && (
-                <ScanSheet
-                  title="Scan the pack"
-                  onScan={(code) => { setPackForm((f) => ({ ...f, barcode: code.trim() })); setScanPackBarcode(false); }}
-                  onClose={() => setScanPackBarcode(false)}
-                />
-              )}
-            </div>
-
-            {/* ── Brand pictures ───────────────────────────────────────────
-                Owner, 2026-09-09: "where can i add brands and its photos?"
-                They were only inside Cost & usage, behind the 📈 on the row —
-                the same place pack sizes were hidden when the answer was "i
-                dont see pack size". Both belong beside the unit: a pack is
-                what size you buy, a brand is whose, and this is the screen
-                you are on when you are setting an item up.
-
-                There is no list of brands to maintain anywhere. A brand is
-                whatever gets typed on a purchase line, and this hangs a
-                picture off the item-and-brand pair that already exists. */}
-            <div
-              data-testid="edit-item-brand-photos"
-              style={{
-                border: '1px solid var(--color-border)', borderRadius: 10,
-                padding: '12px 14px', background: 'var(--color-bg)',
-              }}
-            >
-              <BrandPhotos
-                itemId={editItem.id}
-                itemName={editItem.name}
-                canManage={canManage}
-                knownBrands={packBrands}
-              />
-            </div>
+            {/* ── Brands and packs: whose you buy, and what it comes in ──
+                Sits under Unit because that is the number every pack is
+                measured against: ghee counted in ml, bought as Amul's 500 ml
+                tin. Owner, 2026-09-12: "Each brand should have its default
+                packaging, price, photo options" — one card per brand with
+                its packs inside, and the same editor Add uses, so the two
+                cannot drift apart again. Saves on its own; Cancel above
+                closes the form, it does not take a pack back. */}
+            <BrandPacks
+              ref={editEditorRef}
+              testId="pack-sizes-section"
+              unit={editItem.unit}
+              brands={brandRows}
+              packs={packRows}
+              knownBrands={packBrands}
+              loading={packsLoading}
+              error={packsError}
+              canManage={canManage}
+              savesImmediately
+              store={liveStore}
+            />
             <label>
               <span style={S.label}>SKU</span>
               <input style={S.input} value={editForm.sku} aria-label="SKU"
@@ -2199,7 +1879,7 @@ export default function InventoryPage() {
 
       {/* ── Create SKU Modal ── */}
       {createOpen && (
-        <Modal title="Add Inventory SKU" onClose={() => setCreateOpen(false)} maxWidth={480}>
+        <Modal title="Add Inventory SKU" onClose={closeCreate} maxWidth={480}>
           {createError && <p style={{ color: 'var(--color-danger)', marginBottom: 12 }}>{createError}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label>
@@ -2278,302 +1958,31 @@ export default function InventoryPage() {
                 Count in the smallest unit you use — <strong style={{ color: 'var(--color-text)' }}>g</strong> for
                 a powder, <strong style={{ color: 'var(--color-text)' }}>ml</strong> for a liquid,
                 <strong style={{ color: 'var(--color-text)' }}> piece</strong> for a bun. The sizes you buy go
-                in Pack sizes below.
+                in Brands and packs below.
               </p>
             </div>
 
-            {/* ── Pack sizes, before the item exists ───────────────────────
-                Owner, 2026-09-09: "Add Inventory SKU, no add pack." These
-                cannot be saved yet — a pack row needs an item id — so they
-                are collected here and written the instant Create returns one.
+            {/* ── Brands and packs, before the item exists ───────────────
+                Owner, 2026-09-12: "Edit and add new option should be same."
+                Nothing can be saved yet — a pack row needs an item id — so
+                these are held as drafts and written the instant Create
+                returns one. Same editor as Edit; only where the changes go
+                differs.
 
                 Worth the extra state: somebody who cannot enter 100g and 500g
                 at the moment they are adding turmeric adds two items instead,
                 and from then on the stock is split, the recipe points at one
                 of them, and the per-gram comparison has nothing to compare. */}
-            {/* ── Brands, before the item exists ──────────────────────────
-                Owner, 2026-09-12: "Edit and add new option should be same."
-                The editor has had this since the photos went in; Add did not,
-                so setting up a new ingredient meant saving it, finding it in
-                the list and reopening it just to say whose one it is. */}
-            <div
-              data-testid="new-item-brands"
-              style={{
-                border: '1px solid var(--color-border)', borderRadius: 10,
-                padding: '12px 14px', background: 'var(--color-bg)',
-              }}
-            >
-              <p style={{ ...S.label, margin: '0 0 4px' }}>Brands — whose one you buy</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                A photo is optional and worth it for the ones that look alike on the shelf. These save with
-                the item, and the names show up when you pick a brand on a purchase order.
-              </p>
-              {createBrandError && (
-                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{createBrandError}</p>
-              )}
-
-              {createBrandPhotos.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                  No brands yet — leave it empty if it does not matter which one you get.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
-                  {createBrandPhotos.map((b, i) => (
-                    <div key={b.brand} data-testid={`new-brand-row-${i}`} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                      border: '1px solid var(--color-border)', borderRadius: 10,
-                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
-                    }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                        {b.preview
-                          ? <img src={b.preview} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
-                          : (
-                            <span style={{
-                              width: 40, height: 40, borderRadius: 8, display: 'inline-flex',
-                              alignItems: 'center', justifyContent: 'center',
-                              background: 'var(--color-border-light)', color: 'var(--color-text-muted)', fontSize: 11,
-                            }}>
-                              no pic
-                            </span>
-                          )}
-                        <strong>{b.brand}</strong>
-                      </span>
-                      <Btn
-                        small
-                        variant="ghost"
-                        aria-label={`Remove ${b.brand}`}
-                        onClick={() => {
-                          if (b.preview) URL.revokeObjectURL(b.preview);
-                          setCreateBrandPhotos((rows) => rows.filter((_, j) => j !== i));
-                        }}
-                      >
-                        Remove
-                      </Btn>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a brand</p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                <input
-                  aria-label="New item brand name"
-                  placeholder="Brand, e.g. Amul"
-                  value={createBrandForm.brand}
-                  onChange={(e) => setCreateBrandForm((f) => ({ ...f, brand: e.target.value }))}
-                  style={S.input}
-                />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input
-                    ref={createBrandFileRef}
-                    aria-label="New item brand photo"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setCreateBrandForm((f) => ({ ...f, file: e.target.files?.[0] ?? null }))}
-                    style={{ ...S.input, padding: '6px 8px', flex: '1 1 200px' }}
-                  />
-                  <Btn small onClick={() => addCreateBrand()}>Add brand</Btn>
-                </div>
-              </div>
-            </div>
-
-            <div
-              data-testid="new-item-pack-sizes"
-              style={{
-                border: '1px solid var(--color-border)', borderRadius: 10,
-                padding: '12px 14px', background: 'var(--color-bg)',
-              }}
-            >
-              <p style={{ ...S.label, margin: '0 0 4px' }}>Pack sizes — how you buy this</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
-                Stock is counted in <strong style={{ color: 'var(--color-text)' }}>{createForm.unit.trim() || 'the unit above'}</strong>.
-                Add the containers you actually buy — a 500g pack, a case — and a purchase order can say
-                “2 packs” while the shelf gains the right number. These save with the item.
-              </p>
-              {createPackError && (
-                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{createPackError}</p>
-              )}
-
-              {createPacks.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-                  No packs yet — leave it empty if this is bought loose.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
-                  {createPacks.map((p, i) => (
-                    <div key={`${p.brand}|${p.name}`} data-testid={`new-pack-row-${i}`} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                      border: '1px solid var(--color-border)', borderRadius: 10,
-                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
-                    }}>
-                      <span style={{ fontSize: 13 }}>
-                        {p.brand && (
-                          <span style={{
-                            display: 'inline-block', fontSize: 11, fontWeight: 700,
-                            background: 'var(--color-border-light)', color: 'var(--color-text-secondary)',
-                            borderRadius: 999, padding: '2px 8px', marginRight: 6,
-                          }}>
-                            {p.brand}
-                          </span>
-                        )}
-                        <strong>{p.name}</strong>
-                        <span style={{ color: 'var(--color-text-secondary)' }}>
-                          {' '}= {p.baseUnits} {createForm.unit.trim()}
-                        </span>
-                        {p.price && (
-                          <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
-                            {' '}· MVR {p.price}
-                          </span>
-                        )}
-                        {p.barcode && (
-                          <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                            ⌷ {p.barcode}
-                          </span>
-                        )}
-                      </span>
-                      <Btn
-                        small
-                        variant="ghost"
-                        aria-label={`Remove ${p.name}`}
-                        onClick={() => setCreatePacks((rows) => rows.filter((_, j) => j !== i))}
-                      >
-                        Remove
-                      </Btn>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {/* Brand first, because it decides what the rest means: a
-                    tin is Amul's 1 kg tin or Nestlé's 500 g one, and the two
-                    cost different money. Left blank the pack belongs to the
-                    item and is offered whichever brand is being bought. */}
-                <input
-                  aria-label="New item pack brand"
-                  list="new-pack-brands"
-                  placeholder="Brand (optional) — e.g. Amul"
-                  value={createPackForm.brand}
-                  onChange={(e) => setCreatePackForm((f) => ({ ...f, brand: e.target.value }))}
-                  style={S.input}
-                />
-                <datalist id="new-pack-brands">
-                  {createPackBrands.map((b) => <option key={b} value={b} />)}
-                </datalist>
-                <input
-                  aria-label="New item pack name"
-                  placeholder="Name, e.g. 500g pack or Case"
-                  value={createPackForm.name}
-                  onChange={(e) => setCreatePackForm((f) => ({ ...f, name: e.target.value }))}
-                  style={S.input}
-                />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Usually costs MVR</span>
-                  <input
-                    aria-label="New item pack default price"
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="185"
-                    value={createPackForm.price}
-                    onChange={(e) => setCreatePackForm((f) => ({ ...f, price: e.target.value }))}
-                    style={{ ...S.input, width: 120 }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    per pack — a purchase order opens at this, and corrects it when you pay something else
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
-                  <input
-                    aria-label="Amount in the new item pack"
-                    type="number"
-                    min="0.000001"
-                    step="any"
-                    placeholder="500"
-                    value={createPackForm.qty}
-                    onChange={(e) => setCreatePackForm((f) => ({ ...f, qty: e.target.value }))}
-                    style={{ ...S.input, width: 100 }}
-                  />
-                  {/* "A case is 12 of the 500g packs" — described against a pack
-                      already added, and multiplied out here, because a draft
-                      has no id for the server to resolve against. */}
-                  <select
-                    aria-label="New item pack measured in"
-                    value={createPackForm.ofIndex}
-                    onChange={(e) => setCreatePackForm((f) => ({ ...f, ofIndex: e.target.value }))}
-                    style={{ ...S.select, width: 'auto', minWidth: 130 }}
-                  >
-                    <option value="">{createForm.unit.trim() || 'unit'}</option>
-                    {createPacks.map((p, i) => <option key={p.name} value={String(i)}>{p.name.toLowerCase()}</option>)}
-                  </select>
-                  <Btn small onClick={() => addCreatePack()}>Add pack</Btn>
-                </div>
-
-                {/* The same question Edit asks, asked before the item exists.
-                    Both answers are one click and neither is the default. */}
-                {createPackClash && (
-                  <div
-                    data-testid="new-pack-name-clash"
-                    style={{
-                      border: '1px solid var(--color-warning)', borderRadius: 10,
-                      padding: '10px 12px', background: 'var(--color-bg)', display: 'grid', gap: 8,
-                    }}
-                  >
-                    <span style={{ fontSize: 13, color: 'var(--color-text)' }}>
-                      “{createPackClash.existingName}” already holds {createPackClash.wasBaseUnits}
-                      {createForm.unit.trim() ? ` ${createForm.unit.trim()}` : ''}. Is this a correction,
-                      or a second size?
-                    </span>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Btn
-                        small
-                        data-testid="new-pack-clash-keep-both"
-                        onClick={() => {
-                          setCreatePackForm((f) => ({ ...f, name: createPackClash.suggestedName }));
-                          addCreatePack({ name: createPackClash.suggestedName });
-                        }}
-                      >
-                        Keep both — call this “{createPackClash.suggestedName}”
-                      </Btn>
-                      <Btn
-                        small
-                        variant="secondary"
-                        data-testid="new-pack-clash-replace"
-                        onClick={() => addCreatePack({ replace: true })}
-                      >
-                        No, {createPackClash.existingName} really holds {createPackForm.qty}
-                      </Btn>
-                      <Btn small variant="ghost" onClick={() => setCreatePackClash(null)}>Cancel</Btn>
-                    </div>
-                  </div>
-                )}
-                {/* Different sizes carry different EANs, and the gun is how
-                    they get typed correctly — same as on Edit. */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    aria-label="New item pack barcode"
-                    placeholder="Barcode on the pack (optional)"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={createPackForm.barcode}
-                    onChange={(e) => setCreatePackForm((f) => ({ ...f, barcode: e.target.value }))}
-                    style={{ ...S.input, flex: 1, width: 'auto' }}
-                  />
-                  <Btn small variant="secondary" onClick={() => setScanNewPackBarcode(true)} aria-label="Scan the new pack barcode">
-                    📷 Scan
-                  </Btn>
-                </div>
-              </div>
-              {scanNewPackBarcode && (
-                <ScanSheet
-                  title="Scan the pack"
-                  onScan={(code) => { setCreatePackForm((f) => ({ ...f, barcode: code.trim() })); setScanNewPackBarcode(false); }}
-                  onClose={() => setScanNewPackBarcode(false)}
-                />
-              )}
-            </div>
+            <BrandPacks
+              ref={createEditorRef}
+              testId="new-item-pack-sizes"
+              unit={createForm.unit.trim()}
+              brands={draft.brands}
+              packs={draft.packs}
+              canManage
+              savesImmediately={false}
+              store={draftStore}
+            />
             <label>
               <span style={S.label}>Opening stock</span>
               <input type="number" min="0" step="any" style={S.input} value={createForm.current_stock} onChange={(e) => setCreateForm((f) => ({ ...f, current_stock: e.target.value }))} />
@@ -2643,7 +2052,7 @@ export default function InventoryPage() {
                   onClick={() => {
                     const found = items.find((i) => i.id === nameClash.existing.id);
                     setNameClash(null);
-                    setCreateOpen(false);
+                    closeCreate();
                     if (found) openEdit(found);
                   }}
                 >
@@ -2664,7 +2073,7 @@ export default function InventoryPage() {
           )}
 
           <ModalActions>
-            <Btn variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={closeCreate}>Cancel</Btn>
             <Btn disabled={createSaving} onClick={() => saveNewItem()}>{createSaving ? 'Saving…' : 'Create'}</Btn>
           </ModalActions>
         </Modal>

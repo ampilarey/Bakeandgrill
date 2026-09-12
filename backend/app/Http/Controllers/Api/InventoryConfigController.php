@@ -240,6 +240,24 @@ class InventoryConfigController extends Controller
             $out[] = $brand;
         }
 
+        // A brand that so far exists only as somebody's pack — "Amul's tin",
+        // set up in the item editor before Amul was ever bought or given a
+        // picture — is still a brand to pick, and picking it is how its pack
+        // and price reach the line at all (owner, 2026-09-12).
+        $onPacks = DB::table('inventory_purchase_units')
+            ->where('inventory_item_id', $itemId)
+            ->where('brand_key', '!=', '')
+            ->orderBy('brand')
+            ->pluck('brand', 'brand_key')
+            ->all();
+        foreach ($onPacks as $key => $brand) {
+            if ($key === '' || isset($seen[$key]) || count($out) >= $limit) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $brand;
+        }
+
         return $out;
     }
 

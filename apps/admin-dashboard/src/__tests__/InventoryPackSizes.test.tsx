@@ -13,6 +13,8 @@ import InventoryPage from '../pages/InventoryPage';
  * the thing existed.
  *
  * It is a named section of Edit item now, and every row says what it buys as.
+ * Since 2026-09-12 the section is brand-first — each brand's packs, prices
+ * and picture under one card — and Add and Edit draw the very same editor.
  */
 
 vi.mock('../hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
@@ -21,13 +23,18 @@ vi.mock('../hooks/usePermissions', () => ({
 }));
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
 
-// BrandPhotos reaches for operations directly, so stub only the calls it makes
-// and leave brandKey — which the page itself uses — as the real thing.
-vi.mock('../api/operations', async (importOriginal) => ({
-  ...await importOriginal<typeof import('../api/operations')>(),
-  getBrandPhotos: vi.fn().mockResolvedValue({ item_id: 21, photos: [] }),
+// The brand side of the editor reaches for operations directly; stub only
+// those calls and leave brandKey — which the page itself uses — as the real thing.
+const { getBrandPhotos, uploadBrandPhoto, deleteBrandPhoto } = vi.hoisted(() => ({
+  getBrandPhotos: vi.fn(),
   uploadBrandPhoto: vi.fn(),
   deleteBrandPhoto: vi.fn(),
+}));
+vi.mock('../api/operations', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../api/operations')>(),
+  getBrandPhotos: (...a: unknown[]) => getBrandPhotos(...a),
+  uploadBrandPhoto: (...a: unknown[]) => uploadBrandPhoto(...a),
+  deleteBrandPhoto: (...a: unknown[]) => deleteBrandPhoto(...a),
 }));
 
 const ghee = {
@@ -114,9 +121,17 @@ async function openEditor(title = 'Edit this item') {
   return await screen.findByTestId('pack-sizes-section');
 }
 
+/** Open the pack boxes under "Any brand" if they are not open yet. */
+function openSharedPackBoxes() {
+  if (!screen.queryByLabelText('Pack name')) {
+    fireEvent.click(screen.getByLabelText('Add a pack for any brand'));
+  }
+}
+
 describe('Pack sizes on the inventory list', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getBrandPhotos.mockResolvedValue({ item_id: 21, photos: [] });
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'ml',
       purchase_units: [
@@ -236,9 +251,10 @@ describe('Pack sizes on the inventory list', () => {
   });
 });
 
-describe('Pack sizes inside Edit item', () => {
+describe('Brands and packs inside Edit item', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getBrandPhotos.mockResolvedValue({ item_id: 21, photos: [] });
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'ml',
       purchase_units: [{ id: 7, name: '500 ml tin', base_units: 500 }],
@@ -252,7 +268,7 @@ describe('Pack sizes inside Edit item', () => {
   it('is a named section, not an emoji nobody finds', async () => {
     const section = await openEditor();
 
-    expect(within(section).getByText(/Pack sizes — how you buy this/)).toBeInTheDocument();
+    expect(within(section).getByText(/Brands and packs — whose you buy/)).toBeInTheDocument();
     // The unit it is measured against, said out loud.
     expect(section.textContent).toMatch(/Stock is counted in\s*ml/);
   });
@@ -270,6 +286,7 @@ describe('Pack sizes inside Edit item', () => {
     const section = await openEditor();
     await within(section).findByTestId('pack-row-7');
 
+    openSharedPackBoxes();
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '100 ml tin' } });
     fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '100' } });
     fireEvent.click(screen.getByText('Add pack'));
@@ -284,6 +301,7 @@ describe('Pack sizes inside Edit item', () => {
     const section = await openEditor();
     await within(section).findByTestId('pack-row-7');
 
+    openSharedPackBoxes();
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Carton' } });
     fireEvent.click(screen.getByText('Add pack'));
 
@@ -292,17 +310,16 @@ describe('Pack sizes inside Edit item', () => {
   });
 
   /*
-   * Owner, 2026-09-09: "where can i add brands and its photos?" They existed,
-   * inside Cost & usage behind the 📈 on the row — the same hiding place pack
-   * sizes were in when the answer was "i dont see pack size". A brand is whose
-   * you buy and a pack is what size: both belong on the screen you are on when
-   * you set the item up.
+   * Owner, 2026-09-09: "i dont see the previoulsly added pack size." The
+   * boxes look like part of the form, so filling them and pressing the form's
+   * own save button is the obvious thing to do. Treat it as meant.
    */
   it('takes a pack still sitting in the boxes when Save changes is pressed', async () => {
     createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 6, name: '100 ml tin', base_units: 100 } });
     const section = await openEditor();
     await within(section).findByTestId('pack-row-7');
 
+    openSharedPackBoxes();
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '100 ml tin' } });
     fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '100' } });
     // Straight to the form's own save, without "Add pack".
@@ -319,6 +336,7 @@ describe('Pack sizes inside Edit item', () => {
     const section = await openEditor();
     await within(section).findByTestId('pack-row-7');
 
+    openSharedPackBoxes();
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Carton' } });
     fireEvent.click(screen.getByText('Save changes'));
 
@@ -326,20 +344,89 @@ describe('Pack sizes inside Edit item', () => {
     expect(updateInventoryItem).not.toHaveBeenCalled();
   });
 
-  it('carries the brand pictures beside the pack sizes', async () => {
+  /*
+   * Owner, 2026-09-12: "Each brand should have its default packaging, price,
+   * photo options." One card per brand: its picture, its packs with their
+   * prices, and a place to add the next pack under it.
+   */
+  it("shows each brand's picture and packs together, and offers the brands bought before", async () => {
+    getBrandPhotos.mockResolvedValue({
+      item_id: 21,
+      photos: [{ id: 1, brand: 'Sunrise', url: 'https://cdn.test/sunrise.jpg', note: null }],
+    });
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'ml',
-      purchase_units: [{ id: 7, name: '500 ml tin', base_units: 500 }],
+      purchase_units: [
+        { id: 7, name: '500 ml tin', base_units: 500, brand: 'Sunrise', brand_key: 'sunrise', default_unit_cost: 185 },
+        { id: 8, name: 'Loose', base_units: 1 },
+      ],
       brands: ['Sunrise', 'Royal'],
     });
     const section = await openEditor();
 
-    const brands = await screen.findByTestId('edit-item-brand-photos');
-    expect(brands).toBeInTheDocument();
-    // Packs first, then brands: size, then whose.
-    expect(section.compareDocumentPosition(brands) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The brands already bought come from the packs call, at no extra cost.
-    expect(await within(brands).findByText(/Royal/)).toBeInTheDocument();
+    const sunrise = await within(section).findByTestId('brand-group-sunrise');
+    expect(within(sunrise).getByTestId('brand-thumb-Sunrise')).toHaveAttribute('src', 'https://cdn.test/sunrise.jpg');
+    expect(within(sunrise).getByTestId('pack-row-7')).toHaveTextContent('500 ml tin');
+    expect(within(sunrise).getByTestId('pack-row-7')).toHaveTextContent('MVR 185.00');
+    // The shared pack is not Sunrise's.
+    expect(within(section).getByTestId('brand-group-shared')).toHaveTextContent('Loose');
+    // Royal has been bought but never written down — one tap adds it.
+    expect(within(section).getByLabelText('Add Royal')).toBeInTheDocument();
+  });
+
+  it('writes a brand down against the item the moment it is added', async () => {
+    uploadBrandPhoto.mockResolvedValue({ photo: { id: 2, brand: 'Royal', url: null, note: null } });
+    const section = await openEditor();
+    await within(section).findByTestId('pack-row-7');
+
+    fireEvent.change(screen.getByLabelText('Brand name'), { target: { value: 'Royal' } });
+    fireEvent.click(screen.getByText('Add brand'));
+
+    await waitFor(() => expect(uploadBrandPhoto).toHaveBeenCalledWith(21, 'Royal', null));
+    // Re-read, so the card shows what was stored.
+    await waitFor(() => expect(getBrandPhotos).toHaveBeenCalledTimes(2));
+  });
+
+  it("sends a pack added under a brand's card with that brand and its price", async () => {
+    getBrandPhotos.mockResolvedValue({
+      item_id: 21,
+      photos: [{ id: 1, brand: 'Sunrise', url: null, note: null }],
+    });
+    createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 9, name: 'Jar', base_units: 250 } });
+    const section = await openEditor();
+    await within(section).findByTestId('brand-group-sunrise');
+
+    fireEvent.click(screen.getByLabelText('Add a pack for Sunrise'));
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Jar' } });
+    fireEvent.change(screen.getByLabelText('Pack default price'), { target: { value: '95' } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '250' } });
+    fireEvent.click(screen.getByText('Add pack'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(21, {
+      name: 'Jar', base_units: 250, brand: 'Sunrise', default_unit_cost: 95,
+    }));
+  });
+
+  it('removes a brand with its packs, after asking', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    getBrandPhotos.mockResolvedValue({
+      item_id: 21,
+      photos: [{ id: 1, brand: 'Sunrise', url: null, note: null }],
+    });
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'ml',
+      purchase_units: [{ id: 7, name: '500 ml tin', base_units: 500, brand: 'Sunrise', brand_key: 'sunrise' }],
+    });
+    deletePurchaseUnit.mockResolvedValue(undefined);
+    deleteBrandPhoto.mockResolvedValue({ deleted: true });
+    const section = await openEditor();
+    await within(section).findByTestId('brand-group-sunrise');
+
+    fireEvent.click(screen.getByLabelText('Remove Sunrise'));
+
+    await waitFor(() => expect(deletePurchaseUnit).toHaveBeenCalledWith(21, 7));
+    await waitFor(() => expect(deleteBrandPhoto).toHaveBeenCalledWith(21, 1));
+    confirm.mockRestore();
   });
 
   it('offers the camera for the item barcode, the way Add Item does', async () => {
@@ -358,6 +445,7 @@ describe('Pack sizes inside Edit item', () => {
     await within(section).findByTestId('pack-row-7');
     const before = fetchInventoryItems.mock.calls.length;
 
+    openSharedPackBoxes();
     fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '100 ml tin' } });
     fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '100' } });
     fireEvent.click(screen.getByText('Add pack'));
@@ -377,7 +465,7 @@ describe('Pack sizes inside Edit item', () => {
  * then on the stock is split, the recipe points at one of them, and the
  * per-gram comparison Cost & usage exists to make has nothing to compare.
  */
-describe('Pack sizes for an item that does not exist yet', () => {
+describe('Brands and packs for an item that does not exist yet', () => {
   const turmeric = {
     ...ghee, id: 31, name: 'Turmeric Powder', sku: 'TUR-1', unit: 'g',
     quantity_on_hand: 0, purchase_units: [],
@@ -385,6 +473,7 @@ describe('Pack sizes for an item that does not exist yet', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getBrandPhotos.mockResolvedValue({ item_id: 31, photos: [] });
     getPurchaseUnits.mockResolvedValue({ base_unit: 'g', purchase_units: [] });
     fetchInventoryItems.mockResolvedValue({
       data: [ghee],
@@ -392,6 +481,7 @@ describe('Pack sizes for an item that does not exist yet', () => {
     });
     createInventoryItem.mockResolvedValue({ item: turmeric });
     createPurchaseUnit.mockResolvedValue({ purchase_unit: { id: 1, name: 'x', base_units: 1 } });
+    uploadBrandPhoto.mockResolvedValue({ photo: { id: 1, brand: 'x', url: null, note: null } });
   });
 
   async function openCreate(unit?: string) {
@@ -402,29 +492,38 @@ describe('Pack sizes for an item that does not exist yet', () => {
     return screen.getByTestId('new-item-pack-sizes');
   }
 
-  function addPack(name: string, qty: string, measuredIn?: string) {
-    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: name } });
-    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: qty } });
+  /** Type a pack into the boxes under "Any brand" and add it. */
+  async function addPack(name: string, qty: string, measuredIn?: string) {
+    openSharedPackBoxes();
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: name } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: qty } });
     if (measuredIn) {
-      fireEvent.change(screen.getByLabelText('New item pack measured in'), { target: { value: measuredIn } });
+      fireEvent.change(screen.getByLabelText('Measured in'), { target: { value: measuredIn } });
     }
-    fireEvent.click(screen.getByText('Add pack'));
+    // The button reads "Saving…" while an add is in flight, and the boxes
+    // are cleared when it lands — so wait for it both before and after.
+    fireEvent.click(await screen.findByText('Add pack'));
+    await screen.findByText('Add pack');
   }
 
-  it('is a named section on the create form, not a thing you find later', async () => {
+  /** The draft rows on screen, in order. */
+  const draftRows = () => screen.queryAllByTestId(/^pack-row-d/);
+
+  it('is the same named section the editor has, not a thing you find later', async () => {
     const section = await openCreate();
 
-    expect(within(section).getByText(/Pack sizes — how you buy this/)).toBeInTheDocument();
-    expect(within(section).getByText(/No packs yet/)).toBeInTheDocument();
+    expect(within(section).getByText(/Brands and packs — whose you buy/)).toBeInTheDocument();
+    expect(within(section).getByText(/No brands or packs yet/)).toBeInTheDocument();
+    expect(within(section).getByText(/These save with the item/)).toBeInTheDocument();
   });
 
   it('holds the sizes as drafts, then writes them against the new item', async () => {
     await openCreate();
-    addPack('100g pack', '100');
-    addPack('500g pack', '500');
+    await addPack('100g pack', '100');
+    await addPack('500g pack', '500');
 
-    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('100g pack');
-    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('500g pack');
+    expect(draftRows()[0]).toHaveTextContent('100g pack');
+    expect(draftRows()[1]).toHaveTextContent('500g pack');
     // Nothing is saved while there is no item to save it against.
     expect(createPurchaseUnit).not.toHaveBeenCalled();
 
@@ -435,14 +534,43 @@ describe('Pack sizes for an item that does not exist yet', () => {
     expect(createPurchaseUnit).toHaveBeenNthCalledWith(2, 31, { name: '500g pack', base_units: 500 });
   });
 
+  /*
+   * Owner, 2026-09-12: "Each brand should have its default packaging, price,
+   * photo options … Edit and add new option should be same." A brand typed
+   * here, with its tin and its price, reaches the item the moment it exists.
+   */
+  it('holds a brand with its pack and price, and writes the brand before the pack', async () => {
+    await openCreate();
+
+    fireEvent.change(screen.getByLabelText('Brand name'), { target: { value: 'Amul' } });
+    fireEvent.click(screen.getByText('Add brand'));
+    // The pack boxes open under the new brand.
+    expect(await screen.findByText('Add a pack of Amul')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Tin' } });
+    fireEvent.change(screen.getByLabelText('Pack default price'), { target: { value: '185' } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '1000' } });
+    fireEvent.click(screen.getByText('Add pack'));
+
+    expect(within(screen.getByTestId('brand-group-amul')).getByText('Tin')).toBeInTheDocument();
+    expect(uploadBrandPhoto).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(31, {
+      name: 'Tin', base_units: 1000, brand: 'Amul', default_unit_cost: 185,
+    }));
+    expect(uploadBrandPhoto).toHaveBeenCalledWith(31, 'Amul', null);
+    expect(uploadBrandPhoto.mock.invocationCallOrder[0]).toBeLessThan(createPurchaseUnit.mock.invocationCallOrder[0]);
+  });
+
   it('multiplies a carton out against a pack already added', async () => {
     // "A case is 12 of the 500g packs" — a draft has no id for the server to
     // resolve against, so the arithmetic happens here.
     await openCreate();
-    addPack('500g pack', '500');
-    addPack('Carton', '12', '0');
+    await addPack('500g pack', '500');
+    await addPack('Carton', '12', 'd1');
 
-    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('6000');
+    expect(draftRows()[1]).toHaveTextContent('6000');
 
     fireEvent.click(screen.getByText('Create'));
 
@@ -452,8 +580,9 @@ describe('Pack sizes for an item that does not exist yet', () => {
 
   it('carries a pack barcode through', async () => {
     await openCreate();
-    fireEvent.change(screen.getByLabelText('New item pack barcode'), { target: { value: '8901234' } });
-    addPack('500g pack', '500');
+    openSharedPackBoxes();
+    fireEvent.change(screen.getByLabelText('Pack barcode'), { target: { value: '8901234' } });
+    await addPack('500g pack', '500');
     fireEvent.click(screen.getByText('Create'));
 
     await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledWith(
@@ -469,63 +598,68 @@ describe('Pack sizes for an item that does not exist yet', () => {
    */
   it('asks whether a reused name is a correction or a second size', async () => {
     await openCreate();
-    addPack('Packet', '6');
-    addPack('packet', '10');
+    await addPack('Packet', '6');
+    await addPack('packet', '10');
 
-    expect(screen.getByTestId('new-pack-name-clash')).toHaveTextContent(/already holds 6/);
+    expect(await screen.findByTestId('pack-name-clash')).toHaveTextContent(/already holds 6/);
     // Neither answer has been taken yet.
-    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+    expect(draftRows()).toHaveLength(1);
   });
 
   it('keeps both sizes under a name the list has not used', async () => {
     await openCreate();
-    addPack('Packet', '6');
-    addPack('packet', '10');
+    await addPack('Packet', '6');
+    await addPack('packet', '10');
+    await screen.findByTestId('pack-name-clash');
 
-    fireEvent.click(screen.getByTestId('new-pack-clash-keep-both'));
+    fireEvent.click(screen.getByTestId('pack-clash-keep-both'));
 
-    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('Packet');
-    expect(screen.getByTestId('new-pack-row-1')).toHaveTextContent('packet 10');
-    expect(screen.queryByTestId('new-pack-name-clash')).toBeNull();
+    await waitFor(() => expect(draftRows()).toHaveLength(2));
+    expect(draftRows()[0]).toHaveTextContent('Packet');
+    expect(draftRows()[1]).toHaveTextContent('packet 10');
+    expect(screen.queryByTestId('pack-name-clash')).toBeNull();
   });
 
   it('resizes the pack already listed when it was a correction', async () => {
     await openCreate();
-    addPack('Packet', '6');
-    addPack('Packet', '10');
+    await addPack('Packet', '6');
+    await addPack('Packet', '10');
+    await screen.findByTestId('pack-name-clash');
 
-    fireEvent.click(screen.getByTestId('new-pack-clash-replace'));
+    fireEvent.click(screen.getByTestId('pack-clash-replace'));
 
-    expect(screen.getByTestId('new-pack-row-0')).toHaveTextContent('10');
-    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+    await waitFor(() => expect(draftRows()[0]).toHaveTextContent('10'));
+    expect(draftRows()).toHaveLength(1);
   });
 
   it('does not ask when the name and the size both already match', async () => {
     await openCreate();
-    addPack('500g pack', '500');
-    addPack('500g pack', '500');
+    await addPack('500g pack', '500');
+    await addPack('500g pack', '500');
 
-    expect(screen.queryByTestId('new-pack-name-clash')).toBeNull();
-    expect(screen.queryByTestId('new-pack-row-1')).toBeNull();
+    await waitFor(() => expect(draftRows()).toHaveLength(1));
+    expect(screen.queryByTestId('pack-name-clash')).toBeNull();
   });
 
   it('refuses a pack with no amount rather than storing a zero', async () => {
     await openCreate();
-    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: 'Carton' } });
+    openSharedPackBoxes();
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Carton' } });
     fireEvent.click(screen.getByText('Add pack'));
 
-    expect(screen.getByText('Say how much is in it.')).toBeInTheDocument();
-    expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
+    expect(await screen.findByText('Say how much is in it.')).toBeInTheDocument();
+    expect(draftRows()).toHaveLength(0);
   });
 
   it('takes a draft back off the list', async () => {
     await openCreate();
-    addPack('500g pack', '500');
+    await addPack('500g pack', '500');
+    await waitFor(() => expect(draftRows()).toHaveLength(1));
 
     fireEvent.click(screen.getByLabelText('Remove 500g pack'));
 
-    expect(screen.queryByTestId('new-pack-row-0')).toBeNull();
-    expect(screen.getByText(/No packs yet/)).toBeInTheDocument();
+    await waitFor(() => expect(draftRows()).toHaveLength(0));
+    expect(screen.getByText(/No brands or packs yet/)).toBeInTheDocument();
   });
 
   /*
@@ -538,8 +672,9 @@ describe('Pack sizes for an item that does not exist yet', () => {
    */
   it('takes a pack still sitting in the boxes when Create is pressed', async () => {
     await openCreate();
-    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: '500g pack' } });
-    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: '500' } });
+    openSharedPackBoxes();
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '500g pack' } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '500' } });
     // Deliberately not pressing "Add pack".
     fireEvent.click(screen.getByText('Create'));
 
@@ -550,32 +685,43 @@ describe('Pack sizes for an item that does not exist yet', () => {
 
   it('takes the half-typed pack as well as the ones already listed', async () => {
     await openCreate();
-    addPack('100g pack', '100');
-    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: '500g pack' } });
-    fireEvent.change(screen.getByLabelText('Amount in the new item pack'), { target: { value: '500' } });
+    await addPack('100g pack', '100');
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: '500g pack' } });
+    fireEvent.change(screen.getByLabelText('Amount in the pack'), { target: { value: '500' } });
     fireEvent.click(screen.getByText('Create'));
 
     await waitFor(() => expect(createPurchaseUnit).toHaveBeenCalledTimes(2));
     expect(createPurchaseUnit).toHaveBeenNthCalledWith(2, 31, { name: '500g pack', base_units: 500 });
   });
 
+  it('takes a brand still sitting in its box when Create is pressed', async () => {
+    await openCreate();
+    fireEvent.change(screen.getByLabelText('Brand name'), { target: { value: 'Amul' } });
+    // Deliberately not pressing "Add brand".
+    fireEvent.click(screen.getByText('Create'));
+
+    await waitFor(() => expect(uploadBrandPhoto).toHaveBeenCalledWith(31, 'Amul', null));
+  });
+
   it('stops rather than creating the item when the leftover pack is unusable', async () => {
     await openCreate();
-    fireEvent.change(screen.getByLabelText('New item pack name'), { target: { value: 'Carton' } });
+    openSharedPackBoxes();
+    fireEvent.change(screen.getByLabelText('Pack name'), { target: { value: 'Carton' } });
     // No amount, so there is nothing to save it as.
     fireEvent.click(screen.getByText('Create'));
 
-    expect(screen.getByText('Say how much is in it.')).toBeInTheDocument();
-    expect(screen.getByText(/has not been added yet/)).toBeInTheDocument();
+    expect(await screen.findByText('Say how much is in it.')).toBeInTheDocument();
+    expect(await screen.findByText(/has not been added yet/)).toBeInTheDocument();
     expect(createInventoryItem).not.toHaveBeenCalled();
   });
 
   it('offers the camera for a pack barcode, the way Edit does', async () => {
     // Different sizes carry different EANs and the gun is how they get typed
-    // correctly. Edit had the camera on its pack barcode; this did not.
+    // correctly. Both forms draw the same editor now, so both have it.
     await openCreate();
+    openSharedPackBoxes();
 
-    expect(screen.getByLabelText('Scan the new pack barcode')).toBeInTheDocument();
+    expect(screen.getByLabelText('Scan the pack barcode')).toBeInTheDocument();
   });
 
   it('says which pack did not save, and opens the item so it can be added', async () => {
@@ -585,8 +731,8 @@ describe('Pack sizes for an item that does not exist yet', () => {
       .mockResolvedValueOnce({ purchase_unit: { id: 1, name: '100g pack', base_units: 100 } })
       .mockRejectedValueOnce(new Error('nope'));
     await openCreate();
-    addPack('100g pack', '100');
-    addPack('500g pack', '500');
+    await addPack('100g pack', '100');
+    await addPack('500g pack', '500');
 
     fireEvent.click(screen.getByText('Create'));
 

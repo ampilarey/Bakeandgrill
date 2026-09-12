@@ -23,6 +23,13 @@ vi.mock('../hooks/useIsMobile', () => ({
   useIsCompactAdmin: () => false,
   useIsWideDesktop: () => true,
 }));
+// The brand-and-pack editor also loads the item's brands; none here.
+vi.mock('../api/operations', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../api/operations')>(),
+  getBrandPhotos: vi.fn().mockResolvedValue({ item_id: 9, photos: [] }),
+  uploadBrandPhoto: vi.fn(),
+  deleteBrandPhoto: vi.fn(),
+}));
 
 const bun = {
   id: 9,
@@ -106,6 +113,8 @@ async function typeASecondPacket() {
   const dialog = await screen.findByRole('dialog');
   await within(dialog).findByText('Packet');
 
+  // The 6s belong to no brand, so the 10s go under "Any brand" too.
+  fireEvent.click(within(dialog).getByLabelText('Add a pack for any brand'));
   fireEvent.change(within(dialog).getByLabelText('Pack name'), { target: { value: 'Packet' } });
   fireEvent.change(within(dialog).getByLabelText('Amount in the pack'), { target: { value: '10' } });
   fireEvent.click(within(dialog).getByText('Add pack'));

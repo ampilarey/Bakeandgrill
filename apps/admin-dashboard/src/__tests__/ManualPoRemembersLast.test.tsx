@@ -129,6 +129,73 @@ describe('A purchase line opens on what was last bought', () => {
     expect(screen.queryByTestId('manual-po-last-0')).toBeNull();
   });
 
+  /*
+   * Owner, 2026-09-12: "In po, when brand is selected, its defaults should
+   * appear." The line opened on Sunrise's packet at MVR 30; picking Royal
+   * must bring Royal's box and Royal's price, not leave Sunrise's behind.
+   * Before this the price box counted as "touched" the moment the last
+   * purchase filled it, so a brand pick never changed it.
+   */
+  it("switching brand brings that brand's own box and price over the last purchase's", async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'piece',
+      purchase_units: [
+        PACKET_6,
+        { id: 4, name: 'Tray', base_units: 30, brand: 'Royal', brand_key: 'royal', default_unit_cost: 140, default_cost_updated_at: '2026-09-10T00:00:00Z' },
+      ],
+      brands: ['Sunrise', 'Royal'],
+      last_purchase: {
+        brand: 'Sunrise', unit_cost: 5, pack_cost: 30, purchase_unit_id: 3,
+        pack_name: 'Packet', pack_size: 6, pack_quantity: 2, purchase_date: '2026-09-06', supplier: 'The Royal Bakery',
+      },
+    });
+    await pickTheBun();
+    await waitFor(() => expect(screen.getByLabelText('Unit cost for item 1')).toHaveValue(30));
+
+    fireEvent.change(screen.getByLabelText('Brand for item 1'), { target: { value: 'Royal' } });
+
+    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('Tray');
+    expect(screen.getByLabelText('Unit cost for item 1')).toHaveValue(140);
+    // And says where the figure came from.
+    expect(screen.getByTestId('manual-po-usual-0')).toHaveTextContent("Royal's tray usually costs MVR 140.00");
+  });
+
+  it('leaves a price the person typed alone when the brand changes', async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'piece',
+      purchase_units: [
+        PACKET_6,
+        { id: 4, name: 'Tray', base_units: 30, brand: 'Royal', brand_key: 'royal', default_unit_cost: 140 },
+      ],
+      brands: ['Sunrise', 'Royal'],
+      last_purchase: null,
+    });
+    await pickTheBun();
+    await waitFor(() => expect(screen.getByLabelText('Unit cost for item 1')).toHaveValue(4.9));
+
+    fireEvent.change(screen.getByLabelText('Unit cost for item 1'), { target: { value: '99' } });
+    fireEvent.change(screen.getByLabelText('Brand for item 1'), { target: { value: 'Royal' } });
+
+    // The box follows the brand; the typed price is theirs.
+    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('Tray');
+    expect(screen.getByLabelText('Unit cost for item 1')).toHaveValue(99);
+  });
+
+  it("opens on a brand's register price when it has been set up but never bought", async () => {
+    getPurchaseUnits.mockResolvedValue({
+      base_unit: 'piece',
+      purchase_units: [{ id: 4, name: 'Tray', base_units: 30, brand: 'Royal', brand_key: 'royal', default_unit_cost: 140 }],
+      brands: ['Royal'],
+      last_purchase: null,
+    });
+    await pickTheBun();
+
+    fireEvent.change(await screen.findByLabelText('Brand for item 1'), { target: { value: 'Royal' } });
+
+    expect(screen.getByLabelText('Unit for item 1')).toHaveValue('Tray');
+    expect(screen.getByLabelText('Unit cost for item 1')).toHaveValue(140);
+  });
+
   it('says so when the pack has changed since that purchase', async () => {
     getPurchaseUnits.mockResolvedValue({
       base_unit: 'piece',

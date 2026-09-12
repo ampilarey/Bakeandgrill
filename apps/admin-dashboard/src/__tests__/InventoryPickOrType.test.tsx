@@ -23,6 +23,13 @@ vi.mock('../hooks/usePermissions', () => ({
   useCurrentUserPermissions: () => ({ can: () => true, loading: false, user: null }),
 }));
 vi.mock('../components/ScanSheet', () => ({ ScanSheet: () => null }));
+// The brand-and-pack editor also loads the item's brands; none here.
+vi.mock('../api/operations', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../api/operations')>(),
+  getBrandPhotos: vi.fn().mockResolvedValue({ item_id: 21, photos: [] }),
+  uploadBrandPhoto: vi.fn(),
+  deleteBrandPhoto: vi.fn(),
+}));
 
 const ghee = {
   id: 21,
@@ -204,8 +211,10 @@ describe('The item form has no dead ends', () => {
     fireEvent.change(screen.getByLabelText('Amount in 500 ml tin'), { target: { value: '500' } });
     fireEvent.click(within(section).getByText('Save'));
 
+    // No price typed, so none claimed: a blank default should not read as
+    // "reviewed today".
     await waitFor(() => expect(updatePurchaseUnit).toHaveBeenCalledWith(21, 7, {
-      name: '500ml tin', base_units: 500, barcode: null,
+      name: '500ml tin', base_units: 500, barcode: null, default_unit_cost: null,
     }));
   });
 
