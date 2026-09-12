@@ -26,7 +26,7 @@ import {
   getInventoryPriceHistory, getInventoryCheapestSupplier, getInventoryCostUsage, submitStockCount,
   fetchPreparedStock, adjustPreparedStock, createInventoryItem,
   fetchInventoryItemDetail, fetchSuppliers, updateInventoryItem, deleteInventoryItem,
-  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit, packNameConflict,
+  getPurchaseUnits, createPurchaseUnit, updatePurchaseUnit, deletePurchaseUnit, packNameConflict, uploadBrandPhoto,
   itemNameConflict, type ItemNameConflict,
   type PackNameConflict,
   createSupplier,
@@ -212,6 +212,43 @@ export default function InventoryPage() {
    */
   const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string; brand: string; price: string }[]>([]);
   const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '', brand: '', price: '' });
+  /*
+   * Brand photos, before the item exists. Owner, 2026-09-12: "Edit and add new
+   * option should be same."
+   *
+   * The upload endpoint needs an item id, so these are held as files and sent
+   * the moment Create returns one — the same trick the draft packs use, and
+   * for the same reason: somebody setting up turmeric should not have to save
+   * it, find it again and reopen it to finish the job.
+   */
+  const [createBrandPhotos, setCreateBrandPhotos] = useState<{ brand: string; file: File | null; preview: string | null }[]>([]);
+  const [createBrandForm, setCreateBrandForm] = useState<{ brand: string; file: File | null }>({ brand: '', file: null });
+  const [createBrandError, setCreateBrandError] = useState('');
+  const createBrandFileRef = useRef<HTMLInputElement>(null);
+
+  /** Add the brand in the boxes to the draft list. Photo optional. */
+  const addCreateBrand = (): { brand: string; file: File | null; preview: string | null }[] | null => {
+    const brand = createBrandForm.brand.trim();
+    if (!brand) { setCreateBrandError('Type the brand name first.'); return null; }
+    if (createBrandPhotos.some((b) => brandKey(b.brand) === brandKey(brand))) {
+      setCreateBrandError(`${brand} is already on the list.`);
+      return null;
+    }
+    const row = {
+      brand,
+      file: createBrandForm.file,
+      preview: createBrandForm.file ? URL.createObjectURL(createBrandForm.file) : null,
+    };
+    const next = [...createBrandPhotos, row];
+    setCreateBrandPhotos(next);
+    setCreateBrandForm({ brand: '', file: null });
+    setCreateBrandError('');
+    if (createBrandFileRef.current) createBrandFileRef.current.value = '';
+    return next;
+  };
+
+  /** Same rule as the packs: a brand half-typed into the boxes was meant. */
+  const createBrandFormHasEntry = () => createBrandForm.brand.trim() !== '';
   const [createPackError, setCreatePackError] = useState('');
   const [scanNewPackBarcode, setScanNewPackBarcode] = useState(false);
   /*
@@ -523,6 +560,17 @@ export default function InventoryPage() {
               if (!createForm.name.trim() || !createForm.unit.trim()) { setCreateError('Name and unit are required.'); return; }
               // A pack left in the boxes is a pack that was meant. Take it now,
               // or stop and let the question above it be answered.
+              // A brand left in the boxes is a brand that was meant, exactly
+              // as with the packs below.
+              let brandsToWrite = createBrandPhotos;
+              if (createBrandFormHasEntry()) {
+                const next = addCreateBrand();
+                if (!next) {
+                  setCreateError('The brand above has not been added yet. Sort that out and press Create again.');
+                  return;
+                }
+                brandsToWrite = next;
+              }
               let packsToWrite = createPacks;
               if (createPackFormHasEntry()) {
                 const next = addCreatePack();
@@ -564,6 +612,13 @@ export default function InventoryPage() {
                 // them on. One at a time: the item is already made, so a pack
                 // that fails is a thing to report, not a reason to lose the rest.
                 const failed: string[] = [];
+                // Brands first: a pack that names one reads better in the
+                // editor afterwards if the brand is already on the item.
+                for (const b of brandsToWrite) {
+                  try {
+                    await uploadBrandPhoto(res.item.id, b.brand, b.file);
+                  } catch { failed.push(b.brand); }
+                }
                 for (const p of packsToWrite) {
                   try {
                     const price = parseFloat(p.price);
@@ -578,6 +633,12 @@ export default function InventoryPage() {
                 }
                 setCreateOpen(false);
                 setCreatePacks([]);
+                // Object URLs are only alive while the form is; releasing them
+                // here keeps a long session from holding every photo preview.
+                createBrandPhotos.forEach((b) => { if (b.preview) URL.revokeObjectURL(b.preview); });
+                setCreateBrandPhotos([]);
+                setCreateBrandForm({ brand: '', file: null });
+                setCreateBrandError('');
                 setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: '' });
                 setCreatePackError('');
                 setCreatePackClash(null);
@@ -2230,6 +2291,92 @@ export default function InventoryPage() {
                 at the moment they are adding turmeric adds two items instead,
                 and from then on the stock is split, the recipe points at one
                 of them, and the per-gram comparison has nothing to compare. */}
+            {/* ── Brands, before the item exists ──────────────────────────
+                Owner, 2026-09-12: "Edit and add new option should be same."
+                The editor has had this since the photos went in; Add did not,
+                so setting up a new ingredient meant saving it, finding it in
+                the list and reopening it just to say whose one it is. */}
+            <div
+              data-testid="new-item-brands"
+              style={{
+                border: '1px solid var(--color-border)', borderRadius: 10,
+                padding: '12px 14px', background: 'var(--color-bg)',
+              }}
+            >
+              <p style={{ ...S.label, margin: '0 0 4px' }}>Brands — whose one you buy</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                A photo is optional and worth it for the ones that look alike on the shelf. These save with
+                the item, and the names show up when you pick a brand on a purchase order.
+              </p>
+              {createBrandError && (
+                <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 10 }}>{createBrandError}</p>
+              )}
+
+              {createBrandPhotos.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
+                  No brands yet — leave it empty if it does not matter which one you get.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                  {createBrandPhotos.map((b, i) => (
+                    <div key={b.brand} data-testid={`new-brand-row-${i}`} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                      border: '1px solid var(--color-border)', borderRadius: 10,
+                      padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                        {b.preview
+                          ? <img src={b.preview} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                          : (
+                            <span style={{
+                              width: 40, height: 40, borderRadius: 8, display: 'inline-flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              background: 'var(--color-border-light)', color: 'var(--color-text-muted)', fontSize: 11,
+                            }}>
+                              no pic
+                            </span>
+                          )}
+                        <strong>{b.brand}</strong>
+                      </span>
+                      <Btn
+                        small
+                        variant="ghost"
+                        aria-label={`Remove ${b.brand}`}
+                        onClick={() => {
+                          if (b.preview) URL.revokeObjectURL(b.preview);
+                          setCreateBrandPhotos((rows) => rows.filter((_, j) => j !== i));
+                        }}
+                      >
+                        Remove
+                      </Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a brand</p>
+              <div style={{ display: 'grid', gap: 8 }}>
+                <input
+                  aria-label="New item brand name"
+                  placeholder="Brand, e.g. Amul"
+                  value={createBrandForm.brand}
+                  onChange={(e) => setCreateBrandForm((f) => ({ ...f, brand: e.target.value }))}
+                  style={S.input}
+                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    ref={createBrandFileRef}
+                    aria-label="New item brand photo"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCreateBrandForm((f) => ({ ...f, file: e.target.files?.[0] ?? null }))}
+                    style={{ ...S.input, padding: '6px 8px', flex: '1 1 200px' }}
+                  />
+                  <Btn small onClick={() => addCreateBrand()}>Add brand</Btn>
+                </div>
+              </div>
+            </div>
+
             <div
               data-testid="new-item-pack-sizes"
               style={{
