@@ -233,6 +233,15 @@ class PurchaseController extends Controller
                 'received_quantity' => 0,
                 'receive_status' => 'pending',
             ]);
+
+            // What a supplier charged today becomes what this pack opens at
+            // tomorrow (owner, 2026-09-12). Stored against the exact pack the
+            // line used, so one brand's price never leaks into another's.
+            app(\App\Domains\Inventory\Services\BrandPackDefaults::class)->rememberFromLine(
+                $inventoryItem,
+                $line['purchase_unit_id'] ?? null,
+                $line['unit_cost'] ?? null,
+            );
         }
 
         $purchase->update([
@@ -522,6 +531,15 @@ class PurchaseController extends Controller
                     'received_quantity' => $lineReceived ? $newQty : 0,
                     'receive_status' => $lineReceived ? 'complete' : 'pending',
                 ]);
+
+                // What a supplier charged today becomes what this pack opens at
+                // tomorrow (owner, 2026-09-12). Stored against the exact pack the
+                // line used, so one brand's price never leaks into another's.
+                app(\App\Domains\Inventory\Services\BrandPackDefaults::class)->rememberFromLine(
+                    $inventoryItem,
+                    $itemPayload['purchase_unit_id'] ?? null,
+                    $itemPayload['unit_cost'] ?? null,
+                );
 
                 if ($lineStockIn) {
                     $oldStock = max(0, (float) ($inventoryItem->current_stock ?? 0));

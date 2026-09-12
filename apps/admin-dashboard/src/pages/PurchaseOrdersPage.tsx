@@ -20,6 +20,29 @@ import { asPacks, describePack, tidyNumber } from '../utils/packDetails';
  * the size of the chosen pack. Null when the quantity is not yet a number, so
  * a half-typed box says nothing rather than "= 0".
  */
+/**
+ * The packs on offer for one brand: that brand's own, then the item's shared
+ * ones, and within each a priced pack before an unpriced one.
+ *
+ * Mirrors BrandPackDefaults::packsFor on the server so the box the buying
+ * screen opens on is the box the server would have picked.
+ */
+export function packsForBrand(packs: InventoryPurchaseUnit[], brand: string): InventoryPurchaseUnit[] {
+  const key = brandKey(brand);
+  return packs
+    .filter((p) => {
+      const own = (p.brand_key ?? '') === '';
+      return own || (key !== '' && p.brand_key === key);
+    })
+    .sort((a, b) => {
+      const mine = ((b.brand_key ?? '') !== '' ? 1 : 0) - ((a.brand_key ?? '') !== '' ? 1 : 0);
+      if (mine !== 0) return mine;
+      const priced = (a.default_unit_cost == null ? 1 : 0) - (b.default_unit_cost == null ? 1 : 0);
+      if (priced !== 0) return priced;
+      return a.name.localeCompare(b.name);
+    });
+}
+
 function editLineBase(line: { quantity: string; purchase_unit_id: string; packs: InventoryPurchaseUnit[] }): number | null {
   const qty = parseFloat(line.quantity);
   if (!Number.isFinite(qty) || qty <= 0) return null;
@@ -1451,7 +1474,33 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
                     hint="Saved against this line, so next time it is the one already chosen."
                     onChange={(v) => setManualPoForm((f) => ({
                       ...f,
-                      lines: f.lines.map((l, i) => i === idx ? { ...l, brand: v } : l),
+                      lines: f.lines.map((l, i) => {
+                        if (i !== idx) return l;
+                        /*
+                         * Choosing a brand chooses its box and its price.
+                         * Owner, 2026-09-12: "when that brand is selected in
+                         * manual po and everything, its default values appear
+                         * automatically."
+                         *
+                         * The brand's own packs win over the item's shared
+                         * ones, and a priced pack wins over an unpriced one —
+                         * a pack with no price tells the line nothing. Only a
+                         * box the buyer has not touched is filled: a price
+                         * already typed is theirs, not the register's.
+                         */
+                        const forBrand = packsForBrand(l.packs, v)
+                          .filter((pk) => pk.default_unit_cost != null);
+                        const pick = forBrand[0] ?? null;
+                        const untouched = l.unit_cost === '' || l.unit_cost === '0';
+                        return {
+                          ...l,
+                          brand: v,
+                          unitText: pick && l.unitText === '' ? pick.name : l.unitText,
+                          unit_cost: pick && untouched
+                            ? String(Number(pick.default_unit_cost))
+                            : l.unit_cost,
+                        };
+                      }),
                     }))}
                   />
                   {/* The packet itself. A brand name is only a name until you

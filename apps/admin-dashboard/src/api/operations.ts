@@ -642,6 +642,19 @@ export interface InventoryPurchaseUnit {
   id: number;
   name: string;
   base_units: number | string;
+  /**
+   * Whose box this is. Null means the pack belongs to the item and is offered
+   * whichever brand is being bought — which is every pack defined before
+   * brands existed. `brand_key` is the folded form used for matching.
+   */
+  brand?: string | null;
+  brand_key?: string;
+  /**
+   * What one of these packs normally costs. Set in the item editor and then
+   * kept true by purchasing: pay something else on a PO line and this follows.
+   */
+  default_unit_cost?: number | string | null;
+  default_cost_updated_at?: string | null;
   /** The EAN on this pack, so a scan can say which size arrived. */
   barcode?: string | null;
 }
@@ -750,6 +763,10 @@ export async function createPurchaseUnit(
   itemId: number,
   data: {
     name: string; base_units?: number; of_purchase_unit_id?: number; of_quantity?: number; barcode?: string;
+    /** Whose box. Omitted, the pack belongs to the item rather than a brand. */
+    brand?: string;
+    /** What one pack normally costs. */
+    default_unit_cost?: number;
     /** Yes, change the size of the pack that already has this name. */
     replace?: boolean;
   },
@@ -761,7 +778,10 @@ export async function createPurchaseUnit(
 export async function updatePurchaseUnit(
   itemId: number,
   id: number,
-  data: { name?: string; base_units?: number; barcode?: string | null },
+  data: {
+    name?: string; base_units?: number; barcode?: string | null;
+    brand?: string | null; default_unit_cost?: number | null;
+  },
 ): Promise<{ purchase_unit: InventoryPurchaseUnit }> {
   return req(`/inventory/${itemId}/purchase-units/${id}`, {
     method: 'PATCH',

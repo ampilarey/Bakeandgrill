@@ -101,7 +101,13 @@ class InventoryConfigController extends Controller
 
         return response()->json([
             'base_unit' => $item->unit,
-            'purchase_units' => $item->purchaseUnits()->get(['id', 'name', 'base_units', 'barcode']),
+            // Brand-specific packs sit alongside the item's shared ones. A
+            // pack with an empty brand_key belongs to the item however it is
+            // branded, which is what every pack was before brands existed.
+            'purchase_units' => $item->purchaseUnits()
+                ->orderBy('brand_key')
+                ->orderBy('name')
+                ->get(['id', 'brand', 'brand_key', 'name', 'base_units', 'default_unit_cost', 'default_cost_updated_at', 'barcode']),
             // Brands this item has actually been bought as, so the buying
             // screen can suggest them rather than asking anybody to remember
             // last week's spelling. Most recent first: what you bought last is
@@ -248,9 +254,11 @@ class InventoryConfigController extends Controller
      * and the size it holds: "Packet" taken becomes "Packet 10", and if that
      * is taken too, "Packet 10 (2)".
      */
-    private function freePackName(InventoryItem $item, string $typed, float $baseUnits): string
+    private function freePackName(InventoryItem $item, string $typed, float $baseUnits, string $brandKey = ''): string
     {
-        $taken = $item->purchaseUnits()->pluck('name')
+        // Only names this brand already uses are taken: a suggestion has to
+        // dodge the clash it was raised for, not every pack on the item.
+        $taken = $item->purchaseUnits()->where('brand_key', $brandKey)->pluck('name')
             ->map(fn ($n) => mb_strtolower(trim((string) $n)))->all();
 
         $candidate = $typed . ' ' . $this->tidy($baseUnits);
@@ -274,6 +282,12 @@ class InventoryConfigController extends Controller
 
         $v = $request->validate([
             'name' => 'required|string|max:40',
+            // Which brand's box this is. Left out, the pack belongs to the
+            // item and is offered whichever brand is being bought.
+            'brand' => 'nullable|string|max:120',
+            // What a purchase line should open at. Optional: a pack nobody has
+            // priced yet simply opens blank, as it always did.
+            'default_unit_cost' => 'nullable|numeric|min:0|max:99999999',
             /*
              * Either say how many base units are in the pack, or build it from
              * a pack already defined: a case is 7 trays. The nested form is how
@@ -302,6 +316,8 @@ class InventoryConfigController extends Controller
         }
 
         $name = trim($v['name']);
+        $brand = isset($v['brand']) ? trim((string) $v['brand']) : '';
+        $brandKey = \App\Models\InventoryBrandPhoto::keyFor($brand);
         $baseUnits = isset($v['base_units']) ? (float) $v['base_units'] : null;
 
         if (!empty($v['of_purchase_unit_id'])) {
@@ -325,6 +341,7 @@ class InventoryConfigController extends Controller
         // Same name twice would make the picker ambiguous and the snapshot on
         // an old purchase impossible to trace back.
         $existing = $item->purchaseUnits()
+            ->where('brand_key', $brandKey)
             ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
             ->first();
 
@@ -358,22 +375,28 @@ class InventoryConfigController extends Controller
                     ],
                     'requested_base_units' => $baseUnits,
                     // "Packet" already taken, so "Packet 10" for the new size.
-                    'suggested_name' => $this->freePackName($item, $name, $baseUnits),
+                    'suggested_name' => $this->freePackName($item, $name, $baseUnits, $brandKey),
                 ], 409);
             }
 
             $existing->update(array_filter([
                 'base_units' => $baseUnits,
                 'barcode' => $barcode !== '' ? $barcode : null,
+                'default_unit_cost' => $v['default_unit_cost'] ?? null,
+                'default_cost_updated_at' => isset($v['default_unit_cost']) ? now() : null,
             ], fn ($x) => $x !== null));
 
             return response()->json(['purchase_unit' => $existing->fresh()]);
         }
 
         $unit = $item->purchaseUnits()->create([
+            'brand' => $brand !== '' ? $brand : null,
+            'brand_key' => $brandKey,
             'name' => $name,
             'base_units' => $baseUnits,
             'barcode' => $barcode !== '' ? $barcode : null,
+            'default_unit_cost' => $v['default_unit_cost'] ?? null,
+            'default_cost_updated_at' => isset($v['default_unit_cost']) ? now() : null,
         ]);
 
         return response()->json(['purchase_unit' => $unit], 201);
@@ -398,8 +421,23 @@ class InventoryConfigController extends Controller
         $v = $request->validate([
             'name' => 'sometimes|string|max:40',
             'base_units' => 'sometimes|numeric|min:0.000001',
+            'brand' => 'sometimes|nullable|string|max:120',
+            'default_unit_cost' => 'sometimes|nullable|numeric|min:0|max:99999999',
             'barcode' => 'sometimes|nullable|string|max:64',
         ]);
+
+        if (array_key_exists('brand', $v)) {
+            $brand = trim((string) ($v['brand'] ?? ''));
+            $unit->brand = $brand !== '' ? $brand : null;
+            $unit->brand_key = \App\Models\InventoryBrandPhoto::keyFor($brand);
+        }
+
+        if (array_key_exists('default_unit_cost', $v)) {
+            $unit->default_unit_cost = $v['default_unit_cost'];
+            // Null clears the price *and* the date; a blank default should not
+            // claim to have been reviewed today.
+            $unit->default_cost_updated_at = $v['default_unit_cost'] === null ? null : now();
+        }
 
         if (array_key_exists('barcode', $v)) {
             $barcode = trim((string) ($v['barcode'] ?? ''));
@@ -427,13 +465,16 @@ class InventoryConfigController extends Controller
             // old order impossible to trace back to the pack it meant.
             $clash = $item->purchaseUnits()
                 ->whereKeyNot($unit->id)
+                ->where('brand_key', $unit->brand_key)
                 ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
                 ->exists();
 
             if ($clash) {
                 return response()->json([
-                    'message' => 'This item already has a pack called that.',
-                    'errors' => ['name' => ['Another pack of this item uses that name.']],
+                    'message' => $unit->brand
+                        ? 'This brand already has a pack called that.'
+                        : 'This item already has a pack called that.',
+                    'errors' => ['name' => ['Another pack of this brand uses that name.']],
                 ], 422);
             }
 

@@ -210,8 +210,8 @@ export default function InventoryPage() {
    * is 12 of the 500g packs" against, and the server only stores the number
    * anyway.
    */
-  const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string }[]>([]);
-  const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '' });
+  const [createPacks, setCreatePacks] = useState<{ name: string; baseUnits: number; barcode: string; brand: string; price: string }[]>([]);
+  const [createPackForm, setCreatePackForm] = useState({ name: '', qty: '', ofIndex: '', barcode: '', brand: '', price: '' });
   const [createPackError, setCreatePackError] = useState('');
   const [scanNewPackBarcode, setScanNewPackBarcode] = useState(false);
   /*
@@ -244,15 +244,24 @@ export default function InventoryPage() {
    */
   const addCreatePack = (
     options: { name?: string; replace?: boolean } = {},
-  ): { name: string; baseUnits: number; barcode: string }[] | null => {
+  ): { name: string; baseUnits: number; barcode: string; brand: string; price: string }[] | null => {
     const name = (options.name ?? createPackForm.name).trim();
     const qty = parseFloat(createPackForm.qty);
     if (!name) { setCreatePackError('Give the pack a name, like 500g pack or Case.'); return null; }
     if (!Number.isFinite(qty) || qty <= 0) { setCreatePackError('Say how much is in it.'); return null; }
     const of = createPackForm.ofIndex === '' ? null : createPacks[Number(createPackForm.ofIndex)];
     const baseUnits = of ? qty * of.baseUnits : qty;
-    const row = { name, baseUnits, barcode: createPackForm.barcode.trim() };
-    const clashAt = createPacks.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+    const brand = createPackForm.brand.trim();
+    const row = { name, baseUnits, barcode: createPackForm.barcode.trim(), brand, price: createPackForm.price.trim() };
+    /*
+     * A clash is per brand now. Amul's tin and Nestlé's tin are two boxes
+     * that happen to share a word, and refusing the second would be refusing
+     * the thing this feature exists for.
+     */
+    const clashAt = createPacks.findIndex(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+        && p.brand.trim().toLowerCase() === brand.toLowerCase(),
+    );
 
     if (clashAt >= 0 && !options.replace
       && Math.abs(createPacks[clashAt].baseUnits - baseUnits) > 0.000001) {
@@ -267,7 +276,7 @@ export default function InventoryPage() {
       ? createPacks.map((x, i) => (i === clashAt ? row : x))
       : [...createPacks, row];
     setCreatePacks(next);
-    setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+    setCreatePackForm((f) => ({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: f.brand }));
     setCreatePackError('');
     setCreatePackClash(null);
     return next;
@@ -276,6 +285,11 @@ export default function InventoryPage() {
   /** Same rule as Edit: a pack half-typed into the boxes was still meant. */
   const createPackFormHasEntry = () =>
     createPackForm.name.trim() !== '' || createPackForm.qty.trim() !== '';
+
+  /** Brands named on the draft packs, in the order they were first used. */
+  const createPackBrands = Array.from(
+    new Set(createPacks.map((p) => p.brand.trim()).filter((b) => b !== '')),
+  );
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   /*
    * Pack sizes: how an item is bought, as opposed to how it is counted. Eggs
@@ -294,7 +308,7 @@ export default function InventoryPage() {
    * asks rather than silently resizing the pack that is already there.
    */
   const [packClash, setPackClash] = useState<PackNameConflict | null>(null);
-  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '' });
+  const [packForm, setPackForm] = useState({ name: '', qty: '', ofPackId: '', barcode: '', brand: '', price: '' });
   const [packSaving, setPackSaving] = useState(false);
   const [scanPackBarcode, setScanPackBarcode] = useState(false);
   const [scanEditBarcode, setScanEditBarcode] = useState(false);
@@ -320,7 +334,7 @@ export default function InventoryPage() {
     setPacks([]);
     setPacksError('');
     setPackBrands([]);
-    setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
+    setPackForm({ name: '', qty: '', ofPackId: '', barcode: '', brand: '', price: '' });
     setPacksLoading(true);
     try {
       const res = await getPurchaseUnits(itemId);
@@ -344,14 +358,24 @@ export default function InventoryPage() {
     try {
       const barcode = packForm.barcode.trim();
       const replace = options.replace ? { replace: true } : {};
+      const brand = packForm.brand.trim();
+      const price = parseFloat(packForm.price);
+      // A pack with no brand belongs to the item and is offered whichever
+      // brand is being bought; a price left blank simply opens blank.
+      const brandAndPrice = {
+        ...(brand ? { brand } : {}),
+        ...(Number.isFinite(price) && price > 0 ? { default_unit_cost: price } : {}),
+      };
       await createPurchaseUnit(editItem.id, packForm.ofPackId
         // "A case is 7 trays" — how a box is actually described. The server
         // resolves it to the base unit before storing.
-        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}), ...replace }
-        : { name, base_units: qty, ...(barcode ? { barcode } : {}), ...replace });
+        ? { name, of_purchase_unit_id: Number(packForm.ofPackId), of_quantity: qty, ...(barcode ? { barcode } : {}), ...brandAndPrice, ...replace }
+        : { name, base_units: qty, ...(barcode ? { barcode } : {}), ...brandAndPrice, ...replace });
       const res = await getPurchaseUnits(editItem.id);
       setPacks(res.purchase_units);
-      setPackForm({ name: '', qty: '', ofPackId: '', barcode: '' });
+      // The brand stays: adding several packs for one brand is the common
+      // case, and retyping it each time is the annoying half of that.
+      setPackForm((f) => ({ name: '', qty: '', ofPackId: '', barcode: '', price: '', brand: f.brand }));
       setPackClash(null);
       // The row shows an item's packs, so it has to hear about a new one.
       void loadItems();
@@ -542,16 +566,19 @@ export default function InventoryPage() {
                 const failed: string[] = [];
                 for (const p of packsToWrite) {
                   try {
+                    const price = parseFloat(p.price);
                     await createPurchaseUnit(res.item.id, {
                       name: p.name,
                       base_units: p.baseUnits,
                       ...(p.barcode ? { barcode: p.barcode } : {}),
+                      ...(p.brand ? { brand: p.brand } : {}),
+                      ...(Number.isFinite(price) && price > 0 ? { default_unit_cost: price } : {}),
                     });
                   } catch { failed.push(p.name); }
                 }
                 setCreateOpen(false);
                 setCreatePacks([]);
-                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: '' });
                 setCreatePackError('');
                 setCreatePackClash(null);
                 void loadItems();
@@ -1264,7 +1291,7 @@ export default function InventoryPage() {
                   inventory_category_id: '', preferred_supplier_id: '', storage_location: '', notes: '',
                 });
                 setCreatePacks([]);
-                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '' });
+                setCreatePackForm({ name: '', qty: '', ofIndex: '', barcode: '', price: '', brand: '' });
                 setCreatePackError('');
                 setCreatePackClash(null);
                 setNameClash(null);
@@ -1722,10 +1749,32 @@ export default function InventoryPage() {
                       ) : (
                         <>
                           <span style={{ fontSize: 13 }}>
+                            {p.brand && (
+                              <span style={{
+                                display: 'inline-block', fontSize: 11, fontWeight: 700,
+                                background: 'var(--color-border-light)', color: 'var(--color-text-secondary)',
+                                borderRadius: 999, padding: '2px 8px', marginRight: 6,
+                              }}>
+                                {p.brand}
+                              </span>
+                            )}
                             <strong>{p.name}</strong>
                             <span style={{ color: 'var(--color-text-secondary)' }}>
                               {' '}= {Number(p.base_units)} {editItem.unit}
                             </span>
+                            {p.default_unit_cost != null && (
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                                {' '}· MVR {Number(p.default_unit_cost).toFixed(2)}
+                              </span>
+                            )}
+                            {/* When the figure was last true. A price set in
+                                March reading as "March" is the whole reason
+                                purchasing writes back to it. */}
+                            {p.default_cost_updated_at && (
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                priced {new Date(p.default_cost_updated_at).toLocaleDateString()}
+                              </span>
+                            )}
                             {p.barcode && (
                               <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
                                 ⌷ {p.barcode}
@@ -1755,6 +1804,20 @@ export default function InventoryPage() {
 
               <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
               <div style={{ display: 'grid', gap: 8 }}>
+                {/* Brand first: it decides what the rest means. Amul's tin
+                    and Nestlé's tin are two boxes at two prices, and a pack
+                    with no brand belongs to the item however it is bought. */}
+                <input
+                  aria-label="Pack brand"
+                  list="edit-pack-brands"
+                  placeholder="Brand (optional) — e.g. Amul"
+                  value={packForm.brand}
+                  onChange={(e) => setPackForm((f) => ({ ...f, brand: e.target.value }))}
+                  style={S.input}
+                />
+                <datalist id="edit-pack-brands">
+                  {packBrands.map((b) => <option key={b} value={b} />)}
+                </datalist>
                 <input
                   aria-label="Pack name"
                   placeholder="Name, e.g. 500 ml tin or Case"
@@ -1762,6 +1825,22 @@ export default function InventoryPage() {
                   onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
                   style={S.input}
                 />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Usually costs MVR</span>
+                  <input
+                    aria-label="Pack default price"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="185"
+                    value={packForm.price}
+                    onChange={(e) => setPackForm((f) => ({ ...f, price: e.target.value }))}
+                    style={{ ...S.input, width: 120 }}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    per pack — purchase orders open at this and correct it when you pay something else
+                  </span>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
                   <input
@@ -2175,16 +2254,30 @@ export default function InventoryPage() {
               ) : (
                 <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
                   {createPacks.map((p, i) => (
-                    <div key={p.name} data-testid={`new-pack-row-${i}`} style={{
+                    <div key={`${p.brand}|${p.name}`} data-testid={`new-pack-row-${i}`} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                       border: '1px solid var(--color-border)', borderRadius: 10,
                       padding: '8px 12px', background: 'var(--color-surface)', flexWrap: 'wrap',
                     }}>
                       <span style={{ fontSize: 13 }}>
+                        {p.brand && (
+                          <span style={{
+                            display: 'inline-block', fontSize: 11, fontWeight: 700,
+                            background: 'var(--color-border-light)', color: 'var(--color-text-secondary)',
+                            borderRadius: 999, padding: '2px 8px', marginRight: 6,
+                          }}>
+                            {p.brand}
+                          </span>
+                        )}
                         <strong>{p.name}</strong>
                         <span style={{ color: 'var(--color-text-secondary)' }}>
                           {' '}= {p.baseUnits} {createForm.unit.trim()}
                         </span>
+                        {p.price && (
+                          <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>
+                            {' '}· MVR {p.price}
+                          </span>
+                        )}
                         {p.barcode && (
                           <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>
                             ⌷ {p.barcode}
@@ -2206,6 +2299,21 @@ export default function InventoryPage() {
 
               <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px' }}>Add a pack</p>
               <div style={{ display: 'grid', gap: 8 }}>
+                {/* Brand first, because it decides what the rest means: a
+                    tin is Amul's 1 kg tin or Nestlé's 500 g one, and the two
+                    cost different money. Left blank the pack belongs to the
+                    item and is offered whichever brand is being bought. */}
+                <input
+                  aria-label="New item pack brand"
+                  list="new-pack-brands"
+                  placeholder="Brand (optional) — e.g. Amul"
+                  value={createPackForm.brand}
+                  onChange={(e) => setCreatePackForm((f) => ({ ...f, brand: e.target.value }))}
+                  style={S.input}
+                />
+                <datalist id="new-pack-brands">
+                  {createPackBrands.map((b) => <option key={b} value={b} />)}
+                </datalist>
                 <input
                   aria-label="New item pack name"
                   placeholder="Name, e.g. 500g pack or Case"
@@ -2213,6 +2321,22 @@ export default function InventoryPage() {
                   onChange={(e) => setCreatePackForm((f) => ({ ...f, name: e.target.value }))}
                   style={S.input}
                 />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Usually costs MVR</span>
+                  <input
+                    aria-label="New item pack default price"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="185"
+                    value={createPackForm.price}
+                    onChange={(e) => setCreatePackForm((f) => ({ ...f, price: e.target.value }))}
+                    style={{ ...S.input, width: 120 }}
+                  />
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    per pack — a purchase order opens at this, and corrects it when you pay something else
+                  </span>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>1 of these is</span>
                   <input
