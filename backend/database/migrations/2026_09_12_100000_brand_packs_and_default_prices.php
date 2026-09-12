@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -36,28 +37,77 @@ use Illuminate\Support\Facades\Schema;
  * The unique index moves with it. "Tin" was unique per item; it is now unique
  * per item per brand, because Amul's tin and Nestlé's tin are two different
  * boxes that happen to share a word.
+ *
+ * ── Why every step checks before it acts ─────────────────────────────────
+ *
+ * The first version of this file failed on production (2026-09-12) and left
+ * the table half-changed. MariaDB does not roll DDL back: the four columns
+ * were added and committed, the next statement failed, and the migration was
+ * never recorded — so the re-run tried to add `brand` again and stopped at
+ * "Duplicate column name". SQLite and PostgreSQL, which this had been tested
+ * on, wrap the whole migration in a transaction and never show the problem.
+ *
+ * The statement that failed was dropping the old unique index. On InnoDB the
+ * foreign key on `inventory_item_id` needs *some* index that starts with that
+ * column, and the composite unique on (inventory_item_id, name) was the only
+ * one — so dropping it is refused as "needed in a foreign key constraint".
+ * PostgreSQL has no such rule. The fix is ordering: the new indexes, which
+ * also start with `inventory_item_id`, are created first, so the constraint
+ * has somewhere to move to before the old one goes.
+ *
+ * Together: this file can be run against a table in any of the states the
+ * failure could have left it in, and does only what is still missing.
  */
 return new class extends Migration
 {
+    private const TABLE = 'inventory_purchase_units';
+
+    private const OLD_UNIQUE = 'inventory_purchase_units_inventory_item_id_name_unique';
+
+    private const NEW_UNIQUE = 'purchase_units_item_brand_name_unique';
+
+    private const NEW_INDEX = 'purchase_units_item_brand_index';
+
     public function up(): void
     {
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            // Stored alongside the key so a screen can show the brand as
-            // somebody typed it rather than as the lookup folds it.
-            $table->string('brand')->nullable()->after('inventory_item_id');
-            $table->string('brand_key', 190)->default('')->after('brand');
-            $table->decimal('default_unit_cost', 12, 2)->nullable()->after('base_units');
-            $table->timestamp('default_cost_updated_at')->nullable()->after('default_unit_cost');
+        // 1. Columns — each on its own, since a partial first run may have
+        //    left any prefix of them behind.
+        Schema::table(self::TABLE, function (Blueprint $table) {
+            if (!Schema::hasColumn(self::TABLE, 'brand')) {
+                // Stored alongside the key so a screen can show the brand as
+                // somebody typed it rather than as the lookup folds it.
+                $table->string('brand')->nullable()->after('inventory_item_id');
+            }
+            if (!Schema::hasColumn(self::TABLE, 'brand_key')) {
+                $table->string('brand_key', 190)->default('')->after('brand');
+            }
+            if (!Schema::hasColumn(self::TABLE, 'default_unit_cost')) {
+                $table->decimal('default_unit_cost', 12, 2)->nullable()->after('base_units');
+            }
+            if (!Schema::hasColumn(self::TABLE, 'default_cost_updated_at')) {
+                $table->timestamp('default_cost_updated_at')->nullable()->after('default_unit_cost');
+            }
         });
 
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            $table->dropUnique(['inventory_item_id', 'name']);
-        });
+        // 2. New indexes first. Both begin with inventory_item_id, so the
+        //    foreign key can lean on them once the old unique is gone.
+        if (!Schema::hasIndex(self::TABLE, self::NEW_INDEX)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->index(['inventory_item_id', 'brand_key'], self::NEW_INDEX);
+            });
+        }
+        if (!Schema::hasIndex(self::TABLE, self::NEW_UNIQUE)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->unique(['inventory_item_id', 'brand_key', 'name'], self::NEW_UNIQUE);
+            });
+        }
 
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            $table->unique(['inventory_item_id', 'brand_key', 'name'], 'purchase_units_item_brand_name_unique');
-            $table->index(['inventory_item_id', 'brand_key'], 'purchase_units_item_brand_index');
-        });
+        // 3. Only now is the old one safe to drop.
+        if (Schema::hasIndex(self::TABLE, self::OLD_UNIQUE)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->dropUnique(self::OLD_UNIQUE);
+            });
+        }
     }
 
     public function down(): void
@@ -68,21 +118,39 @@ return new class extends Migration
          * restored unique index. The brand-specific ones go; the shared ones
          * — which is everything that existed before this migration — stay.
          */
-        Illuminate\Support\Facades\DB::table('inventory_purchase_units')
-            ->where('brand_key', '!=', '')
-            ->delete();
+        if (Schema::hasColumn(self::TABLE, 'brand_key')) {
+            DB::table(self::TABLE)->where('brand_key', '!=', '')->delete();
+        }
 
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            $table->dropUnique('purchase_units_item_brand_name_unique');
-            $table->dropIndex('purchase_units_item_brand_index');
-        });
+        // Same rule in reverse: restore the old index before dropping the
+        // ones the foreign key is currently leaning on.
+        if (!Schema::hasIndex(self::TABLE, self::OLD_UNIQUE)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->unique(['inventory_item_id', 'name'], self::OLD_UNIQUE);
+            });
+        }
 
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            $table->dropColumn(['brand', 'brand_key', 'default_unit_cost', 'default_cost_updated_at']);
-        });
+        // PostgreSQL backs a unique index with a constraint and refuses a plain
+        // DROP INDEX on it, so the two go by their own verbs.
+        if (Schema::hasIndex(self::TABLE, self::NEW_UNIQUE)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->dropUnique(self::NEW_UNIQUE);
+            });
+        }
+        if (Schema::hasIndex(self::TABLE, self::NEW_INDEX)) {
+            Schema::table(self::TABLE, function (Blueprint $table) {
+                $table->dropIndex(self::NEW_INDEX);
+            });
+        }
 
-        Schema::table('inventory_purchase_units', function (Blueprint $table) {
-            $table->unique(['inventory_item_id', 'name']);
+        Schema::table(self::TABLE, function (Blueprint $table) {
+            $drop = array_values(array_filter(
+                ['brand', 'brand_key', 'default_unit_cost', 'default_cost_updated_at'],
+                fn (string $column) => Schema::hasColumn(self::TABLE, $column),
+            ));
+            if ($drop !== []) {
+                $table->dropColumn($drop);
+            }
         });
     }
 };
