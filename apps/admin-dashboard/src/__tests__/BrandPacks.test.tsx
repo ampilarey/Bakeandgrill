@@ -345,6 +345,17 @@ describe('Brands and packs, brand first', () => {
     expect(screen.queryByLabelText('Remove Amul')).toBeNull();
   });
 
+  it('does not read "Packet = 1 packet" for a pack that is the unit itself', () => {
+    // Owner, 2026-09-13: "do u find any duplicate?" A one-packet pack named
+    // Packet is how a brand prices the plain unit; it is not two things.
+    const packet: BrandPackRow = { key: '3', id: 3, brand: 'Royal', name: 'Packet', baseUnits: 1, price: 20, pricedAt: null, barcode: '' };
+    show({ unit: 'packet', brands: [], packs: [packet] });
+
+    const row = screen.getByTestId('pack-row-3');
+    expect(row).toHaveTextContent('Packet · bought as is · MVR 20.00');
+    expect(row).not.toHaveTextContent('= 1 packet');
+  });
+
   it('says so when there is nothing yet', () => {
     show({ brands: [], packs: [] });
 

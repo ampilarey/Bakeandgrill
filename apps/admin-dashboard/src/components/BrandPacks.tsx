@@ -372,10 +372,21 @@ export function BrandPacks({
 
   // ── Drawing ─────────────────────────────────────────────────────────────
 
+  /*
+   * A pack that is exactly one of the unit, under the unit's own name, is
+   * how a brand gets a price for the plain thing — "Royal Bakery packet, MVR
+   * 20". "Packet = 1 packet" read as a duplicate (owner, 2026-09-13), so it
+   * says what it is instead.
+   */
+  const isTheUnitItself = (p: BrandPackRow) =>
+    Math.abs(p.baseUnits - 1) < 0.000001 && p.name.trim().toLowerCase() === unit.trim().toLowerCase();
+
   const packLine = (p: BrandPackRow) => (
     <span style={{ fontSize: 13, minWidth: 0 }}>
       <strong>{p.name}</strong>
-      <span style={S.secondary}>{' '}= {tidy(p.baseUnits)} {unit}</span>
+      <span style={S.secondary}>
+        {isTheUnitItself(p) ? ' · bought as is' : ` = ${tidy(p.baseUnits)} ${unit}`}
+      </span>
       {p.price != null && (
         <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{' '}· MVR {p.price.toFixed(2)}</span>
       )}
