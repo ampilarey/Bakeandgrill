@@ -111,3 +111,48 @@ describe('groupInventoryByCategory', () => {
     expect(groupInventoryByCategory([])).toEqual([]);
   });
 });
+
+/*
+ * Owner, 2026-09-13: "in inventory add sort and filter option to heading."
+ * Each heading is a sort control; these are the ways it can go.
+ */
+import { columnSortState, nextColumnSort } from './inventorySort';
+
+const skus = [
+  { ...rows[0], sku: 'WTR-1' },
+  { ...rows[1], sku: 'RCE-1' },
+  { ...rows[2], sku: null },
+  { ...rows[3], sku: 'APR-9' },
+];
+
+describe('sorting from the headings', () => {
+  it('sorts by SKU either way and keeps the ones without one at the bottom', () => {
+    expect(names(sortInventory(skus, 'sku'))).toEqual(['Aprons', 'Rice', 'Water', 'Gas']);
+    expect(names(sortInventory(skus, 'sku_desc'))).toEqual(['Water', 'Rice', 'Aprons', 'Gas']);
+  });
+
+  it('sorts by category the other way with the uncategorised still last', () => {
+    expect(names(sortInventory(rows, 'category_desc'))).toEqual(['Aprons', 'Rice', 'Water', 'Gas']);
+  });
+
+  it('sorts most on hand, OK first, least used and reorder level both ways', () => {
+    expect(names(sortInventory(rows, 'on_hand_desc'))).toEqual(['Rice', 'Water', 'Aprons', 'Gas']);
+    expect(names(sortInventory(rows, 'ok_first'))).toEqual(['Aprons', 'Gas', 'Rice', 'Water']);
+    // Least used still sinks the ones with no rate at all.
+    expect(names(sortInventory(rows, 'usage_asc'))).toEqual(['Gas', 'Rice', 'Water', 'Aprons']);
+    expect(names(sortInventory(rows, 'reorder_level'))).toEqual(['Water', 'Rice', 'Aprons', 'Gas']);
+    expect(names(sortInventory(rows, 'reorder_level_desc'))).toEqual(['Rice', 'Water', 'Aprons', 'Gas']);
+  });
+
+  it('tapping a heading sorts by it, tapping again turns it round', () => {
+    expect(nextColumnSort('name', 'on_hand')).toBe('on_hand');
+    expect(nextColumnSort('on_hand', 'on_hand')).toBe('on_hand_desc');
+    expect(nextColumnSort('on_hand_desc', 'on_hand')).toBe('on_hand');
+  });
+
+  it('knows which heading carries the arrow, and which way', () => {
+    expect(columnSortState('usage', 'per_day')).toBe('asc');
+    expect(columnSortState('usage_asc', 'per_day')).toBe('desc');
+    expect(columnSortState('usage', 'name')).toBeNull();
+  });
+});

@@ -5,9 +5,13 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
 import {
   INVENTORY_SORTS, INVENTORY_SORT_STORAGE_KEY, REORDER_SOON_DAYS, isInventorySortKey, needsReorderSoon, sortInventory,
-  INVENTORY_GROUP_STORAGE_KEY, groupInventoryByCategory,
-  type InventorySortKey,
+  INVENTORY_GROUP_STORAGE_KEY, groupInventoryByCategory, columnSortState, nextColumnSort,
+  type InventorySortKey, type InventoryColumn,
 } from '../utils/inventorySort';
+import {
+  EMPTY_INVENTORY_FILTERS, NO_CATEGORY, activeFilterCount, filterInventory,
+  type InventoryFilters, type InventoryStatusFilter,
+} from '../utils/inventoryFilter';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
   EmptyState, StatCard, useConfirmDialog, ConfirmDialog, TableSkeleton, TableStateBar,
@@ -153,9 +157,30 @@ export default function InventoryPage() {
   // "Reorder soon": the buying list — low, or under a week left at its rate.
   const [reorderOnly, setReorderOnly] = useState(false);
   const reorderSoonCount = useMemo(() => items.filter(needsReorderSoon).length, [items]);
+  /*
+   * Owner, 2026-09-13: "in inventory add sort and filter option to heading."
+   * A box under each column heading. Not remembered between visits: a filter
+   * left on from yesterday looks like missing stock.
+   */
+  const [filters, setFilters] = useState<InventoryFilters>(EMPTY_INVENTORY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const setFilter = <K extends keyof InventoryFilters>(key: K, value: InventoryFilters[K]) =>
+    setFilters((f) => ({ ...f, [key]: value }));
+  const filterCount = activeFilterCount(filters);
+  // The categories actually on the list, so the pick never offers an empty one.
+  const categoryOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    let uncategorised = false;
+    for (const i of items) {
+      const name = i.category?.name?.trim();
+      if (name) seen.set(name.toLowerCase(), name); else uncategorised = true;
+    }
+    const names = [...seen.values()].sort((a, b) => a.localeCompare(b));
+    return { names, uncategorised };
+  }, [items]);
   const sortedItems = useMemo(
-    () => sortInventory(reorderOnly ? items.filter(needsReorderSoon) : items, sortKey),
-    [items, sortKey, reorderOnly],
+    () => sortInventory(filterInventory(reorderOnly ? items.filter(needsReorderSoon) : items, filters), sortKey),
+    [items, sortKey, reorderOnly, filters],
   );
   /*
    * Owner, 2026-09-07: "add grouping based on groups". Sorting by category
@@ -852,6 +877,67 @@ export default function InventoryPage() {
     }, 800);
   };
 
+  /*
+   * The box under one heading. The same control serves the table's filter
+   * row and the phone's filter panel, so what you can narrow by never
+   * depends on the screen.
+   */
+  const filterBoxStyle: React.CSSProperties = {
+    width: '100%', minWidth: 0, padding: '5px 8px', fontSize: 12, fontFamily: 'inherit',
+    border: '1px solid var(--color-border)', borderRadius: 8, boxSizing: 'border-box',
+    background: 'var(--color-surface)', color: 'var(--color-text)', fontWeight: 400, textTransform: 'none',
+  };
+  const NUMBER_FILTER_HINT = 'Type a number, or <20, >=5, 10-50, none';
+  const filterBox = (col: InventoryColumn) => {
+    switch (col) {
+      case 'name':
+        // The name filter is the search box: one thing, two places.
+        return (
+          <input aria-label="Filter by name" data-testid="inventory-filter-name" placeholder="contains…"
+            value={search} onChange={(e) => setSearch(e.target.value)} style={filterBoxStyle} />
+        );
+      case 'sku':
+        return (
+          <input aria-label="Filter by SKU" data-testid="inventory-filter-sku" placeholder="contains…"
+            value={filters.sku} onChange={(e) => setFilter('sku', e.target.value)} style={filterBoxStyle} />
+        );
+      case 'category':
+        return (
+          <select aria-label="Filter by category" data-testid="inventory-filter-category"
+            value={filters.category} onChange={(e) => setFilter('category', e.target.value)} style={filterBoxStyle}>
+            <option value="">All</option>
+            {categoryOptions.names.map((n) => <option key={n} value={n}>{n}</option>)}
+            {categoryOptions.uncategorised && <option value={NO_CATEGORY}>No category</option>}
+          </select>
+        );
+      case 'status':
+        return (
+          <select aria-label="Filter by status" data-testid="inventory-filter-status"
+            value={filters.status} onChange={(e) => setFilter('status', e.target.value as InventoryStatusFilter)} style={filterBoxStyle}>
+            <option value="">All</option>
+            <option value="low">Low stock</option>
+            <option value="ok">OK</option>
+          </select>
+        );
+      case 'on_hand':
+      case 'per_day':
+      case 'reorder_level':
+        return (
+          <input
+            aria-label={`Filter by ${col === 'on_hand' ? 'on hand' : col === 'per_day' ? 'per day' : 'reorder level'}`}
+            data-testid={`inventory-filter-${col}`}
+            placeholder={col === 'on_hand' ? '<20' : col === 'per_day' ? '>=1' : 'none'}
+            title={NUMBER_FILTER_HINT}
+            value={filters[col]}
+            onChange={(e) => setFilter(col, e.target.value)}
+            style={filterBoxStyle}
+          />
+        );
+    }
+  };
+  const clearFilters = () => { setFilters(EMPTY_INVENTORY_FILTERS); setSearch(''); };
+  const anyNarrowing = filterCount > 0 || search.trim() !== '';
+
   // Under three days reads as "order now", under a week as "watch it".
   const daysLeftColor = (item: InventoryItem) =>
     item.days_left == null ? 'var(--color-text-muted)'
@@ -1289,6 +1375,23 @@ export default function InventoryPage() {
               />
               Group by category
             </label>
+            {/* The phone has no column headings to hang the boxes under, so
+                the same boxes live behind one button here. */}
+            {isMobile && (
+              <button
+                type="button"
+                aria-pressed={filtersOpen}
+                data-testid="inventory-filters-toggle"
+                onClick={() => setFiltersOpen((v) => !v)}
+                style={{
+                  ...S.select, width: 'auto', minHeight: 40, cursor: 'pointer', fontWeight: 600,
+                  color: filterCount > 0 ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                  borderColor: filterCount > 0 ? 'var(--color-primary)' : 'var(--color-border)',
+                }}
+              >
+                ⚲ Filters{filterCount > 0 ? ` (${filterCount})` : ''}
+              </button>
+            )}
             {canManage && (
               <Btn onClick={() => {
                 setCreateOpen(true);
@@ -1335,11 +1438,35 @@ export default function InventoryPage() {
               the action cell squeezes six buttons into a thumb's width, so the
               same rows are drawn as cards. Both layouts share `stepper` and
               `itemActions`, so what you can do never depends on the screen. */}
+          {isMobile && filtersOpen && (
+            <div
+              data-testid="inventory-filters-panel"
+              style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12,
+                padding: 12, border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-surface)',
+              }}
+            >
+              {([
+                ['sku', 'SKU'], ['category', 'Category'], ['status', 'Status'],
+                ['on_hand', 'On hand'], ['per_day', 'Per day'], ['reorder_level', 'Reorder level'],
+              ] as [InventoryColumn, string][]).map(([col, label]) => (
+                <label key={col} style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                  {label}
+                  <div style={{ marginTop: 3 }}>{filterBox(col)}</div>
+                </label>
+              ))}
+              {anyNarrowing && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Btn small variant="ghost" onClick={clearFilters}>Clear filters</Btn>
+                </div>
+              )}
+            </div>
+          )}
           {isMobile ? (
             loading ? (
               <TableSkeleton rows={5} cols={2} />
             ) : sortedItems.length === 0 ? (
-              <EmptyState message={reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
+              <EmptyState message={anyNarrowing ? 'Nothing matches these filters.' : reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
             ) : (
               <div style={{ display: 'grid', gap: 10 }}>
                 {itemGroups.map((group) => (
@@ -1423,17 +1550,68 @@ export default function InventoryPage() {
           <TableCard stickyHead>
             {loading ? (
               <TableSkeleton rows={8} cols={7} />
-            ) : sortedItems.length === 0 ? (
-              <EmptyState message={reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
             ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
+                {/* Every heading sorts — tap for one way, again for the
+                    other — and has a box under it that narrows the list.
+                    Owner, 2026-09-13: "add sort and filter option to
+                    heading." */}
                 <tr>
-                  {['Name', 'SKU', 'Category', 'On Hand', 'Per day', 'Reorder Level', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={TH}>{h}</th>
+                  {([
+                    ['name', 'Name'], ['sku', 'SKU'], ['category', 'Category'], ['on_hand', 'On Hand'],
+                    ['per_day', 'Per day'], ['reorder_level', 'Reorder Level'], ['status', 'Status'],
+                  ] as [InventoryColumn, string][]).map(([col, label]) => {
+                    const state = columnSortState(sortKey, col);
+                    return (
+                      <th
+                        key={col}
+                        style={TH}
+                        aria-sort={state === 'asc' ? 'ascending' : state === 'desc' ? 'descending' : 'none'}
+                      >
+                        <button
+                          type="button"
+                          data-testid={`inventory-sort-${col}`}
+                          aria-label={`Sort by ${label}`}
+                          title={state === 'asc' ? 'Sorted — tap for the other way' : state === 'desc' ? 'Sorted the other way — tap to go back' : 'Tap to sort by this'}
+                          onClick={() => changeSort(nextColumnSort(sortKey, col))}
+                          style={{
+                            all: 'unset', cursor: 'pointer', font: 'inherit', color: state ? 'var(--color-primary)' : 'inherit',
+                            textTransform: 'inherit', letterSpacing: 'inherit', display: 'inline-flex', gap: 4, alignItems: 'center',
+                          }}
+                        >
+                          {label}
+                          <span aria-hidden="true" style={{ opacity: state ? 1 : 0.35, fontSize: 10 }}>
+                            {state === 'desc' ? '▼' : state === 'asc' ? '▲' : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
+                  <th style={TH}>Actions</th>
+                </tr>
+                <tr data-testid="inventory-filter-row">
+                  {(['name', 'sku', 'category', 'on_hand', 'per_day', 'reorder_level', 'status'] as InventoryColumn[]).map((col) => (
+                    <th key={col} style={{ ...TH, padding: '4px 8px 8px', fontWeight: 400 }}>{filterBox(col)}</th>
                   ))}
+                  <th style={{ ...TH, padding: '4px 8px 8px' }}>
+                    {anyNarrowing && (
+                      <Btn small variant="ghost" onClick={clearFilters} data-testid="inventory-clear-filters">
+                        Clear{filterCount > 0 ? ` (${filterCount})` : ''}
+                      </Btn>
+                    )}
+                  </th>
                 </tr>
               </thead>
+              {sortedItems.length === 0 ? (
+                <tbody>
+                  <tr>
+                    <td colSpan={8} style={{ padding: 0 }}>
+                      <EmptyState message={anyNarrowing ? 'Nothing matches these filters.' : reorderOnly ? 'Nothing needs reordering soon.' : 'No inventory items found.'} />
+                    </td>
+                  </tr>
+                </tbody>
+              ) : (
               <tbody>
                 {itemGroups.map((group) => (
                   <Fragment key={group.key}>
@@ -1519,6 +1697,7 @@ export default function InventoryPage() {
                   </Fragment>
                 ))}
               </tbody>
+              )}
             </table>
             )}
           </TableCard>

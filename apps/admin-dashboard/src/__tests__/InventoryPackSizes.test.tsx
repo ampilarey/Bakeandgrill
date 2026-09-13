@@ -156,12 +156,14 @@ describe('Pack sizes on the inventory list', () => {
     renderPage();
     const sort = await screen.findByLabelText('Sort items');
 
+    // Item rows only: the head now carries a heading row and a filter row.
+    const itemRows = () => screen.getAllByRole('row').filter((r) => r.querySelector('td'));
     // Default: alphabetical — Gas cylinder before Water.
-    let rows = screen.getAllByRole('row').slice(1);
+    let rows = itemRows();
     expect(rows[0]).toHaveTextContent('Gas cylinder');
 
     fireEvent.change(sort, { target: { value: 'days_left' } });
-    rows = screen.getAllByRole('row').slice(1);
+    rows = itemRows();
     // Water runs out in 3 days, gas in 20.
     expect(rows[0]).toHaveTextContent('Water');
     expect(localStorage.getItem('bg_inventory_sort')).toBe('days_left');
