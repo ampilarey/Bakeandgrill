@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageHeader, PageShell } from '../components/SharedUI';
+import { PageHeader, PageShell, TabScrollRow } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { PurchasingSettings } from './PurchasingPage/PurchasingSettings';
@@ -81,25 +81,29 @@ export function PurchasingPage() {
     <PageShell>
       <PageHeader section="Manage" title="Purchasing" subtitle={current?.desc} />
 
-      <div
-        role="tablist"
-        aria-label="Purchasing"
-        style={{
-          display: 'flex', gap: 4, marginBottom: 20, background: 'var(--color-bg)',
-          borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
-        }}
-      >
-        {visible.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={active === t.id}
-            onClick={() => navigate(`/purchasing/${t.id}`)}
-            style={tabStyle(active === t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div style={{ marginBottom: 20 }}>
+        <TabScrollRow
+          role="tablist"
+          aria-label="Purchasing"
+          className="hub-tabs"
+          fit
+          style={{
+            display: 'flex', gap: 4, background: 'var(--color-bg)',
+            borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto',
+          }}
+        >
+          {visible.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={active === t.id}
+              onClick={() => navigate(`/purchasing/${t.id}`)}
+              style={tabStyle(active === t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </TabScrollRow>
       </div>
 
       <Suspense fallback={<p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>}>

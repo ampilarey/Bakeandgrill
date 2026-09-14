@@ -1980,6 +1980,25 @@ a { text-decoration: none; color: inherit; }
   overflow-x: clip;
 }
 
+/*
+ * The avatar is the way to My Account on a phone, and it was a 24px disc —
+ * the one control on every page under the 44px a thumb needs (phone sweep,
+ * 2026-09-14). Draw it a little larger and give the button a hit area that
+ * reaches the header's full height without moving anything around it.
+ */
+.admin-shell-mobile-top .admin-shell-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  padding: 0;
+  background: rgba(212, 129, 58, 0.14);
+}
+.admin-shell-mobile-top .admin-shell-avatar::before {
+  content: '';
+  position: absolute;
+  inset: -12px -8px;
+}
+
 @media (max-width: 374px) {
   /* iPhone SE / 320 CSS px — drop shortcut chrome so avatar fits. */
   .admin-shell-mobile-top {
@@ -1997,9 +2016,9 @@ a { text-decoration: none; color: inherit; }
     display: none;
   }
   .admin-shell-mobile-top .admin-shell-avatar {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
 }
 
@@ -2209,8 +2228,60 @@ a { text-decoration: none; color: inherit; }
  * from one that fits, so it dimmed the last tab when there was nothing
  * more to see. Grouping (see HubPage) is what keeps these rows short.
  */
-.hub-tabs { scroll-snap-type: x proximity; }
+.hub-tabs { scroll-snap-type: x proximity; scroll-padding: 0 4px; }
 .hub-tabs > button { scroll-snap-align: start; }
+
+/*
+ * TabScrollRow (SharedUI) measures the row and sets `data-fade-left` /
+ * `data-fade-right` only while there is more to see on that side, which is
+ * what the pure-CSS fade above could not do. The wrap is the positioning
+ * context; the row inside keeps its own background and radius, so the fade
+ * is drawn over it and clipped to the same corners.
+ */
+.tab-scroll-wrap {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+.tab-scroll-wrap--fit { width: fit-content; }
+.tab-scroll-wrap::before,
+.tab-scroll-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  border-radius: inherit;
+  z-index: 1;
+}
+.tab-scroll-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--tab-fade-bg, var(--color-bg)) 20%, transparent);
+}
+.tab-scroll-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--tab-fade-bg, var(--color-bg)) 20%, transparent);
+}
+.tab-scroll-wrap[data-fade-left]::before,
+.tab-scroll-wrap[data-fade-right]::after { opacity: 1; }
+/* A chevron on top of the right fade: a fade alone reads as a style. */
+.tab-scroll-wrap[data-fade-right] > .tab-scroll-row::after {
+  content: '›';
+  position: sticky;
+  right: 0;
+  align-self: center;
+  flex: 0 0 auto;
+  margin-left: -8px;
+  padding-left: 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  z-index: 2;
+}
 
 @media (max-width: 767px) {
   /* Confirmed defect: flex-shrink:0 overflowed search / EN·DV / publish status */
@@ -2232,6 +2303,38 @@ a { text-decoration: none; color: inherit; }
   .hub-page .page-header-subtitle {
     display: none;
   }
+  /*
+   * Phone sweep, 2026-09-14: pages hand the header three or four buttons in
+   * one `display:flex` div, and at 390px they were squeezed into 80px
+   * columns with the labels broken across lines ("+ Create / Manual PO").
+   * Let the row wrap and let each button take a fair share of its line —
+   * two across, or one full-width when the label is long.
+   */
+  .page-header-actions,
+  .page-header-actions > div,
+  .admin-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    margin-left: 0 !important;
+  }
+  .page-header-actions > *,
+  .page-header-actions > div > *,
+  .admin-btn-row > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .page-header-actions button,
+  .admin-btn-row button {
+    justify-content: center;
+    white-space: nowrap;
+  }
+  /* A segmented control (Cards | Floor Plan) is one unit: keep it a row. */
+  .page-header-actions > div > div {
+    display: flex;
+  }
+  .page-header-actions > div > div > button { flex: 1 1 auto; }
 }
 
 .scroll-x,

@@ -414,7 +414,7 @@ export function RecipientsTab() {
                             display: 'inline-flex', alignItems: 'center', gap: 4,
                             fontSize: 12, color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
                             border: '1px solid #fca5a5', borderRadius: 6, padding: '2px 8px',
-                            cursor: 'pointer', fontFamily: 'inherit',
+                            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                           }}>
                             <Phone size={11} /> Add phone
                           </button>

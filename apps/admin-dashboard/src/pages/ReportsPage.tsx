@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Btn, ErrorMsg, PageHeader, PageShell, Spinner } from '../components/SharedUI';
+import { Btn, ErrorMsg, PageHeader, PageShell, Spinner, TabScrollRow } from '../components/SharedUI';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { downloadCSV } from '../utils/csvExport';
 import { ReportsTabPanels } from './ReportsPage/ReportsTabPanels';
@@ -173,23 +173,24 @@ export function ReportsPage() {
       />
 
       {/* Section + report tabs */}
-      <div className="tab-scroll-row" style={S.sectionBar}>
+      <TabScrollRow style={S.sectionBar}>
         {REPORT_SECTIONS.map((section) => (
           <button
             key={section.id}
             type="button"
+            aria-current={currentSection.id === section.id ? 'true' : undefined}
             style={S.sectionTab(currentSection.id === section.id)}
             onClick={() => setTab(section.tabs[0])}
           >
             {section.label}
           </button>
         ))}
-      </div>
-      <div className="tab-scroll-row" style={S.subTabBar}>
+      </TabScrollRow>
+      <TabScrollRow style={S.subTabBar}>
         {currentSection.tabs.map((t) => (
-          <button key={t} type="button" style={S.tab(tab === t)} onClick={() => setTab(t)}>{t}</button>
+          <button key={t} type="button" aria-current={tab === t ? 'true' : undefined} style={S.tab(tab === t)} onClick={() => setTab(t)}>{t}</button>
         ))}
-      </div>
+      </TabScrollRow>
 
       {needsDate && (
         <ReportsFilters

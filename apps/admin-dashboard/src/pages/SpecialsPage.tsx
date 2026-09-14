@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, useConfirmDialog,
+  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, TabScrollRow, useConfirmDialog,
 } from '../components/SharedUI';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
@@ -660,18 +660,19 @@ export default function SpecialsPage() {
         </div>
       </div>
 
-      <div className="tab-scroll-row specials-filters" style={{ marginBottom: 16 }}>
+      <TabScrollRow className="specials-filters" style={{ marginBottom: 16 }}>
         {filterPills.map((pill) => (
           <button
             key={pill.id}
             type="button"
+            aria-current={listFilter === pill.id ? 'true' : undefined}
             onClick={() => { setListFilter(pill.id); setPage(1); }}
             className={`specials-filter-pill${listFilter === pill.id ? ' is-active' : ''}`}
           >
             {pill.label}
           </button>
         ))}
-      </div>
+      </TabScrollRow>
 
       <div className="specials-desktop-table">
         <TableCard>

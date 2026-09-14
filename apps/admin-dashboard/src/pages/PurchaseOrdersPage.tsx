@@ -1102,7 +1102,7 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           }}
         />
         <Btn variant="secondary" onClick={load}>↻ Refresh</Btn>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div className="admin-btn-row" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Btn variant="secondary" onClick={() => void openManualPo()}>+ Create Manual PO</Btn>
           <Btn variant="secondary" onClick={() => setShowImport(true)}>⬆ Import CSV</Btn>
           <Btn onClick={loadSuggestions} disabled={sugLoading}>

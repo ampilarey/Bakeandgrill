@@ -2,8 +2,8 @@
  * Shared UI primitives used by admin page components.
  */
 import {
-  Children, isValidElement, useEffect, useId, useRef, useState,
-  type ButtonHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
+  Children, isValidElement, useEffect, useId, useLayoutEffect, useRef, useState,
+  type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useInHub } from './hubContext';
@@ -73,6 +73,9 @@ export function Badge({
       fontSize: '0.72rem', fontWeight: 700,
       background: s.bg, color: s.text, border: `1px solid ${s.border}`,
       textTransform: 'capitalize' as const,
+      /* A pill that breaks into two lines in a squeezed table cell reads as
+         two pills; a badge is one word or two and never needs to wrap. */
+      whiteSpace: 'nowrap',
     }}>
       {label ?? children}
     </span>
@@ -252,6 +255,72 @@ export function Toolbar({
   return (
     <div className={['toolbar', className].filter(Boolean).join(' ')} style={style}>
       {children}
+    </div>
+  );
+}
+
+/*
+ * A row of tabs that scrolls sideways on a phone. The scrollbar is hidden,
+ * so on its own the row gives no sign that "Shopping lis…" continues off
+ * the right-hand edge — the phone sweep (2026-09-14) found nine hubs cut
+ * that way. CSS cannot tell a row that overflows from one that fits, so
+ * this measures: a fade appears on whichever edge has more to see, and the
+ * selected tab is scrolled into view when it changes so a deep link to the
+ * eighth tab does not open on a strip showing the first four.
+ *
+ * `fit` keeps the row as wide as its tabs (the pill strip); without it the
+ * row is block-wide (the underlined group bar).
+ */
+export function TabScrollRow({
+  children, className, style, fit = false, ...rest
+}: HTMLAttributes<HTMLDivElement> & { fit?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      // Scroll snap settles a padded strip a few pixels in; that is not "more to the left".
+      const left = el.scrollLeft > 8;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 8;
+      setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+    };
+    measure();
+    el.addEventListener('scroll', measure, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', measure);
+      ro?.disconnect();
+    };
+  }, [children]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const active = el.querySelector<HTMLElement>('[aria-selected="true"], [aria-current]');
+    if (!active) return;
+    const start = active.offsetLeft;
+    const end = start + active.offsetWidth;
+    if (start < el.scrollLeft) el.scrollLeft = Math.max(0, start - 12);
+    else if (end > el.scrollLeft + el.clientWidth) el.scrollLeft = end - el.clientWidth + 12;
+  }, [children]);
+
+  return (
+    <div
+      className={`tab-scroll-wrap${fit ? ' tab-scroll-wrap--fit' : ''}`}
+      data-fade-left={edges.left ? '' : undefined}
+      data-fade-right={edges.right ? '' : undefined}
+    >
+      <div
+        ref={ref}
+        className={['tab-scroll-row', className].filter(Boolean).join(' ')}
+        style={{ position: 'relative', ...style }}
+        {...rest}
+      >
+        {children}
+      </div>
     </div>
   );
 }

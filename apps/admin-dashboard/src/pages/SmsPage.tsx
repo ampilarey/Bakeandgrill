@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { HubContext } from '../components/hubContext';
 import { Zap, Users, FileText, Clock, Cpu, BellRing } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell } from '../components/SharedUI';
+import { PageHeader, PageShell, TabScrollRow } from '../components/SharedUI';
 import { LogsTab } from './SmsPage/LogsTab';
 import { CampaignsTab } from './SmsPage/CampaignsTab';
 import { PromotionsTab } from './SmsPage/PromotionsTab';
@@ -133,27 +133,28 @@ export function SmsPage() {
     <>
       <PageHeader section="Customers & Marketing" title="SMS" subtitle="Transactional alerts, marketing campaigns, and message templates" />
 
-      <div className="tab-scroll-row" style={S.sectionBar}>
+      <TabScrollRow style={S.sectionBar}>
         {SMS_SECTIONS.map((section) => (
           <button
             key={section.id}
             type="button"
+            aria-current={currentSection.id === section.id ? 'true' : undefined}
             style={S.sectionTab(currentSection.id === section.id)}
             onClick={() => selectTab(section.tabs[0].id)}
           >
             {section.label}
           </button>
         ))}
-      </div>
+      </TabScrollRow>
 
       {currentSection.tabs.length > 1 && (
-        <div className="tab-scroll-row" style={S.subTabBar}>
+        <TabScrollRow style={S.subTabBar}>
           {currentSection.tabs.map(({ id, label, icon }) => (
-            <button key={id} type="button" style={S.tab(tab === id)} onClick={() => selectTab(id)}>
+            <button key={id} type="button" aria-current={tab === id ? 'true' : undefined} style={S.tab(tab === id)} onClick={() => selectTab(id)}>
               {icon}{label}
             </button>
           ))}
-        </div>
+        </TabScrollRow>
       )}
 
       {tab === 'recipients'  && <RecipientsTab />}

@@ -1038,11 +1038,14 @@ export function ForecastPage() {
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }} />
-        <span style={{ color: 'var(--color-text-muted)' }}>to</span>
-        <input type="date" value={to} onChange={e => setTo(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14 }} />
+        {/* One unit, so "to" never lands on a line of its own on a phone. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} aria-label="From date"
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' }} />
+          <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>to</span>
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} aria-label="To date"
+            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', fontSize: 14, minWidth: 0, flex: '1 1 0' }} />
+        </div>
         <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: 8, overflow: 'hidden' }}>
           {(['daily', 'weekly', 'monthly'] as const).map(g => (
             <button key={g} onClick={() => setGran(g)}

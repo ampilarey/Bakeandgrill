@@ -1,6 +1,6 @@
 import { Suspense, useEffect, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageHeader, PageShell } from './SharedUI';
+import { PageHeader, PageShell, TabScrollRow } from './SharedUI';
 import { HubContext } from './hubContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -74,17 +74,18 @@ const groupStyle = (active: boolean): React.CSSProperties => ({
 
 function TabStrip({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div
+    <TabScrollRow
       role="tablist"
       aria-label={label}
-      className="tab-scroll-row hub-tabs"
+      className="hub-tabs"
+      fit
       style={{
         display: 'flex', gap: 4, background: 'var(--color-bg)',
-        borderRadius: 10, padding: 4, width: 'fit-content', maxWidth: '100%', overflowX: 'auto',
+        borderRadius: 10, padding: 4, maxWidth: '100%', overflowX: 'auto',
       }}
     >
       {children}
-    </div>
+    </TabScrollRow>
   );
 }
 
@@ -133,7 +134,7 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: 
       <PageHeader section={section} title={title} subtitle={current.desc ?? subtitle} />
 
       {grouped && (
-        <div className="tab-scroll-row hub-groups" style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', overflowX: 'auto' }}>
+        <TabScrollRow className="hub-groups" style={{ display: 'flex', borderBottom: '2px solid var(--color-border)', overflowX: 'auto' }}>
           {groups.map((g) => {
             const first = visible.find((t) => t.group === g)!;
             return (
@@ -148,7 +149,7 @@ export function HubPage({ base, section, title, subtitle, tabs, aliases = {} }: 
               </button>
             );
           })}
-        </div>
+        </TabScrollRow>
       )}
 
       {siblings.length > 1 && (

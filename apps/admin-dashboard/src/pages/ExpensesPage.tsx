@@ -385,7 +385,7 @@ export function ExpensesPage() {
       </div>
 
       {loading ? <Spinner /> : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(260px,1fr)', gap: 20 }}>
+        <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(260px,1fr)', gap: 20 }}>
 
           {/* Left: total + table */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
