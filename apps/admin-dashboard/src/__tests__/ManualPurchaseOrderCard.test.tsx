@@ -70,6 +70,13 @@ async function openCard() {
   return await screen.findByLabelText('Bought from');
 }
 
+/** Name a shop that is not on file: the picker's "type it" row, then the box. */
+async function nameShop(name: string) {
+  fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: '__pick_or_type_add__' } });
+  fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: name } });
+  fireEvent.click(screen.getByText('Use this'));
+}
+
 describe('Create Manual Purchase Order card', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -170,12 +177,13 @@ describe('Create Manual Purchase Order card', () => {
     expect(await screen.findByText('Say who you bought from.')).toBeInTheDocument();
   });
 
-  it('offers the suppliers on file as suggestions for one seller field', async () => {
+  it('offers the suppliers on file to pick from, and a row to type a new one', async () => {
+    // A real picker, not a datalist — a phone draws nothing under a datalist
+    // (owner, 2026-09-14: "shop list are not showing").
     const seller = await openCard();
-    expect(seller).toHaveAttribute('list', 'manual-po-seller-options');
 
-    const options = document.getElementById('manual-po-seller-options')!;
-    expect(within(options as HTMLElement).getByRole('option', { hidden: true })).toHaveValue('Island Wholesale');
+    expect(await within(seller).findByRole('option', { name: 'Island Wholesale' })).toBeInTheDocument();
+    expect(within(seller).getByRole('option', { name: /not on the list/ })).toBeInTheDocument();
   });
 
   /*
@@ -225,7 +233,7 @@ describe('Create Manual Purchase Order card', () => {
 
   it('will not save a purchase with a unit nobody can convert', async () => {
     await openCard();
-    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    await nameShop('Fahi Store');
     fireEvent.click(screen.getByText('pick-flour'));
     fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'case' } });
     fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
@@ -282,7 +290,7 @@ describe('Create Manual Purchase Order card', () => {
     });
     await openCard();
 
-    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    await nameShop('Fahi Store');
     fireEvent.click(screen.getByText('pick-flour'));
     fireEvent.change(await screen.findByLabelText('Unit for item 1'), { target: { value: 'Case' } });
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });
@@ -380,7 +388,7 @@ describe('Create Manual Purchase Order card', () => {
       base_unit: 'kg', purchase_units: [], brands: ['Brand A', 'Brand B'],
     });
     await openCard();
-    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    await nameShop('Fahi Store');
     fireEvent.click(screen.getByText('pick-flour'));
 
     const brand = await screen.findByLabelText('Brand for item 1');
@@ -405,7 +413,7 @@ describe('Create Manual Purchase Order card', () => {
   it('leaves brand off entirely when nothing was typed', async () => {
     // Plenty of things have no brand worth recording.
     await openCard();
-    fireEvent.change(screen.getByLabelText('Bought from'), { target: { value: 'Fahi Store' } });
+    await nameShop('Fahi Store');
     fireEvent.click(screen.getByText('pick-flour'));
     await screen.findByLabelText('Brand for item 1');
     fireEvent.change(screen.getByLabelText('Quantity for item 1'), { target: { value: '2' } });

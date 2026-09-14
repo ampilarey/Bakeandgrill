@@ -61,9 +61,9 @@ async function openCard() {
 
 async function nameTheShop() {
   const seller = await openCard();
-  // The supplier list has to have arrived for the name to match one on file.
-  await waitFor(() => expect(document.querySelectorAll('#manual-po-seller-options option').length).toBe(1));
-  fireEvent.change(seller, { target: { value: 'the royal bakery' } });
+  // The supplier list has to have arrived before it can be picked from.
+  await within(seller).findByRole('option', { name: 'The Royal Bakery' });
+  fireEvent.change(seller, { target: { value: 'The Royal Bakery' } });
   return await screen.findByTestId('manual-po-frequent');
 }
 
@@ -80,7 +80,7 @@ describe('What a shop usually sells us', () => {
     createPurchase.mockResolvedValue({ purchase: { id: 1 } });
   });
 
-  it('appears once the name in the box is a shop on file, however it is typed', async () => {
+  it('appears once a shop on file is picked', async () => {
     const strip = await nameTheShop();
 
     await waitFor(() => expect(getSupplierFrequentItems).toHaveBeenCalledWith({ supplier_id: 3 }));
@@ -90,15 +90,31 @@ describe('What a shop usually sells us', () => {
     expect(within(strip).getByTestId('manual-po-frequent-10')).toHaveTextContent('last 30 piece · MVR 2.00/piece');
   });
 
+  it('appears for a shop on file typed by hand, however it is capitalised', async () => {
+    const seller = await openCard();
+    await within(seller).findByRole('option', { name: 'The Royal Bakery' });
+    fireEvent.change(seller, { target: { value: '__pick_or_type_add__' } });
+    fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: 'the royal bakery' } });
+    fireEvent.click(screen.getByText('Use this'));
+
+    expect(await screen.findByTestId('manual-po-frequent')).toHaveTextContent('Usually bought from The Royal Bakery');
+  });
+
   it('is not there for a shop that is not on file', async () => {
     const seller = await openCard();
-    fireEvent.change(seller, { target: { value: 'Somewhere new' } });
+    fireEvent.change(seller, { target: { value: '__pick_or_type_add__' } });
+    fireEvent.change(await screen.findByLabelText('New bought from'), { target: { value: 'Somewhere new' } });
+    fireEvent.click(screen.getByText('Use this'));
 
     expect(screen.queryByTestId('manual-po-frequent')).toBeNull();
     expect(getSupplierFrequentItems).not.toHaveBeenCalled();
   });
 
-  it('puts a tapped item on the order with last time\'s quantity, using the empty first line', async () => {
+  /*
+   * Owner, 2026-09-14: "adding items like pos, 1 click = quantity 1, 2 clicks
+   * = quantity 2." A tile is a key on the till.
+   */
+  it('puts a tapped item on the order as one, using the empty first line', async () => {
     const strip = await nameTheShop();
     fireEvent.click(await within(strip).findByTestId('manual-po-frequent-9'));
 
@@ -107,11 +123,32 @@ describe('What a shop usually sells us', () => {
     expect(screen.queryByTestId('manual-po-line-1')).toBeNull();
     // Brand, box and price fill in the way any picked item's do.
     await waitFor(() => expect(getPurchaseUnits).toHaveBeenCalledWith(9));
-    await waitFor(() => expect(screen.getByTestId('manual-po-line-0')).toHaveTextContent('Royal · 2 Packet × MVR 30.00'));
-    expect(screen.getByTestId('manual-po-line-total-0')).toHaveTextContent('MVR 60.00');
-    // And the tile says it is on the order now.
-    expect(within(strip).getByTestId('manual-po-frequent-9')).toHaveTextContent('✓ Hotdog bun');
-    expect(within(strip).getByTestId('manual-po-frequent-9')).toBeDisabled();
+    await waitFor(() => expect(screen.getByTestId('manual-po-line-0')).toHaveTextContent('Royal · 1 Packet × MVR 30.00'));
+    expect(screen.getByTestId('manual-po-line-total-0')).toHaveTextContent('MVR 30.00');
+    // And the tile counts.
+    expect(within(strip).getByTestId('manual-po-frequent-count-9')).toHaveTextContent('×1');
+  });
+
+  it('counts one more on every tap, and one less on the minus', async () => {
+    const strip = await nameTheShop();
+    const tile = await within(strip).findByTestId('manual-po-frequent-9');
+    fireEvent.click(tile);
+    fireEvent.click(tile);
+    fireEvent.click(tile);
+
+    expect(within(strip).getByTestId('manual-po-frequent-count-9')).toHaveTextContent('×3');
+    await waitFor(() => expect(screen.getByTestId('manual-po-line-total-0')).toHaveTextContent('MVR 90.00'));
+
+    fireEvent.click(within(strip).getByLabelText('One less Hotdog bun'));
+    expect(within(strip).getByTestId('manual-po-frequent-count-9')).toHaveTextContent('×2');
+
+    // Down to nothing takes the line off the order and clears the badge.
+    fireEvent.click(within(strip).getByLabelText('One less Hotdog bun'));
+    fireEvent.click(within(strip).getByLabelText('One less Hotdog bun'));
+    expect(within(strip).queryByTestId('manual-po-frequent-count-9')).toBeNull();
+    // What is left is a blank line, open and ready.
+    expect(screen.getByTestId('manual-po-line-0')).toHaveTextContent('Item 1');
+    expect(screen.getByLabelText('Quantity for item 1')).toHaveValue(1);
   });
 
   it('adds a second tapped item as a new row rather than replacing the first', async () => {
@@ -126,13 +163,14 @@ describe('What a shop usually sells us', () => {
   it('sends the tapped items the same way as typed ones', async () => {
     const strip = await nameTheShop();
     fireEvent.click(await within(strip).findByTestId('manual-po-frequent-9'));
+    fireEvent.click(within(strip).getByTestId('manual-po-frequent-9'));
     await waitFor(() => expect(screen.getByTestId('manual-po-line-total-0')).toHaveTextContent('MVR 60.00'));
 
     fireEvent.click(screen.getByRole('button', { name: /Create PO/i }));
 
     await waitFor(() => expect(createPurchase).toHaveBeenCalled());
     const payload = createPurchase.mock.calls[0][0] as { supplier_name_text: string; items: Record<string, unknown>[] };
-    expect(payload.supplier_name_text).toBe('the royal bakery');
+    expect(payload.supplier_name_text).toBe('The Royal Bakery');
     expect(payload.items[0]).toMatchObject({ inventory_item_id: 9, quantity: 2, unit_cost: 30, purchase_unit_id: 3, brand: 'Royal' });
   });
 });

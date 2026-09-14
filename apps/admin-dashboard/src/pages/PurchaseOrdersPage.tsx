@@ -413,24 +413,51 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   };
 
   const removeManualLine = (idx: number) => {
-    setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
-    setOpenLine((o) => (o === null || o === idx ? null : o > idx ? o - 1 : o));
+    // Never an order with no line at all: the last one going leaves a blank
+    // line open, the way the form started.
+    const emptied = manualPoForm.lines.length <= 1;
+    setManualPoForm((f) => ({
+      ...f,
+      lines: f.lines.length <= 1 ? [blankManualLine()] : f.lines.filter((_, i) => i !== idx),
+    }));
+    setOpenLine((o) => (emptied ? 0 : o === null || o === idx ? null : o > idx ? o - 1 : o));
+  };
+
+  /** A box to narrow a long strip of usual items. */
+  const [frequentFind, setFrequentFind] = useState('');
+
+  /** How many of a usual item are on the order — the badge on its tile. */
+  const frequentCount = (itemId: number): number => {
+    const line = manualPoForm.lines.find((l) => l.selection?.item.id === itemId);
+    if (!line) return 0;
+    const q = parseFloat(line.quantity);
+    return Number.isFinite(q) && q > 0 ? q : 0;
   };
 
   /**
-   * One tap puts a usual item on the order: last time's quantity, and the
-   * brand, box and price the line would open on anyway. It takes the first
-   * empty line if there is one, so the blank line the form opens with is
-   * used rather than left dangling above the real ones.
+   * A tap on a usual item works like a key on the till: the first puts it
+   * on the order as one, every tap after that is one more. The line opens
+   * on the brand this shop sold last time, and that brand's box and price.
+   * The first empty line is used before a new one is added, so the blank
+   * line the form opens with does not sit above the real ones.
    */
-  const addFrequentItem = (fi: SupplierFrequentItem) => {
-    if (manualPoForm.lines.some((l) => l.selection?.item.id === fi.item.id)) return;
+  const tapFrequentItem = (fi: SupplierFrequentItem) => {
+    const at = manualPoForm.lines.findIndex((l) => l.selection?.item.id === fi.item.id);
+    if (at >= 0) {
+      setManualPoForm((f) => ({
+        ...f,
+        lines: f.lines.map((l, i) => {
+          if (i !== at) return l;
+          const q = parseFloat(l.quantity);
+          return { ...l, quantity: String((Number.isFinite(q) && q > 0 ? q : 0) + 1) };
+        }),
+      }));
+      return;
+    }
     const fresh: ManualPoLine = {
       ...blankManualLine(),
       selection: { id: fi.item.id, label: fi.item.name, item: fi.item },
-      quantity: fi.last_quantity != null && fi.last_quantity > 0 ? String(fi.last_quantity) : '1',
-      // The brand this shop sold last time, so its box and price are the
-      // ones the line opens on rather than the item's shared ones.
+      quantity: '1',
       brand: fi.last_brand ?? '',
       unit_cost: '',
       gst: (fi.item.gst_rate_bp ?? 0) > 0,
@@ -444,6 +471,21 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
     // Tapping five things in a row should give five rows, not five open forms.
     setOpenLine(null);
     void loadPacksFor(idx, fi.item.id);
+  };
+
+  /** One off; at one, the line goes. */
+  const untapFrequentItem = (fi: SupplierFrequentItem) => {
+    const at = manualPoForm.lines.findIndex((l) => l.selection?.item.id === fi.item.id);
+    if (at < 0) return;
+    const q = parseFloat(manualPoForm.lines[at].quantity);
+    if (!Number.isFinite(q) || q <= 1) {
+      removeManualLine(at);
+      return;
+    }
+    setManualPoForm((f) => ({
+      ...f,
+      lines: f.lines.map((l, i) => (i === at ? { ...l, quantity: String(q - 1) } : l)),
+    }));
   };
 
   const openManualPo = async () => {
@@ -1480,27 +1522,26 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               {/* Bought from whom. One field: a supplier you deal with and the
                   shop you walked to are the same kind of thing. Type a name and
                   the server finds that supplier or creates it. */}
-              <label htmlFor="manual-po-seller" style={lineLabelStyle}>Bought from *</label>
-              <input
-                id="manual-po-seller"
-                type="text"
-                list="manual-po-seller-options"
-                aria-label="Bought from"
-                autoComplete="off"
-                placeholder="Supplier or shop name"
+              <span style={lineLabelStyle}>Bought from *</span>
+              {/* A real picker, not a datalist. Owner, 2026-09-14: "in mobile
+                  manual po, shop list are not showing" — a phone draws no
+                  list under a datalist, so it was a box you had to already
+                  know the answer to. The shops on file are the list; a new
+                  one is typed, and added to the suppliers when the order
+                  saves. */}
+              <PickOrType
+                ariaLabel="Bought from"
+                options={manualSuppliers.map((s) => ({ value: s.name, label: s.name }))}
                 value={manualPoForm.supplier_name_text}
-                onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_name_text: e.target.value }))}
-                style={manualBoxStyle}
+                emptyLabel="Pick a shop or supplier"
+                addLabel="＋ A shop not on the list — type it"
+                placeholder="Shop or supplier name"
+                hint="A new name is added to your suppliers, so what you pay there starts a price history."
+                onChange={(v) => setManualPoForm((f) => ({ ...f, supplier_name_text: v }))}
               />
-              <datalist id="manual-po-seller-options">
-                {manualSuppliers.map((s) => <option key={s.id} value={s.name} />)}
-              </datalist>
               <datalist id="manual-po-unit-suggestions">
                 {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
               </datalist>
-              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                A new name is added to your suppliers, so what you pay there starts a price history.
-              </p>
             </div>
             <div>
               <label htmlFor="manual-po-purchase-date" style={lineLabelStyle}>Purchase date *</label>
@@ -1519,46 +1560,84 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           </div>
 
           {/* What this shop usually sells us, once the name is a shop on
-              file. One tap adds the item with last time's quantity, and the
-              line then opens on its brand, box and price like any other. */}
+              file. The tiles work like the till (owner, 2026-09-14: "1 click
+              = quantity 1, 2 clicks = quantity 2"): a tap adds the item, each
+              tap after that is one more, the badge counts, and − takes one
+              off. The line opens on its brand, box and price like any other. */}
           {matchedSupplier && (
             <div
               data-testid="manual-po-frequent"
               style={{ marginBottom: 12, padding: '10px 12px', border: '1px dashed var(--color-border)', borderRadius: 10, background: 'var(--color-bg)' }}
             >
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
-                Usually bought from {matchedSupplier.name} — tap to add
+                Usually bought from {matchedSupplier.name} — tap once for each one you are buying
               </div>
               {frequentLoading && frequent?.supplierId !== matchedSupplier.id ? (
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Looking up what you usually buy here…</span>
               ) : frequent && frequent.items.length === 0 ? (
                 <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Nothing on record from here yet — pick items below.</span>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {frequent?.items.map((fi) => {
-                    const onOrder = manualPoForm.lines.some((l) => l.selection?.item.id === fi.item.id);
-                    return (
-                      <button
-                        key={fi.item.id}
-                        type="button"
-                        data-testid={`manual-po-frequent-${fi.item.id}`}
-                        aria-pressed={onOrder}
-                        disabled={onOrder}
-                        onClick={() => addFrequentItem(fi)}
-                        title={onOrder ? 'Already on this order' : `Bought on ${fi.orders} order${fi.orders === 1 ? '' : 's'} from here`}
-                        style={{
-                          textAlign: 'left', padding: '6px 10px', borderRadius: 10, cursor: onOrder ? 'default' : 'pointer',
-                          border: `1.5px solid ${onOrder ? 'var(--color-success)' : 'var(--color-border)'}`,
-                          background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13,
-                          opacity: onOrder ? 0.6 : 1, maxWidth: '100%',
-                        }}
-                      >
-                        <span style={{ fontWeight: 700 }}>{onOrder ? '✓ ' : ''}{fi.item.name}</span>
-                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{frequentTileNote(fi)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  {(frequent?.items.length ?? 0) > 8 && (
+                    <input
+                      aria-label="Find in usual items"
+                      placeholder="Find…"
+                      value={frequentFind}
+                      onChange={(e) => setFrequentFind(e.target.value)}
+                      style={{ ...manualBoxStyle, marginBottom: 8 }}
+                    />
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+                    {(frequent?.items ?? [])
+                      .filter((fi) => frequentFind.trim() === '' || fi.item.name.toLowerCase().includes(frequentFind.trim().toLowerCase()))
+                      .map((fi) => {
+                        const count = frequentCount(fi.item.id);
+                        return (
+                          <div key={fi.item.id} style={{ display: 'flex', gap: 4, alignItems: 'stretch' }}>
+                            <button
+                              type="button"
+                              data-testid={`manual-po-frequent-${fi.item.id}`}
+                              aria-label={`Add one ${fi.item.name}`}
+                              onClick={() => tapFrequentItem(fi)}
+                              title={`Bought on ${fi.orders} order${fi.orders === 1 ? '' : 's'} from here — tap to add one`}
+                              style={{
+                                flex: 1, minWidth: 0, minHeight: 52, textAlign: 'left', padding: '6px 10px', borderRadius: 10, cursor: 'pointer',
+                                border: `1.5px solid ${count > 0 ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                background: count > 0 ? 'var(--color-bg)' : 'var(--color-surface)',
+                                color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13,
+                              }}
+                            >
+                              <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center', fontWeight: 700 }}>
+                                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{fi.item.name}</span>
+                                {count > 0 && (
+                                  <span
+                                    data-testid={`manual-po-frequent-count-${fi.item.id}`}
+                                    style={{ background: 'var(--color-primary)', color: 'var(--color-surface)', borderRadius: 999, padding: '1px 8px', fontSize: 12, flexShrink: 0 }}
+                                  >
+                                    ×{tidyNumber(count)}
+                                  </span>
+                                )}
+                              </span>
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{frequentTileNote(fi)}</span>
+                            </button>
+                            {count > 0 && (
+                              <button
+                                type="button"
+                                aria-label={`One less ${fi.item.name}`}
+                                onClick={() => untapFrequentItem(fi)}
+                                style={{
+                                  width: 40, borderRadius: 10, border: '1.5px solid var(--color-border)', cursor: 'pointer',
+                                  background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 18, fontWeight: 700,
+                                }}
+                              >
+                                −
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1901,28 +1980,25 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
           <Btn small variant="secondary" onClick={addManualLine} style={{ margin: '10px 0 12px' }}>
             + Add line
           </Btn>
-          {/* The number to check against the receipt in your hand, before you
-              save rather than after. Incomplete lines are left out and said so. */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8,
-            borderTop: '2px solid var(--color-border)', paddingTop: 12, marginBottom: 12,
-          }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Order total</div>
-              {manualPoIncompleteLines > 0 && (
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                  {manualPoIncompleteLines} line{manualPoIncompleteLines === 1 ? '' : 's'} not counted yet
-                </div>
-              )}
-            </div>
-            <div data-testid="manual-po-order-total" style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
-              {mvr(manualPoTotal)}
-            </div>
-          </div>
           <label htmlFor="manual-po-notes" style={lineLabelStyle}>Notes (optional)</label>
           <textarea id="manual-po-notes" rows={1} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
             style={{ ...manualBoxStyle, resize: 'vertical', marginBottom: 12 }} />
+          {/* The total lives in the footer, which stays on screen however
+              long the order is: the number to check against the receipt in
+              your hand, before you save rather than after. Incomplete lines
+              are left out and said so. */}
           <ModalActions>
+            <div style={{ marginRight: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <span>Order total</span>
+                {manualPoIncompleteLines > 0 && (
+                  <span style={{ color: 'var(--color-warning-strong)' }}>{manualPoIncompleteLines} line{manualPoIncompleteLines === 1 ? '' : 's'} not counted yet</span>
+                )}
+              </span>
+              <span data-testid="manual-po-order-total" style={{ fontSize: 18, fontWeight: 800, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
+                {mvr(manualPoTotal)}
+              </span>
+            </div>
             <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
             <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
           </ModalActions>
