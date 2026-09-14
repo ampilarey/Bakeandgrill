@@ -61,6 +61,7 @@ vi.mock('../api', () => ({
   updatePurchase: vi.fn(),
   importPurchaseCsv: vi.fn(),
   uploadPurchaseReceipt: vi.fn(),
+  getSupplierFrequentItems: vi.fn().mockResolvedValue({ supplier: null, items: [] }),
 }));
 
 async function openCard() {

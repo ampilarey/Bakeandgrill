@@ -56,6 +56,7 @@ vi.mock('../api', () => ({
   uploadPurchaseReceipt: vi.fn(),
   createPurchaseUnit: vi.fn(),
   createInventoryItem: vi.fn(),
+  getSupplierFrequentItems: vi.fn().mockResolvedValue({ supplier: null, items: [] }),
 }));
 
 /** Open the manual order card and pick the bun onto its first line. */

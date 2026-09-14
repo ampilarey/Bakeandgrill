@@ -1,4 +1,5 @@
 import { BASE, req, requestBlob } from './client';
+import type { InventoryItem } from './operations';
 
 // ── Invoices ──────────────────────────────────────────────────────────────────
 
@@ -957,6 +958,35 @@ export async function createPurchase(data: {
   }[];
 }): Promise<{ purchase: Purchase }> {
   return req('/purchases', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/**
+ * One thing a shop usually sells us, with what was bought last time so a tap
+ * can fill a purchase line. Owner, 2026-09-14: "when shop is selected, its
+ * most frequent item appears for easier selection."
+ */
+export type SupplierFrequentItem = {
+  item: InventoryItem;
+  /** How many of this shop's orders it was on. */
+  orders: number;
+  last_purchase_date: string | null;
+  last_brand: string | null;
+  last_pack_name: string | null;
+  last_pack_size: number | null;
+  last_pack_cost: number | null;
+  last_unit_cost: number | null;
+  /** How many were bought last time, in packs when it came in packs. */
+  last_quantity: number | null;
+};
+
+export async function getSupplierFrequentItems(params: { supplier_id?: number; supplier_name?: string }): Promise<{
+  supplier: { id: number; name: string } | null;
+  items: SupplierFrequentItem[];
+}> {
+  const q = new URLSearchParams();
+  if (params.supplier_id != null) q.set('supplier_id', String(params.supplier_id));
+  if (params.supplier_name) q.set('supplier_name', params.supplier_name);
+  return req(`/purchases/frequent-items?${q.toString()}`);
 }
 
 export type SuggestionItem = {

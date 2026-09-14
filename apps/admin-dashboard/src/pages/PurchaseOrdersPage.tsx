@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit, type LastPurchase } from '../api';
+import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, updatePurchaseLines, receivePurchase, updatePurchase, getPurchaseSuggestions, createPurchaseFromSuggest, createPurchase, fetchPurchases, fetchSuppliers, importPurchaseCsv, uploadPurchaseReceipt, getPurchaseUnits, createPurchaseUnit, createInventoryItem, getSupplierFrequentItems, type SupplierFrequentItem, type Purchase, type PurchaseSuggestions, type Supplier, type InventoryPurchaseUnit, type LastPurchase } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
@@ -171,6 +171,36 @@ export function usualPriceNote(line: Pick<ManualPoLine, 'unitText' | 'packs'>): 
   return `${whose} usually costs ${mvr(Number(pack.default_unit_cost))}${since} — pay something else and that updates.`;
 }
 
+/** One line, as a row: brand, how many of what, at what. */
+export function lineSummaryText(line: Pick<ManualPoLine, 'selection' | 'brand' | 'quantity' | 'unitText' | 'unit_cost' | 'packs'>): string {
+  if (!line.selection) return 'Tap to pick an item';
+  const unit = line.unitText.trim() || line.selection.item.unit;
+  const cost = parseFloat(line.unit_cost);
+  const parts = [
+    line.brand.trim(),
+    `${line.quantity || '?'} ${unit} × ${Number.isFinite(cost) ? mvr(cost) : 'price?'}`,
+  ].filter(Boolean);
+  if (needsPackSize(line as ManualPoLine)) parts.push(`what is a ${unit.toLowerCase()}?`);
+  return parts.join(' · ');
+}
+
+/** Under a usual item's name: what was bought last time, so the tap is informed. */
+export function frequentTileNote(fi: SupplierFrequentItem): string {
+  const qty = fi.last_quantity != null ? tidyNumber(fi.last_quantity) : null;
+  const what = fi.last_pack_name ?? fi.item.unit;
+  const price = fi.last_pack_cost != null
+    ? mvr(fi.last_pack_cost)
+    : fi.last_unit_cost != null ? `${mvr(fi.last_unit_cost)}/${fi.item.unit}` : null;
+  return [qty ? `last ${qty} ${what}` : null, price, fi.last_brand].filter(Boolean).join(' · ');
+}
+
+/** The boxes on the manual order, all one shape. */
+const manualBoxStyle: React.CSSProperties = {
+  width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)',
+  fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box',
+  background: 'var(--color-surface)', color: 'var(--color-text)',
+};
+
 /** The pack the typed unit names, if the item has one by that name. */
 function linePack(line: ManualPoLine): InventoryPurchaseUnit | null {
   const typed = line.unitText.trim().toLowerCase();
@@ -340,6 +370,82 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const manualPoTotal = manualPoForm.lines.reduce((sum, l) => sum + (manualLineTotal(l) ?? 0), 0);
   const manualPoIncompleteLines = manualPoForm.lines.filter((l) => manualLineTotal(l) === null).length;
 
+  /*
+   * Which line is open for editing. Owner, 2026-09-14: "when more than one
+   * item is there now its difficult." Every line used to show every box;
+   * now one is open and the rest are a row each. A new line opens itself.
+   */
+  const [openLine, setOpenLine] = useState<number | null>(0);
+
+  /*
+   * What this shop usually sells us. Owner, 2026-09-14: "when shop is
+   * selected, its most frequent item appears for easier selection." Looked
+   * up once the typed name is a shop on file, a beat after typing stops.
+   */
+  const [frequent, setFrequent] = useState<{ supplierId: number; items: SupplierFrequentItem[] } | null>(null);
+  const [frequentLoading, setFrequentLoading] = useState(false);
+  const matchedSupplier = useMemo(() => {
+    const typed = manualPoForm.supplier_name_text.trim().toLowerCase();
+    return typed ? manualSuppliers.find((s) => s.name.trim().toLowerCase() === typed) ?? null : null;
+  }, [manualPoForm.supplier_name_text, manualSuppliers]);
+  useEffect(() => {
+    if (!showManualPo || !matchedSupplier) return;
+    if (frequent?.supplierId === matchedSupplier.id) return;
+    let cancelled = false;
+    setFrequentLoading(true);
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await getSupplierFrequentItems({ supplier_id: matchedSupplier.id });
+        if (!cancelled) setFrequent({ supplierId: matchedSupplier.id, items: res.items ?? [] });
+      } catch {
+        // Quiet: the search box below still works exactly as before.
+        if (!cancelled) setFrequent({ supplierId: matchedSupplier.id, items: [] });
+      } finally {
+        if (!cancelled) setFrequentLoading(false);
+      }
+    }, 250);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [showManualPo, matchedSupplier, frequent?.supplierId]);
+
+  const addManualLine = () => {
+    setOpenLine(manualPoForm.lines.length);
+    setManualPoForm((f) => ({ ...f, lines: [...f.lines, blankManualLine()] }));
+  };
+
+  const removeManualLine = (idx: number) => {
+    setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }));
+    setOpenLine((o) => (o === null || o === idx ? null : o > idx ? o - 1 : o));
+  };
+
+  /**
+   * One tap puts a usual item on the order: last time's quantity, and the
+   * brand, box and price the line would open on anyway. It takes the first
+   * empty line if there is one, so the blank line the form opens with is
+   * used rather than left dangling above the real ones.
+   */
+  const addFrequentItem = (fi: SupplierFrequentItem) => {
+    if (manualPoForm.lines.some((l) => l.selection?.item.id === fi.item.id)) return;
+    const fresh: ManualPoLine = {
+      ...blankManualLine(),
+      selection: { id: fi.item.id, label: fi.item.name, item: fi.item },
+      quantity: fi.last_quantity != null && fi.last_quantity > 0 ? String(fi.last_quantity) : '1',
+      // The brand this shop sold last time, so its box and price are the
+      // ones the line opens on rather than the item's shared ones.
+      brand: fi.last_brand ?? '',
+      unit_cost: '',
+      gst: (fi.item.gst_rate_bp ?? 0) > 0,
+    };
+    const blankAt = manualPoForm.lines.findIndex((l) => !l.selection && !l.newItem);
+    const idx = blankAt >= 0 ? blankAt : manualPoForm.lines.length;
+    setManualPoForm((f) => ({
+      ...f,
+      lines: blankAt >= 0 ? f.lines.map((l, i) => (i === blankAt ? fresh : l)) : [...f.lines, fresh],
+    }));
+    // Tapping five things in a row should give five rows, not five open forms.
+    setOpenLine(null);
+    void loadPacksFor(idx, fi.item.id);
+  };
+
   const openManualPo = async () => {
     setManualPoError('');
     setManualPoForm({
@@ -348,6 +454,8 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       notes: '',
       lines: [blankManualLine()],
     });
+    setOpenLine(0);
+    setFrequent(null);
     setShowManualPo(true);
     try {
       const supRes = await fetchSuppliers({ active_only: true });
@@ -1358,381 +1466,446 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
         </Modal>
       )}
 
-      {/* Manual PO modal */}
+      {/* Manual PO modal. Owner, 2026-09-14: "when more than one item is
+          there now its difficult. View is horrible." Every line used to be
+          a full card of boxes; three items filled two screens. A line is
+          now one row that says what it is and what it costs, and only the
+          line being worked on is open. And once the shop is named, what it
+          usually sells us is a row of things to tap rather than search. */}
       {showManualPo && (
-        <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={560}>
+        <Modal title="Create Manual Purchase Order" onClose={() => setShowManualPo(false)} maxWidth={760}>
           {manualPoError && <p style={{ color: 'var(--color-danger-strong)', fontSize: 13, marginBottom: 8 }}>{manualPoError}</p>}
-          {/* Bought from whom. One field: a supplier you deal with and the shop
-              you walked to are the same kind of thing, so there is no longer a
-              toggle between them. Type a name and the server finds that
-              supplier or creates it, which is what puts the price you paid into
-              the comparison. Suggestions are the names already on file. */}
-          <label htmlFor="manual-po-seller" style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Bought from *</label>
-          <input
-            id="manual-po-seller"
-            type="text"
-            list="manual-po-seller-options"
-            aria-label="Bought from"
-            autoComplete="off"
-            placeholder="Supplier or shop name"
-            value={manualPoForm.supplier_name_text}
-            onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_name_text: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 4, boxSizing: 'border-box' }}
-          />
-          <datalist id="manual-po-seller-options">
-            {manualSuppliers.map((s) => <option key={s.id} value={s.name} />)}
-          </datalist>
-          <datalist id="manual-po-unit-suggestions">
-            {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-          </datalist>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-            A name you have not used before is added to your suppliers, so what you pay there
-            starts building a price history.
-          </p>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Purchase date *</label>
-          {/* Backdating a delivery is allowed and files it under the day it
-              arrived. Forward-dating never is — the server refuses it too. */}
-          <input type="date" value={manualPoForm.purchase_date} max={today()}
-            data-testid="manual-po-purchase-date"
-            onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', marginBottom: 4, boxSizing: 'border-box' }} />
-          {manualPoForm.purchase_date && manualPoForm.purchase_date < today() && (
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px' }}>
-              Backdated — stock, cost and the supplier price will all be filed under this date.
-            </p>
-          )}
-          <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', margin: '0 0 8px' }}>Line items</p>
-          {manualPoForm.lines.map((line, idx) => (
-            <div key={idx} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Item {idx + 1}</span>
-                {manualPoForm.lines.length > 1 && (
-                  <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({ ...f, lines: f.lines.filter((_, i) => i !== idx) }))}>Remove</Btn>
-                )}
-              </div>
-              <ItemSearch
-                kind="inventory"
-                value={line.selection}
-                onChange={(sel) => {
-                  setManualPoForm((f) => ({
-                    ...f,
-                    lines: f.lines.map((l, i) => i === idx ? {
-                      ...l,
-                      selection: sel,
-                      // A new item's packs are its own; keep neither the old
-                      // choice nor the old list, or a case of eggs could end up
-                      // multiplying a sack of flour.
-                      unitText: '',
-                      packs: [],
-                      newPackQty: '',
-                      newItem: null,
-                      // Another item's brands are not this one's.
-                      brand: '',
-                      brands: [],
-                      last: null,
-                      // And its boxes are the screen's to fill again.
-                      costTyped: false,
-                      unitTyped: false,
-                      /*
-                       * Blank, not the item's average cost: loadPacksFor is
-                       * about to fill it with what was actually last paid,
-                       * for the box it was last bought in, and an average
-                       * per unit sitting in a per-box field is worse than an
-                       * empty one. Falls back below when nothing is on record.
-                       */
-                      unit_cost: '',
-                      gst: (sel?.item.gst_rate_bp ?? 0) > 0,
-                    } : l),
-                  }));
-                  if (sel) void loadPacksFor(idx, sel.item.id);
-                }}
-                placeholder="Search inventory item…"
+          <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              {/* Bought from whom. One field: a supplier you deal with and the
+                  shop you walked to are the same kind of thing. Type a name and
+                  the server finds that supplier or creates it. */}
+              <label htmlFor="manual-po-seller" style={lineLabelStyle}>Bought from *</label>
+              <input
+                id="manual-po-seller"
+                type="text"
+                list="manual-po-seller-options"
+                aria-label="Bought from"
+                autoComplete="off"
+                placeholder="Supplier or shop name"
+                value={manualPoForm.supplier_name_text}
+                onChange={(e) => setManualPoForm((f) => ({ ...f, supplier_name_text: e.target.value }))}
+                style={manualBoxStyle}
               />
-              {/* Not on the list? Add it here. Always on screen rather than
-                  hidden behind an empty search result, because a control you
-                  have to fail a search to discover is a control nobody finds. */}
-              {!line.selection && canManageStock && !line.newItem && (
+              <datalist id="manual-po-seller-options">
+                {manualSuppliers.map((s) => <option key={s.id} value={s.name} />)}
+              </datalist>
+              <datalist id="manual-po-unit-suggestions">
+                {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+              </datalist>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                A new name is added to your suppliers, so what you pay there starts a price history.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="manual-po-purchase-date" style={lineLabelStyle}>Purchase date *</label>
+              {/* Backdating a delivery is allowed and files it under the day it
+                  arrived. Forward-dating never is — the server refuses it too. */}
+              <input id="manual-po-purchase-date" type="date" value={manualPoForm.purchase_date} max={today()}
+                data-testid="manual-po-purchase-date"
+                onChange={(e) => setManualPoForm((f) => ({ ...f, purchase_date: e.target.value }))}
+                style={manualBoxStyle} />
+              {manualPoForm.purchase_date && manualPoForm.purchase_date < today() && (
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                  Backdated — stock, cost and the price will be filed under this date.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* What this shop usually sells us, once the name is a shop on
+              file. One tap adds the item with last time's quantity, and the
+              line then opens on its brand, box and price like any other. */}
+          {matchedSupplier && (
+            <div
+              data-testid="manual-po-frequent"
+              style={{ marginBottom: 12, padding: '10px 12px', border: '1px dashed var(--color-border)', borderRadius: 10, background: 'var(--color-bg)' }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                Usually bought from {matchedSupplier.name} — tap to add
+              </div>
+              {frequentLoading && frequent?.supplierId !== matchedSupplier.id ? (
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Looking up what you usually buy here…</span>
+              ) : frequent && frequent.items.length === 0 ? (
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Nothing on record from here yet — pick items below.</span>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {frequent?.items.map((fi) => {
+                    const onOrder = manualPoForm.lines.some((l) => l.selection?.item.id === fi.item.id);
+                    return (
+                      <button
+                        key={fi.item.id}
+                        type="button"
+                        data-testid={`manual-po-frequent-${fi.item.id}`}
+                        aria-pressed={onOrder}
+                        disabled={onOrder}
+                        onClick={() => addFrequentItem(fi)}
+                        title={onOrder ? 'Already on this order' : `Bought on ${fi.orders} order${fi.orders === 1 ? '' : 's'} from here`}
+                        style={{
+                          textAlign: 'left', padding: '6px 10px', borderRadius: 10, cursor: onOrder ? 'default' : 'pointer',
+                          border: `1.5px solid ${onOrder ? 'var(--color-success)' : 'var(--color-border)'}`,
+                          background: 'var(--color-surface)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: 13,
+                          opacity: onOrder ? 0.6 : 1, maxWidth: '100%',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700 }}>{onOrder ? '✓ ' : ''}{fi.item.name}</span>
+                        <span style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)' }}>{frequentTileNote(fi)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gap: 8 }}>
+            {manualPoForm.lines.map((line, idx) => (openLine === idx ? (
+              <div key={idx} data-testid={`manual-po-line-${idx}`} style={{ border: '1.5px solid var(--color-primary)', borderRadius: 10, padding: 12, background: 'var(--color-surface)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Item {idx + 1}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {line.selection && (
+                      <Btn small variant="secondary" onClick={() => setOpenLine(null)} aria-label={`Done with item ${idx + 1}`}>Done</Btn>
+                    )}
+                    {manualPoForm.lines.length > 1 && (
+                      <Btn small variant="ghost" onClick={() => removeManualLine(idx)} aria-label={`Remove item ${idx + 1}`}>Remove</Btn>
+                    )}
+                  </div>
+                </div>
+                <ItemSearch
+                  kind="inventory"
+                  value={line.selection}
+                  onChange={(sel) => {
+                    setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? {
+                        ...l,
+                        selection: sel,
+                        // A new item's packs are its own; keep neither the old
+                        // choice nor the old list, or a case of eggs could end up
+                        // multiplying a sack of flour.
+                        unitText: '',
+                        packs: [],
+                        newPackQty: '',
+                        newItem: null,
+                        // Another item's brands are not this one's.
+                        brand: '',
+                        brands: [],
+                        last: null,
+                        // And its boxes are the screen's to fill again.
+                        costTyped: false,
+                        unitTyped: false,
+                        /*
+                         * Blank, not the item's average cost: loadPacksFor is
+                         * about to fill it with what was actually last paid,
+                         * for the box it was last bought in, and an average
+                         * per unit sitting in a per-box field is worse than an
+                         * empty one. Falls back below when nothing is on record.
+                         */
+                        unit_cost: '',
+                        gst: (sel?.item.gst_rate_bp ?? 0) > 0,
+                      } : l),
+                    }));
+                    if (sel) void loadPacksFor(idx, sel.item.id);
+                  }}
+                  placeholder="Search inventory item…"
+                />
+                {/* Not on the list? Add it here. Always on screen rather than
+                    hidden behind an empty search result, because a control you
+                    have to fail a search to discover is a control nobody finds. */}
+                {!line.selection && canManageStock && !line.newItem && (
+                  <button
+                    type="button"
+                    onClick={() => setManualPoForm((f) => ({
+                      ...f,
+                      lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: { name: '', unit: '' } } : l),
+                    }))}
+                    style={{
+                      marginTop: 6, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: 'var(--color-primary)',
+                    }}
+                  >
+                    + Item not on the list
+                  </button>
+                )}
+                {line.newItem && (
+                  <div style={{
+                    marginTop: 8, padding: 10, borderRadius: 10,
+                    border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
+                  }}>
+                    <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
+                      Adds it to your inventory so you can buy it now and track it from here on.
+                    </p>
+                    <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <input
+                        aria-label={`New item name for item ${idx + 1}`}
+                        placeholder="Item name, e.g. Egg"
+                        value={line.newItem.name}
+                        onChange={(e) => setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => i === idx && l.newItem
+                            ? { ...l, newItem: { ...l.newItem, name: e.target.value } } : l),
+                        }))}
+                        style={manualBoxStyle}
+                      />
+                      <input
+                        aria-label={`New item unit for item ${idx + 1}`}
+                        list="manual-po-unit-suggestions"
+                        placeholder="Counted in — piece, kg, litre…"
+                        value={line.newItem.unit}
+                        onChange={(e) => setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => i === idx && l.newItem
+                            ? { ...l, newItem: { ...l.newItem, unit: e.target.value } } : l),
+                        }))}
+                        style={manualBoxStyle}
+                      />
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                      The smallest unit you count on the shelf. Packs like a case or tray go in the unit box after.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <Btn small onClick={() => void saveNewItem(idx)} disabled={manualPoSaving}>Save item</Btn>
+                      <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
+                        ...f,
+                        lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: null } : l),
+                      }))}>Cancel</Btn>
+                    </div>
+                  </div>
+                )}
+
+                {/* Brand, how many and at what — side by side on a desk, one
+                    under another on a phone. Labels above the boxes, not
+                    placeholders inside them: a placeholder is gone the moment
+                    you type. */}
+                <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr', gap: 8, marginTop: 10 }}>
+                  <div>
+                    <label style={lineLabelStyle}>Brand</label>
+                    {line.selection ? (
+                      <PickOrType
+                        ariaLabel={`Brand for item ${idx + 1}`}
+                        options={line.brands.map((b) => ({ value: b, label: b }))}
+                        value={line.brand}
+                        emptyLabel="No brand"
+                        addLabel="＋ A brand not bought before"
+                        placeholder="Whose one is it"
+                        onChange={(v) => setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => {
+                            if (i !== idx) return l;
+                            /*
+                             * Choosing a brand chooses its box and its price.
+                             * Owner, 2026-09-12: "when that brand is selected in
+                             * manual po and everything, its default values appear
+                             * automatically." Only a box the buyer has not
+                             * touched is filled: a price already typed is theirs.
+                             */
+                            const opening = lineOpening(l.packs, v, l.last);
+                            return {
+                              ...l,
+                              brand: v,
+                              unitText: opening && !l.unitTyped ? (opening.pack?.name ?? '') : l.unitText,
+                              unit_cost: opening && !l.costTyped && opening.price != null
+                                ? String(opening.price)
+                                : l.unit_cost,
+                            };
+                          }),
+                        }))}
+                      />
+                    ) : (
+                      <input disabled placeholder="Pick an item first" aria-label={`Brand for item ${idx + 1}`} style={{ ...manualBoxStyle, opacity: 0.6 }} />
+                    )}
+                    {/* The packet itself. A brand name is only a name until you
+                        are standing in front of the shelf (owner, 2026-09-09). */}
+                    {line.selection && line.brandPhotos[brandKey(line.brand)] && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }} data-testid={`manual-po-brand-photo-${idx}`}>
+                        <BrandThumb photo={line.brandPhotos[brandKey(line.brand)]} size={40} />
+                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>This is what {line.brand} looks like.</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>Quantity</label>
+                    {/* Quantity and the unit it is counted in, together. The unit
+                        box is always on screen — greyed until an item is picked,
+                        since only the item knows what it is sold in. */}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input id={`manual-po-qty-${idx}`} type="number" min="0.000001" step="any"
+                        aria-label={`Quantity for item ${idx + 1}`}
+                        value={line.quantity}
+                        onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
+                        style={{ ...manualBoxStyle, flex: 1, minWidth: 0, width: 'auto' }} />
+                      <input
+                        id={`manual-po-pack-${idx}`}
+                        aria-label={`Unit for item ${idx + 1}`}
+                        list={`manual-po-unit-options-${idx}`}
+                        autoComplete="off"
+                        placeholder={line.selection?.item.unit ?? 'kg, case…'}
+                        value={line.unitText}
+                        onChange={(e) => setManualPoForm((f) => ({
+                          ...f,
+                          lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value, unitTyped: true } : l),
+                        }))}
+                        style={{ ...manualBoxStyle, width: 96, flexShrink: 0 }}
+                      />
+                      <datalist id={`manual-po-unit-options-${idx}`}>
+                        {/* The item's own unit and any pack it has been bought
+                            by, then the common words. Suggestions only: type
+                            anything and the line will ask what it holds. */}
+                        {line.selection && <option value={line.selection.item.unit} />}
+                        {line.packs.map((pk) => <option key={pk.id} value={pk.name} />)}
+                        {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
+                      </datalist>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor={`manual-po-cost-${idx}`} style={lineLabelStyle}>
+                      {linePack(line)
+                        ? `Price per ${linePack(line)!.name.toLowerCase()} (MVR)`
+                        : `Unit cost (MVR${line.selection ? ` per ${line.selection.item.unit}` : ''})`}
+                    </label>
+                    <input id={`manual-po-cost-${idx}`} type="number" min="0" step="0.01"
+                      aria-label={`Unit cost for item ${idx + 1}`}
+                      value={line.unit_cost}
+                      onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value, costTyped: true } : l) }))}
+                      style={manualBoxStyle} />
+                  </div>
+                </div>
+
+                {/* Where the filled-in numbers came from, and when — a price
+                    carried over from months ago should be visibly old rather
+                    than quietly authoritative. */}
+                {line.selection && line.last && (
+                  <p data-testid={`manual-po-last-${idx}`} style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    Last bought{line.last.purchase_date ? ` ${line.last.purchase_date}` : ''}
+                    {line.last.supplier ? ` from ${line.last.supplier}` : ''}
+                    {': '}
+                    {line.last.pack_name && line.last.pack_cost != null
+                      ? `${mvr(line.last.pack_cost)} a ${line.last.pack_name} (${tidyNumber(line.last.pack_size)} ${line.selection.item.unit})`
+                      : `${mvr(line.last.unit_cost)} a ${line.selection.item.unit}`}
+                    {line.last.brand ? ` · ${line.last.brand}` : ''}
+                    {line.last.pack_name && line.last.purchase_unit_id === null
+                      ? ' — that pack has changed since, so this line is counted loose.'
+                      : ''}
+                  </p>
+                )}
+                {usualPriceNote(line) && (
+                  <p data-testid={`manual-po-usual-${idx}`} style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    {usualPriceNote(line)}
+                  </p>
+                )}
+                {/* The typed unit is not one this item has been bought by, so
+                    it cannot be priced until somebody says what it holds. */}
+                {needsPackSize(line) && (
+                  <div style={{
+                    marginTop: 8, padding: 10, borderRadius: 10,
+                    border: '1.5px dashed var(--color-warning)', background: 'var(--color-bg)',
+                  }}>
+                    {canManageStock ? (
+                      <>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 13 }}>
+                          <span>1 {line.unitText.trim().toLowerCase()} =</span>
+                          <input
+                            aria-label={`Size of one ${line.unitText.trim().toLowerCase()} for item ${idx + 1}`}
+                            type="number"
+                            min="0.000001"
+                            step="any"
+                            placeholder="210"
+                            value={line.newPackQty}
+                            onChange={(e) => setManualPoForm((f) => ({
+                              ...f,
+                              lines: f.lines.map((l, i) => i === idx ? { ...l, newPackQty: e.target.value } : l),
+                            }))}
+                            style={{ ...manualBoxStyle, width: 90 }}
+                          />
+                          <span>{line.selection?.item.unit}</span>
+                          <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save</Btn>
+                        </div>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
+                          Saved against this item, so next time you only have to type the word.
+                        </p>
+                      </>
+                    ) : (
+                      <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.45 }}>
+                        This item has not been bought by the {line.unitText.trim().toLowerCase()} before.
+                        Someone who manages stock needs to set that up.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {/* What this line puts on the shelf and what one of them costs.
+                    The number the owner asked for: buy a case, see the price of
+                    an egg, before saving rather than after. */}
+                {linePack(line) && manualLineBase(line) !== null && (
+                  <p data-testid={`manual-po-conversion-${idx}`} style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '8px 0 0', lineHeight: 1.45 }}>
+                    Adds <strong style={{ color: 'var(--color-text)' }}>
+                      {Number(manualLineBase(line)!.quantity.toFixed(3))} {line.selection?.item.unit}
+                    </strong>{' '}to stock, at <strong style={{ color: 'var(--color-text)' }}>
+                      MVR {manualLineBase(line)!.unitCost.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}
+                    </strong>{' '}per {line.selection?.item.unit}.
+                  </p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+                    <input
+                      type="checkbox"
+                      aria-label={`GST inside the price for item ${idx + 1}`}
+                      checked={line.gst}
+                      onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, gst: e.target.checked } : l) }))}
+                    />
+                    8% GST inside this price — comes back with the tax invoice
+                  </label>
+                  {/* What this line costs, so a slip in either box is visible
+                      here rather than in the total after the order is saved. */}
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    Line total{' '}
+                    <span data-testid={`manual-po-line-total-${idx}`} style={{ fontWeight: 700, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
+                      {manualLineTotal(line) === null ? '—' : mvr(manualLineTotal(line))}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              // A line not being worked on is one row: what, how many, at
+              // what, and what it comes to. Tap it to open it.
+              <div key={idx} data-testid={`manual-po-line-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 10px', background: 'var(--color-surface)' }}>
                 <button
                   type="button"
-                  onClick={() => setManualPoForm((f) => ({
-                    ...f,
-                    lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: { name: '', unit: '' } } : l),
-                  }))}
-                  style={{
-                    marginTop: 6, background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700, color: 'var(--color-primary)',
-                  }}
+                  aria-label={`Edit item ${idx + 1}`}
+                  onClick={() => setOpenLine(idx)}
+                  style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', color: 'inherit' }}
                 >
-                  + Item not on the list
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {line.selection ? line.selection.item.name : 'No item picked yet'}
+                    </span>
+                    <span data-testid={`manual-po-line-total-${idx}`} style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {manualLineTotal(line) === null ? '—' : mvr(manualLineTotal(line))}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: manualLineTotal(line) === null ? 'var(--color-warning-strong)' : 'var(--color-text-secondary)', marginTop: 2 }}>
+                    {lineSummaryText(line)}
+                  </div>
                 </button>
-              )}
-              {line.newItem && (
-                <div style={{
-                  marginTop: 8, padding: 10, borderRadius: 10,
-                  border: '1.5px dashed var(--color-border)', background: 'var(--color-bg)',
-                }}>
-                  <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px', lineHeight: 1.45 }}>
-                    Adds it to your inventory so you can buy it now and track it from here on.
-                  </p>
-                  <input
-                    aria-label={`New item name for item ${idx + 1}`}
-                    placeholder="Item name, e.g. Egg"
-                    value={line.newItem.name}
-                    onChange={(e) => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => i === idx && l.newItem
-                        ? { ...l, newItem: { ...l.newItem, name: e.target.value } } : l),
-                    }))}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
-                  />
-                  <input
-                    aria-label={`New item unit for item ${idx + 1}`}
-                    list="manual-po-unit-suggestions"
-                    placeholder="Counted in — piece, kg, litre…"
-                    value={line.newItem.unit}
-                    onChange={(e) => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => i === idx && l.newItem
-                        ? { ...l, newItem: { ...l.newItem, unit: e.target.value } } : l),
-                    }))}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                  <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
-                    The smallest unit you count on the shelf. Packs like a case or tray
-                    are added after, in the unit box below.
-                  </p>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <Btn small onClick={() => void saveNewItem(idx)} disabled={manualPoSaving}>Save item</Btn>
-                    <Btn small variant="ghost" onClick={() => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => i === idx ? { ...l, newItem: null } : l),
-                    }))}>Cancel</Btn>
-                  </div>
-                </div>
-              )}
-              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, marginTop: 8, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  aria-label={`GST inside the price for item ${idx + 1}`}
-                  checked={line.gst}
-                  onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, gst: e.target.checked } : l) }))}
-                />
-                <span>8% GST inside this price — comes back with the supplier's tax invoice</span>
-              </label>
-              {/* Which brand this one was. Free text with the brands this item
-                  has been bought as before: an egg is an egg on the shelf, so
-                  the count stays one number, but the price moves brand to
-                  brand and that is worth a record. */}
-              {line.selection && (
-                <div style={{ marginTop: 8 }}>
-                  <label style={lineLabelStyle}>Brand (optional)</label>
-                  {/* A dropdown of what this item has been bought as, newest
-                      first, that does not dead-end on a brand never seen
-                      before. Was a bare text box with a datalist, which on a
-                      phone shows nothing until you already know the answer. */}
-                  <PickOrType
-                    ariaLabel={`Brand for item ${idx + 1}`}
-                    options={line.brands.map((b) => ({ value: b, label: b }))}
-                    value={line.brand}
-                    emptyLabel="No brand"
-                    addLabel="＋ A brand not bought before"
-                    placeholder="Whose one is it"
-                    hint="Saved against this line, so next time it is the one already chosen."
-                    onChange={(v) => setManualPoForm((f) => ({
-                      ...f,
-                      lines: f.lines.map((l, i) => {
-                        if (i !== idx) return l;
-                        /*
-                         * Choosing a brand chooses its box and its price.
-                         * Owner, 2026-09-12: "when that brand is selected in
-                         * manual po and everything, its default values appear
-                         * automatically."
-                         *
-                         * The brand's own packs win over the item's shared
-                         * ones, and a priced pack wins over an unpriced one —
-                         * a pack with no price tells the line nothing. Only a
-                         * box the buyer has not touched is filled: a price
-                         * already typed is theirs, not the register's.
-                         */
-                        const opening = lineOpening(l.packs, v, l.last);
-                        return {
-                          ...l,
-                          brand: v,
-                          unitText: opening && !l.unitTyped ? (opening.pack?.name ?? '') : l.unitText,
-                          unit_cost: opening && !l.costTyped && opening.price != null
-                            ? String(opening.price)
-                            : l.unit_cost,
-                        };
-                      }),
-                    }))}
-                  />
-                  {/* The packet itself. A brand name is only a name until you
-                      are standing in front of the shelf (owner, 2026-09-09). */}
-                  {line.brandPhotos[brandKey(line.brand)] && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }} data-testid={`manual-po-brand-photo-${idx}`}>
-                      <BrandThumb photo={line.brandPhotos[brandKey(line.brand)]} size={40} />
-                      <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                        This is what {line.brand} looks like.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Where the filled-in numbers came from, and when — a price
-                  carried over from months ago should be visibly old rather
-                  than quietly authoritative. */}
-              {line.selection && line.last && (
-                <p
-                  data-testid={`manual-po-last-${idx}`}
-                  style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}
-                >
-                  Last bought{line.last.purchase_date ? ` ${line.last.purchase_date}` : ''}
-                  {line.last.supplier ? ` from ${line.last.supplier}` : ''}
-                  {': '}
-                  {line.last.pack_name && line.last.pack_cost != null
-                    ? `${mvr(line.last.pack_cost)} a ${line.last.pack_name} (${tidyNumber(line.last.pack_size)} ${line.selection.item.unit})`
-                    : `${mvr(line.last.unit_cost)} a ${line.selection.item.unit}`}
-                  {line.last.brand ? ` · ${line.last.brand}` : ''}
-                  {line.last.pack_name && line.last.purchase_unit_id === null
-                    ? ' — that pack has changed since, so this line is counted loose.'
-                    : ''}
-                </p>
-              )}
-              {/* Labels above the boxes, not placeholders inside them: a
-                  placeholder is gone the moment you type, so a filled-in line
-                  used to be two unlabelled numbers. The quantity carries the
-                  item's unit, so "4" reads as 4 kg rather than 4 of something. */}
-              <div data-responsive-grid style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                <div>
-                  <label htmlFor={`manual-po-qty-${idx}`} style={lineLabelStyle}>Quantity</label>
-                  {/* Quantity and the unit it is counted in, together. The unit
-                      box is always on screen — greyed until an item is picked,
-                      since only the item knows what it is sold in — so the
-                      option is visible rather than something to go hunting for. */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input id={`manual-po-qty-${idx}`} type="number" min="0.000001" step="any"
-                      aria-label={`Quantity for item ${idx + 1}`}
-                      value={line.quantity}
-                      onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l) }))}
-                      style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                    <input
-                      id={`manual-po-pack-${idx}`}
-                      aria-label={`Unit for item ${idx + 1}`}
-                      list={`manual-po-unit-options-${idx}`}
-                      autoComplete="off"
-                      placeholder={line.selection?.item.unit ?? 'kg, case…'}
-                      value={line.unitText}
-                      onChange={(e) => setManualPoForm((f) => ({
-                        ...f,
-                        lines: f.lines.map((l, i) => i === idx ? { ...l, unitText: e.target.value, unitTyped: true } : l),
-                      }))}
-                      style={{
-                        width: 104, flexShrink: 0, padding: '8px 10px', borderRadius: 10,
-                        border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit',
-                        background: 'var(--color-surface)', color: 'var(--color-text)', boxSizing: 'border-box',
-                      }}
-                    />
-                    <datalist id={`manual-po-unit-options-${idx}`}>
-                      {/* The item's own unit and any pack it has been bought
-                          by, then the common words. Suggestions only: type
-                          anything and the line will ask what it holds. */}
-                      {line.selection && <option value={line.selection.item.unit} />}
-                      {line.packs.map((pk) => <option key={pk.id} value={pk.name} />)}
-                      {UNIT_SUGGESTIONS.map((u) => <option key={u} value={u} />)}
-                    </datalist>
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor={`manual-po-cost-${idx}`} style={lineLabelStyle}>
-                    {linePack(line)
-                      ? `Price per ${linePack(line)!.name.toLowerCase()} (MVR)`
-                      : `Unit cost (MVR${line.selection ? ` per ${line.selection.item.unit}` : ''})`}
-                  </label>
-                  <input id={`manual-po-cost-${idx}`} type="number" min="0" step="0.01"
-                    aria-label={`Unit cost for item ${idx + 1}`}
-                    value={line.unit_cost}
-                    onChange={(e) => setManualPoForm((f) => ({ ...f, lines: f.lines.map((l, i) => i === idx ? { ...l, unit_cost: e.target.value, costTyped: true } : l) }))}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                </div>
+                {manualPoForm.lines.length > 1 && (
+                  <Btn small variant="ghost" onClick={() => removeManualLine(idx)} aria-label={`Remove item ${idx + 1}`}>✕</Btn>
+                )}
               </div>
-              {usualPriceNote(line) && (
-                <p data-testid={`manual-po-usual-${idx}`} style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-muted)' }}>
-                  {usualPriceNote(line)}
-                </p>
-              )}
-              {/* The typed unit is not one this item has been bought by, so
-                  it cannot be priced until somebody says what it holds. */}
-              {needsPackSize(line) && (
-                <div style={{
-                  marginTop: 8, padding: 10, borderRadius: 10,
-                  border: '1.5px dashed var(--color-warning)', background: 'var(--color-bg)',
-                }}>
-                  {canManageStock ? (
-                    <>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 13 }}>
-                        <span>1 {line.unitText.trim().toLowerCase()} =</span>
-                        <input
-                          aria-label={`Size of one ${line.unitText.trim().toLowerCase()} for item ${idx + 1}`}
-                          type="number"
-                          min="0.000001"
-                          step="any"
-                          placeholder="210"
-                          value={line.newPackQty}
-                          onChange={(e) => setManualPoForm((f) => ({
-                            ...f,
-                            lines: f.lines.map((l, i) => i === idx ? { ...l, newPackQty: e.target.value } : l),
-                          }))}
-                          style={{ width: 90, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--color-border)', fontSize: 13, fontFamily: 'inherit' }}
-                        />
-                        <span>{line.selection?.item.unit}</span>
-                        <Btn small onClick={() => void saveNewPack(idx)} disabled={manualPoSaving}>Save</Btn>
-                      </div>
-                      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '6px 0 0', lineHeight: 1.45 }}>
-                        Saved against this item, so next time you only have to type the word.
-                      </p>
-                    </>
-                  ) : (
-                    <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                      This item has not been bought by the {line.unitText.trim().toLowerCase()} before.
-                      Someone who manages stock needs to set that up.
-                    </p>
-                  )}
-                </div>
-              )}
-              {/* What this line puts on the shelf and what one of them costs.
-                  The number the owner asked for: buy a case, see the price of
-                  an egg, before saving rather than after. */}
-              {linePack(line) && manualLineBase(line) !== null && (
-                <p data-testid={`manual-po-conversion-${idx}`} style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '8px 0 0', lineHeight: 1.45 }}>
-                  Adds <strong style={{ color: 'var(--color-text)' }}>
-                    {Number(manualLineBase(line)!.quantity.toFixed(3))} {line.selection?.item.unit}
-                  </strong>{' '}to stock, at <strong style={{ color: 'var(--color-text)' }}>
-                    MVR {manualLineBase(line)!.unitCost.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')}
-                  </strong>{' '}per {line.selection?.item.unit}.
-                </p>
-              )}
-              {/* What this line costs, so a slip in either box is visible here
-                  rather than in the total after the order is already saved. */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, fontSize: 12 }}>
-                <span style={{ color: 'var(--color-text-muted)' }}>Line total</span>
-                <span data-testid={`manual-po-line-total-${idx}`} style={{ fontWeight: 700, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
-                  {manualLineTotal(line) === null ? '—' : mvr(manualLineTotal(line))}
-                </span>
-              </div>
-            </div>
-          ))}
-          <Btn small variant="secondary" onClick={() => setManualPoForm((f) => ({ ...f, lines: [...f.lines, blankManualLine()] }))} style={{ marginBottom: 12 }}>
+            )))}
+          </div>
+          <Btn small variant="secondary" onClick={addManualLine} style={{ margin: '10px 0 12px' }}>
             + Add line
           </Btn>
           {/* The number to check against the receipt in your hand, before you
-              save rather than after. Incomplete lines are left out and said so.
-              Directly under the lines it sums, and above Notes: on a phone the
-              old spot below the notes box sat off-screen behind the footer,
-              which is no use for the one figure you are meant to check. */}
+              save rather than after. Incomplete lines are left out and said so. */}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8,
-            borderTop: '2px solid var(--color-border)', paddingTop: 12, marginBottom: 16,
+            borderTop: '2px solid var(--color-border)', paddingTop: 12, marginBottom: 12,
           }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>Order total</div>
@@ -1746,9 +1919,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
               {mvr(manualPoTotal)}
             </div>
           </div>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', display: 'block', marginBottom: 4 }}>Notes (optional)</label>
-          <textarea rows={2} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--color-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', marginBottom: 16 }} />
+          <label htmlFor="manual-po-notes" style={lineLabelStyle}>Notes (optional)</label>
+          <textarea id="manual-po-notes" rows={1} value={manualPoForm.notes} onChange={(e) => setManualPoForm((f) => ({ ...f, notes: e.target.value }))}
+            style={{ ...manualBoxStyle, resize: 'vertical', marginBottom: 12 }} />
           <ModalActions>
             <Btn variant="ghost" onClick={() => setShowManualPo(false)}>Cancel</Btn>
             <Btn onClick={() => void handleCreateManualPo()} disabled={manualPoSaving}>{manualPoSaving ? 'Creating…' : 'Create PO'}</Btn>
