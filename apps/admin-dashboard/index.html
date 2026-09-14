@@ -10,8 +10,14 @@
          index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
     <meta name="theme-color" content="#D4813A" />
-    <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/admin/logo.png" />
+    <!-- Tab and home-screen icons. These were one 1080px logo at the site
+         root, which the dev server does not serve and which Safari will not
+         shrink to a tab icon (owner, 2026-09-14: "no favicon in admin").
+         Real sizes now, all under /admin/ so the SPA owns them. -->
+    <link rel="icon" href="/admin/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/admin/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/admin/favicon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/admin/apple-touch-icon.png" />
 
     <!-- PWA manifest — the admin on a phone's home screen, launched
          full-screen, the way the POS is. The /admin/ scope keeps the

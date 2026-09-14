@@ -26,7 +26,7 @@ export default defineConfig({
       injectRegister: false,
       filename: 'sw.js',
       manifestFilename: 'manifest.webmanifest',
-      includeAssets: ['logo.png', 'theme-init.js'],
+      includeAssets: ['logo.png', 'favicon.ico', 'favicon-*.png', 'apple-touch-icon.png', 'icon-maskable-512.png', 'theme-init.js'],
       manifest: {
         name: 'Bake & Grill — Admin',
         short_name: 'B&G Admin',
@@ -40,10 +40,12 @@ export default defineConfig({
         orientation: 'any',
         lang: 'en',
         dir: 'ltr',
+        // Sizes that are true: the manifest used to point every entry at
+        // the 1080px logo, and an installer that checks finds no 192 or 512.
         icons: [
-          { src: '/admin/logo.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/admin/logo.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/admin/logo.png', sizes: '1080x1080', type: 'image/png', purpose: 'maskable' },
+          { src: '/admin/favicon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/admin/favicon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/admin/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         categories: ['business', 'productivity'],
       },

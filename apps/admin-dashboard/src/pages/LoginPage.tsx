@@ -174,7 +174,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: StaffUser, returnTo?: s
 
   const logo = (
     <div style={{ textAlign: 'center', marginBottom: 28 }}>
-      <img src="/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
+      <img src="/admin/logo.png" alt="Bake & Grill" style={{ width: 64, height: 64, borderRadius: 14, marginBottom: 10, display: 'inline-block' }} />
     </div>
   );
 

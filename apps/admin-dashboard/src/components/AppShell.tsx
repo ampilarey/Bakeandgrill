@@ -341,7 +341,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
             aria-label="Go to dashboard"
             className="admin-shell-brand-btn"
           >
-            <img src="/logo.png" alt="Bake & Grill" width={32} height={32} />
+            <img src="/admin/logo.png" alt="Bake & Grill" width={32} height={32} />
           </button>
           <div className="admin-shell-mobile-titles">
             <span className="admin-shell-mobile-section">{sectionLabel}</span>
@@ -403,7 +403,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
           className="admin-shell-brand"
           aria-label="Bake & Grill Admin home"
         >
-          <img src="/logo.png" alt="" width={32} height={32} />
+          <img src="/admin/logo.png" alt="" width={32} height={32} />
           <span>Bake &amp; Grill</span>
         </button>
 
