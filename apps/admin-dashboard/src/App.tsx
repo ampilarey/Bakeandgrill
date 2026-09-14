@@ -8,6 +8,8 @@ import { LoginPage } from './pages/LoginPage';
 import { CommandPalette } from './components/CommandPalette';
 import { can as userCan, getDefaultNavPath, canAny as userCanAny } from './components/navConfig';
 import { clearCurrentUserPermissionCache, primeCurrentUserPermissionCache } from './hooks/usePermissions';
+import { useAdminAppUpdate } from './hooks/useAdminAppUpdate';
+import { AppUpdateContext } from './hooks/appUpdateContext';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { PURCHASING_PAGE_PERMISSIONS } from './pages/PurchasingPage';
 import { KITCHEN_HUB_PERMISSIONS } from './pages/KitchenHub';
@@ -210,6 +212,22 @@ export default function App() {
     navigate('/login');
   };
 
+  /*
+   * The admin as an app: knows its build, hears when a newer one is on the
+   * server, and can reload its data or itself. Owner, 2026-09-14: "enhance
+   * the mobile pwa for admin, data base update option, admin app update
+   * option etc. Same as pos." Only watched while somebody is signed in.
+   */
+  const appUpdate = useAdminAppUpdate(Boolean(user));
+  const [dataEpoch, setDataEpoch] = useState(0);
+  const refreshData = () => {
+    // Everything cached goes, and the page remounts — every load it does on
+    // opening runs again. The POS's "Refresh data", for a screen that has
+    // no menu to refresh but plenty of lists.
+    queryClient.clear();
+    setDataEpoch((e) => e + 1);
+  };
+
   if (checking) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9' }}>
@@ -220,6 +238,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+    <AppUpdateContext.Provider value={{ ...appUpdate, refreshData, dataEpoch }}>
     <ToastProvider>
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     <Routes>
@@ -229,7 +248,7 @@ export default function App() {
         element={
           <AuthGuard user={user}>
             <AppShell user={user!} onLogout={handleLogout} onLogoutEverywhere={handleLogoutEverywhere} onSearch={() => setPaletteOpen(true)}>
-              <Suspense fallback={<PageFallback />}>
+              <Suspense key={dataEpoch} fallback={<PageFallback />}>
               <Routes>
                 <Route index element={<Navigate to={user ? getDefaultNavPath(user) : '/dashboard'} replace />} />
                 <Route path="dashboard" element={
@@ -527,6 +546,7 @@ export default function App() {
       />
     </Routes>
     </ToastProvider>
+    </AppUpdateContext.Provider>
     </QueryClientProvider>
   );
 }

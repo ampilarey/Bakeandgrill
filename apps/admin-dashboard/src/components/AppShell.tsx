@@ -21,6 +21,8 @@ import {
 import { SectionBar, rememberSectionPath } from './SectionBar';
 import { SectionRail } from './SectionRail';
 import { MobileTabBar } from './MobileTabBar';
+import { AppUpdateBanner } from './AppUpdateBanner';
+import { useAppUpdate } from '../hooks/appUpdateContext';
 import { MobileSectionSheet } from './MobileSectionSheet';
 import { SystemHealthBanner } from './SystemHealthBanner';
 
@@ -214,6 +216,7 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('bg_theme') === 'dark');
   const location = useLocation();
   const navigate = useNavigate();
+  const appUpdate = useAppUpdate();
 
   const allNavItems = useMemo(() => getAllNavItems(), []);
   const permittedSections = useMemo(() => getPermittedSections(user), [user]);
@@ -345,11 +348,22 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
             <span className="admin-shell-mobile-page">{currentPage}</span>
           </div>
           {headerControls}
-          <div className="admin-shell-avatar" aria-hidden>
+          {/* The avatar is the way to My Account — where the app panel with
+              Update / Reload data lives — and wears a dot when a newer
+              build is waiting. */}
+          <button
+            type="button"
+            className="admin-shell-avatar"
+            aria-label={appUpdate.updateAvailable ? 'My account — update available' : 'My account'}
+            onClick={() => navigate('/account')}
+            style={{ border: 'none', cursor: 'pointer', position: 'relative', fontFamily: 'inherit' }}
+          >
             {user.name?.charAt(0).toUpperCase()}
-          </div>
+            {appUpdate.updateAvailable && <span className="admin-shell-update-dot" data-testid="admin-update-dot" aria-hidden />}
+          </button>
         </header>
 
+        <AppUpdateBanner />
         <SystemHealthBanner />
 
         <main className="admin-shell-main admin-shell-main--mobile">
@@ -398,12 +412,16 @@ export function AppShell({ user, onLogout, onLogoutEverywhere, children, onSearc
         <div className="admin-shell-topbar-actions">
           {headerControls}
           <div className="admin-shell-user-chip">
-            <div className="admin-shell-avatar">{user.name?.charAt(0).toUpperCase()}</div>
+            <div className="admin-shell-avatar" style={{ position: 'relative' }}>
+              {user.name?.charAt(0).toUpperCase()}
+              {appUpdate.updateAvailable && <span className="admin-shell-update-dot" data-testid="admin-update-dot" aria-hidden />}
+            </div>
             <span className="admin-shell-user-name">{user.name}</span>
             <span className="admin-shell-user-role">· {user.role}</span>
           </div>
         </div>
       </header>
+      <AppUpdateBanner />
 
       <div className="admin-shell-body">
         <aside

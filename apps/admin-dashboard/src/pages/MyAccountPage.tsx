@@ -4,6 +4,7 @@ import { getMe, updateMyPreferences } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { PageHeader, PageShell } from '../components/SharedUI';
 import { TwoFactorCard } from '../components/TwoFactorCard';
+import { AppUpdatePanel } from '../components/AppUpdatePanel';
 import { Button, Card } from '../components/ui';
 
 const LOCK_OPTIONS: Array<{ value: number; label: string }> = [
@@ -132,6 +133,12 @@ export function MyAccountPage() {
 
       <div style={{ marginTop: 16 }}>
         <TwoFactorCard />
+      </div>
+
+      {/* Build, update, reload data, home screen — the POS's app tools,
+          here for the admin (owner, 2026-09-14). */}
+      <div style={{ marginTop: 16 }} id="app">
+        <AppUpdatePanel />
       </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, BellOff, LogOut, Moon, Sun, UserCircle, X } from 'lucide-react';
+import { Bell, BellOff, Download, LogOut, Moon, Sun, UserCircle, X } from 'lucide-react';
 import type { StaffUser } from '../api';
+import { useAppUpdate } from '../hooks/appUpdateContext';
 import {
   NAV_EXACT_MATCH_PATHS,
   canNavItem,
@@ -42,6 +43,7 @@ function SectionSheetPanel({
 }: MobileSectionSheetProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const appUpdate = useAppUpdate();
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -139,6 +141,18 @@ function SectionSheetPanel({
           >
             <UserCircle size={18} />
             My Account
+          </button>
+          {/* Build, update, reload data — the POS's More-drawer tools, on
+              the phone's sheet where a thumb finds them (owner, 2026-09-14). */}
+          <button
+            type="button"
+            className="admin-shell-sheet-account"
+            data-testid="admin-sheet-app"
+            onClick={() => { onClose(); navigate('/account#app'); }}
+          >
+            <Download size={18} />
+            {appUpdate.updateAvailable ? 'App update ready' : 'App & updates'}
+            {appUpdate.updateAvailable && <span className="admin-shell-update-dot admin-shell-update-dot--inline" aria-hidden />}
           </button>
           <button
             type="button"

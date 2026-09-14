@@ -5976,3 +5976,22 @@ work area is a single column that
     grid-column: 1 / -1;
   }
 }
+
+/* A newer admin build is waiting — the dot on the avatar and the sheet row
+   (owner, 2026-09-14: "admin app update option … same as pos"). */
+.admin-shell-update-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: 2px solid var(--color-surface);
+  box-sizing: content-box;
+}
+.admin-shell-update-dot--inline {
+  position: static;
+  margin-left: auto;
+  border-color: transparent;
+}

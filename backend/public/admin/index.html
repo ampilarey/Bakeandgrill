@@ -8,9 +8,23 @@
     <!-- Keep in sync with backend SecurityHeaders middleware: browsers enforce the
          INTERSECTION of this meta CSP and the server header, and the /admin/ directory
          index can be served statically (bypassing Laravel), so this meta is load-bearing. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io;" />
-    <meta name="theme-color" content="#0f172a" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://api.stripe.com https://*.ingest.sentry.io; worker-src 'self' blob:;" />
+    <meta name="theme-color" content="#D4813A" />
+    <link rel="icon" type="image/png" href="/admin/logo.png" />
+    <link rel="apple-touch-icon" href="/admin/logo.png" />
+
+    <!-- PWA manifest — the admin on a phone's home screen, launched
+         full-screen, the way the POS is. The /admin/ scope keeps the
+         install separate from the POS under /pos/. -->
+    <link rel="manifest" href="/admin/manifest.webmanifest" />
+
+    <!-- iOS standalone hints. Without these the home-screen icon opens a
+         Safari shell with the URL bar, which reads as "the install did not
+         work". -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="B&G Admin" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="stylesheet" href="/css/fonts.css" />
     <link rel="stylesheet" href="/css/dhivehi-font.css?app=website" />
     <script src="/admin/theme-init.js"></script>
@@ -21,10 +35,10 @@
       button { font-family: inherit; cursor: pointer; }
       input, select, textarea { font-family: inherit; }
     </style>
-    <script type="module" crossorigin src="/admin/assets/index-C7o_i5Iw.js"></script>
+    <script type="module" crossorigin src="/admin/assets/index-DFfTA6UR.js"></script>
     <link rel="modulepreload" crossorigin href="/admin/assets/vendor-BWxBgI-I.js">
-    <link rel="stylesheet" crossorigin href="/admin/assets/index-DDtO6pMh.css">
-  </head>
+    <link rel="stylesheet" crossorigin href="/admin/assets/index-CrXTw1AU.css">
+  <link rel="manifest" href="/admin/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
   </body>
