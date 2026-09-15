@@ -107,6 +107,35 @@ describe('Sorting and filtering from the headings', () => {
     expect(listed()).toEqual(['Water', 'Rice', 'Gas']);
   });
 
+  /*
+   * Owner, 2026-09-15: "When i enter a letter, i have to click again to
+   * enter 2nd." Each letter used to reload the table from the server, and
+   * the reload swapped the table for a skeleton — taking the box under the
+   * Name heading, and the cursor in it, with it. The search narrows the
+   * loaded list now: one fetch, and the box keeps focus letter after letter.
+   */
+  it('keeps the cursor in the Name box while typing, and never refetches', async () => {
+    await show();
+    expect(fetchInventoryItems).toHaveBeenCalledTimes(1);
+
+    const box = screen.getByTestId('inventory-filter-name');
+    box.focus();
+    fireEvent.change(box, { target: { value: 'r' } });
+    expect(listed()).toEqual(['Rice', 'Water']);
+    expect(document.activeElement).toBe(screen.getByTestId('inventory-filter-name'));
+
+    fireEvent.change(screen.getByTestId('inventory-filter-name'), { target: { value: 'ri' } });
+    expect(listed()).toEqual(['Rice']);
+    expect(document.activeElement).toBe(screen.getByTestId('inventory-filter-name'));
+    expect(screen.getByTestId('inventory-filter-name')).toHaveValue('ri');
+
+    // The box at the top and the one under the heading are one search.
+    expect(screen.getByPlaceholderText('Search items…')).toHaveValue('ri');
+    fireEvent.change(screen.getByTestId('inventory-filter-name'), { target: { value: 'rce' } });
+    expect(listed()).toEqual(['Rice']); // SKU RCE-1
+    expect(fetchInventoryItems).toHaveBeenCalledTimes(1);
+  });
+
   it('narrows the list by status and by category from the boxes under the headings', async () => {
     await show();
 

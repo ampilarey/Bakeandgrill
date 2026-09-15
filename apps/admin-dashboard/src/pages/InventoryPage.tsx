@@ -178,9 +178,25 @@ export default function InventoryPage() {
     const names = [...seen.values()].sort((a, b) => a.localeCompare(b));
     return { names, uncategorised };
   }, [items]);
+  /*
+   * The search box narrows the list here, not on the server. The whole
+   * store is already loaded (see loadItems), so a round trip added nothing —
+   * and it took something away: each letter reloaded the table, the table
+   * was swapped for a skeleton while it loaded, and the box under the Name
+   * heading, which lives inside the table, was unmounted mid-word. Owner,
+   * 2026-09-15: "When i enter a letter, i have to click again to enter 2nd."
+   */
+  const [search, setSearch] = useState('');
+  const searchNeedle = search.trim().toLowerCase();
+  const searched = useMemo(
+    () => (searchNeedle === ''
+      ? items
+      : items.filter((i) => i.name.toLowerCase().includes(searchNeedle) || (i.sku ?? '').toLowerCase().includes(searchNeedle))),
+    [items, searchNeedle],
+  );
   const sortedItems = useMemo(
-    () => sortInventory(filterInventory(reorderOnly ? items.filter(needsReorderSoon) : items, filters), sortKey),
-    [items, sortKey, reorderOnly, filters],
+    () => sortInventory(filterInventory(reorderOnly ? searched.filter(needsReorderSoon) : searched, filters), sortKey),
+    [searched, sortKey, reorderOnly, filters],
   );
   /*
    * Owner, 2026-09-07: "add grouping based on groups". Sorting by category
@@ -205,8 +221,6 @@ export default function InventoryPage() {
   const [lowCount, setLowCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [searchDebounced, setSearchDebounced] = useState('');
 
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
   const [adjForm, setAdjForm] = useState({ type: 'add' as 'add' | 'remove' | 'set', quantity: '', reason: '' });
@@ -974,7 +988,7 @@ export default function InventoryPage() {
       let page = 1;
       let lastPage = 1;
       do {
-        const res = await fetchInventoryItems({ search: searchDebounced || undefined, page, per_page: 200 });
+        const res = await fetchInventoryItems({ page, per_page: 200 });
         all.push(...(res.data ?? []));
         if (page === 1) units = res.units ?? [];
         lastPage = res.meta?.last_page ?? 1;
@@ -995,12 +1009,7 @@ export default function InventoryPage() {
     }
   };
 
-  useEffect(() => {
-    const t = setTimeout(() => setSearchDebounced(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  useEffect(() => { void loadItems(); }, [searchDebounced]);
+  useEffect(() => { void loadItems(); }, []);
   useEffect(() => { void loadLowStock(); }, []);
 
   // ── Prepared stock tab ─────────────────────────────────────────────────────
