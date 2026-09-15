@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
-import { PageHeader, PageShell, TableCard, TH, TD, Btn, Modal, ModalActions, TableSkeleton } from '../components/SharedUI';
+import { PageHeader, PageShell, TableCard, TD, Btn, Modal, ModalActions, TableSkeleton } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { useToast } from '../components/ui';
 import {
   createRecurringShoppingList,
@@ -15,6 +16,13 @@ export default function ShoppingListsPage({ embedded = false }: { embedded?: boo
   const { can } = useCurrentUserPermissions();
   const toast = useToast();
   const [lists, setLists] = useState<RecurringShoppingList[]>([]);
+  const listCtl = useSortFilter(lists, [
+    { key: 'name', label: 'Name', get: (l) => `${l.name}${l.is_active ? '' : ' (inactive)'}` },
+    { key: 'interval', label: 'Interval', kind: 'select', get: (l) => l.recurrence_interval },
+    { key: 'next', label: 'Next run', get: (l) => l.next_run_date },
+    { key: 'items', label: 'Items', kind: 'number', get: (l) => l.items.length },
+    { key: 'actions', label: '' },
+  ], 'shopping-lists');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -62,15 +70,9 @@ export default function ShoppingListsPage({ embedded = false }: { embedded?: boo
       <TableCard stickyHead>
         {loading ? <TableSkeleton rows={4} cols={5} /> : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Name', 'Interval', 'Next run', 'Items', ''].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={listCtl} allRows={lists} />
             <tbody>
-              {lists.map((list) => (
+              {listCtl.rows.map((list) => (
                 <tr key={list.id}>
                   <td style={TD}>{list.name}{!list.is_active ? ' (inactive)' : ''}</td>
                   <td style={TD}>{list.recurrence_interval}</td>

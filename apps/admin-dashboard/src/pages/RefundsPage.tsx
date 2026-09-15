@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, Pagination,
   StatCard, TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { useToast } from '../components/ui';
 import {
@@ -40,6 +41,17 @@ export default function RefundsPage() {
   const { state: dlg, ask, close: closeDlg } = useConfirmDialog();
 
   const [refunds, setRefunds] = useState<AdminRefund[]>([]);
+  const refundCtl = useSortFilter(refunds, [
+    { key: 'id', label: '#', kind: 'number', get: (r) => r.id },
+    { key: 'order', label: 'Order', get: (r) => [r.order?.order_number ?? `Order #${r.order_id}`, r.phone_flags?.refund_phone ?? r.refund_phone].filter(Boolean).join(' ') },
+    { key: 'amount', label: 'Amount', kind: 'number', get: (r) => Number(r.amount ?? 0) },
+    { key: 'reason', label: 'Reason', get: (r) => [r.reason_category ? (CATEGORY_LABEL[r.reason_category] ?? r.reason_category) : '', r.reason, r.rejection_reason].filter(Boolean).join(' ') },
+    { key: 'status', label: 'Status', kind: 'select', get: (r) => r.status },
+    { key: 'requested', label: 'Requested by', get: (r) => r.user?.name },
+    { key: 'approved', label: 'Approved by', get: (r) => r.approver?.name },
+    { key: 'date', label: 'Date', get: (r) => r.created_at },
+    { key: 'actions', label: '' },
+  ], 'refunds');
   const [total, setTotal] = useState(0);
   const [lastPage, setLastPage] = useState(1);
   const [approvedTotal, setApprovedTotal] = useState(0);
@@ -225,15 +237,9 @@ export default function RefundsPage() {
           <TableStateBar isEmpty emptyMessage="No refunds found." filterActive={!!statusFilter} onClearFilters={() => { setStatusFilter(''); setPage(1); }} />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['#', 'Order', 'Amount', 'Reason', 'Status', 'Requested by', 'Approved by', 'Date', ''].map(h => (
-                  <th key={h || 'actions'} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={refundCtl} allRows={refunds} />
             <tbody>
-              {refunds.map(r => {
+              {refundCtl.rows.map(r => {
                 const flags = r.phone_flags;
                 const highlight = flags?.phone_added_at_refund || flags?.otp_owner_override || flags?.has_prior_order_history === false;
                 return (

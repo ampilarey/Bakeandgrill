@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, EmptyState, StatCard,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
   fetchDevices, fetchPendingDevices, registerDevice, enableDevice, disableDevice, approveDevice, rejectDevice, deleteDevice,
   type Device,
@@ -152,6 +153,15 @@ export default function DevicesPage() {
 
   // Exclude pending/rejected from the main table — show approved + legacy null-status (including disabled)
   const approved = devices.filter(d => d.status !== 'pending' && d.status !== 'rejected');
+  const deviceCtl = useSortFilter(approved, [
+    { key: 'name', label: 'Name', get: (d) => d.name },
+    { key: 'type', label: 'Type', kind: 'select', get: (d) => d.type?.toUpperCase() },
+    { key: 'status', label: 'Status', kind: 'select', get: (d) => (d.is_active ? 'Active' : 'Disabled') },
+    { key: 'cashier', label: 'Last Cashier', get: (d) => d.user?.name ?? d.registered_by },
+    { key: 'shift', label: 'Open Shift', kind: 'number', get: (d) => d.open_shift_id },
+    { key: 'seen', label: 'Last Seen', get: (d) => d.last_seen_at },
+    ...(canManage ? [{ key: 'actions', label: 'Actions' }] : []),
+  ], 'devices');
   // Rejected devices stay blocked and can never re-approve themselves, but
   // the OWNER can bring one back from here (mis-taps happen).
   const rejected = devices.filter(d => d.status === 'rejected');
@@ -270,19 +280,13 @@ export default function DevicesPage() {
       {/* ── Registered Devices Table ── */}
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Name', 'Type', 'Status', 'Last Cashier', 'Open Shift', 'Last Seen', ...(canManage ? ['Actions'] : [])].map(h => (
-                <th key={h} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <SortFilterHead controls={deviceCtl} allRows={approved} />
           <tbody>
             {loading ? (
               <tr><td colSpan={canManage ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : approved.length === 0 ? (
               <tr><td colSpan={canManage ? 7 : 6}><EmptyState message="No approved devices yet." /></td></tr>
-            ) : approved.map(d => (
+            ) : deviceCtl.rows.map(d => (
               <tr key={d.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{d.name}</td>
                 <td style={TD}><Badge color="blue">{d.type?.toUpperCase()}</Badge></td>

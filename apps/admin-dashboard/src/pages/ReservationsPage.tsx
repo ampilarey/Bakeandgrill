@@ -5,8 +5,9 @@ import {
   type AdminReservation, type ReservationSettings,
 } from '../api';
 import {
-  Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD, TH,
+  Badge, Btn, DateInput, EmptyState, ErrorMsg, PageHeader, PageShell, Pagination, Spinner, TableCard, TD,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -69,6 +70,16 @@ const cardStyle: React.CSSProperties = {
 
 function ReservationsList() {
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
+  const reservationCtl = useSortFilter(reservations, [
+    { key: 'id', label: '#', kind: 'number', get: (r) => r.id },
+    { key: 'guest', label: 'Guest', get: (r) => [r.customer_name, r.customer_phone, r.notes].filter(Boolean).join(' ') },
+    { key: 'party', label: 'Party', kind: 'number', get: (r) => r.party_size },
+    { key: 'date', label: 'Date', get: (r) => r.date },
+    { key: 'time', label: 'Time', get: (r) => r.time_slot },
+    { key: 'table', label: 'Table', get: (r) => r.table?.name },
+    { key: 'status', label: 'Status', kind: 'select', get: (r) => (r.status ?? '').split('_').join(' ') },
+    { key: 'actions', label: 'Actions' },
+  ], 'reservations');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -165,15 +176,9 @@ function ReservationsList() {
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                {['#', 'Guest', 'Party', 'Date', 'Time', 'Table', 'Status', 'Actions'].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={reservationCtl} allRows={reservations} />
             <tbody>
-              {reservations.map((r) => (
+              {reservationCtl.rows.map((r) => (
                 <tr key={r.id}>
                   <td style={{ ...TD, color: 'var(--color-text-muted)', fontSize: 12 }}>{r.id}</td>
                   <td style={TD}>

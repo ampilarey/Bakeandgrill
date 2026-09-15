@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Pagination, EmptyState, StatCard,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Pagination, EmptyState, StatCard,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchAdminReviews, moderateReview, type Review } from '../api';
 import { Star, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -32,6 +33,15 @@ export default function ReviewsPage() {
   usePageTitle('Reviews');
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const reviewCtl = useSortFilter(reviews, [
+    { key: 'author', label: 'Author', get: (r) => r.author },
+    { key: 'rating', label: 'Rating', kind: 'number', get: (r) => r.rating },
+    { key: 'comment', label: 'Comment', get: (r) => r.comment },
+    { key: 'about', label: 'Item / Order', get: (r) => [r.item?.name, r.order?.order_number].filter(Boolean).join(' ') },
+    { key: 'status', label: 'Status', kind: 'select', get: (r) => r.status },
+    { key: 'date', label: 'Date', get: (r) => r.created_at },
+    { key: 'actions', label: 'Actions' },
+  ], 'reviews');
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,19 +102,13 @@ export default function ReviewsPage() {
 
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Author', 'Rating', 'Comment', 'Item / Order', 'Status', 'Date', 'Actions'].map(h => (
-                <th key={h} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <SortFilterHead controls={reviewCtl} allRows={reviews} />
           <tbody>
             {loading ? (
               <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : reviews.length === 0 ? (
               <tr><td colSpan={7}><EmptyState message="No reviews found." /></td></tr>
-            ) : reviews.map(review => (
+            ) : reviewCtl.rows.map(review => (
               <tr key={review.id}>
                 <td style={{ ...TD, fontWeight: 600 }}>{review.author}</td>
                 <td style={TD}><StarRating rating={review.rating} /></td>

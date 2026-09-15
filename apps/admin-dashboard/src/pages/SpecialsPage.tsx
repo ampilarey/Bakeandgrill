@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, ConfirmDialog, Modal, ModalActions, Input, Pagination, EmptyState, TabScrollRow, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchSpecials, findOverlappingSpecial, getSpecial, createSpecial, updateSpecial, deleteSpecial, fetchItemVariants, type DailySpecial, type DailySpecialVariantOverride, type MenuItem, type MenuVariant, type DailySpecialPayload } from '../api';
 import { ItemSearch, type MenuItemSelection } from '../components/ItemSearch';
 import { useToast } from '../components/ui';
@@ -294,6 +295,17 @@ export default function SpecialsPage() {
   const toast = useToast();
 
   const [specials, setSpecials] = useState<DailySpecial[]>([]);
+  const specialCtl = useSortFilter(specials, [
+    { key: 'item', label: 'Item', get: (s) => s.item_name },
+    { key: 'type', label: 'Type', kind: 'select', get: (s) => (hasVariantOverrides(s) ? 'Per variant' : isPctDiscount(s) ? `${s.discount_pct}% off` : 'Fixed price') },
+    { key: 'badge', label: 'Badge', get: (s) => s.badge_label?.trim() },
+    { key: 'price', label: 'Price' },
+    { key: 'dates', label: 'Dates', get: (s) => `${s.start_date} → ${s.end_date}` },
+    { key: 'days', label: 'Days', get: (s) => (s.days_of_week?.length ? s.days_of_week.map(d => DAY_NAMES[d]).join(', ') : 'All days') },
+    { key: 'status', label: 'Status', kind: 'select', get: (s) => (s.is_active ? 'Active' : 'Inactive') },
+    { key: 'sold', label: 'Sold', kind: 'number', get: (s) => s.sold_count },
+    { key: 'actions', label: 'Actions' },
+  ], 'specials');
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_today_count: 0 });
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [itemSelection, setItemSelection] = useState<MenuItemSelection | null>(null);
@@ -677,19 +689,13 @@ export default function SpecialsPage() {
       <div className="specials-desktop-table">
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Item', 'Type', 'Badge', 'Price', 'Dates', 'Days', 'Status', 'Sold', 'Actions'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={specialCtl} allRows={specials} />
             <tbody>
               {loading ? (
                 <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
               ) : specials.length === 0 ? (
                 <tr><td colSpan={9}><EmptyState message={emptyMessage} /></td></tr>
-              ) : specials.map(s => (
+              ) : specialCtl.rows.map(s => (
                 <tr key={s.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>
                     {s.item_image && <img src={s.item_image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', marginRight: 8, verticalAlign: 'middle' }} />}

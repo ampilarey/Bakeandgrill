@@ -4,8 +4,9 @@ import {
   sendSmsCampaign, cancelSmsCampaign, type SmsCampaign,
 } from '../../api';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, TH, statColor, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, Input, Spinner, TableCard, TD, statColor, useConfirmDialog,
 } from '../../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 import { smsCharCount } from '../../utils/smsCharCount';
 
 type PreviewResult = {
@@ -38,6 +39,17 @@ function audienceToCriteria(audience: AudiencePreset): Record<string, unknown> {
 
 export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
   const [campaigns, setCampaigns] = useState<SmsCampaign[]>([]);
+  const campaignCtl = useSortFilter(campaigns, [
+    { key: 'name', label: 'Name', get: (c) => c.name },
+    { key: 'ab', label: 'A/B', kind: 'select', get: (c) => (c.ab_test_enabled ? 'A/B' : 'Single') },
+    { key: 'status', label: 'Status', kind: 'select', get: (c) => c.status },
+    { key: 'recipients', label: 'Recipients', kind: 'number', get: (c) => c.total_recipients },
+    { key: 'sent', label: 'Sent', kind: 'number', get: (c) => c.sent_count },
+    { key: 'results', label: 'A/B Results' },
+    { key: 'cost', label: 'Cost', kind: 'number', get: (c) => (c.total_cost_mvr == null ? null : Number(c.total_cost_mvr)) },
+    { key: 'created', label: 'Created', get: (c) => c.created_at },
+    { key: 'actions', label: '' },
+  ], 'sms-campaigns');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -278,15 +290,9 @@ export function CampaignsTab({ prefill }: { prefill?: CampaignPrefill } = {}) {
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                {['Name', 'A/B', 'Status', 'Recipients', 'Sent', 'A/B Results', 'Cost', 'Created', ''].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={campaignCtl} allRows={campaigns} />
             <tbody>
-              {campaigns.map((c) => (
+              {campaignCtl.rows.map((c) => (
                 <tr key={c.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{c.name}</td>
                   <td style={TD}>

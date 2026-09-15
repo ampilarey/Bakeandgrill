@@ -13,9 +13,10 @@ import {
   type InventoryItem, type Modifier, type ModifierPayload,
 } from '../api';
 import {
-  Badge, Btn, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, TableCard, TableSkeleton, TD, TH,
+  Badge, Btn, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, TableCard, TableSkeleton, TD,
   useConfirmDialog, ConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -57,6 +58,13 @@ export function ModifiersPage() {
   const confirm = useConfirmDialog();
 
   const [rows, setRows] = useState<Modifier[]>([]);
+  const modifierCtl = useSortFilter(rows, [
+    { key: 'name', label: 'Name', get: (m) => [m.name, m.name_dv].filter(Boolean).join(' ') },
+    { key: 'price', label: 'Price', kind: 'number', get: (m) => m.price },
+    { key: 'uses', label: 'Uses', get: (m) => usesLabel(m) },
+    { key: 'status', label: 'Status', kind: 'select', get: (m) => (m.is_active ? 'On' : 'Off') },
+    { key: 'actions', label: 'Actions' },
+  ], 'modifiers');
   const [ingredients, setIngredients] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -178,9 +186,9 @@ export function ModifiersPage() {
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>{['Name', 'Price', 'Uses', 'Status', 'Actions'].map((h) => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+            <SortFilterHead controls={modifierCtl} allRows={rows} />
             <tbody>
-              {rows.map((m) => (
+              {modifierCtl.rows.map((m) => (
                 <tr key={m.id} data-testid={`modifier-row-${m.id}`}>
                   <td style={{ ...TD, fontWeight: 600 }}>{m.name}{m.name_dv ? <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}> · {m.name_dv}</span> : null}</td>
                   <td style={TD}>{m.price > 0 ? `MVR ${m.price.toFixed(2)}` : 'Free'}</td>

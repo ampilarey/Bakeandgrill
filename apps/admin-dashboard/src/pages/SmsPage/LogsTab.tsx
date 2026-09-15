@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import { fetchSmsLogs, fetchSmsLogStats, type SmsLog } from '../../api';
 import {
-  Badge, Btn, EmptyState, Select, Spinner, StatCard, TableCard, TD, TH, statColor,
+  Badge, Btn, EmptyState, Select, Spinner, StatCard, TableCard, TD, statColor,
 } from '../../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 
 export function LogsTab() {
   const [logs, setLogs] = useState<SmsLog[]>([]);
+  const logCtl = useSortFilter(logs, [
+    { key: 'to', label: 'To', get: (l) => l.to },
+    { key: 'type', label: 'Type', kind: 'select', get: (l) => l.type },
+    { key: 'status', label: 'Status', kind: 'select', get: (l) => l.status },
+    { key: 'message', label: 'Message', get: (l) => [l.message, l.error_message].filter(Boolean).join(' ') },
+    { key: 'segments', label: 'Segments', kind: 'number', get: (l) => l.segments },
+    { key: 'cost', label: 'Cost', kind: 'number', get: (l) => Number(l.cost_estimate_mvr) },
+    { key: 'sent', label: 'Sent At', get: (l) => l.sent_at },
+  ], 'sms-logs');
   const [stats, setStats] = useState<{ total: number; sent: number; failed: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -68,15 +78,9 @@ export function LogsTab() {
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr>
-                {['To', 'Type', 'Status', 'Message', 'Segments', 'Cost', 'Sent At'].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={logCtl} allRows={logs} />
             <tbody>
-              {logs.map((l) => (
+              {logCtl.rows.map((l) => (
                 <tr key={l.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{l.to}</td>
                   <td style={TD}><Badge label={l.type} color="blue" /></td>

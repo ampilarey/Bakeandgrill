@@ -4,6 +4,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, StatCard, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { CustomerSearch } from '../components/CustomerSearch';
 import {
   fetchGiftCards,
@@ -42,6 +43,16 @@ export default function GiftCardsPage() {
   usePageTitle('Gift Cards');
 
   const [cards, setCards] = useState<GiftCard[]>([]);
+  const cardCtl = useSortFilter(cards, [
+    { key: 'code', label: 'Code', get: (c) => c.masked_code },
+    { key: 'issued_to', label: 'Issued To', get: (c) => [c.issued_to?.name, c.purchased_by?.name].filter(Boolean).join(' ') },
+    { key: 'initial', label: 'Initial', kind: 'number', get: (c) => Number(c.initial_balance) },
+    { key: 'balance', label: 'Balance', kind: 'number', get: (c) => Number(c.available_balance ?? c.current_balance) },
+    { key: 'status', label: 'Status', kind: 'select', get: (c) => STATUS_LABEL[c.status] ?? c.status },
+    { key: 'expires', label: 'Expires', get: (c) => c.expires_at },
+    { key: 'issued', label: 'Issued', get: (c) => c.created_at },
+    { key: 'actions', label: '' },
+  ], 'gift-cards');
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, active_count: 0, active_balance: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -395,19 +406,13 @@ export default function GiftCardsPage() {
 
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Code', 'Issued To', 'Initial', 'Balance', 'Status', 'Expires', 'Issued', ''].map(h => (
-                <th key={h || 'actions'} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <SortFilterHead controls={cardCtl} allRows={cards} />
           <tbody>
             {loading ? (
               <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
             ) : cards.length === 0 ? (
               <tr><td colSpan={8}><EmptyState message="No gift cards yet." /></td></tr>
-            ) : cards.map(card => (
+            ) : cardCtl.rows.map(card => (
               <tr key={card.id}>
                 <td style={TD}><code style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.05em', color: 'var(--color-text)' }}>{card.masked_code}</code></td>
                 <td style={TD}>

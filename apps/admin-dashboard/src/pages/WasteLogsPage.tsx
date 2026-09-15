@@ -3,6 +3,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchWasteLogs, fetchWasteSummary, createWasteLog, type WasteLog, type WasteSummary } from '../api';
 import { ItemSearch, type MenuItemSelection, type InventoryItemSelection } from '../components/ItemSearch';
 import { downloadCSV } from '../utils/csvExport';
@@ -31,6 +32,15 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
 
   // logs tab
   const [logs, setLogs]           = useState<WasteLog[]>([]);
+  const wasteCtl = useSortFilter(logs, [
+    { key: 'item', label: 'Item', get: (l) => l.item?.name ?? l.inventory_item?.name },
+    { key: 'qty', label: 'Qty', kind: 'number', get: (l) => Number(l.quantity) },
+    { key: 'reason', label: 'Reason', kind: 'select', get: (l) => REASON_LABELS[l.reason as Reason] ?? l.reason },
+    { key: 'cost', label: 'Cost Est.', kind: 'number', get: (l) => l.cost_estimate },
+    { key: 'notes', label: 'Notes', get: (l) => l.notes },
+    { key: 'by', label: 'Logged By', get: (l) => l.logged_by },
+    { key: 'date', label: 'Date', get: (l) => l.created_at },
+  ], 'waste-logs');
   const [meta, setMeta]           = useState({ current_page: 1, last_page: 1, total: 0 });
   const [totalCost, setTotalCost] = useState(0);
   const [loading, setLoading]     = useState(true);
@@ -194,19 +204,13 @@ export default function WasteLogsPage({ embedded = false }: { embedded?: boolean
 
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Item', 'Qty', 'Reason', 'Cost Est.', 'Notes', 'Logged By', 'Date'].map(h => (
-                    <th key={h} style={TH}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
+              <SortFilterHead controls={wasteCtl} allRows={logs} />
               <tbody>
                 {loading ? (
                   <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : logs.length === 0 ? (
                   <tr><td colSpan={7}><EmptyState message="No waste logs for this period." /></td></tr>
-                ) : logs.map(log => (
+                ) : wasteCtl.rows.map(log => (
                   <tr key={log.id}>
                     <td style={{ ...TD, fontWeight: 600 }}>{log.item?.name ?? log.inventory_item?.name ?? <span style={{ color: 'var(--color-text-muted)' }}>—</span>}</td>
                     <td style={TD}>{log.quantity}{log.unit ? ` ${log.unit}` : ''}</td>

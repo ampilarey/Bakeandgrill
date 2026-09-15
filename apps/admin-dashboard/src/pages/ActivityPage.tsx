@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, RefreshCw } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { PageHeader, PageShell, TableCard, TH, TD, Btn, EmptyState, DateInput } from '../components/SharedUI';
+import { PageHeader, PageShell, TableCard, TD, Btn, EmptyState, DateInput } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchStaff } from '../api';
 import {
   fetchAuditLogs,
@@ -36,6 +37,13 @@ export default function ActivityPage() {
   const navigate = useNavigate();
 
   const [logs, setLogs] = useState<AuditLogRow[]>([]);
+  const logCtl = useSortFilter(logs, [
+    { key: 'time', label: 'Time', get: (r) => r.created_at },
+    { key: 'staff', label: 'Staff', get: (r) => r.user?.name },
+    { key: 'action', label: 'Action', kind: 'select', get: (r) => formatAuditAction(r.action) },
+    { key: 'record', label: 'Record', get: (r) => `${r.model_type} #${r.model_id ?? ''}` },
+    { key: 'details', label: 'Details', get: (r) => detailSnippet(r) },
+  ], 'activity');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -144,17 +152,9 @@ export default function ActivityPage() {
           <EmptyState message="No activity found for these filters." />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr>
-                <th style={TH}>Time</th>
-                <th style={TH}>Staff</th>
-                <th style={TH}>Action</th>
-                <th style={TH}>Record</th>
-                <th style={TH}>Details</th>
-              </tr>
-            </thead>
+            <SortFilterHead controls={logCtl} allRows={logs} />
             <tbody>
-              {logs.map((row) => (
+              {logCtl.rows.map((row) => (
                 <tr key={row.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={TD}>{new Date(row.created_at).toLocaleString()}</td>
                   <td style={TD}>{row.user?.name ?? '—'}</td>

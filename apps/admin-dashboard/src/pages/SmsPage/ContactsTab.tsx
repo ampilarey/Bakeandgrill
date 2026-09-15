@@ -7,8 +7,9 @@ import {
   type SmsContact, type SmsContactGroup,
 } from '../../api';
 import {
-  Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD, TH,
+  Badge, Btn, Card, EmptyState, Input, Modal, ModalActions, Spinner, TableCard, TD,
 } from '../../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../../components/TableControls';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABEL: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
@@ -27,6 +28,16 @@ const EMPTY_CONTACT: ContactForm = {
 
 export function ContactsTab() {
   const [contacts, setContacts] = useState<SmsContact[]>([]);
+  const contactCtl = useSortFilter(contacts, [
+    { key: 'name', label: 'Name', get: (c) => [c.name, c.user_name].filter(Boolean).join(' ') },
+    { key: 'phone', label: 'Phone', get: (c) => c.phone },
+    { key: 'type', label: 'Type', kind: 'select', get: (c) => c.type },
+    { key: 'days', label: 'Active Days', get: (c) => (c.active_days ? c.active_days.map(d => DAY_LABEL[d]).join(', ') : 'Every day') },
+    { key: 'window', label: 'Time Window', get: (c) => (c.active_from && c.active_until ? `${c.active_from}–${c.active_until}` : '') },
+    { key: 'tags', label: 'Tags', get: (c) => (c.tags ?? []).join(', ') },
+    { key: 'status', label: 'Status', kind: 'select', get: (c) => (c.is_enabled ? 'Active' : 'Disabled') },
+    { key: 'actions', label: '' },
+  ], 'sms-contacts');
   const [groups, setGroups] = useState<SmsContactGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'contacts' | 'groups'>('contacts');
@@ -165,9 +176,9 @@ export function ContactsTab() {
           ) : (
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr>{['Name', 'Phone', 'Type', 'Active Days', 'Time Window', 'Tags', 'Status', ''].map(h => <th key={h} style={TH}>{h}</th>)}</tr></thead>
+                <SortFilterHead controls={contactCtl} allRows={contacts} />
                 <tbody>
-                  {contacts.map(c => (
+                  {contactCtl.rows.map(c => (
                     <tr key={c.id}>
                       <td style={{ ...TD, fontWeight: 600 }}>{c.name}{c.user_name && <span style={{ color: 'var(--color-text-muted)', fontSize: 11, marginLeft: 6 }}>({c.user_name})</span>}</td>
                       <td style={{ ...TD, fontFamily: 'monospace' }}>{c.phone}</td>

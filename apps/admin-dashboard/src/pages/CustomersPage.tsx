@@ -8,9 +8,10 @@ import {
 } from '../api';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, TableSkeleton, TableStateBar,
-  PageHeader, PageShell, Spinner, TableCard, TD, TH, Modal, ModalActions, Input,
+  PageHeader, PageShell, Spinner, TableCard, TD, Modal, ModalActions, Input,
   ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { CustomerCreditSection } from '../components/CustomerCreditSection';
 import { Customer360Drawer, BADGE_MAP } from '../components/Customer360Drawer';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -33,6 +34,16 @@ export function CustomersPage() {
   const openedCustomerId = useRef<string | null>(null);
 
   const [customers, setCustomers]   = useState<AdminCustomer[]>([]);
+  const customerCtl = useSortFilter(customers, [
+    { key: 'customer', label: 'Customer', get: (c) => [c.name, c.email].filter(Boolean).join(' ') },
+    { key: 'phone', label: 'Phone', get: (c) => c.phone },
+    { key: 'badges', label: 'Badges', get: (c) => (c.badges ?? []).map((b) => BADGE_MAP[b]?.label ?? b).join(' ') },
+    { key: 'tier', label: 'Tier', kind: 'select', get: (c) => c.tier },
+    { key: 'orders', label: 'Orders', kind: 'number', get: (c) => c.orders_count },
+    { key: 'last', label: 'Last Order', get: (c) => c.last_order_at },
+    { key: 'status', label: 'Status', kind: 'select', get: (c) => (c.is_active ? 'Active' : 'Inactive') },
+    { key: 'joined', label: 'Joined', get: (c) => c.created_at },
+  ], 'customers');
   const [meta, setMeta]             = useState({ current_page: 1, last_page: 1, total: 0 });
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
@@ -371,20 +382,9 @@ export function CustomersPage() {
           <EmptyState message="No customers found" />
         ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={TH}>Customer</th>
-              <th style={TH}>Phone</th>
-              <th style={TH}>Badges</th>
-              <th style={TH}>Tier</th>
-              <th style={TH}>Orders</th>
-              <th style={TH}>Last Order</th>
-              <th style={TH}>Status</th>
-              <th style={TH}>Joined</th>
-            </tr>
-          </thead>
+          <SortFilterHead controls={customerCtl} allRows={customers} />
           <tbody>
-            {customers.map((c) => (
+            {customerCtl.rows.map((c) => (
               <tr
                 key={c.id}
                 tabIndex={0}

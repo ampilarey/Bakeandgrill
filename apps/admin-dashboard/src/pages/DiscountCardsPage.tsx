@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
+  PageHeader, PageShell, TableCard, TD, Badge, Modal, ModalActions, Btn, Input, Pagination, EmptyState,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
   fetchDiscountCardBatches,
   fetchDiscountCardBatch,
@@ -30,6 +31,15 @@ export default function DiscountCardsPage() {
   usePageTitle('Discount Cards');
 
   const [batches, setBatches] = useState<DiscountCardBatch[]>([]);
+  const batchCtl = useSortFilter(batches, [
+    { key: 'batch', label: 'Batch', get: (b) => `${b.name} #${b.id}` },
+    { key: 'discount', label: 'Discount', get: (b) => formatDiscount(b.type, b.discount_value) },
+    { key: 'qty', label: 'Qty', kind: 'number', get: (b) => b.quantity },
+    { key: 'active', label: 'Active', kind: 'number', get: (b) => b.stats?.active },
+    { key: 'uses', label: 'Uses', kind: 'number', get: (b) => b.stats?.redeemed_uses ?? 0 },
+    { key: 'expires', label: 'Expires', get: (b) => b.expires_at },
+    { key: 'actions', label: '' },
+  ], 'discount-cards');
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -201,13 +211,7 @@ export default function DiscountCardsPage() {
 
       <TableCard>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              {['Batch', 'Discount', 'Qty', 'Active', 'Uses', 'Expires', ''].map((h) => (
-                <th key={h || 'actions'} style={TH}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <SortFilterHead controls={batchCtl} allRows={batches} />
           <tbody>
             {loading && (
               <tr><td colSpan={7}><EmptyState message="Loading…" /></td></tr>
@@ -215,7 +219,7 @@ export default function DiscountCardsPage() {
             {!loading && batches.length === 0 && (
               <tr><td colSpan={7}><EmptyState message="No discount card batches yet." /></td></tr>
             )}
-            {!loading && batches.map((b) => (
+            {!loading && batchCtl.rows.map((b) => (
               <tr key={b.id}>
                 <td style={TD}>
                   <div style={{ fontWeight: 700 }}>{b.name}</div>

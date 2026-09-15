@@ -6,6 +6,7 @@ import {
   PageHeader, PageShell, TableCard, Badge, Btn, Modal, ModalActions,
   Pagination, EmptyState, Spinner, ErrorMsg, Input,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { CustomerSearch } from '../components/CustomerSearch';
 import {
   createTradeAccount,
@@ -33,6 +34,14 @@ export default function WholesalePage() {
   const canManage = can('trade.manage_accounts');
 
   const [accounts, setAccounts] = useState<TradeAccount[]>([]);
+  const accountCtl = useSortFilter(accounts, [
+    { key: 'shop', label: 'Shop', get: (a) => [a.shop_name, a.contact_name, a.contact_phone].filter(Boolean).join(' ') },
+    { key: 'customer', label: 'Customer', get: (a) => a.customer?.name ?? a.customer?.phone },
+    { key: 'pay', label: 'How they pay', kind: 'select', get: (a) => SETTLEMENT_LABEL[a.settlement_mode] ?? a.settlement_mode },
+    { key: 'billing', label: 'Billing', kind: 'select', get: (a) => BILLING_LABEL[a.billing_cycle] ?? a.billing_cycle },
+    { key: 'credit', label: 'Credit', kind: 'select', get: (a) => (a.customer?.credit_enabled ? (a.customer.credit_status ?? 'active') : 'Credit off') },
+    { key: 'status', label: 'Status', kind: 'select', get: (a) => (a.is_active ? 'Active' : 'Inactive') },
+  ], 'wholesale-accounts');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -146,27 +155,7 @@ export default function WholesalePage() {
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Shop', 'Customer', 'How they pay', 'Billing', 'Credit', 'Status'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: '10px 16px',
-                      textAlign: 'left',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: 'var(--color-text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      borderBottom: '1px solid var(--color-border)',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={accountCtl} allRows={accounts} thStyle={{ padding: '10px 16px', letterSpacing: '0.06em', background: 'transparent' }} />
             <tbody>
               {accounts.length === 0 ? (
                 <tr>
@@ -174,7 +163,7 @@ export default function WholesalePage() {
                     <EmptyState>No trade accounts yet. Add a shop we supply on sale-or-return or firm sale.</EmptyState>
                   </td>
                 </tr>
-              ) : accounts.map((a) => (
+              ) : accountCtl.rows.map((a) => (
                 <tr key={a.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={{ padding: '12px 16px' }}>
                     <Link

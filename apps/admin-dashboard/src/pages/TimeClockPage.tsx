@@ -5,6 +5,7 @@ import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, EmptyState, StatCard, DateInput,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { downloadCSV } from '../utils/csvExport';
 import { today } from '../utils/dateHelpers';
 import { getTimeClockHistory, getTimeClockSummary, type TimeEntry } from '../api';
@@ -34,6 +35,13 @@ export default function TimeClockPage() {
 
   const todayStr = today();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const entryCtl = useSortFilter(entries, [
+    { key: 'staff', label: 'Staff', get: (e) => e.staff?.name ?? `Staff #${e.staff_id}` },
+    { key: 'in', label: 'Clock In', get: (e) => e.clocked_in_at },
+    { key: 'out', label: 'Clock Out', get: (e) => e.clocked_out_at },
+    { key: 'hours', label: 'Hours', kind: 'number', get: (e) => e.hours_worked },
+    { key: 'status', label: 'Status', kind: 'select', get: (e) => (e.clocked_out_at ? 'Complete' : 'Active') },
+  ], 'time-clock');
   const [histLoading, setHistLoading] = useState(false);
   const [histFrom, setHistFrom] = useState(todayStr);
   const [histTo, setHistTo] = useState(todayStr);
@@ -111,17 +119,13 @@ export default function TimeClockPage() {
           {histError && <p style={{ color: 'var(--color-danger)', marginBottom: 12, fontSize: 13 }}>{histError}</p>}
           <TableCard>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Staff', 'Clock In', 'Clock Out', 'Hours', 'Status'].map(h => <th key={h} style={TH}>{h}</th>)}
-                </tr>
-              </thead>
+              <SortFilterHead controls={entryCtl} allRows={entries} />
               <tbody>
                 {histLoading ? (
                   <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading…</td></tr>
                 ) : entries.length === 0 ? (
                   <tr><td colSpan={5}><EmptyState message="No time entries for this period." /></td></tr>
-                ) : entries.map(e => (
+                ) : entryCtl.rows.map(e => (
                   <tr key={e.id}>
                     <td style={{ ...TD, fontWeight: 600 }}>
                       {(e.staff?.id ?? e.staff_id) ? (

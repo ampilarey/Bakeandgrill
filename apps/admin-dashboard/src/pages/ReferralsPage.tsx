@@ -5,6 +5,7 @@ import {
   PageHeader, PageShell, TableCard, Badge, Btn, Modal, ModalActions,
   Pagination, EmptyState, Spinner, ErrorMsg,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { fetchAdminReferrals, setReferralCodeActive, validateReferralCode, type ReferralCode } from '../api';
 
 // Rows are referral *codes* (one per customer), not redemption events.
@@ -16,6 +17,14 @@ const mvr = (n: number | null | undefined) =>
 export default function ReferralsPage() {
   usePageTitle('Referrals');
   const [codes, setCodes]       = useState<ReferralCode[]>([]);
+  const codeCtl = useSortFilter(codes, [
+    { key: 'code', label: 'Code', get: (c) => c.code },
+    { key: 'owner', label: 'Owner', get: (c) => c.customer?.name },
+    { key: 'uses', label: 'Uses', kind: 'number', get: (c) => c.uses_count },
+    { key: 'reward', label: 'Referrer Reward', kind: 'number', get: (c) => Number(c.referrer_reward_mvr) },
+    { key: 'discount', label: 'Referee Discount', kind: 'number', get: (c) => Number(c.referee_discount_mvr) },
+    { key: 'status', label: 'Status', kind: 'select', get: (c) => (c.is_active ? 'Active' : 'Inactive') },
+  ], 'referral-codes');
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [page, setPage]         = useState(1);
@@ -66,17 +75,11 @@ export default function ReferralsPage() {
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Code', 'Owner', 'Uses', 'Referrer Reward', 'Referee Discount', 'Status'].map((h) => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={codeCtl} allRows={codes} thStyle={{ padding: '10px 16px', letterSpacing: '0.06em', background: 'transparent' }} />
             <tbody>
               {codes.length === 0 ? (
                 <tr><td colSpan={6}><EmptyState>No referral codes generated yet</EmptyState></td></tr>
-              ) : codes.map((c) => (
+              ) : codeCtl.rows.map((c) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={{ padding: '12px 16px' }}>
                     <code style={{ fontSize: 12, background: 'var(--color-bg)', padding: '2px 8px', borderRadius: 6, fontWeight: 700, letterSpacing: '0.05em' }}>

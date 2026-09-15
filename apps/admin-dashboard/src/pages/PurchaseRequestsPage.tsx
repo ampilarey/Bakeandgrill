@@ -6,6 +6,7 @@ import {
   PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, Pagination,
   TableSkeleton, TableStateBar, ConfirmDialog, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { useToast } from '../components/ui';
 import { fetchStaff } from '../api';
 import {
@@ -78,6 +79,15 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
 
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('pending');
   const [rows, setRows] = useState<PurchaseRequest[]>([]);
+  const requestCtl = useSortFilter(rows, [
+    { key: 'request', label: 'Request', get: (r) => [r.request_no, r.title].filter(Boolean).join(' ') },
+    { key: 'requester', label: 'Requester', get: (r) => r.requester?.name },
+    { key: 'priority', label: 'Priority', kind: 'select', get: (r) => r.priority },
+    { key: 'status', label: 'Status', kind: 'select', get: (r) => r.status.replace(/_/g, ' ') },
+    { key: 'items', label: 'Items', kind: 'number', get: (r) => r.items?.length ?? 0 },
+    { key: 'needed', label: 'Needed by', get: (r) => r.needed_by },
+    { key: 'actions', label: '' },
+  ], 'purchase-requests');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -291,16 +301,9 @@ export default function PurchaseRequestsPage({ embedded = false }: { embedded?: 
           <TableStateBar isEmpty emptyMessage="No purchase requests in this tab." />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {can('purchase_requests.merge') && tab === 'pending' && <th style={TH} />}
-                {['Request', 'Requester', 'Priority', 'Status', 'Items', 'Needed by', ''].map((h) => (
-                  <th key={h || 'actions'} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={requestCtl} allRows={rows} leading={can('purchase_requests.merge') && tab === 'pending' ? '' : undefined} />
             <tbody>
-              {rows.map((r) => (
+              {requestCtl.rows.map((r) => (
                 <tr key={r.id}>
                   {can('purchase_requests.merge') && tab === 'pending' && (
                     <td style={TD}>

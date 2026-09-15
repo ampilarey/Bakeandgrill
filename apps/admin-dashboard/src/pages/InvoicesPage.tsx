@@ -8,8 +8,9 @@ import {
   type Invoice, type ManualInvoiceLineItem,
 } from '../api';
 import {
-  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, statColor, useConfirmDialog,
+  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, statColor, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { OrderSearch, type OrderSearchSelection } from '../components/OrderSearch';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -24,6 +25,26 @@ export function InvoicesPage() {
   usePageTitle('Invoices');
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices]     = useState<Invoice[]>([]);
+  const invoiceCtl = useSortFilter(invoices, [
+    { key: 'number', label: 'Number', get: (inv) => inv.invoice_number },
+    { key: 'type', label: 'Type', kind: 'select', get: (inv) => inv.type.replace('_', ' ') },
+    {
+      key: 'status', label: 'Status', kind: 'select',
+      get: (inv) => (inv as { display_status?: string }).display_status
+        ?? ((inv as { on_credit_account?: boolean }).on_credit_account && inv.status === 'sent' ? 'on credit' : inv.status),
+    },
+    { key: 'recipient', label: 'Recipient', get: (inv) => inv.recipient_name ?? inv.customer?.name ?? inv.supplier?.name },
+    {
+      key: 'source', label: 'Source',
+      get: (inv) => (inv.order_id
+        ? `Order #${inv.order?.order_number ?? inv.order_id}`
+        : inv.purchase_id ? (inv.purchase?.purchase_number || `PO #${inv.purchase_id}`) : ''),
+    },
+    { key: 'total', label: 'Total', kind: 'number', get: (inv) => Number(inv.total ?? 0) },
+    { key: 'issued', label: 'Issue Date', get: (inv) => inv.issue_date },
+    { key: 'due', label: 'Due', get: (inv) => inv.due_date },
+    { key: 'actions', label: 'Actions' },
+  ], 'invoices');
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [typeFilter, setType]       = useState('all');
@@ -406,18 +427,13 @@ export function InvoicesPage() {
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                <th style={{ ...TH, width: 36 }}>
-                  <input type="checkbox" checked={bulkSelected.size === invoices.length && invoices.length > 0} onChange={toggleAll} style={{ cursor: 'pointer' }} />
-                </th>
-                {['Number', 'Type', 'Status', 'Recipient', 'Source', 'Total', 'Issue Date', 'Due', 'Actions'].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead
+              controls={invoiceCtl}
+              allRows={invoices}
+              leading={<input type="checkbox" checked={bulkSelected.size === invoices.length && invoices.length > 0} onChange={toggleAll} style={{ cursor: 'pointer' }} />}
+            />
             <tbody>
-              {invoices.map((inv) => (
+              {invoiceCtl.rows.map((inv) => (
                 <tr key={inv.id} style={{ background: bulkSelected.has(inv.id) ? '#FEF8F2' : undefined }}>
                   <td style={{ ...TD, width: 36 }}>
                     <input type="checkbox" checked={bulkSelected.has(inv.id)} onChange={() => toggleSelect(inv.id)} style={{ cursor: 'pointer' }} />

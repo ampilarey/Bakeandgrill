@@ -4,6 +4,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import {
   PageHeader, PageShell, TableCard, Badge, Btn, EmptyState, Spinner, ErrorMsg, Input,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
   fetchTradeDeliveries,
   fetchTradeDelivery,
@@ -31,6 +32,14 @@ export default function WholesaleDeliveriesPage() {
 function DeliveryList() {
   usePageTitle('Wholesale deliveries');
   const [rows, setRows] = useState<TradeDelivery[]>([]);
+  const deliveryCtl = useSortFilter(rows, [
+    { key: 'delivery', label: 'Delivery', get: (d) => d.delivery_number },
+    { key: 'shop', label: 'Shop', get: (d) => d.shop_name },
+    { key: 'status', label: 'Status', kind: 'select', get: (d) => STATUS_LABEL[d.status] ?? d.status },
+    { key: 'sent', label: 'Sent', kind: 'number', get: (d) => d.lines_count },
+    { key: 'value', label: 'Value', kind: 'number', get: (d) => Number(d.stamped_value_laar) / 100 },
+    { key: 'flags', label: 'Flags', kind: 'select', get: (d) => [d.has_mismatch ? 'Mismatch' : '', d.self_reconciled ? 'Self-reconciled' : ''].filter(Boolean).join(' ') },
+  ], 'wholesale-deliveries');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -98,17 +107,11 @@ function DeliveryList() {
       {loading ? <Spinner /> : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Delivery', 'Shop', 'Status', 'Sent', 'Value', 'Flags'].map((h) => (
-                  <th key={h} style={thStyle}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={deliveryCtl} allRows={rows} thStyle={thStyle} />
             <tbody>
               {rows.length === 0 ? (
                 <tr><td colSpan={6}><EmptyState>No deliveries yet</EmptyState></td></tr>
-              ) : rows.map((d) => (
+              ) : deliveryCtl.rows.map((d) => (
                 <tr key={d.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={tdStyle}>
                     <Link to={`/wholesale/deliveries/${d.id}`} style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>

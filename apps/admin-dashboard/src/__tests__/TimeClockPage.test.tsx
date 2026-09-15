@@ -44,7 +44,9 @@ describe('TimeClockPage', () => {
     expect(screen.getByRole('tab', { name: /History/i })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Summary/i })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: /Clock In\/Out/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Clock In/i })).toBeNull();
+    // The history table's "Clock In" heading is a sort button now ("Sort by
+    // Clock In"); the clock-in action is what must be absent.
+    expect(screen.queryByRole('button', { name: /^Clock In/i })).toBeNull();
   });
 
   it('hides Summary tab when user lacks staff.view', () => {

@@ -9,8 +9,9 @@ import {
 } from '../api';
 import { SchedulesTab } from './StaffPage/SchedulesTab';
 import {
-  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH, useConfirmDialog,
+  Badge, Btn, ConfirmDialog, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { Toggle, useToast } from '../components/ui';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
@@ -684,6 +685,15 @@ export function StaffPage() {
       );
     });
   }, [staff, search, roleFilter, statusFilter]);
+  const staffCtl = useSortFilter(filtered, [
+    { key: 'name', label: 'Name', get: (m) => m.name },
+    { key: 'contact', label: 'Contact', get: (m) => [m.email, m.phone].filter(Boolean).join(' ') },
+    { key: 'role', label: 'Role', kind: 'select', get: (m) => roleDisplayLabel(m.role, m.role_name) },
+    { key: 'pin', label: 'PIN', kind: 'select', get: (m) => (m.has_pin ? 'Set' : 'Not set') },
+    { key: 'status', label: 'Status', kind: 'select', get: (m) => (m.is_active ? 'Active' : 'Inactive') },
+    { key: 'login', label: 'Last Login', get: (m) => m.last_login_at },
+    { key: 'actions', label: '' },
+  ], 'staff');
 
   const handleCreate = async (data: { name: string; email: string; phone?: string; role_id: number; pin: string }) => {
     await createStaff(data);
@@ -836,15 +846,9 @@ export function StaffPage() {
             <TableCard>
               <div className="table-scroll" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 720 }}>
-                  <thead>
-                    <tr>
-                      {['Name', 'Contact', 'Role', 'PIN', 'Status', 'Last Login', ''].map((h) => (
-                        <th key={h || 'actions'} style={TH}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <SortFilterHead controls={staffCtl} allRows={filtered} />
                   <tbody>
-                    {filtered.map((m) => {
+                    {staffCtl.rows.map((m) => {
                       const menuItems: MenuItem[] = [];
                       if (canUpdateStaff) {
                         menuItems.push({ label: 'Change PIN', onClick: () => setChangingPin(m) });

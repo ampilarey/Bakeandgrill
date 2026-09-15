@@ -4,6 +4,7 @@ import { approvePurchase, cancelPurchase, deletePurchase, undoPurchaseReceipt, u
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Select, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { PickOrType } from '../components/PickOrType';
 import { BrandThumb } from '../components/BrandPhotos';
@@ -315,6 +316,17 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchases, setPurchases]         = useState<Purchase[]>([]);
+  const poCtl = useSortFilter(purchases, [
+    { key: 'number', label: 'PO Number', get: (po) => po.purchase_number },
+    { key: 'supplier', label: 'Supplier', get: (po) => po.supplier?.name ?? po.supplier_name_text ?? '' },
+    { key: 'status', label: 'Status', kind: 'select', get: (po) => po.status },
+    { key: 'total', label: 'Total', kind: 'number', get: (po) => Number(po.total ?? po.subtotal ?? 0) },
+    { key: 'date', label: 'PO Date', get: (po) => po.purchase_date },
+    { key: 'entered', label: 'Entered', get: (po) => po.created_at },
+    { key: 'expected', label: 'Exp. Delivery', get: (po) => po.expected_delivery_date },
+    { key: 'items', label: 'Items', kind: 'number', get: (po) => po.items?.length ?? 0 },
+    { key: 'actions', label: 'Actions' },
+  ], 'purchase-orders');
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
   const [suggestions, setSuggestions]     = useState<PurchaseSuggestions | null>(null);
@@ -1211,15 +1223,9 @@ export function PurchaseOrdersPage({ embedded = false }: { embedded?: boolean } 
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                {['PO Number', 'Supplier', 'Status', 'Total', 'PO Date', 'Entered', 'Exp. Delivery', 'Items', 'Actions'].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={poCtl} allRows={purchases} />
             <tbody>
-              {purchases.map((po) => (
+              {poCtl.rows.map((po) => (
                 <tr key={po.id}>
                   <td style={{ ...TD, fontWeight: 700 }}>
                     <button

@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions,
   StatCard, TableSkeleton, TableStateBar, Pagination,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 // TableStateBar used for error/retry only
 import { useToast } from '../components/ui';
 import {
@@ -62,6 +63,15 @@ export default function ComplaintsPage() {
   const toast = useToast();
 
   const [rows, setRows] = useState<AdminComplaint[]>([]);
+  const complaintCtl = useSortFilter(rows, [
+    { key: 'ref', label: 'Ref', get: (c) => c.reference_number },
+    { key: 'categories', label: 'Categories', get: (c) => categoryLabels(c.categories) },
+    { key: 'order', label: 'Order', get: (c) => c.order?.order_number },
+    { key: 'customer', label: 'Customer', get: (c) => c.customer?.name || c.customer?.phone },
+    { key: 'amount', label: 'Amount', kind: 'number', get: (c) => (c.order ? Number(c.order.total) : null) },
+    { key: 'age', label: 'Age', get: (c) => c.created_at, placeholder: 'date…' },
+    { key: 'actions', label: '' },
+  ], 'complaints');
   const [meta, setMeta] = useState({ open_count: 0, oldest_open_age_minutes: null as number | null });
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -203,17 +213,11 @@ export default function ComplaintsPage() {
       <TableCard stickyHead>
         {loading ? <TableSkeleton rows={6} cols={6} /> : (
           <table>
-            <thead>
-              <tr>
-                {['Ref', 'Categories', 'Order', 'Customer', 'Amount', 'Age', ''].map((h) => (
-                  <th key={h || 'actions'} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={complaintCtl} allRows={rows} />
             <tbody>
               {rows.length === 0 ? (
                 <tr><td style={{ ...TD, color: 'var(--color-text-muted)' }} colSpan={7}>No complaints</td></tr>
-              ) : rows.map((c) => (
+              ) : complaintCtl.rows.map((c) => (
                 <tr key={c.id} style={c.is_food_safety ? { background: 'color-mix(in srgb, var(--color-danger) 8%, transparent)' } : undefined}>
                   <td style={TD}>
                     {c.reference_number}{' '}

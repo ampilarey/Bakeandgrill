@@ -10,6 +10,7 @@ import { CounterSignModal } from '../components/CounterSignModal';
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Input, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { Toggle } from '../components/ui';
 import { downloadCSV } from '../utils/csvExport';
 
@@ -392,6 +393,15 @@ function TiersPanel() {
 
 function AccountsPanel() {
   const [accounts, setAccounts] = useState<LoyaltyAccountAdmin[]>([]);
+  const accountCtl = useSortFilter(accounts, [
+    { key: 'customer', label: 'Customer', get: (a) => a.customer_name ?? `Customer #${a.customer_id}` },
+    { key: 'phone', label: 'Phone', get: (a) => a.customer_phone },
+    { key: 'tier', label: 'Tier', kind: 'select', get: (a) => a.tier },
+    { key: 'balance', label: 'Balance', kind: 'number', get: (a) => a.points_balance },
+    { key: 'held', label: 'Held', kind: 'number', get: (a) => a.points_held },
+    { key: 'lifetime', label: 'Lifetime', kind: 'number', get: (a) => a.lifetime_points },
+    { key: 'actions', label: '' },
+  ], 'loyalty-accounts');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -438,15 +448,9 @@ function AccountsPanel() {
       ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead>
-              <tr>
-                {['Customer', 'Phone', 'Tier', 'Balance', 'Held', 'Lifetime', ''].map((h) => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
+            <SortFilterHead controls={accountCtl} allRows={accounts} />
             <tbody>
-              {accounts.map((a) => (
+              {accountCtl.rows.map((a) => (
                 <tr key={a.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>
                     <Link to={`/customers?customer=${a.customer_id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>

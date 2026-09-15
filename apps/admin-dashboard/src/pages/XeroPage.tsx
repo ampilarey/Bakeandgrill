@@ -7,8 +7,9 @@ import {
 } from '../api';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, PageShell, StatCard, TableCard, TD, TH, statColor, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, EmptyState, ErrorMsg, PageHeader, PageShell, StatCard, TableCard, TD, statColor, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 
 function xeroEntityPath(entityType: string, entityId: number | null | undefined): string | null {
   if (!entityId) return null;
@@ -62,6 +63,13 @@ export default function XeroPage() {
 
   const [status, setStatus] = useState<XeroStatus | null>(null);
   const [logs, setLogs] = useState<XeroLog[]>([]);
+  const logCtl = useSortFilter(logs, [
+    { key: 'time', label: 'Time', get: (l) => l.created_at },
+    { key: 'action', label: 'Action', kind: 'select', get: (l) => l.action.replace(/_/g, ' ') },
+    { key: 'entity', label: 'Entity', get: (l) => `${l.entity_type}${l.entity_id ? ` #${l.entity_id}` : ''}` },
+    { key: 'status', label: 'Status', kind: 'select', get: (l) => l.status },
+    { key: 'message', label: 'Message', get: (l) => l.message },
+  ], 'xero-logs');
   const [logMeta, setLogMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [logPage, setLogPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -234,17 +242,9 @@ export default function XeroPage() {
           ) : (
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={TH}>Time</th>
-                    <th style={TH}>Action</th>
-                    <th style={TH}>Entity</th>
-                    <th style={TH}>Status</th>
-                    <th style={TH}>Message</th>
-                  </tr>
-                </thead>
+                <SortFilterHead controls={logCtl} allRows={logs} />
                 <tbody>
-                  {logs.map((log) => (
+                  {logCtl.rows.map((log) => (
                     <tr key={log.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                       <td style={TD}>
                         <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>

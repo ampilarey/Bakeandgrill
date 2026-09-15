@@ -9,8 +9,9 @@ import { downloadCSV } from '../utils/csvExport';
 import { today, monthStart } from '../utils/dateHelpers';
 import { ADMIN_EXPENSE_PAYMENT_METHODS, paymentMethodLabel } from '../lib/paymentMethods';
 import {
-  Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, TH, useConfirmDialog,
+  Badge, Btn, Card, ConfirmDialog, DateInput, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, StatCard, TableCard, TD, useConfirmDialog,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import { PurchaseSearch, type PurchaseSearchSelection } from '../components/PurchaseSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -97,6 +98,17 @@ export function ExpensesPage() {
   usePageTitle('Expenses');
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenses, setExpenses]   = useState<Expense[]>([]);
+  const expenseCtl = useSortFilter(expenses, [
+    { key: 'number', label: 'Number', get: (e) => e.expense_number },
+    { key: 'date', label: 'Date', get: (e) => e.expense_date },
+    { key: 'category', label: 'Category', kind: 'select', get: (e) => e.category?.name },
+    { key: 'description', label: 'Description', get: (e) => e.description },
+    { key: 'amount', label: 'Amount', kind: 'number', get: (e) => Number(e.amount ?? 0) },
+    { key: 'po', label: 'PO', get: (e) => e.purchase?.purchase_number ?? (e.purchase_id ? `PO #${e.purchase_id}` : '') },
+    { key: 'method', label: 'Method', kind: 'select', get: (e) => paymentMethodLabel(e.payment_method) },
+    { key: 'status', label: 'Status', kind: 'select', get: (e) => e.status },
+    { key: 'actions', label: '' },
+  ], 'expenses');
   const [cats, setCats]           = useState<ExpenseCategory[]>([]);
   const [summary, setSummary]     = useState<{ total: number; by_category: { category: string; icon: string; total: number; count: number; pct: number }[] } | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -400,18 +412,13 @@ export function ExpensesPage() {
             )}
             <TableCard>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...TH, width: 36 }}>
-                      <input type="checkbox" checked={bulkSelected.size === expenses.length && expenses.length > 0} onChange={toggleAllBulk} style={{ cursor: 'pointer' }} />
-                    </th>
-                    {['Number', 'Date', 'Category', 'Description', 'Amount', 'PO', 'Method', 'Status', ''].map((h) => (
-                      <th key={h} style={TH}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+                <SortFilterHead
+                  controls={expenseCtl}
+                  allRows={expenses}
+                  leading={<input type="checkbox" checked={bulkSelected.size === expenses.length && expenses.length > 0} onChange={toggleAllBulk} style={{ cursor: 'pointer' }} />}
+                />
                 <tbody>
-                  {expenses.map((exp) => (
+                  {expenseCtl.rows.map((exp) => (
                     <tr key={exp.id} style={{ background: bulkSelected.has(exp.id) ? '#FEF8F2' : undefined }}>
                       <td style={{ ...TD, width: 36 }}><input type="checkbox" checked={bulkSelected.has(exp.id)} onChange={() => toggleBulk(exp.id)} style={{ cursor: 'pointer' }} /></td>
                       <td style={{ ...TD, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>

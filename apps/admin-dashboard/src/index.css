@@ -2228,6 +2228,16 @@ a { text-decoration: none; color: inherit; }
  * from one that fits, so it dimmed the last tab when there was nothing
  * more to see. Grouping (see HubPage) is what keeps these rows short.
  */
+/* A heading that sorts (TableControls): the arrow is CSS so the heading's
+   text stays its label. Dim when the column is not the sorted one. */
+.table-sort-btn::after {
+  content: '↕';
+  font-size: 10px;
+  opacity: 0.35;
+}
+.table-sort-btn[data-sort="asc"]::after { content: '▲'; opacity: 1; }
+.table-sort-btn[data-sort="desc"]::after { content: '▼'; opacity: 1; }
+
 .hub-tabs { scroll-snap-type: x proximity; scroll-padding: 0 4px; }
 .hub-tabs > button { scroll-snap-align: start; }
 

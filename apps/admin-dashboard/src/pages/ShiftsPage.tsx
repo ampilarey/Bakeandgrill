@@ -4,8 +4,9 @@ import { AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useCurrentUserPermissions } from '../hooks/usePermissions';
 import {
-  PageHeader, PageShell, TableCard, TH, TD, Badge, Btn, Modal, ModalActions, EmptyState,
+  PageHeader, PageShell, TableCard, TD, Badge, Btn, Modal, ModalActions, EmptyState,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 import {
   fetchLiveShifts, fetchShiftHistory, forceCloseShift,
 } from '../api';
@@ -50,21 +51,26 @@ function AdminShiftTable({
   highlightId?: number | null;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const shiftCtl = useSortFilter(rows, [
+    { key: 'shift', label: 'Shift', kind: 'number', get: (s) => s.id },
+    { key: 'cashier', label: 'Cashier', get: (s) => s.user?.name ?? (s.user_id ? `#${s.user_id}` : '') },
+    { key: 'station', label: 'Station', get: (s) => s.device?.name },
+    { key: 'opened', label: 'Opened', get: (s) => s.opened_at },
+    { key: 'closed', label: 'Closed', get: (s) => s.closed_at },
+    { key: 'opening', label: 'Opening', kind: 'number', get: (s) => s.opening_cash },
+    { key: 'closing', label: 'Closing', kind: 'number', get: (s) => s.closing_cash },
+    { key: 'variance', label: 'Variance', kind: 'number', get: (s) => s.variance },
+    ...(showForceClose ? [{ key: 'actions', label: '' }] : []),
+  ], 'shifts');
 
   if (rows.length === 0) return <EmptyState message="No shifts found." />;
 
   return (
     <TableCard>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {['Shift', 'Cashier', 'Station', 'Opened', 'Closed', 'Opening', 'Closing', 'Variance', ...(showForceClose ? [''] : [])].map(h => (
-              <th key={h || 'actions'} style={TH}>{h}</th>
-            ))}
-          </tr>
-        </thead>
+        <SortFilterHead controls={shiftCtl} allRows={rows} />
         <tbody>
-          {rows.map((s) => {
+          {shiftCtl.rows.map((s) => {
             const stale = isStaleOpenShift(s.opened_at, s.closed_at);
             const highlighted = highlightId != null && s.id === highlightId;
             const colSpan = 8 + (showForceClose ? 1 : 0);

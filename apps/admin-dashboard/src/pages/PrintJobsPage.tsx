@@ -6,8 +6,9 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { RecordCard, RecordCardList } from '../components/RecordCard';
 import {
-  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select, StatCard, TableCard, TD, TH, statColor,
+  Badge, Btn, Card, EmptyState, ErrorMsg, PageHeader, PageShell, Select, StatCard, TableCard, TD, statColor,
 } from '../components/SharedUI';
+import { SortFilterHead, useSortFilter } from '../components/TableControls';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'warning',
@@ -33,6 +34,17 @@ export default function PrintJobsPage() {
   const isMobile = useIsMobile();
 
   const [jobs, setJobs] = useState<PrintJob[]>([]);
+  const jobCtl = useSortFilter(jobs, [
+    { key: 'id', label: 'ID', kind: 'number', get: (j) => j.id },
+    { key: 'order', label: 'Order', get: (j) => j.order_number ?? j.order_id },
+    { key: 'type', label: 'Type', kind: 'select', get: (j) => j.type },
+    { key: 'printer', label: 'Printer', get: (j) => j.printer_name ?? 'Default' },
+    { key: 'status', label: 'Status', kind: 'select', get: (j) => j.status },
+    { key: 'copies', label: 'Copies', kind: 'number', get: (j) => j.copies },
+    { key: 'error', label: 'Error', get: (j) => j.error_message },
+    { key: 'created', label: 'Created', get: (j) => j.created_at },
+    { key: 'actions', label: 'Actions' },
+  ], 'print-jobs');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -169,21 +181,9 @@ export default function PrintJobsPage() {
         ) : (
         <TableCard>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={TH}>ID</th>
-                <th style={TH}>Order</th>
-                <th style={TH}>Type</th>
-                <th style={TH}>Printer</th>
-                <th style={TH}>Status</th>
-                <th style={TH}>Copies</th>
-                <th style={TH}>Error</th>
-                <th style={TH}>Created</th>
-                <th style={TH}>Actions</th>
-              </tr>
-            </thead>
+            <SortFilterHead controls={jobCtl} allRows={jobs} />
             <tbody>
-              {jobs.map((job) => (
+              {jobCtl.rows.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                   <td style={TD}>
                     <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>#{job.id}</span>

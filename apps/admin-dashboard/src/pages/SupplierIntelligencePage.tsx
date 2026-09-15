@@ -10,6 +10,7 @@ import {
 import {
   Badge, Btn, Card, EmptyState, ErrorMsg, Modal, ModalActions, PageHeader, PageShell, Spinner, TableCard, TD, TH,
 } from '../components/SharedUI';
+import { SortFilterHead, SortFilterPanel, useSortFilter } from '../components/TableControls';
 import { ItemSearch, type InventoryItemSelection } from '../components/ItemSearch';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -59,6 +60,18 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
 
   // Suppliers CRUD
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  // Owner, 2026-09-15: "In some places there is no sort and filter option.
+  // For example suppliers in purchase."
+  const supplierCtl = useSortFilter(suppliers, [
+    { key: 'name', label: 'Name', get: (s) => s.name },
+    { key: 'contact', label: 'Contact', get: (s) => s.contact_name },
+    { key: 'phone', label: 'Phone', get: (s) => [s.phone, ...(s.extra_phones ?? [])].filter(Boolean).join(' ') },
+    { key: 'email', label: 'Email', get: (s) => s.email },
+    { key: 'bank', label: 'Bank account', get: (s) => [s.bank_account_number, s.bank_name, s.bank_account_name].filter(Boolean).join(' ') },
+    { key: 'status', label: 'Status', kind: 'select', get: (s) => (s.is_active ? 'Active' : 'Inactive') },
+    { key: 'actions', label: 'Actions' },
+  ], 'suppliers');
+  const [supplierFiltersOpen, setSupplierFiltersOpen] = useState(false);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [supplierModal, setSupplierModal] = useState<Supplier | 'new' | null>(null);
   const [supplierForm, setSupplierForm] = useState({
@@ -264,8 +277,10 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
           /* Layout audit L-01: seven columns, and the one somebody wants
              — the bank account, at the moment they are making a transfer —
              was the furthest right. */
+          <>
+          <SortFilterPanel controls={supplierCtl} allRows={suppliers} open={supplierFiltersOpen} onToggle={() => setSupplierFiltersOpen((v) => !v)} />
           <RecordCardList testId="supplier-cards">
-            {suppliers.map((s) => (
+            {supplierCtl.rows.map((s) => (
               <RecordCard
                 key={s.id}
                 testId={`supplier-card-${s.id}`}
@@ -294,19 +309,12 @@ export function SupplierIntelligencePage({ embedded = false }: { embedded?: bool
               />
             ))}
           </RecordCardList>
+          </>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr>
-              <th style={TH}>Name</th>
-              <th style={TH}>Contact</th>
-              <th style={TH}>Phone</th>
-              <th style={TH}>Email</th>
-              <th style={TH}>Bank account</th>
-              <th style={TH}>Status</th>
-              <th style={TH}>Actions</th>
-            </tr></thead>
+            <SortFilterHead controls={supplierCtl} allRows={suppliers} />
             <tbody>
-              {suppliers.map((s) => (
+              {supplierCtl.rows.map((s) => (
                 <tr key={s.id}>
                   <td style={{ ...TD, fontWeight: 600 }}>{s.name}</td>
                   <td style={TD}>{s.contact_name ?? '—'}</td>
